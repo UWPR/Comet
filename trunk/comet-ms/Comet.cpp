@@ -193,7 +193,6 @@ int main(int argc, char *argv[])
       }
    }
 
-
    // Allocate memory to store results for each query spectrum.
    if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
       printf(" Allocate memory to store results\n");
@@ -1796,9 +1795,9 @@ use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral
 # output\n\
 #\n\
 output_format = 2                      # 0=sqt stdout (default), 1=sqt file, 2=out files, 3=pepXML file\n\
-print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect\n\
+print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
 num_output_lines = 5                   # num peptide results to show\n\
-show_fragment_ions = 0                 # 0=no, 1=yes\n\
+show_fragment_ions = 0                 # 0=no, 1=yes for out files only\n\
 \n\
 sample_enzyme_number = 1               # Sample enzyme which is possibly different than the one applied to the search.\n\
                                        # Used to calculate NTT & NMC in pepXML output (default=1 for trypsin).\n\

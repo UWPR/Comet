@@ -377,6 +377,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    } 
 
    fprintf(fpout, "  </search_result>\n");
+   fprintf(fpout, " </spectrum_query>\n");
 }
 
 
