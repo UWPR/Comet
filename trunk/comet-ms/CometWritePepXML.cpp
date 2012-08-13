@@ -373,7 +373,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > 0)
-         PrintPepXMLSearchHit(iWhichQuery, iRankXcorr, i, bDecoy, pOutput, fpout);
+         PrintPepXMLSearchHit(iWhichQuery, iRankXcorr, i, iDoXcorrCount, bDecoy, pOutput, fpout);
    } 
 
    fprintf(fpout, "  </search_result>\n");
@@ -384,6 +384,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                                             int iRankXcorr,
                                             int iWhichResult,
+                                            int iDoXcorrCount,
                                             bool bDecoy,
                                             Results *pOutput,
                                             FILE *fpout)
@@ -493,7 +494,13 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    }
 
    fprintf(fpout, "    <search_score name=\"xcorr\" value=\"%0.3f\"/>\n", pOutput[iWhichResult].fXcorr);
-   fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.3f\"/>\n", 1.0 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr);
+
+   if (iWhichResult+1 < iDoXcorrCount)
+      fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.3f\"/>\n", 1.0 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr);
+   else
+      fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.3f\"/>\n", 1.0);
+
+   fprintf(fpout, "    <search_score name=\"deltacnstar\" value=\"%0.3f\"/>\n", 0.0);  // FIX
    fprintf(fpout, "    <search_score name=\"spscore\" value=\"%0.1f\"/>\n", pOutput[iWhichResult].fScoreSp);
    fprintf(fpout, "    <search_score name=\"sprank\" value=\"%d\"/>\n", pOutput[iWhichResult].iRankSp);
    fprintf(fpout, "    <search_score name=\"expect\" value=\"%0.2E\"/>\n", pOutput[iWhichResult].dExpect);
