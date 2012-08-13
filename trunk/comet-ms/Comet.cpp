@@ -620,7 +620,7 @@ void InitializeParameters()
    g_StaticParams.options.iOutputFormat = OutputFormat_SQT;         // 0=sqt stdout, 1=stq file, 2=out output
    g_StaticParams.options.bSkipAlreadyDone = 0;
    g_StaticParams.options.iDecoySearch = 0;
-   g_StaticParams.options.iNumThreads = 2;
+   g_StaticParams.options.iNumThreads = 0;
    g_StaticParams.options.bClipNtermMet = 0;
 
    // These parameters affect mzXML/RAMP spectra only.
