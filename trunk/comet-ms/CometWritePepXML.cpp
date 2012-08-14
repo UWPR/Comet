@@ -440,7 +440,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
       if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
       {
-         sprintf(szModPep+strlen(szModPep), "[%0.0f]",
+         sprintf(szModPep+strlen(szModPep), "n[%0.0f]",
                g_StaticParams.variableModParameters.dVarModMassN
                + g_StaticParams.precalcMasses.dNtermProton);
       }
@@ -459,7 +459,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
       if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
       {
-         sprintf(szModPep+strlen(szModPep), "[%0.0f]",
+         sprintf(szModPep+strlen(szModPep), "c[%0.0f]",
               g_StaticParams.variableModParameters.dVarModMassC
               + g_StaticParams.precalcMasses.dCtermOH2Proton);
       }
