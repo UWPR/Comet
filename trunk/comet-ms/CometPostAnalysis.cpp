@@ -189,7 +189,6 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                && (pOutput[i].pcVarModSites[pOutput[0].iLenPeptide + 1] == 1))
          {
             dBion += g_StaticParams.variableModParameters.dVarModMassC;
-            printf("adding2 %f\n", g_StaticParams.variableModParameters.dVarModMassC);
          }
 
          if (g_StaticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[iPos]>0)
