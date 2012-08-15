@@ -36,6 +36,8 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
                              char *szOutputDecoy,
                              char *szParamsFile)
 {
+   int i;
+
    if (g_StaticParams.options.iOutputFormat == OutputFormat_SQTFILE)
    {
       PrintSqtHeader(fpout, szParamsFile);
@@ -51,7 +53,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    }
 
    // Print results.
-   for (int i=0; i<(int)g_pvQuery.size(); i++)
+   for (i=0; i<(int)g_pvQuery.size(); i++)
    {
       PrintResults(i, 0, fpout, szOutput);
    }
@@ -59,7 +61,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    // Print out the separate decoy hits.
    if (g_StaticParams.options.iDecoySearch == 2)
    {
-      for (int i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); i++)
       {
          PrintResults(i, 1, fpoutd, szOutputDecoy);
       }
@@ -76,7 +78,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    FILE *fp;
 
    fprintf(fpout, "H\tSQTGenerator Comet\n");
-   fprintf(fpout, "H\tCometVersion\t%s\n", version);
+   fprintf(fpout, "H\tComment CometVersion\t%s\n", version);
    fprintf(fpout, "H\n");
    fprintf(fpout, "H\tStartTime %s\n", g_StaticParams._dtInfoStart.szDate);
    time(&tTime);
@@ -168,7 +170,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
-   for (i=0; i < iDoXcorrCount; i++)
+   for (i=0; i<iDoXcorrCount; i++)
    {
       if ((i > 0) && (pOutput[i].fXcorr != pOutput[i-1].fXcorr))
          iRankXcorr++;
@@ -217,7 +219,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       sprintf(szBuf+strlen(szBuf), ".");
 
    // Print peptide sequence.
-   for (i=0; i < pOutput[iWhichResult].iLenPeptide; i++)
+   for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
    {
       sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 

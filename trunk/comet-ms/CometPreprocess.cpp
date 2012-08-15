@@ -210,7 +210,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
       pdTmpFastXcorrData[i-75] = (dSum - pPre.pdCorrelationData[i-75])* 0.0066666667;
    }
 
-   for (i=0; i < pScoring->_spectrumInfoInternal.iArraySize; i++)
+   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
    {
       double dTmp = pPre.pdCorrelationData[i] - pdTmpFastXcorrData[i];
 
@@ -390,7 +390,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 
    // Horrible way to exit as this typically requires a quick cycle through
    // while loop but not sure what else to do when getScanNumber() returns 0
-   // for non MS/MS scans in mzXML files.
+   // for non MS/MS scans.
    if (g_StaticParams.inputFile.iInputType == InputType_MZXML && iTotalScans > iReaderLastScan)
    {
       return true;
@@ -451,7 +451,7 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       }
       else
       {
-         for (z = g_StaticParams.options.iStartCharge; z <= g_StaticParams.options.iEndCharge; z++)
+         for (z=g_StaticParams.options.iStartCharge; z<=g_StaticParams.options.iEndCharge; z++)
          {
             spec.addZState(z,spec.getMZ()*z-(z-1)*PROTON_MASS);
          }
@@ -470,7 +470,7 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       zStop = spec.sizeZ();
    }
 
-   for (z = zStart; z < zStop; z++)
+   for (z=zStart; z<zStop; z++)
    {
       int iPrecursorCharge = spec.atZ(z).z;  // I need this before iChargeState gets assigned.
       double dMass = spec.atZ(z).mz;
@@ -789,11 +789,11 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
    }
 
    iWindowSize = pPre->iHighestIon/iNumWindows;
-   for (i=0; i < iNumWindows; i++)
+   for (i=0; i<iNumWindows; i++)
    {
       dMaxWindowInten = 0.0;
 
-      for (ii=0; ii < iWindowSize; ii++)    // Find max inten. in window.
+      for (ii=0; ii<iWindowSize; ii++)    // Find max inten. in window.
       {
          if (pdTempRawData[i*iWindowSize+ii] > dMaxWindowInten)
             dMaxWindowInten = pdTempRawData[i*iWindowSize+ii];
@@ -804,7 +804,7 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
          dTmp1 = 50.0 / dMaxWindowInten;
          dTmp2 = 0.05 * dMaxOverallInten;
 
-         for (ii=0; ii < iWindowSize; ii++)    // Normalize to max inten. in window.
+         for (ii=0; ii<iWindowSize; ii++)    // Normalize to max inten. in window.
          {
             if (pdTempRawData[i*iWindowSize+ii] > dTmp2)
                pPre->pdCorrelationData[i*iWindowSize+ii] = pdTempRawData[i*iWindowSize+ii]*dTmp1;
@@ -951,7 +951,7 @@ void CometPreprocess::GetTopIons(double *pdTempRawData,
          dLowestInten = (pTempSpData+0)->dIntensity;
          iLowestIntenIndex = 0;
 
-         for (ii=1; ii < NUM_SP_IONS; ii++)
+         for (ii=1; ii<NUM_SP_IONS; ii++)
          {
             if ((pTempSpData+ii)->dIntensity < dLowestInten)
             {
@@ -964,7 +964,7 @@ void CometPreprocess::GetTopIons(double *pdTempRawData,
 
    if (dMaxInten > FLOAT_ZERO)
    {
-      for (i=0; i < NUM_SP_IONS; i++)
+      for (i=0; i<NUM_SP_IONS; i++)
          (pTempSpData+i)->dIntensity = (((pTempSpData+i)->dIntensity)/dMaxInten)*100.0;
    }
 }
@@ -1004,8 +1004,10 @@ void CometPreprocess::StairStep(struct msdata *pTempSpData)
 
          // Finds the max intensity for adjacent points.
          if (dGap<=g_StaticParams.tolerances.dFragmentBinSize)
+         {
             if ((pTempSpData+ii)->dIntensity > dMaxInten)
                dMaxInten = (pTempSpData+ii)->dIntensity;
+         }
       }
 
       // Sets the adjacent points to the dMaxInten.

@@ -165,7 +165,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          dYion += g_StaticParams.variableModParameters.dVarModMassC;
       }
 
-      for (ii=0; ii < g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
+      for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
       {
          int iii;
 
@@ -174,7 +174,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
       }
 
       // Generate pdAAforward for _pResults[0].szPeptide.
-      for (ii=0; ii < pOutput[i].iLenPeptide; ii++)
+      for (ii=0; ii<pOutput[i].iLenPeptide; ii++)
       {
          int iPos = pOutput[i].iLenPeptide - ii - 1;
 
@@ -198,7 +198,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          pdAAreverse[ii] = dYion;
       }
 
-      for (ctCharge = 1; ctCharge <=iMaxFragCharge; ctCharge++)
+      for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
       {
          for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
@@ -338,7 +338,7 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery, bool bDecoy)
 
    dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
 
-   for (i=0; i < iXcorrCount; i++)
+   for (i=0; i<iXcorrCount; i++)
    {
       double dExpect;
 
@@ -452,7 +452,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       iNumPoints=0;
 
       // Calculate means.
-      for (i = iStartCorr; i <= iNextCorr; i++)
+      for (i=iStartCorr; i<=iNextCorr; i++)
       {
          if (piHistogram[i] > 0)
          {
@@ -471,7 +471,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
          Mx = My = 0.0;
 
       // Calculate sum of squares.
-      for (i = iStartCorr; i <= iNextCorr; i++)
+      for (i=iStartCorr; i<=iNextCorr; i++)
       {
          if (dCummulative[i] > 0)
          {
@@ -545,13 +545,6 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
    if (iHistogramCount > g_StaticParams.options.iNumStored)
       iHistogramCount = g_StaticParams.options.iNumStored;
 
-/*
-   for (i=0; i < g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize; i++)
-   {
-      g_pvQuery.at(iWhichQuery)->pfFastXcorrData[i] *= (float)0.005;   // 50.0/10000.0
-   }
-*/
-
    iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
 
    j=0;
@@ -589,7 +582,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
          dBion = dTmp1 + dShift;  // Ignore variable mods and rotate plain fragment ions.
          dYion = dTmp2 + dShift;
 
-         for (ii=0; ii < g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
+         for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
             int iWhichIonSeries = g_StaticParams.ionInformation.piSelectedIonSeries[ii];
 
@@ -636,7 +629,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                }
                else
                {
-                  printf("XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
+                  printf(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
                         dFragmentIonMass, 
                         iFragmentIonMass,
                         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize, 

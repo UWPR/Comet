@@ -37,11 +37,7 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
                                    char *szParamsFile)
 {
 
-   if (g_StaticParams.inputFile.iInputType == InputType_MZXML)
-   {
-      // Get instrument time and RTs from mzXML file.
-//      ReadmzXML();
-   }
+   int i;
 
    WriteXMLHeader(fpout, szParamsFile);
 
@@ -49,7 +45,7 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
       WriteXMLHeader(fpoutd, szParamsFile);
 
    // Print results.
-   for (int i=0; i<(int)g_pvQuery.size(); i++)
+   for (i=0; i<(int)g_pvQuery.size(); i++)
    {
       PrintResults(i, 0, fpout, szOutput);
    }
@@ -57,7 +53,7 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
    // Print out the separate decoy hits.
    if (g_StaticParams.options.iDecoySearch == 2)
    {
-      for (int i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); i++)
       {
          PrintResults(i, 1, fpoutd, szOutputDecoy);
       }
@@ -367,7 +363,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
-   for (i=0; i < iDoXcorrCount; i++)
+   for (i=0; i<iDoXcorrCount; i++)
    {
       if ((i > 0) && (pOutput[i].fXcorr != pOutput[i-1].fXcorr))
          iRankXcorr++;
@@ -420,7 +416,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    {
       if (!bModified)
       {
-         for (i=0; i < pOutput[iWhichResult].iLenPeptide + 2; i++)
+         for (i=0; i<pOutput[iWhichResult].iLenPeptide+2; i++)
          {
             if (pOutput[iWhichResult].pcVarModSites[i] > 0)
             {
@@ -445,7 +441,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                + g_StaticParams.precalcMasses.dNtermProton);
       }
 
-      for (i=0; i < pOutput[iWhichResult].iLenPeptide; i++)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
          sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
 
@@ -480,7 +476,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       }
       fprintf(fpout, ">\n");
 
-      for (i=0; i < pOutput[iWhichResult].iLenPeptide; i++)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
          if (pOutput[iWhichResult].pcVarModSites[i] > 0)
          {

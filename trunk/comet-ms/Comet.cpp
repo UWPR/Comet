@@ -293,13 +293,14 @@ void AllocateResultsMem(void)
          g_pvQuery.at(i)->fLowestDecoySpScore = 0.0;
       }
 
-      for (int j=0; j<HISTO_SIZE; j++)
+      int j;
+      for (j=0; j<HISTO_SIZE; j++)
       {
          g_pvQuery.at(i)->iCorrelationHistogram[j]=0;
          g_pvQuery.at(i)->iDecoyCorrelationHistogram[j]=0;
       }
 
-      for (int j=0; j<g_StaticParams.options.iNumStored; j++)
+      for (j=0; j<g_StaticParams.options.iNumStored; j++)
       {
          g_pvQuery.at(i)->_pResults[j].fXcorr = 0.0;
          g_pvQuery.at(i)->_pResults[j].fScoreSp = 0.0;
@@ -579,7 +580,7 @@ void InitializeParameters()
 
    g_StaticParams.szMod[0] = '\0';
 
-   for (i=0; i <128; i++)
+   for (i=0; i<128; i++)
    {
       g_StaticParams.massUtility.pdAAMassParent[i] = 999999.;
       g_StaticParams.massUtility.pdAAMassFragment[i] = 999999.;
@@ -587,7 +588,7 @@ void InitializeParameters()
 
    g_StaticParams.enzymeInformation.iAllowedMissedCleavage = 2;
 
-   for (i=0; i < VMODS; i++)
+   for (i=0; i<VMODS; i++)
    {
       g_StaticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 4;
       g_StaticParams.variableModParameters.varModList[i].bBinaryMod = 0;
@@ -1275,7 +1276,7 @@ void LoadParameters(char *pszParamsFile)
 
    // Variable mod search for AAs listed in szVarModChar.
    g_StaticParams.szMod[0] = '\0';
-   for (i=0; i < VMODS; i++)
+   for (i=0; i<VMODS; i++)
    {
       if ((g_StaticParams.variableModParameters.varModList[i].dVarModMass != 0.0) &&
           (strlen(g_StaticParams.variableModParameters.varModList[i].szVarModChar) > 0))
