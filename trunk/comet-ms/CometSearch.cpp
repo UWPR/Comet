@@ -112,7 +112,7 @@ void CometSearch::RunSearch(int minNumThreads,
       // Load sequence.
       while (((iTmpCh=getc(fptr)) != '>') && (iTmpCh != EOF))
       {
-         if (isalpha(iTmpCh))
+         if (isalpha(iTmpCh) || iTmpCh=='*')
          {
             // Convert all sequences to upper case.
             dbe.strSeq += toupper(iTmpCh);
@@ -626,10 +626,12 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
       int iCountInternalCleavageSites=0;
 
       bBeginCleavage = (iStartPos==0
+            || szProteinSeq[iStartPos-1]=='*'
             || (strchr(g_StaticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + iOneMinusEnzymeOffSet])
           && !strchr(g_StaticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
 
       bEndCleavage = (iEndPos==(int)(_proteinInfo.iProteinSeqLength-1)
+            || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_StaticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
           && !strchr(g_StaticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
 
