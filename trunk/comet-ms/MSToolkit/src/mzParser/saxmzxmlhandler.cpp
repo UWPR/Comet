@@ -489,7 +489,11 @@ void SAXMzxmlHandler::decode64(){
 	delete[] pDecoded;
 }
 
+#ifdef _WIN32
+#include <winsock.h>
+#else
 #include <arpa/inet.h>
+#endif
 unsigned long SAXMzxmlHandler::dtohl(uint32_t l, bool bNet) {
 
 #ifdef OSX

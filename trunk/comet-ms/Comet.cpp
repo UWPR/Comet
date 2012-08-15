@@ -1550,14 +1550,14 @@ void LoadParameters(char *pszParamsFile)
    char szIsotope[16];
    char szPeak[16];
 
-   sprintf(g_StaticParams.szIonSeries, "ion series nl ABCXYZ: %d %d %d %d %d %d %d",
-           g_StaticParams.ionInformation.bUseNeutralLoss, 
+   sprintf(g_StaticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
            g_StaticParams.ionInformation.iIonVal[0],
            g_StaticParams.ionInformation.iIonVal[1],
            g_StaticParams.ionInformation.iIonVal[2],
            g_StaticParams.ionInformation.iIonVal[3],
            g_StaticParams.ionInformation.iIonVal[4],
-           g_StaticParams.ionInformation.iIonVal[5]);
+           g_StaticParams.ionInformation.iIonVal[5],
+           g_StaticParams.ionInformation.bUseNeutralLoss);
 
    char szUnits[8];
    char szDecoy[20];
@@ -1596,9 +1596,8 @@ void LoadParameters(char *pszParamsFile)
    if (g_StaticParams.ionInformation.iTheoreticalFragmentIons==1)
       strcpy(szPeak, "PEAK1");
 
-   sprintf(g_StaticParams.szDisplayLine, "display top %d/%d, %s%s%s%s%s%s%s%s",
+   sprintf(g_StaticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
          g_StaticParams.options.iNumPeptideOutputLines,
-         0,  // no longer printing out full description at end of .out files
          szRemovePrecursor,
          szReadingFrame,
          szPeak,

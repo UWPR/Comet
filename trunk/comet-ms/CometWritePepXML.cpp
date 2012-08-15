@@ -73,7 +73,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
    char szModel[SIZE_FILE];
 
    time(&tTime);
-   strftime(szDate, 46, "%Y-%m-%dT%T", localtime(&tTime));
+   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", localtime(&tTime));
 
    // Get msModel + msManufacturer from mzXML. Easy way to get from mzML too?
    ReadInstrument(szManufacturer, szModel);
