@@ -43,7 +43,7 @@ using namespace std;
 #include <vector>
 
 
-#include "VERSION"
+#define version   "2012.01 rev. 0"
 #define copyright "(c) University of Washington"
 
 // NOTE: dBinWidth is inverse of the input value in order to use multiply instead of divide here

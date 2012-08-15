@@ -4,13 +4,13 @@ CXXFLAGS = -O3 -static -Wall -Wno-char-subscripts -D_LARGEFILE_SOURCE -D_FILE_OF
 EXECNAME = comet.exe
 OBJS = Comet.o Threading.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o
 DEPS = Common.h OSSpecificThreading.h CometData.h CometSearch.h CometPreprocess.h ThreadPool.h CometPostAnalysis.h CometMassSpecUtils.h
-LIBS = -lm -lmstoolkitlite -lpthread -ldl
+LIBS = -lm -lmstoolkitlite -lpthread
 
 
-comet.exe: $(OBJS) VERSION
+comet.exe: $(OBJS)
 	${CXX} $(CXXFLAGS) $(OBJS) -L$(MSTOOLKIT) $(LIBS) -o ${EXECNAME}
 
-Comet.o:              Comet.cpp $(DEPS) VERSION
+Comet.o:              Comet.cpp $(DEPS)
 	${CXX} ${CXXFLAGS} Comet.cpp -c
 Threading.o:          Threading.cpp Threading.h
 	${CXX} ${CXXFLAGS} Threading.cpp -c
