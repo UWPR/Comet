@@ -20,7 +20,7 @@ GCC = gcc
 NOSQLITE = -D_NOSQLITE
 
 CFLAGS = -O3 -static -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H
-LIBS = -lm -lpthread -ldl
+LIBS = -lm -lpthread
 
 all:  $(ZLIB) $(MZPARSER) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) $(SQLITE)
 	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZPARSER) $(MSTOOLKIT) $(READERLITE)
@@ -68,7 +68,6 @@ zutil.o : $(ZLIB_PATH)/zutil.c
 	$(GCC) $(CFLAGS) $(ZLIB_PATH)/zutil.c -c
 
 
-
 #mzParser objects
 mzp_base64.o : $(MZPARSER_PATH)/mzp_base64.cpp
 	$(CC) $(CFLAGS) $(MZPARSER_PATH)/mzp_base64.cpp -c
@@ -104,12 +103,9 @@ xmltok.o : $(EXPAT_PATH)/xmltok.c
 	$(GCC) $(CFLAGS) $(EXPAT_PATH)/xmltok.c -c
 
 
-
 #SQLite object
 sqlite3.o : $(SQLITE_PATH)/sqlite3.c
 	$(GCC) $(CFLAGS) $(SQLITE_PATH)/sqlite3.c -c
-
-
 
 
 #MSToolkit objects
@@ -125,6 +121,3 @@ MSReaderLite.o : $(MST_PATH)/MSReader.cpp
 
 MSObject.o : $(MST_PATH)/MSObject.cpp
 	$(CC) $(CFLAGS) $(MST_PATH)/MSObject.cpp -c
-
-
-
