@@ -105,7 +105,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
    fprintf(fpout, " </sample_enzyme>\n");
 
    fprintf(fpout, " <search_summary base_name=\"%s\"", g_StaticParams.inputFile.szBaseName);
-   fprintf(fpout, " search_engine=\"COMET\" search_engine_version=\"%s\"", version);
+   fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s\"", version);
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_StaticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_StaticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");
    fprintf(fpout, " search_id=\"1\">\n");
