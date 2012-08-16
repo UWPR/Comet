@@ -23,17 +23,12 @@ class CometWriteOut
 public:
    CometWriteOut();
    ~CometWriteOut();
-   static void WriteOut(FILE *fpout,
-                        FILE *fpoutd,
-                        char *szOutput,
-                        char *szOutputDecoy);
+   static void WriteOut(void);
 
 
 private:
    static void PrintResults(int iWhichQuery,
-                            bool bDecoySearch,
-                            FILE *fpOut,
-                            char *szOutput);
+                            bool bDecoySearch);
    static void PrintOutputLine(int iWhichQuery,
                                int iRankXcorr,
                                int iLenMaxDuplicates,
@@ -41,10 +36,10 @@ private:
                                int iWhichResult,
                                bool bDecoySearch,
                                Results *pOutput,
-                               FILE *fpOut);
+                               FILE *fpout);
    static void PrintIons(int iWhichQuery,
                          int iChargeState,
-                         FILE *fpOut);
+                         FILE *fpout);
 };
 
 #endif

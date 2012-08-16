@@ -38,7 +38,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
 {
    int i;
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_SQTFILE)
+   if (g_StaticParams.options.bOutputSqtFile)
    {
       PrintSqtHeader(fpout, szParamsFile);
 
@@ -147,7 +147,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
             g_pvQuery.at(iWhichQuery)->_liNumMatchedPeptides);
    }
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_SQT)
+   if (g_StaticParams.options.bOutputSqtStream)
       fprintf(stdout, "%s", szBuf); 
    else
       fprintf(fpout, "%s", szBuf);
@@ -191,25 +191,21 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    int  i;
    char szBuf[SIZE_BUF];
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_SQT
-         || g_StaticParams.options.iOutputFormat == OutputFormat_SQTFILE)
-   {
-      sprintf(szBuf, "M\t%d\t%d\t%0.4f\t%0.4f\t%0.4f\t",
-            iRankXcorr,
-            pOutput[iWhichResult].iRankSp,
-            pOutput[iWhichResult].dPepMass,
-            1.000000 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr,
-            pOutput[iWhichResult].fXcorr);
+   sprintf(szBuf, "M\t%d\t%d\t%0.4f\t%0.4f\t%0.4f\t",
+         iRankXcorr,
+         pOutput[iWhichResult].iRankSp,
+         pOutput[iWhichResult].dPepMass,
+         1.000000 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr,
+         pOutput[iWhichResult].fXcorr);
 
-      if (g_StaticParams.options.bPrintExpectScore)
-         sprintf(szBuf+strlen(szBuf), "%0.2E", pOutput[iWhichResult].dExpect);
-      else
-         sprintf(szBuf+strlen(szBuf), "%0.1f", pOutput[iWhichResult].fScoreSp);
+   if (g_StaticParams.options.bPrintExpectScore)
+      sprintf(szBuf+strlen(szBuf), "%0.2E", pOutput[iWhichResult].dExpect);
+   else
+      sprintf(szBuf+strlen(szBuf), "%0.1f", pOutput[iWhichResult].fScoreSp);
 
-      sprintf(szBuf + strlen(szBuf), "\t%d\t%d\t",
-            pOutput[iWhichResult].iMatchedIons, 
-            pOutput[iWhichResult].iTotalIons);
-   }
+   sprintf(szBuf + strlen(szBuf), "\t%d\t%d\t",
+         pOutput[iWhichResult].iMatchedIons, 
+         pOutput[iWhichResult].iTotalIons);
 
    sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[0]);
 
@@ -238,7 +234,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
 
    sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[1]);
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_SQT)
+   if (g_StaticParams.options.bOutputSqtStream)
    {
       fprintf(stdout, "%s\tU\n", szBuf);
 
@@ -250,7 +246,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
 
       fprintf(stdout, "\n");
    }
-   else // OutputFormat_SQTFILE
+   else // OutputSqtFile
    {
       fprintf(fpout, "%s\tU\n", szBuf);
 

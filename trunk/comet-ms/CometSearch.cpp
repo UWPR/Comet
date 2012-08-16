@@ -68,7 +68,7 @@ void CometSearch::RunSearch(int minNumThreads,
    // Load database entry header.
    iTmpCh = getc(fptr);
 
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   if (!g_StaticParams.options.bOutputSqtStream)
    {
       printf(" Search progress: ");
       fflush(stdout);
@@ -122,7 +122,7 @@ void CometSearch::RunSearch(int minNumThreads,
 
       g_StaticParams.databaseInfo.iTotalNumProteins++;
 
-      if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT
+      if (!g_StaticParams.options.bOutputSqtStream
             && !(g_StaticParams.databaseInfo.iTotalNumProteins%200))
       {
          lCurrPos = ftell(fptr);
@@ -142,7 +142,7 @@ void CometSearch::RunSearch(int minNumThreads,
 
    fclose(fptr);
 
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   if (!g_StaticParams.options.bOutputSqtStream)
    {
       printf(" 100%%\n");
    }

@@ -30,7 +30,7 @@ CometPostAnalysis::~CometPostAnalysis()
 
 void CometPostAnalysis::PostAnalysis(int minNumThreads, int maxNumThreads)
 {
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   if (!g_StaticParams.options.bOutputSqtStream)
       printf(" Perform post-search analysis\n");
 
    // Create the thread pool containing g_StaticParams.options.iNumThreads,

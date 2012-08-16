@@ -100,17 +100,32 @@ int main(int argc, char *argv[])
    ProcessCmdLine(argc, argv, &iFirstScan, &iLastScan, &iZLine,
          &iScanCount, &iAnalysisType, szParamsFile);
 
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   printf(" Comet version \"%s\"\n", version);
+
+   if (!g_StaticParams.options.bOutputSqtStream
+         && !g_StaticParams.options.bOutputSqtFile
+         && !g_StaticParams.options.bOutputPepXMLFile
+         && !g_StaticParams.options.bOutputOutFiles)
    {
-      printf(" Comet version \"%s\"\n", version);
+      printf(" Please specify at least one output format.\n\n");
+      exit(1);
+   }
+
+   if (!g_StaticParams.options.bOutputSqtStream)
+   {
       printf(" Search start:  %s\n", g_StaticParams._dtInfoStart.szDate);
    }
 
-   // For SQT output file, check if they can be written to before doing anything else.
-   FILE *fpout=NULL;
-   FILE *fpoutd=NULL;
-   char szOutput[SIZE_FILE];
-   char szOutputDecoy[SIZE_FILE];
+   // For SQT & pepXML output file, check if they can be written to before doing anything else.
+   FILE *fpout_sqt=NULL;
+   FILE *fpoutd_sqt=NULL;
+   FILE *fpout_pepxml=NULL;
+   FILE *fpoutd_pepxml=NULL;
+
+   char szOutputSQT[SIZE_FILE];
+   char szOutputDecoySQT[SIZE_FILE];
+   char szOutputPepXML[SIZE_FILE];
+   char szOutputDecoyPepXML[SIZE_FILE];
 
    // If # threads not specified, poll system to get # threads to launch.
    if (g_StaticParams.options.iNumThreads == 0)
@@ -130,71 +145,71 @@ int main(int argc, char *argv[])
    Threading::CreateMutex(&g_pvQueryMutex);
    
    // Load and preprocess all the spectra.
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   if (!g_StaticParams.options.bOutputSqtStream)
       printf(" Load and process input spectra\n");
 
    CometPreprocess::LoadAndPreprocessSpectra(iZLine, 
          iFirstScan, iLastScan, iScanCount, iAnalysisType,
          g_StaticParams.options.iNumThreads,  g_StaticParams.options.iNumThreads);
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_SQTFILE)
+   if (g_StaticParams.options.bOutputSqtFile)
    {
       if (iAnalysisType == AnalysisType_EntireFile)
-         sprintf(szOutput, "%s.sqt", g_StaticParams.inputFile.szBaseName);
+         sprintf(szOutputSQT, "%s.sqt", g_StaticParams.inputFile.szBaseName);
       else
-         sprintf(szOutput, "%s.sqt:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+         sprintf(szOutputSQT, "%s.sqt:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
-      if ((fpout = fopen(szOutput, "w")) == NULL)
+      if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
       {
-         fprintf(stderr, "Error - cannot write to file %s\n\n", szOutput);
+         fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputSQT);
          exit(1);
       }
 
       if (g_StaticParams.options.iDecoySearch == 2)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputDecoy, "%s.decoy.sqt", g_StaticParams.inputFile.szBaseName);
+            sprintf(szOutputDecoySQT, "%s.decoy.sqt", g_StaticParams.inputFile.szBaseName);
          else
-            sprintf(szOutputDecoy, "%s.decoy.sqt:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputDecoySQT, "%s.decoy.sqt:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
-         if ((fpoutd = fopen(szOutputDecoy, "w")) == NULL)
+         if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
          {
-            fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoy);
+            fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoySQT);
             exit(1);
          }
       }
    }
 
-   else if (g_StaticParams.options.iOutputFormat == OutputFormat_PEPXML)
+   if (g_StaticParams.options.bOutputPepXMLFile)
    {
       if (iAnalysisType == AnalysisType_EntireFile)
-         sprintf(szOutput, "%s.pep.xml", g_StaticParams.inputFile.szBaseName);
+         sprintf(szOutputPepXML, "%s.pep.xml", g_StaticParams.inputFile.szBaseName);
       else
-         sprintf(szOutput, "%s.pep.xml:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+         sprintf(szOutputPepXML, "%s.pep.xml:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
-      if ((fpout = fopen(szOutput, "w")) == NULL)
+      if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
       {
-         fprintf(stderr, "Error - cannot write to file %s\n\n", szOutput);
+         fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputPepXML);
          exit(1);
       }
 
       if (g_StaticParams.options.iDecoySearch == 2)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputDecoy, "%s.decoy.pep.xml", g_StaticParams.inputFile.szBaseName);
+            sprintf(szOutputDecoyPepXML, "%s.decoy.pep.xml", g_StaticParams.inputFile.szBaseName);
          else
-            sprintf(szOutputDecoy, "%s.decoy.pep.xml:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputDecoyPepXML, "%s.decoy.pep.xml:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
-         if ((fpoutd = fopen(szOutputDecoy, "w")) == NULL)
+         if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
          {
-            fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoy);
+            fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyPepXML);
             exit(1);
          }
       }
    }
 
    // Allocate memory to store results for each query spectrum.
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   if (!g_StaticParams.options.bOutputSqtStream)
       printf(" Allocate memory to store results\n");
 
    AllocateResultsMem();
@@ -205,7 +220,7 @@ int main(int argc, char *argv[])
       exit(1);
    }
 
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   if (!g_StaticParams.options.bOutputSqtStream)
       printf(" Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
 
    // Sort g_pvQuery vector by dExpPepMass.
@@ -222,21 +237,22 @@ int main(int argc, char *argv[])
    
    CalcRunTime(tStartTime);
 
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   if (!g_StaticParams.options.bOutputSqtStream)
       printf(" Write output\n");
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_OUT)
+   if (g_StaticParams.options.bOutputOutFiles)
    {
-      CometWriteOut::WriteOut(fpout, fpoutd, szOutput, szOutputDecoy);
+      CometWriteOut::WriteOut();
    }
-   else if (g_StaticParams.options.iOutputFormat == OutputFormat_SQT
-         || g_StaticParams.options.iOutputFormat == OutputFormat_SQTFILE)
+
+   if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
    {
-      CometWriteSqt::WriteSqt(fpout, fpoutd, szOutput, szOutputDecoy, szParamsFile);
+      CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
    }
-   else  // g_StaticParams.options.iOutputFormat == OutputFormat_PEPXML
+
+   if (g_StaticParams.options.bOutputPepXMLFile)
    {
-      CometWritePepXML::WritePepXML(fpout, fpoutd, szOutput, szOutputDecoy, szParamsFile);
+      CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML, szParamsFile);
    }
 
    // Deleting each Query object in the vector calls its destructor, which 
@@ -249,7 +265,7 @@ int main(int argc, char *argv[])
    // Destroy the mutex we used to protect g_pvQuery.
    Threading::DestroyMutex(g_pvQueryMutex);
  
-   if (g_StaticParams.options.iOutputFormat != OutputFormat_SQT)
+   if (!g_StaticParams.options.bOutputSqtStream)
    {
       time(&tStartTime);
       strftime(g_StaticParams._dtInfoStart.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
@@ -424,8 +440,7 @@ void ProcessCmdLine(int argc,
    }
    fclose(fpcheck);
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_SQT
-         || g_StaticParams.options.iOutputFormat == OutputFormat_SQTFILE)
+   if (!g_StaticParams.options.bOutputOutFiles)
    {
       g_StaticParams.options.bSkipAlreadyDone = 0;
    }
@@ -468,7 +483,7 @@ void ProcessCmdLine(int argc,
 
 
    // Create .out directory.
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_OUT)
+   if (g_StaticParams.options.bOutputOutFiles)
    {
 #ifdef _WIN32
       if (_mkdir(g_StaticParams.inputFile.szBaseName) == -1)
@@ -618,7 +633,12 @@ void InitializeParameters()
    g_StaticParams.options.bPrintExpectScore = 0;
    g_StaticParams.options.iRemovePrecursor = 0;
    g_StaticParams.options.dRemovePrecursorTol = DEFAULT_PREC_TOL;  
-   g_StaticParams.options.iOutputFormat = OutputFormat_SQT;         // 0=sqt stdout, 1=stq file, 2=out output
+
+   g_StaticParams.options.bOutputSqtStream = 0;
+   g_StaticParams.options.bOutputSqtFile = 0;
+   g_StaticParams.options.bOutputPepXMLFile = 1;
+   g_StaticParams.options.bOutputOutFiles = 0;
+
    g_StaticParams.options.bSkipAlreadyDone = 0;
    g_StaticParams.options.iDecoySearch = 0;
    g_StaticParams.options.iNumThreads = 0;
@@ -879,9 +899,21 @@ void LoadParameters(char *pszParamsFile)
          {
             sscanf(szParamVal, "%d", &(g_StaticParams.options.bPrintExpectScore));
          }
-         else if (!strcmp(szParamName, "output_format"))
+         else if (!strcmp(szParamName, "output_sqtstream"))
          {
-            sscanf(szParamVal, "%d", &(g_StaticParams.options.iOutputFormat));
+            sscanf(szParamVal, "%d", &(g_StaticParams.options.bOutputSqtStream));
+         }
+         else if (!strcmp(szParamName, "output_sqtfile"))
+         {
+            sscanf(szParamVal, "%d", &(g_StaticParams.options.bOutputSqtFile));
+         }
+         else if (!strcmp(szParamName, "output_pepxmlfile"))
+         {
+            sscanf(szParamVal, "%d", &(g_StaticParams.options.bOutputPepXMLFile));
+         }
+         else if (!strcmp(szParamName, "output_outfiles"))
+         {
+            sscanf(szParamVal, "%d", &(g_StaticParams.options.bOutputOutFiles));
          }
          else if (!strcmp(szParamName, "skip_researching"))
          {
@@ -1794,7 +1826,10 @@ use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral
 #\n\
 # output\n\
 #\n\
-output_format = 2                      # 0=sqt stdout (default), 1=sqt file, 2=out files, 3=pepXML file\n\
+output_sqtstream = 0                   # 0=no, 1=yes  write sqt to standard output\n\
+output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
+output_pepxmlfile = 1                  # 0=no, 1=yes  write pep.xml file\n\
+output_outfiles = 0                    # 0=no, 1=yes  write .out files\n\
 print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
 num_output_lines = 5                   # num peptide results to show\n\
 show_fragment_ions = 0                 # 0=no, 1=yes for out files only\n\

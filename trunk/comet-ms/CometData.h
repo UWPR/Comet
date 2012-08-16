@@ -88,14 +88,6 @@ enum InputType
    InputType_MZXML
 };
 
-enum OutputFormat
-{
-   OutputFormat_SQT = 0,
-   OutputFormat_SQTFILE,
-   OutputFormat_OUT,
-   OutputFormat_PEPXML
-};
-
 struct msdata                    // used in the preprocessing
 {
    double dIon;
@@ -117,7 +109,10 @@ struct Options             // output parameters
    int iStartMSLevel;            // mzXML only
    int iEndMSLevel;              // mzXML only
    int iMinPeaks;
-   int iOutputFormat;            // 0=sqt stdout, 1=sqt file, 2=out, 3=pepXML
+   int bOutputSqtStream;
+   int bOutputSqtFile;
+   int bOutputPepXMLFile;
+   int bOutputOutFiles;
    int iMinIntensity;
    int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors
    int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search

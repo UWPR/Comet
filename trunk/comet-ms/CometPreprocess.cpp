@@ -534,8 +534,11 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
 {
    bool bSearchSpectrum = 1;
 
-   if ((g_StaticParams.options.iOutputFormat == OutputFormat_OUT) &&
-        g_StaticParams.options.bSkipAlreadyDone)
+   if (g_StaticParams.options.bOutputOutFiles
+         && g_StaticParams.options.bSkipAlreadyDone
+         && !g_StaticParams.options.bOutputSqtStream
+         && !g_StaticParams.options.bOutputSqtFile
+         && !g_StaticParams.options.bOutputPepXMLFile)
    {
       char szOutputFileName[SIZE_FILE];
       FILE *fpcheck;

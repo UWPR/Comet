@@ -31,17 +31,14 @@ CometWriteOut::~CometWriteOut()
 }
 
 
-void CometWriteOut::WriteOut(FILE *fpout,
-                             FILE *fpoutd,
-                             char *szOutput,
-                             char *szOutputDecoy)
+void CometWriteOut::WriteOut(void)
 {
    int i;
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      PrintResults(i, false, fpout, szOutput);
+      PrintResults(i, false);
    }
 
    // Print out the separate decoy hits.
@@ -49,16 +46,14 @@ void CometWriteOut::WriteOut(FILE *fpout,
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
-         PrintResults(i, true, fpoutd, szOutputDecoy);
+         PrintResults(i, true);
       }
    }
 }
 
 
 void CometWriteOut::PrintResults(int iWhichQuery,
-                                 bool bDecoySearch,
-                                 FILE *fpout,
-                                 char *szOutput)
+                                 bool bDecoySearch)
 {
    int  i,
         ii,
@@ -70,8 +65,10 @@ void CometWriteOut::PrintResults(int iWhichQuery,
         szBuf[SIZE_BUF],
         szStatsBuf[512],
         szMassLine[200],
+        szOutput[SIZE_FILE],
         scan1[32],
         scan2[32];
+   FILE *fpout;
 
    strcpy(scan1, "0");
    strcpy(scan2, "0");
@@ -263,84 +260,81 @@ void CometWriteOut::PrintResults(int iWhichQuery,
          PrintOutputLine(iWhichQuery, iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, bDecoySearch, pOutput, fpout);
    } 
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_OUT)
+   fprintf(fpout, "\n");
+
+   // Print out the fragment ions for the selected ion series
+   // and mark matched ions in the sp scoring routine.
+   if (g_StaticParams.options.bPrintFragIons && iDoXcorrCount > 0)
    {
-      fprintf(fpout, "\n");
-
-      // Print out the fragment ions for the selected ion series
-      // and mark matched ions in the sp scoring routine.
-      if (g_StaticParams.options.bPrintFragIons && iDoXcorrCount > 0)
-      {
-         PrintIons(iWhichQuery,
-               g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState,
-               fpout);
-      }
-
-      // Print out expect score histogram.
-      if (g_StaticParams.options.bPrintExpectScore)
-      {
-         double dVal;
-         double dExpect;
-
-         if (bDecoySearch)
-         {
-            fprintf(fpout, "a=%f b=%f\n",
-                  g_pvQuery.at(iWhichQuery)->fDecoyPar[1],
-                  g_pvQuery.at(iWhichQuery)->fDecoyPar[0]);
-   
-            // iDecoyCorrelationHistogram is already cummulative here.
-            for (i=0; i<=g_pvQuery.at(iWhichQuery)->siMaxDecoyXcorr; i++)
-            {
-               if (g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i]> 0)
-               {
-                  dVal = g_pvQuery.at(iWhichQuery)->fDecoyPar[0] + g_pvQuery.at(iWhichQuery)->fDecoyPar[1] * i;
-                  dExpect = pow(10.0, dVal);
-
-                  if (dExpect>999.0)
-                     dExpect = 999.0;
-
-                  fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
-                        i*0.1,
-                        g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i],
-                        log10((float)g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i]),
-                        dVal,
-                        dExpect);
-               }
-            }
-            fprintf(fpout, "\n");
-         }
-         else
-         {
-            fprintf(fpout, "a=%f b=%f %d-%d\n",
-                  g_pvQuery.at(iWhichQuery)->fPar[1],
-                  g_pvQuery.at(iWhichQuery)->fPar[0],
-                  (int)g_pvQuery.at(iWhichQuery)->fPar[2],
-                  (int)g_pvQuery.at(iWhichQuery)->fPar[3]);
-   
-            // iCorrelationHistogram is already cummulative here.
-            for (i=0; i<=g_pvQuery.at(iWhichQuery)->siMaxXcorr; i++)
-            {
-               if (g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i]> 0)
-               {
-                  dVal = g_pvQuery.at(iWhichQuery)->fPar[0] + g_pvQuery.at(iWhichQuery)->fPar[1] * i;
-                  dExpect = pow(10.0, dVal);
-
-                  if (dExpect>999.0)
-                     dExpect = 999.0;
-
-                  fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
-                        i*0.1,
-                        g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i],
-                        log10((float)g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i]),
-                        dVal,
-                        dExpect);
-               }
-            }
-            fprintf(fpout, "\n");
-         }
-      }
-      fclose(fpout);
+      PrintIons(iWhichQuery,
+            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState,
+            fpout);
    }
+
+   // Print out expect score histogram.
+   if (g_StaticParams.options.bPrintExpectScore)
+   {
+      double dVal;
+      double dExpect;
+
+      if (bDecoySearch)
+      {
+         fprintf(fpout, "a=%f b=%f\n",
+               g_pvQuery.at(iWhichQuery)->fDecoyPar[1],
+               g_pvQuery.at(iWhichQuery)->fDecoyPar[0]);
+
+         // iDecoyCorrelationHistogram is already cummulative here.
+         for (i=0; i<=g_pvQuery.at(iWhichQuery)->siMaxDecoyXcorr; i++)
+         {
+            if (g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i]> 0)
+            {
+               dVal = g_pvQuery.at(iWhichQuery)->fDecoyPar[0] + g_pvQuery.at(iWhichQuery)->fDecoyPar[1] * i;
+               dExpect = pow(10.0, dVal);
+
+               if (dExpect>999.0)
+                  dExpect = 999.0;
+
+               fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
+                     i*0.1,
+                     g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i],
+                     log10((float)g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i]),
+                     dVal,
+                     dExpect);
+            }
+         }
+         fprintf(fpout, "\n");
+      }
+      else
+      {
+         fprintf(fpout, "a=%f b=%f %d-%d\n",
+               g_pvQuery.at(iWhichQuery)->fPar[1],
+               g_pvQuery.at(iWhichQuery)->fPar[0],
+               (int)g_pvQuery.at(iWhichQuery)->fPar[2],
+               (int)g_pvQuery.at(iWhichQuery)->fPar[3]);
+
+         // iCorrelationHistogram is already cummulative here.
+         for (i=0; i<=g_pvQuery.at(iWhichQuery)->siMaxXcorr; i++)
+         {
+            if (g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i]> 0)
+            {
+               dVal = g_pvQuery.at(iWhichQuery)->fPar[0] + g_pvQuery.at(iWhichQuery)->fPar[1] * i;
+               dExpect = pow(10.0, dVal);
+
+               if (dExpect>999.0)
+                  dExpect = 999.0;
+
+               fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
+                     i*0.1,
+                     g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i],
+                     log10((float)g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i]),
+                     dVal,
+                     dExpect);
+            }
+         }
+         fprintf(fpout, "\n");
+      }
+   }
+   fclose(fpout);
 }
 
 
@@ -415,37 +409,34 @@ void CometWriteOut::PrintOutputLine(int iWhichQuery,
       iWidthSize++;
    }
 
-   if (g_StaticParams.options.iOutputFormat == OutputFormat_OUT)
+   if (iWidthSize < iMaxWidthReference)
    {
-      if (iWidthSize < iMaxWidthReference)
-      {
-         iWidthSize = iMaxWidthReference-iWidthPrintRef;
+      iWidthSize = iMaxWidthReference-iWidthPrintRef;
 
-         for (i=0; i<iWidthSize; i++)
-            sprintf(szBuf+strlen(szBuf), " ");
-      }
-
-      // Print out the number of duplicate proteins.
-      if (pOutput[iWhichResult].iDuplicateCount)
-      {
-         char szTemp[10];
-         int iEnd;
-
-         sprintf(szTemp, "+%d", pOutput[iWhichResult].iDuplicateCount);
-         sprintf(szBuf+strlen(szBuf), " +%d", pOutput[iWhichResult].iDuplicateCount);
-
-         iEnd = iLenMaxDuplicates - strlen(szTemp) - 1;
-
-         for (i=0; i<iEnd; i++)
-            sprintf(szBuf+strlen(szBuf), " "); 
-      }
-      else if (iLenMaxDuplicates > 0)
-      { 
-         for (i=0; i<iLenMaxDuplicates; i++)
-            sprintf(szBuf+strlen(szBuf), " ");
-      }
-      sprintf(szBuf+strlen(szBuf), "  ");
+      for (i=0; i<iWidthSize; i++)
+         sprintf(szBuf+strlen(szBuf), " ");
    }
+
+   // Print out the number of duplicate proteins.
+   if (pOutput[iWhichResult].iDuplicateCount)
+   {
+      char szTemp[10];
+      int iEnd;
+
+      sprintf(szTemp, "+%d", pOutput[iWhichResult].iDuplicateCount);
+      sprintf(szBuf+strlen(szBuf), " +%d", pOutput[iWhichResult].iDuplicateCount);
+
+      iEnd = iLenMaxDuplicates - strlen(szTemp) - 1;
+
+      for (i=0; i<iEnd; i++)
+         sprintf(szBuf+strlen(szBuf), " "); 
+   }
+   else if (iLenMaxDuplicates > 0)
+   { 
+      for (i=0; i<iLenMaxDuplicates; i++)
+         sprintf(szBuf+strlen(szBuf), " ");
+   }
+   sprintf(szBuf+strlen(szBuf), "  ");
 
    sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[0]);
 
