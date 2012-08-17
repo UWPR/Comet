@@ -100,19 +100,19 @@ int main(int argc, char *argv[])
    ProcessCmdLine(argc, argv, &iFirstScan, &iLastScan, &iZLine,
          &iScanCount, &iAnalysisType, szParamsFile);
 
-   printf(" Comet version \"%s\"\n", version);
-
    if (!g_StaticParams.options.bOutputSqtStream
          && !g_StaticParams.options.bOutputSqtFile
          && !g_StaticParams.options.bOutputPepXMLFile
          && !g_StaticParams.options.bOutputOutFiles)
    {
+      printf(" Comet version \"%s\"\n", version);
       printf(" Please specify at least one output format.\n\n");
       exit(1);
    }
 
    if (!g_StaticParams.options.bOutputSqtStream)
    {
+      printf(" Comet version \"%s\"\n", version);
       printf(" Search start:  %s\n", g_StaticParams._dtInfoStart.szDate);
    }
 
