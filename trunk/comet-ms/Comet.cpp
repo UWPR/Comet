@@ -245,15 +245,17 @@ int main(int argc, char *argv[])
       CometWriteOut::WriteOut();
    }
 
+   if (g_StaticParams.options.bOutputPepXMLFile)
+   {
+      CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML, szParamsFile);
+   }
+
+   // Write SQT last as I destroy the g_StaticParams.szMod string during that process
    if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
    {
       CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
    }
 
-   if (g_StaticParams.options.bOutputPepXMLFile)
-   {
-      CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML, szParamsFile);
-   }
 
    // Deleting each Query object in the vector calls its destructor, which 
    // frees the spectral memory (see definition for Query in CometData.h).

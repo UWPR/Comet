@@ -78,12 +78,12 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    FILE *fp;
 
    fprintf(fpout, "H\tSQTGenerator Comet\n");
-   fprintf(fpout, "H\tComment CometVersion\t%s\n", version);
+   fprintf(fpout, "H\tComment\tCometVersion %s\n", version);
    fprintf(fpout, "H\n");
-   fprintf(fpout, "H\tStartTime %s\n", g_StaticParams._dtInfoStart.szDate);
+   fprintf(fpout, "H\tStartTime\t%s\n", g_StaticParams._dtInfoStart.szDate);
    time(&tTime);
    strftime(szEndDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tTime));
-   fprintf(fpout, "H\tEndTime %s\n", szEndDate);
+   fprintf(fpout, "H\tEndTime\t%s\n", szEndDate);
    fprintf(fpout, "H\n");
 
    // write out entire parameters file to SQT header
@@ -95,6 +95,64 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
    fprintf(fpout, "H\tDBSeqLength\t%lu\n", g_StaticParams.databaseInfo.liTotAACount);
    fprintf(fpout, "H\tDBLocusCount\t%d\n", g_StaticParams.databaseInfo.iTotalNumProteins);
+
+   fprintf(fpout, "H\tFragmentMassMode\tAMU\n");
+   fprintf(fpout, "H\tPrecursorMassMode\t%s\n",
+         (g_StaticParams.tolerances.iMassToleranceUnits==0?"AMU":
+          (g_StaticParams.tolerances.iMassToleranceUnits==1?"MMU":"PPM")));
+   fprintf(fpout, "H\tSQTGeneratorVersion\tN/A\n");
+   fprintf(fpout, "H\tDatabase\t%s\n", g_StaticParams.databaseInfo.szDatabase );
+   fprintf(fpout, "H\tFragmentMasses\t%s\n", g_StaticParams.massUtility.bMonoMassesFragment?"MONO":"AVG");
+   fprintf(fpout, "H\tPrecursorMasses\t%s\n", g_StaticParams.massUtility.bMonoMassesParent?"MONO":"AVG");
+   fprintf(fpout, "H\tPrecursorMassTolerance\t%0.6f\n", g_StaticParams.tolerances.dInputTolerance);
+   fprintf(fpout, "H\tFragmentMassTolerance\t%0.6f\n", g_StaticParams.tolerances.dFragmentBinSize);
+   fprintf(fpout, "H\tEnzymeName\t%s\n", g_StaticParams.enzymeInformation.szSearchEnzymeName);
+   fprintf(fpout, "H\tAlgo-IonSeries\t 0 0 0 %0.1f %0.1f %0.1f 0.0 0.0 0.0 %0.1f %0.1f %0.1f\n",
+         (double)g_StaticParams.ionInformation.iIonVal[0],
+         (double)g_StaticParams.ionInformation.iIonVal[1],
+         (double)g_StaticParams.ionInformation.iIonVal[2],
+         (double)g_StaticParams.ionInformation.iIonVal[3],
+         (double)g_StaticParams.ionInformation.iIonVal[4],
+         (double)g_StaticParams.ionInformation.iIonVal[5]);
+
+
+   for (int i=0; i<VMODS; i++)
+   {
+      if ((g_StaticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
+            && (strlen(g_StaticParams.variableModParameters.varModList[i].szVarModChar) > 0))
+      {
+         for (unsigned int ii=0; ii<strlen(g_StaticParams.variableModParameters.varModList[i].szVarModChar); ii++)
+         {
+            fprintf(fpout, "H\tDiffMod\t%c%c=%+0.6f\n",
+                  g_StaticParams.variableModParameters.varModList[i].szVarModChar[ii],
+                  g_StaticParams.variableModParameters.cModCode[i],
+                  g_StaticParams.variableModParameters.varModList[i].dVarModMass);
+         }
+      }
+   }
+   if (g_StaticParams.variableModParameters.dVarModMassN != 0.0)
+   {
+      fprintf(fpout, "H\tDiffMod\tn]=%+0.6f\n",
+            g_StaticParams.variableModParameters.dVarModMassN);
+   }
+   if (g_StaticParams.variableModParameters.dVarModMassC != 0.0)
+   {
+      fprintf(fpout, "H\tDiffMod\tc[=%+0.6f\n",
+            g_StaticParams.variableModParameters.dVarModMassC);
+   }
+
+   char *pStr;
+   while ((pStr = strrchr(g_StaticParams.szMod, '='))!=NULL)
+   {
+      char szTmp[48];
+      while (*pStr != ' ')
+         *pStr--;
+      sscanf(pStr+1, "%s", szTmp);
+
+      fprintf(fpout, "H\tStaticMod\t%s\n", szTmp);
+
+      *pStr = '\0';
+   }
 
    fprintf(fpout, "H\n");
    while (fgets(szParamBuf, SIZE_BUF, fp))
