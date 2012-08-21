@@ -2,7 +2,7 @@
 ZLIB_PATH = ./src/zLib-1.2.5
 MZPARSER_PATH = ./src/mzParser
 EXPAT_PATH = ./src/expat-2.0.1
-SQLITE_PATH = ./src/sqlite-3.7.7.1
+#SQLITE_PATH = ./src/sqlite-3.7.7.1
 MST_PATH = ./src/MSToolkit
 
 HEADER_PATH = ./include
@@ -13,7 +13,7 @@ ZLIB = adler32.o compress.o crc32.o deflate.o inffast.o inflate.o infback.o inft
 MSTOOLKIT = Spectrum.o MSObject.o
 READER = MSReader.o
 READERLITE = MSReaderLite.o
-SQLITE = sqlite3.o 
+#SQLITE = sqlite3.o 
 
 CC = g++
 GCC = gcc
@@ -22,9 +22,9 @@ NOSQLITE = -D_NOSQLITE
 CFLAGS = -O3 -static -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H
 LIBS = -lm -lpthread
 
-all:  $(ZLIB) $(MZPARSER) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) $(SQLITE)
+all:  $(ZLIB) $(MZPARSER) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) 
 	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZPARSER) $(MSTOOLKIT) $(READERLITE)
-	ar rcs libmstoolkit.a $(ZLIB) $(EXPAT) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE)
+#	ar rcs libmstoolkit.a $(ZLIB) $(EXPAT) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE)
 #	$(CC) $(CFLAGS) MSTDemo.cpp -L. -lmstoolkitlite -o MSTDemo
 #	$(CC) $(CFLAGS) MSSingleScan.cpp -L. -lmstoolkitlite -o MSSingleScan
 #	$(CC) $(CFLAGS) MSConvertFile.cpp -L. -lmstoolkitlite -o MSConvertFile
@@ -104,8 +104,8 @@ xmltok.o : $(EXPAT_PATH)/xmltok.c
 
 
 #SQLite object
-sqlite3.o : $(SQLITE_PATH)/sqlite3.c
-	$(GCC) $(CFLAGS) $(SQLITE_PATH)/sqlite3.c -c
+#sqlite3.o : $(SQLITE_PATH)/sqlite3.c
+#	$(GCC) $(CFLAGS) $(SQLITE_PATH)/sqlite3.c -c
 
 
 #MSToolkit objects
