@@ -645,10 +645,10 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    }
    else
    {
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide-1; i++)
+      for (i=1; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
          if (strchr(g_StaticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
-               && !strchr(g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i+1]))
+               && !strchr(g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i-1]))
          {
             *iNMC += 1;
          }
