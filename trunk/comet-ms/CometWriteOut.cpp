@@ -161,7 +161,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    szBuf[0] = '\0';
 
-   if (strlen(g_StaticParams.szMod) > 0)
+   if (g_StaticParams.szMod[0]!='\0')
    {
       sprintf(szBuf+strlen(szBuf), " %s", g_StaticParams.szMod);
       sprintf(szBuf+strlen(szBuf), "\n");

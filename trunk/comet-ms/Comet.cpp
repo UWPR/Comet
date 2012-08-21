@@ -473,7 +473,7 @@ void ProcessCmdLine(int argc,
       g_StaticParams.inputFile.iInputType = InputType_MZXML;
    }
 
-   if (strlen(g_StaticParams.inputFile.szBaseName)==0)  // Make sure not set on command line.
+   if (g_StaticParams.inputFile.szBaseName[0]=='\0')  // Make sure not set on command line.
    {
       char *pStr;
 
@@ -1313,7 +1313,7 @@ void LoadParameters(char *pszParamsFile)
    for (i=0; i<VMODS; i++)
    {
       if ((g_StaticParams.variableModParameters.varModList[i].dVarModMass != 0.0) &&
-          (strlen(g_StaticParams.variableModParameters.varModList[i].szVarModChar) > 0))
+          (g_StaticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
          sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "(%s%c %+0.6f) ", 
                g_StaticParams.variableModParameters.varModList[i].szVarModChar,

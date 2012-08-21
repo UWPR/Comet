@@ -119,7 +119,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    for (int i=0; i<VMODS; i++)
    {
       if ((g_StaticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
-            && (strlen(g_StaticParams.variableModParameters.varModList[i].szVarModChar) > 0))
+            && (g_StaticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
          for (unsigned int ii=0; ii<strlen(g_StaticParams.variableModParameters.varModList[i].szVarModChar); ii++)
          {
@@ -146,7 +146,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    {
       char szTmp[48];
       while (*pStr != ' ')
-         *pStr--;
+         (*pStr)--;
       sscanf(pStr+1, "%s", szTmp);
 
       fprintf(fpout, "H\tStaticMod\t%s\n", szTmp);
