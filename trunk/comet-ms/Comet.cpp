@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 
    AllocateResultsMem();
 
-   if (g_pvQuery.size() == 0)
+   if (g_pvQuery.empty())
    {
       printf(" Warning - no searches to run.\n\n");
       exit(1);
