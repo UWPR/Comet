@@ -76,7 +76,7 @@ public:
    void Launch(T param)
    {
       Threading::LockMutex(_poolAccessMutex);
-      if (_threads.size() != 0) 
+      if (!_threads.empty()) 
       {
          ThreadManager<T> *pThreadMgr = _threads.back();
          _threads.pop_back();
@@ -100,7 +100,7 @@ public:
       Threading::LockMutex(_poolAccessMutex);
 
       // Any parameters queued?  If yes, give it to the thread to process.
-      if (_params.size() != 0) 
+      if (!_params.empty()) 
       {
          T param = _params.front();
          _params.pop_front();

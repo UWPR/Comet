@@ -130,22 +130,21 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             || (g_StaticParams.options.iEnzymeTermini == ENZYME_C_TERMINI))?1:0);
 
    // Write out properly encoded mods
-   bool bPrintVariableC = false;
-   bool bPrintVariableN = false;
-   bool bProteinTerminusC = false;
-   bool bProteinTerminusN = false;
+   bool bPrintVariableC = 0;
+   bool bPrintVariableN = 0;
+   bool bProteinTerminusC = 0;
+   bool bProteinTerminusN = 0;
    char szVariableCterm[256];
    char szVariableNterm[256];
    while (fgets(szParamBuf, SIZE_BUF, fp))
    {
-      char szParamName[128];
-      char szParamVal[128];
-
       if ((pStr = strchr(szParamBuf, '#')))  // remove comments
          *pStr='\0';
       if (strchr(szParamBuf, '=') && (strstr(szParamBuf, "variable_") || strstr(szParamBuf, "add_")))
       {
          double dMass;
+         char szParamName[128];
+         char szParamVal[128];
 
          sscanf(szParamBuf, "%s", szParamName);
          pStr = strchr(szParamBuf, '=');
@@ -159,7 +158,6 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
          {
             char szModChar[40];
             int bBinary;
-            int i;
             char cSymbol;
 
             sscanf(szParamVal, "%lf %s %d", &dMass, szModChar, &bBinary);
@@ -180,6 +178,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
 
             if (cSymbol != '-' && dMass!=0.0)
             {
+               int i;
                for (i=0; i<(int)strlen(szModChar); i++)
                {
                   fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" %ssymbol=\"%c\"/>\n",
@@ -219,7 +218,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             int iDistance;
             sscanf(szParamVal, "%d", &iDistance);
             if (iDistance == 0)
-               bProteinTerminusN = 1;
+               bProteinTerminusN = true;
          }
          else if (!strcmp(szParamName, "variable_C_terminus_distance"))
          {
@@ -293,13 +292,13 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
    rewind(fp);
    while (fgets(szParamBuf, SIZE_BUF, fp))
    {
-      char szParamName[128];
-      char szParamVal[128];
-
       if ((pStr = strchr(szParamBuf, '#')))  // remove comments
          *pStr='\0';
       if (strchr(szParamBuf, '='))
       {
+         char szParamName[128];
+         char szParamVal[128];
+
          sscanf(szParamBuf, "%s", szParamName);
          pStr = strchr(szParamBuf, '=');
          while (isspace(*(pStr+1)))  // remove beginning white space
@@ -512,12 +511,12 @@ void CometWritePepXML::ReadInstrument(char *szManufacturer,
 
    if (g_StaticParams.inputFile.iInputType == InputType_MZXML)
    {
-      char szBuf[SIZE_BUF];
       FILE *fp;
 
       if ((fp = fopen(g_StaticParams.inputFile.szFileName, "r")) != NULL)
       {
          char szMsInstrumentElement[SIZE_BUF];
+         char szBuf[SIZE_BUF];
 
          szMsInstrumentElement[0]='\0';
          while (fgets(szBuf, SIZE_BUF, fp))

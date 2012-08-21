@@ -44,7 +44,6 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
    int iTotalScans = 0;
    bool bFirst = true;
    int iFirstScanInRange = 0;
-   int iLastScanInRange = 0;
    int iTmpCount = 0;
    MSReader mstReader;             // For file access using MSToolkit.
    Spectrum mstSpectrum;           // For holding spectrum.
@@ -92,7 +91,6 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
 
          if (iFirstScanInRange == 0)
             iFirstScanInRange = iScanNumber;
-         iLastScanInRange = iScanNumber;
 
          if (mstSpectrum.size() >= g_StaticParams.options.iMinPeaks)
          {
@@ -415,14 +413,13 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    // WARNING: only good up to charge state 3
    if (spec.sizeZ() == 0)
    {
-      int i;
-      double dSumBelow = 0.0;
-      double dSumTotal = 0.0;
-
       // Use +1 or +2/+3 rule.
       if (g_StaticParams.options.iStartCharge == 0)
       {
-         i=0;
+         int i=0;
+         double dSumBelow = 0.0;
+         double dSumTotal = 0.0;
+
          while(true)
          {
             if(i >= spec.size())
@@ -632,11 +629,9 @@ void CometPreprocess::LoadIons(struct Query *pScoring,
                                Spectrum mstSpectrum,
                                struct PreprocessStruct *pPre)
 {
-   int  i,
-        iLowestMatchedPeaksIndex;
+   int  i;
    double dIon,
-        dIntensity,
-        dLowestMatchedPeaksIntensity;
+          dIntensity;
 
    // Just need to pad iArraySize by 75.
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + 100.0)
@@ -676,9 +671,6 @@ void CometPreprocess::LoadIons(struct Query *pScoring,
       fprintf(stderr, " Error - calloc(pfSpScoreData[%d])\n", pScoring->_spectrumInfoInternal.iArraySize);
       exit(1);
    }
-
-   iLowestMatchedPeaksIndex = 0;
-   dLowestMatchedPeaksIntensity = 0.0;
 
    i = 0;
    while(true)

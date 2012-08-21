@@ -160,8 +160,6 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData)
 
 void CometSearch::DoSearch(sDBEntry dbe)
 {
-   int seqSize;
-
    // Standard protein database search.
    if (g_StaticParams.options.iWhichReadingFrame == 0)
    {
@@ -210,6 +208,8 @@ void CometSearch::DoSearch(sDBEntry dbe)
           (g_StaticParams.options.iWhichReadingFrame == 9))
       {
          char *pszTemp;
+         int seqSize;
+
 
          // Generate complimentary strand.
          seqSize = dbe.strSeq.size()+1;

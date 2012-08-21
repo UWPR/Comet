@@ -340,14 +340,14 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery, bool bDecoy)
 
    for (i=0; i<iXcorrCount; i++)
    {
-      double dExpect;
-
       if (dSlope >= 0.0)
       {
          g_pvQuery.at(iWhichQuery)->_pResults[i].dExpect = 999.0;
       }
       else
       {
+         double dExpect;
+
          dExpect = pow(10.0, dSlope * g_pvQuery.at(iWhichQuery)->_pResults[i].fXcorr + dIntercept);
 
          if (dExpect > 999.0)

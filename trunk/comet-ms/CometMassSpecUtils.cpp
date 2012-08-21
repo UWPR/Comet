@@ -65,7 +65,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
                                     int bMonoMasses,
                                     double *dOH2)
 {
-   double H, O, C, N, P, S;
+   double H, O, C, N, S;
 
    if (bMonoMasses) // monoisotopic masses
    {
@@ -73,7 +73,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
       O = pdAAMass['o'] = 15.99491463;  // oxygen
       C = pdAAMass['c'] = 12.0000000;   // carbon
       N = pdAAMass['n'] = 14.0030740;   // nitrogen
-      P = pdAAMass['p'] = 30.973762;    // phosphorus
+//    P = pdAAMass['p'] = 30.973762;    // phosphorus
       S = pdAAMass['s'] = 31.9720707;   // sulphur
    }
    else  // average masses
@@ -82,7 +82,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
       O = pdAAMass['o'] = 15.9994;
       C = pdAAMass['c'] = 12.0107;
       N = pdAAMass['n'] = 14.0067;
-      P = pdAAMass['p'] = 30.973761;
+//    P = pdAAMass['p'] = 30.973761;
       S = pdAAMass['s'] = 32.065;
    }
 

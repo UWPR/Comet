@@ -132,12 +132,12 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    }
    if (g_StaticParams.variableModParameters.dVarModMassN != 0.0)
    {
-      fprintf(fpout, "H\tDiffMod\tn]=%+0.6f\n",
+      fprintf(fpout, "H\tDiffMod\tnt]=%+0.6f\n",
             g_StaticParams.variableModParameters.dVarModMassN);
    }
    if (g_StaticParams.variableModParameters.dVarModMassC != 0.0)
    {
-      fprintf(fpout, "H\tDiffMod\tc[=%+0.6f\n",
+      fprintf(fpout, "H\tDiffMod\tct[=%+0.6f\n",
             g_StaticParams.variableModParameters.dVarModMassC);
    }
 
