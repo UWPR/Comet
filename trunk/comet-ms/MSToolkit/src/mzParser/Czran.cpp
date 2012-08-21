@@ -217,7 +217,10 @@ int Czran::build_index(FILE *in, f_off span, gz_access **built){
     /* clean up and return index (release unused entries in list) */
 		fileSize=strm.total_out;
     (void)inflateEnd(&strm);
-    index = (gz_access*)realloc(index, sizeof(point) * index->have);
+    if ( (index = (gz_access*)realloc(index, sizeof(point) * index->have))==NULL) {
+       printf(" Error with realloc in Czran.cpp (size %d*%d)\n\n", sizeof(point), index->have);
+       exit(1);
+    }
     index->size = index->have;
     *built = index;
     return index->size;
