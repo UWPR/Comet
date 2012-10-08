@@ -59,7 +59,7 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
 
    // Get the thread pool of threads that will preprocess the data.
    ThreadPool<PreprocessThreadData *> preprocessThreadPool(PreprocessThreadProc,
-     minNumThreads, maxNumThreads);
+         minNumThreads, maxNumThreads);
 
    // Load all input spectra.
    while(true)

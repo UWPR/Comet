@@ -282,55 +282,58 @@ int main(int argc, char *argv[])
 // Allocate memory for the _pResults struct for each g_pvQuery entry.
 void AllocateResultsMem(void)
 {
+
    for (unsigned i=0; i<g_pvQuery.size(); i++)
    {
-      g_pvQuery.at(i)->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_StaticParams.options.iNumStored);
+      Query* pQuery = g_pvQuery.at(i);
 
-      if (g_pvQuery.at(i)->_pResults == NULL)
+      pQuery->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_StaticParams.options.iNumStored);
+
+      if (pQuery->_pResults == NULL)
       {
          fprintf(stderr, " Error malloc(_pResults[])\n");
          exit(1);
       }
 
-      g_pvQuery.at(i)->iDoXcorrCount = 0;
-      g_pvQuery.at(i)->siLowestSpScoreIndex = 0;
-      g_pvQuery.at(i)->fLowestSpScore = 0.0;
+      pQuery->iDoXcorrCount = 0;
+      pQuery->siLowestSpScoreIndex = 0;
+      pQuery->fLowestSpScore = 0.0;
 
       if (g_StaticParams.options.iDecoySearch==2)
       {
-         g_pvQuery.at(i)->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_StaticParams.options.iNumStored);
+         pQuery->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_StaticParams.options.iNumStored);
 
-         if (g_pvQuery.at(i)->_pDecoys == NULL)
+         if (pQuery->_pDecoys == NULL)
          {
             fprintf(stderr, " Error malloc(_pDecoys[])\n");
             exit(1);
          }
 
-         g_pvQuery.at(i)->iDoDecoyXcorrCount = 0;
-         g_pvQuery.at(i)->siLowestDecoySpScoreIndex = 0;
-         g_pvQuery.at(i)->fLowestDecoySpScore = 0.0;
+         pQuery->iDoDecoyXcorrCount = 0;
+         pQuery->siLowestDecoySpScoreIndex = 0;
+         pQuery->fLowestDecoySpScore = 0.0;
       }
 
       int j;
       for (j=0; j<HISTO_SIZE; j++)
       {
-         g_pvQuery.at(i)->iCorrelationHistogram[j]=0;
-         g_pvQuery.at(i)->iDecoyCorrelationHistogram[j]=0;
+         pQuery->iCorrelationHistogram[j]=0;
+         pQuery->iDecoyCorrelationHistogram[j]=0;
       }
 
       for (j=0; j<g_StaticParams.options.iNumStored; j++)
       {
-         g_pvQuery.at(i)->_pResults[j].fXcorr = 0.0;
-         g_pvQuery.at(i)->_pResults[j].fScoreSp = 0.0;
-         g_pvQuery.at(i)->_pResults[j].szPeptide[0] = '\0';
-         g_pvQuery.at(i)->_pResults[j].szProtein[0] = '\0';
+         pQuery->_pResults[j].fXcorr = 0.0;
+         pQuery->_pResults[j].fScoreSp = 0.0;
+         pQuery->_pResults[j].szPeptide[0] = '\0';
+         pQuery->_pResults[j].szProtein[0] = '\0';
 
          if (g_StaticParams.options.iDecoySearch==2)
          {
-            g_pvQuery.at(i)->_pDecoys[j].fXcorr = 0.0;
-            g_pvQuery.at(i)->_pDecoys[j].fScoreSp = 0.0;
-            g_pvQuery.at(i)->_pDecoys[j].szPeptide[0] = '\0';
-            g_pvQuery.at(i)->_pDecoys[j].szProtein[0] = '\0';
+            pQuery->_pDecoys[j].fXcorr = 0.0;
+            pQuery->_pDecoys[j].fScoreSp = 0.0;
+            pQuery->_pDecoys[j].szPeptide[0] = '\0';
+            pQuery->_pDecoys[j].szProtein[0] = '\0';
          }
       }
    }

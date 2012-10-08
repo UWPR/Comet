@@ -66,57 +66,59 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
 void CometPostAnalysis::AnalyzeSP(int i)
 {
-   int iSize = g_pvQuery.at(i)->iDoXcorrCount;
+   Query* pQuery = g_pvQuery.at(i);
+
+   int iSize = pQuery->iDoXcorrCount;
 
    if (iSize > g_StaticParams.options.iNumStored)
       iSize = g_StaticParams.options.iNumStored;
 
    // Target search.
-   CalculateSP(g_pvQuery.at(i)->_pResults,
+   CalculateSP(pQuery->_pResults,
                i,
-               g_pvQuery.at(i)->_spectrumInfoInternal.iArraySize,
-               g_pvQuery.at(i)->_spectrumInfoInternal.iChargeState,
+               pQuery->_spectrumInfoInternal.iArraySize,
+               pQuery->_spectrumInfoInternal.iChargeState,
                iSize);
 
-   qsort(g_pvQuery.at(i)->_pResults, iSize, sizeof(struct Results), SPQSortFn);
-   g_pvQuery.at(i)->_pResults[0].iRankSp = 1;
+   qsort(pQuery->_pResults, iSize, sizeof(struct Results), SPQSortFn);
+   pQuery->_pResults[0].iRankSp = 1;
 
    for (int ii=1; ii<iSize; ii++)
    {
       // Determine score rankings.
-      if (g_pvQuery.at(i)->_pResults[ii].fScoreSp == g_pvQuery.at(i)->_pResults[ii-1].fScoreSp)
-         g_pvQuery.at(i)->_pResults[ii].iRankSp = g_pvQuery.at(i)->_pResults[ii-1].iRankSp;
+      if (pQuery->_pResults[ii].fScoreSp == pQuery->_pResults[ii-1].fScoreSp)
+         pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp;
       else
-         g_pvQuery.at(i)->_pResults[ii].iRankSp = g_pvQuery.at(i)->_pResults[ii-1].iRankSp + 1;
+         pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp + 1;
    }
 
    // Then sort each entry by xcorr.
-   qsort(g_pvQuery.at(i)->_pResults, iSize, sizeof(struct Results), XcorrQSortFn);
+   qsort(pQuery->_pResults, iSize, sizeof(struct Results), XcorrQSortFn);
  
    // Repeast for decoy search.
    if (g_StaticParams.options.iDecoySearch == 2)
    {
 
-      CalculateSP(g_pvQuery.at(i)->_pDecoys,
+      CalculateSP(pQuery->_pDecoys,
                   i,
-                  g_pvQuery.at(i)->_spectrumInfoInternal.iArraySize,
-                  g_pvQuery.at(i)->_spectrumInfoInternal.iChargeState,
+                  pQuery->_spectrumInfoInternal.iArraySize,
+                  pQuery->_spectrumInfoInternal.iChargeState,
                   iSize);
 
-      qsort(g_pvQuery.at(i)->_pDecoys, iSize, sizeof(struct Results), SPQSortFn);
-      g_pvQuery.at(i)->_pDecoys[0].iRankSp = 1;
+      qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), SPQSortFn);
+      pQuery->_pDecoys[0].iRankSp = 1;
 
       for (int ii=1; ii<iSize; ii++)
       {
          // Determine score rankings.
-         if (g_pvQuery.at(i)->_pDecoys[ii].fScoreSp == g_pvQuery.at(i)->_pDecoys[ii-1].fScoreSp)
-            g_pvQuery.at(i)->_pDecoys[ii].iRankSp = g_pvQuery.at(i)->_pDecoys[ii-1].iRankSp;
+         if (pQuery->_pDecoys[ii].fScoreSp == pQuery->_pDecoys[ii-1].fScoreSp)
+            pQuery->_pDecoys[ii].iRankSp = pQuery->_pDecoys[ii-1].iRankSp;
          else
-            g_pvQuery.at(i)->_pDecoys[ii].iRankSp = g_pvQuery.at(i)->_pDecoys[ii-1].iRankSp + 1;
+            pQuery->_pDecoys[ii].iRankSp = pQuery->_pDecoys[ii-1].iRankSp + 1;
       }
 
       // Then sort each entry by xcorr.
-      qsort(g_pvQuery.at(i)->_pDecoys, iSize, sizeof(struct Results), XcorrQSortFn);
+      qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), XcorrQSortFn);
    }
 }
 

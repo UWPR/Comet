@@ -177,7 +177,7 @@ void CometSearch::DoSearch(sDBEntry dbe)
    {
       int ii;
 
-      // Nucleotide search; translate NA to AA
+      // Nucleotide search; translate NA to AA.
 
       if ((g_StaticParams.options.iWhichReadingFrame == 1) ||
           (g_StaticParams.options.iWhichReadingFrame == 2) ||
@@ -371,7 +371,7 @@ void CometSearch::SearchForPeptides(char *szProteinSeq,
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
                      if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
                      {
-                        printf(" Error - malloc pbDuplFragments; iWhichQuery = %d\n\n", iWhichQuery);
+                        fprintf(stderr, " Error - malloc pbDuplFragments; iWhichQuery = %d\n\n", iWhichQuery);
                         exit(1);
                      }
 
@@ -714,8 +714,10 @@ int CometSearch::BinarySearchMass(int start,
 bool CometSearch::CheckMassMatch(int iWhichQuery,
                                  double dCalcPepMass)
 {
-   if ((dCalcPepMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
-         && (dCalcPepMass <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus))
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
+   if ((dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus)
+         && (dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus))
    {
       if (g_StaticParams.tolerances.iIsotopeError == 0)
       {
@@ -730,16 +732,16 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          // Using C13 isotope mass difference here but likely should
          // be slightly bigger for other elemental contaminents.
 
-         if ((fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass - dC13diff)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass - dTwoC13diff)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass - dThreeC13diff)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass + dC13diff)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance))
+         if ((fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - dC13diff)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - dTwoC13diff)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - dThreeC13diff)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass + dC13diff)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance))
          {
             return true;
          }            
@@ -750,16 +752,16 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       }
       else if (g_StaticParams.tolerances.iIsotopeError == 2)
       {
-         if ((fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass - 4.0070995)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass - 8.014199)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass + 4.0070995)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass + 8.014199)
-                  <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance))
+         if ((fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - 4.0070995)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - 8.014199)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass + 4.0070995)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass + 8.014199)
+                  <= pQuery->_pepMassInfo.dPeptideMassTolerance))
          {
             return true;
          }            
@@ -986,6 +988,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    int iWhichIonSeries;
    bool bUseNLPeaks = false;
    float *pfFastXcorrData;
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    dXcorr = 0.0;
 
@@ -998,12 +1001,12 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       else
          bUseNLPeaks = false;
 
-      for (ctCharge=1; ctCharge<=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+      for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
       {
          if (ctCharge == 1 && bUseNLPeaks)
-            pfFastXcorrData = g_pvQuery.at(iWhichQuery)->pfFastXcorrDataNL;
+            pfFastXcorrData = pQuery->pfFastXcorrDataNL;
          else
-            pfFastXcorrData = g_pvQuery.at(iWhichQuery)->pfFastXcorrData;
+            pfFastXcorrData = pQuery->pfFastXcorrData;
 
          for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
          {
@@ -1018,13 +1021,13 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    else
       dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E5.
 
-   Threading::LockMutex(g_pvQuery.at(iWhichQuery)->accessMutex);
+   Threading::LockMutex(pQuery->accessMutex);
 
    // Increment matched peptide counts.
    if (bDecoyPep && g_StaticParams.options.iDecoySearch == 2)
-      g_pvQuery.at(iWhichQuery)->_liNumMatchedDecoyPeptides++;
+      pQuery->_liNumMatchedDecoyPeptides++;
    else
-      g_pvQuery.at(iWhichQuery)->_liNumMatchedPeptides++;
+      pQuery->_liNumMatchedPeptides++;
 
    if (g_StaticParams.options.bPrintExpectScore)
    {
@@ -1035,14 +1038,14 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          iTmp = HISTO_SIZE - 1;
    
       if (bDecoyPep && g_StaticParams.options.iDecoySearch==2)
-         g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[iTmp] += 1;
+         pQuery->iDecoyCorrelationHistogram[iTmp] += 1;
       else
-         g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[iTmp] += 1;
+         pQuery->iCorrelationHistogram[iTmp] += 1;
    }
 
    if (bDecoyPep && g_StaticParams.options.iDecoySearch==2)
    {
-      if (dXcorr > g_pvQuery.at(iWhichQuery)->fLowestDecoyCorrScore)
+      if (dXcorr > pQuery->fLowestDecoyCorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
                   szProteinSeq, szProteinName, 1, pcVarModSites))
@@ -1054,7 +1057,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    }
    else
    {
-      if (dXcorr > g_pvQuery.at(iWhichQuery)->fLowestCorrScore)
+      if (dXcorr > pQuery->fLowestCorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
                   szProteinSeq, szProteinName, 0, pcVarModSites))
@@ -1065,7 +1068,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       }      
    }
 
-   Threading::UnlockMutex(g_pvQuery.at(iWhichQuery)->accessMutex);
+   Threading::UnlockMutex(pQuery->accessMutex);
 }
 
 
@@ -1116,6 +1119,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 {
    int i;
    int iLenPeptide;
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    iLenPeptide = iEndPos - iStartPos + 1;
 
@@ -1126,146 +1130,146 @@ void CometSearch::StorePeptide(int iWhichQuery,
    {
       short siLowestDecoySpScoreIndex;
 
-      siLowestDecoySpScoreIndex = g_pvQuery.at(iWhichQuery)->siLowestDecoySpScoreIndex;
+      siLowestDecoySpScoreIndex = pQuery->siLowestDecoySpScoreIndex;
 
-      g_pvQuery.at(iWhichQuery)->iDoDecoyXcorrCount++;
-      g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].iLenPeptide=iLenPeptide;
+      pQuery->iDoDecoyXcorrCount++;
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iLenPeptide=iLenPeptide;
 
-      memcpy(g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
-      g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].szPeptide[iLenPeptide]='\0';
+      memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide[iLenPeptide]='\0';
 
-      g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].dPepMass = dCalcPepMass;
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].dPepMass = dCalcPepMass;
 
-      if (g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState > 2)
+      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
-         g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons 
-               = (iLenPeptide-1)*(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState-1) 
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons 
+               = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1) 
                    * g_StaticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {
-          g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
+          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
                = (iLenPeptide-1)*g_StaticParams.ionInformation.iNumIonSeriesUsed;
       }
 
-      g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
 
-      g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].iDuplicateCount = 0;
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iDuplicateCount = 0;
 
       if (iStartPos == 0)
-         g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = '-';
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = '-';
       else
-         g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
       if (iEndPos == _proteinInfo.iProteinSeqLength-1)
-         g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = '-';
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = '-';
       else
-         g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
-      strcpy(g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].szProtein, szProteinName);
+      strcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szProtein, szProteinName);
 
       if (g_StaticParams.variableModParameters.bVarModSearch)
       {
          if (!bFoundVariableMod)   // Normal peptide in variable mod search.
          {
-            memset(g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].pcVarModSites,
+            memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pcVarModSites,
                   0, _iSizepcVarModSites);
          }
          else
          {
-            memcpy(g_pvQuery.at(iWhichQuery)->_pDecoys[siLowestDecoySpScoreIndex].pcVarModSites,
+            memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pcVarModSites,
                   pcVarModSites, _iSizepcVarModSites);
          }
       }
 
       // Get new lowest score.
-      g_pvQuery.at(iWhichQuery)->fLowestDecoyCorrScore = g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr;
+      pQuery->fLowestDecoyCorrScore = pQuery->_pDecoys[0].fXcorr;
       siLowestDecoySpScoreIndex=0;
 
       for (i=1; i<g_StaticParams.options.iNumStored; i++)
       {
-         if (g_pvQuery.at(iWhichQuery)->_pDecoys[i].fXcorr < g_pvQuery.at(iWhichQuery)->fLowestDecoyCorrScore)
+         if (pQuery->_pDecoys[i].fXcorr < pQuery->fLowestDecoyCorrScore)
          {
-            g_pvQuery.at(iWhichQuery)->fLowestDecoyCorrScore = g_pvQuery.at(iWhichQuery)->_pDecoys[i].fXcorr;
+            pQuery->fLowestDecoyCorrScore = pQuery->_pDecoys[i].fXcorr;
             siLowestDecoySpScoreIndex = i;
          }
       }
 
-      g_pvQuery.at(iWhichQuery)->siLowestDecoySpScoreIndex = siLowestDecoySpScoreIndex;
+      pQuery->siLowestDecoySpScoreIndex = siLowestDecoySpScoreIndex;
    }
    else
    {
       short siLowestSpScoreIndex;
 
-      siLowestSpScoreIndex = g_pvQuery.at(iWhichQuery)->siLowestSpScoreIndex;
+      siLowestSpScoreIndex = pQuery->siLowestSpScoreIndex;
 
-      g_pvQuery.at(iWhichQuery)->iDoXcorrCount++;
-      g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].iLenPeptide=iLenPeptide;
+      pQuery->iDoXcorrCount++;
+      pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide=iLenPeptide;
 
-      memcpy(g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
-      g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
+      memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
+      pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
 
-      g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
+      pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
 
-      if (g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState > 2)
+      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
-         g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].iTotalIons 
-               = (iLenPeptide-1)*(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState-1) 
+         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons 
+               = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1) 
                    * g_StaticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {
-          g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].iTotalIons
+          pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
                = (iLenPeptide-1)*g_StaticParams.ionInformation.iNumIonSeriesUsed;
       }
 
       if (dXcorr < 0.0)
          dXcorr = 0.0;
 
-      g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
+      pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
 
-      g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].iDuplicateCount = 0;
+      pQuery->_pResults[siLowestSpScoreIndex].iDuplicateCount = 0;
 
       if (iStartPos == 0)
-         g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
+         pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
       else
-         g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+         pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
       if (iEndPos == _proteinInfo.iProteinSeqLength-1)
-         g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = '-';
+         pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = '-';
       else
-         g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+         pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
-      strcpy(g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].szProtein, szProteinName);
+      strcpy(pQuery->_pResults[siLowestSpScoreIndex].szProtein, szProteinName);
 
       if (g_StaticParams.variableModParameters.bVarModSearch)
       {
          if (!bFoundVariableMod)  // Normal peptide in variable mod search.
          {
-            memset(g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].pcVarModSites,
+            memset(pQuery->_pResults[siLowestSpScoreIndex].pcVarModSites,
                   0, _iSizepcVarModSites);
          }
          else
          {
-            memcpy(g_pvQuery.at(iWhichQuery)->_pResults[siLowestSpScoreIndex].pcVarModSites,
+            memcpy(pQuery->_pResults[siLowestSpScoreIndex].pcVarModSites,
                   pcVarModSites, _iSizepcVarModSites);
          }
       }
 
       // Get new lowest score.
-      g_pvQuery.at(iWhichQuery)->fLowestCorrScore = g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr;
+      pQuery->fLowestCorrScore = pQuery->_pResults[0].fXcorr;
       siLowestSpScoreIndex=0;
 
       for (i=1; i<g_StaticParams.options.iNumStored; i++)
       {
-         if (g_pvQuery.at(iWhichQuery)->_pResults[i].fXcorr < g_pvQuery.at(iWhichQuery)->fLowestCorrScore)
+         if (pQuery->_pResults[i].fXcorr < pQuery->fLowestCorrScore)
          {
-            g_pvQuery.at(iWhichQuery)->fLowestCorrScore = g_pvQuery.at(iWhichQuery)->_pResults[i].fXcorr;
+            pQuery->fLowestCorrScore = pQuery->_pResults[i].fXcorr;
             siLowestSpScoreIndex = i;
          }
       }
 
-      g_pvQuery.at(iWhichQuery)->siLowestSpScoreIndex = siLowestSpScoreIndex;
+      pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
    }
 }
 
@@ -1283,6 +1287,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
    int i,
        iLenMinus1,
        bIsDuplicate=0;
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    iLenMinus1 = iEndPos-iStartPos+1;
 
@@ -1291,13 +1296,13 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       for (i=0; i<g_StaticParams.options.iNumStored; i++)
       {        
          // Quick check of peptide sequence length first.
-         if ( (iLenMinus1 == g_pvQuery.at(iWhichQuery)->_pDecoys[i].iLenPeptide)
-             && fabs(dCalcPepMass - g_pvQuery.at(iWhichQuery)->_pDecoys[i].dPepMass)<=FLOAT_ZERO )
+         if ( (iLenMinus1 == pQuery->_pDecoys[i].iLenPeptide)
+             && fabs(dCalcPepMass - pQuery->_pDecoys[i].dPepMass)<=FLOAT_ZERO )
          {
-            if (g_pvQuery.at(iWhichQuery)->_pDecoys[i].szPeptide[0] == szProteinSeq[iStartPos])
+            if (pQuery->_pDecoys[i].szPeptide[0] == szProteinSeq[iStartPos])
             {
-               if (!memcmp(g_pvQuery.at(iWhichQuery)->_pDecoys[i].szPeptide,
-                        szProteinSeq + iStartPos, g_pvQuery.at(iWhichQuery)->_pDecoys[i].iLenPeptide))
+               if (!memcmp(pQuery->_pDecoys[i].szPeptide,
+                        szProteinSeq + iStartPos, pQuery->_pDecoys[i].iLenPeptide))
                {
                   bIsDuplicate=1;
                }
@@ -1306,8 +1311,8 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_StaticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (!memcmp(pcVarModSites, g_pvQuery.at(iWhichQuery)->_pDecoys[i].pcVarModSites,
-                        g_pvQuery.at(iWhichQuery)->_pDecoys[i].iLenPeptide + 2))
+               if (!memcmp(pcVarModSites, pQuery->_pDecoys[i].pcVarModSites,
+                        pQuery->_pDecoys[i].iLenPeptide + 2))
                {
                   bIsDuplicate=1;
                }
@@ -1319,7 +1324,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
             if (bIsDuplicate)
             {
-               g_pvQuery.at(iWhichQuery)->_pDecoys[i].iDuplicateCount++;
+               pQuery->_pDecoys[i].iDuplicateCount++;
                break;
             }
          }
@@ -1330,13 +1335,13 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       for (i=0; i<g_StaticParams.options.iNumStored; i++)
       {
          // Quick check of peptide sequence length.
-         if ( (iLenMinus1 == g_pvQuery.at(iWhichQuery)->_pResults[i].iLenPeptide)
-             && fabs(dCalcPepMass - g_pvQuery.at(iWhichQuery)->_pResults[i].dPepMass)<=FLOAT_ZERO )
+         if ( (iLenMinus1 == pQuery->_pResults[i].iLenPeptide)
+             && fabs(dCalcPepMass - pQuery->_pResults[i].dPepMass)<=FLOAT_ZERO )
          {
-            if (g_pvQuery.at(iWhichQuery)->_pResults[i].szPeptide[0] == szProteinSeq[iStartPos])
+            if (pQuery->_pResults[i].szPeptide[0] == szProteinSeq[iStartPos])
             {
-               if (!memcmp(g_pvQuery.at(iWhichQuery)->_pResults[i].szPeptide, szProteinSeq + iStartPos,
-                        g_pvQuery.at(iWhichQuery)->_pResults[i].iLenPeptide))
+               if (!memcmp(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos,
+                        pQuery->_pResults[i].iLenPeptide))
                {
                   bIsDuplicate=1;
                }
@@ -1345,8 +1350,8 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_StaticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (!memcmp(pcVarModSites, g_pvQuery.at(iWhichQuery)->_pResults[i].pcVarModSites,
-                        g_pvQuery.at(iWhichQuery)->_pResults[i].iLenPeptide + 2))
+               if (!memcmp(pcVarModSites, pQuery->_pResults[i].pcVarModSites,
+                        pQuery->_pResults[i].iLenPeptide + 2))
                {
                   bIsDuplicate=1;
                }
@@ -1358,7 +1363,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
             if (bIsDuplicate)
             {
-               g_pvQuery.at(iWhichQuery)->_pResults[i].iDuplicateCount++;
+               pQuery->_pResults[i].iDuplicateCount++;
                break;
             }
          }
@@ -2207,7 +2212,7 @@ void CometSearch::CalcVarModIons(char *szProteinSeq,
             // now get the set of binned fragment ions once for all matching peptides
             if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
             {
-               printf(" Error - malloc pbDuplFragments; iWhichQuery = %d\n\n", iWhichQuery);
+               fprintf(stderr, " Error - malloc pbDuplFragments; iWhichQuery = %d\n\n", iWhichQuery);
                exit(1);
             }
 
@@ -2287,7 +2292,7 @@ void CometSearch::CalcVarModIons(char *szProteinSeq,
                   }
 
                   szDecoyPeptide[_varModInfo.iEndPos - _varModInfo.iStartPos+1]=szProteinSeq[_varModInfo.iEndPos];  // last residue stays same
-                  pcTmpVarModSearchSites[_varModInfo.iEndPos - _varModInfo.iStartPos] = pcVarModSites[_varModInfo.iEndPos - _varModInfo.iStartPos];
+                  pcTmpVarModSearchSites[iLenPeptide-1] = pcVarModSites[iLenPeptide-1];
                }
                else
                {
@@ -2296,11 +2301,11 @@ void CometSearch::CalcVarModIons(char *szProteinSeq,
                   for (i=_varModInfo.iEndPos; i>=_varModInfo.iStartPos+1; i--)
                   {
                      szDecoyPeptide[_varModInfo.iEndPos-i+2] = szProteinSeq[i];
-                     pcTmpVarModSearchSites[_varModInfo.iEndPos-i-2] = pcVarModSites[i- _varModInfo.iStartPos];
+                     pcTmpVarModSearchSites[_varModInfo.iEndPos-i+1] = pcVarModSites[i- _varModInfo.iStartPos];
                   }
 
                   szDecoyPeptide[1]=szProteinSeq[_varModInfo.iStartPos];  // first residue stays same
-                  pcTmpVarModSearchSites[_varModInfo.iEndPos - _varModInfo.iStartPos] = pcVarModSites[_varModInfo.iEndPos - _varModInfo.iStartPos];
+                  pcTmpVarModSearchSites[0] = pcVarModSites[0];
                }
 
                pcTmpVarModSearchSites[iLenPeptide]   = pcVarModSites[iLenPeptide];    // N-term
