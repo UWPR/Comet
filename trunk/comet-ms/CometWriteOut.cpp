@@ -440,8 +440,11 @@ void CometWriteOut::PrintOutputLine(int iWhichQuery,
 
    sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[0]);
 
-   if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+   if (g_StaticParams.variableModParameters.bVarModSearch
+         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+   {
       sprintf(szBuf+strlen(szBuf), "]");
+   }
    else
       sprintf(szBuf+strlen(szBuf), ".");
 
@@ -458,8 +461,11 @@ void CometWriteOut::PrintOutputLine(int iWhichQuery,
       }
    }
 
-   if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
+   if (g_StaticParams.variableModParameters.bVarModSearch
+         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
+   {
       sprintf(szBuf+strlen(szBuf), "[");
+   }
    else
       sprintf(szBuf+strlen(szBuf), ".");
 
