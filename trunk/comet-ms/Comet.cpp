@@ -347,7 +347,7 @@ void Usage(int failure, char *pszCmd)
    printf("\n");
    printf(" Comet usage:  %s [options] <input_files>[:range]\n", pszCmd);
    printf("\n");
-   printf(" Supported input formats include mzXML and ms2 variants (cms2, bms2, ms2)\n");
+   printf(" Supported input formats include mzXML, mzXML, mz5 and ms2 variants (cms2, bms2, ms2)\n");
    printf(" The optional [:range] parameter specifies a scan range to search.\n");
    printf("\n");
    printf("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
@@ -472,6 +472,7 @@ void ProcessCmdLine(int argc,
 
    if (!strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-6, ".mzXML")
          || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-5, ".mzML")
+         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-4, ".mz5")
          || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-9, ".mzXML.gz")
          || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-8, ".mzML.gz"))
    {
