@@ -8,6 +8,7 @@ LIBS = -lm -lmstoolkitlite -lpthread
 
 
 comet.exe: $(OBJS)
+	cd MSToolkit ; make
 	${CXX} $(CXXFLAGS) $(OBJS) -L$(MSTOOLKIT) $(LIBS) -o ${EXECNAME}
 
 Comet.o:              Comet.cpp $(DEPS)
