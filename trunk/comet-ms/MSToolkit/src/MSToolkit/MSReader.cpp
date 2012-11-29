@@ -566,7 +566,9 @@ void MSReader::writeFile(const char* c, MSFileFormat ff, MSObject& m, char* sha1
     break;
   case mzXML:
   case mzData:
-	case mzML:
+  case mzML:
+  case mzXMLgz:
+  case mzMLgz:
     cout << "Cannot write mzXML or mzData or mzML formats. Nothing written." << endl;
     break;
   case bms1:
@@ -879,8 +881,7 @@ void MSReader::appendFile(Spectrum& s)
    zSql[0]='\0';
 
    //insert into msScanData
-   sprintf(zSql, "insert into msScanData values(%d, ?, ?)",
-	   lastScanID);
+   sprintf(zSql, "insert into msScanData values(%d, ?, ?)", lastScanID);
 
   sqlite3_stmt *pStmt;
 
@@ -1033,7 +1034,7 @@ void MSReader::appendFile(char* c, MSObject& m){
     case ms2:
     case  zs:
     case uzs:
-	    fileOut=fopen(c,"at");
+      fileOut=fopen(c,"at");
       for(i=0;i<m.size();i++){
         writeSpecHeader(fileOut,true,m.at(i));
         writeTextSpec(fileOut,m.at(i));
@@ -1359,7 +1360,9 @@ bool MSReader::readFile(const char* c, MSFileFormat f, Spectrum& s, int scNum){
     break;
   case mzXML:
   case mzData:
-	case mzML:
+  case mzML:
+  case mzXMLgz:
+  case mzMLgz:
     break;
   case raw:
     #ifdef _MSC_VER
@@ -1956,17 +1959,21 @@ void MSReader::readSpecHeader(FILE *fileIn, MSScanInfo &ms){
 MSFileFormat MSReader::checkFileFormat(const char *fn){
 
   int i;
+  char temp[1024];
+
+  for (i=0; i<strlen(fn); i++)
+     temp[i] = toupper(fn[i]);
 
   //check extension first - we must trust MS1 & MS2 & ZS & UZS
   i=strlen(fn);
-  if(strcmp(fn+(i-4),".ms1")==0 || strcmp(fn+(i-4),".MS1")==0 ) return ms1;
-  if(strcmp(fn+(i-4),".ms2")==0 || strcmp(fn+(i-4),".MS2")==0 ) return ms2;
-  if(strcmp(fn+(i-3),".zs")==0 || strcmp(fn+(i-3),".ZS")==0 ) return zs;
-  if(strcmp(fn+(i-4),".uzs")==0 || strcmp(fn+(i-4),".UZS")==0 ) return uzs;
-  if(strcmp(fn+(i-6),".msmat")==0 || strcmp(fn+(i-6),".MSMAT")==0 ) return msmat_ff;
+  if(strcmp(temp+(i-4),".MS1")==0) return ms1;
+  if(strcmp(temp+(i-4),".MS2")==0) return ms2;
+  if(strcmp(temp+(i-3),".ZS")==0) return zs;
+  if(strcmp(temp+(i-4),".USZ")==0) return uzs;
+  if(strcmp(temp+(i-6),".MSMAT")==0) return msmat_ff;
 
   //RAW could mean anything, Thermo should know better
-  if(strcmp(fn+(i-4),".raw")==0 || strcmp(fn+(i-4),".RAW")==0 ) {
+  if(strcmp(temp+(i-4),".RAW")==0) {
     #ifdef _MSC_VER
     if(bRaw) {
       return raw;
@@ -1981,17 +1988,19 @@ MSFileFormat MSReader::checkFileFormat(const char *fn){
   }
 
   //For now, trust mzXML & mzData also
-  if(strcmp(fn+(i-6),".mzXML")==0 || strcmp(fn+(i-6),".mzxml")==0 || strcmp(fn+(i-6),".MZXML")==0 ) return mzXML;
-  if(strcmp(fn+(i-7),".mzData")==0 || strcmp(fn+(i-7),".mzdata")==0 || strcmp(fn+(i-7),".MZDATA")==0 ) return mzData;
-	if(strcmp(fn+(i-5),".mzML")==0 || strcmp(fn+(i-5),".mzml")==0 || strcmp(fn+(i-5),".MZML")==0 ) return mzML;
+  if(strcmp(temp+(i-6),".MZXML")==0) return mzXML;
+  if(strcmp(temp+(i-7),".MZDATA")==0) return mzData;
+  if(strcmp(temp+(i-5),".MZML")==0) return mzML;
+  if(strcmp(temp+(i-9),".MZXML.GZ")==0) return mzXMLgz;
+  if(strcmp(temp+(i-8),".MZML.GZ")==0) return mzMLgz;
 
   //MGF format
-  if(strcmp(fn+(i-4),".mgf")==0 || strcmp(fn+(i-4),".MGF")==0 ) return mgf;
+  if(strcmp(temp+(i-4),".MGF")==0) return mgf;
 
   //add the sqlite3 format
-  if(strcmp(fn+(i-8),".sqlite3")==0 || strcmp(fn+(i-8),".SQlite3")==0 || strcmp(fn+(i-8),".SQLite3")==0 ) return sqlite;
+  if(strcmp(temp+(i-8),".SQLITE3")==0) return sqlite;
 
-  if(strcmp(fn+(i-4), ".psm") == 0 || strcmp(fn+(i-4), ".PSM") == 0) return psm;
+  if(strcmp(temp+(i-4), ".PSM") == 0) return psm;
 
   //We can check headers for other formats
   FILE *f;

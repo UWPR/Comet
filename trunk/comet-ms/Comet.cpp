@@ -471,7 +471,9 @@ void ProcessCmdLine(int argc,
    fclose(fpcheck);
 
    if (!strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-6, ".mzXML")
-         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-5, ".mzML"))
+         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-5, ".mzML")
+         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-9, ".mzXML.gz")
+         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-8, ".mzML.gz"))
    {
       g_StaticParams.inputFile.iInputType = InputType_MZXML;
    }
@@ -484,8 +486,14 @@ void ProcessCmdLine(int argc,
 
       if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
          *pStr = '\0';
-   }
 
+      if (!strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-9, ".mzXML.gz")
+         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-8, ".mzML.gz"))
+      {
+         if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
+            *pStr = '\0';
+      }
+   }
 
    // Create .out directory.
    if (g_StaticParams.options.bOutputOutFiles)
