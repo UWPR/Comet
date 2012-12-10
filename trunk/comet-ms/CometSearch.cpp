@@ -987,7 +987,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    int iWhichIonSeries;
    bool bUseNLPeaks = false;
-   float *pfFastXcorrData;
+   struct SparseMatrix *pFastXcorrData;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    dXcorr = 0.0;
@@ -1004,14 +1004,19 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
       {
          if (ctCharge == 1 && bUseNLPeaks)
-            pfFastXcorrData = pQuery->pfFastXcorrDataNL;
+            pFastXcorrData = pQuery->pFastXcorrDataNL;
          else
-            pfFastXcorrData = pQuery->pfFastXcorrData;
+            pFastXcorrData = pQuery->pFastXcorrData;
 
+				 //MH: ratchet through pfFastXcorrData
+				 //This assumes fragment ions are in order...
+				 int xx=0;
          for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
          {
-            //  *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen].
-            dXcorr += pfFastXcorrData[ *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) ];
+					 if(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)==0) continue;
+					 while( *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) >=  pQuery->pFastXcorrData[xx].bin)
+						 xx++;
+					 dXcorr += pQuery->pFastXcorrData[xx-1].fIntensity;
          }
       }
    }

@@ -59,6 +59,10 @@ private:
                                int *iMaxCorr,
                                int *iStartCorr,
                                int *iNextCorr);
+	static float FindSpScore(Query *pQuery,
+													 int bin);
+	static int FindFastXcorrIndex(Query *pQuery,
+																int bin);
 };
 
 

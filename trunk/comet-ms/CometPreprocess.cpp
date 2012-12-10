@@ -164,8 +164,12 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 {
    int i;
+	 int j;
    double *pdTempRawData;
    double *pdTmpFastXcorrData;
+	 float *pfSpScoreData;
+	 float *pfFastXcorrData;
+	 float *pfFastXcorrDataNL;
    struct msdata pTempSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
 
@@ -188,6 +192,33 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
       exit(1);
    }
 
+	 pfFastXcorrData = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+   if (pfFastXcorrData == NULL)
+   {
+      fprintf(stderr, " Error - calloc(pfFastXcorrData[%d]).\n\n", pScoring->_spectrumInfoInternal.iArraySize);
+      exit(1);
+   }
+
+	 pfSpScoreData = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+   if (pfSpScoreData == NULL)
+   {
+      fprintf(stderr, " Error - calloc(pfSpScoreData[%d])\n", pScoring->_spectrumInfoInternal.iArraySize);
+      exit(1);
+   }
+
+	 if (g_StaticParams.ionInformation.bUseNeutralLoss
+      && (g_StaticParams.ionInformation.iIonVal[0]
+         || g_StaticParams.ionInformation.iIonVal[1]
+         || g_StaticParams.ionInformation.iIonVal[7]))
+   {
+		 pfFastXcorrDataNL = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+		 if (pfFastXcorrDataNL == NULL)
+		 {
+			 fprintf(stderr, " Error - calloc(pfFastXcorrDataNL[%d]).\n\n", pScoring->_spectrumInfoInternal.iArraySize);
+			 exit(1);
+		 }
+	 }
+
    Initialize_P(pTempSpData);
 
    // Create data for correlation analysis.
@@ -195,6 +226,8 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 
    // Make fast xcorr spectrum.
    double dSum=0.0;
+	 pScoring->iFastXcorrData=1;
+	 pScoring->iFastXcorrDataNL=1;
 
    dSum=0.0;
    for (i=0; i<75; i++)
@@ -212,7 +245,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
    {
       double dTmp = pPre.pdCorrelationData[i] - pdTmpFastXcorrData[i];
 
-      pScoring->pfFastXcorrData[i] = (float)dTmp;
+      pfFastXcorrData[i] = (float)dTmp;
 
       // Add flanking peaks if used.
       if (g_StaticParams.ionInformation.iTheoreticalFragmentIons == 0)
@@ -221,12 +254,16 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 
          iTmp = i-1;
          if (iTmp >= 0)
-            pScoring->pfFastXcorrData[i] += (float) (pPre.pdCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+            pfFastXcorrData[i] += (float) (pPre.pdCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
 
          iTmp = i+1;
          if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
-            pScoring->pfFastXcorrData[i] += (float) (pPre.pdCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+            pfFastXcorrData[i] += (float) (pPre.pdCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
       }
+
+			//MH: Count number of sparse entries needed
+			if(i>0 && pfFastXcorrData[i] != pfFastXcorrData[i-1])
+				pScoring->iFastXcorrData++;
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
       if (g_StaticParams.ionInformation.bUseNeutralLoss
@@ -234,22 +271,81 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
                || g_StaticParams.ionInformation.iIonVal[1]
                || g_StaticParams.ionInformation.iIonVal[7]))
       {
-         pScoring->pfFastXcorrDataNL[i] = pScoring->pfFastXcorrData[i];
+         pfFastXcorrDataNL[i] = pfFastXcorrData[i];
 
          if (i-g_StaticParams.precalcMasses.iMinus17>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)(pPre.pdCorrelationData[i-g_StaticParams.precalcMasses.iMinus17]
+            pfFastXcorrDataNL[i] += (float)(pPre.pdCorrelationData[i-g_StaticParams.precalcMasses.iMinus17]
                   - pdTmpFastXcorrData[i-g_StaticParams.precalcMasses.iMinus17]) * 0.2;
          }
 
          if (i-g_StaticParams.precalcMasses.iMinus18>= 0)
-         {
-            pScoring->pfFastXcorrDataNL[i] += (float)(pPre.pdCorrelationData[i-g_StaticParams.precalcMasses.iMinus18]
+				 {
+					 pfFastXcorrDataNL[i] += (float)(pPre.pdCorrelationData[i-g_StaticParams.precalcMasses.iMinus18]
                   - pdTmpFastXcorrData[i-g_StaticParams.precalcMasses.iMinus18]) * 0.2;
-         }
-      }
+				 }
+
+				 //MH: Count number of sparse entries needed
+				 if(i>0 && pfFastXcorrDataNL[i] != pfFastXcorrDataNL[i-1])
+					 pScoring->iFastXcorrDataNL++;
+
+			}
    }
-   pScoring->pfFastXcorrData[0] = 0.0;
+   pfFastXcorrData[0] = 0.0;
+
+	 //MH: Add one more slot for the last bin
+	 pScoring->iFastXcorrData++;
+	 pScoring->iFastXcorrDataNL++;
+
+	 //MH: Fill sparse matrix
+	 pScoring->pFastXcorrData = (SparseMatrix *)calloc((size_t)pScoring->iFastXcorrData, (size_t)sizeof(SparseMatrix));
+   if (pScoring->pFastXcorrData == NULL)
+   {
+      fprintf(stderr, " Error - calloc(pScoring->pFastXcorrData[%d]).\n\n", pScoring->iFastXcorrData);
+      exit(1);
+   }
+	 pScoring->pFastXcorrData[0].bin=0;
+	 pScoring->pFastXcorrData[0].fIntensity=0;
+	 j=1;
+	 for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   {
+		 if(i>0 && pfFastXcorrData[i] != pfFastXcorrData[i-1])
+		 {
+			 pScoring->pFastXcorrData[j].bin=i;
+			 pScoring->pFastXcorrData[j++].fIntensity=pfFastXcorrData[i];
+		 }
+	 }
+	 pScoring->pFastXcorrData[j].bin=i;
+	 pScoring->pFastXcorrData[j].fIntensity=0;
+	 free(pfFastXcorrData);
+
+   // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
+   if (g_StaticParams.ionInformation.bUseNeutralLoss
+		 && (g_StaticParams.ionInformation.iIonVal[0]
+			|| g_StaticParams.ionInformation.iIonVal[1]
+			|| g_StaticParams.ionInformation.iIonVal[7]))
+	 {
+		 pScoring->pFastXcorrDataNL = (SparseMatrix *)calloc((size_t)pScoring->iFastXcorrData, (size_t)sizeof(SparseMatrix));
+		 if (pScoring->pFastXcorrDataNL == NULL)
+		 {
+			 fprintf(stderr, " Error - calloc(pScoring->pFastXcorrData[%d]).\n\n", pScoring->iFastXcorrData);
+			 exit(1);
+		 }
+		 pScoring->pFastXcorrDataNL[0].bin=0;
+		 pScoring->pFastXcorrDataNL[0].fIntensity=0;
+		 j=1;
+		 for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+		 {
+			 if(i>0 && pfFastXcorrDataNL[i] != pfFastXcorrDataNL[i-1])
+			 {
+				 pScoring->pFastXcorrDataNL[j].bin=i;
+				 pScoring->pFastXcorrDataNL[j++].fIntensity=pfFastXcorrDataNL[i];
+			 }
+		 }
+		 pScoring->pFastXcorrDataNL[j].bin=i;
+		 pScoring->pFastXcorrDataNL[j].fIntensity=0;
+		 free(pfFastXcorrDataNL);
+	 }
 
    // Create data for sp scoring.
    // Arbitrary bin size cutoff to do smoothing, peak extraction.
@@ -271,8 +367,34 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 
    for (i=0; i<NUM_SP_IONS; i++)
    {
-      pScoring->pfSpScoreData[(int)(pTempSpData[i].dIon+0.5)] = (float) pTempSpData[i].dIntensity;
+      pfSpScoreData[(int)(pTempSpData[i].dIon+0.5)] = (float) pTempSpData[i].dIntensity;
    }
+
+	 //MH: Count number of sparse entries needed
+	 pScoring->iSpScoreData=0;
+	 for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   {
+		 if(i>0 && pfSpScoreData[i] > FLOAT_ZERO)
+			 pScoring->iSpScoreData++;
+	 }
+
+	 //MH: Fill sparse matrix
+	 pScoring->pSpScoreData = (SparseMatrix *)calloc((size_t)pScoring->iSpScoreData, (size_t)sizeof(SparseMatrix));
+   if (pScoring->pSpScoreData == NULL)
+   {
+      fprintf(stderr, " Error - calloc(pScoring->pFastXcorrData[%d]).\n\n", pScoring->iSpScoreData);
+      exit(1);
+   }
+	 j=0;
+	 for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   {
+		 if(i>0 && pfSpScoreData[i] > FLOAT_ZERO)
+		 {
+			 pScoring->pSpScoreData[j].bin=i;
+			 pScoring->pSpScoreData[j++].fIntensity=pfSpScoreData[i];
+		 }
+	 }
+	 free(pfSpScoreData);
 
    free(pPre.pdCorrelationData);
 }
@@ -644,34 +766,6 @@ void CometPreprocess::LoadIons(struct Query *pScoring,
       exit(1);
    }
 
-   pScoring->pfFastXcorrData = (float *)calloc(pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
-   if (pScoring->pfFastXcorrData == NULL)
-   {
-      fprintf(stderr, " Error - calloc(pfFastXcorrData[%d]).\n\n", pScoring->_spectrumInfoInternal.iArraySize);
-      exit(1);
-   }
-
-   // Needed only if neutral losses are used.
-   if (g_StaticParams.ionInformation.bUseNeutralLoss
-         && (g_StaticParams.ionInformation.iIonVal[0]
-            || g_StaticParams.ionInformation.iIonVal[1]
-            || g_StaticParams.ionInformation.iIonVal[7]))
-   {
-      pScoring->pfFastXcorrDataNL = (float *)calloc(pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
-      if (pScoring->pfFastXcorrDataNL == NULL)
-      {
-         fprintf(stderr, " Error - calloc(pfFastXcorrDataNL[%d]).\n", pScoring->_spectrumInfoInternal.iArraySize);
-         exit(1);
-      }
-   }
-
-   pScoring->pfSpScoreData = (float *)calloc(pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float ));
-   if (pScoring->pfSpScoreData == NULL)
-   {
-      fprintf(stderr, " Error - calloc(pfSpScoreData[%d])\n", pScoring->_spectrumInfoInternal.iArraySize);
-      exit(1);
-   }
-
    i = 0;
    while(true)
    {
@@ -760,6 +854,7 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
 {
    int  i,
         ii,
+				iBin,
         iWindowSize,
         iNumWindows=10;
    double dMaxWindowInten,
@@ -783,30 +878,39 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
          dMaxOverallInten = pdTempRawData[i];
    }
 
-   iWindowSize = pPre->iHighestIon/iNumWindows;
+   iWindowSize = (int) ceil((double)(pPre->iHighestIon)/iNumWindows);
+
    for (i=0; i<iNumWindows; i++)
-   {
-      dMaxWindowInten = 0.0;
+	 {
+		 dMaxWindowInten = 0.0;
 
-      for (ii=0; ii<iWindowSize; ii++)    // Find max inten. in window.
-      {
-         if (pdTempRawData[i*iWindowSize+ii] > dMaxWindowInten)
-            dMaxWindowInten = pdTempRawData[i*iWindowSize+ii];
-      }
+		 for (ii=0; ii<iWindowSize; ii++)    // Find max inten. in window.
+		 {
+			 iBin = i*iWindowSize+ii;
+			 if (iBin < pScoring->_spectrumInfoInternal.iArraySize)
+			 {
+				 if (pdTempRawData[iBin] > dMaxWindowInten)
+					 dMaxWindowInten = pdTempRawData[iBin];
+			 }
+		 }
 
-      if (dMaxWindowInten > 0.0)
-      {
-         dTmp1 = 50.0 / dMaxWindowInten;
-         dTmp2 = 0.05 * dMaxOverallInten;
-
-         for (ii=0; ii<iWindowSize; ii++)    // Normalize to max inten. in window.
-         {
-            if (pdTempRawData[i*iWindowSize+ii] > dTmp2)
-               pPre->pdCorrelationData[i*iWindowSize+ii] = pdTempRawData[i*iWindowSize+ii]*dTmp1;
-         }
-      }
-   }
-}
+		 if (dMaxWindowInten > 0.0)
+		 {
+			 dTmp1 = 50.0 / dMaxWindowInten;
+			 dTmp2 = 0.05 * dMaxOverallInten;
+			 
+			 for (ii=0; ii<iWindowSize; ii++)    // Normalize to max inten. in window.
+			 {
+				 iBin = i*iWindowSize+ii;
+				 if (iBin < pScoring->_spectrumInfoInternal.iArraySize)
+				 {
+					 if (pdTempRawData[iBin] > dTmp2)
+						 pPre->pdCorrelationData[iBin] = pdTempRawData[iBin]*dTmp1;
+				 }
+			 }
+		 }
+	 }
+}																	 
 
 
 // Smooth input data over 5 points.

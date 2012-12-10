@@ -341,6 +341,11 @@ struct StaticParams
 
 extern StaticParams g_StaticParams;
 
+struct SparseMatrix
+{
+	int bin;
+	float fIntensity;
+};
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
@@ -369,9 +374,14 @@ struct Query
    unsigned long int  _liNumMatchedPeptides;
    unsigned long int  _liNumMatchedDecoyPeptides;
 
-   float *pfSpScoreData;
-   float *pfFastXcorrData;
-   float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
+	 int									iSpScoreData;  //size of sparse matrix
+	 struct SparseMatrix	*pSpScoreData;
+
+	 int									iFastXcorrData;
+	 struct SparseMatrix	*pFastXcorrData;
+
+	 int									iFastXcorrDataNL;
+	 struct SparseMatrix	*pFastXcorrDataNL; // pFastXcorrData with NH3, H2O contributions
 
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;
@@ -412,9 +422,9 @@ struct Query
       _liNumMatchedPeptides = 0;
       _liNumMatchedDecoyPeptides = 0;
 
-      pfSpScoreData = NULL;
-      pfFastXcorrData = NULL;
-      pfFastXcorrDataNL= NULL;           // pfFastXcorrData with NH3, H2O contributions
+      pSpScoreData = NULL;
+      pFastXcorrData = NULL;
+      pFastXcorrDataNL= NULL;           // pfFastXcorrData with NH3, H2O contributions
 
       _pepMassInfo.dCalcPepMass = 0;
       _pepMassInfo.dExpPepMass = 0;
@@ -436,14 +446,14 @@ struct Query
 
    ~Query()
    {
-      if (NULL != pfFastXcorrData)
-         free(pfFastXcorrData);
+      if (NULL != pFastXcorrData)
+         free(pFastXcorrData);
 
-      if (NULL != pfFastXcorrDataNL)
-         free(pfFastXcorrDataNL);
+      if (NULL != pFastXcorrDataNL)
+         free(pFastXcorrDataNL);
 
-      if (NULL != pfSpScoreData)
-         free(pfSpScoreData);
+      if (NULL != pSpScoreData)
+         free(pSpScoreData);
 
       if (NULL != _pResults)
          free(_pResults);

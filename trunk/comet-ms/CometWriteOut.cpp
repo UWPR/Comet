@@ -585,7 +585,7 @@ void CometWriteOut::PrintIons(int iWhichQuery,
             {
                sprintf(szBuf+strlen(szBuf), "%9.4f", dFragmentIonMass);
 
-               if (g_pvQuery.at(iWhichQuery)->pfSpScoreData[BIN(dFragmentIonMass)] > FLOAT_ZERO)
+							 if(FindSpScore(g_pvQuery.at(iWhichQuery),BIN(dFragmentIonMass)) > FLOAT_ZERO)
                   sprintf(szBuf+strlen(szBuf), "+ ");
                else
                   sprintf(szBuf+strlen(szBuf), "  ");
@@ -598,4 +598,37 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 
    }
    fprintf(fpout, "\n");
+}
+
+float CometWriteOut::FindSpScore(Query *pQuery,
+																 int bin)
+{
+	int lower;
+	int mid;
+	int upper;
+	int sz=pQuery->iSpScoreData;
+
+	mid=sz/2;
+	lower=0;
+	upper=sz;
+
+	while(pQuery->pSpScoreData[mid].bin!=bin){
+		if(lower>=upper) 
+			return 0.0f;
+
+		if(bin<pQuery->pSpScoreData[mid].bin)
+		{
+			upper=mid-1;
+			mid=(lower+upper)/2;
+		} 
+		else 
+		{
+			lower=mid+1;
+			mid=(lower+upper)/2;
+		}
+
+		if(mid==sz) 
+			return 0.0f;
+	}
+	return pQuery->pSpScoreData[mid].fIntensity;
 }

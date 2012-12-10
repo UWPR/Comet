@@ -27,6 +27,8 @@ public:
 
 
 private:
+	 static float FindSpScore(Query *pQuery,
+														int bin);
    static void PrintResults(int iWhichQuery,
                             bool bDecoySearch);
    static void PrintOutputLine(int iWhichQuery,
