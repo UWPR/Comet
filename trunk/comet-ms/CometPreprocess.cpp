@@ -365,35 +365,23 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
    free(pdTempRawData);
    free(pdTmpFastXcorrData);
 
-   for (i=0; i<NUM_SP_IONS; i++)
-   {
-      pfSpScoreData[(int)(pTempSpData[i].dIon+0.5)] = (float) pTempSpData[i].dIntensity;
-   }
-
-	 //MH: Count number of sparse entries needed
-	 pScoring->iSpScoreData=0;
-	 for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
-   {
-		 if(i>0 && pfSpScoreData[i] > FLOAT_ZERO)
-			 pScoring->iSpScoreData++;
-	 }
-
-	 //MH: Fill sparse matrix
-	 pScoring->pSpScoreData = (SparseMatrix *)calloc((size_t)pScoring->iSpScoreData, (size_t)sizeof(SparseMatrix));
+	 //MH: Fill sparse matrix for SpScore - Note that we allocate max number of sp ions, but will use
+	 //less than this amount.
+	 pScoring->pSpScoreData = (SparseMatrix *)calloc((size_t)NUM_SP_IONS, (size_t)sizeof(SparseMatrix));
    if (pScoring->pSpScoreData == NULL)
    {
       fprintf(stderr, " Error - calloc(pScoring->pFastXcorrData[%d]).\n\n", pScoring->iSpScoreData);
       exit(1);
    }
-	 j=0;
-	 for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+	 pScoring->iSpScoreData=0;
+	 for (i=0; i<NUM_SP_IONS; i++)
    {
-		 if(i>0 && pfSpScoreData[i] > FLOAT_ZERO)
+		 if((float)pTempSpData[i].dIntensity > FLOAT_ZERO)
 		 {
-			 pScoring->pSpScoreData[j].bin=i;
-			 pScoring->pSpScoreData[j++].fIntensity=pfSpScoreData[i];
+			 pScoring->pSpScoreData[pScoring->iSpScoreData].bin = (int)(pTempSpData[i].dIon+0.5);
+			 pScoring->pSpScoreData[pScoring->iSpScoreData++].fIntensity = (float) pTempSpData[i].dIntensity;
 		 }
-	 }
+   }
 	 free(pfSpScoreData);
 
    free(pPre.pdCorrelationData);
