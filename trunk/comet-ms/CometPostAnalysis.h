@@ -62,7 +62,8 @@ private:
 	static float FindSpScore(Query *pQuery,
 													 int bin);
 	static int FindFastXcorrIndex(Query *pQuery,
-																int bin);
+																int bin,
+																int low);
 };
 
 
