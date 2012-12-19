@@ -421,17 +421,15 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && g_StaticParams.staticModifications.dAddCterminusProtein != 0.0)
       bModified = 1;
 
-   if (!bModified && g_StaticParams.variableModParameters.bVarModSearch)
+   if (!bModified)
    {
-      if (!bModified)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
-         for (i=0; i<pOutput[iWhichResult].iLenPeptide+2; i++)
+         if (g_StaticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]] != 0.0
+            || pOutput[iWhichResult].pcVarModSites[i] > 0)
          {
-            if (pOutput[iWhichResult].pcVarModSites[i] > 0)
-            {
-               bModified = 1;
-               break;
-            }
+            bModified = 1;
+            break;
          }
       }
    }
