@@ -307,9 +307,9 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 	 pScoring->pFastXcorrData[0].bin=0;
 	 pScoring->pFastXcorrData[0].fIntensity=0;
 	 j=1;
-	 for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+	 for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
    {
-		 if(i>0 && pfFastXcorrData[i] != pfFastXcorrData[i-1])
+		 if(pfFastXcorrData[i] != pfFastXcorrData[i-1])
 		 {
 			 pScoring->pFastXcorrData[j].bin=i;
 			 pScoring->pFastXcorrData[j++].fIntensity=pfFastXcorrData[i];
@@ -325,18 +325,18 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 			|| g_StaticParams.ionInformation.iIonVal[1]
 			|| g_StaticParams.ionInformation.iIonVal[7]))
 	 {
-		 pScoring->pFastXcorrDataNL = (SparseMatrix *)calloc((size_t)pScoring->iFastXcorrData, (size_t)sizeof(SparseMatrix));
+		 pScoring->pFastXcorrDataNL = (SparseMatrix *)calloc((size_t)pScoring->iFastXcorrDataNL, (size_t)sizeof(SparseMatrix));
 		 if (pScoring->pFastXcorrDataNL == NULL)
 		 {
-			 fprintf(stderr, " Error - calloc(pScoring->pFastXcorrData[%d]).\n\n", pScoring->iFastXcorrData);
+			 fprintf(stderr, " Error - calloc(pScoring->pFastXcorrDataNL[%d]).\n\n", pScoring->iFastXcorrDataNL);
 			 exit(1);
 		 }
 		 pScoring->pFastXcorrDataNL[0].bin=0;
 		 pScoring->pFastXcorrDataNL[0].fIntensity=0;
 		 j=1;
-		 for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+		 for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
 		 {
-			 if(i>0 && pfFastXcorrDataNL[i] != pfFastXcorrDataNL[i-1])
+			 if(pfFastXcorrDataNL[i] != pfFastXcorrDataNL[i-1])
 			 {
 				 pScoring->pFastXcorrDataNL[j].bin=i;
 				 pScoring->pFastXcorrDataNL[j++].fIntensity=pfFastXcorrDataNL[i];

@@ -294,6 +294,11 @@ void AllocateResultsMem(void)
          fprintf(stderr, " Error malloc(_pResults[])\n");
          exit(1);
       }
+	  
+	  //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors. Claims it is possible to
+      //make conditional jump or move on this uninitialized value in CometSearch.cpp:1343
+      for(int xx=0;xx<g_StaticParams.options.iNumStored;xx++)
+        pQuery->_pResults[xx].iLenPeptide=0;
 
       pQuery->iDoXcorrCount = 0;
       pQuery->siLowestSpScoreIndex = 0;
@@ -308,6 +313,10 @@ void AllocateResultsMem(void)
             fprintf(stderr, " Error malloc(_pDecoys[])\n");
             exit(1);
          }
+		 
+		 //MH: same logic as my comment above
+         for(int x=0;x<g_StaticParams.options.iNumStored;x++)
+          pQuery->_pDecoys[x].iLenPeptide=0;
 
          pQuery->iDoDecoyXcorrCount = 0;
          pQuery->siLowestDecoySpScoreIndex = 0;

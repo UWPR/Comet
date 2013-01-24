@@ -635,7 +635,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 													 
 								 iFastXcorrIndex = FindFastXcorrIndex(g_pvQuery.at(iWhichQuery),iFragmentIonMass,iLastFastXcorrIndex);
 								 dFastXcorr += g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex].fIntensity;
-								 if(iFragmentIonMass==g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex].bin)
+								 if(iFastXcorrIndex>0 && iFragmentIonMass==g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex].bin)
 									 dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex-1].fIntensity;
 								 else
 									 dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex].fIntensity;
