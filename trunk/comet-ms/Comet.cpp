@@ -701,14 +701,7 @@ void InitializeParameters()
 // Reads comet.params parameter file.
 void LoadParameters(char *pszParamsFile)
 {
-   double addGmass=0.0, addAmass=0.0, addSmass=0.0, addPmass=0.0,
-          addVmass=0.0, addTmass=0.0, addCmass=0.0, addLmass=0.0,
-          addImass=0.0, addXmass=0.0, addNmass=0.0, addOmass=0.0,
-          addBmass=0.0, addDmass=0.0, addQmass=0.0, addKmass=0.0,
-          addZmass=0.0, addEmass=0.0, addMmass=0.0, addHmass=0.0,
-          addFmass=0.0, addRmass=0.0, addYmass=0.0, addWmass=0.0,
-          addUmass=0.0, addJmass=0.0,
-          dTempMass;
+   double dTempMass;
    int   i,
          iSearchEnzymeNumber,
          iSampleEnzymeNumber;
@@ -718,6 +711,9 @@ void LoadParameters(char *pszParamsFile)
    FILE  *fp;
    bool  bCurrentParamsFile = 0; // Track a parameter to make sure present.
    char *pStr;
+
+   for (i=0; i<128; i++)
+      g_StaticParams.staticModifications.pdStaticMods[i] = 0.0;
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
@@ -976,107 +972,133 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "add_G_glycine"))
          {
-            sscanf(szParamVal, "%lf", &addGmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['G'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_A_alanine"))
          {
-            sscanf(szParamVal, "%lf", &addAmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['A'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_S_serine"))
          {
-            sscanf(szParamVal, "%lf", &addSmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['S'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_P_proline"))
          {
-            sscanf(szParamVal, "%lf", &addPmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['P'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_V_valine"))
          {
-            sscanf(szParamVal, "%lf", &addVmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['V'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_T_threonine"))
          {
-            sscanf(szParamVal, "%lf", &addTmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['T'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_C_cysteine"))
          {
-            sscanf(szParamVal, "%lf", &addCmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['C'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_L_leucine"))
          {
-            sscanf(szParamVal, "%lf", &addLmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['L'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_I_isoleucine"))
          {
-            sscanf(szParamVal, "%lf", &addImass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['I'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_N_asparagine"))
          {
-            sscanf(szParamVal, "%lf", &addNmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['N'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_O_ornithine"))
          {
-            sscanf(szParamVal, "%lf", &addOmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['O'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_D_aspartic_acid"))
          {
-            sscanf(szParamVal, "%lf", &addDmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['D'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_Q_glutamine"))
          {
-            sscanf(szParamVal, "%lf", &addQmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['Q'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_K_lysine"))
          {
-            sscanf(szParamVal, "%lf", &addKmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['K'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_E_glutamic_acid"))
          {
-            sscanf(szParamVal, "%lf", &addEmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['E'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_M_methionine"))
          {
-            sscanf(szParamVal, "%lf", &addMmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['M'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_H_histidine"))
          {
-            sscanf(szParamVal, "%lf", &addHmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['H'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_F_phenylalanine"))
          {
-            sscanf(szParamVal, "%lf", &addFmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['F'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_R_arginine"))
          {
-            sscanf(szParamVal, "%lf", &addRmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['R'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_Y_tyrosine"))
          {
-            sscanf(szParamVal, "%lf", &addYmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['Y'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_W_tryptophan"))
          {
-            sscanf(szParamVal, "%lf", &addWmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['W'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_B_user_amino_acid"))
          {
-            sscanf(szParamVal, "%lf", &addBmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['B'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_J_user_amino_acid"))
          {
-            sscanf(szParamVal, "%lf", &addJmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['J'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_U_user_amino_acid"))
          {
-            sscanf(szParamVal, "%lf", &addUmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['U'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_X_user_amino_acid"))
          {
-            sscanf(szParamVal, "%lf", &addXmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['X'] = dTempMass;
          }
          else if (!strcmp(szParamName, "add_Z_user_amino_acid"))
          {
-            sscanf(szParamVal, "%lf", &addZmass);
+            sscanf(szParamVal, "%lf", &dTempMass);
+            g_StaticParams.staticModifications.pdStaticMods['Z'] = dTempMass;
          }
          else if (!strcmp(szParamName, "search_enzyme_number"))
          {
@@ -1334,7 +1356,7 @@ void LoadParameters(char *pszParamsFile)
    for (i=0; i<VMODS; i++)
    {
       if ((g_StaticParams.variableModParameters.varModList[i].dVarModMass != 0.0) &&
-          (g_StaticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
+          (g_StaticParams.variableModParameters.varModList[i].szVarModChar[0] != '\0'))
       {
          sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "(%s%c %+0.6f) ", 
                g_StaticParams.variableModParameters.varModList[i].szVarModChar,
@@ -1393,177 +1415,21 @@ void LoadParameters(char *pszParamsFile)
       sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "+ntprot=%0.6f ", 
             g_StaticParams.staticModifications.dAddNterminusProtein);
    }
-   if (addGmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "G=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['G'] += addGmass);
-      g_StaticParams.massUtility.pdAAMassFragment['G'] += addGmass;
-   }
-   if (addAmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "A=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['A'] += addAmass);
-      g_StaticParams.massUtility.pdAAMassFragment['A'] += addAmass;
-   }
-   if (addSmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "S=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['S'] += addSmass);
-      g_StaticParams.massUtility.pdAAMassFragment['S'] += addSmass;
-   }
-   if (addPmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "P=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['P'] += addPmass);
-      g_StaticParams.massUtility.pdAAMassFragment['P'] += addPmass;
-   }
-   if (addVmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "V=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['V'] += addVmass);
-      g_StaticParams.massUtility.pdAAMassFragment['V'] += addVmass;
-   }
-   if (addTmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "T=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['T'] += addTmass);
-      g_StaticParams.massUtility.pdAAMassFragment['T'] += addTmass;
-   }
-   if (addCmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "C=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['C'] += addCmass);
-      g_StaticParams.massUtility.pdAAMassFragment['C'] += addCmass;
-   }
-   if (addLmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "L=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['L'] += addLmass);
-      g_StaticParams.massUtility.pdAAMassFragment['L'] += addLmass;
-   }
-   if (addImass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "I=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['I'] += addImass);
-      g_StaticParams.massUtility.pdAAMassFragment['I'] += addImass;
-   }
-   if (addNmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "N=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['N'] += addNmass);
-      g_StaticParams.massUtility.pdAAMassFragment['N'] += addNmass;
-   }
-   if (addOmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "O=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['O'] += addOmass);
-      g_StaticParams.massUtility.pdAAMassFragment['O']+=addOmass;
-   }
-   if (addDmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "D=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['D'] += addDmass);
-      g_StaticParams.massUtility.pdAAMassFragment['D'] += addDmass;
-   }
-   if (addQmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "Q=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['Q'] += addQmass);
-      g_StaticParams.massUtility.pdAAMassFragment['Q'] += addQmass;
-   }
-   if (addKmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "K=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['K'] += addKmass);
-      g_StaticParams.massUtility.pdAAMassFragment['K'] += addKmass;
-   }
-   if (addEmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "E=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['E'] += addEmass);
-      g_StaticParams.massUtility.pdAAMassFragment['E'] += addEmass;
-   }
-   if (addMmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "M=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['M'] += addMmass);
-      g_StaticParams.massUtility.pdAAMassFragment['M'] += addMmass;
-   }
-   if (addHmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "H=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['H'] += addHmass);
-      g_StaticParams.massUtility.pdAAMassFragment['H'] += addHmass;
-   }
-   if (addFmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "F=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['F'] += addFmass);
-      g_StaticParams.massUtility.pdAAMassFragment['F'] += addFmass;
-   }
-   if (addRmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "R=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['R'] += addRmass);
-      g_StaticParams.massUtility.pdAAMassFragment['R'] += addRmass;
-   }
-   if (addYmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "Y=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['Y'] += addYmass);
-      g_StaticParams.massUtility.pdAAMassFragment['Y'] += addYmass;
-   }
-   if (addWmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "W=%0.6f ", 
-            g_StaticParams.massUtility.pdAAMassParent['W'] += addWmass);
-      g_StaticParams.massUtility.pdAAMassFragment['W'] += addWmass;
-   }
 
-   if (addBmass != 0.0)
+   for (i=65; i<=90; i++)  // 65-90 represents upper case letters in ASCII
    {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "B=%0.6f ", addBmass);
-      g_StaticParams.massUtility.pdAAMassParent['B'] = addBmass;
-      g_StaticParams.massUtility.pdAAMassFragment['B'] = addBmass;
+      if (g_StaticParams.staticModifications.pdStaticMods[i] != 0.0)
+      {
+         sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "%c=%0.6f ", i,
+               g_StaticParams.massUtility.pdAAMassParent[i] += g_StaticParams.staticModifications.pdStaticMods[i]);
+         g_StaticParams.massUtility.pdAAMassFragment[i] += g_StaticParams.staticModifications.pdStaticMods[i];
+      }
+      else if (i=='B' || i=='J' || i=='U' || i=='X' || i=='Z')
+      {
+         g_StaticParams.massUtility.pdAAMassParent[i] = 999999.;
+         g_StaticParams.massUtility.pdAAMassFragment[i] = 999999.;
+      }
    }
-   else
-      addBmass = 999999.;
-
-   if (addJmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "J=%0.6f ", addJmass); 
-      g_StaticParams.massUtility.pdAAMassParent['J'] = addJmass;
-      g_StaticParams.massUtility.pdAAMassFragment['J'] = addJmass;
-   }
-   else
-      addJmass = 999999.;
-
-   if (addUmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "U=%0.6f ",  addUmass);
-      g_StaticParams.massUtility.pdAAMassParent['U'] = addUmass;
-      g_StaticParams.massUtility.pdAAMassFragment['U'] = addUmass;
-   }
-   else
-      addUmass = 999999.;
-
-   if (addXmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "X=%0.6f ", addXmass);
-      g_StaticParams.massUtility.pdAAMassParent['X'] = addXmass;
-      g_StaticParams.massUtility.pdAAMassFragment['X'] = addXmass;
-   }
-   else
-      addXmass = 999999.;
-
-   if (addZmass != 0.0)
-   {
-      sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "Z=%0.6f ", addZmass);
-      g_StaticParams.massUtility.pdAAMassParent['Z'] = addZmass;
-      g_StaticParams.massUtility.pdAAMassFragment['Z'] = addZmass;
-   }
-   else
-      addZmass = 999999.;
 
    // Print out enzyme name to g_StaticParams.szMod.
    if (!g_StaticParams.options.bNoEnzymeSelected)

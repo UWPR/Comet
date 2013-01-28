@@ -221,6 +221,7 @@ struct StaticMod
    double dAddNterminusPeptide;
    double dAddCterminusProtein;
    double dAddNterminusProtein;
+   double pdStaticMods[128];
 };
 
 struct PrecalcMasses

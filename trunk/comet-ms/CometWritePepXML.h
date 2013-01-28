@@ -43,7 +43,9 @@ private:
                                     int iDoXcorrCount,
                                     bool bDecoy,
                                     Results *pOutput,
-                                    FILE *fpOut);
+                                    FILE *fpOut,
+                                    double dDeltaCn,
+                                    double dDeltaCnStar);
    static void ReadInstrument(char *szManufacturer,
                               char *szModel);
    static void GetVal(char *szElement,

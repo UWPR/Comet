@@ -32,3 +32,4 @@ CometWritePepXML.o:   CometWritePepXML.cpp Common.h CometData.h CometMassSpecUti
 
 clean:
 	rm -f *.o ${EXECNAME}
+	cd MSToolkit ; make clean

@@ -184,7 +184,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
                   fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" %ssymbol=\"%c\"/>\n",
                         szModChar[i],
                         dMass,
-                        dMass + g_StaticParams.massUtility.pdAAMassParent[(int)szModChar[i]],
+                        g_StaticParams.massUtility.pdAAMassParent[(int)szModChar[i]],
                         (bBinary?"binary=\"Y\" ":""),
                         cSymbol);
                }
@@ -197,7 +197,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             {
                sprintf(szVariableCterm, "  <terminal_modification terminus=\"C\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" protein_terminus=\"",
                      g_StaticParams.variableModParameters.dVarModMassC,
-                     g_StaticParams.variableModParameters.dVarModMassC + g_StaticParams.precalcMasses.dCtermOH2Proton);
+                     g_StaticParams.variableModParameters.dVarModMassC + g_StaticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
                bPrintVariableC = 1;
             }
          }
@@ -208,7 +208,8 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             {
                sprintf(szVariableNterm, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" protein_terminus=\"",
                      g_StaticParams.variableModParameters.dVarModMassN,
-                     g_StaticParams.variableModParameters.dVarModMassN + g_StaticParams.precalcMasses.dNtermProton);
+                     g_StaticParams.variableModParameters.dVarModMassN + g_StaticParams.precalcMasses.dNtermProton - PROTON_MASS
+                     + g_StaticParams.massUtility.pdAAMassFragment['h']);
                bPrintVariableN = 1;
             }
          }
@@ -234,7 +235,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             if (dMass != 0.0)
             {
                fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"N\"/>\n",
-                     dMass, dMass + g_StaticParams.precalcMasses.dCtermOH2Proton);
+                     dMass, g_StaticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
             }
          }
          else if (!strcmp(szParamName, "add_Nterm_peptide"))
@@ -243,7 +244,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             if (dMass != 0.)
             {
                fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"N\"/>\n",
-                     dMass, dMass + g_StaticParams.precalcMasses.dNtermProton);
+                     dMass, g_StaticParams.precalcMasses.dNtermProton - PROTON_MASS + g_StaticParams.massUtility.pdAAMassFragment['h']);
             }
          }
          else if (!strcmp(szParamName, "add_Cterm_protein"))
@@ -252,7 +253,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             if (dMass != 0.0)
             {
                fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
-                     dMass, dMass + g_StaticParams.precalcMasses.dCtermOH2Proton);
+                     dMass, dMass + g_StaticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
             }
          }
          else if (!strcmp(szParamName, "add_Nterm_protein"))
@@ -261,7 +262,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             if (dMass != 0.0)
             {
                fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
-                     dMass, dMass + g_StaticParams.precalcMasses.dNtermProton);
+                     dMass, dMass + g_StaticParams.precalcMasses.dNtermProton - PROTON_MASS + g_StaticParams.massUtility.pdAAMassFragment['h']);
             }
          }
 
@@ -271,7 +272,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             if (dMass != 0.0)
             {
                fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\"/>\n",
-                     szParamName[4], dMass, dMass + g_StaticParams.massUtility.pdAAMassParent[(int)szParamName[4]]);
+                     szParamName[4], dMass, g_StaticParams.massUtility.pdAAMassParent[(int)szParamName[4]]);
             }
          }
 
@@ -324,7 +325,8 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 {
    int  i,
         iDoXcorrCount,
-        iRankXcorr;
+        iRankXcorr,
+        iMinLength;
 
    // Print spectrum_query element. 
    fprintf(fpout, " <spectrum_query spectrum=\"%s.%05d.%05d.%d\"",
@@ -337,6 +339,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    fprintf(fpout, " precursor_neutral_mass=\"%0.4f\"", g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - PROTON_MASS);
    fprintf(fpout, " assumed_charge=\"%d\"", g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, " index=\"%d\"", iWhichQuery+1);
+
    if (mzXML)
       fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.dRTime);
    else
@@ -362,13 +365,72 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
+   iMinLength = 999;
    for (i=0; i<iDoXcorrCount; i++)
    {
-      if ((i > 0) && (pOutput[i].fXcorr != pOutput[i-1].fXcorr))
+      int iLen = (int)strlen(pOutput[i].szPeptide);
+      if (iLen == 0)
+         break;
+      if (iLen < iMinLength)
+         iMinLength = iLen;
+   }
+
+   for (i=0; i<iDoXcorrCount; i++)
+   {
+      int j;
+      bool bNoDeltaCnYet = true;
+      bool bDeltaCnStar = false;
+      double dDeltaCn;       // this is deltaCn between i and first dissimilar peptide
+      double dDeltaCnStar;   // this is explicit deltaCn between i and i+1 hits or 0.0 ...
+                             // I honestly don't understand the logic in the deltacnstar convention being used in TPP
+
+      for (j=i+1; j<iDoXcorrCount; j++)
+      {
+         // very poor way of calculating peptide similarity but it's what we have for now
+         int iDiffCt = 0;
+
+         for (int k=0; k<iMinLength; k++)
+         {
+            // I-L and Q-K are same for purposes here
+            if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
+            {
+               if (!((pOutput[i].szPeptide[k] == 'K' || pOutput[i].szPeptide[k] == 'Q')
+                       && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                     && !((pOutput[i].szPeptide[k] == 'I' || pOutput[i].szPeptide[k] == 'L')
+                        && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+               {
+                  iDiffCt++;
+               }
+            }
+         }
+
+         // calculate deltaCn only if sequences are less than 0.75 similar
+         if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
+         {
+            dDeltaCn = (pOutput[i].fXcorr - pOutput[j].fXcorr) / pOutput[i].fXcorr;
+            bNoDeltaCnYet = 0;
+   
+            if (j - i > 1)
+               bDeltaCnStar = true;
+            break;
+         }
+      }
+
+      if (bNoDeltaCnYet)
+         dDeltaCn = 1.0;
+
+      if (i > 0 && pOutput[i].fXcorr != pOutput[i-1].fXcorr)
          iRankXcorr++;
 
-      if (pOutput[i].fXcorr > 0)
-         PrintPepXMLSearchHit(iWhichQuery, iRankXcorr, i, iDoXcorrCount, bDecoy, pOutput, fpout);
+      if (pOutput[i].fXcorr > 0.0)
+      {
+         if (bDeltaCnStar && i+1<iDoXcorrCount)
+            dDeltaCnStar = (pOutput[i].fXcorr - pOutput[i+1].fXcorr)/pOutput[i].fXcorr;
+         else
+            dDeltaCnStar = 0.0;
+
+         PrintPepXMLSearchHit(iWhichQuery, iRankXcorr, i, iDoXcorrCount, bDecoy, pOutput, fpout, dDeltaCn, dDeltaCnStar);
+      }
    } 
 
    fprintf(fpout, "  </search_result>\n");
@@ -382,13 +444,13 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                                             int iDoXcorrCount,
                                             bool bDecoy,
                                             Results *pOutput,
-                                            FILE *fpout)
+                                            FILE *fpout,
+                                            double dDeltaCn,
+                                            double dDeltaCnStar)
 {
    int  i;
    int iNTT;
    int iNMC;
-
-
 
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", iWhichResult+1);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
@@ -411,17 +473,25 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    // check if peptide is modified
    bool bModified = 0;
-   if (g_StaticParams.variableModParameters.bVarModSearch)
+
+   if (g_StaticParams.staticModifications.dAddNterminusPeptide != 0.0
+         || g_StaticParams.staticModifications.dAddCterminusPeptide != 0.0)
+      bModified = 1;
+
+   if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && g_StaticParams.staticModifications.dAddNterminusProtein != 0.0)
+      bModified = 1;
+   if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && g_StaticParams.staticModifications.dAddCterminusProtein != 0.0)
+      bModified = 1;
+
+   if (!bModified)
    {
-      if (!bModified)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
-         for (i=0; i<pOutput[iWhichResult].iLenPeptide+2; i++)
+         if (g_StaticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]] != 0.0
+            || pOutput[iWhichResult].pcVarModSites[i] > 0)
          {
-            if (pOutput[iWhichResult].pcVarModSites[i] > 0)
-            {
-               bModified = 1;
-               break;
-            }
+            bModified = 1;
+            break;
          }
       }
    }
@@ -461,27 +531,50 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
       fprintf(fpout, "    <modification_info modified_peptide=\"%s\"", szModPep);
 
-      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1
+            || g_StaticParams.staticModifications.dAddNterminusPeptide != 0.0
+            || (pOutput[iWhichResult].szPrevNextAA[0]=='-' && g_StaticParams.staticModifications.dAddNterminusProtein != 0.0) )
       {
-         fprintf(fpout, " mod_nterm_mass=\"%0.4f\"",
-              g_StaticParams.variableModParameters.dVarModMassN
-              + g_StaticParams.precalcMasses.dNtermProton);
+         // static peptide n-term mod already accounted for here
+         double dMass = g_StaticParams.precalcMasses.dNtermProton - PROTON_MASS + g_StaticParams.massUtility.pdAAMassFragment['h'];
+
+         if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+            dMass += g_StaticParams.variableModParameters.dVarModMassN;
+
+         if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && g_StaticParams.staticModifications.dAddNterminusProtein != 0.0)
+            dMass += g_StaticParams.staticModifications.dAddNterminusProtein;
+
+         fprintf(fpout, " mod_nterm_mass=\"%0.4f\"", dMass);
       }
-      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
+
+      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1
+            || g_StaticParams.staticModifications.dAddCterminusPeptide != 0.0
+            || (pOutput[iWhichResult].szPrevNextAA[1]=='-' && g_StaticParams.staticModifications.dAddCterminusProtein != 0.0) )
       {
-         fprintf(fpout, " mod_cterm_mass=\"%0.4f\"",
-              g_StaticParams.variableModParameters.dVarModMassC
-              + g_StaticParams.precalcMasses.dCtermOH2Proton);
+         // static peptide c-term mod already accounted for here
+         double dMass = g_StaticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
+
+         if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
+            dMass += g_StaticParams.variableModParameters.dVarModMassC;
+
+         if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && g_StaticParams.staticModifications.dAddCterminusProtein != 0.0)
+            dMass += g_StaticParams.staticModifications.dAddCterminusProtein;
+
+         fprintf(fpout, " mod_cterm_mass=\"%0.4f\"", dMass);
       }
       fprintf(fpout, ">\n");
 
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
-         if (pOutput[iWhichResult].pcVarModSites[i] > 0)
+         if (g_StaticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]] != 0.0
+               || pOutput[iWhichResult].pcVarModSites[i] > 0)
          {
-            fprintf(fpout, "     <mod_aminoacid_mass position=\"%d\" mass=\"%0.4f\"/>\n", i+1,
-                  g_StaticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass
-                  + g_StaticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]);
+            double dMass = g_StaticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]];
+
+            if (pOutput[iWhichResult].pcVarModSites[i] > 0)
+               dMass += g_StaticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass;
+
+            fprintf(fpout, "     <mod_aminoacid_mass position=\"%d\" mass=\"%0.4f\"/>\n", i+1, dMass);
          }
       }
 
@@ -490,12 +583,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    fprintf(fpout, "    <search_score name=\"xcorr\" value=\"%0.3f\"/>\n", pOutput[iWhichResult].fXcorr);
 
-   if (iWhichResult+1 < iDoXcorrCount)
-      fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.3f\"/>\n", 1.0 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr);
-   else
-      fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.3f\"/>\n", 1.0);
+   fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.3f\"/>\n", dDeltaCn);
+   fprintf(fpout, "    <search_score name=\"deltacnstar\" value=\"%0.3f\"/>\n", dDeltaCnStar);
 
-   fprintf(fpout, "    <search_score name=\"deltacnstar\" value=\"%0.3f\"/>\n", 0.0);  // FIX
    fprintf(fpout, "    <search_score name=\"spscore\" value=\"%0.1f\"/>\n", pOutput[iWhichResult].fScoreSp);
    fprintf(fpout, "    <search_score name=\"sprank\" value=\"%d\"/>\n", pOutput[iWhichResult].iRankSp);
    fprintf(fpout, "    <search_score name=\"expect\" value=\"%0.2E\"/>\n", pOutput[iWhichResult].dExpect);
