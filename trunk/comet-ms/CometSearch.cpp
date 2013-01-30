@@ -210,7 +210,6 @@ void CometSearch::DoSearch(sDBEntry dbe)
          char *pszTemp;
          int seqSize;
 
-
          // Generate complimentary strand.
          seqSize = dbe.strSeq.size()+1;
          pszTemp=(char *)malloc(seqSize);
@@ -987,8 +986,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    int iWhichIonSeries;
    bool bUseNLPeaks = false;
-   struct SparseMatrix *pFastXcorrData;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
+
+   struct SparseMatrix *pSparseFastXcorrData;  // use this if bSparseMatrix
+   float *pfFastXcorrData;                     // use this if not using SparseMatrix
 
    dXcorr = 0.0;
 
@@ -1004,19 +1005,36 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
       {
          if (ctCharge == 1 && bUseNLPeaks)
-            pFastXcorrData = pQuery->pFastXcorrDataNL;
-         else
-            pFastXcorrData = pQuery->pFastXcorrData;
-
-				 //MH: ratchet through pfFastXcorrData
-				 //This assumes fragment ions are in order...
-				 int xx=0;
-         for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
          {
-					 if(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)==0) continue;
-					 while( *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) >=  pQuery->pFastXcorrData[xx].bin)
-						 xx++;
-					 dXcorr += pQuery->pFastXcorrData[xx-1].fIntensity;
+            pSparseFastXcorrData = pQuery->pSparseFastXcorrDataNL;
+            pfFastXcorrData = pQuery->pfFastXcorrDataNL;
+         }
+         else
+         {
+            pSparseFastXcorrData = pQuery->pSparseFastXcorrData;
+            pfFastXcorrData = pQuery->pfFastXcorrData;
+         }
+
+         if (g_StaticParams.options.bSparseMatrix)
+         {
+            //MH: ratchet through pfFastXcorrData
+            //This assumes fragment ions are in order...
+            int xx=0;
+            for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
+            {
+               if(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)==0)
+                  continue;
+               while( *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) >=  (unsigned) pQuery->pSparseFastXcorrData[xx].bin)
+                  xx++;
+               dXcorr += pQuery->pSparseFastXcorrData[xx-1].fIntensity;
+            }
+         }
+         else
+         {
+            for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
+               dXcorr += pfFastXcorrData[ *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) ];
+
+            // *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen].
          }
       }
    }

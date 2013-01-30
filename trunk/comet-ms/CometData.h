@@ -78,7 +78,7 @@ enum AnalysisType
    AnalysisType_SpecificScan,
    AnalysisType_SpecificScanAndCharge,
    AnalysisType_SpecificScanRange,
-   AnalysisType_StartScanAndCount,
+// AnalysisType_StartScanAndCount,
    AnalysisType_EntireFile
 };
 
@@ -109,19 +109,20 @@ struct Options             // output parameters
    int iStartMSLevel;            // mzXML only
    int iEndMSLevel;              // mzXML only
    int iMinPeaks;
-   int bOutputSqtStream;
-   int bOutputSqtFile;
-   int bOutputPepXMLFile;
-   int bOutputOutFiles;
    int iMinIntensity;
    int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors
    int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search
    int iNumThreads;              // 0=poll CPU else set # threads to spawn
+   int bOutputSqtStream;
+   int bOutputSqtFile;
+   int bOutputPepXMLFile;
+   int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
    int bNoEnzymeSelected;
    int bPrintFragIons;
    int bPrintExpectScore;
+   int bSparseMatrix;
    double dRemovePrecursorTol;
    double dLowPeptideMass;       // MH+ mass
    double dHighPeptideMass;      // MH+ mass
@@ -344,8 +345,8 @@ extern StaticParams g_StaticParams;
 
 struct SparseMatrix
 {
-	int bin;
-	float fIntensity;
+   int bin;
+   float fIntensity;
 };
 
 // Query stores information for peptide scoring and results
@@ -375,21 +376,25 @@ struct Query
    unsigned long int  _liNumMatchedPeptides;
    unsigned long int  _liNumMatchedDecoyPeptides;
 
-	 int									iSpScoreData;  //size of sparse matrix
-	 struct SparseMatrix	*pSpScoreData;
+   // Sparse matrix representation of data
+   int iSpScoreData;  //size of sparse matrix
+   int iFastXcorrData;
+   int iFastXcorrDataNL;
+   struct SparseMatrix *pSparseSpScoreData;
+   struct SparseMatrix *pSparseFastXcorrData;
+   struct SparseMatrix *pSparseFastXcorrDataNL;
 
-	 int									iFastXcorrData;
-	 struct SparseMatrix	*pFastXcorrData;
-
-	 int									iFastXcorrDataNL;
-	 struct SparseMatrix	*pFastXcorrDataNL; // pFastXcorrData with NH3, H2O contributions
+   // Standard array representation of data
+   float *pfSpScoreData;
+   float *pfFastXcorrData;
+   float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
 
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;
    Results              *_pResults;
    Results              *_pDecoys;
 
-   Mutex  accessMutex;
+   Mutex accessMutex;
 
    Query()
    {
@@ -423,9 +428,9 @@ struct Query
       _liNumMatchedPeptides = 0;
       _liNumMatchedDecoyPeptides = 0;
 
-      pSpScoreData = NULL;
-      pFastXcorrData = NULL;
-      pFastXcorrDataNL= NULL;           // pfFastXcorrData with NH3, H2O contributions
+      pSparseSpScoreData = NULL;
+      pSparseFastXcorrData = NULL;
+      pSparseFastXcorrDataNL= NULL;           // pfFastXcorrData with NH3, H2O contributions
 
       _pepMassInfo.dCalcPepMass = 0;
       _pepMassInfo.dExpPepMass = 0;
@@ -447,14 +452,14 @@ struct Query
 
    ~Query()
    {
-      if (NULL != pFastXcorrData)
-         free(pFastXcorrData);
+      if (NULL != pSparseFastXcorrData)
+         free(pSparseFastXcorrData);
 
-      if (NULL != pFastXcorrDataNL)
-         free(pFastXcorrDataNL);
+      if (NULL != pSparseFastXcorrDataNL)
+         free(pSparseFastXcorrDataNL);
 
-      if (NULL != pSpScoreData)
-         free(pSpScoreData);
+      if (NULL != pSparseSpScoreData)
+         free(pSparseSpScoreData);
 
       if (NULL != _pResults)
          free(_pResults);

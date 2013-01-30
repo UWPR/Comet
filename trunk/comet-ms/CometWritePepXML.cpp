@@ -262,7 +262,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             if (dMass != 0.0)
             {
                fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
-                     dMass, dMass + g_StaticParams.precalcMasses.dNtermProton - PROTON_MASS + g_StaticParams.massUtility.pdAAMassFragment['h']);
+                     dMass, dMass + g_StaticParams.precalcMasses.dNtermProton - PROTON_MASS + g_StaticParams.massUtility.pdAAMassFragment['h']); //FIX??
             }
          }
 
@@ -488,7 +488,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
          if (g_StaticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]] != 0.0
-            || pOutput[iWhichResult].pcVarModSites[i] > 0)
+               || pOutput[iWhichResult].pcVarModSites[i] > 0)
          {
             bModified = 1;
             break;

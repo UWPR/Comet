@@ -73,22 +73,22 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    strcpy(scan1, "0");
    strcpy(scan2, "0");
 
-    sprintf(szMassLine, "(M+H)+ mass = %0.6f ~ %0.6f (%+d), fragment tol = %0.4f, binoffset = %0.3f",
-             g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
-             g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance,
-             g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState,
-             g_StaticParams.tolerances.dFragmentBinSize,
-             g_StaticParams.tolerances.dFragmentBinStartOffset); 
+   sprintf(szMassLine, "(M+H)+ mass = %0.6f ~ %0.6f (%+d), fragment tol = %0.4f, binoffset = %0.3f",
+            g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
+            g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance,
+            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState,
+            g_StaticParams.tolerances.dFragmentBinSize,
+            g_StaticParams.tolerances.dFragmentBinStartOffset); 
 
-    if (g_StaticParams.massUtility.bMonoMassesParent)
-       sprintf(szMassLine + strlen(szMassLine), ", MONO");
-    else
-       sprintf(szMassLine + strlen(szMassLine), ", AVG");
+   if (g_StaticParams.massUtility.bMonoMassesParent)
+      sprintf(szMassLine + strlen(szMassLine), ", MONO");
+   else
+      sprintf(szMassLine + strlen(szMassLine), ", AVG");
 
-    if (g_StaticParams.massUtility.bMonoMassesFragment)
-       sprintf(szMassLine + strlen(szMassLine), "/MONO");
-    else
-       sprintf(szMassLine + strlen(szMassLine), "/AVG");
+   if (g_StaticParams.massUtility.bMonoMassesFragment)
+      sprintf(szMassLine + strlen(szMassLine), "/MONO");
+   else
+      sprintf(szMassLine + strlen(szMassLine), "/AVG");
 
    if (bDecoySearch)
    {
@@ -585,7 +585,7 @@ void CometWriteOut::PrintIons(int iWhichQuery,
             {
                sprintf(szBuf+strlen(szBuf), "%9.4f", dFragmentIonMass);
 
-							 if(FindSpScore(g_pvQuery.at(iWhichQuery),BIN(dFragmentIonMass)) > FLOAT_ZERO)
+               if(FindSpScore(g_pvQuery.at(iWhichQuery),BIN(dFragmentIonMass)) > FLOAT_ZERO)
                   sprintf(szBuf+strlen(szBuf), "+ ");
                else
                   sprintf(szBuf+strlen(szBuf), "  ");
@@ -600,35 +600,37 @@ void CometWriteOut::PrintIons(int iWhichQuery,
    fprintf(fpout, "\n");
 }
 
+
 float CometWriteOut::FindSpScore(Query *pQuery,
-																 int bin)
+      int bin)
 {
-	int lower;
-	int mid;
-	int upper;
-	int sz=pQuery->iSpScoreData;
+   int lower;
+   int mid;
+   int upper;
+   int sz=pQuery->iSpScoreData;
 
-	mid=sz/2;
-	lower=0;
-	upper=sz;
+   mid=sz/2;
+   lower=0;
+   upper=sz;
 
-	while(pQuery->pSpScoreData[mid].bin!=bin){
-		if(lower>=upper) 
-			return 0.0f;
+   while(pQuery->pSparseSpScoreData[mid].bin!=bin)
+   {
+      if(lower>=upper) 
+         return 0.0f;
 
-		if(bin<pQuery->pSpScoreData[mid].bin)
-		{
-			upper=mid-1;
-			mid=(lower+upper)/2;
-		} 
-		else 
-		{
-			lower=mid+1;
-			mid=(lower+upper)/2;
-		}
+      if(bin<pQuery->pSparseSpScoreData[mid].bin)
+      {
+         upper=mid-1;
+         mid=(lower+upper)/2;
+      } 
+      else 
+      {
+         lower=mid+1;
+         mid=(lower+upper)/2;
+      }
 
-		if(mid==sz) 
-			return 0.0f;
-	}
-	return pQuery->pSpScoreData[mid].fIntensity;
+      if(mid==sz) 
+         return 0.0f;
+   }
+   return pQuery->pSparseSpScoreData[mid].fIntensity;
 }

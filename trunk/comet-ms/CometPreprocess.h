@@ -53,7 +53,6 @@ public:
    static void LoadAndPreprocessSpectra(int iZLine, 
                                         int iFirstScan, 
                                         int iLastScan, 
-                                        int iScanCount, 
                                         int iAnalysisType,
                                         int minNumThreads,
                                         int maxNumThreads);
@@ -77,7 +76,6 @@ private:
    static bool CheckActivationMethodFilter(MSActivation act);
    static bool CheckExit(int iAnalysisType,
                          int iScanNum, 
-                         int iScanCount, 
                          int iTotalScans, 
                          int iLastScan,
                          int iReaderLastScan);
@@ -86,7 +84,6 @@ private:
    static void LoadIons(struct Query *pScoring,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
-   static void Initialize_P(struct msdata *pTempSpData);
    static void MakeCorrData(double *pdTempRawData,
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);

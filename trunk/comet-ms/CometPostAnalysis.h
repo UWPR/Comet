@@ -50,7 +50,6 @@ private:
                           int iSize);
   static int SPQSortFn(const void *a, const void *b);
   static int XcorrQSortFn(const void *a, const void *b);
-  static void AnalyzeEValue(int i);
   static void CalculateEValue(int iWhichQuery, bool bDecoy);
   static void GenerateXcorrDecoys(int iWhichQuery, bool bDecoy);
   static void LinearRegression(int *pHistogram,
@@ -59,11 +58,11 @@ private:
                                int *iMaxCorr,
                                int *iStartCorr,
                                int *iNextCorr);
-	static float FindSpScore(Query *pQuery,
-													 int bin);
-	static int FindFastXcorrIndex(Query *pQuery,
-																int bin,
-																int low);
+  static float FindSpScore(Query *pQuery,
+                           int bin);
+  static int FindFastXcorrIndex(Query *pQuery,
+                                int bin,
+                                int low);
 };
 
 

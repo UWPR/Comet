@@ -24,11 +24,14 @@ CometPostAnalysis::CometPostAnalysis()
 {
 }
 
+
 CometPostAnalysis::~CometPostAnalysis()
 {
 }
 
-void CometPostAnalysis::PostAnalysis(int minNumThreads, int maxNumThreads)
+
+void CometPostAnalysis::PostAnalysis(int minNumThreads,
+                                     int maxNumThreads)
 {
    if (!g_StaticParams.options.bOutputSqtStream)
       printf(" Perform post-search analysis\n");
@@ -57,7 +60,15 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
    // Calculate E-values if necessary.
    if (g_StaticParams.options.bPrintExpectScore)
-      AnalyzeEValue(iQueryIndex);
+   {
+      if (g_pvQuery.at(iQueryIndex)->iDoXcorrCount> 0)
+      {
+         CalculateEValue(iQueryIndex, 0);
+      
+         if (g_StaticParams.options.iDecoySearch == 2)
+            CalculateEValue(iQueryIndex, 1);
+      }
+   }
 
    delete pThreadData;
    pThreadData = NULL;
@@ -216,14 +227,19 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                if ( !(dFragmentIonMass <= FLOAT_ZERO))
                {
                   int iFragmentIonMass = BIN(dFragmentIonMass);
-									float fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
+                  float fSpScore;
 
-									if (fSpScore > FLOAT_ZERO)
+                  if (g_StaticParams.options.bSparseMatrix)
+                     fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
+                  else
+                     fSpScore = g_pvQuery.at(iWhichQuery)->pfSpScoreData[iFragmentIonMass];
+
+                  if (fSpScore > FLOAT_ZERO)
                   {
                      iMatchedFragmentIonCt++;
                      
                      // Simple sum intensity.
-										 dTmpIntenMatch += fSpScore;
+                     dTmpIntenMatch += fSpScore;
 
                      // Increase score for consecutive fragment ion series matches.
                      if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
@@ -235,7 +251,6 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   {
                      ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
                   }
-
                }
             }
          }
@@ -249,7 +264,8 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 }
 
 
-int CometPostAnalysis::SPQSortFn(const void *a, const void *b)
+int CometPostAnalysis::SPQSortFn(const void *a,
+                                 const void *b)
 {
    struct Results *ia = (struct Results *)a;
    struct Results *ib = (struct Results *)b;
@@ -263,7 +279,8 @@ int CometPostAnalysis::SPQSortFn(const void *a, const void *b)
 }
 
 
-int CometPostAnalysis::XcorrQSortFn(const void *a, const void *b)
+int CometPostAnalysis::XcorrQSortFn(const void *a,
+                                    const void *b)
 {
    struct Results *ia = (struct Results *)a;
    struct Results *ib = (struct Results *)b;
@@ -277,19 +294,8 @@ int CometPostAnalysis::XcorrQSortFn(const void *a, const void *b)
 }
 
 
-void CometPostAnalysis::AnalyzeEValue(int i)
-{
-   if (g_pvQuery.at(i)->iDoXcorrCount> 0)
-   {
-      CalculateEValue(i, 0);
-      
-      if (g_StaticParams.options.iDecoySearch == 2)
-         CalculateEValue(i, 1);
-   }
-}
-
-
-void CometPostAnalysis::CalculateEValue(int iWhichQuery, bool bDecoy)
+void CometPostAnalysis::CalculateEValue(int iWhichQuery,
+                                        bool bDecoy)
 {
    int i;
    int *piHistogram;
@@ -316,7 +322,7 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery, bool bDecoy)
       GenerateXcorrDecoys(iWhichQuery, bDecoy);
 
    LinearRegression(piHistogram, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
-	
+
    if (bDecoy)
    {
       iXcorrCount = g_pvQuery.at(iWhichQuery)->iDoDecoyXcorrCount;
@@ -357,7 +363,7 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery, bool bDecoy)
             dExpect = 999.0;
 
          // Sanity constraints - no low e-values allowed for xcorr < 1.2.
-         // I'll admin xcorr < 1.2 is an arbitrary cutoff but something is needed.
+         // I'll admit xcorr < 1.2 is an arbitrary cutoff but something is needed.
          if (dExpect < 1.0)
          {
             if (bDecoy)
@@ -519,8 +525,8 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
    int ii;
    int j;
    int k;
-	 int iFastXcorrIndex;
-	 int iLastFastXcorrIndex;
+   int iFastXcorrIndex;
+   int iLastFastXcorrIndex;
    int iMaxFragCharge;
    int ctCharge;
    double dBion;
@@ -590,7 +596,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
          for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
             int iWhichIonSeries = g_StaticParams.ionInformation.piSelectedIonSeries[ii];
-						iLastFastXcorrIndex=0;
+            iLastFastXcorrIndex=0;
             for (k=0; k<iLenPeptide; k++)
             {
                int iPos = iLenPeptide - k - 1;
@@ -621,38 +627,60 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                      break;
                }
 
-							 while (dFragmentIonMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass)
-							 {
-									iLastFastXcorrIndex=0;
+               while (dFragmentIonMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass)
+               {
+                  iLastFastXcorrIndex=0;
                   dFragmentIonMass -= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass;
-							 }
+               }
 
                dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
                iFragmentIonMass = BIN(dFragmentIonMass);
 
-							 if (iFragmentIonMass < g_pvQuery.at(iWhichQuery)->pFastXcorrData[g_pvQuery.at(iWhichQuery)->iFastXcorrData-1].bin && iFragmentIonMass >= 0)
-							 {
-													 
-								 iFastXcorrIndex = FindFastXcorrIndex(g_pvQuery.at(iWhichQuery),iFragmentIonMass,iLastFastXcorrIndex);
-								 dFastXcorr += g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex].fIntensity;
-								 if(iFastXcorrIndex>0 && iFragmentIonMass==g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex].bin)
-									 dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex-1].fIntensity;
-								 else
-									 dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pFastXcorrData[iFastXcorrIndex].fIntensity;
-								 iLastFastXcorrIndex=iFastXcorrIndex;
-									 
-							 }
-							 else
-							 {
-								 printf(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
-                        dFragmentIonMass, 
-                        iFragmentIonMass,
-                        g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize, 
-                        g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
-                        g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-                        ctCharge);
-                  exit(1);
-							 }
+               if (g_StaticParams.options.bSparseMatrix)
+               {
+                  if (iFragmentIonMass < g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[g_pvQuery.at(iWhichQuery)->iFastXcorrData-1].bin && iFragmentIonMass >= 0)
+                  {
+                     iFastXcorrIndex = FindFastXcorrIndex(g_pvQuery.at(iWhichQuery),iFragmentIonMass,iLastFastXcorrIndex);
+                     dFastXcorr += g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
+
+                     if (iFastXcorrIndex>0 && iFragmentIonMass==g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].bin)
+                        dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex-1].fIntensity;
+                     else
+                        dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
+
+                     iLastFastXcorrIndex=iFastXcorrIndex;
+                  }
+                  else
+                  {
+                     printf(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
+                           dFragmentIonMass, 
+                           iFragmentIonMass,
+                           g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize, 
+                           g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
+                           g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
+                           ctCharge);
+                     exit(1);
+                  }
+               }
+               else
+               {
+                  if (iFragmentIonMass < g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
+                  {
+                     dFastXcorr += g_pvQuery.at(iWhichQuery)->pfFastXcorrData[iFragmentIonMass];
+                     dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pfFastXcorrData[iFragmentIonMass-1];
+                  }
+                  else
+                  {
+                     printf(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
+                           dFragmentIonMass,
+                           iFragmentIonMass,
+                           g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize,
+                           g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
+                           g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
+                           ctCharge);
+                     exit(1);
+                  }
+               }
 
                if (dBion > dPepMass)
                   dBion -= dPepMass;
@@ -673,73 +701,76 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
       j++;  // Go to next candidate peptide.
    }
-
 }
+
 
 float CometPostAnalysis::FindSpScore(Query *pQuery,
-																		 int bin)
+                                     int bin)
 {
-	int lower;
-	int mid;
-	int upper;
-	int sz=pQuery->iSpScoreData;
+   int lower;
+   int mid;
+   int upper;
+   int sz=pQuery->iSpScoreData;
 
-	mid=sz/2;
-	lower=0;
-	upper=sz;
+   mid=sz/2;
+   lower=0;
+   upper=sz;
 
-	while(pQuery->pSpScoreData[mid].bin!=bin){
-		if(lower>=upper) 
-			return 0.0f;
+   while(pQuery->pSparseSpScoreData[mid].bin!=bin)
+   {
+      if(lower>=upper) 
+         return 0.0f;
 
-		if(bin<pQuery->pSpScoreData[mid].bin)
-		{
-			upper=mid-1;
-			mid=(lower+upper)/2;
-		} 
-		else 
-		{
-			lower=mid+1;
-			mid=(lower+upper)/2;
-		}
+      if(bin<pQuery->pSparseSpScoreData[mid].bin)
+      {
+         upper=mid-1;
+         mid=(lower+upper)/2;
+      } 
+      else 
+      {
+         lower=mid+1;
+         mid=(lower+upper)/2;
+      }
 
-		if(mid==sz) 
-			return 0.0f;
-	}
-	return pQuery->pSpScoreData[mid].fIntensity;
+      if(mid==sz) 
+         return 0.0f;
+   }
+   return pQuery->pSparseSpScoreData[mid].fIntensity;
 }
 
+
 int CometPostAnalysis::FindFastXcorrIndex(Query *pQuery,
-																					int bin,
-																					int low)
+                                          int bin,
+                                          int low)
 {
-	int lower=low;
-	int upper=pQuery->iFastXcorrData;
-	int sz=upper-low;
-	int mid=sz/2+low;
-	
-	while(pQuery->pFastXcorrData[mid].bin!=bin){
-		if(lower>=upper) 
-		{
-			if(pQuery->pFastXcorrData[mid].bin<bin)
-				return mid;
-			else
-				return mid-1;
-		}
+   int lower=low;
+   int upper=pQuery->iFastXcorrData;
+   int sz=upper-low;
+   int mid=sz/2+low;
+   
+   while(pQuery->pSparseFastXcorrData[mid].bin!=bin)
+   {
+      if(lower>=upper) 
+      {
+         if(pQuery->pSparseFastXcorrData[mid].bin<bin)
+            return mid;
+         else
+            return mid-1;
+      }
 
-		if(bin<pQuery->pFastXcorrData[mid].bin)
-		{
-			upper=mid-1;
-			mid=(lower+upper)/2;
-		} 
-		else 
-		{
-			lower=mid+1;
-			mid=(lower+upper)/2;
-		}
+      if(bin<pQuery->pSparseFastXcorrData[mid].bin)
+      {
+         upper=mid-1;
+         mid=(lower+upper)/2;
+      } 
+      else 
+      {
+         lower=mid+1;
+         mid=(lower+upper)/2;
+      }
 
-		if(mid==pQuery->iFastXcorrData)
-			return mid-1;
-	}
-	return mid;
+      if(mid==pQuery->iFastXcorrData)
+         return mid-1;
+   }
+   return mid;
 }

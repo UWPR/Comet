@@ -44,7 +44,6 @@ void ProcessCmdLine(int argc,
                     int *iFirstScan, 
                     int *iLastScan, 
                     int *iZLine, 
-                    int *iScanCount, 
                     int *iAnalysisType,
                     char *szParamsFile);
 void SetOptions(char *arg,
@@ -59,12 +58,8 @@ void ParseCmdLine(char *cmd,
                   int *iFirst,
                   int *iLast,
                   int *Z,
-                  int *iCount,
                   int *iType,
                   char *pszFileName);
-
-// For MSToolkit and compressed file support.
-MSFileFormat GetMstFileType(char* c);
 
 
 bool compareByPeptideMass(Query const* a, Query const* b)
@@ -78,13 +73,11 @@ int main(int argc, char *argv[])
    int iZLine = 0;
    int iFirstScan = 0;             // First scan to search specified by user.
    int iLastScan = 0;              // Last scan to search specified by user.
-   int iScanCount = 0;
    int iAnalysisType = AnalysisType_Unknown; // 1=dta (retired),
                                              // 2=specific scan,
                                              // 3=specific scan + charge,
                                              // 4=scan range,
-                                             // 5=start scan + count,
-                                             // 6=entire file
+                                             // 5=entire file
    char szParamsFile[SIZE_FILE];
 
    if (argc < 2) 
@@ -98,7 +91,7 @@ int main(int argc, char *argv[])
 
    // Process command line and read comet.params here.
    ProcessCmdLine(argc, argv, &iFirstScan, &iLastScan, &iZLine,
-         &iScanCount, &iAnalysisType, szParamsFile);
+         &iAnalysisType, szParamsFile);
 
    if (!g_StaticParams.options.bOutputSqtStream
          && !g_StaticParams.options.bOutputSqtFile
@@ -143,14 +136,6 @@ int main(int argc, char *argv[])
 
    // Initialize the mutexes we'll use to protect global data.
    Threading::CreateMutex(&g_pvQueryMutex);
-   
-   // Load and preprocess all the spectra.
-   if (!g_StaticParams.options.bOutputSqtStream)
-      printf(" Load and process input spectra\n");
-
-   CometPreprocess::LoadAndPreprocessSpectra(iZLine, 
-         iFirstScan, iLastScan, iScanCount, iAnalysisType,
-         g_StaticParams.options.iNumThreads,  g_StaticParams.options.iNumThreads);
 
    if (g_StaticParams.options.bOutputSqtFile)
    {
@@ -208,62 +193,76 @@ int main(int argc, char *argv[])
       }
    }
 
-   // Allocate memory to store results for each query spectrum.
-   if (!g_StaticParams.options.bOutputSqtStream)
-      printf(" Allocate memory to store results\n");
+   int iTotalSpectraSearched = 0;
+ 
 
-   AllocateResultsMem();
+   while (1) // Loop through iMaxSpectraPerSearch
+   {
+      // Load and preprocess all the spectra.
+      if (!g_StaticParams.options.bOutputSqtStream)
+         printf(" Load and process input spectra\n");
 
-   if (g_pvQuery.empty())
+      CometPreprocess::LoadAndPreprocessSpectra(iZLine, 
+            iFirstScan, iLastScan, iAnalysisType,
+            g_StaticParams.options.iNumThreads,  g_StaticParams.options.iNumThreads);
+
+      if (g_pvQuery.empty())
+         break; // no search to run
+      else
+         iTotalSpectraSearched += g_pvQuery.size();
+
+      // Allocate memory to store results for each query spectrum.
+      if (!g_StaticParams.options.bOutputSqtStream)
+         printf(" Allocate memory to store results\n");
+
+      AllocateResultsMem();
+
+      if (!g_StaticParams.options.bOutputSqtStream)
+         printf(" Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
+
+      // Sort g_pvQuery vector by dExpPepMass.
+      std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
+
+      g_MassRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
+      g_MassRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
+
+      // Now that spectra are loaded to memory and sorted, do search.
+      CometSearch::RunSearch(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
+
+      // Sort each entry by xcorr, calculate E-values, etc.
+      CometPostAnalysis::PostAnalysis(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
+      
+      CalcRunTime(tStartTime);
+
+      if (!g_StaticParams.options.bOutputSqtStream)
+         printf(" Write output\n");
+
+      if (g_StaticParams.options.bOutputOutFiles)
+         CometWriteOut::WriteOut();
+
+      if (g_StaticParams.options.bOutputPepXMLFile)
+         CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML, szParamsFile);
+
+      // Write SQT last as I destroy the g_StaticParams.szMod string during that process
+      if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
+         CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
+
+      // Deleting each Query object in the vector calls its destructor, which 
+      // frees the spectral memory (see definition for Query in CometData.h).
+      for (int i=0; i<(int)g_pvQuery.size(); i++)
+         delete g_pvQuery.at(i);
+
+      g_pvQuery.clear();
+
+//    iFirstScan = iLastScan + 1;
+      break;
+   }
+
+   if (iTotalSpectraSearched == 0)
    {
       printf(" Warning - no searches to run.\n\n");
-      exit(1);
    }
 
-   if (!g_StaticParams.options.bOutputSqtStream)
-      printf(" Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
-
-   // Sort g_pvQuery vector by dExpPepMass.
-   std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
-
-   g_MassRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
-   g_MassRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
-
-   // Now that spectra are loaded to memory and sorted, do search.
-   CometSearch::RunSearch(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
-
-   // Sort each entry by xcorr, calculate E-values, etc.
-   CometPostAnalysis::PostAnalysis(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
-   
-   CalcRunTime(tStartTime);
-
-   if (!g_StaticParams.options.bOutputSqtStream)
-      printf(" Write output\n");
-
-   if (g_StaticParams.options.bOutputOutFiles)
-   {
-      CometWriteOut::WriteOut();
-   }
-
-   if (g_StaticParams.options.bOutputPepXMLFile)
-   {
-      CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML, szParamsFile);
-   }
-
-   // Write SQT last as I destroy the g_StaticParams.szMod string during that process
-   if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
-   {
-      CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
-   }
-
-
-   // Deleting each Query object in the vector calls its destructor, which 
-   // frees the spectral memory (see definition for Query in CometData.h).
-   for (int i=0; i<(int)g_pvQuery.size(); i++)
-      delete g_pvQuery.at(i);
-
-   g_pvQuery.clear();
-   
    // Destroy the mutex we used to protect g_pvQuery.
    Threading::DestroyMutex(g_pvQueryMutex);
  
@@ -294,11 +293,11 @@ void AllocateResultsMem(void)
          fprintf(stderr, " Error malloc(_pResults[])\n");
          exit(1);
       }
-	  
-	  //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors. Claims it is possible to
+
+      //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors. Claims it is possible to
       //make conditional jump or move on this uninitialized value in CometSearch.cpp:1343
       for(int xx=0;xx<g_StaticParams.options.iNumStored;xx++)
-        pQuery->_pResults[xx].iLenPeptide=0;
+         pQuery->_pResults[xx].iLenPeptide=0;
 
       pQuery->iDoXcorrCount = 0;
       pQuery->siLowestSpScoreIndex = 0;
@@ -313,10 +312,10 @@ void AllocateResultsMem(void)
             fprintf(stderr, " Error malloc(_pDecoys[])\n");
             exit(1);
          }
-		 
-		 //MH: same logic as my comment above
-         for(int x=0;x<g_StaticParams.options.iNumStored;x++)
-          pQuery->_pDecoys[x].iLenPeptide=0;
+
+         //MH: same logic as my comment above
+         for(int xx=0;xx<g_StaticParams.options.iNumStored;xx++)
+            pQuery->_pDecoys[xx].iLenPeptide=0;
 
          pQuery->iDoDecoyXcorrCount = 0;
          pQuery->siLowestDecoySpScoreIndex = 0;
@@ -399,7 +398,6 @@ void ProcessCmdLine(int argc,
                     int *iFirstScan, 
                     int *iLastScan, 
                     int *iZLine, 
-                    int *iScanCount, 
                     int *iAnalysisType,
                     char *szParamsFile)
 {
@@ -466,7 +464,6 @@ void ProcessCmdLine(int argc,
              iFirstScan, 
              iLastScan, 
              iZLine, 
-             iScanCount, 
              iAnalysisType, 
              szFName);
 
@@ -799,6 +796,10 @@ void LoadParameters(char *pszParamsFile)
          else if (!strcmp(szParamName, "use_NL_ions"))
          {
             sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.bUseNeutralLoss));
+         }
+         else if (!strcmp(szParamName, "use_sparse_matrix"))
+         {
+            sscanf(szParamVal, "%d", &(g_StaticParams.options.bSparseMatrix));
          }
          else if (!strcmp(szParamName, "variable_mod1"))
          {
@@ -1356,7 +1357,7 @@ void LoadParameters(char *pszParamsFile)
    for (i=0; i<VMODS; i++)
    {
       if ((g_StaticParams.variableModParameters.varModList[i].dVarModMass != 0.0) &&
-          (g_StaticParams.variableModParameters.varModList[i].szVarModChar[0] != '\0'))
+          (g_StaticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
          sprintf(g_StaticParams.szMod + strlen(g_StaticParams.szMod), "(%s%c %+0.6f) ", 
                g_StaticParams.variableModParameters.varModList[i].szVarModChar,
@@ -1531,53 +1532,11 @@ void LoadParameters(char *pszParamsFile)
 } // LoadParameters
 
 
-//-->MH
-// Reads a file name and assumes type based on usage of our suggested file extensions.
-MSFileFormat GetMstFileType(char* c)
-{
-   char file[256];
-   char ext[256];
-   char *tok;
-
-   strcpy(file,c);
-   tok=strtok(file,".\n");
-
-   while(tok!=NULL)
-   {
-      strcpy(ext,tok);
-      tok=strtok(NULL,".\n");
-   }
-
-   if (strcmp(ext,"ms1")==0 || strcmp(ext,"MS1")==0)
-      return ms1;
-   if (strcmp(ext,"ms2")==0 || strcmp(ext,"MS2")==0)
-      return ms2;
-   if (strcmp(ext,"bms1")==0 || strcmp(ext,"BMS1")==0)
-      return bms1;
-   if (strcmp(ext,"bms2")==0 || strcmp(ext,"BMS2")==0)
-      return bms2;
-   if (strcmp(ext,"cms1")==0 || strcmp(ext,"CMS1")==0)
-      return cms1;
-   if (strcmp(ext,"cms2")==0 || strcmp(ext,"CMS2")==0)
-      return cms2;
-   if (strcmp(ext,"zs")==0 || strcmp(ext,"ZS")==0)
-      return zs;
-   if (strcmp(ext,"uzs")==0 || strcmp(ext,"UZS")==0)
-      return uzs;
-   if (strcmp(ext,"mzXML")==0 || strcmp(ext,"mzML")==0)
-      return mzXML;
-
-   return dunno;
-}
-//-->endMH
-
-
 // Parses the command line and determines the type of analysis to perform.
 void ParseCmdLine(char *cmd,
                   int *iFirst,
                   int *iLast,
                   int *Z,
-                  int *iCount,
                   int *iType,
                   char *pszFileName)
 {
@@ -1629,11 +1588,11 @@ void ParseCmdLine(char *cmd,
    }
    else if (strchr(scan,'+') != NULL)
    {
-      *iType = AnalysisType_StartScanAndCount;
+      *iType = AnalysisType_SpecificScanRange;
       tok = strtok(scan,"+\n");
       *iFirst = atoi(tok);
       tok = strtok(NULL,"+\n");
-      *iCount = atoi(tok);
+      *iLast = *iFirst + atoi(tok);
    }
    else
    {
@@ -1711,6 +1670,7 @@ use_X_ions = 0\n\
 use_Y_ions = 1\n\
 use_Z_ions = 0\n\
 use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
+use_sparse_matrix = 0\n\
 \n\
 #\n\
 # output\n\
