@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
       if (iAnalysisType == AnalysisType_EntireFile)
          sprintf(szOutputSQT, "%s.sqt", g_StaticParams.inputFile.szBaseName);
       else
-         sprintf(szOutputSQT, "%s.sqt:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+         sprintf(szOutputSQT, "%s.%d-%d.sqt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
       if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
       {
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
          if (iAnalysisType == AnalysisType_EntireFile)
             sprintf(szOutputDecoySQT, "%s.decoy.sqt", g_StaticParams.inputFile.szBaseName);
          else
-            sprintf(szOutputDecoySQT, "%s.decoy.sqt:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputDecoySQT, "%s.%d-%d.decoy.sqt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
          if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
          {
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
       if (iAnalysisType == AnalysisType_EntireFile)
          sprintf(szOutputPepXML, "%s.pep.xml", g_StaticParams.inputFile.szBaseName);
       else
-         sprintf(szOutputPepXML, "%s.pep.xml:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+         sprintf(szOutputPepXML, "%s.%d-%d.pep.xml", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
       if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
       {
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
          if (iAnalysisType == AnalysisType_EntireFile)
             sprintf(szOutputDecoyPepXML, "%s.decoy.pep.xml", g_StaticParams.inputFile.szBaseName);
          else
-            sprintf(szOutputDecoyPepXML, "%s.decoy.pep.xml:%d-%d", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputDecoyPepXML, "%s.%d-%d.decoy.pep.xml", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
          if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
          {
