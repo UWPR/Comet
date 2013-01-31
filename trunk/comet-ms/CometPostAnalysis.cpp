@@ -526,7 +526,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
    int j;
    int k;
    int iFastXcorrIndex;
-// int iLastFastXcorrIndex;
+   int iLastFastXcorrIndex;
    int iMaxFragCharge;
    int ctCharge;
    double dBion;
@@ -596,7 +596,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
          for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
             int iWhichIonSeries = g_StaticParams.ionInformation.piSelectedIonSeries[ii];
-//          iLastFastXcorrIndex=0;
+            iLastFastXcorrIndex=0;
             for (k=0; k<iLenPeptide; k++)
             {
                int iPos = iLenPeptide - k - 1;
@@ -629,7 +629,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
                while (dFragmentIonMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass)
                {
-//                iLastFastXcorrIndex=0;
+                  iLastFastXcorrIndex=0;
                   dFragmentIonMass -= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass;
                }
 
@@ -640,8 +640,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                {
                   if (iFragmentIonMass < g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[g_pvQuery.at(iWhichQuery)->iFastXcorrData-1].bin && iFragmentIonMass >= 0)
                   {
-//                   iFastXcorrIndex = FindFastXcorrIndex(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iLastFastXcorrIndex);
-                     iFastXcorrIndex = FindFastXcorrIndex(g_pvQuery.at(iWhichQuery), iFragmentIonMass, 0);
+                     iFastXcorrIndex = FindFastXcorrIndex(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iLastFastXcorrIndex);
                      dFastXcorr += g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
 
                      if (iFastXcorrIndex>0 && iFragmentIonMass==g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].bin)
@@ -649,7 +648,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                      else
                         dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
 
-//                   iLastFastXcorrIndex=iFastXcorrIndex;
+                     iLastFastXcorrIndex=iFastXcorrIndex;
                   }
                   else
                   {
@@ -684,9 +683,15 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                }
 
                if (dBion > dPepMass)
+               {
                   dBion -= dPepMass;
+                  iLastFastXcorrIndex=0;
+               }
                if (dYion > dPepMass)
+               {
                   dYion -= dPepMass;
+                  iLastFastXcorrIndex=0;
+               }
             }
          }
       }
