@@ -98,14 +98,14 @@ int main(int argc, char *argv[])
          && !g_StaticParams.options.bOutputPepXMLFile
          && !g_StaticParams.options.bOutputOutFiles)
    {
-      printf(" Comet version \"%s\"\n", version);
+      printf(" Comet version \"%s\"\n", comet_version);
       printf(" Please specify at least one output format.\n\n");
       exit(1);
    }
 
    if (!g_StaticParams.options.bOutputSqtStream)
    {
-      printf(" Comet version \"%s\"\n", version);
+      printf(" Comet version \"%s\"\n", comet_version);
       printf(" Search start:  %s\n", g_StaticParams._dtInfoStart.szDate);
    }
 
@@ -351,7 +351,7 @@ void AllocateResultsMem(void)
 void Usage(int failure, char *pszCmd)
 {
    printf("\n");
-   printf(" Comet version \"%s\"\n %s\n", version, copyright);
+   printf(" Comet version \"%s\"\n %s\n", comet_version, copyright);
    printf("\n");
    printf(" Comet usage:  %s [options] <input_files>[:range]\n", pszCmd);
    printf("\n");
@@ -432,7 +432,7 @@ void ProcessCmdLine(int argc,
    if (iStartInputFile == argc)
    {
       printf("\n");
-      printf(" Comet version %s\n %s\n", version, copyright);
+      printf(" Comet version %s\n %s\n", comet_version, copyright);
       printf("\n");
       printf(" Error - nothing to do.\n\n");
       exit(1);
@@ -704,9 +704,11 @@ void LoadParameters(char *pszParamsFile)
          iSampleEnzymeNumber;
    char  szParamBuf[SIZE_BUF],
          szParamName[128],
-         szParamVal[128];
+         szParamVal[128],
+         szVersion[128];
    FILE  *fp;
-   bool  bCurrentParamsFile = 0; // Track a parameter to make sure present.
+   bool  bCurrentParamsFile = 0, // Track a parameter to make sure present.
+         bValidParamsFile;
    char *pStr;
 
    for (i=0; i<128; i++)
@@ -718,6 +720,38 @@ void LoadParameters(char *pszParamsFile)
       exit(1);
    }
 
+   // validate not using incompatible params file by checking "# comet_version" in first line of file
+   strcpy(szVersion, "unknown");
+   bValidParamsFile = false;
+   while (!feof(fp))
+   {
+      fgets(szParamBuf, SIZE_BUF, fp);
+      if (!strncmp(szParamBuf, "# comet_version ", 16))
+      {
+         sscanf(szParamBuf, "%*s %*s %s", szVersion);
+         // Major version number must match to current binary
+         if (strstr(comet_version, szVersion))
+         {
+            bValidParamsFile = true;
+            break;
+         }
+      }
+   }
+
+   if (!bValidParamsFile)
+   {
+      printf("\n");
+      printf(" Comet version is %s\n", comet_version);
+      printf(" The comet.params file is from version %s\n", szVersion);
+      printf(" Please update your comet.params file.  You can generate\n");
+      printf(" a new parameters file using \"comet -p\"\n");
+      printf("\n");
+      exit(1);
+   }
+
+   rewind(fp);
+
+   // now parse the parameter entries
    while (!feof(fp))
    {
       fgets(szParamBuf, SIZE_BUF, fp);
@@ -1254,10 +1288,9 @@ void LoadParameters(char *pszParamsFile)
    if (g_StaticParams.tolerances.dFragmentBinSize == 0.0)
       g_StaticParams.tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
 
-   // Set dBinWidth to its inverse in order to use a multiply instead of divide in BIN macro.
-   g_StaticParams.dBinWidth = 1.0 /g_StaticParams.tolerances.dFragmentBinSize;
-   g_StaticParams.dBinWidthMinusOffset = g_StaticParams.tolerances.dFragmentBinSize
-      - g_StaticParams.tolerances.dFragmentBinStartOffset;
+   // Set dInverseBinWidth to its inverse in order to use a multiply instead of divide in BIN macro.
+   g_StaticParams.dInverseBinWidth = 1.0 /g_StaticParams.tolerances.dFragmentBinSize;
+   g_StaticParams.dOneMinusBinOffset = 1.0 - g_StaticParams.tolerances.dFragmentBinStartOffset;
  
    // Set masses to either average or monoisotopic.
    CometMassSpecUtils::AssignMass(g_StaticParams.massUtility.pdAAMassParent, 
@@ -1458,10 +1491,9 @@ void LoadParameters(char *pszParamsFile)
       exit(1);
    }
 
-   if (g_StaticParams.tolerances.dFragmentBinSize < g_StaticParams.tolerances.dFragmentBinStartOffset)
+   if (g_StaticParams.tolerances.dFragmentBinStartOffset < 0.0 || g_StaticParams.tolerances.dFragmentBinStartOffset >1.0)
    {
-      fprintf(stderr, " Error - tolerance %f < offset %f\n",
-            g_StaticParams.tolerances.dFragmentBinSize,
+      fprintf(stderr, " Error - bin offset %f must between 0.0 and 1.0\n",
             g_StaticParams.tolerances.dFragmentBinStartOffset);
       exit(1);
    }
@@ -1614,9 +1646,12 @@ void PrintParams()
       exit(1);
    }
 
-   fprintf(fp, "# Comet MS/MS search engine parameters file.\n\
-# Everything following the '#' symbol is treated as a comment.\n\
-\n\
+   fprintf(fp, "# comet_version %s\n\
+# Comet MS/MS search engine parameters file.\n\
+# Everything following the '#' symbol is treated as a comment.\n", comet_version);
+
+   fprintf(fp,
+"\n\
 database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=concatenated search, 2=separate search\n\
 \n\
@@ -1657,11 +1692,11 @@ max_variable_mods_in_peptide = 5\n\
 #\n\
 # fragment ions\n\
 #\n\
-# ion trap ms/ms:  0.36 tolerance, 0.11 offset (mono masses)\n\
-# high res ms/ms:  0.01 tolerance, 0.00 offset (mono masses)\n\
+# ion trap ms/ms:  0.36 tolerance, 0.3 offset (mono masses)\n\
+# high res ms/ms:  0.01 tolerance, 0.0 offset (mono masses)\n\
 #\n\
 fragment_bin_tol = 0.36                # binning to use on fragment ions\n\
-fragment_bin_offset = 0.11             # offset position to start the binning\n\
+fragment_bin_offset = 0.3              # offset position to start the binning (0.0 to 1.0)\n\
 theoretical_fragment_ions = 0          # 0=default peak shape, 1=M peak only\n\
 use_A_ions = 0\n\
 use_B_ions = 1\n\
@@ -1825,7 +1860,7 @@ void PRINT_SQT_HEADER(FILE *fpout,
    FILE *fp;
 
    fprintf(fpout, "H\tSQTGenerator Comet\n");
-   fprintf(fpout, "H\tCometVersion\t%s\n", version);
+   fprintf(fpout, "H\tCometVersion\t%s\n", comet_version);
    fprintf(fpout, "H\tStartTime %s\n", g_StaticParams._dtInfoStart.szDate);
    time(&tTime);
    strftime(g_StaticParams._dtInfoStart.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tTime));

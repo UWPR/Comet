@@ -335,8 +335,8 @@ struct StaticParams
    PrecalcMasses   precalcMasses;
    EnzymeInfo      enzymeInformation;
    MassUtil        massUtility;
-   double          dBinWidth;
-   double          dBinWidthMinusOffset;  // this is used in BIN() many times so calculate once
+   double          dInverseBinWidth;    // this is used in BIN() many times so use inverse binWidth to do multiply vs. divide
+   double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
    PeaksInfo       peaksInformation;
    IonInfo         ionInformation;
 };

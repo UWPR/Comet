@@ -605,7 +605,7 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          Query *pScoring = new Query();
 
          pScoring->_pepMassInfo.dExpPepMass = dMass;
-         pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + 100.0) * g_StaticParams.dBinWidth);
+         pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + 100.0) * g_StaticParams.dInverseBinWidth);
          pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
          pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
          pScoring->_spectrumInfoInternal.dRTime = 60.0*spec.getRTime();;

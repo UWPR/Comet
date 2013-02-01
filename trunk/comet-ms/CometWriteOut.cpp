@@ -148,7 +148,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    sprintf(szBuf, "\n");
    sprintf(szBuf+strlen(szBuf), " %s\n", szOutput);
-   sprintf(szBuf+strlen(szBuf), " Comet version %s\n", version);
+   sprintf(szBuf+strlen(szBuf), " Comet version %s\n", comet_version);
    sprintf(szBuf+strlen(szBuf), " %s\n", copyright);
    sprintf(szBuf+strlen(szBuf), " %s\n", g_StaticParams.szTimeBuf);
    sprintf(szBuf+strlen(szBuf), " %s\n", szMassLine);

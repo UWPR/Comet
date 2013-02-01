@@ -43,10 +43,11 @@ using namespace std;
 #include <vector>
 
 
-#define version   "201?.?? rev. ?"
+#define comet_version   "2013.?? rev. ?"
 #define copyright "(c) University of Washington"
 
-// NOTE: dBinWidth is inverse of the input value in order to use multiply instead of divide here
-#define BIN(dMass) ((int)((dMass + g_StaticParams.dBinWidthMinusOffset)*g_StaticParams.dBinWidth))
+// Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
+// now between 0.0 and 1.0 and scales to the binWidth.
+#define BIN(dMass) (int)(dMass*g_StaticParams.dInverseBinWidth + g_StaticParams.dOneMinusBinOffset)
 
 #endif // _COMMON_H_
