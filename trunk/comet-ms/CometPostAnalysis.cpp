@@ -145,6 +145,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
    double pdAAreverse[MAX_PEPTIDE_LEN];
    IonSeriesStruct ionSeries[9];
 
+
    for (i=0; i<iSize; i++)
    {
       int  ii,
@@ -158,6 +159,10 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
       int iMatchedFragmentIonCt = 0;
       int iMaxFragCharge;
+
+      // if no variable mods are used in search, clear pcVarModSites here
+      if (!g_StaticParams.variableModParameters.bVarModSearch)
+         memset(pOutput[i].pcVarModSites, 0, sizeof(char)*MAX_PEPTIDE_LEN_P2);
 
       iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
 
