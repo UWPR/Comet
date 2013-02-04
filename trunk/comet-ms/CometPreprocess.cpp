@@ -165,11 +165,6 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
    int j;
    double *pdTempRawData;
    double *pdTmpFastXcorrData;
-/*
-   float *pfSpScoreData;
-   float *pfFastXcorrData;
-   float *pfFastXcorrDataNL;
-*/
    struct msdata pTempSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
 
@@ -662,11 +657,21 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
          && !g_StaticParams.options.bOutputPepXMLFile)
    {
       char szOutputFileName[SIZE_FILE];
+      char *pStr;
       FILE *fpcheck;
+
+#ifdef _WIN32
+   if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '\\')) == NULL)
+#else
+   if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '/')) == NULL)
+#endif
+      pStr = g_StaticParams.inputFile.szBaseName;
+   else
+      *pStr++;
 
       sprintf(szOutputFileName, "%s/%s.%.5d.%.5d.%d.out",
             g_StaticParams.inputFile.szBaseName,
-            g_StaticParams.inputFile.szBaseName,
+            pStr,
             iScanNum,
             iScanNum,
             iCharge);

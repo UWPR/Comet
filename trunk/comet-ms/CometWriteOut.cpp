@@ -69,6 +69,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
         scan1[32],
         scan2[32];
    FILE *fpout;
+   char *pStr;
 
    strcpy(scan1, "0");
    strcpy(scan2, "0");
@@ -90,11 +91,20 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    else
       sprintf(szMassLine + strlen(szMassLine), "/AVG");
 
+#ifdef _WIN32
+    if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '\\')) == NULL)
+#else
+    if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '/')) == NULL)
+#endif
+       pStr = g_StaticParams.inputFile.szBaseName;
+    else
+       *pStr++;  // skip separation character
+
    if (bDecoySearch)
    {
       sprintf(szOutput, "%s_decoy/%s.%.5d.%.5d.%d.out",
-            g_StaticParams.inputFile.szBaseName, 
             g_StaticParams.inputFile.szBaseName,
+            pStr,
             g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
             g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
             g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
@@ -102,8 +112,8 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    else
    {
       sprintf(szOutput, "%s/%s.%.5d.%.5d.%d.out",
-            g_StaticParams.inputFile.szBaseName, 
             g_StaticParams.inputFile.szBaseName,
+            pStr,
             g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
             g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
             g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
@@ -147,7 +157,11 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    }
 
    sprintf(szBuf, "\n");
-   sprintf(szBuf+strlen(szBuf), " %s\n", szOutput);
+   sprintf(szBuf+strlen(szBuf), " %s.%.5d.%.5d.%d.out\n",
+         pStr,
+         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
+         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
+         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
    sprintf(szBuf+strlen(szBuf), " Comet version %s\n", comet_version);
    sprintf(szBuf+strlen(szBuf), " %s\n", copyright);
    sprintf(szBuf+strlen(szBuf), " %s\n", g_StaticParams.szTimeBuf);

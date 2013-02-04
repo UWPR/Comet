@@ -195,7 +195,6 @@ int main(int argc, char *argv[])
 
    int iTotalSpectraSearched = 0;
  
-
    while (1) // Loop through iMaxSpectraPerSearch
    {
       // Load and preprocess all the spectra.
@@ -231,7 +230,7 @@ int main(int argc, char *argv[])
 
       // Sort each entry by xcorr, calculate E-values, etc.
       CometPostAnalysis::PostAnalysis(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
-      
+
       CalcRunTime(tStartTime);
 
       if (!g_StaticParams.options.bOutputSqtStream)

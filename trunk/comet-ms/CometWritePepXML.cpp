@@ -78,6 +78,18 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
    // Get msModel + msManufacturer from mzXML. Easy way to get from mzML too?
    ReadInstrument(szManufacturer, szModel);
 
+   char *pStr;   // base name w/o path
+   char *pStr2;  // file extension
+
+#ifdef _WIN32
+   if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '\\')) == NULL)
+#else
+   if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '/')) == NULL)
+#endif
+      pStr = g_StaticParams.inputFile.szBaseName;
+   else
+      *pStr++;  // skip separation character
+
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
    fprintf(fpout, " <?xml-stylesheet type=\"text/xsl\" href=\"http://localhost/tpp/schema/pepXML_std.xsl\"?>\n");
@@ -86,16 +98,21 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v117.xsd\" ");
-   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", g_StaticParams.inputFile.szBaseName);
-   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", g_StaticParams.inputFile.szBaseName);
+   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", pStr);
+   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", pStr);
 
    fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
    fprintf(fpout, "msModel=\"%s\" ", szModel);
 
    // Grab file extension from file name
-   char *pStr = strrchr(g_StaticParams.inputFile.szFileName, '.');
-   fprintf(fpout, "raw_data=\"%s\" ", pStr+1);
-   fprintf(fpout, "raw_data_type=\"%s\">\n", pStr+1);
+   if ( (pStr2 = strrchr(g_StaticParams.inputFile.szFileName, '.')) == NULL)
+   {
+      printf(" Error - in WriteXMLHeader missing last period in file name: %s\n", g_StaticParams.inputFile.szFileName);
+      exit(1);
+   }
+   *pStr2++;
+   fprintf(fpout, "raw_data=\"%s\" ", pStr2);
+   fprintf(fpout, "raw_data_type=\"%s\">\n", pStr2);
 
    fprintf(fpout, " <sample_enzyme name=\"%s\">\n", g_StaticParams.enzymeInformation.szSampleEnzymeName);
    fprintf(fpout, "  <specificity cut=\"%s\" no_cut=\"%s\" sense=\"%c\"/>\n",
@@ -104,7 +121,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
          g_StaticParams.enzymeInformation.iSearchEnzymeOffSet?'C':'N');
    fprintf(fpout, " </sample_enzyme>\n");
 
-   fprintf(fpout, " <search_summary base_name=\"%s\"", g_StaticParams.inputFile.szBaseName);
+   fprintf(fpout, " <search_summary base_name=\"%s\"", pStr);
    fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s\"", comet_version);
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_StaticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_StaticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");
@@ -327,10 +344,20 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
         iDoXcorrCount,
         iRankXcorr,
         iMinLength;
+   char *pStr;
+
+#ifdef _WIN32
+   if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '\\')) == NULL)
+#else
+   if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '/')) == NULL)
+#endif
+      pStr = g_StaticParams.inputFile.szBaseName;
+   else
+      *pStr++;  // skip separation character
 
    // Print spectrum_query element. 
    fprintf(fpout, " <spectrum_query spectrum=\"%s.%05d.%05d.%d\"",
-         g_StaticParams.inputFile.szBaseName,
+         pStr,
          g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
          g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
          g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
