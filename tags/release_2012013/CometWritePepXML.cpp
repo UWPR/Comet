@@ -99,7 +99,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v117.xsd\" ");
    fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", pStr);
-   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", pStr);
+   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", g_StaticParams.inputFile.szBaseName);
 
    fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
    fprintf(fpout, "msModel=\"%s\" ", szModel);
@@ -121,7 +121,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
          g_StaticParams.enzymeInformation.iSearchEnzymeOffSet?'C':'N');
    fprintf(fpout, " </sample_enzyme>\n");
 
-   fprintf(fpout, " <search_summary base_name=\"%s\"", pStr);
+   fprintf(fpout, " <search_summary base_name=\"%s\"", g_StaticParams.inputFile.szBaseName);
    fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s\"", version);
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_StaticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_StaticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");
