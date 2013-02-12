@@ -1,13 +1,13 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual C++ Express 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkit", "MSToolkit.vcproj", "{D2646DE9-A31A-4C6E-99C6-B81885C17A93}"
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkit", "MSToolkit.vcxproj", "{D2646DE9-A31A-4C6E-99C6-B81885C17A93}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkitCLR", "MSToolkitCLR.vcproj", "{48702313-7D61-4679-BF85-FBF1A1C34C52}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkitCLR", "MSToolkitCLR.vcxproj", "{48702313-7D61-4679-BF85-FBF1A1C34C52}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkitLite", "MSToolkitLite.vcproj", "{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkitLite", "MSToolkitLite.vcxproj", "{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkitLiteCLR", "MSToolkitLiteCLR.vcproj", "{0B0E7480-5938-4388-B57D-66A262E601C8}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkitLiteCLR", "MSToolkitLiteCLR.vcxproj", "{0B0E7480-5938-4388-B57D-66A262E601C8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

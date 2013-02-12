@@ -21,7 +21,7 @@
 //Explicit path is needed on systems where Xcalibur installs with errors
 //For example, Vista-64bit
 //#import "C:\Xcalibur\system\programs\XRawfile2.dll" 
-#import "MSFileReader.XRawfile2.dll" rename_namespace("XRawfile")
+#import "XRawfile2.dll" rename_namespace("XRawfile")
 using namespace XRawfile;
 #endif
 

@@ -55,6 +55,7 @@ using namespace H5;
 
 //For Windows
 #ifdef _MSC_VER
+#undef __LINUX__
 #define __inline__ _inline
 typedef _int64  __int64_t;
 typedef unsigned _int32 uint32_t;
