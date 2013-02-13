@@ -927,6 +927,15 @@
     <ClCompile Include="src\hdf5-1.8.8\H5Ztrans.c">
       <Filter>Source Files\HDF5</Filter>
     </ClCompile>
+    <ClCompile Include="src\MSToolkit\RAWReader.cpp">
+      <Filter>Source Files\MSToolkit</Filter>
+    </ClCompile>
+    <ClCompile Include="src\expat-2.0.1\xmltok_ns.cpp">
+      <Filter>Source Files\expat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\expat-2.0.1\xmlparse.cpp">
+      <Filter>Source Files\expat</Filter>
+    </ClCompile>
     <ClCompile Include="src\expat-2.0.1\xmlrole.cpp">
       <Filter>Source Files\expat</Filter>
     </ClCompile>
@@ -935,15 +944,6 @@
     </ClCompile>
     <ClCompile Include="src\expat-2.0.1\xmltok_impl.cpp">
       <Filter>Source Files\expat</Filter>
-    </ClCompile>
-    <ClCompile Include="src\expat-2.0.1\xmltok_ns.cpp">
-      <Filter>Source Files\expat</Filter>
-    </ClCompile>
-    <ClCompile Include="src\expat-2.0.1\xmlparse.cpp">
-      <Filter>Source Files\expat</Filter>
-    </ClCompile>
-    <ClCompile Include="src\MSToolkit\RAWReader.cpp">
-      <Filter>Source Files\MSToolkit</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
