@@ -137,8 +137,18 @@
     <ClInclude Include="Common.h" />
     <ClInclude Include="OSSpecificThreading.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="resource1.h" />
+    <ClInclude Include="resource2.h" />
+    <ClInclude Include="resource3.h" />
+    <ClInclude Include="resource4.h" />
     <ClInclude Include="Threading.h" />
     <ClInclude Include="ThreadPool.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Comet3.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="icon\comet.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
