@@ -88,7 +88,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
 #endif
       pStr = g_StaticParams.inputFile.szBaseName;
    else
-      *pStr++;  // skip separation character
+      (*pStr)++;  // skip separation character
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -110,7 +110,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
       printf(" Error - in WriteXMLHeader missing last period in file name: %s\n", g_StaticParams.inputFile.szFileName);
       exit(1);
    }
-   *pStr2++;
+   (*pStr2)++;
    fprintf(fpout, "raw_data=\"%s\" ", pStr2);
    fprintf(fpout, "raw_data_type=\"%s\">\n", pStr2);
 
@@ -163,7 +163,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
          char szParamName[128];
          char szParamVal[128];
 
-         sscanf(szParamBuf, "%s", szParamName);
+         sscanf(szParamBuf, "%128s", szParamName);
          pStr = strchr(szParamBuf, '=');
          while (isspace(*(pStr+1)))  // remove beginning white space
             pStr++;
@@ -177,7 +177,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
             int bBinary;
             char cSymbol;
 
-            sscanf(szParamVal, "%lf %s %d", &dMass, szModChar, &bBinary);
+            sscanf(szParamVal, "%lf %40s %d", &dMass, szModChar, &bBinary);
 
             cSymbol = '-';
             if (szParamName[12]=='1')
@@ -317,7 +317,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
          char szParamName[128];
          char szParamVal[128];
 
-         sscanf(szParamBuf, "%s", szParamName);
+         sscanf(szParamBuf, "%128s", szParamName);
          pStr = strchr(szParamBuf, '=');
          while (isspace(*(pStr+1)))  // remove beginning white space
             pStr++;
@@ -346,6 +346,8 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
         iMinLength;
    char *pStr;
 
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
 #ifdef _WIN32
    if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '\\')) == NULL)
 #else
@@ -353,31 +355,31 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 #endif
       pStr = g_StaticParams.inputFile.szBaseName;
    else
-      *pStr++;  // skip separation character
+      (*pStr)++;  // skip separation character
 
    // Print spectrum_query element. 
    fprintf(fpout, " <spectrum_query spectrum=\"%s.%05d.%05d.%d\"",
          pStr,
-         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
-   fprintf(fpout, " start_scan=\"%d\"", g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber);
-   fprintf(fpout, " end_scan=\"%d\"", g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber);
-   fprintf(fpout, " precursor_neutral_mass=\"%0.4f\"", g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - PROTON_MASS);
-   fprintf(fpout, " assumed_charge=\"%d\"", g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
+         pQuery->_spectrumInfoInternal.iScanNumber,
+         pQuery->_spectrumInfoInternal.iScanNumber,
+         pQuery->_spectrumInfoInternal.iChargeState);
+   fprintf(fpout, " start_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
+   fprintf(fpout, " end_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
+   fprintf(fpout, " precursor_neutral_mass=\"%0.4f\"", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
+   fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, " index=\"%d\"", iWhichQuery+1);
 
    if (mzXML)
-      fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.dRTime);
+      fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", pQuery->_spectrumInfoInternal.dRTime);
    else
       fprintf(fpout, ">\n");
 
    fprintf(fpout, "  <search_result>\n");
 
    if (bDecoy)
-      iDoXcorrCount = g_pvQuery.at(iWhichQuery)->iDoDecoyXcorrCount;
+      iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
    else
-      iDoXcorrCount = g_pvQuery.at(iWhichQuery)->iDoXcorrCount;
+      iDoXcorrCount = pQuery->iDoXcorrCount;
 
    // Print out each sequence line.
    if (iDoXcorrCount > (g_StaticParams.options.iNumPeptideOutputLines))
@@ -386,9 +388,9 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    Results *pOutput;
 
    if (bDecoy)
-      pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+      pOutput = pQuery->_pDecoys;
    else
-      pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
+      pOutput = pQuery->_pResults;
 
    iRankXcorr = 1;
 
@@ -479,6 +481,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    int iNTT;
    int iNMC;
 
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", iWhichResult+1);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
    fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[0]);
@@ -488,14 +492,14 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
    fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
    fprintf(fpout, " calc_neutral_pep_mass=\"%0.4f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);
-   fprintf(fpout, " massdiff=\"%0.4f\"", g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass -pOutput[iWhichResult].dPepMass);
+   fprintf(fpout, " massdiff=\"%0.4f\"", pQuery->_pepMassInfo.dExpPepMass - pOutput[iWhichResult].dPepMass);
 
    CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
 
    fprintf(fpout, " num_tol_term=\"%d\"", iNTT);
    fprintf(fpout, " num_missed_cleavages=\"%d\"", iNMC); 
-   fprintf(fpout, " num_matched_peptides=\"%ld\"",
-         bDecoy?g_pvQuery.at(iWhichQuery)->_liNumMatchedDecoyPeptides:g_pvQuery.at(iWhichQuery)->_liNumMatchedPeptides);
+   fprintf(fpout, " num_matched_peptides=\"%lu\"",
+         bDecoy?(pQuery->_liNumMatchedDecoyPeptides):(pQuery->_liNumMatchedPeptides));
    fprintf(fpout, ">\n");
 
    // check if peptide is modified

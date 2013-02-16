@@ -145,7 +145,7 @@
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Comet3.rc" />
+    <ResourceCompile Include="Comet.rc" />
   </ItemGroup>
   <ItemGroup>
     <None Include="icon\comet.ico" />

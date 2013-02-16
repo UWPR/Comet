@@ -112,7 +112,6 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
          }
 
          iTotalScans++;
-
       }
       else if (g_StaticParams.inputFile.iInputType != InputType_MZXML)
       {
@@ -138,7 +137,6 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
          break;
       }
    }
-
 
    // Wait for active preprocess threads to complete processing.
    preprocessThreadPool.WaitForThreads();
@@ -667,7 +665,7 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
 #endif
       pStr = g_StaticParams.inputFile.szBaseName;
    else
-      *pStr++;
+      (*pStr)++;
 
       sprintf(szOutputFileName, "%s/%s.%.5d.%.5d.%d.out",
             g_StaticParams.inputFile.szBaseName,

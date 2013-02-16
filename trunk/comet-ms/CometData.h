@@ -452,22 +452,14 @@ struct Query
 
    ~Query()
    {
-      if (NULL != pSparseFastXcorrData)
-         free(pSparseFastXcorrData);
-
-      if (NULL != pSparseFastXcorrDataNL)
-         free(pSparseFastXcorrDataNL);
-
-      if (NULL != pSparseSpScoreData)
-         free(pSparseSpScoreData);
-
-      if (NULL != _pResults)
-         free(_pResults);
+      free(pSparseFastXcorrData);
+      free(pSparseFastXcorrDataNL);
+      free(pSparseSpScoreData);
+      free(_pResults);
 
       if (g_StaticParams.options.iDecoySearch==2)
       {
-         if (NULL != _pDecoys)
-            free(_pDecoys);
+         free(_pDecoys);
       }
 
       Threading::DestroyMutex(accessMutex);

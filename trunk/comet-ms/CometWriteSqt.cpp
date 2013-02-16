@@ -147,7 +147,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
       char szTmp[48];
       while (*pStr != ' ')
          (*pStr)--;
-      sscanf(pStr+1, "%s", szTmp);
+      sscanf(pStr+1, "%48s", szTmp);
 
       fprintf(fpout, "H\tStaticMod\t%s\n", szTmp);
 
@@ -175,34 +175,36 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
         scan1[32],
         scan2[32];
 
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
    strcpy(scan1, "0");
    strcpy(scan2, "0");
 
    if (bDecoy)
    {
-      sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%ld\n",
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber, 
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState, 
+      sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
+            pQuery->_spectrumInfoInternal.iScanNumber, 
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iChargeState, 
             g_StaticParams.iElapseTime, 
             g_StaticParams.szHostName, 
-            g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.dTotalIntensity, 
-            g_pvQuery.at(iWhichQuery)->fLowestDecoySpScore, 
-            g_pvQuery.at(iWhichQuery)->_liNumMatchedDecoyPeptides);
+            pQuery->_pepMassInfo.dExpPepMass,
+            pQuery->_spectrumInfoInternal.dTotalIntensity, 
+            pQuery->fLowestDecoySpScore, 
+            pQuery->_liNumMatchedDecoyPeptides);
    }
    else
    {
-      sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%ld\n",
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber, 
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState, 
+      sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
+            pQuery->_spectrumInfoInternal.iScanNumber, 
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iChargeState, 
             g_StaticParams.iElapseTime, 
             g_StaticParams.szHostName, 
-            g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.dTotalIntensity, 
-            g_pvQuery.at(iWhichQuery)->fLowestSpScore, 
-            g_pvQuery.at(iWhichQuery)->_liNumMatchedPeptides);
+            pQuery->_pepMassInfo.dExpPepMass,
+            pQuery->_spectrumInfoInternal.dTotalIntensity, 
+            pQuery->fLowestSpScore, 
+            pQuery->_liNumMatchedPeptides);
    }
 
    if (g_StaticParams.options.bOutputSqtStream)
@@ -211,9 +213,9 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
       fprintf(fpout, "%s", szBuf);
 
    if (bDecoy)
-      iDoXcorrCount = g_pvQuery.at(iWhichQuery)->iDoDecoyXcorrCount;
+      iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
    else
-      iDoXcorrCount = g_pvQuery.at(iWhichQuery)->iDoXcorrCount;
+      iDoXcorrCount = pQuery->iDoXcorrCount;
 
    // Print out each sequence line.
    if (iDoXcorrCount > (g_StaticParams.options.iNumPeptideOutputLines))
@@ -222,9 +224,9 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
    Results *pOutput;
 
    if (bDecoy)
-      pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+      pOutput = pQuery->_pDecoys;
    else
-      pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
+      pOutput = pQuery->_pResults;
 
    iRankXcorr = 1;
 
@@ -306,7 +308,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       fprintf(stdout, "L\t%s", pOutput[iWhichResult].szProtein);
 
       if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(stdout, "\t%+d", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(stdout, "\t%+u", pOutput[iWhichResult].iDuplicateCount); 
 
       fprintf(stdout, "\n");
    }
@@ -318,7 +320,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       fprintf(fpout, "L\t%s", pOutput[iWhichResult].szProtein);
 
       if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(fpout, "\t%+d", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(fpout, "\t%+u", pOutput[iWhichResult].iDuplicateCount); 
 
       fprintf(fpout, "\n");
    }

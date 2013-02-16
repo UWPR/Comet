@@ -475,11 +475,12 @@ void ProcessCmdLine(int argc,
    }
    fclose(fpcheck);
 
-   if (!strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-6, ".mzXML")
-         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-5, ".mzML")
-         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-4, ".mz5")
-         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-9, ".mzXML.gz")
-         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-8, ".mzML.gz"))
+   int iLen = strlen(argv[iStartInputFile]);
+   if (!strcmp(argv[iStartInputFile] + iLen - 6, ".mzXML")
+         || !strcmp(argv[iStartInputFile] + iLen - 5, ".mzML")
+         || !strcmp(argv[iStartInputFile] + iLen - 4, ".mz5")
+         || !strcmp(argv[iStartInputFile] + iLen - 9, ".mzXML.gz")
+         || !strcmp(argv[iStartInputFile] + iLen - 8, ".mzML.gz"))
    {
       g_StaticParams.inputFile.iInputType = InputType_MZXML;
    }
@@ -493,8 +494,8 @@ void ProcessCmdLine(int argc,
       if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
          *pStr = '\0';
 
-      if (!strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-9, ".mzXML.gz")
-         || !strcmp(argv[iStartInputFile] + strlen(argv[iStartInputFile])-8, ".mzML.gz"))
+      if (!strcmp(argv[iStartInputFile] + iLen - 9, ".mzXML.gz")
+         || !strcmp(argv[iStartInputFile] + iLen - 8, ".mzML.gz"))
       {
          if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
             *pStr = '\0';
@@ -576,19 +577,19 @@ void SetOptions(char *arg,
    switch (arg[1])
    {
       case 'D':   // Alternate sequence database.
-         if (sscanf(arg+2, "%s", szTmp) == 0)
+         if (sscanf(arg+2, "%512s", szTmp) == 0)
             fprintf(stderr, "Cannot read command line database: '%s'.  Ignored.\n", szTmp);
          else
             strcpy(g_StaticParams.databaseInfo.szDatabase, szTmp);
          break;
       case 'P':   // Alternate parameters file.
-         if (sscanf(arg+2, "%s", szTmp) == 0 )
+         if (sscanf(arg+2, "%512s", szTmp) == 0 )
             fprintf(stderr, "Missing text for parameter option -P<params>.  Ignored.\n");
          else
             strcpy(szParamsFile, szTmp);
          break;
       case 'N':   // Set basename of output file (for .out, SQT, and pepXML)
-         if (sscanf(arg+2, "%s", szTmp) == 0 )
+         if (sscanf(arg+2, "%512s", szTmp) == 0 )
             fprintf(stderr, "Missing text for parameter option -N<basename>.  Ignored.\n");
          else
          {
@@ -727,7 +728,7 @@ void LoadParameters(char *pszParamsFile)
       fgets(szParamBuf, SIZE_BUF, fp);
       if (!strncmp(szParamBuf, "# comet_version ", 16))
       {
-         sscanf(szParamBuf, "%*s %*s %s", szVersion);
+         sscanf(szParamBuf, "%*s %*s %128s", szVersion);
          // Major version number must match to current binary
          if (strstr(comet_version, szVersion))
          {
@@ -763,11 +764,11 @@ void LoadParameters(char *pszParamsFile)
          strcpy(szParamVal, pStr + 1);  // Copy over value.
          *pStr = 0;                     // Null rest of szParamName at equal char.
 
-         sscanf(szParamBuf, "%s", szParamName);
+         sscanf(szParamBuf, "%128s", szParamName);
 
          if (!strcmp(szParamName, "database_name"))
          {
-            sscanf(szParamVal, "%s", g_StaticParams.databaseInfo.szDatabase);
+            sscanf(szParamVal, "%512s", g_StaticParams.databaseInfo.szDatabase);
          }
          else if (!strcmp(szParamName, "nucleotide_reading_frame"))
          {
@@ -836,7 +837,7 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "variable_mod1"))
          {
-            sscanf(szParamVal, "%lf %s %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d",
                   &g_StaticParams.variableModParameters.varModList[VMOD_1_INDEX].dVarModMass,
                   g_StaticParams.variableModParameters.varModList[VMOD_1_INDEX].szVarModChar,
                   &g_StaticParams.variableModParameters.varModList[VMOD_1_INDEX].bBinaryMod,
@@ -844,7 +845,7 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "variable_mod2"))
          {
-            sscanf(szParamVal, "%lf %s %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d",
                   &g_StaticParams.variableModParameters.varModList[VMOD_2_INDEX].dVarModMass,
                   g_StaticParams.variableModParameters.varModList[VMOD_2_INDEX].szVarModChar,
                   &g_StaticParams.variableModParameters.varModList[VMOD_2_INDEX].bBinaryMod,
@@ -852,7 +853,7 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "variable_mod3"))
          {
-            sscanf(szParamVal, "%lf %s %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d",
                   &g_StaticParams.variableModParameters.varModList[VMOD_3_INDEX].dVarModMass,
                   g_StaticParams.variableModParameters.varModList[VMOD_3_INDEX].szVarModChar,
                   &g_StaticParams.variableModParameters.varModList[VMOD_3_INDEX].bBinaryMod,
@@ -860,7 +861,7 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "variable_mod4"))
          {
-            sscanf(szParamVal, "%lf %s %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d",
                   &g_StaticParams.variableModParameters.varModList[VMOD_4_INDEX].dVarModMass,
                   g_StaticParams.variableModParameters.varModList[VMOD_4_INDEX].szVarModChar,
                   &g_StaticParams.variableModParameters.varModList[VMOD_4_INDEX].bBinaryMod,
@@ -868,7 +869,7 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "variable_mod5"))
          {
-            sscanf(szParamVal, "%lf %s %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d",
                   &g_StaticParams.variableModParameters.varModList[VMOD_5_INDEX].dVarModMass,
                   g_StaticParams.variableModParameters.varModList[VMOD_5_INDEX].szVarModChar,
                   &g_StaticParams.variableModParameters.varModList[VMOD_5_INDEX].bBinaryMod,
@@ -876,7 +877,7 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "variable_mod6"))
          {
-            sscanf(szParamVal, "%lf %s %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d",
                   &g_StaticParams.variableModParameters.varModList[VMOD_6_INDEX].dVarModMass,
                   g_StaticParams.variableModParameters.varModList[VMOD_6_INDEX].szVarModChar,
                   &g_StaticParams.variableModParameters.varModList[VMOD_6_INDEX].bBinaryMod,
@@ -1262,7 +1263,7 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "activation_method"))
          {
-            sscanf(szParamVal, "%s", g_StaticParams.options.szActivationMethod);
+            sscanf(szParamVal, "%24s", g_StaticParams.options.szActivationMethod);
          }
          else if (!strcmp(szParamName, "minimum_intensity"))
          {
@@ -1333,7 +1334,7 @@ void LoadParameters(char *pszParamsFile)
 
       if (iCurrentEnzymeNumber == iSearchEnzymeNumber)
       {
-         sscanf(szParamBuf, "%lf %s %d %s %s\n",
+         sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
                &dTempMass, 
                g_StaticParams.enzymeInformation.szSearchEnzymeName, 
                &g_StaticParams.enzymeInformation.iSearchEnzymeOffSet, 
@@ -1343,7 +1344,7 @@ void LoadParameters(char *pszParamsFile)
 
       if (iCurrentEnzymeNumber == iSampleEnzymeNumber)
       {
-         sscanf(szParamBuf, "%lf %s %d %s %s\n",
+         sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
                &dTempMass, 
                g_StaticParams.enzymeInformation.szSampleEnzymeName, 
                &g_StaticParams.enzymeInformation.iSampleEnzymeOffSet, 

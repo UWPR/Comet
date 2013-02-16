@@ -74,10 +74,12 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    strcpy(scan1, "0");
    strcpy(scan2, "0");
 
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
    sprintf(szMassLine, "(M+H)+ mass = %0.6f ~ %0.6f (%+d), fragment tol = %0.4f, binoffset = %0.3f",
-            g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
-            g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerance,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState,
+            pQuery->_pepMassInfo.dExpPepMass,
+            pQuery->_pepMassInfo.dPeptideMassTolerance,
+            pQuery->_spectrumInfoInternal.iChargeState,
             g_StaticParams.tolerances.dFragmentBinSize,
             g_StaticParams.tolerances.dFragmentBinStartOffset); 
 
@@ -105,18 +107,18 @@ void CometWriteOut::PrintResults(int iWhichQuery,
       sprintf(szOutput, "%s_decoy/%s.%.5d.%.5d.%d.out",
             g_StaticParams.inputFile.szBaseName,
             pStr,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iChargeState);
    }
    else
    {
       sprintf(szOutput, "%s/%s.%.5d.%.5d.%d.out",
             g_StaticParams.inputFile.szBaseName,
             pStr,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iChargeState);
    }
 
    if (g_StaticParams.options.iWhichReadingFrame)
@@ -144,24 +146,24 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    if (bDecoySearch)
    {
       sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %ld",
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.dTotalIntensity, 
-            g_pvQuery.at(iWhichQuery)->fLowestDecoySpScore, 
-            g_pvQuery.at(iWhichQuery)->_liNumMatchedDecoyPeptides);
+            pQuery->_spectrumInfoInternal.dTotalIntensity, 
+            pQuery->fLowestDecoySpScore, 
+            pQuery->_liNumMatchedDecoyPeptides);
    }
    else
    {
       sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %ld",
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.dTotalIntensity, 
-            g_pvQuery.at(iWhichQuery)->fLowestSpScore, 
-            g_pvQuery.at(iWhichQuery)->_liNumMatchedPeptides);
+            pQuery->_spectrumInfoInternal.dTotalIntensity, 
+            pQuery->fLowestSpScore, 
+            pQuery->_liNumMatchedPeptides);
    }
 
    sprintf(szBuf, "\n");
    sprintf(szBuf+strlen(szBuf), " %s.%.5d.%.5d.%d.out\n",
          pStr,
-         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
-         g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState);
+         pQuery->_spectrumInfoInternal.iScanNumber,
+         pQuery->_spectrumInfoInternal.iScanNumber,
+         pQuery->_spectrumInfoInternal.iChargeState);
    sprintf(szBuf+strlen(szBuf), " Comet version %s\n", comet_version);
    sprintf(szBuf+strlen(szBuf), " %s\n", copyright);
    sprintf(szBuf+strlen(szBuf), " %s\n", g_StaticParams.szTimeBuf);
@@ -186,9 +188,9 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    szBuf[0]='\0';
 
    if (bDecoySearch)
-      iDoXcorrCount = g_pvQuery.at(iWhichQuery)->iDoDecoyXcorrCount;
+      iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
    else
-      iDoXcorrCount = g_pvQuery.at(iWhichQuery)->iDoXcorrCount;
+      iDoXcorrCount = pQuery->iDoXcorrCount;
 
    // Print out each sequence line.
    if (iDoXcorrCount > (g_StaticParams.options.iNumPeptideOutputLines))
@@ -197,9 +199,9 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    Results *pOutput;
 
    if (bDecoySearch)
-      pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+      pOutput = pQuery->_pDecoys;
    else
-      pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
+      pOutput = pQuery->_pResults;
 
    iMaxWidthReference = 9;
    iLenMaxDuplicates = 0;
@@ -281,7 +283,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    if (g_StaticParams.options.bPrintFragIons && iDoXcorrCount > 0)
    {
       PrintIons(iWhichQuery,
-            g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState,
+            pQuery->_spectrumInfoInternal.iChargeState,
             fpout);
    }
 
@@ -294,15 +296,15 @@ void CometWriteOut::PrintResults(int iWhichQuery,
       if (bDecoySearch)
       {
          fprintf(fpout, "a=%f b=%f\n",
-               g_pvQuery.at(iWhichQuery)->fDecoyPar[1],
-               g_pvQuery.at(iWhichQuery)->fDecoyPar[0]);
+               pQuery->fDecoyPar[1],
+               pQuery->fDecoyPar[0]);
 
          // iDecoyCorrelationHistogram is already cummulative here.
-         for (i=0; i<=g_pvQuery.at(iWhichQuery)->siMaxDecoyXcorr; i++)
+         for (i=0; i<=pQuery->siMaxDecoyXcorr; i++)
          {
-            if (g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i]> 0)
+            if (pQuery->iDecoyCorrelationHistogram[i]> 0)
             {
-               dVal = g_pvQuery.at(iWhichQuery)->fDecoyPar[0] + g_pvQuery.at(iWhichQuery)->fDecoyPar[1] * i;
+               dVal = pQuery->fDecoyPar[0] + pQuery->fDecoyPar[1] * i;
                dExpect = pow(10.0, dVal);
 
                if (dExpect>999.0)
@@ -310,8 +312,8 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
                fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
                      i*0.1,
-                     g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i],
-                     log10((float)g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram[i]),
+                     pQuery->iDecoyCorrelationHistogram[i],
+                     log10((float)pQuery->iDecoyCorrelationHistogram[i]),
                      dVal,
                      dExpect);
             }
@@ -321,17 +323,17 @@ void CometWriteOut::PrintResults(int iWhichQuery,
       else
       {
          fprintf(fpout, "a=%f b=%f %d-%d\n",
-               g_pvQuery.at(iWhichQuery)->fPar[1],
-               g_pvQuery.at(iWhichQuery)->fPar[0],
-               (int)g_pvQuery.at(iWhichQuery)->fPar[2],
-               (int)g_pvQuery.at(iWhichQuery)->fPar[3]);
+               pQuery->fPar[1],
+               pQuery->fPar[0],
+               (int)pQuery->fPar[2],
+               (int)pQuery->fPar[3]);
 
          // iCorrelationHistogram is already cummulative here.
-         for (i=0; i<=g_pvQuery.at(iWhichQuery)->siMaxXcorr; i++)
+         for (i=0; i<=pQuery->siMaxXcorr; i++)
          {
-            if (g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i]> 0)
+            if (pQuery->iCorrelationHistogram[i]> 0)
             {
-               dVal = g_pvQuery.at(iWhichQuery)->fPar[0] + g_pvQuery.at(iWhichQuery)->fPar[1] * i;
+               dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
                dExpect = pow(10.0, dVal);
 
                if (dExpect>999.0)
@@ -339,8 +341,8 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
                fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
                      i*0.1,
-                     g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i],
-                     log10((float)g_pvQuery.at(iWhichQuery)->iCorrelationHistogram[i]),
+                     pQuery->iCorrelationHistogram[i],
+                     log10((float)pQuery->iCorrelationHistogram[i]),
                      dVal,
                      dExpect);
             }
@@ -505,49 +507,51 @@ void CometWriteOut::PrintIons(int iWhichQuery,
    double dBion = g_StaticParams.precalcMasses.dNtermProton;
    double dYion = g_StaticParams.precalcMasses.dCtermOH2Proton;
 
-   if (g_pvQuery.at(iWhichQuery)->_pResults[0].szPrevNextAA[0] == '-')
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
+   if (pQuery->_pResults[0].szPrevNextAA[0] == '-')
       dBion += g_StaticParams.staticModifications.dAddNterminusProtein;
-   if (g_pvQuery.at(iWhichQuery)->_pResults[0].szPrevNextAA[1] == '-')
+   if (pQuery->_pResults[0].szPrevNextAA[1] == '-')
       dYion += g_StaticParams.staticModifications.dAddCterminusProtein;
 
    if (g_StaticParams.variableModParameters.bVarModSearch
-         && (g_pvQuery.at(iWhichQuery)->_pResults[0].pcVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide] == 1))
+         && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
    {
       dBion += g_StaticParams.variableModParameters.dVarModMassN;
    }
 
    if (g_StaticParams.variableModParameters.bVarModSearch
-         && (g_pvQuery.at(iWhichQuery)->_pResults[0].pcVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide + 1] == 1))
+         && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
    {
       dYion += g_StaticParams.variableModParameters.dVarModMassC;
    }
 
-   // Generate pdAAforward for g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide.
-   for (i=0; i<g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide; i++)
+   // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
+   for (i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
    {
-      int iPos = g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide - i - 1;
+      int iPos = pQuery->_pResults[0].iLenPeptide - i - 1;
 
-      dBion += g_StaticParams.massUtility.pdAAMassFragment[(int)g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i]];
-      dYion += g_StaticParams.massUtility.pdAAMassFragment[(int)g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[iPos]];
+      dBion += g_StaticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[i]];
+      dYion += g_StaticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[iPos]];
 
       if (g_StaticParams.variableModParameters.bVarModSearch)
-         dBion += g_StaticParams.variableModParameters.varModList[g_pvQuery.at(iWhichQuery)->_pResults[0].pcVarModSites[i]-1].dVarModMass;
+         dBion += g_StaticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[i]-1].dVarModMass;
 
       if (g_StaticParams.variableModParameters.bVarModSearch
-            && (i == g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide -1)
-            && (g_pvQuery.at(iWhichQuery)->_pResults[0].pcVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide + 1] == 1))
+            && (i == pQuery->_pResults[0].iLenPeptide -1)
+            && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
       {
          dBion += g_StaticParams.variableModParameters.dVarModMassC;
       }
 
       if (g_StaticParams.variableModParameters.bVarModSearch)
-         dYion += g_StaticParams.variableModParameters.varModList[g_pvQuery.at(iWhichQuery)->_pResults[0].pcVarModSites[iPos]-1].dVarModMass;
+         dYion += g_StaticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[iPos]-1].dVarModMass;
 
       _pdAAforward[i] = dBion;
       _pdAAreverse[iPos] = dYion;
    }
 
-   for (ctCharge=1; ctCharge<=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+   for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
    {
       if (ctCharge > 1)
          sprintf(szBuf, "\n");
@@ -577,9 +581,9 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 
       fprintf(fpout, "%s --", szBuf);
 
-      for (i=0; i<g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide; i++)
+      for (i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
       {
-         sprintf(szBuf, "\n  %c  %2d  ", g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i], i+1);
+         sprintf(szBuf, "\n  %c  %2d  ", pQuery->_pResults[0].szPeptide[i], i+1);
 
          for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
@@ -590,7 +594,7 @@ void CometWriteOut::PrintIons(int iWhichQuery,
             dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, i, ctCharge, _pdAAforward, _pdAAreverse);
 
             if ((dFragmentIonMass <= FLOAT_ZERO)
-                  || ((i == g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide - 1) && (iWhichIonSeries <= 3))
+                  || ((i == pQuery->_pResults[0].iLenPeptide - 1) && (iWhichIonSeries <= 3))
                   || (i == 0 && (iWhichIonSeries >= 4)))
             {
                sprintf(szBuf+strlen(szBuf), "    -      ");
@@ -599,13 +603,13 @@ void CometWriteOut::PrintIons(int iWhichQuery,
             {
                sprintf(szBuf+strlen(szBuf), "%9.4f", dFragmentIonMass);
 
-               if(FindSpScore(g_pvQuery.at(iWhichQuery),BIN(dFragmentIonMass)) > FLOAT_ZERO)
+               if(FindSpScore(pQuery,BIN(dFragmentIonMass)) > FLOAT_ZERO)
                   sprintf(szBuf+strlen(szBuf), "+ ");
                else
                   sprintf(szBuf+strlen(szBuf), "  ");
             }
          }
-         fprintf(fpout, "%s %2d", szBuf, g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide-i); 
+         fprintf(fpout, "%s %2d", szBuf, pQuery->_pResults[0].iLenPeptide-i); 
 
       }
       fprintf(fpout, "\n");
