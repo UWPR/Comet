@@ -312,15 +312,17 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery,
    double dSlope;
    double dIntercept;
 
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
    if (bDecoy)
    {
-      piHistogram = g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram;
-      iHistogramCount = g_pvQuery.at(iWhichQuery)->iDoDecoyXcorrCount;
+      piHistogram = pQuery->iDecoyCorrelationHistogram;
+      iHistogramCount = pQuery->iDoDecoyXcorrCount;
    }
    else
    {
-      piHistogram = g_pvQuery.at(iWhichQuery)->iCorrelationHistogram;
-      iHistogramCount = g_pvQuery.at(iWhichQuery)->iDoXcorrCount;
+      piHistogram = pQuery->iCorrelationHistogram;
+      iHistogramCount = pQuery->iDoXcorrCount;
    }
 
    if (iHistogramCount < DECOY_SIZE)
@@ -330,21 +332,21 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery,
 
    if (bDecoy)
    {
-      iXcorrCount = g_pvQuery.at(iWhichQuery)->iDoDecoyXcorrCount;
-      g_pvQuery.at(iWhichQuery)->fDecoyPar[0] = (float)dIntercept;  // b   y=mx+b
-      g_pvQuery.at(iWhichQuery)->fDecoyPar[1] = (float)dSlope;      // m
-      g_pvQuery.at(iWhichQuery)->fDecoyPar[2] = (float)iStartCorr;
-      g_pvQuery.at(iWhichQuery)->fDecoyPar[3] = (float)iNextCorr;
-      g_pvQuery.at(iWhichQuery)->siMaxDecoyXcorr = (short)iMaxCorr;
+      iXcorrCount = pQuery->iDoDecoyXcorrCount;
+      pQuery->fDecoyPar[0] = (float)dIntercept;  // b   y=mx+b
+      pQuery->fDecoyPar[1] = (float)dSlope;      // m
+      pQuery->fDecoyPar[2] = (float)iStartCorr;
+      pQuery->fDecoyPar[3] = (float)iNextCorr;
+      pQuery->siMaxDecoyXcorr = (short)iMaxCorr;
    }
    else
    {
-      iXcorrCount = g_pvQuery.at(iWhichQuery)->iDoXcorrCount;
-      g_pvQuery.at(iWhichQuery)->fPar[0] = (float)dIntercept;  // b
-      g_pvQuery.at(iWhichQuery)->fPar[1] = (float)dSlope    ;  // m
-      g_pvQuery.at(iWhichQuery)->fPar[2] = (float)iStartCorr;
-      g_pvQuery.at(iWhichQuery)->fPar[3] = (float)iNextCorr;
-      g_pvQuery.at(iWhichQuery)->siMaxXcorr = (short)iMaxCorr;
+      iXcorrCount = pQuery->iDoXcorrCount;
+      pQuery->fPar[0] = (float)dIntercept;  // b
+      pQuery->fPar[1] = (float)dSlope    ;  // m
+      pQuery->fPar[2] = (float)iStartCorr;
+      pQuery->fPar[3] = (float)iNextCorr;
+      pQuery->siMaxXcorr = (short)iMaxCorr;
    }
 
    if (iXcorrCount > g_StaticParams.options.iNumPeptideOutputLines)
@@ -356,13 +358,13 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery,
    {
       if (dSlope >= 0.0)
       {
-         g_pvQuery.at(iWhichQuery)->_pResults[i].dExpect = 999.0;
+         pQuery->_pResults[i].dExpect = 999.0;
       }
       else
       {
          double dExpect;
 
-         dExpect = pow(10.0, dSlope * g_pvQuery.at(iWhichQuery)->_pResults[i].fXcorr + dIntercept);
+         dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
 
          if (dExpect > 999.0)
             dExpect = 999.0;
@@ -373,20 +375,20 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery,
          {
             if (bDecoy)
             {
-               if (g_pvQuery.at(iWhichQuery)->_pDecoys[i].fXcorr < 1.2)
+               if (pQuery->_pDecoys[i].fXcorr < 1.2)
                   dExpect = 1.0;
             }
             else
             {
-               if (g_pvQuery.at(iWhichQuery)->_pResults[i].fXcorr < 1.2)
+               if (pQuery->_pResults[i].fXcorr < 1.2)
                   dExpect = 1.0;
             }
          }
 
          if (bDecoy)
-            g_pvQuery.at(iWhichQuery)->_pDecoys[i].dExpect = dExpect;
+            pQuery->_pDecoys[i].dExpect = dExpect;
          else
-            g_pvQuery.at(iWhichQuery)->_pResults[i].dExpect = dExpect;
+            pQuery->_pResults[i].dExpect = dExpect;
       }
    }
 }
@@ -547,21 +549,23 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
    int iFragmentIonMass;
 
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
    if (bDecoy)
    {
-      piHistogram = g_pvQuery.at(iWhichQuery)->iDecoyCorrelationHistogram;
-      iHistogramCount = g_pvQuery.at(iWhichQuery)->iDoDecoyXcorrCount;
+      piHistogram = pQuery->iDecoyCorrelationHistogram;
+      iHistogramCount = pQuery->iDoDecoyXcorrCount;
    }
    else
    {
-      piHistogram = g_pvQuery.at(iWhichQuery)->iCorrelationHistogram;
-      iHistogramCount = g_pvQuery.at(iWhichQuery)->iDoXcorrCount;
+      piHistogram = pQuery->iCorrelationHistogram;
+      iHistogramCount = pQuery->iDoXcorrCount;
    }
 
    if (iHistogramCount > g_StaticParams.options.iNumStored)
       iHistogramCount = g_StaticParams.options.iNumStored;
 
-   iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
+   iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
 
    j=0;
  
@@ -580,15 +584,15 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
       if (bDecoy)
       {
-         iLenPeptide = g_pvQuery.at(iWhichQuery)->_pDecoys[j].iLenPeptide;
-         szPeptide = g_pvQuery.at(iWhichQuery)->_pDecoys[j].szPeptide;
-         dPepMass = g_pvQuery.at(iWhichQuery)->_pDecoys[j].dPepMass;
+         iLenPeptide = pQuery->_pDecoys[j].iLenPeptide;
+         szPeptide = pQuery->_pDecoys[j].szPeptide;
+         dPepMass = pQuery->_pDecoys[j].dPepMass;
       }
       else
       {
-         iLenPeptide = g_pvQuery.at(iWhichQuery)->_pResults[j].iLenPeptide;
-         szPeptide = g_pvQuery.at(iWhichQuery)->_pResults[j].szPeptide;
-         dPepMass = g_pvQuery.at(iWhichQuery)->_pResults[j].dPepMass;
+         iLenPeptide = pQuery->_pResults[j].iLenPeptide;
+         szPeptide = pQuery->_pResults[j].szPeptide;
+         dPepMass = pQuery->_pResults[j].dPepMass;
       }
 
       dFastXcorr = 0.0;
@@ -632,10 +636,10 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                      break;
                }
 
-               while (dFragmentIonMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass)
+               while (dFragmentIonMass >= pQuery->_pepMassInfo.dExpPepMass)
                {
                   iLastFastXcorrIndex=0;
-                  dFragmentIonMass -= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass;
+                  dFragmentIonMass -= pQuery->_pepMassInfo.dExpPepMass;
                }
 
                dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
@@ -643,15 +647,15 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
                if (g_StaticParams.options.bSparseMatrix)
                {
-                  if (iFragmentIonMass < g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[g_pvQuery.at(iWhichQuery)->iFastXcorrData-1].bin && iFragmentIonMass >= 0)
+                  if (iFragmentIonMass < pQuery->pSparseFastXcorrData[pQuery->iFastXcorrData-1].bin && iFragmentIonMass >= 0)
                   {
-                     iFastXcorrIndex = FindFastXcorrIndex(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iLastFastXcorrIndex);
-                     dFastXcorr += g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
+                     iFastXcorrIndex = FindFastXcorrIndex(pQuery, iFragmentIonMass, iLastFastXcorrIndex);
+                     dFastXcorr += pQuery->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
 
-                     if (iFastXcorrIndex>0 && iFragmentIonMass==g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].bin)
-                        dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex-1].fIntensity;
+                     if (iFastXcorrIndex>0 && iFragmentIonMass==pQuery->pSparseFastXcorrData[iFastXcorrIndex].bin)
+                        dFastXcorr += 0.5 * pQuery->pSparseFastXcorrData[iFastXcorrIndex-1].fIntensity;
                      else
-                        dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
+                        dFastXcorr += 0.5 * pQuery->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
 
                      iLastFastXcorrIndex=iFastXcorrIndex;
                   }
@@ -660,28 +664,28 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                      printf(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
                            dFragmentIonMass, 
                            iFragmentIonMass,
-                           g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize, 
-                           g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
-                           g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
+                           pQuery->_spectrumInfoInternal.iArraySize, 
+                           pQuery->_pepMassInfo.dExpPepMass,
+                           pQuery->_spectrumInfoInternal.iScanNumber,
                            ctCharge);
                      exit(1);
                   }
                }
                else
                {
-                  if (iFragmentIonMass < g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
+                  if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
-                     dFastXcorr += g_pvQuery.at(iWhichQuery)->pfFastXcorrData[iFragmentIonMass];
-                     dFastXcorr += 0.5 * g_pvQuery.at(iWhichQuery)->pfFastXcorrData[iFragmentIonMass-1];
+                     dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
+                     dFastXcorr += 0.5 * pQuery->pfFastXcorrData[iFragmentIonMass-1];
                   }
                   else
                   {
                      printf(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
                            dFragmentIonMass,
                            iFragmentIonMass,
-                           g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize,
-                           g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass,
-                           g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
+                           pQuery->_spectrumInfoInternal.iArraySize,
+                           pQuery->_pepMassInfo.dExpPepMass,
+                           pQuery->_spectrumInfoInternal.iScanNumber,
                            ctCharge);
                      exit(1);
                   }
