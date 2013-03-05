@@ -1772,7 +1772,7 @@ add_Nterm_protein = 0.0\n\
 \n\
 add_G_glycine = 0.0000                 # added to G - avg.  57.0513, mono.  57.02146\n\
 add_A_alanine = 0.0000                 # added to A - avg.  71.0779, mono.  71.03711\n\
-add_S_serine = 0.0000                  # added to S - avg.  87.0773, mono.  87.02303\n\
+add_S_serine = 0.0000                  # added to S - avg.  87.0773, mono.  87.03203\n\
 add_P_proline = 0.0000                 # added to P - avg.  97.1152, mono.  97.05276\n\
 add_V_valine = 0.0000                  # added to V - avg.  99.1311, mono.  99.06841\n\
 add_T_threonine = 0.0000               # added to T - avg. 101.1038, mono. 101.04768\n\
