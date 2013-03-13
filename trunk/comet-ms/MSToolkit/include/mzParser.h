@@ -48,6 +48,11 @@ using namespace H5;
 //#define __LINUX__				// to compile with gcc (or g++) on LINUX
 //#define _MSC_VER	// to compile with Microsoft Studio
 
+#define __LINUX__    // Comet project currently only cares about Linux/Windows
+#ifdef _MSC_VER
+#undef __LINUX__
+#endif
+
 #define XMLCLASS		
 #ifndef XML_STATIC
 #define XML_STATIC	// to statically link the expat libraries
