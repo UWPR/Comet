@@ -561,9 +561,6 @@
     <ClCompile Include="src\hdf5-1.8.8\H5Lexternal.c">
       <Filter>Source Files\HDF5</Filter>
     </ClCompile>
-    <ClCompile Include="src\hdf5-1.8.8\H5lib_settings.c">
-      <Filter>Source Files\HDF5</Filter>
-    </ClCompile>
     <ClCompile Include="src\hdf5-1.8.8\H5Library.cpp">
       <Filter>Source Files\HDF5</Filter>
     </ClCompile>
@@ -855,9 +852,6 @@
     <ClCompile Include="src\hdf5-1.8.8\H5timer.c">
       <Filter>Source Files\HDF5</Filter>
     </ClCompile>
-    <ClCompile Include="src\hdf5-1.8.8\H5Tinit.c">
-      <Filter>Source Files\HDF5</Filter>
-    </ClCompile>
     <ClCompile Include="src\hdf5-1.8.8\H5Tnative.c">
       <Filter>Source Files\HDF5</Filter>
     </ClCompile>
@@ -921,9 +915,6 @@
     <ClCompile Include="src\hdf5-1.8.8\H5Zshuffle.c">
       <Filter>Source Files\HDF5</Filter>
     </ClCompile>
-    <ClCompile Include="src\hdf5-1.8.8\H5Zszip.c">
-      <Filter>Source Files\HDF5</Filter>
-    </ClCompile>
     <ClCompile Include="src\hdf5-1.8.8\H5Ztrans.c">
       <Filter>Source Files\HDF5</Filter>
     </ClCompile>
@@ -944,6 +935,15 @@
     </ClCompile>
     <ClCompile Include="src\expat-2.0.1\xmltok_impl.cpp">
       <Filter>Source Files\expat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hdf5-1.8.8\H5Zszip.c">
+      <Filter>Source Files\HDF5</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hdf5-1.8.8\H5lib_settings_win.c">
+      <Filter>Source Files\HDF5</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hdf5-1.8.8\H5tinit_win.c">
+      <Filter>Source Files\HDF5</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1310,9 +1310,6 @@
     <ClInclude Include="include\H5PTpublic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\H5pubconf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\H5pubconf_win.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1491,6 +1488,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\expat_config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\H5pubconf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\szlib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

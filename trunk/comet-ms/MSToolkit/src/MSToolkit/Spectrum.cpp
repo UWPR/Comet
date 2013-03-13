@@ -24,6 +24,7 @@ Spectrum::Spectrum(){
 	convI=0;
   BPI=0;
   BPM=0;
+  centroidStatus=2;
 
   fileType=Unspecified;
   vPeaks = new vector<Peak_T>;
@@ -69,6 +70,7 @@ Spectrum::Spectrum(const Spectrum& s){
   convI = s.convI;
   BPI = s.BPI;
   BPM = s.BPM;
+  centroidStatus = s.centroidStatus;
   vPeaks = new vector<Peak_T>;
   for(i=0;i<s.vPeaks->size();i++){
     vPeaks->push_back(s.vPeaks->at(i));
@@ -124,6 +126,7 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
     TIC = s.TIC;
     IIT = s.IIT;
     fileType = s.fileType;
+    centroidStatus = s.centroidStatus;
     strcpy(rawFilter,s.rawFilter);
   }
   return *this;
@@ -291,6 +294,10 @@ double Spectrum::getBPM(){
   return BPM;
 }
 
+int Spectrum::getCentroidStatus(){
+  return centroidStatus;
+}
+
 int Spectrum::getCharge(){
   return charge;
 }
@@ -363,6 +370,11 @@ void Spectrum::setBPI(float f){
 
 void Spectrum::setBPM(double d){
   BPM=d;
+}
+
+void Spectrum::setCentroidStatus(int i){
+  if(i>2) centroidStatus=2;
+  else centroidStatus=i;
 }
 
 void Spectrum::setCharge(int i){

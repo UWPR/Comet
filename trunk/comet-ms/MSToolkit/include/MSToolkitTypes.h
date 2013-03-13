@@ -25,14 +25,14 @@ enum MSFileFormat {
   msmat_ff,
   mzXML,
   mz5,
-  mzML,
-  mzXMLgz,
-  mzMLgz,
+	mzML,
   raw,
   sqlite,
   psm,
   uzs,
   zs,
+	mzXMLgz,
+	mzMLgz,
   dunno
 };
 

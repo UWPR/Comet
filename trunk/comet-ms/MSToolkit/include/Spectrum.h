@@ -49,6 +49,7 @@ class Spectrum {
   float           getArea();
   float           getBPI();
   double          getBPM();
+  int             getCentroidStatus();
   int				      getCharge();
   double          getConversionA();
   double          getConversionB();
@@ -69,6 +70,7 @@ class Spectrum {
   void            setArea(float);
   void            setBPI(float);
   void            setBPM(double);
+  void            setCentroidStatus(int);
   void			    	setCharge(int);
   void            setConversionA(double);
   void            setConversionB(double);
@@ -135,6 +137,7 @@ class Spectrum {
   float            rTimeApex;    //retention time of precursor apex (MS2)
   float            area;         //summed peak areas of precursor (MS2)
   char             rawFilter[256]; //RAW file header line
+  int              centroidStatus; //0=profile, 1=centroid, 2=unknown
 
   //private:
   //Functions

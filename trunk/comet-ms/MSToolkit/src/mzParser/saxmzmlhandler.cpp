@@ -130,7 +130,7 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
 		} else {
 			curIndex.scanNum=++m_scanIDXCount;
 			//Suppressing warning.
-			//cout << "WARNING: Cannot extract scan number in index offset line: " << &curIndex.idRef[0] << "\tDefaulting to " << m_scanIDXCount << endl;
+			cout << "WARNING: Cannot extract scan number in index offset line: " << &curIndex.idRef[0] << "\tDefaulting to " << m_scanIDXCount << endl;
 		}
 
 	} else if(isElement("precursor",el)) {
@@ -287,6 +287,9 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 
 	}	else if(!strcmp(name, "base peak m/z") || !strcmp(accession,"MS:1000504"))	{
 		spec->setBasePeakMZ(atof(value));
+
+  } else if(!strcmp(name, "centroid spectrum") || !strcmp(accession,"MS:1000127"))	{
+    spec->setCentroid(true);
 
 	}	else if(!strcmp(name, "charge state") || !strcmp(accession,"MS:1000041"))	{
 		spec->setPrecursorCharge(atoi(value));

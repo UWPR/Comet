@@ -45,7 +45,7 @@ using namespace H5;
 //#define OSX_TIGER // use with OSX if OSX Tiger is being used
 //#define OSX_INTEL // compile with cc on Macintosh OSX on Intel-style processors
 //#define GCC				// to compile with gcc (or g++) on LINUX
-#define __LINUX__				// to compile with gcc (or g++) on LINUX
+//#define __LINUX__				// to compile with gcc (or g++) on LINUX
 //#define _MSC_VER	// to compile with Microsoft Studio
 
 #define XMLCLASS		
@@ -55,7 +55,6 @@ using namespace H5;
 
 //For Windows
 #ifdef _MSC_VER
-#undef __LINUX__
 #define __inline__ _inline
 typedef _int64  __int64_t;
 typedef unsigned _int32 uint32_t;
@@ -1197,11 +1196,11 @@ struct ScanHeaderStruct {
    double							basePeakIntensity;
    double							basePeakMZ;
    double							collisionEnergy;
+   double							compensationVoltage;  /* only if MS level > 1 */
    double							highMZ;
    double							ionisationEnergy;
    double							lowMZ;
 	 double							precursorIntensity;  /* only if MS level > 1 */
-	 double							compensationVoltage;  /* only if MS level > 1 */
    double							precursorMZ;  /* only if MS level > 1 */
    double							retentionTime;        /* in seconds */
 	 double							totIonCurrent;
@@ -1211,6 +1210,7 @@ struct ScanHeaderStruct {
    char								scanType[SCANTYPE_LENGTH];
    char								idString[CHARGEARRAY_LENGTH];
    
+   bool               centroid; //true if spectrum is centroided
    bool								possibleChargesArray[CHARGEARRAY_LENGTH]; /* NOTE: does NOT include "precursorCharge" information; only from "possibleCharges" */
    
 	 ramp_fileoffset_t	filePosition; /* where in the file is this header? */

@@ -615,7 +615,7 @@ void InitializeParameters()
 
    g_StaticParams.szMod[0] = '\0';
 
-   for (i=0; i<128; i++)
+   for (i=0; i<SIZE_MASS; i++)
    {
       g_StaticParams.massUtility.pdAAMassParent[i] = 999999.;
       g_StaticParams.massUtility.pdAAMassFragment[i] = 999999.;
@@ -711,7 +711,7 @@ void LoadParameters(char *pszParamsFile)
          bValidParamsFile;
    char *pStr;
 
-   for (i=0; i<128; i++)
+   for (i=0; i<SIZE_MASS; i++)
       g_StaticParams.staticModifications.pdStaticMods[i] = 0.0;
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)

@@ -26,6 +26,7 @@
 #define MAX_ENZYME_AA               20       // max # of AA for enzyme break point
 #define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
 #define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
+#define SIZE_MASS                   128
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_STORED                  100      // number of internal search results to store
 
@@ -222,7 +223,7 @@ struct StaticMod
    double dAddNterminusPeptide;
    double dAddCterminusProtein;
    double dAddNterminusProtein;
-   double pdStaticMods[128];
+   double pdStaticMods[SIZE_MASS];
 };
 
 struct PrecalcMasses
@@ -280,8 +281,8 @@ struct MassUtil
    double dCOminusH2;
    double dOH2fragment;
    double dOH2parent;
-   double pdAAMassParent[128];
-   double pdAAMassFragment[128];
+   double pdAAMassParent[SIZE_MASS];
+   double pdAAMassFragment[SIZE_MASS];
 };
 
 struct ToleranceParams

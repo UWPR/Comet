@@ -148,6 +148,7 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
 			spec->setTotalIonCurrent(atof(getAttrValue("totIonCurrent",attr)));
 			m_peaksCount = atoi(getAttrValue("peaksCount", attr));
 			spec->setPeaksCount(m_peaksCount);
+      spec->setCentroid((bool)getAttrValue("centroided",attr));
 			
 			s=getAttrValue("retentionTime", attr);
 			if(s.length()>0){

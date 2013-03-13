@@ -110,6 +110,9 @@ void mzpMz5Handler::processCVParams(unsigned long index){
 			case 1000045:
 				spec->setCollisionEnergy(atof(cvParams_[index].value));
 				break;
+      case 1000127:
+        spec->setCentroid(true);
+        break;
 			case 1000285:
 				spec->setTotalIonCurrent(atof(cvParams_[index].value));
 				break;

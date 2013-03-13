@@ -139,6 +139,9 @@
     <ClCompile Include="src\expat-2.0.1\xmltok.cpp" />
     <ClCompile Include="src\expat-2.0.1\xmltok_impl.cpp" />
     <ClCompile Include="src\expat-2.0.1\xmltok_ns.cpp" />
+    <ClCompile Include="src\hdf5-1.8.8\H5lib_settings_win.c" />
+    <ClCompile Include="src\hdf5-1.8.8\H5tinit_win.c" />
+    <ClCompile Include="src\hdf5-1.8.8\H5Zszip.c" />
     <ClCompile Include="src\MSToolkit\MSObject.cpp" />
     <ClCompile Include="src\MSToolkit\MSReader.cpp" />
     <ClCompile Include="src\MSToolkit\RAWReader.cpp" />
@@ -317,7 +320,6 @@
     <ClCompile Include="src\hdf5-1.8.8\H5Itest.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5L.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Lexternal.c" />
-    <ClCompile Include="src\hdf5-1.8.8\H5lib_settings.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Library.cpp" />
     <ClCompile Include="src\hdf5-1.8.8\H5make_libsettings.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5MF.c" />
@@ -415,7 +417,6 @@
     <ClCompile Include="src\hdf5-1.8.8\H5Tfixed.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Tfloat.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5timer.c" />
-    <ClCompile Include="src\hdf5-1.8.8\H5Tinit.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Tnative.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Toffset.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Toh.c" />
@@ -437,7 +438,6 @@
     <ClCompile Include="src\hdf5-1.8.8\H5Znbit.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Zscaleoffset.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Zshuffle.c" />
-    <ClCompile Include="src\hdf5-1.8.8\H5Zszip.c" />
     <ClCompile Include="src\hdf5-1.8.8\H5Ztrans.c" />
   </ItemGroup>
   <ItemGroup>
@@ -616,6 +616,7 @@
     <ClInclude Include="include\RAWReader.h" />
     <ClInclude Include="include\Spectrum.h" />
     <ClInclude Include="include\sqlite3.h" />
+    <ClInclude Include="include\szlib.h" />
     <ClInclude Include="include\trees.h" />
     <ClInclude Include="include\utf8tab.h" />
     <ClInclude Include="include\winconfig.h" />

@@ -112,7 +112,7 @@ int RAWReader::calcChargeState(double precursormz, double highmass, VARIANT* var
   return 0;
 }
 
-MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<double>& MZs) {
+MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<double>& MZs, bool& bCentroid) {
 
   BSTR Filter = NULL;
 	char cStr[256];
@@ -138,6 +138,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 	while(tok!=NULL){
 
 		if(strcmp(tok,"c")==0){
+      bCentroid=true;
 		} else if(strlen(tok)>2 && tok[0]=='c' && tok[1]=='v'){
 		} else if(strcmp(tok,"d")==0){
 		} else if(strcmp(tok,"ESI")==0){
@@ -155,11 +156,13 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 			if(mst!=MSX) mst=MS3;
 		} else if(strcmp(tok,"NSI")==0){
 		} else if(strcmp(tok,"p")==0){
+      bCentroid=false;
 		} else if(strncmp(tok,"sid",3)==0){
 		} else if(strcmp(tok,"SRM")==0){
 			mst=SRM;
 		} else if(strcmp(tok,"u")==0){
 			mst=UZS;
+		} else if(strcmp(tok,"w")==0){ //wideband activation?
 		} else if(strcmp(tok,"Z")==0){
 			if(mst!=UZS) mst=ZS;
 		} else if(strcmp(tok,"+")==0){
@@ -280,6 +283,8 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   BSTR testStr;
 
 	//Additional members for Scan Information
+  bool bCentroid;
+
   double BPI;   //Base peak intensity
 	double BPM;   //Base peak mass
 	double td;    //temp double value
@@ -347,7 +352,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   //if the filter was set, make sure we pass the filter
   while(true){
 
-	  MSn = evaluateFilter(rawCurSpec, curFilter, MZs);
+	  MSn = evaluateFilter(rawCurSpec, curFilter, MZs, bCentroid);
 
     //check for spectrum filter (string)
     if(strlen(rawUserFilter)>0){
@@ -437,7 +442,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     lowerBound=0;
     upperBound=0;
     for(i=rawCurSpec-1;i>0;i--){
-      evaluateFilter(i, chFilter, MZs);
+      evaluateFilter(i, chFilter, MZs, bCentroid);
       if(strcmp(curFilter,chFilter)==0){
         widthCount++;
         if(widthCount==rawAvgWidth) {
@@ -450,7 +455,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
     widthCount=0;
     for(i=rawCurSpec+1;i<rawTotSpec;i++){
-      evaluateFilter(i, chFilter, MZs);
+      evaluateFilter(i, chFilter, MZs, bCentroid);
       if(strcmp(curFilter,chFilter)==0){
         widthCount++;
         if(widthCount==rawAvgWidth) {
@@ -521,6 +526,8 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	}
 
 	//Set basic scan info
+  if(bCentroid) s.setCentroidStatus(1);
+  else s.setCentroidStatus(0);
   s.setRawFilter(curFilter);
 	s.setScanNumber((int)rawCurSpec);
   s.setScanNumber((int)rawCurSpec,true);

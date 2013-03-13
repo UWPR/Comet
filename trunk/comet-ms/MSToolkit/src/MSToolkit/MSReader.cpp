@@ -7,7 +7,6 @@ MSReader::MSReader(){
   rampFileIn=NULL;
   iIntensityPrecision=1;
   iMZPrecision=4;
-  //filter=Unspecified;
   rampFileOpen=false;
   compressMe=false;
   rawFileOpen=false;
@@ -17,19 +16,6 @@ MSReader::MSReader(){
   iVersion=0;
   for(int i=0;i<16;i++)	strcpy(header.header[i],"\0");
   headerIndex=0;
-
-  /*#ifdef _MSC_VER
-  CoInitialize( NULL );
-	bRaw = InitRaw();
-  rawCurSpec=0;
-  rawTotSpec=0;
-  rawAvg=false;
-  rawAvgWidth=1;
-  rawAvgCutoff=1000;
-  rawLabel=false;
-  rawUserFilterExact=true;
-  strcpy(rawUserFilter,"");
-	#endif*/
 
   #ifndef _NOSQLITE
   db = NULL;
@@ -44,14 +30,6 @@ MSReader::~MSReader(){
     rampCloseFile(rampFileIn);
     free(pScanIndex);
   }
-
-  /*#ifdef _MSC_VER
-  if(bRaw){
-    if(rawFileOpen) m_Raw->Close();
-    m_Raw.Release();
-    m_Raw=NULL;
-  }
-  #endif*/
 
   #ifndef _NOSQLITE
   if(db != NULL)  sqlite3_close(db);
@@ -141,6 +119,8 @@ bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
   //clear any spectrum data
   s.clear();
 
+  s.setCentroidStatus(2); //unknown if centroided with these formats.
+
   //check for valid file and if we can access it
   if(c!=NULL){
     closeFile();
@@ -227,6 +207,7 @@ bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
     s.setScanNumber(ms.scanNumber[0]);
     s.setScanNumber(ms.scanNumber[1],true);
     s.setRTime(ms.rTime);
+		if(ms.mzCount==0) s.setMZ(0);
 		for(i=0;i<ms.mzCount;i++){
 			if(i==0) s.setMZ(ms.mz[i]);
 			else s.addMZ(ms.mz[i]);
@@ -378,6 +359,7 @@ bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
 	        s.setScanNumber(atoi(tok),true);
 	        tok=strtok(NULL," \t\n\r");
 	        if(tok!=NULL)	s.setMZ(atof(tok));
+					else s.setMZ(0);
 					tok=strtok(NULL," \t\n\r");
 					while(tok!=NULL) {
 						s.addMZ(atof(tok));
@@ -892,8 +874,6 @@ void MSReader::appendFile(Spectrum& s)
 	  actMethod.c_str(),
           s.size());
 
-
-  //cout<<zSql<<endl;
   sql_stmt(zSql);
   zSql[0]='\0';
 
@@ -1029,7 +1009,7 @@ void MSReader::appendFile(char* c, bool text, MSObject& m){
   } else {
 		if(text) fileOut=fopen(c,"at");
 		else fileOut=fopen(c,"ab");
-	};
+	}
 
   //output spectra;
   for(i=0;i<m.size();i++){
@@ -1044,12 +1024,12 @@ void MSReader::appendFile(char* c, bool text, MSObject& m){
 			writeCompressSpec(fileOut,m.at(i));
 		} else {
 			writeBinarySpec(fileOut,m.at(i));
-		};
+		}
 
-	};
+	}
 
 	fclose(fileOut);
-};
+}
 
 void MSReader::appendFile(char* c, MSObject& m){
 
@@ -1484,6 +1464,8 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		}
 
 		if(find(filter.begin(), filter.end(), mslevel) != filter.end())	{
+      if(scanHeader.centroid) s.setCentroidStatus(1);
+      else s.setCentroidStatus(0);
 		  s.setMsLevel(scanHeader.msLevel);
 		  s.setScanNumber(scanHeader.acquisitionNum);
 		  s.setScanNumber(scanHeader.acquisitionNum,true);
@@ -1499,6 +1481,8 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 			if(scanHeader.msLevel>1) {
 				s.setMZ(scanHeader.precursorMZ);
 				s.setCharge(scanHeader.precursorCharge);
+			} else {
+				s.setMZ(0);
 			}
 		  if(scanHeader.precursorCharge>0) s.addZState(scanHeader.precursorCharge,scanHeader.precursorMZ*scanHeader.precursorCharge-(scanHeader.precursorCharge-1)*1.007276466);
 		  pPeaks = readPeaks(rampFileIn, pScanIndex[rampIndex]);
@@ -1540,6 +1524,8 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 			if(find(filter.begin(), filter.end(), mslevel) != filter.end()) break;
 		}
 
+    if(scanHeader.centroid) s.setCentroidStatus(1);
+    else s.setCentroidStatus(0);
 		s.setMsLevel(scanHeader.msLevel);
 		s.setScanNumber(scanHeader.acquisitionNum);
 		s.setScanNumber(scanHeader.acquisitionNum,true);
@@ -1555,6 +1541,8 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		if(scanHeader.msLevel>1) {
 			s.setMZ(scanHeader.precursorMZ);
 			s.setCharge(scanHeader.precursorCharge);
+		} else {
+			s.setMZ(0);
 		}
 		if(scanHeader.precursorCharge>0) s.addZState(scanHeader.precursorCharge,scanHeader.precursorMZ*scanHeader.precursorCharge-(scanHeader.precursorCharge-1)*1.007276466);
 		pPeaks = readPeaks(rampFileIn, pScanIndex[rampIndex]);
@@ -1584,22 +1572,6 @@ void MSReader::setCompression(bool b){
 	compressMe=b;
 }
 
-/*
-void MSReader::setAverageRaw(bool b, int width, long cutoff){
-  #ifdef _MSC_VER
-  rawAvg=b;
-  rawAvgWidth=width;
-  rawAvgCutoff=cutoff;
-  #endif
-}
-
-void MSReader::setLabel(bool b){
-  #ifdef _MSC_VER
-  rawLabel=b;
-  #endif
-}
-
-*/
 void MSReader::setRawFilter(char *c){
 	#ifdef _MSC_VER
 	cRAW.setRawFilter(c);
@@ -1631,7 +1603,7 @@ void MSReader::writeCompressSpec(FILE* fileOut, Spectrum& s){
 	for(j=0;j<s.size();j++){
 		pD[j]=s.at(j).mz;
 		pF[j]=s.at(j).intensity;
-	};
+	}
 
 	//compress mz
 	len = (uLong)s.size()*sizeof(double);
@@ -1660,7 +1632,7 @@ void MSReader::writeCompressSpec(FILE* fileOut, Spectrum& s){
 	delete [] pD;
 	delete [] pF;
 
-};
+}
 
 void MSReader::readCompressSpec(FILE* fileIn, MSScanInfo& ms, Spectrum& s){
 
@@ -1697,12 +1669,12 @@ void MSReader::readCompressSpec(FILE* fileIn, MSScanInfo& ms, Spectrum& s){
 		p.mz = mz[i];
 		p.intensity = intensity[i];
 		s.add(p);
-	};
+	}
 
 	delete [] mz;
 	delete [] intensity;
 
-};
+}
 
 void MSReader::writeTextSpec(FILE* fileOut, Spectrum& s) {
 
@@ -1787,9 +1759,9 @@ void MSReader::writeBinarySpec(FILE* fileOut, Spectrum& s) {
 	for(j=0;j<s.size();j++){
 		fwrite(&s.at(j).mz,8,1,fileOut);
 		fwrite(&s.at(j).intensity,4,1,fileOut);
-	};
+	}
 
-};
+}
 
 void MSReader::writeSpecHeader(FILE* fileOut, bool text, Spectrum& s) {
 
@@ -1999,49 +1971,4 @@ MSFileFormat MSReader::checkFileFormat(const char *fn){
   return dunno;
 
 }
-
-/*
-#ifdef _MSC_VER
-
-void MSReader::setRawFilterExact(bool b){
-  rawUserFilterExact=b;
-}
-
-bool MSReader::lookupRT(char* c, int scanNum, float& rt){
-  HRESULT lRet;
-  TCHAR pth[MAX_PATH];
-  double drt;
-
-  rt=0.0f;
-
-  if(c!=NULL){
-    if(rawFileOpen) {
-      lRet = m_Raw->Close();
-      rawFileOpen=false;
-    }
-
-    MultiByteToWideChar(CP_ACP,0,c,-1,(LPWSTR)pth,MAX_PATH);
-    lRet = m_Raw->Open((LPWSTR)pth);
-    if(lRet != ERROR_SUCCESS) return false;
-    else lRet = m_Raw->SetCurrentController(0,1);
-    rawFileOpen=true;
-    m_Raw->GetNumSpectra(&rawTotSpec);
-    if(scanNum>rawTotSpec) {
-      if(rawFileOpen) lRet = m_Raw->Close();
-      rawFileOpen=false;
-      return false;
-    }
-  }
-
-  if(m_Raw->RTFromScanNum(scanNum,&drt)==0) {
-    rt=(float)drt;
-    return true;
-  }
-
-  return false;
-
-}
-
-#endif
-*/
 
