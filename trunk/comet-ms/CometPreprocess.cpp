@@ -19,6 +19,8 @@
 #include "CometPreprocess.h"
 
 Mutex CometPreprocess::_maxChargeMutex;
+bool CometPreprocess::_bFirstScan = true;
+bool CometPreprocess::_bDoneProcessingAllSpectra = false;
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (pdCorrelationData).
 CometPreprocess::CometPreprocess()
@@ -31,7 +33,8 @@ CometPreprocess::~CometPreprocess()
 }
 
 
-void CometPreprocess::LoadAndPreprocessSpectra(int iZLine, 
+void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
+                                               int iZLine, 
                                                int iFirstScan, 
                                                int iLastScan, 
                                                int iAnalysisType,
@@ -41,14 +44,10 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
    int iFileLastScan = -1;         // The actual last scan in the file.
    int iScanNumber = 0;
    int iTotalScans = 0;
-   bool bFirst = true;
    int iFirstScanInRange = 0;
    int iTmpCount = 0;
-   MSReader mstReader;             // For file access using MSToolkit.
    Spectrum mstSpectrum;           // For holding spectrum.
    
-   SetMSLevelFilter(mstReader);
-
    g_MassRange.iMaxFragmentCharge = 0;
    g_StaticParams.precalcMasses.iMinus17 = BIN(g_StaticParams.massUtility.dH2O);
    g_StaticParams.precalcMasses.iMinus18 = BIN(g_StaticParams.massUtility.dNH3);
@@ -60,14 +59,15 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
    ThreadPool<PreprocessThreadData *> preprocessThreadPool(PreprocessThreadProc,
          minNumThreads, maxNumThreads);
 
+
    // Load all input spectra.
    while(true)
    {
       // Loads in MSMS spectrum data.
-      if (bFirst)
+      if (_bFirstScan)
       {
          PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
-         bFirst = false;
+         _bFirstScan = false;
 
          iFirstScanInRange = mstSpectrum.getScanNumber();
       }
@@ -80,7 +80,10 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
          iFileLastScan = mstReader.getLastScan();
 
       if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
+      {
+         _bDoneProcessingAllSpectra = true;
          break;
+      }
 
       iScanNumber = mstSpectrum.getScanNumber();
 
@@ -94,7 +97,10 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
          if (mstSpectrum.size() >= g_StaticParams.options.iMinPeaks)
          {
             if ((iAnalysisType == AnalysisType_SpecificScanRange) && (iScanNumber > iLastScan))
+            {
+               _bDoneProcessingAllSpectra = true;
                break;
+            }
 
             if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
             {
@@ -115,6 +121,7 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
       }
       else if (g_StaticParams.inputFile.iInputType != InputType_MZXML)
       {
+          _bDoneProcessingAllSpectra = true;
          break;
       }
       else
@@ -125,7 +132,10 @@ void CometPreprocess::LoadAndPreprocessSpectra(int iZLine,
          iTmpCount++;
 
          if (iTmpCount > iFileLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
             break;
+         }
       }
 
       if (CheckExit(iAnalysisType, 
@@ -154,6 +164,11 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
+}
+
+bool CometPreprocess::DoneProcessingAllSpectra()
+{
+    return _bDoneProcessingAllSpectra;
 }
 
 
@@ -400,22 +415,6 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 
 }
 
-
-void CometPreprocess::SetMSLevelFilter(MSReader &mstReader)
-{
-   vector<MSSpectrumType> msLevel;
-   if (g_StaticParams.options.iStartMSLevel == 3)
-   {
-      msLevel.push_back(MS3);
-   }
-   else
-   {
-      msLevel.push_back(MS2);
-   }
-   mstReader.setFilter(msLevel);
-}
-
-
 //-->MH
 // Loads spectrum into spectrum object.
 void CometPreprocess::PreloadIons(MSReader &mstReader,
@@ -423,15 +422,6 @@ void CometPreprocess::PreloadIons(MSReader &mstReader,
                                   bool bNext,
                                   int scNum)
 {
-   FILE *fp;
-
-   if ((fp = fopen(g_StaticParams.inputFile.szFileName, "r")) == NULL)
-   {
-      fprintf(stderr, " Error - input MS/MS file %s not found.\n\n", g_StaticParams.inputFile.szFileName);
-      exit(1);
-   }
-   fclose(fp);
-
    if (!bNext)
    {
       mstReader.readFile(g_StaticParams.inputFile.szFileName, spec, scNum);
@@ -488,11 +478,13 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 {
    if (iAnalysisType == AnalysisType_SpecificScan || iAnalysisType == AnalysisType_SpecificScanAndCharge)
    {
+      _bDoneProcessingAllSpectra = true;
       return true;
    }
 
    if (iAnalysisType == AnalysisType_SpecificScanRange && iScanNum >= iLastScan)
    {
+      _bDoneProcessingAllSpectra = true;
       return true;
    }
 
@@ -500,6 +492,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
          && g_StaticParams.inputFile.iInputType == InputType_MZXML
          && iScanNum == 0)
    {
+      _bDoneProcessingAllSpectra = true;
       return true;
    }
 
@@ -508,7 +501,14 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    // for non MS/MS scans.
    if (g_StaticParams.inputFile.iInputType == InputType_MZXML && iTotalScans > iReaderLastScan)
    {
+      _bDoneProcessingAllSpectra = true;
       return true;
+   }
+
+   if ((g_StaticParams.options.iSpectrumBatchSize != 0) &&
+       (g_StaticParams.options.iSpectrumBatchSize == iTotalScans))
+   {
+       return true;
    }
 
    return false;

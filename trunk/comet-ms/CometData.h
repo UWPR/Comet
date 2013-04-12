@@ -103,6 +103,7 @@ struct Options             // output parameters
    int iNumStored;               // # of search results to store for xcorr analysis
    int iStartScan;
    int iEndScan;
+   int iSpectrumBatchSize;		// # of spectra to search at a time within the scan range
    int iStartCharge;
    int iEndCharge;
    int iMaxFragmentCharge;

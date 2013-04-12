@@ -60,6 +60,8 @@ void ParseCmdLine(char *cmd,
                   int *Z,
                   int *iType,
                   char *pszFileName);
+bool ValidateInputMsMsFile();
+void SetMSLevelFilter(MSReader &mstReader);
 
 
 bool compareByPeptideMass(Query const* a, Query const* b)
@@ -178,6 +180,8 @@ int main(int argc, char *argv[])
          exit(1);
       }
 
+      CometWritePepXML::WritePepXMLHeader(fpout_pepxml, szParamsFile);
+
       if (g_StaticParams.options.iDecoySearch == 2)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
@@ -190,20 +194,34 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyPepXML);
             exit(1);
          }
+
+         CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, szParamsFile);
       }
    }
 
+   if (!ValidateInputMsMsFile())
+   {
+       fprintf(stderr, " Error - input MS/MS file %s not found.\n\n", g_StaticParams.inputFile.szFileName);
+       exit(1);
+   }
+
+   // For file access using MSToolkit.
+   MSReader mstReader;
+
+   // We want to read only MS2/MS3 scans.
+   SetMSLevelFilter(mstReader);
+
    int iTotalSpectraSearched = 0;
- 
-   while (1) // Loop through iMaxSpectraPerSearch
+
+   while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
    {
       // Load and preprocess all the spectra.
       if (!g_StaticParams.options.bOutputSqtStream)
          printf(" Load and process input spectra\n");
 
-      CometPreprocess::LoadAndPreprocessSpectra(iZLine, 
-            iFirstScan, iLastScan, iAnalysisType,
-            g_StaticParams.options.iNumThreads,  g_StaticParams.options.iNumThreads);
+      CometPreprocess::LoadAndPreprocessSpectra(mstReader, iZLine, 
+          iFirstScan, iLastScan, iAnalysisType, g_StaticParams.options.iNumThreads,  
+          g_StaticParams.options.iNumThreads);
 
       if (g_pvQuery.empty())
          break; // no search to run
@@ -240,7 +258,7 @@ int main(int argc, char *argv[])
          CometWriteOut::WriteOut();
 
       if (g_StaticParams.options.bOutputPepXMLFile)
-         CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML, szParamsFile);
+         CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML);
 
       // Write SQT last as I destroy the g_StaticParams.szMod string during that process
       if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
@@ -252,9 +270,6 @@ int main(int argc, char *argv[])
          delete g_pvQuery.at(i);
 
       g_pvQuery.clear();
-
-//    iFirstScan = iLastScan + 1;
-      break;
    }
 
    if (iTotalSpectraSearched == 0)
@@ -270,6 +285,28 @@ int main(int argc, char *argv[])
       time(&tStartTime);
       strftime(g_StaticParams._dtInfoStart.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
       printf(" Search end:    %s\n\n", g_StaticParams._dtInfoStart.szDate);
+   }
+
+   if (NULL != fpout_pepxml)
+   {
+       CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
+       fclose(fpout_pepxml);
+   }
+
+   if (NULL != fpoutd_pepxml)
+   {
+       CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
+       fclose(fpoutd_pepxml);
+   }
+
+   if (NULL != fpout_sqt)
+   {
+       fclose(fpout_sqt);
+   }
+
+   if (NULL != fpoutd_sqt)
+   {
+       fclose(fpoutd_sqt);
    }
 
    return (0);
@@ -667,6 +704,7 @@ void InitializeParameters()
    // These parameters affect mzXML/RAMP spectra only.
    g_StaticParams.options.iStartScan = 0;
    g_StaticParams.options.iEndScan = 0;
+   g_StaticParams.options.iSpectrumBatchSize = 0;
    g_StaticParams.options.iMinPeaks = MINIMUM_PEAKS;
    g_StaticParams.options.iStartCharge = 0;
    g_StaticParams.options.iMaxFragmentCharge = 3;
@@ -1171,6 +1209,16 @@ void LoadParameters(char *pszParamsFile)
             {
                g_StaticParams.options.iStartScan = iStart;
                g_StaticParams.options.iEndScan = iEnd;
+            }
+         }
+		 else if (!strcmp(szParamName, "spectrum_batch_size"))
+         {
+            int iSpectrumBatchSize=0;
+
+            sscanf(szParamVal, "%d", &iSpectrumBatchSize);
+            if (iSpectrumBatchSize > 0)
+            {
+			   g_StaticParams.options.iSpectrumBatchSize = iSpectrumBatchSize;
             }
          }
          else if (!strcmp(szParamName, "minimum_peaks"))
@@ -1879,4 +1927,29 @@ void PRINT_SQT_HEADER(FILE *fpout,
       fprintf(fpout, "H\tCometParams\t%s", szParamBuf);
 
    fclose(fp);
+}
+
+bool ValidateInputMsMsFile()
+{
+   FILE *fp;
+   if ((fp = fopen(g_StaticParams.inputFile.szFileName, "r")) == NULL)
+   {
+      return false;
+   }
+   fclose(fp);
+   return true;
+}
+
+void SetMSLevelFilter(MSReader &mstReader)
+{
+   vector<MSSpectrumType> msLevel;
+   if (g_StaticParams.options.iStartMSLevel == 3)
+   {
+      msLevel.push_back(MS3);
+   }
+   else
+   {
+      msLevel.push_back(MS2);
+   }
+   mstReader.setFilter(msLevel);
 }

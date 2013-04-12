@@ -23,16 +23,16 @@ class CometWritePepXML
 public:
    CometWritePepXML();
    ~CometWritePepXML();
+   static void WritePepXMLHeader(FILE *fpout,
+                              const char *szParamsFile);
    static void WritePepXML(FILE *fpout,
                            FILE *fpoutd,
                            char *szOutput,
-                           char *szOutputDecoy,
-                           char *szParamsFile);
+                           char *szOutputDecoy);
+   static void WritePepXMLEndTags(FILE *fpout);
 
 
 private:
-   static void WriteXMLHeader(FILE *fpout,
-                              char *szParamsFile);
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
                             FILE *fpOut,

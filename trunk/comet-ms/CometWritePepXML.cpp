@@ -33,16 +33,9 @@ CometWritePepXML::~CometWritePepXML()
 void CometWritePepXML::WritePepXML(FILE *fpout,
                                    FILE *fpoutd,
                                    char *szOutput,
-                                   char *szOutputDecoy,
-                                   char *szParamsFile)
+                                   char *szOutputDecoy)
 {
-
    int i;
-
-   WriteXMLHeader(fpout, szParamsFile);
-
-   if (g_StaticParams.options.iDecoySearch == 2)
-      WriteXMLHeader(fpoutd, szParamsFile);
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
@@ -59,13 +52,11 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
       }
    }
 
-   fprintf(fpout, " </msms_run_summary>\n");
-   fprintf(fpout, "</msms_pipeline_analysis>\n");
+   fflush(fpout);
 }
 
-
-void CometWritePepXML::WriteXMLHeader(FILE *fpout,
-                                      char *szParamsFile)
+void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
+                                      const char *szParamsFile)
 {
    time_t tTime;
    char szDate[48];
@@ -88,7 +79,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
 #endif
       pStr = g_StaticParams.inputFile.szBaseName;
    else
-      (*pStr)++;  // skip separation character
+      pStr++;  // skip separation character
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -110,7 +101,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
       printf(" Error - in WriteXMLHeader missing last period in file name: %s\n", g_StaticParams.inputFile.szFileName);
       exit(1);
    }
-   (*pStr2)++;
+   pStr2++;
    fprintf(fpout, "raw_data=\"%s\" ", pStr2);
    fprintf(fpout, "raw_data_type=\"%s\">\n", pStr2);
 
@@ -334,6 +325,12 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
    fflush(fpout);
 }
 
+void CometWritePepXML::WritePepXMLEndTags(FILE *fpout)
+{
+   fprintf(fpout, " </msms_run_summary>\n");
+   fprintf(fpout, "</msms_pipeline_analysis>\n");
+   fflush(fpout);
+}
 
 void CometWritePepXML::PrintResults(int iWhichQuery,
                                     bool bDecoy,

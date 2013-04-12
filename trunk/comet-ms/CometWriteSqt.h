@@ -43,6 +43,9 @@ private:
                             bool bDecoy,
                             Results *pOutput,
                             FILE *fpOut);
+
+   // Private member variables
+   static bool _bWroteHeader;
 };
 
 #endif

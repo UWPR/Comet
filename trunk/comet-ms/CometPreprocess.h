@@ -50,18 +50,19 @@ public:
    CometPreprocess();
    ~CometPreprocess();
 
-   static void LoadAndPreprocessSpectra(int iZLine, 
+   static void LoadAndPreprocessSpectra(MSReader &mstReader,
+                                        int iZLine, 
                                         int iFirstScan, 
                                         int iLastScan, 
                                         int iAnalysisType,
                                         int minNumThreads,
                                         int maxNumThreads);
    static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData);
+   static bool DoneProcessingAllSpectra();
    
 private:
    
    // Private static methods
-   static void SetMSLevelFilter(MSReader &mstReader);
    static void PreprocessSpectrum(Spectrum &spec, 
                                   int iZLine, 
                                   int iAnalysisType, 
@@ -101,6 +102,8 @@ private:
 
    // Private member variables
    static Mutex _maxChargeMutex;
+   static bool _bFirstScan;
+   static bool _bDoneProcessingAllSpectra;
 };
 
 #endif // _COMETPREPROCESS_H_

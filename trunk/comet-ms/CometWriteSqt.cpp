@@ -19,6 +19,7 @@
 #include "CometMassSpecUtils.h"
 #include "CometWriteSqt.h"
 
+bool CometWriteSqt::_bWroteHeader = false;
 
 CometWriteSqt::CometWriteSqt()
 {
@@ -38,18 +39,22 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
 {
    int i;
 
-   if (g_StaticParams.options.bOutputSqtFile)
+   if (!_bWroteHeader)
    {
-      PrintSqtHeader(fpout, szParamsFile);
+       _bWroteHeader = true;
+       if (g_StaticParams.options.bOutputSqtFile)
+       {
+          PrintSqtHeader(fpout, szParamsFile);
 
-      if (g_StaticParams.options.iDecoySearch == 2)
-      {
-         // Print this header only if separate decoy search is also run.
-         fprintf(fpout, "H\tTargetSearchResults\nH\n");
+          if (g_StaticParams.options.iDecoySearch == 2)
+          {
+             // Print this header only if separate decoy search is also run.
+             fprintf(fpout, "H\tTargetSearchResults\nH\n");
 
-         PrintSqtHeader(fpoutd, szParamsFile);
-         fprintf(fpoutd, "H\tDecoySearchResults\nH\n");
-      }
+             PrintSqtHeader(fpoutd, szParamsFile);
+             fprintf(fpoutd, "H\tDecoySearchResults\nH\n");
+          }
+       }
    }
 
    // Print results.
