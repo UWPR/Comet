@@ -34,7 +34,7 @@
 #define DEFAULT_PRECURSOR_CHARGE    6
 #define MAX_FRAGMENT_CHARGE         5
 #define MAX_PRECURSOR_CHARGE        9
-#define MINIMUM_PEAKS               5
+#define MINIMUM_PEAKS               10
 
 #define SIZE_BUF                    8192
 #define SIZE_FILE                   512
@@ -117,6 +117,7 @@ struct Options             // output parameters
    int iNumThreads;              // 0=poll CPU else set # threads to spawn
    int bOutputSqtStream;
    int bOutputSqtFile;
+   int bOutputTxtFile;
    int bOutputPepXMLFile;
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
@@ -126,6 +127,8 @@ struct Options             // output parameters
    int bPrintExpectScore;
    int bSparseMatrix;
    double dRemovePrecursorTol;
+   double dClearLowMZ;
+   double dClearHighMZ;
    double dLowPeptideMass;       // MH+ mass
    double dHighPeptideMass;      // MH+ mass
    char szActivationMethod[24];  // mzXML only
@@ -457,6 +460,11 @@ struct Query
       free(pSparseFastXcorrData);
       free(pSparseFastXcorrDataNL);
       free(pSparseSpScoreData);
+
+      free(pfSpScoreData);
+      free(pfFastXcorrData);
+      free(pfFastXcorrDataNL);
+
       free(_pResults);
 
       if (g_StaticParams.options.iDecoySearch==2)
