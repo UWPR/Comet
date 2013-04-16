@@ -127,6 +127,7 @@
     <ClCompile Include="CometWriteOut.cpp" />
     <ClCompile Include="CometWritePepXML.cpp" />
     <ClCompile Include="CometWriteSqt.cpp" />
+    <ClCompile Include="CometWriteTxt.cpp" />
     <ClCompile Include="Threading.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -144,6 +145,7 @@
     <ClInclude Include="CometWriteOut.h" />
     <ClInclude Include="CometWritePepXML.h" />
     <ClInclude Include="CometWriteSqt.h" />
+    <ClInclude Include="CometWriteTxt.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="OSSpecificThreading.h" />
     <ClInclude Include="resource.h" />
