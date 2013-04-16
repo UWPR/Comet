@@ -44,6 +44,7 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    int iFileLastScan = -1;         // The actual last scan in the file.
    int iScanNumber = 0;
    int iTotalScans = 0;
+   int iNumSpectraLoaded = 0;
    int iFirstScanInRange = 0;
    int iTmpCount = 0;
    Spectrum mstSpectrum;           // For holding spectrum.
@@ -127,6 +128,8 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
             if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
             {
+              iNumSpectraLoaded++;
+
               // Queue at most 1 additional parameter for threads to process.
               preprocessThreadPool.WaitForQueuedParams(1, 1);
               
@@ -165,7 +168,8 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                     iScanNumber,
                     iTotalScans, 
                     iLastScan,
-                    mstReader.getLastScan()))
+                    mstReader.getLastScan(),
+                    iNumSpectraLoaded))
       {
          break;
       }
@@ -497,7 +501,8 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
                                 int iScanNum, 
                                 int iTotalScans, 
                                 int iLastScan,
-                                int iReaderLastScan)
+                                int iReaderLastScan,
+                                int iNumSpectraLoaded)
 {
    if (iAnalysisType == AnalysisType_SpecificScan || iAnalysisType == AnalysisType_SpecificScanAndCharge)
    {
@@ -529,7 +534,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    }
 
    if ((g_StaticParams.options.iSpectrumBatchSize != 0) &&
-       (g_StaticParams.options.iSpectrumBatchSize == iTotalScans))
+       (g_StaticParams.options.iSpectrumBatchSize == iNumSpectraLoaded))
    {
        return true;
    }

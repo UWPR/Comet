@@ -79,7 +79,8 @@ private:
                          int iScanNum, 
                          int iTotalScans, 
                          int iLastScan,
-                         int iReaderLastScan);
+                         int iReaderLastScan,
+                         int iNumSpectraLoaded);
    static void Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum);
    static void LoadIons(struct Query *pScoring,
