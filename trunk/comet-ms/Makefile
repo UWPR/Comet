@@ -2,7 +2,7 @@ CXX = g++
 MSTOOLKIT = MSToolkit
 CXXFLAGS = -O3 -static -Wall -Wno-char-subscripts -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I$(MSTOOLKIT)/include
 EXECNAME = comet.exe
-OBJS = Comet.o Threading.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o
+OBJS = Comet.o Threading.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o CometWriteTxt.o
 DEPS = Common.h OSSpecificThreading.h CometData.h CometSearch.h CometPreprocess.h ThreadPool.h CometPostAnalysis.h CometMassSpecUtils.h
 LIBS = -lm -lmstoolkitlite -lpthread
 
@@ -29,6 +29,8 @@ CometWriteSqt.o:      CometWriteSqt.cpp Common.h CometData.h CometMassSpecUtils.
 	${CXX} ${CXXFLAGS} CometWriteSqt.cpp -c
 CometWritePepXML.o:   CometWritePepXML.cpp Common.h CometData.h CometMassSpecUtils.h CometWritePepXML.h
 	${CXX} ${CXXFLAGS} CometWritePepXML.cpp -c
+CometWriteTxt.o:      CometWriteTxt.cpp Common.h CometData.h CometMassSpecUtils.h CometWriteTxt.h
+	${CXX} ${CXXFLAGS} CometWriteTxt.cpp -c
 
 clean:
 	rm -f *.o ${EXECNAME}

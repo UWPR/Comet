@@ -23,6 +23,7 @@
 #include "CometPostAnalysis.h"
 #include "CometWriteOut.h"
 #include "CometWriteSqt.h"
+#include "CometWriteTxt.h"
 #include "CometWritePepXML.h"
 #include "Threading.h"
 #include "ThreadPool.h"
@@ -97,6 +98,7 @@ int main(int argc, char *argv[])
 
    if (!g_StaticParams.options.bOutputSqtStream
          && !g_StaticParams.options.bOutputSqtFile
+         && !g_StaticParams.options.bOutputTxtFile
          && !g_StaticParams.options.bOutputPepXMLFile
          && !g_StaticParams.options.bOutputOutFiles)
    {
@@ -116,11 +118,15 @@ int main(int argc, char *argv[])
    FILE *fpoutd_sqt=NULL;
    FILE *fpout_pepxml=NULL;
    FILE *fpoutd_pepxml=NULL;
+   FILE *fpout_txt=NULL;
+   FILE *fpoutd_txt=NULL;
 
    char szOutputSQT[SIZE_FILE];
    char szOutputDecoySQT[SIZE_FILE];
    char szOutputPepXML[SIZE_FILE];
    char szOutputDecoyPepXML[SIZE_FILE];
+   char szOutputTxt[SIZE_FILE];
+   char szOutputDecoyTxt[SIZE_FILE];
 
    // If # threads not specified, poll system to get # threads to launch.
    if (g_StaticParams.options.iNumThreads == 0)
@@ -162,6 +168,34 @@ int main(int argc, char *argv[])
          if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
          {
             fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoySQT);
+            exit(1);
+         }
+      }
+   }
+
+   if (g_StaticParams.options.bOutputTxtFile)
+   {
+      if (iAnalysisType == AnalysisType_EntireFile)
+         sprintf(szOutputTxt, "%s.txt", g_StaticParams.inputFile.szBaseName);
+      else
+         sprintf(szOutputTxt, "%s.%d-%d.txt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+      if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
+      {
+         fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputTxt);
+         exit(1);
+      }
+
+      if (g_StaticParams.options.iDecoySearch == 2)
+      {
+         if (iAnalysisType == AnalysisType_EntireFile)
+            sprintf(szOutputDecoyTxt, "%s.decoy.Txt", g_StaticParams.inputFile.szBaseName);
+         else
+            sprintf(szOutputDecoyTxt, "%s.%d-%d.decoy.Txt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+         if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
+         {
+            fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyTxt);
             exit(1);
          }
       }
@@ -259,6 +293,9 @@ int main(int argc, char *argv[])
 
       if (g_StaticParams.options.bOutputPepXMLFile)
          CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML);
+
+      if (g_StaticParams.options.bOutputTxtFile)
+         CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
 
       // Write SQT last as I destroy the g_StaticParams.szMod string during that process
       if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
@@ -693,6 +730,7 @@ void InitializeParameters()
 
    g_StaticParams.options.bOutputSqtStream = 0;
    g_StaticParams.options.bOutputSqtFile = 0;
+   g_StaticParams.options.bOutputTxtFile = 0;
    g_StaticParams.options.bOutputPepXMLFile = 1;
    g_StaticParams.options.bOutputOutFiles = 0;
 
@@ -717,6 +755,9 @@ void InitializeParameters()
    g_StaticParams.options.dHighPeptideMass = 0.0;
    strcpy(g_StaticParams.options.szActivationMethod, "ALL");
    // End of mzXML specific parameters.
+
+   g_StaticParams.options.dClearLowMZ = 0.0;
+   g_StaticParams.options.dClearHighMZ = 0.0;
 
    g_StaticParams.staticModifications.dAddCterminusPeptide = 0.0;
    g_StaticParams.staticModifications.dAddNterminusPeptide = 0.0;
@@ -987,6 +1028,18 @@ void LoadParameters(char *pszParamsFile)
          {
             sscanf(szParamVal, "%lf", &(g_StaticParams.options.dRemovePrecursorTol));
          }
+         else if (!strcmp(szParamName, "clear_mz_range"))
+         {
+            double dStart = 0.0,
+                   dEnd = 0.0;
+
+            sscanf(szParamVal, "%lf %lf", &dStart, &dEnd);
+            if ((dEnd >= dStart) && (dStart >= 0.0))
+            {
+               g_StaticParams.options.dClearLowMZ = dStart;
+               g_StaticParams.options.dClearHighMZ = dEnd;
+            }
+         }
          else if (!strcmp(szParamName, "print_expect_score"))
          {
             sscanf(szParamVal, "%d", &(g_StaticParams.options.bPrintExpectScore));
@@ -998,6 +1051,10 @@ void LoadParameters(char *pszParamsFile)
          else if (!strcmp(szParamName, "output_sqtfile"))
          {
             sscanf(szParamVal, "%d", &(g_StaticParams.options.bOutputSqtFile));
+         }
+         else if (!strcmp(szParamName, "output_txtfile"))
+         {
+            sscanf(szParamVal, "%d", &(g_StaticParams.options.bOutputTxtFile));
          }
          else if (!strcmp(szParamName, "output_pepxmlfile"))
          {
@@ -1211,14 +1268,14 @@ void LoadParameters(char *pszParamsFile)
                g_StaticParams.options.iEndScan = iEnd;
             }
          }
-		 else if (!strcmp(szParamName, "spectrum_batch_size"))
+         else if (!strcmp(szParamName, "spectrum_batch_size"))
          {
             int iSpectrumBatchSize=0;
 
             sscanf(szParamVal, "%d", &iSpectrumBatchSize);
             if (iSpectrumBatchSize > 0)
             {
-			   g_StaticParams.options.iSpectrumBatchSize = iSpectrumBatchSize;
+               g_StaticParams.options.iSpectrumBatchSize = iSpectrumBatchSize;
             }
          }
          else if (!strcmp(szParamName, "minimum_peaks"))
@@ -1760,6 +1817,7 @@ use_sparse_matrix = 0\n\
 #\n\
 output_sqtstream = 0                   # 0=no, 1=yes  write sqt to standard output\n\
 output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
+output_txtfile = 0                     # 0=no, 1=yes  write tab-delimited txt file\n\
 output_pepxmlfile = 1                  # 0=no, 1=yes  write pep.xml file\n\
 output_outfiles = 0                    # 0=no, 1=yes  write .out files\n\
 print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
@@ -1793,16 +1851,18 @@ max_precursor_charge = %d               # set maximum precursor charge state to 
 fprintf(fp,
 "nucleotide_reading_frame = 0           # 0=proteinDB, 1-6, 7=forward three, 8=reverse three, 9=all six\n\
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
+spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 \n\
 #\n\
 # spectral processing\n\
 #\n\
-minimum_peaks = 5                      # minimum num. of peaks in spectrum to search (default %d)\n", MINIMUM_PEAKS);
+minimum_peaks = 10                     # minimum num. of peaks in spectrum to search (default %d)\n", MINIMUM_PEAKS);
 
 fprintf(fp,
 "minimum_intensity = 0                  # minimum intensity value to read in\n\
 remove_precursor_peak = 0              # 0=no, 1=yes, 2=all charge reduced precursor peaks (for ETD)\n\
 remove_precursor_tolerance = 1.5       # +- Da tolerance for precursor removal\n\
+clear_mz_range = 0.0 0.0               # for iTRAQ/TMT type data; will clear out all peaks in the specified m/z range\n\
 \n\
 #\n\
 # additional modifications\n\
