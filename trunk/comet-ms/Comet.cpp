@@ -32,6 +32,7 @@
 
 
 std::vector <Query *>   g_pvQuery;
+std::vector <InputFileInfo *> g_pvInputFiles;
 StaticParams            g_StaticParams;
 MassRange               g_MassRange;
 Mutex                   g_pvQueryMutex;
@@ -42,11 +43,8 @@ void Usage(int failure,
 void GetHostName();
 void ProcessCmdLine(int argc, 
                     char *argv[], 
-                    int *iFirstScan, 
-                    int *iLastScan, 
-                    int *iZLine, 
-                    int *iAnalysisType,
                     char *szParamsFile);
+void UpdateInputFile(InputFileInfo *pFileInfo);
 void SetOptions(char *arg,
                 char *szParamsFile,
                 bool *bPrintParams);
@@ -55,13 +53,7 @@ void LoadParameters(char *pszParamsFile);
 void AllocateResultsMem(void);
 void CalcRunTime(time_t tStartTime);
 void PrintParams();
-void ParseCmdLine(char *cmd,
-                  int *iFirst,
-                  int *iLast,
-                  int *Z,
-                  int *iType,
-                  char *pszFileName);
-bool ValidateInputMsMsFile();
+bool ValidateInputMsMsFile(char *pszInputFileName);
 void SetMSLevelFilter(MSReader &mstReader);
 
 
@@ -73,28 +65,14 @@ bool compareByPeptideMass(Query const* a, Query const* b)
 
 int main(int argc, char *argv[])
 {
-   int iZLine = 0;
-   int iFirstScan = 0;             // First scan to search specified by user.
-   int iLastScan = 0;              // Last scan to search specified by user.
-   int iAnalysisType = AnalysisType_Unknown; // 1=dta (retired),
-                                             // 2=specific scan,
-                                             // 3=specific scan + charge,
-                                             // 4=scan range,
-                                             // 5=entire file
    char szParamsFile[SIZE_FILE];
 
    if (argc < 2) 
        Usage(0, argv[0]);
 
-   time_t tStartTime;
-   time(&tStartTime);
-   strftime(g_StaticParams._dtInfoStart.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
-
    GetHostName();
 
-   // Process command line and read comet.params here.
-   ProcessCmdLine(argc, argv, &iFirstScan, &iLastScan, &iZLine,
-         &iAnalysisType, szParamsFile);
+   ProcessCmdLine(argc, argv, szParamsFile);
 
    if (!g_StaticParams.options.bOutputSqtStream
          && !g_StaticParams.options.bOutputSqtFile
@@ -106,27 +84,6 @@ int main(int argc, char *argv[])
       printf(" Please specify at least one output format.\n\n");
       exit(1);
    }
-
-   if (!g_StaticParams.options.bOutputSqtStream)
-   {
-      printf(" Comet version \"%s\"\n", comet_version);
-      printf(" Search start:  %s\n", g_StaticParams._dtInfoStart.szDate);
-   }
-
-   // For SQT & pepXML output file, check if they can be written to before doing anything else.
-   FILE *fpout_sqt=NULL;
-   FILE *fpoutd_sqt=NULL;
-   FILE *fpout_pepxml=NULL;
-   FILE *fpoutd_pepxml=NULL;
-   FILE *fpout_txt=NULL;
-   FILE *fpoutd_txt=NULL;
-
-   char szOutputSQT[SIZE_FILE];
-   char szOutputDecoySQT[SIZE_FILE];
-   char szOutputPepXML[SIZE_FILE];
-   char szOutputDecoyPepXML[SIZE_FILE];
-   char szOutputTxt[SIZE_FILE];
-   char szOutputDecoyTxt[SIZE_FILE];
 
    // If # threads not specified, poll system to get # threads to launch.
    if (g_StaticParams.options.iNumThreads == 0)
@@ -145,206 +102,253 @@ int main(int argc, char *argv[])
    // Initialize the mutexes we'll use to protect global data.
    Threading::CreateMutex(&g_pvQueryMutex);
 
-   if (g_StaticParams.options.bOutputSqtFile)
+   // EVATODO: This is where the input file loop should start
+   for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
-      if (iAnalysisType == AnalysisType_EntireFile)
-         sprintf(szOutputSQT, "%s.sqt", g_StaticParams.inputFile.szBaseName);
-      else
-         sprintf(szOutputSQT, "%s.%d-%d.sqt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+       UpdateInputFile(g_pvInputFiles.at(i));
+       time_t tStartTime;
+       time(&tStartTime);
+       strftime(g_StaticParams._dtInfoStart.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
 
-      if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
-      {
-         fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputSQT);
-         exit(1);
-      }
+       if (!g_StaticParams.options.bOutputSqtStream)
+       {
+          printf(" Comet version \"%s\"\n", comet_version);
+          printf(" Search start:  %s\n", g_StaticParams._dtInfoStart.szDate);
+       }
 
-      if (g_StaticParams.options.iDecoySearch == 2)
-      {
-         if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputDecoySQT, "%s.decoy.sqt", g_StaticParams.inputFile.szBaseName);
-         else
-            sprintf(szOutputDecoySQT, "%s.%d-%d.decoy.sqt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+       int iZLine = g_StaticParams.inputFile.iZLine;
+       int iFirstScan = g_StaticParams.inputFile.iFirstScan;             // First scan to search specified by user.
+       int iLastScan = g_StaticParams.inputFile.iLastScan;               // Last scan to search specified by user.
+       int iAnalysisType = g_StaticParams.inputFile.iAnalysisType;       // 1=dta (retired),
+                                                                         // 2=specific scan,
+                                                                         // 3=specific scan + charge,
+                                                                         // 4=scan range,
+                                                                         // 5=entire file
 
-         if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
-         {
-            fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoySQT);
-            exit(1);
-         }
-      }
+       // For SQT & pepXML output file, check if they can be written to before doing anything else.
+       FILE *fpout_sqt=NULL;
+       FILE *fpoutd_sqt=NULL;
+       FILE *fpout_pepxml=NULL;
+       FILE *fpoutd_pepxml=NULL;
+       FILE *fpout_txt=NULL;
+       FILE *fpoutd_txt=NULL;
+
+       char szOutputSQT[SIZE_FILE];
+       char szOutputDecoySQT[SIZE_FILE];
+       char szOutputPepXML[SIZE_FILE];
+       char szOutputDecoyPepXML[SIZE_FILE];
+       char szOutputTxt[SIZE_FILE];
+       char szOutputDecoyTxt[SIZE_FILE];
+
+       if (g_StaticParams.options.bOutputSqtFile)
+       {
+          if (iAnalysisType == AnalysisType_EntireFile)
+             sprintf(szOutputSQT, "%s.sqt", g_StaticParams.inputFile.szBaseName);
+          else
+             sprintf(szOutputSQT, "%s.%d-%d.sqt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+          if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
+          {
+             fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputSQT);
+             exit(1);
+          }
+
+          if (g_StaticParams.options.iDecoySearch == 2)
+          {
+             if (iAnalysisType == AnalysisType_EntireFile)
+                sprintf(szOutputDecoySQT, "%s.decoy.sqt", g_StaticParams.inputFile.szBaseName);
+             else
+                sprintf(szOutputDecoySQT, "%s.%d-%d.decoy.sqt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
+             {
+                fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoySQT);
+                exit(1);
+             }
+          }
+       }
+
+       if (g_StaticParams.options.bOutputTxtFile)
+       {
+          if (iAnalysisType == AnalysisType_EntireFile)
+             sprintf(szOutputTxt, "%s.txt", g_StaticParams.inputFile.szBaseName);
+          else
+             sprintf(szOutputTxt, "%s.%d-%d.txt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
+          {
+             fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputTxt);
+             exit(1);
+          }
+
+          if (g_StaticParams.options.iDecoySearch == 2)
+          {
+             if (iAnalysisType == AnalysisType_EntireFile)
+                sprintf(szOutputDecoyTxt, "%s.decoy.Txt", g_StaticParams.inputFile.szBaseName);
+             else
+                sprintf(szOutputDecoyTxt, "%s.%d-%d.decoy.Txt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
+             {
+                fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyTxt);
+                exit(1);
+             }
+          }
+       }
+
+       if (g_StaticParams.options.bOutputPepXMLFile)
+       {
+          if (iAnalysisType == AnalysisType_EntireFile)
+             sprintf(szOutputPepXML, "%s.pep.xml", g_StaticParams.inputFile.szBaseName);
+          else
+             sprintf(szOutputPepXML, "%s.%d-%d.pep.xml", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+          if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
+          {
+             fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputPepXML);
+             exit(1);
+          }
+
+          CometWritePepXML::WritePepXMLHeader(fpout_pepxml, szParamsFile);
+
+          if (g_StaticParams.options.iDecoySearch == 2)
+          {
+             if (iAnalysisType == AnalysisType_EntireFile)
+                sprintf(szOutputDecoyPepXML, "%s.decoy.pep.xml", g_StaticParams.inputFile.szBaseName);
+             else
+                sprintf(szOutputDecoyPepXML, "%s.%d-%d.decoy.pep.xml", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+             if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
+             {
+                fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyPepXML);
+                exit(1);
+             }
+
+             CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, szParamsFile);
+          }
+       }
+
+       // For file access using MSToolkit.
+       MSReader mstReader;
+
+       // We want to read only MS2/MS3 scans.
+       SetMSLevelFilter(mstReader);
+
+       int iTotalSpectraSearched = 0;
+
+       // We need to reset some of the static variables in-between input files 
+       CometPreprocess::Reset();
+
+       while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
+       {
+          // Load and preprocess all the spectra.
+          if (!g_StaticParams.options.bOutputSqtStream)
+             printf(" Load and process input spectra\n");
+
+          CometPreprocess::LoadAndPreprocessSpectra(mstReader, iZLine, 
+              iFirstScan, iLastScan, iAnalysisType, g_StaticParams.options.iNumThreads,  
+              g_StaticParams.options.iNumThreads);
+
+          if (g_pvQuery.empty())
+             break; // no search to run
+          else
+             iTotalSpectraSearched += g_pvQuery.size();
+
+          // Allocate memory to store results for each query spectrum.
+          if (!g_StaticParams.options.bOutputSqtStream)
+             printf(" Allocate memory to store results\n");
+
+          AllocateResultsMem();
+
+          if (!g_StaticParams.options.bOutputSqtStream)
+             printf(" Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
+
+          // Sort g_pvQuery vector by dExpPepMass.
+          std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
+
+          g_MassRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
+          g_MassRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
+
+          // Now that spectra are loaded to memory and sorted, do search.
+          CometSearch::RunSearch(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
+
+          // Sort each entry by xcorr, calculate E-values, etc.
+          CometPostAnalysis::PostAnalysis(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
+
+          CalcRunTime(tStartTime);
+
+          if (!g_StaticParams.options.bOutputSqtStream)
+             printf(" Write output\n");
+
+          if (g_StaticParams.options.bOutputOutFiles)
+             CometWriteOut::WriteOut();
+
+          if (g_StaticParams.options.bOutputPepXMLFile)
+             CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML);
+
+          if (g_StaticParams.options.bOutputTxtFile)
+             CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
+
+          // Write SQT last as I destroy the g_StaticParams.szMod string during that process
+          if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
+             CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
+
+          // Deleting each Query object in the vector calls its destructor, which 
+          // frees the spectral memory (see definition for Query in CometData.h).
+          for (int i=0; i<(int)g_pvQuery.size(); i++)
+             delete g_pvQuery.at(i);
+
+          g_pvQuery.clear();
+       }
+
+       if (iTotalSpectraSearched == 0)
+       {
+          printf(" Warning - no searches to run.\n\n");
+       }
+
+       if (!g_StaticParams.options.bOutputSqtStream)
+       {
+          time(&tStartTime);
+          strftime(g_StaticParams._dtInfoStart.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
+          printf(" Search end:    %s\n\n", g_StaticParams._dtInfoStart.szDate);
+       }
+
+       if (NULL != fpout_pepxml)
+       {
+           CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
+           fclose(fpout_pepxml);
+           fpout_pepxml = NULL;
+       }
+
+       if (NULL != fpoutd_pepxml)
+       {
+           CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
+           fclose(fpoutd_pepxml);
+           fpoutd_pepxml = NULL;
+       }
+
+       if (NULL != fpout_sqt)
+       {
+           fclose(fpout_sqt);
+           fpout_sqt = NULL;
+       }
+
+       if (NULL != fpoutd_sqt)
+       {
+           fclose(fpoutd_sqt);
+           fpoutd_sqt = NULL;
+       }
    }
 
-   if (g_StaticParams.options.bOutputTxtFile)
-   {
-      if (iAnalysisType == AnalysisType_EntireFile)
-         sprintf(szOutputTxt, "%s.txt", g_StaticParams.inputFile.szBaseName);
-      else
-         sprintf(szOutputTxt, "%s.%d-%d.txt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
-
-      if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
-      {
-         fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputTxt);
-         exit(1);
-      }
-
-      if (g_StaticParams.options.iDecoySearch == 2)
-      {
-         if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputDecoyTxt, "%s.decoy.Txt", g_StaticParams.inputFile.szBaseName);
-         else
-            sprintf(szOutputDecoyTxt, "%s.%d-%d.decoy.Txt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
-
-         if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
-         {
-            fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyTxt);
-            exit(1);
-         }
-      }
-   }
-
-   if (g_StaticParams.options.bOutputPepXMLFile)
-   {
-      if (iAnalysisType == AnalysisType_EntireFile)
-         sprintf(szOutputPepXML, "%s.pep.xml", g_StaticParams.inputFile.szBaseName);
-      else
-         sprintf(szOutputPepXML, "%s.%d-%d.pep.xml", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
-
-      if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
-      {
-         fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputPepXML);
-         exit(1);
-      }
-
-      CometWritePepXML::WritePepXMLHeader(fpout_pepxml, szParamsFile);
-
-      if (g_StaticParams.options.iDecoySearch == 2)
-      {
-         if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputDecoyPepXML, "%s.decoy.pep.xml", g_StaticParams.inputFile.szBaseName);
-         else
-            sprintf(szOutputDecoyPepXML, "%s.%d-%d.decoy.pep.xml", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
-
-         if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
-         {
-            fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyPepXML);
-            exit(1);
-         }
-
-         CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, szParamsFile);
-      }
-   }
-
-   if (!ValidateInputMsMsFile())
-   {
-       fprintf(stderr, " Error - input MS/MS file %s not found.\n\n", g_StaticParams.inputFile.szFileName);
-       exit(1);
-   }
-
-   // For file access using MSToolkit.
-   MSReader mstReader;
-
-   // We want to read only MS2/MS3 scans.
-   SetMSLevelFilter(mstReader);
-
-   int iTotalSpectraSearched = 0;
-
-   while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
-   {
-      // Load and preprocess all the spectra.
-      if (!g_StaticParams.options.bOutputSqtStream)
-         printf(" Load and process input spectra\n");
-
-      CometPreprocess::LoadAndPreprocessSpectra(mstReader, iZLine, 
-          iFirstScan, iLastScan, iAnalysisType, g_StaticParams.options.iNumThreads,  
-          g_StaticParams.options.iNumThreads);
-
-      if (g_pvQuery.empty())
-         break; // no search to run
-      else
-         iTotalSpectraSearched += g_pvQuery.size();
-
-      // Allocate memory to store results for each query spectrum.
-      if (!g_StaticParams.options.bOutputSqtStream)
-         printf(" Allocate memory to store results\n");
-
-      AllocateResultsMem();
-
-      if (!g_StaticParams.options.bOutputSqtStream)
-         printf(" Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
-
-      // Sort g_pvQuery vector by dExpPepMass.
-      std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
-
-      g_MassRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
-      g_MassRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
-
-      // Now that spectra are loaded to memory and sorted, do search.
-      CometSearch::RunSearch(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
-
-      // Sort each entry by xcorr, calculate E-values, etc.
-      CometPostAnalysis::PostAnalysis(g_StaticParams.options.iNumThreads, g_StaticParams.options.iNumThreads);
-
-      CalcRunTime(tStartTime);
-
-      if (!g_StaticParams.options.bOutputSqtStream)
-         printf(" Write output\n");
-
-      if (g_StaticParams.options.bOutputOutFiles)
-         CometWriteOut::WriteOut();
-
-      if (g_StaticParams.options.bOutputPepXMLFile)
-         CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML);
-
-      if (g_StaticParams.options.bOutputTxtFile)
-         CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
-
-      // Write SQT last as I destroy the g_StaticParams.szMod string during that process
-      if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
-         CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
-
-      // Deleting each Query object in the vector calls its destructor, which 
-      // frees the spectral memory (see definition for Query in CometData.h).
-      for (int i=0; i<(int)g_pvQuery.size(); i++)
-         delete g_pvQuery.at(i);
-
-      g_pvQuery.clear();
-   }
-
-   if (iTotalSpectraSearched == 0)
-   {
-      printf(" Warning - no searches to run.\n\n");
-   }
+   // EVATODO: This is where the input file info should end
 
    // Destroy the mutex we used to protect g_pvQuery.
    Threading::DestroyMutex(g_pvQueryMutex);
- 
-   if (!g_StaticParams.options.bOutputSqtStream)
-   {
-      time(&tStartTime);
-      strftime(g_StaticParams._dtInfoStart.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
-      printf(" Search end:    %s\n\n", g_StaticParams._dtInfoStart.szDate);
-   }
 
-   if (NULL != fpout_pepxml)
-   {
-       CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
-       fclose(fpout_pepxml);
-   }
-
-   if (NULL != fpoutd_pepxml)
-   {
-       CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
-       fclose(fpoutd_pepxml);
-   }
-
-   if (NULL != fpout_sqt)
-   {
-       fclose(fpout_sqt);
-   }
-
-   if (NULL != fpoutd_sqt)
-   {
-       fclose(fpoutd_sqt);
-   }
+   // Clean up the input files vector
+   for (int i=0; i<(int)g_pvInputFiles.size(); i++)
+      delete g_pvInputFiles.at(i);
+   g_pvInputFiles.clear();
 
    return (0);
 
@@ -466,182 +470,6 @@ void GetHostName(void)
 }
 
 
-void ProcessCmdLine(int argc, 
-                    char *argv[], 
-                    int *iFirstScan, 
-                    int *iLastScan, 
-                    int *iZLine, 
-                    int *iAnalysisType,
-                    char *szParamsFile)
-{
-   bool bPrintParams = false;
-   int iStartInputFile = 1;
-   char *arg;
-   FILE *fpcheck;
-
-   strcpy(szParamsFile, "comet.params");
-
-   g_StaticParams.databaseInfo.szDatabase[0] = '\0';
-   g_StaticParams.inputFile.szBaseName[0] = '\0';
-
-   arg = argv[iStartInputFile];
-
-   while (iStartInputFile < argc)
-   {
-      if (arg[0] == '-')
-         SetOptions(arg, szParamsFile, &bPrintParams);
-      else
-         break;
-
-      arg = argv[++iStartInputFile];
-   }
-
-   if (bPrintParams)
-   {
-      PrintParams();
-      exit(0);
-   }
-
-   if (iStartInputFile == argc)
-   {
-      printf("\n");
-      printf(" Comet version %s\n %s\n", comet_version, copyright);
-      printf("\n");
-      printf(" Error - nothing to do.\n\n");
-      exit(1);
-   }
-
-   InitializeParameters();
-
-   // Loads search parameters from comet.params file.
-   LoadParameters(szParamsFile);
-
-   // Quick sanity check to make sure sequence db file is present before spending
-   // time reading & processing spectra and then reporting this error.
-   if ((fpcheck=fopen(g_StaticParams.databaseInfo.szDatabase, "r")) == NULL)
-   {
-      fprintf(stderr, "\n Error - cannot read database file %s.\n\n", g_StaticParams.databaseInfo.szDatabase);
-      exit(1);
-   }
-   fclose(fpcheck);
-
-   if (!g_StaticParams.options.bOutputOutFiles)
-   {
-      g_StaticParams.options.bSkipAlreadyDone = 0;
-   }
-
-   //-->MH
-   //Parse file line.
-   char szFName[SIZE_FILE];
-   ParseCmdLine(argv[iStartInputFile], 
-             iFirstScan, 
-             iLastScan, 
-             iZLine, 
-             iAnalysisType, 
-             szFName);
-
-   strcpy(g_StaticParams.inputFile.szFileName, szFName);
-
-   if ((fpcheck = fopen(g_StaticParams.inputFile.szFileName, "r")) == NULL)
-   {
-      fprintf(stderr, "\n Error - cannot open input file %s.\n\n", g_StaticParams.inputFile.szFileName);
-      exit(1);
-   }
-   fclose(fpcheck);
-
-   int iLen = strlen(argv[iStartInputFile]);
-   if (!strcmp(argv[iStartInputFile] + iLen - 6, ".mzXML")
-         || !strcmp(argv[iStartInputFile] + iLen - 5, ".mzML")
-         || !strcmp(argv[iStartInputFile] + iLen - 4, ".mz5")
-         || !strcmp(argv[iStartInputFile] + iLen - 9, ".mzXML.gz")
-         || !strcmp(argv[iStartInputFile] + iLen - 8, ".mzML.gz"))
-   {
-      g_StaticParams.inputFile.iInputType = InputType_MZXML;
-   }
-
-   if (g_StaticParams.inputFile.szBaseName[0]=='\0')  // Make sure not set on command line.
-   {
-      char *pStr;
-
-      strcpy(g_StaticParams.inputFile.szBaseName, g_StaticParams.inputFile.szFileName);
-
-      if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
-         *pStr = '\0';
-
-      if (!strcmp(argv[iStartInputFile] + iLen - 9, ".mzXML.gz")
-         || !strcmp(argv[iStartInputFile] + iLen - 8, ".mzML.gz"))
-      {
-         if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
-            *pStr = '\0';
-      }
-   }
-
-   // Create .out directory.
-   if (g_StaticParams.options.bOutputOutFiles)
-   {
-#ifdef _WIN32
-      if (_mkdir(g_StaticParams.inputFile.szBaseName) == -1)
-      {
-         errno_t err;
-         _get_errno(&err);
-
-         if (err != EEXIST) 
-         {
-            fprintf(stderr, "\n Error - could not create directory %s.\n", g_StaticParams.inputFile.szBaseName);
-            exit(1);
-         }
-      }
-      if (g_StaticParams.options.iDecoySearch == 2)
-      {
-         char szDecoyDir[SIZE_FILE];
-         sprintf(szDecoyDir, "%s_decoy", g_StaticParams.inputFile.szBaseName);
-
-         if (_mkdir(szDecoyDir) == -1)
-         {
-            errno_t err;
-            _get_errno(&err);
-
-            if (err != EEXIST) 
-            {
-               fprintf(stderr, "\n Error - could not create directory %s.\n", szDecoyDir);
-               exit(1);
-            }
-         }
-      }
-#else
-      if ((mkdir(g_StaticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
-      {
-         fprintf(stderr, "\n Error - could not create directory %s.\n", g_StaticParams.inputFile.szBaseName);
-         exit(1);
-      }
-      if (g_StaticParams.options.iDecoySearch == 2)
-      {
-         char szDecoyDir[SIZE_FILE];
-         sprintf(szDecoyDir, "%s_decoy", g_StaticParams.inputFile.szBaseName);
-
-         if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
-         {
-            fprintf(stderr, "\n Error - could not create directory %s.\n\n", szDecoyDir);
-            exit(1);
-         }
-      }
-#endif
-   }
-
-   g_StaticParams.precalcMasses.dNtermProton = g_StaticParams.staticModifications.dAddNterminusPeptide
-      + PROTON_MASS;
-
-   g_StaticParams.precalcMasses.dCtermOH2Proton = g_StaticParams.staticModifications.dAddCterminusPeptide
-      + g_StaticParams.massUtility.dOH2fragment
-      + PROTON_MASS;
-
-   g_StaticParams.precalcMasses.dOH2ProtonCtermNterm = g_StaticParams.massUtility.dOH2parent
-      + PROTON_MASS
-      + g_StaticParams.staticModifications.dAddCterminusPeptide
-      + g_StaticParams.staticModifications.dAddNterminusPeptide;
-}
-
-
 void SetOptions(char *arg,
       char *szParamsFile,
       bool *bPrintParams)
@@ -664,13 +492,62 @@ void SetOptions(char *arg,
          break;
       case 'N':   // Set basename of output file (for .out, SQT, and pepXML)
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         {
             fprintf(stderr, "Missing text for parameter option -N<basename>.  Ignored.\n");
-         else
+         }
+         else if (g_pvInputFiles.size() == 1)  
          {
             strcpy(g_StaticParams.inputFile.szBaseName, szTmp);
             printf("basename %s\n", g_StaticParams.inputFile.szBaseName);
          }
          break;
+      case 'F':
+         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         {
+            fprintf(stderr, "Missing text for parameter option -F<params>.  Ignored.\n");
+         }
+         else
+         {
+            int iStartScan = atoi(szTmp);
+            int numInputFiles = g_pvInputFiles.size();
+            for (int i = 0; i < numInputFiles; i++)
+            {
+                g_pvInputFiles.at(i)->iFirstScan = iStartScan;
+            }
+         }
+         break;
+      case 'L':
+         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         {
+            fprintf(stderr, "Missing text for parameter option -L<params>.  Ignored.\n");
+         }
+         else
+         {
+            int iEndScan = atoi(szTmp);
+            int numInputFiles = g_pvInputFiles.size();
+            for (int i = 0; i < numInputFiles; i++)
+            {
+                g_pvInputFiles.at(i)->iLastScan = iEndScan;
+            }
+         }
+         break;
+          break;
+      case 'Z':
+         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         {
+            fprintf(stderr, "Missing text for parameter option -Z<params>.  Ignored.\n");
+         }
+         else
+         {
+            int iZLine = atoi(szTmp);
+            int numInputFiles = g_pvInputFiles.size();
+            for (int i = 0; i < numInputFiles; i++)
+            {
+                g_pvInputFiles.at(i)->iZLine = iZLine;
+            }
+         }
+         break;
+          break;
       case 'p':
          *bPrintParams = true;
          break;
@@ -1670,75 +1547,264 @@ void LoadParameters(char *pszParamsFile)
 
 
 // Parses the command line and determines the type of analysis to perform.
-void ParseCmdLine(char *cmd,
-                  int *iFirst,
-                  int *iLast,
-                  int *Z,
-                  int *iType,
-                  char *pszFileName)
+bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile)
 {
    char *tok;
    char *scan;
 
-   *iType = 0;
+   pInputFile->iAnalysisType = 0;
 
-   // Get the file name.
-   tok = strtok(cmd,":\n");
-   strcpy(pszFileName, tok);
+   // Get the file name. Because Windows can have ":" in the file path,
+   // we can't just use "strtok" to grab the filename.
+   int i;
+   int iCmdLen = strlen(cmd);
+   for (i=0; i < iCmdLen; i++)
+   {
+       if (cmd[i] == ':')
+       {
+           if ((i + 1) < iCmdLen)
+           {
+               if (cmd[i+1] != '\\' && cmd[i+1] != '/')
+               {
+                   break;
+               }
+           }
+       }
+   }
+
+   strncpy(pInputFile->szFileName, cmd, i);
+   if (!ValidateInputMsMsFile(pInputFile->szFileName))
+   {
+       return false;
+   }
 
    // Get additional filters.
-   scan = strtok(NULL, ":\n");
+   scan = strtok(cmd+i, ":\n");
 
    // Analyze entire file.
    if (scan == NULL)
    {
       if (g_StaticParams.options.iStartScan == 0)
       {
-         *iType = AnalysisType_EntireFile;
-         return;
+         pInputFile->iAnalysisType = AnalysisType_EntireFile;
+         return true;
       }
       else
       {
-         *iFirst = g_StaticParams.options.iStartScan;
-         *iLast = g_StaticParams.options.iEndScan;
-         *iType = AnalysisType_SpecificScanRange;
-         return;
+         pInputFile->iFirstScan = g_StaticParams.options.iStartScan;
+         pInputFile->iLastScan = g_StaticParams.options.iEndScan;
+         pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
+         return true;
       }
    }
 
    // Analyze a portion of the file.
    if (strchr(scan,'.') != NULL)
    {
-      *iType = AnalysisType_SpecificScanAndCharge;
+      pInputFile->iAnalysisType = AnalysisType_SpecificScanAndCharge;
       tok = strtok(scan,".\n");
-      *iFirst = atoi(tok);
+      pInputFile->iFirstScan = atoi(tok);
       tok = strtok(NULL,".\n");
-      *Z = atoi(tok);
+      pInputFile->iZLine = atoi(tok);
    }
    else if (strchr(scan,'-') != NULL)
    {
-      *iType = AnalysisType_SpecificScanRange;
+      pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
       tok = strtok(scan, "-\n");
-      *iFirst = atoi(tok);
+      pInputFile->iFirstScan = atoi(tok);
       tok = strtok(NULL,"-\n");
-      *iLast = atoi(tok);
+      pInputFile->iLastScan = atoi(tok);
    }
    else if (strchr(scan,'+') != NULL)
    {
-      *iType = AnalysisType_SpecificScanRange;
+      pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
       tok = strtok(scan,"+\n");
-      *iFirst = atoi(tok);
+      pInputFile->iFirstScan = atoi(tok);
       tok = strtok(NULL,"+\n");
-      *iLast = *iFirst + atoi(tok);
+      pInputFile->iLastScan = pInputFile->iFirstScan + atoi(tok);
    }
    else
    {
-      *iType = AnalysisType_SpecificScan;
-      *iFirst = atoi(scan);
+      pInputFile->iAnalysisType = AnalysisType_SpecificScan;
+      pInputFile->iFirstScan = atoi(scan);
    }
 
+   return true;
 } // ParseCmdLine
 
+void ProcessCmdLine(int argc, 
+                    char *argv[], 
+                    char *szParamsFile)
+{
+   bool bPrintParams = false;
+   int iStartInputFile = 1;
+   char *arg;
+   FILE *fpcheck;
+
+   if (iStartInputFile == argc)
+   {
+      printf("\n");
+      printf(" Comet version %s\n %s\n", comet_version, copyright);
+      printf("\n");
+      printf(" Error - nothing to do.\n\n");
+      exit(1);
+   }
+
+   strcpy(szParamsFile, "comet.params");
+
+   g_StaticParams.databaseInfo.szDatabase[0] = '\0';
+
+   arg = argv[iStartInputFile];
+
+   while ((iStartInputFile < argc) && (NULL != arg))
+   {
+      if (arg[0] == '-')
+      {
+         SetOptions(arg, szParamsFile, &bPrintParams);
+      }
+      else if (arg != NULL)
+      {
+          InputFileInfo *pInputFileInfo = new InputFileInfo();
+          if (!ParseCmdLine(arg, pInputFileInfo))
+          {
+              fprintf(stderr, " Error - input MS/MS file %s not found.\n\n", pInputFileInfo->szFileName);
+              g_pvInputFiles.clear();
+              exit(1);
+          }
+          g_pvInputFiles.push_back(pInputFileInfo);
+      }
+      else
+      {
+         break;
+      }
+
+      arg = argv[++iStartInputFile];
+   }
+
+   if (bPrintParams)
+   {
+      PrintParams();
+      exit(0);
+   }
+
+   InitializeParameters();
+
+   // Loads search parameters from comet.params file.
+   LoadParameters(szParamsFile);
+
+   // Quick sanity check to make sure sequence db file is present before spending
+   // time reading & processing spectra and then reporting this error.
+   if ((fpcheck=fopen(g_StaticParams.databaseInfo.szDatabase, "r")) == NULL)
+   {
+      fprintf(stderr, "\n Error - cannot read database file %s.\n\n", g_StaticParams.databaseInfo.szDatabase);
+      exit(1);
+   }
+   fclose(fpcheck);
+
+   if (!g_StaticParams.options.bOutputOutFiles)
+   {
+      g_StaticParams.options.bSkipAlreadyDone = 0;
+   }
+
+   g_StaticParams.precalcMasses.dNtermProton = g_StaticParams.staticModifications.dAddNterminusPeptide
+      + PROTON_MASS;
+
+   g_StaticParams.precalcMasses.dCtermOH2Proton = g_StaticParams.staticModifications.dAddCterminusPeptide
+      + g_StaticParams.massUtility.dOH2fragment
+      + PROTON_MASS;
+
+   g_StaticParams.precalcMasses.dOH2ProtonCtermNterm = g_StaticParams.massUtility.dOH2parent
+      + PROTON_MASS
+      + g_StaticParams.staticModifications.dAddCterminusPeptide
+      + g_StaticParams.staticModifications.dAddNterminusPeptide;
+}
+
+void UpdateInputFile(InputFileInfo *pFileInfo)
+{
+   g_StaticParams.inputFile = *pFileInfo;
+
+   int iLen = strlen(g_StaticParams.inputFile.szFileName);
+   char *pszTmp = g_StaticParams.inputFile.szFileName + iLen - 6;
+   if (!strcmpi(g_StaticParams.inputFile.szFileName + iLen - 6, ".mzXML")
+         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 5, ".mzML")
+         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 4, ".mz5")
+         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+
+   {
+      g_StaticParams.inputFile.iInputType = InputType_MZXML;
+   } 
+
+   if (g_StaticParams.inputFile.szBaseName[0] =='\0')  // Make sure not set on command line.
+   {
+      char *pStr;
+
+      strcpy(g_StaticParams.inputFile.szBaseName, g_StaticParams.inputFile.szFileName);
+
+      if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
+         *pStr = '\0';
+
+      if (!strcmpi(g_StaticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+      {
+         if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
+            *pStr = '\0';
+      }
+   }
+
+   // Create .out directory.
+   if (g_StaticParams.options.bOutputOutFiles)
+   {
+#ifdef _WIN32
+      if (_mkdir(g_StaticParams.inputFile.szBaseName) == -1)
+      {
+         errno_t err;
+         _get_errno(&err);
+
+         if (err != EEXIST) 
+         {
+            fprintf(stderr, "\n Error - could not create directory %s.\n", g_StaticParams.inputFile.szBaseName);
+            exit(1);
+         }
+      }
+      if (g_StaticParams.options.iDecoySearch == 2)
+      {
+         char szDecoyDir[SIZE_FILE];
+         sprintf(szDecoyDir, "%s_decoy", g_StaticParams.inputFile.szBaseName);
+
+         if (_mkdir(szDecoyDir) == -1)
+         {
+            errno_t err;
+            _get_errno(&err);
+
+            if (err != EEXIST) 
+            {
+               fprintf(stderr, "\n Error - could not create directory %s.\n", szDecoyDir);
+               exit(1);
+            }
+         }
+      }
+#else
+      if ((mkdir(g_StaticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
+      {
+         fprintf(stderr, "\n Error - could not create directory %s.\n", g_StaticParams.inputFile.szBaseName);
+         exit(1);
+      }
+      if (g_StaticParams.options.iDecoySearch == 2)
+      {
+         char szDecoyDir[SIZE_FILE];
+         sprintf(szDecoyDir, "%s_decoy", g_StaticParams.inputFile.szBaseName);
+
+         if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
+         {
+            fprintf(stderr, "\n Error - could not create directory %s.\n\n", szDecoyDir);
+            exit(1);
+         }
+      }
+#endif
+   }
+
+}
 
 // Print out comet.params to file.
 void PrintParams()
@@ -1989,10 +2055,10 @@ void PRINT_SQT_HEADER(FILE *fpout,
    fclose(fp);
 }
 
-bool ValidateInputMsMsFile()
+bool ValidateInputMsMsFile(char *pszInputFileName)
 {
    FILE *fp;
-   if ((fp = fopen(g_StaticParams.inputFile.szFileName, "r")) == NULL)
+   if ((fp = fopen(pszInputFileName, "r")) == NULL)
    {
       return false;
    }
@@ -2013,3 +2079,4 @@ void SetMSLevelFilter(MSReader &mstReader)
    }
    mstReader.setFilter(msLevel);
 }
+

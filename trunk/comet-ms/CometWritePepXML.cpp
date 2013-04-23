@@ -352,7 +352,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 #endif
       pStr = g_StaticParams.inputFile.szBaseName;
    else
-      (*pStr)++;  // skip separation character
+      pStr++;  // skip separation character
 
    // Print spectrum_query element. 
    fprintf(fpout, " <spectrum_query spectrum=\"%s.%05d.%05d.%d\"",

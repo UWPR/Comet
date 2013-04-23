@@ -50,6 +50,7 @@ public:
    CometPreprocess();
    ~CometPreprocess();
 
+   static void Reset();
    static void LoadAndPreprocessSpectra(MSReader &mstReader,
                                         int iZLine, 
                                         int iFirstScan, 

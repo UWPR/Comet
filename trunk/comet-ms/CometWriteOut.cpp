@@ -100,7 +100,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 #endif
        pStr = g_StaticParams.inputFile.szBaseName;
     else
-       (*pStr)++;  // skip separation character
+       pStr++;  // skip separation character
 
    if (bDecoySearch)
    {

@@ -217,8 +217,55 @@ struct DBInfo
 struct InputFileInfo
 {
    int  iInputType;
+   int  iAnalysisType;
+   int  iFirstScan;
+   int  iLastScan;
+   int  iZLine;
    char szFileName[SIZE_FILE];
    char szBaseName[SIZE_FILE];
+
+   InputFileInfo()
+   {
+       iInputType = 0;
+       iAnalysisType = AnalysisType_Unknown;
+       iFirstScan = 0;
+       iLastScan = 0;
+       iZLine = 0;
+
+       szFileName[0] = '\0';
+       szBaseName[0] = '\0';
+   }
+
+   InputFileInfo(char *pszFileName)
+   {
+       iInputType = 0;
+       iAnalysisType = AnalysisType_Unknown;
+       iFirstScan = 0;
+       iLastScan = 0;
+       iZLine = 0;
+
+       szBaseName[0] = '\0';
+
+       pszFileName[0] = '\0';
+       strcpy(szFileName, pszFileName);
+   }
+
+   InputFileInfo& operator = (InputFileInfo &inputObj)
+   {
+       iInputType = inputObj.iInputType;
+       iAnalysisType = inputObj.iAnalysisType;
+       iFirstScan = inputObj.iFirstScan;
+       iLastScan = inputObj.iLastScan;
+       iZLine = inputObj.iZLine;
+
+       szBaseName[0] = '\0';
+       strcpy(szBaseName, inputObj.szBaseName);
+
+       szFileName[0] = '\0';
+       strcpy(szFileName, inputObj.szFileName);
+       return *this;
+   }
+
 };
 
 struct StaticMod
@@ -482,6 +529,7 @@ struct Query
 };
 
 extern vector <Query*>  g_pvQuery;
+extern vector <InputFileInfo*> g_pvInputFiles;
 extern Mutex            g_pvQueryMutex;
 
 struct IonSeriesStruct         // defines which fragment ion series are considered

@@ -19,8 +19,8 @@
 #include "CometPreprocess.h"
 
 Mutex CometPreprocess::_maxChargeMutex;
-bool CometPreprocess::_bFirstScan = true;
-bool CometPreprocess::_bDoneProcessingAllSpectra = false;
+bool CometPreprocess::_bDoneProcessingAllSpectra;
+bool CometPreprocess::_bFirstScan;
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (pdCorrelationData).
 CometPreprocess::CometPreprocess()
@@ -32,6 +32,11 @@ CometPreprocess::~CometPreprocess()
 {
 }
 
+void CometPreprocess::Reset()
+{
+    _bFirstScan = true;
+    _bDoneProcessingAllSpectra = false;
+}
 
 void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                                                int iZLine, 
