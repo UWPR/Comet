@@ -513,12 +513,7 @@ void SetOptions(char *arg,
          }
          else
          {
-            int iStartScan = atoi(szTmp);
-            int numInputFiles = g_pvInputFiles.size();
-            for (int i = 0; i < numInputFiles; i++)
-            {
-                g_pvInputFiles.at(i)->iFirstScan = iStartScan;
-            }
+            g_StaticParams.options.iStartScan = atoi(szTmp);
          }
          break;
       case 'L':
@@ -528,27 +523,7 @@ void SetOptions(char *arg,
          }
          else
          {
-            int iEndScan = atoi(szTmp);
-            int numInputFiles = g_pvInputFiles.size();
-            for (int i = 0; i < numInputFiles; i++)
-            {
-                g_pvInputFiles.at(i)->iLastScan = iEndScan;
-            }
-         }
-         break;
-      case 'Z':
-         if (sscanf(arg+2, "%512s", szTmp) == 0 )
-         {
-            fprintf(stderr, "Missing text for parameter option -Z<params>.  Ignored.\n");
-         }
-         else
-         {
-            int iZLine = atoi(szTmp);
-            int numInputFiles = g_pvInputFiles.size();
-            for (int i = 0; i < numInputFiles; i++)
-            {
-                g_pvInputFiles.at(i)->iZLine = iZLine;
-            }
+             g_StaticParams.options.iEndScan = atoi(szTmp);
          }
          break;
       case 'p':
@@ -1654,6 +1629,8 @@ void ProcessCmdLine(int argc,
       exit(1);
    }
 
+   InitializeParameters();
+
    strcpy(szParamsFile, "comet.params");
 
    g_StaticParams.databaseInfo.szDatabase[0] = '\0';
@@ -1690,8 +1667,6 @@ void ProcessCmdLine(int argc,
       PrintParams();
       exit(0);
    }
-
-   InitializeParameters();
 
    // Loads search parameters from comet.params file.
    LoadParameters(szParamsFile);
