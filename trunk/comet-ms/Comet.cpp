@@ -30,6 +30,11 @@
 
 #include <algorithm>
 
+#ifdef _WIN32
+#define STRCMP_IGNORE_CASE(a,b) strcmpi(a,b)
+#else 
+#define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
+#endif
 
 std::vector <Query *>   g_pvQuery;
 std::vector <InputFileInfo *> g_pvInputFiles;
@@ -531,7 +536,6 @@ void SetOptions(char *arg,
             }
          }
          break;
-          break;
       case 'Z':
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
          {
@@ -547,7 +551,6 @@ void SetOptions(char *arg,
             }
          }
          break;
-          break;
       case 'p':
          *bPrintParams = true;
          break;
@@ -1725,11 +1728,11 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
 
    int iLen = strlen(g_StaticParams.inputFile.szFileName);
    char *pszTmp = g_StaticParams.inputFile.szFileName + iLen - 6;
-   if (!strcmpi(g_StaticParams.inputFile.szFileName + iLen - 6, ".mzXML")
-         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 5, ".mzML")
-         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 4, ".mz5")
-         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+   if (!STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 6, ".mzXML")
+         || !STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 5, ".mzML")
+         || !STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 4, ".mz5")
+         || !STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+         || !STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
 
    {
       g_StaticParams.inputFile.iInputType = InputType_MZXML;
@@ -1744,8 +1747,8 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
       if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
          *pStr = '\0';
 
-      if (!strcmpi(g_StaticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !strcmpi(g_StaticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+      if (!STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+         || !STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
       {
          if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
             *pStr = '\0';
