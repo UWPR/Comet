@@ -1576,6 +1576,7 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile)
    }
 
    strncpy(pInputFile->szFileName, cmd, i);
+   pInputFile->szFileName[i] = '\0';
    if (!ValidateInputMsMsFile(pInputFile->szFileName))
    {
        return false;
