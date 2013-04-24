@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
          && !g_StaticParams.options.bOutputPepXMLFile
          && !g_StaticParams.options.bOutputOutFiles)
    {
-      printf(" Comet version \"%s\"\n", comet_version);
+      printf("\n Comet version \"%s\"\n", comet_version);
       printf(" Please specify at least one output format.\n\n");
       exit(1);
    }
@@ -189,9 +189,9 @@ int main(int argc, char *argv[])
           if (g_StaticParams.options.iDecoySearch == 2)
           {
              if (iAnalysisType == AnalysisType_EntireFile)
-                sprintf(szOutputDecoyTxt, "%s.decoy.Txt", g_StaticParams.inputFile.szBaseName);
+                sprintf(szOutputDecoyTxt, "%s.decoy.txt", g_StaticParams.inputFile.szBaseName);
              else
-                sprintf(szOutputDecoyTxt, "%s.%d-%d.decoy.Txt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+                sprintf(szOutputDecoyTxt, "%s.%d-%d.decoy.txt", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
              if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
              {
@@ -251,8 +251,9 @@ int main(int argc, char *argv[])
              printf(" Load and process input spectra\n");
 
           CometPreprocess::LoadAndPreprocessSpectra(mstReader, iZLine, 
-              iFirstScan, iLastScan, iAnalysisType, g_StaticParams.options.iNumThreads,  
-              g_StaticParams.options.iNumThreads);
+                iFirstScan, iLastScan, iAnalysisType,
+                g_StaticParams.options.iNumThreads,  // min # threads
+                g_StaticParams.options.iNumThreads); // max # threads
 
           if (g_pvQuery.empty())
              break; // no search to run
@@ -435,19 +436,21 @@ void Usage(int failure, char *pszCmd)
    printf("\n");
    printf(" Comet version \"%s\"\n %s\n", comet_version, copyright);
    printf("\n");
-   printf(" Comet usage:  %s [options] <input_files>[:range]\n", pszCmd);
+   printf(" Comet usage:  %s [options] <input_files>\n", pszCmd);
    printf("\n");
    printf(" Supported input formats include mzXML, mzXML, mz5 and ms2 variants (cms2, bms2, ms2)\n");
-   printf(" The optional [:range] parameter specifies a scan range to search.\n");
    printf("\n");
    printf("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
    printf("                 -P<params> to specify an alternate parameters file (default comet.params)\n");
    printf("                 -N<name>   to specify an alternate output base name\n");
    printf("                 -D<dbase>  to specify a sequence database, overriding entry in parameters file\n");
+   printf("                 -F<num>    to specify the first/start scan to search, overriding entry in parameters file\n");
+   printf("                 -L<num>    to specify the last/end scan to search, overriding entry in parameters file\n");
+   printf("                            (-L option is required if -F option is used)\n");
    printf("\n");
-   printf("       example:  %s run1.mzXML\n", pszCmd);
-   printf("            or   %s run1.mzXML:1000-1500    <- to search a subset scan range\n", pszCmd);
-   printf("            or   %s run1.cms2:1000-1500\n", pszCmd);
+   printf("       example:  %s file1.mzXML file2.mzXML\n", pszCmd);
+   printf("            or   %s -F1000 -L1500 file1.mzXML    <- to search scans 1000 through 1500\n", pszCmd);
+   printf("            or   %s -pParams.txt *.mzXML         <- use parameters in the file 'Params.txt'\n", pszCmd);
    printf("\n");
 
    exit(1);
@@ -650,6 +653,7 @@ void LoadParameters(char *pszParamsFile)
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
+      fprintf(stderr, "\n Comet version %s\n %s\n", comet_version, copyright);
       fprintf(stderr, " Error - cannot open parameter file %s.\n\n", pszParamsFile);
       exit(1);
    }
@@ -1680,6 +1684,22 @@ void ProcessCmdLine(int argc,
    }
    fclose(fpcheck);
 
+   if (g_StaticParams.options.iEndScan < g_StaticParams.options.iStartScan)
+   {
+      if (g_StaticParams.options.iEndScan == 0)
+      {
+         fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
+         fprintf(stderr, " Error - start scan set to %d but end scan is not specified.\n\n", g_StaticParams.options.iStartScan);
+         exit(1);
+      }
+      else
+      {
+         fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
+         fprintf(stderr, " Error - start scan is %d but end scan is %d.\n\n", g_StaticParams.options.iStartScan, g_StaticParams.options.iEndScan);
+         exit(1);
+      }
+   }
+
    if (!g_StaticParams.options.bOutputOutFiles)
    {
       g_StaticParams.options.bSkipAlreadyDone = 0;
@@ -1703,7 +1723,7 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
    g_StaticParams.inputFile = *pFileInfo;
 
    int iLen = strlen(g_StaticParams.inputFile.szFileName);
-   char *pszTmp = g_StaticParams.inputFile.szFileName + iLen - 6;
+
    if (!STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 6, ".mzXML")
          || !STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 5, ".mzML")
          || !STRCMP_IGNORE_CASE(g_StaticParams.inputFile.szFileName + iLen - 4, ".mz5")
@@ -2004,10 +2024,6 @@ void CalcRunTime(time_t tStartTime)
 void PRINT_SQT_HEADER(FILE *fpout,
                       char *szParamsFile)
 {
-/*
-   char *pStr;
-   char szTmp[100];
-*/
    char szParamBuf[SIZE_BUF];
    time_t tTime;
    FILE *fp;
@@ -2021,7 +2037,7 @@ void PRINT_SQT_HEADER(FILE *fpout,
 
    if ((fp=fopen(szParamsFile, "r")) == NULL)
    {
-      fprintf(stderr, " Error - cannot open parameter file %s.\n\n", szParamsFile);
+      fprintf(stderr, "\n Error - cannot open parameter file %s.\n\n", szParamsFile);
       exit(1);
    }
 
