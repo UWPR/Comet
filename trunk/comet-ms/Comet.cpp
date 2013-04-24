@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
        UpdateInputFile(g_pvInputFiles.at(i));
+
        time_t tStartTime;
        time(&tStartTime);
        strftime(g_StaticParams._dtInfoStart.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
@@ -364,7 +365,6 @@ int main(int argc, char *argv[])
 // Allocate memory for the _pResults struct for each g_pvQuery entry.
 void AllocateResultsMem(void)
 {
-
    for (unsigned i=0; i<g_pvQuery.size(); i++)
    {
       Query* pQuery = g_pvQuery.at(i);
@@ -377,8 +377,7 @@ void AllocateResultsMem(void)
          exit(1);
       }
 
-      //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors. Claims it is possible to
-      //make conditional jump or move on this uninitialized value in CometSearch.cpp:1343
+      //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
       for(int xx=0;xx<g_StaticParams.options.iNumStored;xx++)
          pQuery->_pResults[xx].iLenPeptide=0;
 
@@ -442,7 +441,7 @@ void Usage(int failure, char *pszCmd)
    printf("\n");
    printf("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
    printf("                 -P<params> to specify an alternate parameters file (default comet.params)\n");
-   printf("                 -N<name>   to specify an alternate output base name\n");
+   printf("                 -N<name>   to specify an alternate output base name; valid only with one input file\n");
    printf("                 -D<dbase>  to specify a sequence database, overriding entry in parameters file\n");
    printf("                 -F<num>    to specify the first/start scan to search, overriding entry in parameters file\n");
    printf("                 -L<num>    to specify the last/end scan to search, overriding entry in parameters file\n");
@@ -503,16 +502,16 @@ void SetOptions(char *arg,
          {
             fprintf(stderr, "Missing text for parameter option -N<basename>.  Ignored.\n");
          }
-         else if (g_pvInputFiles.size() == 1)  
+//       else if (g_pvInputFiles.size() == 1)  
+         else
          {
             strcpy(g_StaticParams.inputFile.szBaseName, szTmp);
-            printf("basename %s\n", g_StaticParams.inputFile.szBaseName);
          }
          break;
       case 'F':
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
          {
-            fprintf(stderr, "Missing text for parameter option -F<params>.  Ignored.\n");
+            fprintf(stderr, "Missing text for parameter option -F<num>.  Ignored.\n");
          }
          else
          {
@@ -522,7 +521,7 @@ void SetOptions(char *arg,
       case 'L':
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
          {
-            fprintf(stderr, "Missing text for parameter option -L<params>.  Ignored.\n");
+            fprintf(stderr, "Missing text for parameter option -L<num>.  Ignored.\n");
          }
          else
          {
@@ -1629,7 +1628,7 @@ void ProcessCmdLine(int argc,
       printf("\n");
       printf(" Comet version %s\n %s\n", comet_version, copyright);
       printf("\n");
-      printf(" Error - nothing to do.\n\n");
+      printf(" Error - no input files specified so nothing to do.\n\n");
       exit(1);
    }
 
@@ -1679,7 +1678,9 @@ void ProcessCmdLine(int argc,
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_StaticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      fprintf(stderr, "\n Error - cannot read database file %s.\n\n", g_StaticParams.databaseInfo.szDatabase);
+      fprintf(stderr, "\n Error - cannot read database file %s.\n", g_StaticParams.databaseInfo.szDatabase);
+      fprintf(stderr, " Check that the file exists and is readable.\n\n");
+      g_pvInputFiles.clear();
       exit(1);
    }
    fclose(fpcheck);
@@ -1689,13 +1690,17 @@ void ProcessCmdLine(int argc,
       if (g_StaticParams.options.iEndScan == 0)
       {
          fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
-         fprintf(stderr, " Error - start scan set to %d but end scan is not specified.\n\n", g_StaticParams.options.iStartScan);
+         fprintf(stderr, " Error - start scan set to %d but end scan is not specified.\n", g_StaticParams.options.iStartScan);
+         fprintf(stderr, " The end scan must also be specified if the start scan is.\n\n");
+         g_pvInputFiles.clear();
          exit(1);
       }
       else
       {
          fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
-         fprintf(stderr, " Error - start scan is %d but end scan is %d.\n\n", g_StaticParams.options.iStartScan, g_StaticParams.options.iEndScan);
+         fprintf(stderr, " Error - start scan is %d but end scan is %d.\n", g_StaticParams.options.iStartScan, g_StaticParams.options.iEndScan);
+         fprintf(stderr, " The end scan must be >= to the start scan.\n\n");
+         g_pvInputFiles.clear();
          exit(1);
       }
    }
@@ -1720,6 +1725,15 @@ void ProcessCmdLine(int argc,
 
 void UpdateInputFile(InputFileInfo *pFileInfo)
 {
+   bool bUpdateBaseName = false;
+   char szTmpBaseName[SIZE_FILE];
+
+   // Make sure not set on command line OR more than 1 input file
+   if (g_StaticParams.inputFile.szBaseName[0] =='\0' || g_pvInputFiles.size()>1)
+      bUpdateBaseName = true;
+   else
+      strcpy(szTmpBaseName, g_StaticParams.inputFile.szBaseName);
+
    g_StaticParams.inputFile = *pFileInfo;
 
    int iLen = strlen(g_StaticParams.inputFile.szFileName);
@@ -1734,7 +1748,7 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
       g_StaticParams.inputFile.iInputType = InputType_MZXML;
    } 
 
-   if (g_StaticParams.inputFile.szBaseName[0] =='\0')  // Make sure not set on command line.
+   if (bUpdateBaseName) // set individual basename from input file
    {
       char *pStr;
 
@@ -1749,6 +1763,10 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
          if ( (pStr = strrchr(g_StaticParams.inputFile.szBaseName, '.')))
             *pStr = '\0';
       }
+   }
+   else
+   {
+      strcpy(g_StaticParams.inputFile.szBaseName, szTmpBaseName);  // set basename from command line
    }
 
    // Create .out directory.
