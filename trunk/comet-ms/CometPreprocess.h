@@ -23,7 +23,6 @@
 struct PreprocessThreadData
 {
    Spectrum mstSpectrum;
-   int iZLine;
    int iAnalysisType;
    int iFileLastScan;
 
@@ -32,12 +31,10 @@ struct PreprocessThreadData
    }
 
    PreprocessThreadData(Spectrum &spec_in,
-                        int iZLine_in,
                         int iAnalysisType_in,
                         int iFileLastScan_in)
    {
       mstSpectrum = spec_in;
-      iZLine = iZLine_in;
       iAnalysisType = iAnalysisType_in;
       iFileLastScan = iFileLastScan_in;
    }
@@ -52,7 +49,6 @@ public:
 
    static void Reset();
    static void LoadAndPreprocessSpectra(MSReader &mstReader,
-                                        int iZLine, 
                                         int iFirstScan, 
                                         int iLastScan, 
                                         int iAnalysisType,
@@ -65,7 +61,6 @@ private:
    
    // Private static methods
    static void PreprocessSpectrum(Spectrum &spec, 
-                                  int iZLine, 
                                   int iAnalysisType, 
                                   int iFileLastScan);
    static bool CheckExistOutFile(int iCharge,

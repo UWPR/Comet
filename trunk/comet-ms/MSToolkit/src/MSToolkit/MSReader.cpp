@@ -1436,6 +1436,10 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		if (rampFileIn == NULL) return false;
 	}
 
+   //check scNum is less than rampLastScan otherwise will trigger segfault reading pScanIndex[] below
+   if (scNum > rampLastScan)
+      return false;
+
 	//clear any spectrum data
 	s.clear();
 
@@ -1443,10 +1447,6 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 
 	//read scan header
 	if(scNum!=0) {
-
-      if (scNum > rampLastScan)
-         return false;
-
     rampIndex=scNum;
     readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader);
     if (scanHeader.acquisitionNum != scNum && scanHeader.acquisitionNum != -1) {

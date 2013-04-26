@@ -39,7 +39,6 @@ void CometPreprocess::Reset()
 }
 
 void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
-                                               int iZLine, 
                                                int iFirstScan, 
                                                int iLastScan, 
                                                int iAnalysisType,
@@ -65,6 +64,15 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    ThreadPool<PreprocessThreadData *> preprocessThreadPool(PreprocessThreadProc,
          minNumThreads, maxNumThreads);
 
+   // Quick check to make sure first scan isn't greater than last scan in file
+/*
+   if (g_StaticParams.inputFile.iInputType == InputType_MZXML
+         && iFirstScan > mstReader.getLastScan() )
+   {
+      _bDoneProcessingAllSpectra = true;
+   }
+   else
+*/
 
    // Load all input spectra.
    while(true)
@@ -103,29 +111,31 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
             iFirstScanInRange = iScanNumber;
 
          // Clear out m/z range if clear_mz_range parameter is specified
-         if (g_StaticParams.options.dClearLowMZ != 0.0 && g_StaticParams.options.dClearHighMZ != 0.0)
+         // Accomplish this by setting corresponding intensity to 0
+         if (g_StaticParams.options.dClearHighMZ > 0.0
+               && g_StaticParams.options.dClearLowMZ <= g_StaticParams.options.dClearHighMZ)
          {
             int i=0;
 
-            while(true)
+            while (true)
             {
                if (i >= mstSpectrum.size() || mstSpectrum.at(i).mz > g_StaticParams.options.dClearHighMZ)
                   break;
-      
+
                if (mstSpectrum.at(i).mz >= g_StaticParams.options.dClearLowMZ
                      && mstSpectrum.at(i).mz <= g_StaticParams.options.dClearHighMZ)
                {
                   mstSpectrum.at(i).intensity = 0.0;
                   iNumClearedPeaks++;
                }
-     
+
                i++;
             }
          }
 
          if (mstSpectrum.size()-iNumClearedPeaks >= g_StaticParams.options.iMinPeaks)
          {
-            if ((iAnalysisType == AnalysisType_SpecificScanRange) && (iScanNumber > iLastScan))
+            if (iAnalysisType == AnalysisType_SpecificScanRange && iLastScan > 0 && iScanNumber > iLastScan)
             {
                _bDoneProcessingAllSpectra = true;
                break;
@@ -143,7 +153,7 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
               //run filter here.
 
               PreprocessThreadData *pPreprocessThreadData = 
-                  new PreprocessThreadData(mstSpectrum, iZLine, iAnalysisType, iFileLastScan);
+                  new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
               preprocessThreadPool.Launch(pPreprocessThreadData);
             }
          }
@@ -152,7 +162,7 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
       }
       else if (g_StaticParams.inputFile.iInputType != InputType_MZXML)
       {
-          _bDoneProcessingAllSpectra = true;
+         _bDoneProcessingAllSpectra = true;
          break;
       }
       else
@@ -190,13 +200,13 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData)
 {
    PreprocessSpectrum(pPreprocessThreadData->mstSpectrum, 
-                      pPreprocessThreadData->iZLine, 
                       pPreprocessThreadData->iAnalysisType, 
                       pPreprocessThreadData->iFileLastScan);
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
 }
+
 
 bool CometPreprocess::DoneProcessingAllSpectra()
 {
@@ -232,7 +242,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
       exit(1);
    }
 
-   pScoring->pfFastXcorrData = (float *)calloc(pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+   pScoring->pfFastXcorrData = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
    if (pScoring->pfFastXcorrData == NULL)
    {
       fprintf(stderr, " Error - calloc(pfFastXcorrData[%d]).\n\n", pScoring->_spectrumInfoInternal.iArraySize);
@@ -244,7 +254,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
          || g_StaticParams.ionInformation.iIonVal[1]
          || g_StaticParams.ionInformation.iIonVal[7]))
    {
-      pScoring->pfFastXcorrDataNL = (float *)calloc(pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+      pScoring->pfFastXcorrDataNL = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
       if (pScoring->pfFastXcorrDataNL == NULL)
       {
          fprintf(stderr, " Error - calloc(pfFastXcorrDataNL[%d]).\n", pScoring->_spectrumInfoInternal.iArraySize);
@@ -434,7 +444,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
    }
    else
    {
-      pScoring->pfSpScoreData = (float *)calloc(pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float ));
+      pScoring->pfSpScoreData = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float ));
       if (pScoring->pfSpScoreData == NULL)
       {
          fprintf(stderr, " Error - calloc(pfSpScoreData[%d])\n", pScoring->_spectrumInfoInternal.iArraySize);
@@ -446,6 +456,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
    }
 
 }
+
 
 //-->MH
 // Loads spectrum into spectrum object.
@@ -509,16 +520,22 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
                                 int iReaderLastScan,
                                 int iNumSpectraLoaded)
 {
-   if (iAnalysisType == AnalysisType_SpecificScan || iAnalysisType == AnalysisType_SpecificScanAndCharge)
+   if (iAnalysisType == AnalysisType_SpecificScan)
    {
       _bDoneProcessingAllSpectra = true;
       return true;
    }
 
-   if (iAnalysisType == AnalysisType_SpecificScanRange && iScanNum >= iLastScan)
+   if (iAnalysisType == AnalysisType_SpecificScanRange)
    {
-      _bDoneProcessingAllSpectra = true;
-      return true;
+      if (iLastScan > 0)
+      {
+         if (iScanNum >= iLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            return true;
+         }
+      }
    }
 
    if (iAnalysisType == AnalysisType_EntireFile
@@ -549,7 +566,6 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 
 
 void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
-                                         int iZLine, 
                                          int iAnalysisType,
                                          int iFileLastScan)
 {
@@ -606,16 +622,8 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    }
 
    // Set our boundaries for multiple z lines.
-   if (iAnalysisType == AnalysisType_SpecificScanAndCharge)  // Specific scan+charge.
-   {
-      zStart = iZLine;
-      zStop = iZLine + 1;
-   }
-   else
-   {
-      zStart = 0;
-      zStop = spec.sizeZ();
-   }
+   zStart = 0;
+   zStop = spec.sizeZ();
 
    for (z=zStart; z<zStop; z++)
    {
@@ -785,7 +793,7 @@ void CometPreprocess::LoadIons(struct Query *pScoring,
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + 100.0)
          / g_StaticParams.tolerances.dFragmentBinSize);
 
-   pPre->pdCorrelationData = (double *)calloc(pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(double));
+   pPre->pdCorrelationData = (double *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(double));
    if (pPre->pdCorrelationData == NULL)
    {
       fprintf(stderr, " Error - calloc(pdCorrelationData[%d]).\n\n", pScoring->_spectrumInfoInternal.iArraySize);

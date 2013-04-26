@@ -77,9 +77,7 @@ enum AnalysisType
    AnalysisType_Unknown = 0,
    AnalysisType_DTA,
    AnalysisType_SpecificScan,
-   AnalysisType_SpecificScanAndCharge,
    AnalysisType_SpecificScanRange,
-// AnalysisType_StartScanAndCount,
    AnalysisType_EntireFile
 };
 
@@ -220,7 +218,6 @@ struct InputFileInfo
    int  iAnalysisType;
    int  iFirstScan;
    int  iLastScan;
-   int  iZLine;
    char szFileName[SIZE_FILE];
    char szBaseName[SIZE_FILE];
 
@@ -230,7 +227,6 @@ struct InputFileInfo
        iAnalysisType = AnalysisType_Unknown;
        iFirstScan = 0;
        iLastScan = 0;
-       iZLine = 0;
 
        szFileName[0] = '\0';
        szBaseName[0] = '\0';
@@ -242,7 +238,6 @@ struct InputFileInfo
        iAnalysisType = AnalysisType_Unknown;
        iFirstScan = 0;
        iLastScan = 0;
-       iZLine = 0;
 
        szBaseName[0] = '\0';
 
@@ -256,7 +251,6 @@ struct InputFileInfo
        iAnalysisType = inputObj.iAnalysisType;
        iFirstScan = inputObj.iFirstScan;
        iLastScan = inputObj.iLastScan;
-       iZLine = inputObj.iZLine;
 
        szBaseName[0] = '\0';
        strcpy(szBaseName, inputObj.szBaseName);

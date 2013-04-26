@@ -47,7 +47,7 @@ public:
 private:
     
    // Initializations and preprocessing in prepraration for search
-   bool Initialize(Spectrum *pSpectrum, int iZLine);
+   bool Initialize(Spectrum *pSpectrum);
    void AdjustMassTolerances();
    void CalcMatchedPeaksMasses();
 
@@ -253,7 +253,6 @@ private:
    struct SpectrumInfoInternal
    {
       Spectrum *pSpectrum;
-      int      iZLine;
       int      iChargeState;  
       int      iArraySize;     // m/z versus intensity array
       int      iHighestIon;

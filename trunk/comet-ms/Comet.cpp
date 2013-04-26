@@ -122,7 +122,6 @@ int main(int argc, char *argv[])
           printf(" Search start:  %s\n", g_StaticParams._dtInfoStart.szDate);
        }
 
-       int iZLine = g_StaticParams.inputFile.iZLine;
        int iFirstScan = g_StaticParams.inputFile.iFirstScan;             // First scan to search specified by user.
        int iLastScan = g_StaticParams.inputFile.iLastScan;               // Last scan to search specified by user.
        int iAnalysisType = g_StaticParams.inputFile.iAnalysisType;       // 1=dta (retired),
@@ -251,7 +250,7 @@ int main(int argc, char *argv[])
           if (!g_StaticParams.options.bOutputSqtStream)
              printf(" Load and process input spectra\n");
 
-          CometPreprocess::LoadAndPreprocessSpectra(mstReader, iZLine, 
+          CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
                 g_StaticParams.options.iNumThreads,  // min # threads
                 g_StaticParams.options.iNumThreads); // max # threads
@@ -310,7 +309,7 @@ int main(int argc, char *argv[])
 
        if (iTotalSpectraSearched == 0)
        {
-          printf(" Warning - no searches to run.\n\n");
+          printf(" Warning - no spectra searched.\n\n");
        }
 
        if (!g_StaticParams.options.bOutputSqtStream)
@@ -499,34 +498,21 @@ void SetOptions(char *arg,
          break;
       case 'N':   // Set basename of output file (for .out, SQT, and pepXML)
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
-         {
             fprintf(stderr, "Missing text for parameter option -N<basename>.  Ignored.\n");
-         }
-//       else if (g_pvInputFiles.size() == 1)  
          else
-         {
             strcpy(g_StaticParams.inputFile.szBaseName, szTmp);
-         }
          break;
       case 'F':
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
-         {
             fprintf(stderr, "Missing text for parameter option -F<num>.  Ignored.\n");
-         }
          else
-         {
             g_StaticParams.options.iStartScan = atoi(szTmp);
-         }
          break;
       case 'L':
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
-         {
             fprintf(stderr, "Missing text for parameter option -L<num>.  Ignored.\n");
-         }
          else
-         {
              g_StaticParams.options.iEndScan = atoi(szTmp);
-         }
          break;
       case 'p':
          *bPrintParams = true;
@@ -538,7 +524,7 @@ void SetOptions(char *arg,
 }
 
 
-void InitializeParameters()
+void InitializeParameters(void)
 {
    int i = 0;
 
@@ -595,6 +581,7 @@ void InitializeParameters()
    g_StaticParams.options.iDecoySearch = 0;
    g_StaticParams.options.iNumThreads = 0;
    g_StaticParams.options.bClipNtermMet = 0;
+   g_StaticParams.options.bSparseMatrix = 0;
 
    // These parameters affect mzXML/RAMP spectra only.
    g_StaticParams.options.iStartScan = 0;
@@ -1566,30 +1553,30 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile)
    // Analyze entire file.
    if (scan == NULL)
    {
-      if (g_StaticParams.options.iStartScan == 0)
+      if (g_StaticParams.options.iStartScan == 0 && g_StaticParams.options.iEndScan == 0)
       {
          pInputFile->iAnalysisType = AnalysisType_EntireFile;
          return true;
       }
       else
       {
+         pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
+
          pInputFile->iFirstScan = g_StaticParams.options.iStartScan;
          pInputFile->iLastScan = g_StaticParams.options.iEndScan;
-         pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
+
+         if (pInputFile->iFirstScan == 0)  // this means iEndScan is specified only
+            pInputFile->iFirstScan = 1;    // so start with 1st scan in file
+
+         // but if iEndScan == 0 then only iStartScan is specified; in this 
+         // case search iStartScan through end of file (handled in CometPreprocess)
+
          return true;
       }
    }
 
    // Analyze a portion of the file.
-   if (strchr(scan,'.') != NULL)
-   {
-      pInputFile->iAnalysisType = AnalysisType_SpecificScanAndCharge;
-      tok = strtok(scan,".\n");
-      pInputFile->iFirstScan = atoi(tok);
-      tok = strtok(NULL,".\n");
-      pInputFile->iZLine = atoi(tok);
-   }
-   else if (strchr(scan,'-') != NULL)
+   if (strchr(scan,'-') != NULL)
    {
       pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
       tok = strtok(scan, "-\n");
@@ -1609,10 +1596,12 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile)
    {
       pInputFile->iAnalysisType = AnalysisType_SpecificScan;
       pInputFile->iFirstScan = atoi(scan);
+      pInputFile->iLastScan = pInputFile->iFirstScan;
    }
 
    return true;
 } // ParseCmdLine
+
 
 void ProcessCmdLine(int argc, 
                     char *argv[], 
@@ -1685,8 +1674,9 @@ void ProcessCmdLine(int argc,
    }
    fclose(fpcheck);
 
-   if (g_StaticParams.options.iEndScan < g_StaticParams.options.iStartScan)
+   if (g_StaticParams.options.iEndScan < g_StaticParams.options.iStartScan && g_StaticParams.options.iEndScan!= 0)
    {
+/*
       if (g_StaticParams.options.iEndScan == 0)
       {
          fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
@@ -1697,12 +1687,15 @@ void ProcessCmdLine(int argc,
       }
       else
       {
+*/
          fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
          fprintf(stderr, " Error - start scan is %d but end scan is %d.\n", g_StaticParams.options.iStartScan, g_StaticParams.options.iEndScan);
          fprintf(stderr, " The end scan must be >= to the start scan.\n\n");
          g_pvInputFiles.clear();
          exit(1);
+/*
       }
+*/ 
    }
 
    if (!g_StaticParams.options.bOutputOutFiles)
@@ -1721,7 +1714,8 @@ void ProcessCmdLine(int argc,
       + PROTON_MASS
       + g_StaticParams.staticModifications.dAddCterminusPeptide
       + g_StaticParams.staticModifications.dAddNterminusPeptide;
-}
+} // ProcessCmdLine
+
 
 void UpdateInputFile(InputFileInfo *pFileInfo)
 {
@@ -1729,6 +1723,7 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
    char szTmpBaseName[SIZE_FILE];
 
    // Make sure not set on command line OR more than 1 input file
+   // Need to do this check here before g_StaticParams.inputFile is set to *pFileInfo
    if (g_StaticParams.inputFile.szBaseName[0] =='\0' || g_pvInputFiles.size()>1)
       bUpdateBaseName = true;
    else
@@ -1821,10 +1816,10 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
 #endif
    }
 
-}
+} // UpdateInputFile
 
-// Print out comet.params to file.
-void PrintParams()
+
+void PrintParams(void)
 {
    FILE *fp;
 
