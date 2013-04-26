@@ -70,7 +70,7 @@ void CometSearch::RunSearch(int minNumThreads,
 
    if (!g_StaticParams.options.bOutputSqtStream)
    {
-      printf(" Search progress: ");
+      printf(" - Search progress: ");
       fflush(stdout);
    }
 

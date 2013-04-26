@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
        {
           // Load and preprocess all the spectra.
           if (!g_StaticParams.options.bOutputSqtStream)
-             printf(" Load and process input spectra\n");
+             printf(" - Load and process input spectra\n");
 
           CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
@@ -262,12 +262,12 @@ int main(int argc, char *argv[])
 
           // Allocate memory to store results for each query spectrum.
           if (!g_StaticParams.options.bOutputSqtStream)
-             printf(" Allocate memory to store results\n");
+             printf(" - Allocate memory to store results\n");
 
           AllocateResultsMem();
 
           if (!g_StaticParams.options.bOutputSqtStream)
-             printf(" Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
+             printf(" - Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
 
           // Sort g_pvQuery vector by dExpPepMass.
           std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
           CalcRunTime(tStartTime);
 
           if (!g_StaticParams.options.bOutputSqtStream)
-             printf(" Write output\n");
+             printf(" - Write output\n");
 
           if (g_StaticParams.options.bOutputOutFiles)
              CometWriteOut::WriteOut();
@@ -514,13 +514,18 @@ void SetOptions(char *arg,
          else
              g_StaticParams.options.iEndScan = atoi(szTmp);
          break;
+      case 'B':
+         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+            fprintf(stderr, "Missing text for parameter option -B<num>.  Ignored.\n");
+         else
+             g_StaticParams.options.iSpectrumBatchSize = atoi(szTmp);
+         break;
       case 'p':
          *bPrintParams = true;
          break;
       default:
          break;
    }
-   arg[0] = '\0';
 }
 
 
@@ -1126,6 +1131,7 @@ void LoadParameters(char *pszParamsFile)
          else if (!strcmp(szParamName, "minimum_peaks"))
          {
             int iNum = 0;
+
             sscanf(szParamVal, "%d", &iNum);
             if (iNum > 0)
             {
@@ -1135,7 +1141,7 @@ void LoadParameters(char *pszParamsFile)
          else if (!strcmp(szParamName, "precursor_charge"))
          {
             int iStart = 0,
-               iEnd=0;
+                iEnd = 0;
 
             sscanf(szParamVal, "%d %d", &iStart, &iEnd);
             if ((iEnd >= iStart) && (iStart >= 0) && (iEnd > 0))
@@ -1580,17 +1586,21 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile)
    {
       pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
       tok = strtok(scan, "-\n");
-      pInputFile->iFirstScan = atoi(tok);
+      if (tok != NULL)
+         pInputFile->iFirstScan = atoi(tok);
       tok = strtok(NULL,"-\n");
-      pInputFile->iLastScan = atoi(tok);
+      if (tok != NULL)
+         pInputFile->iLastScan = atoi(tok);
    }
    else if (strchr(scan,'+') != NULL)
    {
       pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
       tok = strtok(scan,"+\n");
-      pInputFile->iFirstScan = atoi(tok);
+      if (tok != NULL)
+         pInputFile->iFirstScan = atoi(tok);
       tok = strtok(NULL,"+\n");
-      pInputFile->iLastScan = pInputFile->iFirstScan + atoi(tok);
+      if (tok != NULL)
+         pInputFile->iLastScan = pInputFile->iFirstScan + atoi(tok);
    }
    else
    {
@@ -1627,8 +1637,33 @@ void ProcessCmdLine(int argc,
 
    g_StaticParams.databaseInfo.szDatabase[0] = '\0';
 
+
    arg = argv[iStartInputFile];
 
+   // First process the command line options; do this only to see if an alternate
+   // params file is specified before loading params file first.
+   while ((iStartInputFile < argc) && (NULL != arg))
+   {
+      if (arg[0] == '-')
+         SetOptions(arg, szParamsFile, &bPrintParams);
+
+      arg = argv[++iStartInputFile];
+   }
+
+   if (bPrintParams)
+   {
+      PrintParams();
+      exit(0);
+   }
+
+   // Loads search parameters from comet.params file. This has to happen
+   // after parsing command line arguments in case alt file is specified.
+   LoadParameters(szParamsFile);
+
+   // Now go through input arguments again.  Command line options will
+   // override options specified in params file. 
+   iStartInputFile = 1;
+   arg = argv[iStartInputFile];
    while ((iStartInputFile < argc) && (NULL != arg))
    {
       if (arg[0] == '-')
@@ -1654,15 +1689,6 @@ void ProcessCmdLine(int argc,
       arg = argv[++iStartInputFile];
    }
 
-   if (bPrintParams)
-   {
-      PrintParams();
-      exit(0);
-   }
-
-   // Loads search parameters from comet.params file.
-   LoadParameters(szParamsFile);
-
    // Quick sanity check to make sure sequence db file is present before spending
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_StaticParams.databaseInfo.szDatabase, "r")) == NULL)
@@ -1676,26 +1702,11 @@ void ProcessCmdLine(int argc,
 
    if (g_StaticParams.options.iEndScan < g_StaticParams.options.iStartScan && g_StaticParams.options.iEndScan!= 0)
    {
-/*
-      if (g_StaticParams.options.iEndScan == 0)
-      {
-         fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
-         fprintf(stderr, " Error - start scan set to %d but end scan is not specified.\n", g_StaticParams.options.iStartScan);
-         fprintf(stderr, " The end scan must also be specified if the start scan is.\n\n");
-         g_pvInputFiles.clear();
-         exit(1);
-      }
-      else
-      {
-*/
-         fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
-         fprintf(stderr, " Error - start scan is %d but end scan is %d.\n", g_StaticParams.options.iStartScan, g_StaticParams.options.iEndScan);
-         fprintf(stderr, " The end scan must be >= to the start scan.\n\n");
-         g_pvInputFiles.clear();
-         exit(1);
-/*
-      }
-*/ 
+      fprintf(stderr, "\n Comet version %s\n %s\n\n", comet_version, copyright);
+      fprintf(stderr, " Error - start scan is %d but end scan is %d.\n", g_StaticParams.options.iStartScan, g_StaticParams.options.iEndScan);
+      fprintf(stderr, " The end scan must be >= to the start scan.\n\n");
+      g_pvInputFiles.clear();
+      exit(1);
    }
 
    if (!g_StaticParams.options.bOutputOutFiles)
