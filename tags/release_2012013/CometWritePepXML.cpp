@@ -201,7 +201,7 @@ void CometWritePepXML::WriteXMLHeader(FILE *fpout,
                   fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" %ssymbol=\"%c\"/>\n",
                         szModChar[i],
                         dMass,
-                        g_StaticParams.massUtility.pdAAMassParent[(int)szModChar[i]],
+                        g_StaticParams.massUtility.pdAAMassParent[(int)szModChar[i]] + dMass,
                         (bBinary?"binary=\"Y\" ":""),
                         cSymbol);
                }
