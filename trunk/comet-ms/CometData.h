@@ -500,15 +500,17 @@ struct Query
    {
       if (g_StaticParams.options.bSparseMatrix)
       {
-         free(pSparseFastXcorrData);
-         free(pSparseFastXcorrDataNL);
          free(pSparseSpScoreData);
+         free(pSparseFastXcorrData);
+         if (g_StaticParams.ionInformation.bUseNeutralLoss)
+            free(pSparseFastXcorrDataNL);
       }
       else
       {
          free(pfSpScoreData);
          free(pfFastXcorrData);
-         free(pfFastXcorrDataNL);
+         if (g_StaticParams.ionInformation.bUseNeutralLoss)
+            free(pfFastXcorrDataNL);
       }
 
       free(_pResults);

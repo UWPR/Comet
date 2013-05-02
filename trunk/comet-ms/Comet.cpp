@@ -294,7 +294,6 @@ int main(int argc, char *argv[])
 
           if (g_StaticParams.options.bOutputTxtFile)
              CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
-
           // Write SQT last as I destroy the g_StaticParams.szMod string during that process
           if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
              CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
@@ -1886,12 +1885,12 @@ max_variable_mods_in_peptide = 5\n\
 #\n\
 # fragment ions\n\
 #\n\
-# ion trap ms/ms:  0.36 tolerance, 0.3 offset (mono masses)\n\
-# high res ms/ms:  0.01 tolerance, 0.0 offset (mono masses)\n\
+# ion trap ms/ms:  1.0005 tolerance, 0.4 offset (mono masses), theoretical_fragment_ions = 1\n\
+# high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0\n\
 #\n\
-fragment_bin_tol = 0.36                # binning to use on fragment ions\n\
-fragment_bin_offset = 0.3              # offset position to start the binning (0.0 to 1.0)\n\
-theoretical_fragment_ions = 0          # 0=default peak shape, 1=M peak only\n\
+fragment_bin_tol = 1.0005              # binning to use on fragment ions\n\
+fragment_bin_offset = 0.4              # offset position to start the binning (0.0 to 1.0)\n\
+theoretical_fragment_ions = 1          # 0=default peak shape, 1=M peak only\n\
 use_A_ions = 0\n\
 use_B_ions = 1\n\
 use_C_ions = 0\n\

@@ -92,7 +92,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
    else
       pOutput = pQuery->_pResults;
 
-   if (pOutput[0].fXcorr > 0)
+   if (pOutput[0].fXcorr > 0.0)
       PrintTxtLine(iWhichQuery, 1, 0, bDecoy, pOutput, fpout);  // print top hit only right now
    else
       fprintf(fpout, "\n");
@@ -113,7 +113,7 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
          pOutput[iWhichResult].dPepMass,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
-         1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr,
+         1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr,   // pOutput[0].fXcorr is >0 to enter this fn
          pOutput[iWhichResult].fScoreSp,
          pOutput[iWhichResult].iMatchedIons, 
          pOutput[iWhichResult].iTotalIons);
