@@ -1024,9 +1024,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             {
                if(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)==0)
                   continue;
-               while( *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) >=  (unsigned) pQuery->pSparseFastXcorrData[xx].bin)
+               while( *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) >=  (unsigned)pSparseFastXcorrData[xx].bin)
                   xx++;
-               dXcorr += pQuery->pSparseFastXcorrData[xx-1].fIntensity;
+               dXcorr += pSparseFastXcorrData[xx-1].fIntensity;
             }
          }
          else
