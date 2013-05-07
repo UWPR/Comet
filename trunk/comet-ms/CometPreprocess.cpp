@@ -282,7 +282,8 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
       pdTmpFastXcorrData[i-75] = (dSum - pPre.pdCorrelationData[i-75])* 0.0066666667;
    }
 
-   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   pScoring->pfFastXcorrData[0] = 0.0;
+   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
    {
       double dTmp = pPre.pdCorrelationData[i] - pdTmpFastXcorrData[i];
 
@@ -294,8 +295,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
          int iTmp;
 
          iTmp = i-1;
-         if (iTmp >= 0)
-            pScoring->pfFastXcorrData[i] += (float) (pPre.pdCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+         pScoring->pfFastXcorrData[i] += (float) (pPre.pdCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
 
          iTmp = i+1;
          if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
@@ -361,6 +361,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
             pScoring->pSparseFastXcorrData[j++].fIntensity = pScoring->pfFastXcorrData[i];
          }
       }
+
       pScoring->pSparseFastXcorrData[j].bin=i;
       pScoring->pSparseFastXcorrData[j].fIntensity=0;
 
@@ -390,6 +391,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
                j++;
             }
          }
+
          pScoring->pSparseFastXcorrDataNL[j].bin=i;
          pScoring->pSparseFastXcorrDataNL[j].fIntensity=0;
 
@@ -454,7 +456,6 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
       for (i=0; i<NUM_SP_IONS; i++)
          pScoring->pfSpScoreData[(int)(pTempSpData[i].dIon+0.5)] = (float) pTempSpData[i].dIntensity;
    }
-
 }
 
 
