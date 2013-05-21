@@ -1574,7 +1574,6 @@ void CometSearch::VarModSearch(char *szProteinSeq,
                            double dCalcPepMass;
                            int iTmpEnd;
                            int iStartTmp = iStartPos+1;
-                           int currentVarModCounts[VMODS_ALL];  // as we loop through iTmpEnd, track # var mod chars in pep as it grows
 
                            dCalcPepMass = dTmpNum + TotalVarModMass(varModCounts, 0, iN);
                            for (i=0; i<VMODS; i++)
@@ -1587,7 +1586,6 @@ void CometSearch::VarModSearch(char *szProteinSeq,
                               if (iTmpEnd-iStartTmp < MAX_PEPTIDE_LEN)
                               {
                                  dCalcPepMass += g_StaticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iTmpEnd]];
-                                 CountVarMods(currentVarModCounts, szProteinSeq[iTmpEnd]);
    
                                  for (i=0; i<VMODS; i++)
                                  {
@@ -1612,7 +1610,7 @@ void CometSearch::VarModSearch(char *szProteinSeq,
                                  for (iC=0; iC<=numVarModCounts[VMOD_C_INDEX]; iC++)
                                  {
                                     double dTmpCalcMass =  dCalcPepMass + iC*g_StaticParams.variableModParameters.dVarModMassC;
-                                    bool bValidCount = true;
+                                    bool bValid = true;
    
                                     // Check to make sure # required mod are actually present in
                                     // current peptide since the end position is variable.
@@ -1620,45 +1618,32 @@ void CometSearch::VarModSearch(char *szProteinSeq,
                                     {
                                        int iIndex;
 
-                                       if (currentVarModCounts[i] > _varModInfo.varModStatList[i].iTotVarModCt)
-                                       {
-                                          bValidCount = false;
-                                          break;
-                                       }
+                                       // varModStatList[i].iTotVarModC contains # of mod residues in current
+                                       // peptide defined by iTmpEnd.  Since varModCounts contains # of
+                                       // each variable mod to match peptide mass, need to make sure that
+                                       // varModCounts is not greater than varModStatList[i].iTotVarModC.
+                                       // Moreso, if a binary mod search is being performed, these
+                                       // values have to be the same.
 
-/*
-                                       switch (i)
+                                       if (g_StaticParams.variableModParameters.varModList[iIndex].bBinaryMod)
                                        {
-                                          case 0:
-                                             iIndex = VMOD_1_INDEX;
+                                          if (varModCounts[i] != _varModInfo.varModStatList[i].iTotVarModCt)
+                                          {
+                                             bValid = false;
                                              break;
-                                          case 1:
-                                             iIndex = VMOD_2_INDEX;
-                                             break;
-                                          case 2:
-                                             iIndex = VMOD_3_INDEX;
-                                             break;
-                                          case 3:
-                                             iIndex = VMOD_4_INDEX;
-                                             break;
-                                          case 4:
-                                             iIndex = VMOD_5_INDEX;
-                                             break;
-                                          case 5:
-                                             iIndex = VMOD_6_INDEX;
-                                             break;
+                                          }
                                        }
-
-                                       // Check binary mods here ... make sure varModsCount[i] equals # residues
-                                       if (varModCounts[i] > 0 && g_StaticParams.variableModParameters.varModList[iIndex].bBinaryMod)
+                                       else
                                        {
-                                          // count # of mod chars in peptide and make sure equals varModCounts[i]
+                                          if (varModCounts[i] > _varModInfo.varModStatList[i].iTotVarModCt)
+                                          {
+                                             bValid = false;
+                                             break;
+                                          }
                                        }
-*/
                                     }
-
-                                    if (bValidCount
-                                          && TotalVarModCount(varModCounts, iC, iN) > 0)
+                                    
+                                    if (bValid && TotalVarModCount(varModCounts, iC, iN) > 0)
                                     {
                                        int iWhichQuery = WithinMassTolerance(dTmpCalcMass, szProteinSeq, iStartPos, iTmpEnd);
    
