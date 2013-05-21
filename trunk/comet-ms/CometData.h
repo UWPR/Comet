@@ -503,9 +503,9 @@ struct Query
          free(pSparseSpScoreData);
          free(pSparseFastXcorrData);
          if (g_StaticParams.ionInformation.bUseNeutralLoss
-               && (g_StaticParams.ionInformation.iIonVal[0]
-                  || g_StaticParams.ionInformation.iIonVal[1]
-                  || g_StaticParams.ionInformation.iIonVal[7]))
+               && (g_StaticParams.ionInformation.iIonVal[ION_SERIES_A]
+                  || g_StaticParams.ionInformation.iIonVal[ION_SERIES_B]
+                  || g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
             free(pSparseFastXcorrDataNL);
          }
@@ -515,9 +515,9 @@ struct Query
          free(pfSpScoreData);
          free(pfFastXcorrData);
          if (g_StaticParams.ionInformation.bUseNeutralLoss
-               && (g_StaticParams.ionInformation.iIonVal[0]
-                  || g_StaticParams.ionInformation.iIonVal[1]
-                  || g_StaticParams.ionInformation.iIonVal[7]))
+               && (g_StaticParams.ionInformation.iIonVal[ION_SERIES_A]
+                  || g_StaticParams.ionInformation.iIonVal[ION_SERIES_B]
+                  || g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
             free(pfFastXcorrDataNL);
          }

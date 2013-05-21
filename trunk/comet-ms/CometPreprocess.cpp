@@ -250,9 +250,9 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
    }
 
    if (g_StaticParams.ionInformation.bUseNeutralLoss
-         && (g_StaticParams.ionInformation.iIonVal[0]
-         || g_StaticParams.ionInformation.iIonVal[1]
-         || g_StaticParams.ionInformation.iIonVal[7]))
+         && (g_StaticParams.ionInformation.iIonVal[ION_SERIES_A]
+            || g_StaticParams.ionInformation.iIonVal[ION_SERIES_B]
+            || g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
       pScoring->pfFastXcorrDataNL = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
       if (pScoring->pfFastXcorrDataNL == NULL)
@@ -308,9 +308,9 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
       if (g_StaticParams.ionInformation.bUseNeutralLoss
-            && (g_StaticParams.ionInformation.iIonVal[0]
-               || g_StaticParams.ionInformation.iIonVal[1]
-               || g_StaticParams.ionInformation.iIonVal[7]))
+            && (g_StaticParams.ionInformation.iIonVal[ION_SERIES_A]
+               || g_StaticParams.ionInformation.iIonVal[ION_SERIES_B]
+               || g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
          pScoring->pfFastXcorrDataNL[i] = pScoring->pfFastXcorrData[i];
 
@@ -331,7 +331,6 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
             pScoring->iFastXcorrDataNL++;
       }
    }
-   pScoring->pfFastXcorrData[0] = 0.0;
 
    free(pPre.pdCorrelationData);
    free(pdTmpFastXcorrData);
@@ -369,9 +368,9 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
       if (g_StaticParams.ionInformation.bUseNeutralLoss
-            && (g_StaticParams.ionInformation.iIonVal[0]
-               || g_StaticParams.ionInformation.iIonVal[1]
-               || g_StaticParams.ionInformation.iIonVal[7]))
+            && (g_StaticParams.ionInformation.iIonVal[ION_SERIES_A]
+               || g_StaticParams.ionInformation.iIonVal[ION_SERIES_B]
+               || g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
          pScoring->pSparseFastXcorrDataNL = (SparseMatrix *)calloc((size_t)pScoring->iFastXcorrDataNL, (size_t)sizeof(SparseMatrix));
          if (pScoring->pSparseFastXcorrDataNL == NULL)

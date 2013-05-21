@@ -113,12 +113,12 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    fprintf(fpout, "H\tFragmentMassTolerance\t%0.6f\n", g_StaticParams.tolerances.dFragmentBinSize);
    fprintf(fpout, "H\tEnzymeName\t%s\n", g_StaticParams.enzymeInformation.szSearchEnzymeName);
    fprintf(fpout, "H\tAlgo-IonSeries\t 0 0 0 %0.1f %0.1f %0.1f 0.0 0.0 0.0 %0.1f %0.1f %0.1f\n",
-         (double)g_StaticParams.ionInformation.iIonVal[0],
-         (double)g_StaticParams.ionInformation.iIonVal[1],
-         (double)g_StaticParams.ionInformation.iIonVal[2],
-         (double)g_StaticParams.ionInformation.iIonVal[3],
-         (double)g_StaticParams.ionInformation.iIonVal[4],
-         (double)g_StaticParams.ionInformation.iIonVal[5]);
+         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_A],
+         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_B],
+         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_C],
+         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_X],
+         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y],
+         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_Z]);
 
 
    for (int i=0; i<VMODS; i++)

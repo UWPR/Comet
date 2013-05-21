@@ -294,6 +294,7 @@ int main(int argc, char *argv[])
 
           if (g_StaticParams.options.bOutputTxtFile)
              CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
+
           // Write SQT last as I destroy the g_StaticParams.szMod string during that process
           if (g_StaticParams.options.bOutputSqtStream || g_StaticParams.options.bOutputSqtFile)
              CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
@@ -305,7 +306,6 @@ int main(int argc, char *argv[])
 
           g_pvQuery.clear();
        }
-
        if (iTotalSpectraSearched == 0)
        {
           printf(" Warning - no spectra searched.\n\n");
@@ -733,27 +733,27 @@ void LoadParameters(char *pszParamsFile)
          }
          else if (!strcmp(szParamName, "use_A_ions"))
          {
-            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[0]));
+            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[ION_SERIES_A]));
          }
          else if (!strcmp(szParamName, "use_B_ions"))
          {
-            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[1]));
+            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[ION_SERIES_B]));
          }
          else if (!strcmp(szParamName, "use_C_ions"))
          {
-            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[2]));
+            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[ION_SERIES_C]));
          }
          else if (!strcmp(szParamName, "use_X_ions"))
          {
-            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[3]));
+            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[ION_SERIES_X]));
          }
          else if (!strcmp(szParamName, "use_Y_ions"))
          {
-            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[4]));
+            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y]));
          }
          else if (!strcmp(szParamName, "use_Z_ions"))
          {
-            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[5]));
+            sscanf(szParamVal, "%d", &(g_StaticParams.ionInformation.iIonVal[ION_SERIES_Z]));
          }
          else if (!strcmp(szParamName, "use_NL_ions"))
          {
@@ -1334,7 +1334,7 @@ void LoadParameters(char *pszParamsFile)
 
    // Load ion series to consider, useA, useB, useY are for neutral losses.
    g_StaticParams.ionInformation.iNumIonSeriesUsed = 0;
-   for (i=0; i<9; i++)
+   for (i=0; i<6; i++)
    {
       if (g_StaticParams.ionInformation.iIonVal[i] > 0)
          g_StaticParams.ionInformation.piSelectedIonSeries[g_StaticParams.ionInformation.iNumIonSeriesUsed++] = i;
@@ -1460,12 +1460,12 @@ void LoadParameters(char *pszParamsFile)
    char szPeak[16];
 
    sprintf(g_StaticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
-           g_StaticParams.ionInformation.iIonVal[0],
-           g_StaticParams.ionInformation.iIonVal[1],
-           g_StaticParams.ionInformation.iIonVal[2],
-           g_StaticParams.ionInformation.iIonVal[3],
-           g_StaticParams.ionInformation.iIonVal[4],
-           g_StaticParams.ionInformation.iIonVal[5],
+           g_StaticParams.ionInformation.iIonVal[ION_SERIES_A],
+           g_StaticParams.ionInformation.iIonVal[ION_SERIES_B],
+           g_StaticParams.ionInformation.iIonVal[ION_SERIES_C],
+           g_StaticParams.ionInformation.iIonVal[ION_SERIES_X],
+           g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y],
+           g_StaticParams.ionInformation.iIonVal[ION_SERIES_Z],
            g_StaticParams.ionInformation.bUseNeutralLoss);
 
    char szUnits[8];
