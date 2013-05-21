@@ -502,15 +502,25 @@ struct Query
       {
          free(pSparseSpScoreData);
          free(pSparseFastXcorrData);
-         if (g_StaticParams.ionInformation.bUseNeutralLoss)
+         if (g_StaticParams.ionInformation.bUseNeutralLoss
+               && (g_StaticParams.ionInformation.iIonVal[0]
+                  || g_StaticParams.ionInformation.iIonVal[1]
+                  || g_StaticParams.ionInformation.iIonVal[7]))
+         {
             free(pSparseFastXcorrDataNL);
+         }
       }
       else
       {
          free(pfSpScoreData);
          free(pfFastXcorrData);
-         if (g_StaticParams.ionInformation.bUseNeutralLoss)
+         if (g_StaticParams.ionInformation.bUseNeutralLoss
+               && (g_StaticParams.ionInformation.iIonVal[0]
+                  || g_StaticParams.ionInformation.iIonVal[1]
+                  || g_StaticParams.ionInformation.iIonVal[7]))
+         {
             free(pfFastXcorrDataNL);
+         }
       }
 
       free(_pResults);
