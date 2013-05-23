@@ -1616,8 +1616,6 @@ void CometSearch::VarModSearch(char *szProteinSeq,
                                     // current peptide since the end position is variable.
                                     for (i=0; i<VMODS; i++)
                                     {
-                                       int iIndex;
-
                                        // varModStatList[i].iTotVarModC contains # of mod residues in current
                                        // peptide defined by iTmpEnd.  Since varModCounts contains # of
                                        // each variable mod to match peptide mass, need to make sure that
@@ -1625,9 +1623,9 @@ void CometSearch::VarModSearch(char *szProteinSeq,
                                        // Moreso, if a binary mod search is being performed, these
                                        // values have to be the same.
 
-                                       if (g_StaticParams.variableModParameters.varModList[iIndex].bBinaryMod)
+                                       if (g_StaticParams.variableModParameters.varModList[i].bBinaryMod)
                                        {
-                                          if (varModCounts[i] != _varModInfo.varModStatList[i].iTotVarModCt)
+                                          if (varModCounts[i] != 0 && varModCounts[i] != _varModInfo.varModStatList[i].iTotVarModCt)
                                           {
                                              bValid = false;
                                              break;
@@ -1642,7 +1640,7 @@ void CometSearch::VarModSearch(char *szProteinSeq,
                                           }
                                        }
                                     }
-                                    
+
                                     if (bValid && TotalVarModCount(varModCounts, iC, iN) > 0)
                                     {
                                        int iWhichQuery = WithinMassTolerance(dTmpCalcMass, szProteinSeq, iStartPos, iTmpEnd);

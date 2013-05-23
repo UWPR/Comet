@@ -143,18 +143,22 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
             if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
             {
-              iNumSpectraLoaded++;
+               Threading::LockMutex(g_pvQueryMutex);
+               // this needed because processing can add multiple spectra at a time
+               iNumSpectraLoaded = (int)g_pvQuery.size();
+               iNumSpectraLoaded++;
+               Threading::UnlockMutex(g_pvQueryMutex);
 
-              // Queue at most 1 additional parameter for threads to process.
-              preprocessThreadPool.WaitForQueuedParams(1, 1);
+               // Queue at most 1 additional parameter for threads to process.
+               preprocessThreadPool.WaitForQueuedParams(1, 1);
               
-              //-->MH
-              //If there are no Z-lines, filter the spectrum for charge state
-              //run filter here.
+               //-->MH
+               //If there are no Z-lines, filter the spectrum for charge state
+               //run filter here.
 
-              PreprocessThreadData *pPreprocessThreadData = 
+               PreprocessThreadData *pPreprocessThreadData =
                   new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
-              preprocessThreadPool.Launch(pPreprocessThreadData);
+               preprocessThreadPool.Launch(pPreprocessThreadData);
             }
          }
 
@@ -556,7 +560,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    }
 
    if ((g_StaticParams.options.iSpectrumBatchSize != 0) &&
-       (g_StaticParams.options.iSpectrumBatchSize == iNumSpectraLoaded))
+       (iNumSpectraLoaded >= g_StaticParams.options.iSpectrumBatchSize))
    {
        return true;
    }

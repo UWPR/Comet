@@ -19,6 +19,8 @@
 #include "CometMassSpecUtils.h"
 #include "CometWriteTxt.h"
 
+bool CometWriteTxt::_bWroteHeader = false;
+
 CometWriteTxt::CometWriteTxt()
 {
 }
@@ -36,10 +38,14 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
 {
    int i;
 
-   PrintTxtHeader(fpout);
+   if (!_bWroteHeader)
+   {
+      _bWroteHeader = true;
+      PrintTxtHeader(fpout);
 
-   if (g_StaticParams.options.iDecoySearch == 2)
-      PrintTxtHeader(fpoutd);
+      if (g_StaticParams.options.iDecoySearch == 2)
+         PrintTxtHeader(fpoutd);
+   }
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
