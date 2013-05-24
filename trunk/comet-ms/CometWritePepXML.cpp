@@ -105,7 +105,8 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, "raw_data=\"%s\" ", pStr2);
    fprintf(fpout, "raw_data_type=\"%s\">\n", pStr2);
 
-   fprintf(fpout, " <sample_enzyme name=\"%s\">\n", g_StaticParams.enzymeInformation.szSampleEnzymeName);
+   fprintf(fpout, " <sample_enzyme name=\"%s\">\n",
+         (g_StaticParams.options.bNoEnzymeSelected?"nonspecific":g_StaticParams.enzymeInformation.szSearchEnzymeName));
    fprintf(fpout, "  <specificity cut=\"%s\" no_cut=\"%s\" sense=\"%c\"/>\n",
          g_StaticParams.enzymeInformation.szSampleEnzymeBreakAA,
          g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA,
@@ -130,7 +131,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    }
 
    fprintf(fpout, "  <enzymatic_search_constraint enzyme=\"%s\" max_num_internal_cleavages=\"%d\" min_number_termini=\"%d\"/>\n",
-         g_StaticParams.enzymeInformation.szSearchEnzymeName,
+         (g_StaticParams.options.bNoEnzymeSelected?"nonspecific":g_StaticParams.enzymeInformation.szSearchEnzymeName),
          g_StaticParams.enzymeInformation.iAllowedMissedCleavage,
          (g_StaticParams.options.iEnzymeTermini==ENZYME_DOUBLE_TERMINI)?2:
             ((g_StaticParams.options.iEnzymeTermini == ENZYME_SINGLE_TERMINI)
