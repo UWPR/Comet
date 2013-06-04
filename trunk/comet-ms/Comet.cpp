@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 
           if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
           {
-             fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputSQT);
+             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputSQT);
              exit(1);
           }
 
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 
              if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
              {
-                fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoySQT);
+                fprintf(stderr, "Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoySQT);
                 exit(1);
              }
           }
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 
           if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
           {
-             fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputTxt);
+             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputTxt);
              exit(1);
           }
 
@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
 
              if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
              {
-                fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyTxt);
+                fprintf(stderr, "Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyTxt);
                 exit(1);
              }
           }
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 
           if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
           {
-             fprintf(stderr, "Error - cannot write to file %s\n\n", szOutputPepXML);
+             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputPepXML);
              exit(1);
           }
 
@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
 
              if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
              {
-                fprintf(stderr, "Error - cannot write to decoy file %s\n\n", szOutputDecoyPepXML);
+                fprintf(stderr, "Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyPepXML);
                 exit(1);
              }
 
@@ -644,7 +644,7 @@ void LoadParameters(char *pszParamsFile)
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
       fprintf(stderr, "\n Comet version %s\n %s\n", comet_version, copyright);
-      fprintf(stderr, " Error - cannot open parameter file %s.\n\n", pszParamsFile);
+      fprintf(stderr, " Error - cannot open parameter file \"%s\".\n\n", pszParamsFile);
       exit(1);
    }
 
@@ -1442,7 +1442,7 @@ void LoadParameters(char *pszParamsFile)
 
    if (!bCurrentParamsFile)
    {
-      fprintf(stderr, " Error - outdated params file; update params file using '-p' option.\n\n");
+      fprintf(stderr, " Error - outdated params file; generate an update params file using '-p' option.\n\n");
       exit(1);
    }
 
@@ -1674,7 +1674,7 @@ void ProcessCmdLine(int argc,
           InputFileInfo *pInputFileInfo = new InputFileInfo();
           if (!ParseCmdLine(arg, pInputFileInfo))
           {
-              fprintf(stderr, " Error - input MS/MS file %s not found.\n\n", pInputFileInfo->szFileName);
+              fprintf(stderr, " Error - input MS/MS file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
               g_pvInputFiles.clear();
               exit(1);
           }
@@ -1692,7 +1692,7 @@ void ProcessCmdLine(int argc,
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_StaticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      fprintf(stderr, "\n Error - cannot read database file %s.\n", g_StaticParams.databaseInfo.szDatabase);
+      fprintf(stderr, "\n Error - cannot read database file \"%s\".\n", g_StaticParams.databaseInfo.szDatabase);
       fprintf(stderr, " Check that the file exists and is readable.\n\n");
       g_pvInputFiles.clear();
       exit(1);
@@ -1785,7 +1785,7 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
 
          if (err != EEXIST) 
          {
-            fprintf(stderr, "\n Error - could not create directory %s.\n", g_StaticParams.inputFile.szBaseName);
+            fprintf(stderr, "\n Error - could not create directory \"%s\".\n", g_StaticParams.inputFile.szBaseName);
             exit(1);
          }
       }
@@ -1801,7 +1801,7 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
 
             if (err != EEXIST) 
             {
-               fprintf(stderr, "\n Error - could not create directory %s.\n", szDecoyDir);
+               fprintf(stderr, "\n Error - could not create directory \"%s\".\n", szDecoyDir);
                exit(1);
             }
          }
@@ -1809,7 +1809,7 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
 #else
       if ((mkdir(g_StaticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
       {
-         fprintf(stderr, "\n Error - could not create directory %s.\n", g_StaticParams.inputFile.szBaseName);
+         fprintf(stderr, "\n Error - could not create directory \"%s\".\n", g_StaticParams.inputFile.szBaseName);
          exit(1);
       }
       if (g_StaticParams.options.iDecoySearch == 2)
@@ -1819,7 +1819,7 @@ void UpdateInputFile(InputFileInfo *pFileInfo)
 
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
          {
-            fprintf(stderr, "\n Error - could not create directory %s.\n\n", szDecoyDir);
+            fprintf(stderr, "\n Error - could not create directory \"%s\".\n\n", szDecoyDir);
             exit(1);
          }
       }
@@ -1835,7 +1835,7 @@ void PrintParams(void)
 
    if ( (fp=fopen("comet.params.new", "w"))==NULL)
    {
-      fprintf(stderr, "\n Error - cannot write file comet.paramsnew\n\n");
+      fprintf(stderr, "\n Error - cannot write file comet.params.new\n\n");
       exit(1);
    }
 
@@ -2060,7 +2060,7 @@ void PRINT_SQT_HEADER(FILE *fpout,
 
    if ((fp=fopen(szParamsFile, "r")) == NULL)
    {
-      fprintf(stderr, "\n Error - cannot open parameter file %s.\n\n", szParamsFile);
+      fprintf(stderr, "\n Error - cannot open parameter file \"%s\".\n\n", szParamsFile);
       exit(1);
    }
 

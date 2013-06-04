@@ -64,9 +64,12 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
       if (g_pvQuery.at(iQueryIndex)->iDoXcorrCount> 0)
       {
          CalculateEValue(iQueryIndex, 0);
+      }
       
-         if (g_StaticParams.options.iDecoySearch == 2)
-            CalculateEValue(iQueryIndex, 1);
+      if (g_StaticParams.options.iDecoySearch == 2
+            && g_pvQuery.at(iQueryIndex)->iDoDecoyXcorrCount> 0)
+      {
+         CalculateEValue(iQueryIndex, 1);
       }
    }
 
@@ -369,18 +372,18 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery,
          if (dExpect > 999.0)
             dExpect = 999.0;
 
-         // Sanity constraints - no low e-values allowed for xcorr < 1.2.
-         // I'll admit xcorr < 1.2 is an arbitrary cutoff but something is needed.
+         // Sanity constraints - no low e-values allowed for xcorr < 1.0.
+         // I'll admit xcorr < 1.0 is an arbitrary cutoff but something is needed.
          if (dExpect < 1.0)
          {
             if (bDecoy)
             {
-               if (pQuery->_pDecoys[i].fXcorr < 1.2)
+               if (pQuery->_pDecoys[i].fXcorr < 1.0)
                   dExpect = 1.0;
             }
             else
             {
-               if (pQuery->_pResults[i].fXcorr < 1.2)
+               if (pQuery->_pResults[i].fXcorr < 1.0)
                   dExpect = 1.0;
             }
          }

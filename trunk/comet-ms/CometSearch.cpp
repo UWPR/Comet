@@ -57,7 +57,7 @@ void CometSearch::RunSearch(int minNumThreads,
 
    if ((fptr=fopen(g_StaticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
-       fprintf(stderr, " Error - cannot read database file %s.\n\n", g_StaticParams.databaseInfo.szDatabase);
+       fprintf(stderr, " Error - cannot read database file \"%s\".\n\n", g_StaticParams.databaseInfo.szDatabase);
        exit(1);
    }
 
