@@ -87,7 +87,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>pthreads-w32\include;MSToolkit\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -96,7 +96,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
+      <OptimizeReferences>false</OptimizeReferences>
       <AdditionalLibraryDirectories>Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;setargv.obj;MSToolkitLite.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
@@ -124,6 +124,7 @@
     <ClCompile Include="CometPostAnalysis.cpp" />
     <ClCompile Include="CometPreprocess.cpp" />
     <ClCompile Include="CometSearch.cpp" />
+    <ClCompile Include="CometSearchManager.cpp" />
     <ClCompile Include="CometWriteOut.cpp" />
     <ClCompile Include="CometWritePepXML.cpp" />
     <ClCompile Include="CometWriteSqt.cpp" />
@@ -142,6 +143,7 @@
     <ClInclude Include="CometPostAnalysis.h" />
     <ClInclude Include="CometPreprocess.h" />
     <ClInclude Include="CometSearch.h" />
+    <ClInclude Include="CometSearchManager.h" />
     <ClInclude Include="CometWriteOut.h" />
     <ClInclude Include="CometWritePepXML.h" />
     <ClInclude Include="CometWriteSqt.h" />

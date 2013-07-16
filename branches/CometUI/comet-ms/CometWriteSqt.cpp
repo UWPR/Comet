@@ -42,11 +42,11 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    if (!_bWroteHeader)
    {
        _bWroteHeader = true;
-       if (g_StaticParams.options.bOutputSqtFile)
+       if (g_staticParams.options.bOutputSqtFile)
        {
           PrintSqtHeader(fpout, szParamsFile);
 
-          if (g_StaticParams.options.iDecoySearch == 2)
+          if (g_staticParams.options.iDecoySearch == 2)
           {
              // Print this header only if separate decoy search is also run.
              fprintf(fpout, "H\tTargetSearchResults\nH\n");
@@ -64,7 +64,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    }
 
    // Print out the separate decoy hits.
-   if (g_StaticParams.options.iDecoySearch == 2)
+   if (g_staticParams.options.iDecoySearch == 2)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
@@ -85,7 +85,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    fprintf(fpout, "H\tSQTGenerator Comet\n");
    fprintf(fpout, "H\tComment\tCometVersion %s\n", comet_version);
    fprintf(fpout, "H\n");
-   fprintf(fpout, "H\tStartTime\t%s\n", g_StaticParams._dtInfoStart.szDate);
+   fprintf(fpout, "H\tStartTime\t%s\n", g_staticParams.szDate);
    time(&tTime);
    strftime(szEndDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tTime));
    fprintf(fpout, "H\tEndTime\t%s\n", szEndDate);
@@ -98,56 +98,56 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
       exit(1);
    }
 
-   fprintf(fpout, "H\tDBSeqLength\t%lu\n", g_StaticParams.databaseInfo.liTotAACount);
-   fprintf(fpout, "H\tDBLocusCount\t%d\n", g_StaticParams.databaseInfo.iTotalNumProteins);
+   fprintf(fpout, "H\tDBSeqLength\t%lu\n", g_staticParams.databaseInfo.liTotAACount);
+   fprintf(fpout, "H\tDBLocusCount\t%d\n", g_staticParams.databaseInfo.iTotalNumProteins);
 
    fprintf(fpout, "H\tFragmentMassMode\tAMU\n");
    fprintf(fpout, "H\tPrecursorMassMode\t%s\n",
-         (g_StaticParams.tolerances.iMassToleranceUnits==0?"AMU":
-          (g_StaticParams.tolerances.iMassToleranceUnits==1?"MMU":"PPM")));
+         (g_staticParams.tolerances.iMassToleranceUnits==0?"AMU":
+          (g_staticParams.tolerances.iMassToleranceUnits==1?"MMU":"PPM")));
    fprintf(fpout, "H\tSQTGeneratorVersion\tN/A\n");
-   fprintf(fpout, "H\tDatabase\t%s\n", g_StaticParams.databaseInfo.szDatabase );
-   fprintf(fpout, "H\tFragmentMasses\t%s\n", g_StaticParams.massUtility.bMonoMassesFragment?"MONO":"AVG");
-   fprintf(fpout, "H\tPrecursorMasses\t%s\n", g_StaticParams.massUtility.bMonoMassesParent?"MONO":"AVG");
-   fprintf(fpout, "H\tPrecursorMassTolerance\t%0.6f\n", g_StaticParams.tolerances.dInputTolerance);
-   fprintf(fpout, "H\tFragmentMassTolerance\t%0.6f\n", g_StaticParams.tolerances.dFragmentBinSize);
-   fprintf(fpout, "H\tEnzymeName\t%s\n", g_StaticParams.enzymeInformation.szSearchEnzymeName);
+   fprintf(fpout, "H\tDatabase\t%s\n", g_staticParams.databaseInfo.szDatabase );
+   fprintf(fpout, "H\tFragmentMasses\t%s\n", g_staticParams.massUtility.bMonoMassesFragment?"MONO":"AVG");
+   fprintf(fpout, "H\tPrecursorMasses\t%s\n", g_staticParams.massUtility.bMonoMassesParent?"MONO":"AVG");
+   fprintf(fpout, "H\tPrecursorMassTolerance\t%0.6f\n", g_staticParams.tolerances.dInputTolerance);
+   fprintf(fpout, "H\tFragmentMassTolerance\t%0.6f\n", g_staticParams.tolerances.dFragmentBinSize);
+   fprintf(fpout, "H\tEnzymeName\t%s\n", g_staticParams.enzymeInformation.szSearchEnzymeName);
    fprintf(fpout, "H\tAlgo-IonSeries\t 0 0 0 %0.1f %0.1f %0.1f 0.0 0.0 0.0 %0.1f %0.1f %0.1f\n",
-         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_A],
-         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_B],
-         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_C],
-         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_X],
-         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_Y],
-         (double)g_StaticParams.ionInformation.iIonVal[ION_SERIES_Z]);
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]);
 
 
    for (int i=0; i<VMODS; i++)
    {
-      if ((g_StaticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
-            && (g_StaticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
+      if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
+            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
-         for (unsigned int ii=0; ii<strlen(g_StaticParams.variableModParameters.varModList[i].szVarModChar); ii++)
+         for (unsigned int ii=0; ii<strlen(g_staticParams.variableModParameters.varModList[i].szVarModChar); ii++)
          {
             fprintf(fpout, "H\tDiffMod\t%c%c=%+0.6f\n",
-                  g_StaticParams.variableModParameters.varModList[i].szVarModChar[ii],
-                  g_StaticParams.variableModParameters.cModCode[i],
-                  g_StaticParams.variableModParameters.varModList[i].dVarModMass);
+                  g_staticParams.variableModParameters.varModList[i].szVarModChar[ii],
+                  g_staticParams.variableModParameters.cModCode[i],
+                  g_staticParams.variableModParameters.varModList[i].dVarModMass);
          }
       }
    }
-   if (g_StaticParams.variableModParameters.dVarModMassN != 0.0)
+   if (g_staticParams.variableModParameters.dVarModMassN != 0.0)
    {
       fprintf(fpout, "H\tDiffMod\tnt]=%+0.6f\n",
-            g_StaticParams.variableModParameters.dVarModMassN);
+            g_staticParams.variableModParameters.dVarModMassN);
    }
-   if (g_StaticParams.variableModParameters.dVarModMassC != 0.0)
+   if (g_staticParams.variableModParameters.dVarModMassC != 0.0)
    {
       fprintf(fpout, "H\tDiffMod\tct[=%+0.6f\n",
-            g_StaticParams.variableModParameters.dVarModMassC);
+            g_staticParams.variableModParameters.dVarModMassC);
    }
 
    char *pStr;
-   while ((pStr = strrchr(g_StaticParams.szMod, '='))!=NULL)
+   while ((pStr = strrchr(g_staticParams.szMod, '='))!=NULL)
    {
       char szTmp[48];
       while (*pStr != ' ')
@@ -191,8 +191,8 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
             pQuery->_spectrumInfoInternal.iScanNumber, 
             pQuery->_spectrumInfoInternal.iScanNumber,
             pQuery->_spectrumInfoInternal.iChargeState, 
-            g_StaticParams.iElapseTime, 
-            g_StaticParams.szHostName, 
+            g_staticParams.iElapseTime, 
+            g_staticParams.szHostName, 
             pQuery->_pepMassInfo.dExpPepMass,
             pQuery->_spectrumInfoInternal.dTotalIntensity, 
             pQuery->fLowestDecoySpScore, 
@@ -204,15 +204,15 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
             pQuery->_spectrumInfoInternal.iScanNumber, 
             pQuery->_spectrumInfoInternal.iScanNumber,
             pQuery->_spectrumInfoInternal.iChargeState, 
-            g_StaticParams.iElapseTime, 
-            g_StaticParams.szHostName, 
+            g_staticParams.iElapseTime, 
+            g_staticParams.szHostName, 
             pQuery->_pepMassInfo.dExpPepMass,
             pQuery->_spectrumInfoInternal.dTotalIntensity, 
             pQuery->fLowestSpScore, 
             pQuery->_liNumMatchedPeptides);
    }
 
-   if (g_StaticParams.options.bOutputSqtStream)
+   if (g_staticParams.options.bOutputSqtStream)
       fprintf(stdout, "%s", szBuf); 
    else
       fprintf(fpout, "%s", szBuf);
@@ -223,8 +223,8 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
       iDoXcorrCount = pQuery->iDoXcorrCount;
 
    // Print out each sequence line.
-   if (iDoXcorrCount > (g_StaticParams.options.iNumPeptideOutputLines))
-      iDoXcorrCount = (g_StaticParams.options.iNumPeptideOutputLines);
+   if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
+      iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
 
    Results *pOutput;
 
@@ -263,7 +263,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
          1.000000 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr,
          pOutput[iWhichResult].fXcorr);
 
-   if (g_StaticParams.options.bPrintExpectScore)
+   if (g_staticParams.options.bPrintExpectScore)
       sprintf(szBuf+strlen(szBuf), "%0.2E", pOutput[iWhichResult].dExpect);
    else
       sprintf(szBuf+strlen(szBuf), "%0.1f", pOutput[iWhichResult].fScoreSp);
@@ -274,7 +274,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
 
    sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[0]);
 
-   if (g_StaticParams.variableModParameters.bVarModSearch
+   if (g_staticParams.variableModParameters.bVarModSearch
          && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
    {
       sprintf(szBuf+strlen(szBuf), "]");
@@ -287,15 +287,15 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    {
       sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_StaticParams.variableModParameters.bVarModSearch
-            && 0.0 != g_StaticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass)
+      if (g_staticParams.variableModParameters.bVarModSearch
+            && 0.0 != g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass)
       {
          sprintf(szBuf+strlen(szBuf), "%c",
-               g_StaticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
       }
    }
 
-   if (g_StaticParams.variableModParameters.bVarModSearch
+   if (g_staticParams.variableModParameters.bVarModSearch
          && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
    {
       sprintf(szBuf+strlen(szBuf), "[");
@@ -305,7 +305,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
 
    sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[1]);
 
-   if (g_StaticParams.options.bOutputSqtStream)
+   if (g_staticParams.options.bOutputSqtStream)
    {
       fprintf(stdout, "%s\tU\n", szBuf);
 
