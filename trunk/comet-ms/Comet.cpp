@@ -25,6 +25,7 @@
 #include "CometWriteSqt.h"
 #include "CometWriteTxt.h"
 #include "CometWritePepXML.h"
+#include "CometWritePinXML.h"
 #include "Threading.h"
 #include "ThreadPool.h"
 
@@ -83,6 +84,7 @@ int main(int argc, char *argv[])
          && !g_StaticParams.options.bOutputSqtFile
          && !g_StaticParams.options.bOutputTxtFile
          && !g_StaticParams.options.bOutputPepXMLFile
+         && !g_StaticParams.options.bOutputPinXMLFile
          && !g_StaticParams.options.bOutputOutFiles)
    {
       printf("\n Comet version \"%s\"\n", comet_version);
@@ -135,6 +137,7 @@ int main(int argc, char *argv[])
        FILE *fpoutd_sqt=NULL;
        FILE *fpout_pepxml=NULL;
        FILE *fpoutd_pepxml=NULL;
+       FILE *fpout_pinxml=NULL;
        FILE *fpout_txt=NULL;
        FILE *fpoutd_txt=NULL;
 
@@ -142,6 +145,7 @@ int main(int argc, char *argv[])
        char szOutputDecoySQT[SIZE_FILE];
        char szOutputPepXML[SIZE_FILE];
        char szOutputDecoyPepXML[SIZE_FILE];
+       char szOutputPinXML[SIZE_FILE];
        char szOutputTxt[SIZE_FILE];
        char szOutputDecoyTxt[SIZE_FILE];
 
@@ -233,6 +237,26 @@ int main(int argc, char *argv[])
           }
        }
 
+       if (g_StaticParams.options.bOutputPinXMLFile)
+       {
+          if (iAnalysisType == AnalysisType_EntireFile)
+             sprintf(szOutputPinXML, "%s.pin.xml", g_StaticParams.inputFile.szBaseName);
+          else
+             sprintf(szOutputPinXML, "%s.%d-%d.pin.xml", g_StaticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+          if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
+          {
+             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputPinXML);
+             exit(1);
+          }
+
+          // We need knowledge of max charge state in all searches
+          // here in order to write the featureDescription header
+
+          CometWritePinXML::WritePinXMLHeader(fpout_pinxml);
+       }
+
+
        // For file access using MSToolkit.
        MSReader mstReader;
 
@@ -292,6 +316,9 @@ int main(int argc, char *argv[])
           if (g_StaticParams.options.bOutputPepXMLFile)
              CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML);
 
+          if (g_StaticParams.options.bOutputPinXMLFile)
+             CometWritePinXML::WritePinXML(fpout_pinxml);
+
           if (g_StaticParams.options.bOutputTxtFile)
              CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
 
@@ -330,6 +357,13 @@ int main(int argc, char *argv[])
            CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
            fclose(fpoutd_pepxml);
            fpoutd_pepxml = NULL;
+       }
+
+       if (NULL != fpout_pinxml)
+       {
+           CometWritePinXML::WritePinXMLEndTags(fpout_pinxml);
+           fclose(fpout_pinxml);
+           fpout_pinxml = NULL;
        }
 
        if (NULL != fpout_sqt)
@@ -579,6 +613,7 @@ void InitializeParameters(void)
    g_StaticParams.options.bOutputSqtFile = 0;
    g_StaticParams.options.bOutputTxtFile = 0;
    g_StaticParams.options.bOutputPepXMLFile = 1;
+   g_StaticParams.options.bOutputPinXMLFile = 0;
    g_StaticParams.options.bOutputOutFiles = 0;
 
    g_StaticParams.options.bSkipAlreadyDone = 0;
@@ -908,6 +943,10 @@ void LoadParameters(char *pszParamsFile)
          else if (!strcmp(szParamName, "output_pepxmlfile"))
          {
             sscanf(szParamVal, "%d", &(g_StaticParams.options.bOutputPepXMLFile));
+         }
+         else if (!strcmp(szParamName, "output_pinxmlfile"))
+         {
+            sscanf(szParamVal, "%d", &(g_StaticParams.options.bOutputPinXMLFile));
          }
          else if (!strcmp(szParamName, "output_outfiles"))
          {
@@ -1907,6 +1946,7 @@ output_sqtstream = 0                   # 0=no, 1=yes  write sqt to standard outp
 output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
 output_txtfile = 0                     # 0=no, 1=yes  write tab-delimited txt file\n\
 output_pepxmlfile = 1                  # 0=no, 1=yes  write pep.xml file\n\
+output_pinxmlfile = 0                  # 0=no, 1=yes  write pin.xml file\n\
 output_outfiles = 0                    # 0=no, 1=yes  write .out files\n\
 print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
 num_output_lines = 5                   # num peptide results to show\n\

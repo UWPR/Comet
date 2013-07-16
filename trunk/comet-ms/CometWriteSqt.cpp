@@ -313,7 +313,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       fprintf(stdout, "L\t%s", pOutput[iWhichResult].szProtein);
 
       if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(stdout, "\t%+u", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(stdout, "\t+%u", pOutput[iWhichResult].iDuplicateCount); 
 
       fprintf(stdout, "\n");
    }
@@ -325,7 +325,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       fprintf(fpout, "L\t%s", pOutput[iWhichResult].szProtein);
 
       if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(fpout, "\t%+u", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(fpout, "\t+%u", pOutput[iWhichResult].iDuplicateCount); 
 
       fprintf(fpout, "\n");
    }

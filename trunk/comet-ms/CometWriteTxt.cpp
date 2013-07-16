@@ -62,6 +62,7 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
 
 void CometWriteTxt::PrintTxtHeader(FILE *fpout)
 {
+/*
    char szEndDate[28];
    time_t tTime;
 
@@ -72,6 +73,12 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    strftime(szEndDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tTime));
    fprintf(fpout, "%s\t", szEndDate);
    fprintf(fpout, "%s\n", g_StaticParams.databaseInfo.szDatabase);
+*/
+
+   fprintf(fpout, "scan\tcharge\texp_neutral_mass\tcalc_neutral_mass\te-value\txcorr\t");
+   fprintf(fpout, "delta_cn\tsp_score\tions_matched\tions_total\tplain_peptide\t");
+   fprintf(fpout, "peptide\tprev_aa\tnext_aa\tprotein\tduplicate_protein_count\n");
+
 }
 
 
@@ -87,7 +94,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
    sprintf(szBuf, "%d\t%d\t%0.4f\t",
          pQuery->_spectrumInfoInternal.iScanNumber, 
          pQuery->_spectrumInfoInternal.iChargeState, 
-         pQuery->_pepMassInfo.dExpPepMass);
+         pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
 
    fprintf(fpout, "%s", szBuf);
 
@@ -115,8 +122,8 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
    int  i;
    char szBuf[SIZE_BUF];
 
-   sprintf(szBuf, "%0.4f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d/%d\t",
-         pOutput[iWhichResult].dPepMass,
+   sprintf(szBuf, "%0.4f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
+         pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
          1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr,   // pOutput[0].fXcorr is >0 to enter this fn
@@ -124,7 +131,7 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
          pOutput[iWhichResult].iMatchedIons, 
          pOutput[iWhichResult].iTotalIons);
 
-   fprintf(fpout, "%s\t", szBuf);
+   fprintf(fpout, "%s", szBuf);
 
    // Print plain peptide
    fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
@@ -165,10 +172,12 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
 
    fprintf(fpout, "%s\t", szBuf);
 
+   fprintf(fpout, "%c\t%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
+
    // Print protein reference/accession.
    fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
 
-   fprintf(fpout, "%+u", pOutput[iWhichResult].iDuplicateCount); 
+   fprintf(fpout, "%u", pOutput[iWhichResult].iDuplicateCount); 
 
    fprintf(fpout, "\n");
 }

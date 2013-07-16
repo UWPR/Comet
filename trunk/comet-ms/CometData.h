@@ -117,6 +117,7 @@ struct Options             // output parameters
    int bOutputSqtFile;
    int bOutputTxtFile;
    int bOutputPepXMLFile;
+   int bOutputPinXMLFile;
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
