@@ -96,6 +96,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), SPQSortFn);
    pQuery->_pResults[0].iRankSp = 1;
+   pQuery->fLowestSpScore = pQuery->_pResults[0].fScoreSp;
 
    for (int ii=1; ii<iSize; ii++)
    {
@@ -104,12 +105,15 @@ void CometPostAnalysis::AnalyzeSP(int i)
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp;
       else
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp + 1;
+
+      if (pQuery->_pResults[ii].fScoreSp < pQuery->fLowestSpScore)
+         pQuery->fLowestSpScore = pQuery->_pResults[ii].fScoreSp;
    }
 
    // Then sort each entry by xcorr.
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), XcorrQSortFn);
  
-   // Repeast for decoy search.
+   // Repeat for decoy search.
    if (g_StaticParams.options.iDecoySearch == 2)
    {
 
