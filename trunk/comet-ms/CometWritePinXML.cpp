@@ -243,10 +243,10 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    CalcNTTNMC(pOutput, iWhichResult, &iNterm, &iCterm, &iNMC);
 
    fprintf(fpout, "  <features>\n");
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", log(pOutput[iWhichResult].iRankSp) );  // lnrSp
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", (double)log((double)pOutput[iWhichResult].iRankSp) );  // lnrSp
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dLastDeltaCn); // deltLCn  last dCn in output list
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dDeltaCn); // deltCn
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", log(pOutput[iWhichResult].dExpect)); // ln(Expect)
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", (double)log(pOutput[iWhichResult].dExpect)); // ln(Expect)
    fprintf(fpout, "   <feature>%0.6f</feature>\n", pOutput[iWhichResult].fXcorr); // xcorr
    fprintf(fpout, "   <feature>%0.6f</feature>\n", pOutput[iWhichResult].fScoreSp); // Sp
    fprintf(fpout, "   <feature>%0.4f</feature>\n", (double)pOutput[iWhichResult].iMatchedIons / pOutput[iWhichResult].iTotalIons); // IonFrac
@@ -254,12 +254,12 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "   <feature>%d</feature>\n", pOutput[iWhichResult].iLenPeptide); // PepLen
 
    for (int i=1 ; i<= g_StaticParams.options.iMaxPrecursorCharge; i++)
-      fprintf(fpout, "   <feature>\%d</feature>\n", (pQuery->_spectrumInfoInternal.iChargeState==i?1:0) );
+      fprintf(fpout, "   <feature>%d</feature>\n", (pQuery->_spectrumInfoInternal.iChargeState==i?1:0) );
 
    fprintf(fpout, "   <feature>%d</feature>\n", iNterm); // enzN
    fprintf(fpout, "   <feature>%d</feature>\n", iCterm); // enzC
    fprintf(fpout, "   <feature>%d</feature>\n", iNMC); // enzInt
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", log( bDecoy?(pQuery->_liNumMatchedDecoyPeptides):(pQuery->_liNumMatchedPeptides)) ); // lnNumSP
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", (double)log((double)(bDecoy?(pQuery->_liNumMatchedDecoyPeptides):(pQuery->_liNumMatchedPeptides))) ); // lnNumSP
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dMZdiff); // dM  is m/z diff
    fprintf(fpout, "   <feature>%0.6f</feature>\n", abs(dMZdiff)); // absdM
    fprintf(fpout, "  </features>\n");
