@@ -23,6 +23,7 @@
 #include "CometWriteSqt.h"
 #include "CometWriteTxt.h"
 #include "CometWritePepXML.h"
+#include "CometWritePinXML.h"
 #include "Threading.h"
 #include "ThreadPool.h"
 #include "CometSearchManager.h"
@@ -128,6 +129,7 @@ void CometSearchManager::DoSearch()
        FILE *fpoutd_sqt=NULL;
        FILE *fpout_pepxml=NULL;
        FILE *fpoutd_pepxml=NULL;
+       FILE *fpout_pinxml=NULL;
        FILE *fpout_txt=NULL;
        FILE *fpoutd_txt=NULL;
 
@@ -135,6 +137,7 @@ void CometSearchManager::DoSearch()
        char szOutputDecoySQT[SIZE_FILE];
        char szOutputPepXML[SIZE_FILE];
        char szOutputDecoyPepXML[SIZE_FILE];
+       char szOutputPinXML[SIZE_FILE];
        char szOutputTxt[SIZE_FILE];
        char szOutputDecoyTxt[SIZE_FILE];
 
@@ -228,6 +231,25 @@ void CometSearchManager::DoSearch()
           }
        }
 
+       if (g_staticParams.options.bOutputPinXMLFile)
+       {
+          if (iAnalysisType == AnalysisType_EntireFile)
+             sprintf(szOutputPinXML, "%s.pin.xml", g_staticParams.inputFile.szBaseName);
+          else
+             sprintf(szOutputPinXML, "%s.%d-%d.pin.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+
+          if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
+          {
+             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputPinXML);
+             exit(1);
+          }
+
+          // We need knowledge of max charge state in all searches
+          // here in order to write the featureDescription header
+
+          CometWritePinXML::WritePinXMLHeader(fpout_pinxml);
+       }
+
        // For file access using MSToolkit.
        MSReader mstReader;
 
@@ -287,6 +309,9 @@ void CometSearchManager::DoSearch()
           if (g_staticParams.options.bOutputPepXMLFile)
              CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML);
 
+          if (g_staticParams.options.bOutputPinXMLFile)
+             CometWritePinXML::WritePinXML(fpout_pinxml);
+
           if (g_staticParams.options.bOutputTxtFile)
              CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
 
@@ -326,6 +351,13 @@ void CometSearchManager::DoSearch()
            CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
            fclose(fpoutd_pepxml);
            fpoutd_pepxml = NULL;
+       }
+
+       if (NULL != fpout_pinxml)
+       {
+           CometWritePinXML::WritePinXMLEndTags(fpout_pinxml);
+           fclose(fpout_pinxml);
+           fpout_pinxml = NULL;
        }
 
        if (NULL != fpout_sqt)
