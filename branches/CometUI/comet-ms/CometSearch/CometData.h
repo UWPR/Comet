@@ -160,6 +160,7 @@ struct Options             // output parameters
        bOutputSqtFile = a.bOutputSqtFile;
        bOutputTxtFile = a.bOutputTxtFile;
        bOutputPepXMLFile = a.bOutputPepXMLFile;
+       bOutputPinXMLFile = a.bOutputPinXMLFile;
        bOutputOutFiles = a.bOutputOutFiles;
        bClipNtermMet = a.bClipNtermMet;
        bSkipAlreadyDone = a.bSkipAlreadyDone;
