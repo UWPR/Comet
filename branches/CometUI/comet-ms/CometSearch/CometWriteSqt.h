@@ -27,12 +27,12 @@ public:
                         FILE *fpoutd,
                         char *szOutput,
                         char *szOutputDecoy,
-                        char *szParamsFile);
+                        const char *szParamsFile);
 
 
 private:
    static void PrintSqtHeader(FILE *fpout,
-                              char *szParamsFile);
+                              const char *szParamsFile);
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
                             FILE *fpOut,

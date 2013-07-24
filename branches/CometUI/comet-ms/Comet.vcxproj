@@ -90,7 +90,7 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>pthreads-w32\include;MSToolkit\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>pthreads-w32\include;MSToolkit\include;CometSearch;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -98,7 +98,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
       <AdditionalLibraryDirectories>Release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;setargv.obj;MSToolkitLite.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;setargv.obj;MSToolkitLite.lib;CometSearch.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -120,17 +120,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Comet.cpp" />
-    <ClCompile Include="CometMassSpecUtils.cpp" />
-    <ClCompile Include="CometPostAnalysis.cpp" />
-    <ClCompile Include="CometPreprocess.cpp" />
-    <ClCompile Include="CometSearch.cpp" />
-    <ClCompile Include="CometSearchManager.cpp" />
-    <ClCompile Include="CometWriteOut.cpp" />
-    <ClCompile Include="CometWritePepXML.cpp" />
-    <ClCompile Include="CometWritePinXML.cpp" />
-    <ClCompile Include="CometWriteSqt.cpp" />
-    <ClCompile Include="CometWriteTxt.cpp" />
-    <ClCompile Include="Threading.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Comet.rc" />
@@ -139,22 +128,7 @@
     <None Include="icon\comet.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CometData.h" />
-    <ClInclude Include="CometMassSpecUtils.h" />
-    <ClInclude Include="CometPostAnalysis.h" />
-    <ClInclude Include="CometPreprocess.h" />
-    <ClInclude Include="CometSearch.h" />
-    <ClInclude Include="CometSearchManager.h" />
-    <ClInclude Include="CometWriteOut.h" />
-    <ClInclude Include="CometWritePepXML.h" />
-    <ClInclude Include="CometWritePinXML.h" />
-    <ClInclude Include="CometWriteSqt.h" />
-    <ClInclude Include="CometWriteTxt.h" />
-    <ClInclude Include="Common.h" />
-    <ClInclude Include="OSSpecificThreading.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="Threading.h" />
-    <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

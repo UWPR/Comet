@@ -22,7 +22,7 @@
 class CometSearchManager
 {
 public:
-   CometSearchManager();
+   CometSearchManager(char *pszParamsFile);
    ~CometSearchManager();
 
    void DoSearch();
@@ -35,6 +35,8 @@ private:
     void AllocateResultsMem();
     static bool compareByPeptideMass(Query const* a, Query const* b);
     void CalcRunTime(time_t tStartTime);
+
+    std::string _strParamsFile;
 };
 
 #endif

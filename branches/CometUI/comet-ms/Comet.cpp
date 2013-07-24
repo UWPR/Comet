@@ -46,8 +46,6 @@ bool ValidateInputMsMsFile(char *pszInputFileName);
 
 int main(int argc, char *argv[])
 {
-   CometSearchManager cometSearchMgr;
-
    char szParamsFile[SIZE_FILE];
 
    if (argc < 2) 
@@ -67,6 +65,7 @@ int main(int argc, char *argv[])
       exit(1);
    }
 
+   CometSearchManager cometSearchMgr(szParamsFile);
    cometSearchMgr.DoSearch();
 
    return (0);

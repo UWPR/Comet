@@ -41,8 +41,13 @@ StaticParams                  g_staticParams;
 MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
 
-CometSearchManager::CometSearchManager()
+// EVA TODO: Need to fix this later!  We can't pass in the params file, the UI won't have one.
+CometSearchManager::CometSearchManager(char *pszParamsFile)
 {
+    if (NULL != pszParamsFile)
+    {
+        _strParamsFile = pszParamsFile;
+    }
     Initialize();
 }
 
@@ -101,7 +106,6 @@ void CometSearchManager::GetHostName(void)
 
 void CometSearchManager::DoSearch()
 {
-       // EVA TODO: This has to move into a class
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
        UpdateInputFile(g_pvInputFiles.at(i));
@@ -210,8 +214,8 @@ void CometSearchManager::DoSearch()
              exit(1);
           }
 
-          // EVA TODO: Need to figure this out!  We can't pass in the params file, the UI won't have one. So what to do here?
-          // CometWritePepXML::WritePepXMLHeader(fpout_pepxml, szParamsFile);
+          // EVA TODO: Need to fix this later!  We can't pass in the params file, the UI won't have one.
+          CometWritePepXML::WritePepXMLHeader(fpout_pepxml, _strParamsFile.c_str());
 
           if (g_staticParams.options.iDecoySearch == 2)
           {
@@ -226,8 +230,8 @@ void CometSearchManager::DoSearch()
                 exit(1);
              }
 
-             // EVA TODO: Need to figure this out!  We can't pass in the params file, the UI won't have one. So what to do here?
-             // CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, szParamsFile);
+             // EVA TODO: Need to fix this later!  We can't pass in the params file, the UI won't have one.
+             CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, _strParamsFile.c_str());
           }
        }
 
@@ -315,10 +319,10 @@ void CometSearchManager::DoSearch()
           if (g_staticParams.options.bOutputTxtFile)
              CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
 
-          // EVA TODO: Need to figure out what to do with this - the UI won't have a params file to pass
+          // EVA TODO: Need to fix this later - the UI won't have a params file to pass
           //// Write SQT last as I destroy the g_staticParams.szMod string during that process
-          //if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
-          //   CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, szParamsFile);
+          if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
+             CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, _strParamsFile.c_str());
 
           // Deleting each Query object in the vector calls its destructor, which 
           // frees the spectral memory (see definition for Query in CometData.h).

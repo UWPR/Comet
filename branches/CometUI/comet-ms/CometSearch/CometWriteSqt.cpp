@@ -35,7 +35,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
                              FILE *fpoutd,
                              char *szOutput,
                              char *szOutputDecoy,
-                             char *szParamsFile)
+                             const char *szParamsFile)
 {
    int i;
 
@@ -75,7 +75,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
 
 
 void CometWriteSqt::PrintSqtHeader(FILE *fpout,
-                                   char *szParamsFile)
+                                   const char *szParamsFile)
 {
    char szParamBuf[SIZE_BUF];
    char szEndDate[28];
