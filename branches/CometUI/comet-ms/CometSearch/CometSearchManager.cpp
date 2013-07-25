@@ -74,7 +74,7 @@ void CometSearchManager::Initialize()
       GetSystemInfo( &sysinfo );
       g_staticParams.options.iNumThreads = sysinfo.dwNumberOfProcessors;
 #else
-      _staticParams.options.iNumThreads = sysconf( _SC_NPROCESSORS_ONLN );
+      g_staticParams.options.iNumThreads = sysconf( _SC_NPROCESSORS_ONLN );
 #endif
       if (g_staticParams.options.iNumThreads < 1 || g_staticParams.options.iNumThreads > MAX_THREADS)
           g_staticParams.options.iNumThreads = 2;  // Default to 2 threads.
