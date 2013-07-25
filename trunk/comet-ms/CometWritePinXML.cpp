@@ -146,7 +146,15 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
    dMZexp = (pOutput[0].dPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
       / pQuery->_spectrumInfoInternal.iChargeState;
 
-   dMZdiff = dMZ - dMZexp;
+   if (dMZ > 0.0)
+   {
+      dMZdiff = (dMZ - dMZexp) / dMZ;
+   }
+   else
+   {
+      fprintf(stderr, " Error, dMZ=0. scan %d\n", pQuery->_spectrumInfoInternal.iScanNumber);
+      exit(1); 
+   }
 
    fprintf(fpout, " <peptideSpectrumMatch calculatedMassToCharge=\"%0.6f\" ", dMZexp);
    fprintf(fpout, "chargeState=\"%d\" ", pQuery->_spectrumInfoInternal.iChargeState);

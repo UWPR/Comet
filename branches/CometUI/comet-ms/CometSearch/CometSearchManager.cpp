@@ -553,6 +553,7 @@ void CometSearchManager::AllocateResultsMem()
       {
          pQuery->_pResults[j].fXcorr = 0.0;
          pQuery->_pResults[j].fScoreSp = 0.0;
+         pQuery->_pResults[j].dExpect = 0.0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
          pQuery->_pResults[j].szProtein[0] = '\0';
 
@@ -560,6 +561,7 @@ void CometSearchManager::AllocateResultsMem()
          {
             pQuery->_pDecoys[j].fXcorr = 0.0;
             pQuery->_pDecoys[j].fScoreSp = 0.0;
+            pQuery->_pDecoys[j].dExpect = 0.0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
             pQuery->_pDecoys[j].szProtein[0] = '\0';
          }
