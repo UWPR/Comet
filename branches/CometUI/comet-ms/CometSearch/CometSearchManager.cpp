@@ -42,12 +42,20 @@ MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
 
 // EVA TODO: Need to fix this later!  We can't pass in the params file, the UI won't have one.
-CometSearchManager::CometSearchManager(char *pszParamsFile)
+CometSearchManager::CometSearchManager(StaticParams &staticParams, vector<InputFileInfo*> &pvInputFiles, char *pszParamsFile)
 {
     if (NULL != pszParamsFile)
     {
         _strParamsFile = pszParamsFile;
     }
+    g_staticParams = staticParams;
+
+    int numInputFiles = pvInputFiles.size();
+    for (int i = 0; i < numInputFiles; i++)
+    {
+        g_pvInputFiles.push_back(pvInputFiles.at(i));
+    }
+
     Initialize();
 }
 

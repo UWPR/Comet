@@ -22,7 +22,7 @@
 class CometSearchManager
 {
 public:
-   CometSearchManager(char *pszParamsFile);
+   CometSearchManager(StaticParams &staticParams, vector<InputFileInfo*> &pvInputFiles, char *pszParamsFile);
    ~CometSearchManager();
 
    void DoSearch();
