@@ -61,10 +61,10 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    // Calculate E-values if necessary.
    // Only time to not calculate E-values is for .out/.sqt output only and
    // user decides to not replace Sp score with E-values
-   if (g_StaticParams.options.bPrintExpectScore
-         || g_StaticParams.options.bOutputPepXMLFile
-         || g_StaticParams.options.bOutputPinXMLFile
-         || g_StaticParams.options.bOutputTxtFile)
+   if (g_staticParams.options.bPrintExpectScore
+         || g_staticParams.options.bOutputPepXMLFile
+         || g_staticParams.options.bOutputPinXMLFile
+         || g_staticParams.options.bOutputTxtFile)
    {
       if (g_pvQuery.at(iQueryIndex)->iDoXcorrCount> 0)
       {
