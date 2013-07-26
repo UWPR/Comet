@@ -11,7 +11,7 @@ LIBS = -lm -lmstoolkitlite -lpthread -lcometsearch
 
 comet.exe: $(OBJS)
 	cd MSToolkit ; make ; cd ../ ; cd CometSearch; make
-	${CXX} $(CXXFLAGS) $(OBJS) $(LIBPATHS) $(LIBS) -o ${EXECNAME}
+	${CXX} $(CXXFLAGS) $(LIBPATHS) $(LIBS) $(OBJS) -o ${EXECNAME}
 
 Comet.o:              Comet.cpp $(DEPS)
 	${CXX} ${CXXFLAGS} Comet.cpp -c
