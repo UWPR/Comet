@@ -42,12 +42,11 @@ using namespace std;
 #include "MSObject.h"
 #include <vector>
 
-
 #define comet_version   "2013.01 rev. 0"
 #define copyright "(c) University of Washington"
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
 // now between 0.0 and 1.0 and scales to the binWidth.
-#define BIN(dMass) (int)(dMass*g_StaticParams.dInverseBinWidth + g_StaticParams.dOneMinusBinOffset)
+#define BIN(dMass) (int)(dMass*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
 
 #endif // _COMMON_H_

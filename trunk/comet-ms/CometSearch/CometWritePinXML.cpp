@@ -61,9 +61,9 @@ void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
    fprintf(fpout, "xsi:schemaLocation=\"http://per-colator.com/percolator_in/12 ");
    fprintf(fpout, "https://github.com/percolator/percolator/raw/pin-1-2/src/xml/percolator_in.xsd\"> \n");
    
-   for (i=0; i<strlen(g_StaticParams.enzymeInformation.szSampleEnzymeName); i++)
+   for (i=0; i<strlen(g_staticParams.enzymeInformation.szSampleEnzymeName); i++)
    {
-      szEnzyme[i] = tolower(g_StaticParams.enzymeInformation.szSampleEnzymeName[i]);
+      szEnzyme[i] = tolower(g_staticParams.enzymeInformation.szSampleEnzymeName[i]);
       if (szEnzyme[i] == '_')
          szEnzyme[i] = '-';
    }
@@ -92,7 +92,7 @@ void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
    fprintf(fpout, " <featureDescription name=\"Mass\" />\n");
    fprintf(fpout, " <featureDescription name=\"PepLen\" />\n");
 
-   for (i=1 ; i<= g_StaticParams.options.iMaxPrecursorCharge; i++)
+   for (i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
       fprintf(fpout, " <featureDescription name=\"Charge%d\" />\n", i);
 
    fprintf(fpout, " <featureDescription name=\"enzN\" />\n");
@@ -147,26 +147,26 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
       / pQuery->_spectrumInfoInternal.iChargeState;
 
    if (dMZ > 0.0)
-   {
+   {  
       dMZdiff = (dMZ - dMZexp) / dMZ;
    }
    else
    {
       fprintf(stderr, " Error, dMZ=0. scan %d\n", pQuery->_spectrumInfoInternal.iScanNumber);
-      exit(1); 
+      exit(1);
    }
 
    fprintf(fpout, " <peptideSpectrumMatch calculatedMassToCharge=\"%0.6f\" ", dMZexp);
    fprintf(fpout, "chargeState=\"%d\" ", pQuery->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, "experimentalMassToCharge=\"%0.6f\" ", dMZ);
    fprintf(fpout, "id=\"%s_%d_%d_1\" ",
-         g_StaticParams.inputFile.szBaseName,
+         g_staticParams.inputFile.szBaseName,
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iChargeState );   //basename_scannum_charge_1
    fprintf(fpout, "isDecoy=\"%s\">\n", bDecoy?"true":"false");
 
-   if (iDoXcorrCount > (g_StaticParams.options.iNumPeptideOutputLines))
-      iDoXcorrCount = (g_StaticParams.options.iNumPeptideOutputLines);
+   if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
+      iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
 
    iRankXcorr = 1;
 
@@ -261,7 +261,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "   <feature>%0.6f</feature>\n",dMZ); // Mass is m/z
    fprintf(fpout, "   <feature>%d</feature>\n", pOutput[iWhichResult].iLenPeptide); // PepLen
 
-   for (int i=1 ; i<= g_StaticParams.options.iMaxPrecursorCharge; i++)
+   for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
       fprintf(fpout, "   <feature>%d</feature>\n", (pQuery->_spectrumInfoInternal.iChargeState==i?1:0) );
 
    fprintf(fpout, "   <feature>%d</feature>\n", iNterm); // enzN
@@ -275,18 +275,18 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "   <peptideSequence>%s</peptideSequence>\n", pOutput[iWhichResult].szPeptide);
 
 
-   if (g_StaticParams.staticModifications.dAddNterminusPeptide != 0.0
+   if (g_staticParams.staticModifications.dAddNterminusPeptide != 0.0
          || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
-            && g_StaticParams.staticModifications.dAddNterminusProtein != 0.0))
+            && g_staticParams.staticModifications.dAddNterminusProtein != 0.0))
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", 0);
       fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 10); // some random number for N-term mod
       fprintf(fpout, "   </modification>\n");
    }
 
-   if (g_StaticParams.staticModifications.dAddCterminusPeptide != 0.0
+   if (g_staticParams.staticModifications.dAddCterminusPeptide != 0.0
          || (pOutput[iWhichResult].szPrevNextAA[1]=='-'
-            && g_StaticParams.staticModifications.dAddCterminusProtein != 0.0))
+            && g_staticParams.staticModifications.dAddCterminusProtein != 0.0))
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", pOutput[iWhichResult].iLenPeptide + 1);
       fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 11); // some random number for C-term mod
@@ -299,12 +299,12 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    // So, just like sqt2pin, we are supplying bogus ones.
    for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
    {
-      if (g_StaticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]] != 0.0)
+      if (g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]] != 0.0)
       {
          fprintf(fpout, "   <modification location=\"%d\">\n", i+1);
          // using ascii value of residue for bogus unimod number here
          fprintf(fpout, "    <uniMod accession=\"%d\" />\n",
-               (int)g_StaticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]]);
+               (int)g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]]);
          fprintf(fpout, "   </modification>\n");
       }
       else if (pOutput[iWhichResult].pcVarModSites[i] > 0)
@@ -369,18 +369,18 @@ void CometWritePinXML::CalcNTTNMC(Results *pOutput,
    {
       *iNterm = 1;
    }
-   else if (g_StaticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
+   else if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
-      if (strchr(g_StaticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPrevNextAA[0])
-            && !strchr(g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[0]))
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPrevNextAA[0])
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[0]))
       {
          *iNterm = 1;
       }
    }
    else
    {
-      if (strchr(g_StaticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[0])
-            && !strchr(g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPrevNextAA[0]))
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[0])
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPrevNextAA[0]))
       {
          *iNterm = 1;
       }
@@ -390,30 +390,30 @@ void CometWritePinXML::CalcNTTNMC(Results *pOutput,
    {
       *iCterm = 1;
    }
-   else if (g_StaticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
+   else if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
-      if (strchr(g_StaticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1])
-            && !strchr(g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPrevNextAA[1]))
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1])
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPrevNextAA[1]))
       {
          *iCterm = 1;
       }
    }
    else
    {
-      if (strchr(g_StaticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPrevNextAA[1])
-            && !strchr(g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1]))
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPrevNextAA[1])
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1]))
       {
          *iCterm = 1;
       }
    }
 
    // Calculate number of missed cleavage (NMC) sites based on sample_enzyme
-   if (g_StaticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
+   if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
       for (i=0; i<pOutput[iWhichResult].iLenPeptide-1; i++)
       {
-         if (strchr(g_StaticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
-               && !strchr(g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i+1]))
+         if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
+               && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i+1]))
          {
             *iNMC += 1;
          }
@@ -423,8 +423,8 @@ void CometWritePinXML::CalcNTTNMC(Results *pOutput,
    {
       for (i=1; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
-         if (strchr(g_StaticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
-               && !strchr(g_StaticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i-1]))
+         if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
+               && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i-1]))
          {
             *iNMC += 1;
          }

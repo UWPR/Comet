@@ -33,10 +33,10 @@ CometPostAnalysis::~CometPostAnalysis()
 void CometPostAnalysis::PostAnalysis(int minNumThreads,
                                      int maxNumThreads)
 {
-   if (!g_StaticParams.options.bOutputSqtStream)
+   if (!g_staticParams.options.bOutputSqtStream)
       printf(" - Perform post-search analysis\n");
 
-   // Create the thread pool containing g_StaticParams.options.iNumThreads,
+   // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to do a post analysis.
    ThreadPool<PostAnalysisThreadData *> postAnalysisThreadPool(PostAnalysisThreadProc,
          minNumThreads, maxNumThreads);
@@ -61,17 +61,17 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    // Calculate E-values if necessary.
    // Only time to not calculate E-values is for .out/.sqt output only and
    // user decides to not replace Sp score with E-values
-   if (g_StaticParams.options.bPrintExpectScore
-         || g_StaticParams.options.bOutputPepXMLFile
-         || g_StaticParams.options.bOutputPinXMLFile
-         || g_StaticParams.options.bOutputTxtFile)
+   if (g_staticParams.options.bPrintExpectScore
+         || g_staticParams.options.bOutputPepXMLFile
+         || g_staticParams.options.bOutputPinXMLFile
+         || g_staticParams.options.bOutputTxtFile)
    {
       if (g_pvQuery.at(iQueryIndex)->iDoXcorrCount> 0)
       {
          CalculateEValue(iQueryIndex, 0);
       }
       
-      if (g_StaticParams.options.iDecoySearch == 2
+      if (g_staticParams.options.iDecoySearch == 2
             && g_pvQuery.at(iQueryIndex)->iDoDecoyXcorrCount> 0)
       {
          CalculateEValue(iQueryIndex, 1);
@@ -89,8 +89,8 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
    int iSize = pQuery->iDoXcorrCount;
 
-   if (iSize > g_StaticParams.options.iNumStored)
-      iSize = g_StaticParams.options.iNumStored;
+   if (iSize > g_staticParams.options.iNumStored)
+      iSize = g_staticParams.options.iNumStored;
 
    // Target search.
    CalculateSP(pQuery->_pResults,
@@ -101,7 +101,6 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), SPQSortFn);
    pQuery->_pResults[0].iRankSp = 1;
-   pQuery->fLowestSpScore = pQuery->_pResults[0].fScoreSp;
 
    for (int ii=1; ii<iSize; ii++)
    {
@@ -110,16 +109,13 @@ void CometPostAnalysis::AnalyzeSP(int i)
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp;
       else
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp + 1;
-
-      if (pQuery->_pResults[ii].fScoreSp < pQuery->fLowestSpScore)
-         pQuery->fLowestSpScore = pQuery->_pResults[ii].fScoreSp;
    }
 
    // Then sort each entry by xcorr.
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), XcorrQSortFn);
  
-   // Repeat for decoy search.
-   if (g_StaticParams.options.iDecoySearch == 2)
+   // Repeast for decoy search.
+   if (g_staticParams.options.iDecoySearch == 2)
    {
 
       CalculateSP(pQuery->_pDecoys,
@@ -164,8 +160,8 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
            ctCharge;
       double dFragmentIonMass = 0.0;
       double dConsec = 0.0;
-      double dBion = g_StaticParams.precalcMasses.dNtermProton;
-      double dYion = g_StaticParams.precalcMasses.dCtermOH2Proton;
+      double dBion = g_staticParams.precalcMasses.dNtermProton;
+      double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
       double dTmpIntenMatch = 0.0;
 
@@ -173,34 +169,34 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
       int iMaxFragCharge;
 
       // if no variable mods are used in search, clear pcVarModSites here
-      if (!g_StaticParams.variableModParameters.bVarModSearch)
+      if (!g_staticParams.variableModParameters.bVarModSearch)
          memset(pOutput[i].pcVarModSites, 0, sizeof(char)*MAX_PEPTIDE_LEN_P2);
 
       iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
 
       if (pOutput[i].szPrevNextAA[0] == '-')
-         dBion += g_StaticParams.staticModifications.dAddNterminusProtein;
+         dBion += g_staticParams.staticModifications.dAddNterminusProtein;
       if (pOutput[i].szPrevNextAA[1] == '-')
-         dYion += g_StaticParams.staticModifications.dAddCterminusProtein;
+         dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
-      if (g_StaticParams.variableModParameters.bVarModSearch
+      if (g_staticParams.variableModParameters.bVarModSearch
             && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide] == 1))
       {
-         dBion += g_StaticParams.variableModParameters.dVarModMassN;
+         dBion += g_staticParams.variableModParameters.dVarModMassN;
       }
 
-      if (g_StaticParams.variableModParameters.bVarModSearch
+      if (g_staticParams.variableModParameters.bVarModSearch
             && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide + 1] == 1))
       {
-         dYion += g_StaticParams.variableModParameters.dVarModMassC;
+         dYion += g_staticParams.variableModParameters.dVarModMassC;
       }
 
-      for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
+      for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
       {
          int iii;
 
          for (iii=1; iii<=iMaxFragCharge; iii++)
-            ionSeries[g_StaticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
+            ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
       }
 
       // Generate pdAAforward for _pResults[0].szPeptide.
@@ -208,21 +204,21 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
       {
          int iPos = pOutput[i].iLenPeptide - ii - 1;
 
-         dBion += g_StaticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
-         dYion += g_StaticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
+         dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
+         dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
 
-         if (g_StaticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[ii]>0)
-            dBion += g_StaticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[ii]-1].dVarModMass;
+         if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[ii]>0)
+            dBion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[ii]-1].dVarModMass;
 
-         if (g_StaticParams.variableModParameters.bVarModSearch
+         if (g_staticParams.variableModParameters.bVarModSearch
                && (ii == pOutput[i].iLenPeptide -1)
                && (pOutput[i].pcVarModSites[pOutput[0].iLenPeptide + 1] == 1))
          {
-            dBion += g_StaticParams.variableModParameters.dVarModMassC;
+            dBion += g_staticParams.variableModParameters.dVarModMassC;
          }
 
-         if (g_StaticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[iPos]>0)
-            dYion += g_StaticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[iPos]-1].dVarModMass;
+         if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[iPos]>0)
+            dYion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[iPos]-1].dVarModMass;
 
          pdAAforward[ii] = dBion;
          pdAAreverse[ii] = dYion;
@@ -230,9 +226,9 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
       for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
       {
-         for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
+         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
-            int iWhichIonSeries = g_StaticParams.ionInformation.piSelectedIonSeries[ii];
+            int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
 
             // As both _pdAAforward and _pdAAreverse are increasing, loop through
             // iLenPeptide-1 to complete set of internal fragment ions.
@@ -246,7 +242,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   int iFragmentIonMass = BIN(dFragmentIonMass);
                   float fSpScore;
 
-                  if (g_StaticParams.options.bSparseMatrix)
+                  if (g_staticParams.options.bSparseMatrix)
                      fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
                   else
                      fSpScore = g_pvQuery.at(iWhichQuery)->pfSpScoreData[iFragmentIonMass];
@@ -274,7 +270,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
       }
 
       pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) / 
-            ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_StaticParams.ionInformation.iNumIonSeriesUsed));
+            ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
 
       pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
    }
@@ -361,8 +357,8 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery,
       pQuery->siMaxXcorr = (short)iMaxCorr;
    }
 
-   if (iXcorrCount > g_StaticParams.options.iNumPeptideOutputLines)
-      iXcorrCount = g_StaticParams.options.iNumPeptideOutputLines;
+   if (iXcorrCount > g_staticParams.options.iNumPeptideOutputLines)
+      iXcorrCount = g_staticParams.options.iNumPeptideOutputLines;
 
    dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
 
@@ -550,8 +546,8 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
    int ctCharge;
    double dBion;
    double dYion;
-   double dTmp1 = g_StaticParams.precalcMasses.dNtermProton;
-   double dTmp2 = g_StaticParams.precalcMasses.dCtermOH2Proton;
+   double dTmp1 = g_staticParams.precalcMasses.dNtermProton;
+   double dTmp2 = g_staticParams.precalcMasses.dCtermOH2Proton;
    double dShift = 5.432;  // a random number
    double dFastXcorr;
    double dFragmentIonMass = 0.0;
@@ -574,8 +570,8 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
       iHistogramCount = pQuery->iDoXcorrCount;
    }
 
-   if (iHistogramCount > g_StaticParams.options.iNumStored)
-      iHistogramCount = g_StaticParams.options.iNumStored;
+   if (iHistogramCount > g_staticParams.options.iNumStored)
+      iHistogramCount = g_staticParams.options.iNumStored;
 
    iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
 
@@ -614,37 +610,37 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
          dBion = dTmp1 + dShift;  // Ignore variable mods and rotate plain fragment ions.
          dYion = dTmp2 + dShift;
 
-         for (ii=0; ii<g_StaticParams.ionInformation.iNumIonSeriesUsed; ii++)
+         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
-            int iWhichIonSeries = g_StaticParams.ionInformation.piSelectedIonSeries[ii];
+            int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
             iLastFastXcorrIndex=0;
             for (k=0; k<iLenPeptide; k++)
             {
                int iPos = iLenPeptide - k - 1;
 
-               dBion += g_StaticParams.massUtility.pdAAMassFragment[(int)szPeptide[k]];
-               dYion += g_StaticParams.massUtility.pdAAMassFragment[(int)szPeptide[iPos]];
+               dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szPeptide[k]];
+               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szPeptide[iPos]];
 
                dFragmentIonMass =  0.0;
                switch (iWhichIonSeries)
                {
                   case ION_SERIES_A:
-                     dFragmentIonMass = dBion - g_StaticParams.massUtility.dCO;
+                     dFragmentIonMass = dBion - g_staticParams.massUtility.dCO;
                      break;
                   case ION_SERIES_B:
                      dFragmentIonMass = dBion;
                      break;
                   case ION_SERIES_C:
-                     dFragmentIonMass = dBion + g_StaticParams.massUtility.dNH3;
+                     dFragmentIonMass = dBion + g_staticParams.massUtility.dNH3;
                      break;
                   case ION_SERIES_X:
-                     dFragmentIonMass = dYion + g_StaticParams.massUtility.dCOminusH2;
+                     dFragmentIonMass = dYion + g_staticParams.massUtility.dCOminusH2;
                      break;
                   case ION_SERIES_Y:
                      dFragmentIonMass = dYion;
                      break;
                   case ION_SERIES_Z:
-                     dFragmentIonMass = dYion - g_StaticParams.massUtility.dNH2;
+                     dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2;
                      break;
                }
 
@@ -657,7 +653,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
                iFragmentIonMass = BIN(dFragmentIonMass);
 
-               if (g_StaticParams.options.bSparseMatrix)
+               if (g_staticParams.options.bSparseMatrix)
                {
                   if (iFragmentIonMass < pQuery->pSparseFastXcorrData[pQuery->iFastXcorrData-1].bin && iFragmentIonMass >= 0)
                   {

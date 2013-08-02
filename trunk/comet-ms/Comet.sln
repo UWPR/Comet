@@ -3,10 +3,16 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Comet", "Comet.vcxproj", "{EC89AD31-11AD-4CE2-AA1D-FFFFF716DE33}"
 	ProjectSection(ProjectDependencies) = postProject
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B} = {887C017B-8E91-4CCE-85C6-4D36D4033F1B}
 		{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5} = {8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSToolkitLite", "MSToolkit\MSToolkitLite.vcxproj", "{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CometSearch", "CometSearch\CometSearch.vcxproj", "{887C017B-8E91-4CCE-85C6-4D36D4033F1B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5} = {8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,6 +38,12 @@ Global
 		{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}.Release|Win32.Build.0 = Release|Win32
 		{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}.Release|x64.ActiveCfg = Release|x64
 		{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}.Release|x64.Build.0 = Release|x64
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B}.Debug|Win32.Build.0 = Debug|Win32
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B}.Debug|x64.ActiveCfg = Debug|Win32
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B}.Release|Win32.ActiveCfg = Release|Win32
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B}.Release|Win32.Build.0 = Release|Win32
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

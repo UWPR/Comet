@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include "CometData.h"
+#include "CometSearchManager.h"
 #include "CometMassSpecUtils.h"
 
 double CometMassSpecUtils::GetFragmentIonMass(int iWhichIonSeries,
@@ -41,19 +42,19 @@ double CometMassSpecUtils::GetFragmentIonMass(int iWhichIonSeries,
          break;
 
       case ION_SERIES_A:
-         dFragmentIonMass = pdAAforward[i] - g_StaticParams.massUtility.dCO;
+         dFragmentIonMass = pdAAforward[i] - g_staticParams.massUtility.dCO;
          break;
 
       case ION_SERIES_C:
-         dFragmentIonMass = pdAAforward[i] + g_StaticParams.massUtility.dNH3;
+         dFragmentIonMass = pdAAforward[i] + g_staticParams.massUtility.dNH3;
          break;
 
       case ION_SERIES_X:
-         dFragmentIonMass = pdAAreverse[i] + g_StaticParams.massUtility.dCOminusH2;
+         dFragmentIonMass = pdAAreverse[i] + g_staticParams.massUtility.dCOminusH2;
          break;
 
       case ION_SERIES_Z:
-         dFragmentIonMass = pdAAreverse[i] - g_StaticParams.massUtility.dNH2;
+         dFragmentIonMass = pdAAreverse[i] - g_staticParams.massUtility.dNH2;
          break;
     }
 

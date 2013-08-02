@@ -43,7 +43,7 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
       _bWroteHeader = true;
       PrintTxtHeader(fpout);
 
-      if (g_StaticParams.options.iDecoySearch == 2)
+      if (g_staticParams.options.iDecoySearch == 2)
          PrintTxtHeader(fpoutd);
    }
 
@@ -52,7 +52,7 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
       PrintResults(i, 0, fpout, szOutput);
 
    // Print out the separate decoy hits.
-   if (g_StaticParams.options.iDecoySearch == 2)
+   if (g_staticParams.options.iDecoySearch == 2)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
          PrintResults(i, 1, fpoutd, szOutputDecoy);
@@ -66,19 +66,18 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    char szEndDate[28];
    time_t tTime;
 
-   fprintf(fpout, "##\t%s\t", g_StaticParams.inputFile.szBaseName);
+   fprintf(fpout, "##\t%s\t", g_staticParams.inputFile.szBaseName);
    fprintf(fpout, "CometVersion %s\t", comet_version);
-   fprintf(fpout, "%s\t", g_StaticParams._dtInfoStart.szDate);
+   fprintf(fpout, "%s\t", g_staticParams.szDate);
    time(&tTime);
    strftime(szEndDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tTime));
    fprintf(fpout, "%s\t", szEndDate);
-   fprintf(fpout, "%s\n", g_StaticParams.databaseInfo.szDatabase);
+   fprintf(fpout, "%s\n", g_staticParams.databaseInfo.szDatabase);
 */
 
    fprintf(fpout, "scan\tcharge\texp_neutral_mass\tcalc_neutral_mass\te-value\txcorr\t");
    fprintf(fpout, "delta_cn\tsp_score\tions_matched\tions_total\tplain_peptide\t");
    fprintf(fpout, "peptide\tprev_aa\tnext_aa\tprotein\tduplicate_protein_count\n");
-
 }
 
 
@@ -131,7 +130,7 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
          pOutput[iWhichResult].iMatchedIons, 
          pOutput[iWhichResult].iTotalIons);
 
-   fprintf(fpout, "%s", szBuf);
+   fprintf(fpout, "%s\t", szBuf);
 
    // Print plain peptide
    fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
@@ -139,7 +138,7 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
    // Print peptide sequence
    sprintf(szBuf, "%c", pOutput[iWhichResult].szPrevNextAA[0]);
 
-   if (g_StaticParams.variableModParameters.bVarModSearch
+   if (g_staticParams.variableModParameters.bVarModSearch
          && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
    {
       sprintf(szBuf+strlen(szBuf), "]");
@@ -152,15 +151,15 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
    {
       sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_StaticParams.variableModParameters.bVarModSearch
-            && 0.0 != g_StaticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass)
+      if (g_staticParams.variableModParameters.bVarModSearch
+            && 0.0 != g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass)
       {
          sprintf(szBuf+strlen(szBuf), "%c",
-               g_StaticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
       }
    }
 
-   if (g_StaticParams.variableModParameters.bVarModSearch
+   if (g_staticParams.variableModParameters.bVarModSearch
          && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
    {
       sprintf(szBuf+strlen(szBuf), "[");
