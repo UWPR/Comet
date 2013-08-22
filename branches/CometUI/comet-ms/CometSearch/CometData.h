@@ -97,14 +97,63 @@ struct msdata                    // used in the preprocessing
    double dIntensity;
 };
 
+struct DoubleRange
+{
+   double dStart;
+   double dEnd;
+   
+   DoubleRange()
+   {
+       dStart = 0.0;
+       dEnd = 0.0;
+   }
+
+   DoubleRange(double dStart_in, double dEnd_in)
+   {
+       dStart = dStart_in;
+       dEnd = dEnd_in;
+   }
+
+   DoubleRange& operator=(DoubleRange& a) 
+   {
+       dStart = a.dStart;
+       dEnd = a.dEnd;
+       return *this;
+   }
+};
+
+struct IntRange
+{
+   int iStart;
+   int iEnd;
+   
+   IntRange()
+   {
+       iStart = 0;
+       iEnd = 0;
+   }
+
+   IntRange(int iStart_in, int iEnd_in)
+   {
+       iStart = iStart_in;
+       iEnd = iEnd_in;
+   }
+
+   IntRange& operator=(IntRange& a) 
+   {
+       iStart = a.iStart;
+       iEnd = a.iEnd;
+       return *this;
+   }
+};
+
 struct Options             // output parameters 
 {
    int iNumPeptideOutputLines;
    int iWhichReadingFrame;
    int iEnzymeTermini;
    int iNumStored;               // # of search results to store for xcorr analysis
-   int iStartScan;
-   int iEndScan;
+   IntRange scanRange;
    int iSpectrumBatchSize;		// # of spectra to search at a time within the scan range
    int iStartCharge;
    int iEndCharge;
@@ -130,8 +179,7 @@ struct Options             // output parameters
    int bPrintExpectScore;
    int bSparseMatrix;
    double dRemovePrecursorTol;
-   double dClearLowMZ;
-   double dClearHighMZ;
+   DoubleRange clearMzRange;
    double dLowPeptideMass;       // MH+ mass
    double dHighPeptideMass;      // MH+ mass
    char szActivationMethod[24];  // mzXML only
@@ -142,8 +190,7 @@ struct Options             // output parameters
        iWhichReadingFrame = a.iWhichReadingFrame;
        iEnzymeTermini = a.iEnzymeTermini;
        iNumStored = a.iNumStored;
-       iStartScan = a.iStartScan;
-       iEndScan = a.iEndScan;
+       scanRange = a.scanRange;
        iSpectrumBatchSize = a.iSpectrumBatchSize;
        iStartCharge = a.iStartCharge;
        iEndCharge = a.iEndCharge;
@@ -169,8 +216,7 @@ struct Options             // output parameters
        bPrintExpectScore = a.bPrintExpectScore;
        bSparseMatrix = a.bSparseMatrix;
        dRemovePrecursorTol = a.dRemovePrecursorTol;
-       dClearLowMZ = a.dClearLowMZ;
-       dClearHighMZ = a.dClearHighMZ;
+       clearMzRange = a.clearMzRange;
        dLowPeptideMass = a.dLowPeptideMass;
        dHighPeptideMass = a.dHighPeptideMass;
        strcpy(szActivationMethod, a.szActivationMethod);
@@ -637,8 +683,8 @@ struct StaticParams
        options.bSparseMatrix = 0;
 
        // These parameters affect mzXML/RAMP spectra only.
-       options.iStartScan = 0;
-       options.iEndScan = 0;
+       options.scanRange.iStart = 0;
+       options.scanRange.iEnd = 0;
        options.iSpectrumBatchSize = 0;
        options.iMinPeaks = MINIMUM_PEAKS;
        options.iStartCharge = 0;
@@ -653,8 +699,8 @@ struct StaticParams
        strcpy(options.szActivationMethod, "ALL");
        // End of mzXML specific parameters.
 
-       options.dClearLowMZ = 0.0;
-       options.dClearHighMZ = 0.0;
+       options.clearMzRange.dStart = 0.0;
+       options.clearMzRange.dEnd = 0.0;
 
        staticModifications.dAddCterminusPeptide = 0.0;
        staticModifications.dAddNterminusPeptide = 0.0;
@@ -853,5 +899,43 @@ struct IonSeriesStruct         // defines which fragment ion series are consider
 {
    int bPreviousMatch[8];
 };
+
+enum CometParamType 
+{
+   CometParamType_Unknown = 0,
+   CometParamType_Int,
+   CometParamType_Double,
+   CometParamType_String,
+   CometParamType_VarMods,
+   CometParamType_DoubleRange,
+   CometParamType_IntRange,
+   CometParamType_EnzymeInfo
+};
+
+class CometParam
+{
+public:
+    CometParam(CometParamType paramType, const string& strValue)
+      : _paramType(paramType), _strValue(strValue) {}
+    virtual ~CometParam() {}
+private:
+    CometParamType _paramType;
+    string _strValue;
+};
+ 
+template< typename T >
+class TypedCometParam : public CometParam
+{
+public:
+    TypedCometParam (CometParamType paramType, const string& strValue, const T& data)
+        : CometParam(paramType, strValue), _data(data) {}
+
+    T& GetValue() { return _data; }
+
+private:
+    T _data;
+};
+
+extern std::map<std::string, CometParam*> g_mapStaticParams;
 
 #endif // _COMETDATA_H_

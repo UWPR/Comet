@@ -15,7 +15,6 @@
 */
 
 #include "Common.h"
-#include "CometData.h"
 #include "CometMassSpecUtils.h"
 #include "CometSearch.h"
 #include "CometPostAnalysis.h"
@@ -40,23 +39,18 @@ std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
+std::map<std::string, CometParam*> g_mapStaticParams;
 
-// EVA TODO: Need to fix this later!  We can't pass in the params file, the UI won't have one.
-CometSearchManager::CometSearchManager(StaticParams &staticParams, vector<InputFileInfo*> &pvInputFiles, char *pszParamsFile)
+
+CometSearchManager::CometSearchManager()
 {
-    if (NULL != pszParamsFile)
-    {
-        _strParamsFile = pszParamsFile;
-    }
-    g_staticParams = staticParams;
+   _bStaticParamsInitialized = false;
+   
+   // Initialize the mutexes we'll use to protect global data.
+   Threading::CreateMutex(&g_pvQueryMutex);
 
-    int numInputFiles = pvInputFiles.size();
-    for (int i = 0; i < numInputFiles; i++)
-    {
-        g_pvInputFiles.push_back(pvInputFiles.at(i));
-    }
-
-    Initialize();
+   // EVA TODO: Temporary, take out later!
+   _strParamsFile = "comet.params";
 }
 
 CometSearchManager::~CometSearchManager()
@@ -66,15 +60,480 @@ CometSearchManager::~CometSearchManager()
 
    // Clean up the input files vector
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
+   {
       delete g_pvInputFiles.at(i);
+   }
    g_pvInputFiles.clear();
+
+   for (std::map<string, CometParam*>::iterator it = g_mapStaticParams.begin(); it != g_mapStaticParams.end(); it++)
+   {
+       delete it->second;
+   }
+   g_mapStaticParams.clear();
 }
 
-void CometSearchManager::Initialize()
+void CometSearchManager::InitializeStaticParams()
 {
+    int iIntData;
+    double dDoubleData;
+    string strData;
+    IntRange intRangeData;
+    DoubleRange doubleRangeData;
+    
+    for (int i=0; i<SIZE_MASS; i++)
+    {
+        g_staticParams.staticModifications.pdStaticMods[i] = 0.0;
+    }
+
+    if(GetParam("database_name", strData))
+    {
+        strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
+    }
+
+    GetParam("nucleotide_reading_frame", g_staticParams.options.iWhichReadingFrame);
+    
+    GetParam("mass_type_parent", g_staticParams.massUtility.bMonoMassesParent);
+    
+    GetParam("mass_type_fragment", g_staticParams.massUtility.bMonoMassesFragment);
+
+    GetParam("show_fragment_ions", g_staticParams.options.bPrintFragIons);
+
+    GetParam("num_threads", g_staticParams.options.iNumThreads);
+
+    GetParam("clip_nterm_methionine", g_staticParams.options.bClipNtermMet);
+
+    GetParam("theoretical_fragment_ions", g_staticParams.ionInformation.iTheoreticalFragmentIons);
+    if ((g_staticParams.ionInformation.iTheoreticalFragmentIons < 0) || 
+        (g_staticParams.ionInformation.iTheoreticalFragmentIons > 1))
+    {
+        g_staticParams.ionInformation.iTheoreticalFragmentIons = 0;
+    }
+
+    GetParam("use_A_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_A]);
+
+    GetParam("use_B_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_B]);
+
+    GetParam("use_C_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_C]);
+
+    GetParam("use_X_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_X]);
+
+    GetParam("use_Y_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]);
+
+    GetParam("use_Z_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]);
+
+    GetParam("use_NL_ions", g_staticParams.ionInformation.bUseNeutralLoss);
+
+    GetParam("use_sparse_matrix", g_staticParams.options.bSparseMatrix);
+
+    GetParam("variable_mod1", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
+
+    GetParam("variable_mod2", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
+
+    GetParam("variable_mod3", g_staticParams.variableModParameters.varModList[VMOD_3_INDEX]);
+
+    GetParam("variable_mod4", g_staticParams.variableModParameters.varModList[VMOD_4_INDEX]);
+    
+    GetParam("variable_mod5", g_staticParams.variableModParameters.varModList[VMOD_5_INDEX]);
+
+    GetParam("variable_mod6", g_staticParams.variableModParameters.varModList[VMOD_6_INDEX]);
+
+    if (GetParam("max_variable_mods_in_peptide", iIntData))
+    {
+        if (iIntData > 0)
+        {
+            g_staticParams.variableModParameters.iMaxVarModPerPeptide = iIntData;
+        }
+    }
+
+    GetParam("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
+    if (g_staticParams.tolerances.dFragmentBinSize < 0.01)
+    {
+        g_staticParams.tolerances.dFragmentBinSize = 0.01;
+    }
+
+    GetParam("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
+
+    GetParam("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerance);
+
+    GetParam("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
+    if ((g_staticParams.tolerances.iMassToleranceType < 0) || 
+        (g_staticParams.tolerances.iMassToleranceType > 1))
+    {
+        g_staticParams.tolerances.iMassToleranceType = 0;
+    }
+
+    GetParam("peptide_mass_units", g_staticParams.tolerances.iMassToleranceUnits);
+    if ((g_staticParams.tolerances.iMassToleranceUnits < 0) || 
+        (g_staticParams.tolerances.iMassToleranceUnits > 2))
+    {
+        g_staticParams.tolerances.iMassToleranceUnits = 0;  // 0=amu, 1=mmu, 2=ppm
+    }
+
+    GetParam("isotope_error", g_staticParams.tolerances.iIsotopeError);
+    if ((g_staticParams.tolerances.iIsotopeError < 0) || 
+        (g_staticParams.tolerances.iIsotopeError > 2))
+    {
+        g_staticParams.tolerances.iIsotopeError = 0;
+    }
+
+    GetParam("num_output_lines", g_staticParams.options.iNumPeptideOutputLines);
+
+    GetParam("num_results", g_staticParams.options.iNumStored);
+    
+    GetParam("remove_precursor_peak", g_staticParams.options.iRemovePrecursor);
+    
+    GetParam("remove_precursor_tolerance", g_staticParams.options.dRemovePrecursorTol);
+
+    if (GetParam("clear_mz_range", doubleRangeData))
+    {
+        if ((doubleRangeData.dEnd >= doubleRangeData.dStart) && (doubleRangeData.dStart >= 0.0))
+        {
+            g_staticParams.options.clearMzRange.dStart = doubleRangeData.dStart;
+            g_staticParams.options.clearMzRange.dEnd = doubleRangeData.dEnd;
+        }
+    }
+
+    GetParam("print_expect_score", g_staticParams.options.bPrintExpectScore);
+
+    GetParam("output_sqtstream", g_staticParams.options.bOutputSqtStream);
+
+    GetParam("output_sqtfile", g_staticParams.options.bOutputSqtFile);
+
+    GetParam("output_txtfile", g_staticParams.options.bOutputTxtFile);
+
+    GetParam("output_pepxmlfile", g_staticParams.options.bOutputPepXMLFile);
+
+    GetParam("output_pinxmlfile", g_staticParams.options.bOutputPinXMLFile);
+
+    GetParam("output_outfiles", g_staticParams.options.bOutputOutFiles);
+
+    GetParam("skip_researching", g_staticParams.options.bSkipAlreadyDone);
+
+    GetParam("variable_C_terminus", g_staticParams.variableModParameters.dVarModMassC);
+
+    GetParam("variable_N_terminus", g_staticParams.variableModParameters.dVarModMassN);
+
+    GetParam("variable_C_terminus_distance", g_staticParams.variableModParameters.iVarModCtermDistance);
+
+    GetParam("variable_N_terminus_distance", g_staticParams.variableModParameters.iVarModNtermDistance);
+
+    GetParam("add_Cterm_peptide", g_staticParams.staticModifications.dAddCterminusPeptide);
+
+    GetParam("add_Nterm_peptide", g_staticParams.staticModifications.dAddNterminusPeptide);
+
+    GetParam("add_Cterm_protein", g_staticParams.staticModifications.dAddCterminusProtein);
+
+    GetParam("add_Nterm_protein", g_staticParams.staticModifications.dAddNterminusProtein);
+
+    if (GetParam("add_G_glycine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['G'] = dDoubleData;
+    }
+    
+    if (GetParam("add_A_alanine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['A'] = dDoubleData;
+    }
+
+    if (GetParam("add_S_serine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['S'] = dDoubleData;
+    }
+
+    if (GetParam("add_P_proline", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['P'] = dDoubleData;
+    }
+
+    if (GetParam("add_V_valine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['V'] = dDoubleData;
+    }
+
+    if (GetParam("add_T_threonine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['T'] = dDoubleData;
+    }
+
+    if (GetParam("add_C_cysteine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['C'] = dDoubleData;
+    }
+
+    if (GetParam("add_L_leucine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['L'] = dDoubleData;
+    }
+
+    if (GetParam("add_I_isoleucine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['I'] = dDoubleData;
+    }
+
+    if (GetParam("add_N_asparagine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['N'] = dDoubleData;
+    }
+
+    if (GetParam("add_O_ornithine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['O'] = dDoubleData;
+    }
+
+    if (GetParam("add_D_aspartic_acid", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['D'] = dDoubleData;
+    }
+
+    if (GetParam("add_Q_glutamine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['Q'] = dDoubleData;
+    }
+
+    if (GetParam("add_K_lysine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['K'] = dDoubleData;
+    }
+
+    if (GetParam("add_E_glutamic_acid", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['E'] = dDoubleData;
+    }
+    
+    if (GetParam("add_M_methionine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['M'] = dDoubleData;
+    }
+    
+    if (GetParam("add_H_histidine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['H'] = dDoubleData;
+    }
+
+    if (GetParam("add_F_phenylalanine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['F'] = dDoubleData;
+    }
+
+    if (GetParam("add_R_arginine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['R'] = dDoubleData;
+    }
+
+    if (GetParam("add_Y_tyrosine", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['Y'] = dDoubleData;
+    }
+
+    if (GetParam("add_W_tryptophan", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['W'] = dDoubleData;
+    }
+
+    if (GetParam("add_B_user_amino_acid", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['B'] = dDoubleData;
+    }
+
+    if (GetParam("add_J_user_amino_acid", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['J'] = dDoubleData;
+    }
+
+    if (GetParam("add_U_user_amino_acid", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['U'] = dDoubleData;
+    }
+
+    if (GetParam("add_X_user_amino_acid", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['X'] = dDoubleData;
+    }
+
+    if (GetParam("add_Z_user_amino_acid", dDoubleData))
+    {
+        g_staticParams.staticModifications.pdStaticMods['Z'] = dDoubleData;
+    }
+
+    GetParam("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
+    if ((g_staticParams.options.iEnzymeTermini != 1) && 
+        (g_staticParams.options.iEnzymeTermini != 8) && 
+        (g_staticParams.options.iEnzymeTermini != 9))
+    {
+        g_staticParams.options.iEnzymeTermini = 2;
+    }
+    
+    GetParam("allowed_missed_cleavage", g_staticParams.enzymeInformation.iAllowedMissedCleavage);
+    if (g_staticParams.enzymeInformation.iAllowedMissedCleavage < 0)
+    {
+        g_staticParams.enzymeInformation.iAllowedMissedCleavage = 0;
+    }
+
+    if (GetParam("scan_range", intRangeData))
+    {
+        if ((intRangeData.iEnd >= intRangeData.iStart) && (intRangeData.iStart > 0))
+        {
+            g_staticParams.options.scanRange.iStart = intRangeData.iStart;
+            g_staticParams.options.scanRange.iEnd = intRangeData.iEnd;
+        }
+    }
+
+    if (GetParam("spectrum_batch_size", iIntData))
+    {
+        if (iIntData > 0)
+        {
+            g_staticParams.options.iSpectrumBatchSize = iIntData;
+        }
+    }
+
+    iIntData = 0;
+    if (GetParam("minimum_peaks", iIntData))
+    {
+        if (iIntData > 0)
+        {
+            g_staticParams.options.iMinPeaks = iIntData;
+        }
+    }
+
+    if (GetParam("precursor_charge", intRangeData))
+    {
+        if ((intRangeData.iEnd >= intRangeData.iStart) && (intRangeData.iStart >= 0) && (intRangeData.iEnd > 0))
+        {
+            if (intRangeData.iStart==0)
+            {
+                g_staticParams.options.iStartCharge = 1;
+            }
+            else
+            {
+                g_staticParams.options.iStartCharge = intRangeData.iStart;
+            }
+
+            g_staticParams.options.iEndCharge = intRangeData.iEnd;
+        }
+    }
+
+    iIntData = 0;
+    if (GetParam("max_fragment_charge", iIntData))
+    {
+        if (iIntData > MAX_FRAGMENT_CHARGE)
+        {
+            iIntData = MAX_FRAGMENT_CHARGE;
+        }
+
+        if (iIntData > 0)
+        {
+            g_staticParams.options.iMaxFragmentCharge = iIntData;
+        }
+        else
+        {
+            g_staticParams.options.iMaxFragmentCharge = DEFAULT_FRAGMENT_CHARGE;
+        }
+    }
+
+    iIntData = 0;
+    if (GetParam("max_precursor_charge", iIntData)) 
+    {
+        if (iIntData > MAX_PRECURSOR_CHARGE)
+        {
+            iIntData = MAX_PRECURSOR_CHARGE;
+        }
+
+        if (iIntData > 0)
+        {
+            g_staticParams.options.iMaxPrecursorCharge = iIntData;
+        }
+        else
+        {
+            g_staticParams.options.iMaxPrecursorCharge = DEFAULT_PRECURSOR_CHARGE;
+        }
+    }
+
+    if (GetParam("digest_mass_range", doubleRangeData))
+    {
+        if ((doubleRangeData.dEnd >= doubleRangeData.dStart) && (doubleRangeData.dStart >= 0.0))
+        {
+            g_staticParams.options.dLowPeptideMass = doubleRangeData.dStart;
+            g_staticParams.options.dHighPeptideMass = doubleRangeData.dEnd;
+        }
+    }
+
+    if (GetParam("ms_level", iIntData))
+    {
+        if (iIntData == 2)
+        {
+            g_staticParams.options.iStartMSLevel = 2;
+            g_staticParams.options.iEndMSLevel = 0;
+        }
+        else if (iIntData == 3)
+        {
+            g_staticParams.options.iStartMSLevel = 3;
+            g_staticParams.options.iEndMSLevel = 0;
+        }
+        else
+        {
+            g_staticParams.options.iStartMSLevel = 2;
+            g_staticParams.options.iEndMSLevel = 3;
+        }
+    }
+
+    if (GetParam("activation_method", strData))
+    {
+        strcpy(g_staticParams.options.szActivationMethod, strData.c_str());
+    }
+
+    GetParam("minimum_intensity", g_staticParams.options.iMinIntensity);
+    if (g_staticParams.options.iMinIntensity < 0)
+    {
+        g_staticParams.options.iMinIntensity = 0;
+    }
+
+    GetParam("decoy_search", g_staticParams.options.iDecoySearch);
+    if ((g_staticParams.options.iDecoySearch < 0) || (g_staticParams.options.iDecoySearch > 2))
+    {
+        g_staticParams.options.iDecoySearch = 0;
+    }
+
+    if (g_staticParams.tolerances.dFragmentBinSize == 0.0)
+    {
+        g_staticParams.tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
+    }
+
+   // Set dInverseBinWidth to its inverse in order to use a multiply instead of divide in BIN macro.
+   g_staticParams.dInverseBinWidth = 1.0 /g_staticParams.tolerances.dFragmentBinSize;
+   g_staticParams.dOneMinusBinOffset = 1.0 - g_staticParams.tolerances.dFragmentBinStartOffset;
+ 
+   // Set masses to either average or monoisotopic.
+   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent, 
+                                  g_staticParams.massUtility.bMonoMassesParent, 
+                                  &g_staticParams.massUtility.dOH2parent);
+
+   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment, 
+                                  g_staticParams.massUtility.bMonoMassesFragment, 
+                                  &g_staticParams.massUtility.dOH2fragment); 
+
+   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment['c'] 
+            + g_staticParams.massUtility.pdAAMassFragment['o'];
+
+   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment['h'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h']
+            + g_staticParams.massUtility.pdAAMassFragment['o'];
+
+   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment['n'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'];
+
+   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment['n'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'];
+
+   g_staticParams.massUtility.dCOminusH2 = g_staticParams.massUtility.dCO
+            - g_staticParams.massUtility.pdAAMassFragment['h']
+            - g_staticParams.massUtility.pdAAMassFragment['h'];
+
     GetHostName();
 
-       // If # threads not specified, poll system to get # threads to launch.
+   // If # threads not specified, poll system to get # threads to launch.
    if (g_staticParams.options.iNumThreads == 0)
    {
 #ifdef _WIN32
@@ -88,8 +547,184 @@ void CometSearchManager::Initialize()
           g_staticParams.options.iNumThreads = 2;  // Default to 2 threads.
    }
 
-   // Initialize the mutexes we'll use to protect global data.
-   Threading::CreateMutex(&g_pvQueryMutex);
+      if (g_staticParams.tolerances.dFragmentBinSize == 0.0)
+      g_staticParams.tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
+
+   // Set dInverseBinWidth to its inverse in order to use a multiply instead of divide in BIN macro.
+   g_staticParams.dInverseBinWidth = 1.0 /g_staticParams.tolerances.dFragmentBinSize;
+   g_staticParams.dOneMinusBinOffset = 1.0 - g_staticParams.tolerances.dFragmentBinStartOffset;
+ 
+   // Set masses to either average or monoisotopic.
+   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent, 
+                                  g_staticParams.massUtility.bMonoMassesParent, 
+                                  &g_staticParams.massUtility.dOH2parent);
+
+   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment, 
+                                  g_staticParams.massUtility.bMonoMassesFragment, 
+                                  &g_staticParams.massUtility.dOH2fragment); 
+
+   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment['c'] 
+            + g_staticParams.massUtility.pdAAMassFragment['o'];
+
+   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment['h'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h']
+            + g_staticParams.massUtility.pdAAMassFragment['o'];
+
+   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment['n'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'];
+
+   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment['n'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'] 
+            + g_staticParams.massUtility.pdAAMassFragment['h'];
+
+   g_staticParams.massUtility.dCOminusH2 = g_staticParams.massUtility.dCO
+            - g_staticParams.massUtility.pdAAMassFragment['h']
+            - g_staticParams.massUtility.pdAAMassFragment['h'];
+
+   GetParam("[COMET_ENZYME_INFO]", g_staticParams.enzymeInformation);
+   if (!strncmp(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, "-", 1) && 
+       !strncmp(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, "-", 1))
+   {
+      g_staticParams.options.bNoEnzymeSelected = 1;
+   }
+   else
+   {
+      g_staticParams.options.bNoEnzymeSelected = 0;
+   }
+
+   // Load ion series to consider, useA, useB, useY are for neutral losses.
+   g_staticParams.ionInformation.iNumIonSeriesUsed = 0;
+   for (int i=0; i<6; i++)
+   {
+      if (g_staticParams.ionInformation.iIonVal[i] > 0)
+         g_staticParams.ionInformation.piSelectedIonSeries[g_staticParams.ionInformation.iNumIonSeriesUsed++] = i;
+   }
+
+   // Variable mod search for AAs listed in szVarModChar.
+   g_staticParams.szMod[0] = '\0';
+   for (int i=0; i<VMODS; i++)
+   {
+      if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0) &&
+          (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
+      {
+         sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(%s%c %+0.6f) ", 
+               g_staticParams.variableModParameters.varModList[i].szVarModChar,
+               g_staticParams.variableModParameters.cModCode[i],
+               g_staticParams.variableModParameters.varModList[i].dVarModMass);
+         g_staticParams.variableModParameters.bVarModSearch = 1;
+      }
+   }
+
+   if (g_staticParams.variableModParameters.dVarModMassN != 0.0)
+   {
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(nt] %+0.6f) ", 
+            g_staticParams.variableModParameters.dVarModMassN);       // FIX determine .out file header string for this?
+      g_staticParams.variableModParameters.bVarModSearch = 1;
+   }
+   if (g_staticParams.variableModParameters.dVarModMassC != 0.0)
+   {
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(ct[ %+0.6f) ", 
+            g_staticParams.variableModParameters.dVarModMassC);
+      g_staticParams.variableModParameters.bVarModSearch = 1;
+   }
+
+   // Do Sp scoring after search based on how many lines to print out.
+   if (g_staticParams.options.iNumStored > NUM_STORED)
+      g_staticParams.options.iNumStored = NUM_STORED;
+   else if (g_staticParams.options.iNumStored < 1)
+      g_staticParams.options.iNumStored = 1;
+
+
+   if (g_staticParams.options.iNumPeptideOutputLines > g_staticParams.options.iNumStored)
+      g_staticParams.options.iNumPeptideOutputLines = g_staticParams.options.iNumStored;
+   else if (g_staticParams.options.iNumPeptideOutputLines < 1)
+      g_staticParams.options.iNumPeptideOutputLines = 1;
+
+   if (g_staticParams.peaksInformation.iNumMatchPeaks > 5)
+      g_staticParams.peaksInformation.iNumMatchPeaks = 5;
+
+   // FIX how to deal with term mod on both peptide and protein?
+   if (g_staticParams.staticModifications.dAddCterminusPeptide != 0.0)
+   {
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ct=%0.6f ", 
+            g_staticParams.staticModifications.dAddCterminusPeptide);
+   }
+   if (g_staticParams.staticModifications.dAddNterminusPeptide != 0.0)
+   {
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+nt=%0.6f ", 
+            g_staticParams.staticModifications.dAddNterminusPeptide);
+   }
+   if (g_staticParams.staticModifications.dAddCterminusProtein!= 0.0)
+   {
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ctprot=%0.6f ", 
+            g_staticParams.staticModifications.dAddCterminusProtein);
+   }
+   if (g_staticParams.staticModifications.dAddNterminusProtein!= 0.0)
+   {
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ntprot=%0.6f ", 
+            g_staticParams.staticModifications.dAddNterminusProtein);
+   }
+
+   for (int i=65; i<=90; i++)  // 65-90 represents upper case letters in ASCII
+   {
+      if (g_staticParams.staticModifications.pdStaticMods[i] != 0.0)
+      {
+         sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "%c=%0.6f ", i,
+               g_staticParams.massUtility.pdAAMassParent[i] += g_staticParams.staticModifications.pdStaticMods[i]);
+         g_staticParams.massUtility.pdAAMassFragment[i] += g_staticParams.staticModifications.pdStaticMods[i];
+      }
+      else if (i=='B' || i=='J' || i=='U' || i=='X' || i=='Z')
+      {
+         g_staticParams.massUtility.pdAAMassParent[i] = 999999.;
+         g_staticParams.massUtility.pdAAMassFragment[i] = 999999.;
+      }
+   }
+
+   // Print out enzyme name to g_staticParams.szMod.
+   if (!g_staticParams.options.bNoEnzymeSelected)
+   {
+      char szTmp[4];
+
+      szTmp[0]='\0';
+      if (g_staticParams.options.iEnzymeTermini != 2)
+         sprintf(szTmp, ":%d", g_staticParams.options.iEnzymeTermini);
+
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "Enzyme:%s (%d%s)", 
+            g_staticParams.enzymeInformation.szSearchEnzymeName,
+            g_staticParams.enzymeInformation.iAllowedMissedCleavage,
+            szTmp);
+   }
+   else
+   {
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "Enzyme:%s",
+            g_staticParams.enzymeInformation.szSearchEnzymeName);
+   }
+
+   if (g_staticParams.tolerances.dFragmentBinStartOffset < 0.0 || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
+   {
+      fprintf(stderr, " Error - bin offset %f must between 0.0 and 1.0\n",
+            g_staticParams.tolerances.dFragmentBinStartOffset);
+      exit(1);
+   }
+
+   _bStaticParamsInitialized = true;
+}
+
+StaticParams& CometSearchManager::GetStaticParams()
+{
+    if (!_bStaticParamsInitialized)
+    {
+        InitializeStaticParams();
+    }
+
+    return g_staticParams;
+}
+
+void CometSearchManager::SetStaticParams(StaticParams &staticParams)
+{
+    g_staticParams = staticParams;
 }
 
 void CometSearchManager::GetHostName(void)
@@ -112,8 +747,198 @@ void CometSearchManager::GetHostName(void)
       *pStr = '\0';
 }
 
+
+void CometSearchManager::AddInputFiles(vector<InputFileInfo*> &pvInputFiles)
+{
+    int numInputFiles = pvInputFiles.size();
+    for (int i = 0; i < numInputFiles; i++)
+    {
+        g_pvInputFiles.push_back(pvInputFiles.at(i));
+    }
+}
+
+void CometSearchManager::SetParam(const string &name, const string &strValue, const string& value)
+{
+    CometParam *pParam = new TypedCometParam<string>(CometParamType_String, strValue, value);
+    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    if (false == ret.second)
+    {
+        _mapStaticParams.erase(name);
+        _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    }
+}
+
+bool CometSearchManager::GetParam(const string &name, string& value)
+{   
+    std::map<string, CometParam*>::iterator it;
+    it = _mapStaticParams.find(name);
+    if (it == _mapStaticParams.end())
+    {
+        return false;
+    }
+
+    TypedCometParam<string> *pParam = static_cast<TypedCometParam<string>*>(it->second);
+    value = pParam->GetValue();
+    return true;
+}
+
+void CometSearchManager::SetParam(const std::string &name, const string &strValue, const int &value)
+{
+    CometParam *pParam = new TypedCometParam<int>(CometParamType_Int, strValue, value);
+    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    if (false == ret.second)
+    {
+        _mapStaticParams.erase(name);
+        _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    }
+}
+
+bool CometSearchManager::GetParam(const string &name, int& value)
+{
+    std::map<string, CometParam*>::iterator it;
+    it = _mapStaticParams.find(name);
+    if (it == _mapStaticParams.end())
+    {
+        return false;
+    }
+    
+    TypedCometParam<int> *pParam = static_cast<TypedCometParam<int>*>(it->second);
+    value = pParam->GetValue();
+    return true;
+}
+
+void CometSearchManager::SetParam(const string &name, const string &strValue, const double &value)
+{
+    CometParam *pParam = new TypedCometParam<double>(CometParamType_Double, strValue, value);
+    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    if (false == ret.second)
+    {
+        _mapStaticParams.erase(name);
+        _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    }
+}
+
+bool CometSearchManager::GetParam(const string &name, double& value)
+{
+    std::map<string, CometParam*>::iterator it;
+    it = _mapStaticParams.find(name);
+    if (it == _mapStaticParams.end())
+    {
+        return false;
+    }
+    
+    TypedCometParam<double> *pParam = static_cast<TypedCometParam<double>*>(it->second);
+    value = pParam->GetValue();
+    return true;
+}
+
+void CometSearchManager::SetParam(const string &name, const string &strValue, const VarMods &value)
+{
+    CometParam *pParam = new TypedCometParam<VarMods>(CometParamType_VarMods, strValue, value);
+    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    if (false == ret.second)
+    {
+        _mapStaticParams.erase(name);
+        _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    }
+}
+
+bool CometSearchManager::GetParam(const string &name, VarMods & value)
+{
+    std::map<string, CometParam*>::iterator it;
+    it = _mapStaticParams.find(name);
+    if (it == _mapStaticParams.end())
+    {
+        return false;
+    }
+    
+    TypedCometParam<VarMods> *pParam = static_cast<TypedCometParam<VarMods>*>(it->second);
+    value = pParam->GetValue();
+    return true;
+}
+
+void CometSearchManager::SetParam(const string &name, const string &strValue, const DoubleRange &value)
+{
+    CometParam *pParam = new TypedCometParam<DoubleRange>(CometParamType_DoubleRange, strValue, value);
+    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    if (false == ret.second)
+    {
+        _mapStaticParams.erase(name);
+        _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    }
+}
+
+bool CometSearchManager::GetParam(const string &name, DoubleRange &value)
+{
+    std::map<string, CometParam*>::iterator it;
+    it = _mapStaticParams.find(name);
+    if (it == _mapStaticParams.end())
+    {
+        return false;
+    }
+
+    TypedCometParam<DoubleRange> *pParam = static_cast<TypedCometParam<DoubleRange>*>(it->second);
+    value = pParam->GetValue();
+    return true;
+}
+
+void CometSearchManager::SetParam(const string &name, const string &strValue, const IntRange &value)
+{
+    CometParam *pParam = new TypedCometParam<IntRange>(CometParamType_IntRange, strValue, value);
+    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    if (false == ret.second)
+    {
+        _mapStaticParams.erase(name);
+        _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    }
+}
+
+bool CometSearchManager::GetParam(const string &name, IntRange &value)
+{    
+    std::map<string, CometParam*>::iterator it;
+    it = _mapStaticParams.find(name);
+    if (it == _mapStaticParams.end())
+    {
+        return false;
+    }    
+    
+    TypedCometParam<IntRange> *pParam = static_cast<TypedCometParam<IntRange>*>(it->second);
+    value = pParam->GetValue();
+    return true;
+}
+
+void CometSearchManager::SetParam(const string &name, const string &strValue, const EnzymeInfo &value)
+{
+    CometParam *pParam = new TypedCometParam<EnzymeInfo>(CometParamType_EnzymeInfo, strValue, value);
+    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    if (false == ret.second)
+    {
+        _mapStaticParams.erase(name);
+        _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+    }
+}
+   
+bool CometSearchManager::GetParam(const string &name, EnzymeInfo &value)
+{
+    std::map<string, CometParam*>::iterator it;
+    it = _mapStaticParams.find(name);
+    if (it == _mapStaticParams.end())
+    {
+        return false;
+    }
+
+    TypedCometParam<EnzymeInfo> *pParam = static_cast<TypedCometParam<EnzymeInfo>*>(it->second);
+    value = pParam->GetValue();
+    return true;
+}
+
 void CometSearchManager::DoSearch()
 {
+   if (!_bStaticParamsInitialized)
+   {
+       InitializeStaticParams();
+   }
+   
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
        UpdateInputFile(g_pvInputFiles.at(i));

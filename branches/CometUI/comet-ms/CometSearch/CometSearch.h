@@ -18,6 +18,7 @@
 #define _COMETSEARCH_H_
 
 #include "Common.h"
+#include "CometData.h"
 
 struct SearchThreadData
 {

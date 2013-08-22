@@ -25,6 +25,16 @@ public:
    ~CometWritePepXML();
    static void WritePepXMLHeader(FILE *fpout,
                               const char *szParamsFile);
+
+   static void WritePepXMLHeader(FILE *fpout,
+       CometSearchManager &searchMgr);
+
+   static void WriteVariableModN(FILE *fpout,
+    CometSearchManager &searchMgr, string varModName);
+
+   static void WriteAddAminoAcid(FILE *fpout,
+    CometSearchManager &searchMgr, string varModName);
+
    static void WritePepXML(FILE *fpout,
                            FILE *fpoutd,
                            char *szOutput,
