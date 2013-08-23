@@ -133,26 +133,6 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    // Write out properly encoded mods
    
-
-   //VarMods varModsParam;
-   //char cSymbol = '-';
-   //if (searchMgr.GetParam("variable_mod1", varModsParam))
-   //{
-   //    cSymbol = g_staticParams.variableModParameters.cModCode[0];
-   //    if (cSymbol != '-' && varModsParam.dVarModMass!=0.0)
-   //    {
-   //        int i;
-   //        for (i=0; i<(int)strlen(varModsParam.szVarModChar); i++)
-   //        {
-   //            fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" %ssymbol=\"%c\"/>\n",
-   //                varModsParam.szVarModChar[i],
-   //                varModsParam.dVarModMass,
-   //                g_staticParams.massUtility.pdAAMassParent[(int)varModsParam.szVarModChar[i]] + varModsParam.dVarModMass,
-   //                (varModsParam.bBinaryMod?"binary=\"Y\" ":""),
-   //                cSymbol);
-   //        }
-   //    }
-   //}
    WriteVariableModN(fpout, searchMgr, "variable_mod1");
    WriteVariableModN(fpout, searchMgr, "variable_mod2");
    WriteVariableModN(fpout, searchMgr, "variable_mod3");
@@ -288,6 +268,17 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    // This might be tough - think about it!
    // fprintf(fpout, "  <parameter name=\"%s\" value=\"%s\"/>\n", szParamName, szParamVal);
+   std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
+   for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
+   {
+       if (it->first != "[COMET_ENZYME_INFO]")
+       {
+           fprintf(fpout, "  <parameter name=\"%s\" value=\"%s\"/>\n", it->first.c_str(), it->second->GetStringValue().c_str());
+       }
+   }
+
+   fprintf(fpout, " </search_summary>\n");
+   fflush(fpout);
 }
 
 void CometWritePepXML::WriteVariableModN(FILE *fpout,

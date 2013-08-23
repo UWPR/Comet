@@ -757,6 +757,11 @@ void CometSearchManager::AddInputFiles(vector<InputFileInfo*> &pvInputFiles)
     }
 }
 
+std::map<std::string, CometParam*>& CometSearchManager::GetParamsMap()
+{
+    return _mapStaticParams;
+}
+
 void CometSearchManager::SetParam(const string &name, const string &strValue, const string& value)
 {
     CometParam *pParam = new TypedCometParam<string>(CometParamType_String, strValue, value);
@@ -1048,7 +1053,8 @@ void CometSearchManager::DoSearch()
           }
 
           // EVA TODO: Need to fix this later!  We can't pass in the params file, the UI won't have one.
-          CometWritePepXML::WritePepXMLHeader(fpout_pepxml, _strParamsFile.c_str());
+          //CometWritePepXML::WritePepXMLHeader(fpout_pepxml, _strParamsFile.c_str());
+          CometWritePepXML::WritePepXMLHeader(fpout_pepxml, *this);
 
           if (g_staticParams.options.iDecoySearch == 2)
           {
@@ -1064,7 +1070,8 @@ void CometSearchManager::DoSearch()
              }
 
              // EVA TODO: Need to fix this later!  We can't pass in the params file, the UI won't have one.
-             CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, _strParamsFile.c_str());
+             //CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, _strParamsFile.c_str());
+             CometWritePepXML::WritePepXMLHeader(fpout_pepxml, *this);
           }
        }
 

@@ -28,6 +28,7 @@ public:
    ~CometSearchManager();
 
    void DoSearch();
+   std::map<std::string, CometParam*>& GetParamsMap();
    void SetParam(const string &name, const string &strValue, const string &value);
    bool GetParam(const string &name, string &value);
    void SetParam(const string &name, const string &strValue, const int &value);

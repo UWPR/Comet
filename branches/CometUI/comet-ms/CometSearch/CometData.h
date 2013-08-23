@@ -918,6 +918,7 @@ public:
     CometParam(CometParamType paramType, const string& strValue)
       : _paramType(paramType), _strValue(strValue) {}
     virtual ~CometParam() {}
+    string& GetStringValue() { return _strValue; }
 private:
     CometParamType _paramType;
     string _strValue;
