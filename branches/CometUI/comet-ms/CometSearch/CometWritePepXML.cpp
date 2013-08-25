@@ -143,7 +143,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    VarMods varModsCTerminus;
    char szVariableCterm[256];
    bool bPrintVariableC = 0;
-   if (searchMgr.GetParam("variable_C_terminus", varModsCTerminus))
+   if (searchMgr.GetParamValue("variable_C_terminus", varModsCTerminus))
    {
        if (g_staticParams.variableModParameters.dVarModMassC != 0.0)
        {
@@ -157,7 +157,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    VarMods varModsNTerminus;
    char szVariableNterm[256];
    bool bPrintVariableN = 0;
-   if (searchMgr.GetParam("variable_N_terminus", varModsNTerminus))
+   if (searchMgr.GetParamValue("variable_N_terminus", varModsNTerminus))
    {
         if (g_staticParams.variableModParameters.dVarModMassN != 0.0)
         {
@@ -171,7 +171,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    bool bProteinTerminusN = 0;
    int iDistance = 0;
-   if (searchMgr.GetParam("variable_N_terminus_distance", iDistance))
+   if (searchMgr.GetParamValue("variable_N_terminus_distance", iDistance))
    {
        if (iDistance == 0)
        {
@@ -181,7 +181,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    bool bProteinTerminusC = 0;
    iDistance = 0;
-   if (searchMgr.GetParam("variable_C_terminus_distance", iDistance))
+   if (searchMgr.GetParamValue("variable_C_terminus_distance", iDistance))
    {
        if (iDistance == 0)
        {
@@ -190,7 +190,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    }
    
    double dMass = 0.0;
-   if (searchMgr.GetParam("add_Cterm_peptide", dMass))
+   if (searchMgr.GetParamValue("add_Cterm_peptide", dMass))
    {
         if (dMass != 0.0)
         {
@@ -200,7 +200,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    }
 
    dMass = 0.0;
-   if (searchMgr.GetParam("add_Nterm_peptide", dMass))
+   if (searchMgr.GetParamValue("add_Nterm_peptide", dMass))
    {
         if (dMass != 0.0)
         {
@@ -210,7 +210,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    }
 
    dMass = 0.0;
-   if (searchMgr.GetParam("add_Cterm_protein", dMass))
+   if (searchMgr.GetParamValue("add_Cterm_protein", dMass))
    {
         if (dMass != 0.0)
         {
@@ -220,7 +220,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    }
 
    dMass = 0.0;
-   if (searchMgr.GetParam("add_Nterm_protein", dMass))
+   if (searchMgr.GetParamValue("add_Nterm_protein", dMass))
    {
         if (dMass != 0.0)
         {
@@ -285,7 +285,7 @@ void CometWritePepXML::WriteVariableModN(FILE *fpout,
     CometSearchManager &searchMgr, string varModName)
 {
     VarMods varModsParam;
-    if (searchMgr.GetParam(varModName, varModsParam))
+    if (searchMgr.GetParamValue(varModName, varModsParam))
     {
         char cSymbol = '-';
         if (varModName[12]=='1')
@@ -320,7 +320,7 @@ void CometWritePepXML::WriteAddAminoAcid(FILE *fpout,
     CometSearchManager &searchMgr, string paramName)
 {
    double dMass = 0.0;
-   if (searchMgr.GetParam(paramName, dMass))
+   if (searchMgr.GetParamValue(paramName, dMass))
    {
        if (dMass != 0.0)
        {

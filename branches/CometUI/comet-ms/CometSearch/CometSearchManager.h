@@ -30,19 +30,19 @@ public:
    void DoSearch();
    std::map<std::string, CometParam*>& GetParamsMap();
    void SetParam(const string &name, const string &strValue, const string &value);
-   bool GetParam(const string &name, string &value);
+   bool GetParamValue(const string &name, string &value);
    void SetParam(const string &name, const string &strValue, const int &value);
-   bool GetParam(const string &name, int &value);
+   bool GetParamValue(const string &name, int &value);
    void SetParam(const string &name, const string &strValue, const double &value);
-   bool GetParam(const string &name, double &value);
+   bool GetParamValue(const string &name, double &value);
    void SetParam(const string &name, const string &strValue, const VarMods &value);
-   bool GetParam(const string &name, VarMods &value);
+   bool GetParamValue(const string &name, VarMods &value);
    void SetParam(const string &name, const string &strValue, const DoubleRange &value);
-   bool GetParam(const string &name, DoubleRange &value);
+   bool GetParamValue(const string &name, DoubleRange &value);
    void SetParam(const string &name, const string &strValue, const IntRange &value);
-   bool GetParam(const string &name, IntRange &value);
+   bool GetParamValue(const string &name, IntRange &value);
    void SetParam(const string &name, const string &strValue, const EnzymeInfo &value);
-   bool GetParam(const string &name, EnzymeInfo &value);
+   bool GetParamValue(const string &name, EnzymeInfo &value);
    void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    StaticParams& GetStaticParams();
    void SetStaticParams(StaticParams &staticParams);
@@ -57,7 +57,6 @@ private:
     void CalcRunTime(time_t tStartTime);
 
     bool _bStaticParamsInitialized;
-    std::string _strParamsFile;
     std::map<std::string, CometParam*> _mapStaticParams;
 };
 

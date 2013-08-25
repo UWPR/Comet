@@ -30,6 +30,46 @@ CometWriteSqt::~CometWriteSqt()
 {
 }
 
+void CometWriteSqt::WriteSqt(FILE *fpout,
+                    FILE *fpoutd,
+                    char *szOutput,
+                    char *szOutputDecoy,
+                    CometSearchManager &searchMgr)
+{
+   int i;
+   if (!_bWroteHeader)
+   {
+       _bWroteHeader = true;
+       if (g_staticParams.options.bOutputSqtFile)
+       {
+          PrintSqtHeader(fpout, searchMgr);
+
+          if (g_staticParams.options.iDecoySearch == 2)
+          {
+             // Print this header only if separate decoy search is also run.
+             fprintf(fpout, "H\tTargetSearchResults\nH\n");
+
+             PrintSqtHeader(fpoutd, searchMgr);
+             fprintf(fpoutd, "H\tDecoySearchResults\nH\n");
+          }
+       }
+   }
+
+   // Print results.
+   for (i=0; i<(int)g_pvQuery.size(); i++)
+   {
+      PrintResults(i, 0, fpout, szOutput);
+   }
+
+   // Print out the separate decoy hits.
+   if (g_staticParams.options.iDecoySearch == 2)
+   {
+      for (i=0; i<(int)g_pvQuery.size(); i++)
+      {
+         PrintResults(i, 1, fpoutd, szOutputDecoy);
+      }
+   }
+}
 
 void CometWriteSqt::WriteSqt(FILE *fpout,
                              FILE *fpoutd,
@@ -73,6 +113,10 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    }
 }
 
+void CometWriteSqt::PrintSqtHeader(FILE *fpout,
+    CometSearchManager &searchMgr)
+{
+}
 
 void CometWriteSqt::PrintSqtHeader(FILE *fpout,
                                    const char *szParamsFile)

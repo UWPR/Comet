@@ -937,6 +937,4 @@ private:
     T _data;
 };
 
-extern std::map<std::string, CometParam*> g_mapStaticParams;
-
 #endif // _COMETDATA_H_

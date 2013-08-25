@@ -169,6 +169,7 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
          iSearchEnzymeNumber,
          iSampleEnzymeNumber,
          iIntParam;
+   int   iAllowedMissedCleavages = 2;
    char  szParamBuf[SIZE_BUF],
          szParamName[128],
          szParamVal[128],
@@ -850,10 +851,10 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
          }
          else if (!strcmp(szParamName, "allowed_missed_cleavage ="))
          {
-            sscanf(szParamVal, "%d", &iIntParam);
+            sscanf(szParamVal, "%d", &iAllowedMissedCleavages);
             szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%d", iIntParam);
-            searchMgr.SetParam("allowed_missed_cleavage", szParamStringVal, iIntParam);
+            sprintf(szParamStringVal, "%d", iAllowedMissedCleavages);
+            searchMgr.SetParam("allowed_missed_cleavage", szParamStringVal, iAllowedMissedCleavages);
          }
          else if (!strcmp(szParamName, "scan_range"))
          {
@@ -997,6 +998,7 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
       exit(1);
    }
 
+   enzymeInformation.iAllowedMissedCleavage = iAllowedMissedCleavages;
    searchMgr.SetParam("[COMET_ENZYME_INFO]", "\0", enzymeInformation);
 
    if (!bCurrentParamsFile)
@@ -1248,7 +1250,7 @@ void ProcessCmdLine(int argc,
    // Quick sanity check to make sure sequence db file is present before spending
    // time reading & processing spectra and then reporting this error.
    string strDatabaseName;
-   searchMgr.GetParam("database_name", strDatabaseName);
+   searchMgr.GetParamValue("database_name", strDatabaseName);
    if ((fpcheck=fopen(staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
       fprintf(stderr, "\n Error - cannot read database file \"%s\".\n", staticParams.databaseInfo.szDatabase);
