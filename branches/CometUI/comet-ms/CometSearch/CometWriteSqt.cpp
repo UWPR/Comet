@@ -18,6 +18,7 @@
 #include "CometData.h"
 #include "CometMassSpecUtils.h"
 #include "CometWriteSqt.h"
+#include "CometSearchManager.h"
 
 bool CometWriteSqt::_bWroteHeader = false;
 
@@ -116,6 +117,111 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
 void CometWriteSqt::PrintSqtHeader(FILE *fpout,
     CometSearchManager &searchMgr)
 {
+   char szEndDate[28];
+   time_t tTime;
+   FILE *fp;
+
+   fprintf(fpout, "H\tSQTGenerator Comet\n");
+   fprintf(fpout, "H\tComment\tCometVersion %s\n", comet_version);
+   fprintf(fpout, "H\n");
+   fprintf(fpout, "H\tStartTime\t%s\n", g_staticParams.szDate);
+   time(&tTime);
+   strftime(szEndDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tTime));
+   fprintf(fpout, "H\tEndTime\t%s\n", szEndDate);
+   fprintf(fpout, "H\n");
+
+   fprintf(fpout, "H\tDBSeqLength\t%lu\n", g_staticParams.databaseInfo.liTotAACount);
+   fprintf(fpout, "H\tDBLocusCount\t%d\n", g_staticParams.databaseInfo.iTotalNumProteins);
+
+   fprintf(fpout, "H\tFragmentMassMode\tAMU\n");
+   fprintf(fpout, "H\tPrecursorMassMode\t%s\n",
+         (g_staticParams.tolerances.iMassToleranceUnits==0?"AMU":
+          (g_staticParams.tolerances.iMassToleranceUnits==1?"MMU":"PPM")));
+   fprintf(fpout, "H\tSQTGeneratorVersion\tN/A\n");
+   fprintf(fpout, "H\tDatabase\t%s\n", g_staticParams.databaseInfo.szDatabase );
+   fprintf(fpout, "H\tFragmentMasses\t%s\n", g_staticParams.massUtility.bMonoMassesFragment?"MONO":"AVG");
+   fprintf(fpout, "H\tPrecursorMasses\t%s\n", g_staticParams.massUtility.bMonoMassesParent?"MONO":"AVG");
+   fprintf(fpout, "H\tPrecursorMassTolerance\t%0.6f\n", g_staticParams.tolerances.dInputTolerance);
+   fprintf(fpout, "H\tFragmentMassTolerance\t%0.6f\n", g_staticParams.tolerances.dFragmentBinSize);
+   fprintf(fpout, "H\tEnzymeName\t%s\n", g_staticParams.enzymeInformation.szSearchEnzymeName);
+   fprintf(fpout, "H\tAlgo-IonSeries\t 0 0 0 %0.1f %0.1f %0.1f 0.0 0.0 0.0 %0.1f %0.1f %0.1f\n",
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
+         (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]);
+
+
+   for (int i=0; i<VMODS; i++)
+   {
+      if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
+            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
+      {
+         for (unsigned int ii=0; ii<strlen(g_staticParams.variableModParameters.varModList[i].szVarModChar); ii++)
+         {
+            fprintf(fpout, "H\tDiffMod\t%c%c=%+0.6f\n",
+                  g_staticParams.variableModParameters.varModList[i].szVarModChar[ii],
+                  g_staticParams.variableModParameters.cModCode[i],
+                  g_staticParams.variableModParameters.varModList[i].dVarModMass);
+         }
+      }
+   }
+   if (g_staticParams.variableModParameters.dVarModMassN != 0.0)
+   {
+      fprintf(fpout, "H\tDiffMod\tnt]=%+0.6f\n",
+            g_staticParams.variableModParameters.dVarModMassN);
+   }
+   if (g_staticParams.variableModParameters.dVarModMassC != 0.0)
+   {
+      fprintf(fpout, "H\tDiffMod\tct[=%+0.6f\n",
+            g_staticParams.variableModParameters.dVarModMassC);
+   }
+
+   char *pStr;
+   while ((pStr = strrchr(g_staticParams.szMod, '='))!=NULL)
+   {
+      char szTmp[48];
+      while (*pStr != ' ')
+         (*pStr)--;
+      sscanf(pStr+1, "%48s", szTmp);
+
+      fprintf(fpout, "H\tStaticMod\t%s\n", szTmp);
+
+      *pStr = '\0';
+   }
+
+   fprintf(fpout, "H\n");
+   
+   fprintf(fpout, "H\tCometParams\t comet_version = %s\n", comet_version);
+
+   std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
+   for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
+   {
+       if (it->first != "[COMET_ENZYME_INFO]")
+       {
+           fprintf(fpout, "H\tCometParams\t%s = %s\n", it->first.c_str(), it->second->GetStringValue().c_str());
+       }
+   }
+
+   std::map<string, CometParam*>::iterator it;
+   it = mapParams.find("[COMET_ENZYME_INFO]");
+   if (it != mapParams.end())
+   {
+       fprintf(fpout, "H\tCometParams\n");
+       fprintf(fpout, "H\tCometParams\t%s\n", it->first);
+       string strEnzymeInfo = it->second->GetStringValue();
+       std::size_t found = strEnzymeInfo.find_first_of("\n");
+       while (found!=std::string::npos)
+       {
+           string strEnzymeInfoLine = strEnzymeInfo.substr(0, found);
+           fprintf(fpout, "H\tCometParams\t%s\n", strEnzymeInfoLine.c_str());
+           strEnzymeInfo =  strEnzymeInfo.substr(found+1);
+           found = strEnzymeInfo.find_first_of("\n");
+       }
+   }
+
+   fprintf(fpout, "H\n");
 }
 
 void CometWriteSqt::PrintSqtHeader(FILE *fpout,

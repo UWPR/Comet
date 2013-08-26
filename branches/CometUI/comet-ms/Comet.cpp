@@ -957,11 +957,14 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
 
    strcpy(szSearchEnzymeName, "-");
    strcpy(szSampleEnzymeName, "-");
+
+   string enzymeInfoStrVal;
    while (!feof(fp))
    {
       int iCurrentEnzymeNumber;
 
       sscanf(szParamBuf, "%d.", &iCurrentEnzymeNumber);
+      enzymeInfoStrVal += szParamBuf;
 
       if (iCurrentEnzymeNumber == iSearchEnzymeNumber)
       {
@@ -999,8 +1002,8 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
    }
 
    enzymeInformation.iAllowedMissedCleavage = iAllowedMissedCleavages;
-   searchMgr.SetParam("[COMET_ENZYME_INFO]", "\0", enzymeInformation);
-
+   searchMgr.SetParam("[COMET_ENZYME_INFO]", enzymeInfoStrVal, enzymeInformation);
+   
    if (!bCurrentParamsFile)
    {
       fprintf(stderr, " Error - outdated params file; generate an update params file using '-p' option.\n\n");

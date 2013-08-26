@@ -266,8 +266,6 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       fprintf(fpout, "%s%c\"/>\n", szVariableNterm, (bProteinTerminusN?'Y':'N'));
    }
 
-   // This might be tough - think about it!
-   // fprintf(fpout, "  <parameter name=\"%s\" value=\"%s\"/>\n", szParamName, szParamVal);
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
    for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
    {
