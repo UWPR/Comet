@@ -23,8 +23,6 @@ class CometWritePepXML
 public:
    CometWritePepXML();
    ~CometWritePepXML();
-   static void WritePepXMLHeader(FILE *fpout,
-                              const char *szParamsFile);
 
    static void WritePepXMLHeader(FILE *fpout,
        CometSearchManager &searchMgr);
@@ -39,6 +37,7 @@ public:
                            FILE *fpoutd,
                            char *szOutput,
                            char *szOutputDecoy);
+
    static void WritePepXMLEndTags(FILE *fpout);
 
 

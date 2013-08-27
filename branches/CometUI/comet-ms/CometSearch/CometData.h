@@ -912,6 +912,13 @@ enum CometParamType
    CometParamType_EnzymeInfo
 };
 
+/* 
+  A virtual class that provides a generic data structure to store any Comet
+  parameter so that we can store all parameters in one data container 
+  (e.g. std::map). The specific type of parameter will use the TypedCometParam
+  class which inherits from this class and specifies _paramType and
+  _strValue, a string representation of the value of the param 
+*/
 class CometParam
 {
 public:
@@ -924,17 +931,23 @@ private:
     string _strValue;
 };
  
+/* 
+  A templated class to store Comet parameters of any type, specifying the type
+  T upon creation. It inherits from CometParam so after creation, an object of
+  this class type can be stored as a CometParam and cast back to 
+  TypedCometParam to access the GetValue() method when needed. 
+*/
 template< typename T >
 class TypedCometParam : public CometParam
 {
 public:
-    TypedCometParam (CometParamType paramType, const string& strValue, const T& data)
-        : CometParam(paramType, strValue), _data(data) {}
+    TypedCometParam (CometParamType paramType, const string& strValue, const T& value)
+        : CometParam(paramType, strValue), _value(value) {}
 
-    T& GetValue() { return _data; }
+    T& GetValue() { return _value; }
 
 private:
-    T _data;
+    T _value;
 };
 
 #endif // _COMETDATA_H_

@@ -23,11 +23,7 @@ class CometWriteSqt
 public:
    CometWriteSqt();
    ~CometWriteSqt();
-   static void WriteSqt(FILE *fpout,
-                        FILE *fpoutd,
-                        char *szOutput,
-                        char *szOutputDecoy,
-                        const char *szParamsFile);
+
    static void WriteSqt(FILE *fpout,
                     FILE *fpoutd,
                     char *szOutput,
@@ -36,8 +32,6 @@ public:
 
 
 private:
-   static void PrintSqtHeader(FILE *fpout,
-                              const char *szParamsFile);
    static void PrintSqtHeader(FILE *fpout,
                            CometSearchManager &searchMgr);
    static void PrintResults(int iWhichQuery,
