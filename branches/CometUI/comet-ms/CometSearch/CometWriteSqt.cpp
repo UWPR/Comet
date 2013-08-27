@@ -209,7 +209,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    if (it != mapParams.end())
    {
        fprintf(fpout, "H\tCometParams\n");
-       fprintf(fpout, "H\tCometParams\t%s\n", it->first);
+       fprintf(fpout, "H\tCometParams\t%s\n", it->first.c_str());
        string strEnzymeInfo = it->second->GetStringValue();
        std::size_t found = strEnzymeInfo.find_first_of("\n");
        while (found!=std::string::npos)
