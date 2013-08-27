@@ -18,6 +18,7 @@
 #include "CometData.h"
 #include "CometMassSpecUtils.h"
 #include "CometWriteSqt.h"
+#include "CometSearchManager.h"
 
 bool CometWriteSqt::_bWroteHeader = false;
 
@@ -30,28 +31,26 @@ CometWriteSqt::~CometWriteSqt()
 {
 }
 
-
 void CometWriteSqt::WriteSqt(FILE *fpout,
-                             FILE *fpoutd,
-                             char *szOutput,
-                             char *szOutputDecoy,
-                             const char *szParamsFile)
+                    FILE *fpoutd,
+                    char *szOutput,
+                    char *szOutputDecoy,
+                    CometSearchManager &searchMgr)
 {
    int i;
-
    if (!_bWroteHeader)
    {
        _bWroteHeader = true;
        if (g_staticParams.options.bOutputSqtFile)
        {
-          PrintSqtHeader(fpout, szParamsFile);
+          PrintSqtHeader(fpout, searchMgr);
 
           if (g_staticParams.options.iDecoySearch == 2)
           {
              // Print this header only if separate decoy search is also run.
              fprintf(fpout, "H\tTargetSearchResults\nH\n");
 
-             PrintSqtHeader(fpoutd, szParamsFile);
+             PrintSqtHeader(fpoutd, searchMgr);
              fprintf(fpoutd, "H\tDecoySearchResults\nH\n");
           }
        }
@@ -73,11 +72,9 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    }
 }
 
-
 void CometWriteSqt::PrintSqtHeader(FILE *fpout,
-                                   const char *szParamsFile)
+    CometSearchManager &searchMgr)
 {
-   char szParamBuf[SIZE_BUF];
    char szEndDate[28];
    time_t tTime;
    FILE *fp;
@@ -90,13 +87,6 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    strftime(szEndDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tTime));
    fprintf(fpout, "H\tEndTime\t%s\n", szEndDate);
    fprintf(fpout, "H\n");
-
-   // write out entire parameters file to SQT header
-   if ((fp=fopen(szParamsFile, "r")) == NULL)
-   {
-      fprintf(stderr, " Error - cannot open parameter file %s.\n\n", szParamsFile);
-      exit(1);
-   }
 
    fprintf(fpout, "H\tDBSeqLength\t%lu\n", g_staticParams.databaseInfo.liTotAACount);
    fprintf(fpout, "H\tDBLocusCount\t%d\n", g_staticParams.databaseInfo.iTotalNumProteins);
@@ -160,13 +150,37 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    }
 
    fprintf(fpout, "H\n");
-   while (fgets(szParamBuf, SIZE_BUF, fp))
-      fprintf(fpout, "H\tCometParams\t%s", szParamBuf);
+   
+   fprintf(fpout, "H\tCometParams\t comet_version = %s\n", comet_version);
+
+   std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
+   for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
+   {
+       if (it->first != "[COMET_ENZYME_INFO]")
+       {
+           fprintf(fpout, "H\tCometParams\t%s = %s\n", it->first.c_str(), it->second->GetStringValue().c_str());
+       }
+   }
+
+   std::map<string, CometParam*>::iterator it;
+   it = mapParams.find("[COMET_ENZYME_INFO]");
+   if (it != mapParams.end())
+   {
+       fprintf(fpout, "H\tCometParams\n");
+       fprintf(fpout, "H\tCometParams\t%s\n", it->first.c_str());
+       string strEnzymeInfo = it->second->GetStringValue();
+       std::size_t found = strEnzymeInfo.find_first_of("\n");
+       while (found!=std::string::npos)
+       {
+           string strEnzymeInfoLine = strEnzymeInfo.substr(0, found);
+           fprintf(fpout, "H\tCometParams\t%s\n", strEnzymeInfoLine.c_str());
+           strEnzymeInfo =  strEnzymeInfo.substr(found+1);
+           found = strEnzymeInfo.find_first_of("\n");
+       }
+   }
+
    fprintf(fpout, "H\n");
-
-   fclose(fp);
 }
-
 
 void CometWriteSqt::PrintResults(int iWhichQuery,
                                  bool bDecoy,

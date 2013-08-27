@@ -112,18 +112,18 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
          // Clear out m/z range if clear_mz_range parameter is specified
          // Accomplish this by setting corresponding intensity to 0
-         if (g_staticParams.options.dClearHighMZ > 0.0
-               && g_staticParams.options.dClearLowMZ <= g_staticParams.options.dClearHighMZ)
+         if (g_staticParams.options.clearMzRange.dEnd > 0.0
+             && g_staticParams.options.clearMzRange.dStart <= g_staticParams.options.clearMzRange.dEnd)
          {
             int i=0;
 
             while (true)
             {
-               if (i >= mstSpectrum.size() || mstSpectrum.at(i).mz > g_staticParams.options.dClearHighMZ)
+                if (i >= mstSpectrum.size() || mstSpectrum.at(i).mz > g_staticParams.options.clearMzRange.dEnd)
                   break;
 
-               if (mstSpectrum.at(i).mz >= g_staticParams.options.dClearLowMZ
-                     && mstSpectrum.at(i).mz <= g_staticParams.options.dClearHighMZ)
+                if (mstSpectrum.at(i).mz >= g_staticParams.options.clearMzRange.dStart
+                    && mstSpectrum.at(i).mz <= g_staticParams.options.clearMzRange.dEnd)
                {
                   mstSpectrum.at(i).intensity = 0.0;
                   iNumClearedPeaks++;

@@ -15,7 +15,6 @@
 */
 
 #include "Common.h"
-#include "CometData.h"
 #include "CometSearch.h"
 #include "ThreadPool.h"
 
