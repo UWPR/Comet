@@ -154,7 +154,7 @@ struct Options             // output parameters
    int iEnzymeTermini;
    int iNumStored;               // # of search results to store for xcorr analysis
    IntRange scanRange;
-   int iSpectrumBatchSize;		// # of spectra to search at a time within the scan range
+   int iSpectrumBatchSize;		   // # of spectra to search at a time within the scan range
    int iStartCharge;
    int iEndCharge;
    int iMaxFragmentCharge;
@@ -186,42 +186,42 @@ struct Options             // output parameters
 
    Options& operator=(Options& a) 
    {
-       iNumPeptideOutputLines = a.iNumPeptideOutputLines;
-       iWhichReadingFrame = a.iWhichReadingFrame;
-       iEnzymeTermini = a.iEnzymeTermini;
-       iNumStored = a.iNumStored;
-       scanRange = a.scanRange;
-       iSpectrumBatchSize = a.iSpectrumBatchSize;
-       iStartCharge = a.iStartCharge;
-       iEndCharge = a.iEndCharge;
-       iMaxFragmentCharge = a.iMaxFragmentCharge;
-       iMaxPrecursorCharge = a.iMaxPrecursorCharge;
-       iStartMSLevel = a.iStartMSLevel;
-       iEndMSLevel = a.iEndMSLevel; 
-       iMinPeaks = a.iMinPeaks;
-       iMinIntensity = a.iMinIntensity;
-       iRemovePrecursor = a.iRemovePrecursor;
-       iDecoySearch = a.iDecoySearch;
-       iNumThreads = a.iNumThreads;
-       bOutputSqtStream = a.bOutputSqtStream;
-       bOutputSqtFile = a.bOutputSqtFile;
-       bOutputTxtFile = a.bOutputTxtFile;
-       bOutputPepXMLFile = a.bOutputPepXMLFile;
-       bOutputPinXMLFile = a.bOutputPinXMLFile;
-       bOutputOutFiles = a.bOutputOutFiles;
-       bClipNtermMet = a.bClipNtermMet;
-       bSkipAlreadyDone = a.bSkipAlreadyDone;
-       bNoEnzymeSelected = a.bNoEnzymeSelected;
-       bPrintFragIons = a.bPrintFragIons;
-       bPrintExpectScore = a.bPrintExpectScore;
-       bSparseMatrix = a.bSparseMatrix;
-       dRemovePrecursorTol = a.dRemovePrecursorTol;
-       clearMzRange = a.clearMzRange;
-       dLowPeptideMass = a.dLowPeptideMass;
-       dHighPeptideMass = a.dHighPeptideMass;
-       strcpy(szActivationMethod, a.szActivationMethod);
+      iNumPeptideOutputLines = a.iNumPeptideOutputLines;
+      iWhichReadingFrame = a.iWhichReadingFrame;
+      iEnzymeTermini = a.iEnzymeTermini;
+      iNumStored = a.iNumStored;
+      scanRange = a.scanRange;
+      iSpectrumBatchSize = a.iSpectrumBatchSize;
+      iStartCharge = a.iStartCharge;
+      iEndCharge = a.iEndCharge;
+      iMaxFragmentCharge = a.iMaxFragmentCharge;
+      iMaxPrecursorCharge = a.iMaxPrecursorCharge;
+      iStartMSLevel = a.iStartMSLevel;
+      iEndMSLevel = a.iEndMSLevel; 
+      iMinPeaks = a.iMinPeaks;
+      iMinIntensity = a.iMinIntensity;
+      iRemovePrecursor = a.iRemovePrecursor;
+      iDecoySearch = a.iDecoySearch;
+      iNumThreads = a.iNumThreads;
+      bOutputSqtStream = a.bOutputSqtStream;
+      bOutputSqtFile = a.bOutputSqtFile;
+      bOutputTxtFile = a.bOutputTxtFile;
+      bOutputPepXMLFile = a.bOutputPepXMLFile;
+      bOutputPinXMLFile = a.bOutputPinXMLFile;
+      bOutputOutFiles = a.bOutputOutFiles;
+      bClipNtermMet = a.bClipNtermMet;
+      bSkipAlreadyDone = a.bSkipAlreadyDone;
+      bNoEnzymeSelected = a.bNoEnzymeSelected;
+      bPrintFragIons = a.bPrintFragIons;
+      bPrintExpectScore = a.bPrintExpectScore;
+      bSparseMatrix = a.bSparseMatrix;
+      dRemovePrecursorTol = a.dRemovePrecursorTol;
+      clearMzRange = a.clearMzRange;
+      dLowPeptideMass = a.dLowPeptideMass;
+      dHighPeptideMass = a.dHighPeptideMass;
+      strcpy(szActivationMethod, a.szActivationMethod);
 
-       return *this;
+      return *this;
    }
 };
 
@@ -326,41 +326,41 @@ struct InputFileInfo
 
    InputFileInfo()
    {
-       iInputType = 0;
-       iAnalysisType = AnalysisType_Unknown;
-       iFirstScan = 0;
-       iLastScan = 0;
+      iInputType = 0;
+      iAnalysisType = AnalysisType_Unknown;
+      iFirstScan = 0;
+      iLastScan = 0;
 
-       szFileName[0] = '\0';
-       szBaseName[0] = '\0';
+      szFileName[0] = '\0';
+      szBaseName[0] = '\0';
    }
 
    InputFileInfo(char *pszFileName)
    {
-       iInputType = 0;
-       iAnalysisType = AnalysisType_Unknown;
-       iFirstScan = 0;
-       iLastScan = 0;
+      iInputType = 0;
+      iAnalysisType = AnalysisType_Unknown;
+      iFirstScan = 0;
+      iLastScan = 0;
 
-       szBaseName[0] = '\0';
+      szBaseName[0] = '\0';
 
-       pszFileName[0] = '\0';
-       strcpy(szFileName, pszFileName);
+      pszFileName[0] = '\0';
+      strcpy(szFileName, pszFileName);
    }
 
    InputFileInfo& operator = (InputFileInfo &inputObj)
    {
-       iInputType = inputObj.iInputType;
-       iAnalysisType = inputObj.iAnalysisType;
-       iFirstScan = inputObj.iFirstScan;
-       iLastScan = inputObj.iLastScan;
+      iInputType = inputObj.iInputType;
+      iAnalysisType = inputObj.iAnalysisType;
+      iFirstScan = inputObj.iFirstScan;
+      iLastScan = inputObj.iLastScan;
 
-       szBaseName[0] = '\0';
-       strcpy(szBaseName, inputObj.szBaseName);
+      szBaseName[0] = '\0';
+      strcpy(szBaseName, inputObj.szBaseName);
 
-       szFileName[0] = '\0';
-       strcpy(szFileName, inputObj.szFileName);
-       return *this;
+      szFileName[0] = '\0';
+      strcpy(szFileName, inputObj.szFileName);
+      return *this;
    }
 
 };
@@ -375,17 +375,17 @@ struct StaticMod
 
    StaticMod& operator=(StaticMod& a) 
    {
-       dAddCterminusPeptide = a.dAddCterminusPeptide;
-       dAddNterminusPeptide = a.dAddNterminusPeptide;
-       dAddCterminusProtein = a.dAddCterminusProtein;
-       dAddNterminusProtein = a.dAddNterminusProtein;
+      dAddCterminusPeptide = a.dAddCterminusPeptide;
+      dAddNterminusPeptide = a.dAddNterminusPeptide;
+      dAddCterminusProtein = a.dAddCterminusProtein;
+      dAddNterminusProtein = a.dAddNterminusProtein;
 
-       for (int i = 0; i < SIZE_MASS; i++)
-       {
-           pdStaticMods[i] = a.pdStaticMods[i];
-       }
+      for (int i = 0; i < SIZE_MASS; i++)
+      {
+         pdStaticMods[i] = a.pdStaticMods[i];
+      }
 
-       return *this;
+      return *this;
    }
 };
 
@@ -399,13 +399,13 @@ struct PrecalcMasses
 
    PrecalcMasses& operator=(PrecalcMasses& a) 
    {
-       dNtermProton = a.dNtermProton;
-       dCtermOH2Proton = a.dCtermOH2Proton;
-       dOH2ProtonCtermNterm = a.dOH2ProtonCtermNterm;
-       iMinus17 = a.iMinus17;
-       iMinus18 = a.iMinus18;
+      dNtermProton = a.dNtermProton;
+      dCtermOH2Proton = a.dCtermOH2Proton;
+      dOH2ProtonCtermNterm = a.dOH2ProtonCtermNterm;
+      iMinus17 = a.iMinus17;
+      iMinus18 = a.iMinus18;
 
-       return *this;
+      return *this;
    }
 };
 
@@ -418,12 +418,12 @@ struct VarMods
 
    VarMods& operator=(VarMods& a) 
    {
-       bBinaryMod = a.bBinaryMod;
-       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
-       dVarModMass = a.dVarModMass;
-       strcpy(szVarModChar, a.szVarModChar);
+      bBinaryMod = a.bBinaryMod;
+      iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
+      dVarModMass = a.dVarModMass;
+      strcpy(szVarModChar, a.szVarModChar);
 
-       return *this;
+      return *this;
    }
 
 };
@@ -441,20 +441,20 @@ struct VarModParams
 
    VarModParams& operator=(VarModParams& a) 
    {
-       bVarModSearch = a.bVarModSearch;
-       dVarModMassN = a.dVarModMassN;
-       dVarModMassC = a.dVarModMassC;
-       iVarModNtermDistance = a.iVarModNtermDistance;
-       iVarModCtermDistance = a.iVarModCtermDistance;
-       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
+      bVarModSearch = a.bVarModSearch;
+      dVarModMassN = a.dVarModMassN;
+      dVarModMassC = a.dVarModMassC;
+      iVarModNtermDistance = a.iVarModNtermDistance;
+      iVarModCtermDistance = a.iVarModCtermDistance;
+      iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
 
-       for (int i = 0; i < VMODS; i++)
-       {
-           varModList[i] = a.varModList[i];
-           cModCode[i] = a.cModCode[i];
-       }
+      for (int i = 0; i < VMODS; i++)
+      {
+         varModList[i] = a.varModList[i];
+         cModCode[i] = a.cModCode[i];
+      }
 
-       return *this;
+      return *this;
    }
 };
 
@@ -474,27 +474,27 @@ struct EnzymeInfo
 
    EnzymeInfo& operator=(EnzymeInfo& a) 
    {
-       iAllowedMissedCleavage = a.iAllowedMissedCleavage;
-       iSearchEnzymeOffSet = a.iSearchEnzymeOffSet;
-       iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
+      iAllowedMissedCleavage = a.iAllowedMissedCleavage;
+      iSearchEnzymeOffSet = a.iSearchEnzymeOffSet;
+      iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
 
-       int i;
+      int i;
 
-       for (i = 0; i < ENZYME_NAME_LEN; i++)
-       {
-           szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
-           szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
-       }
+      for (i = 0; i < ENZYME_NAME_LEN; i++)
+      {
+         szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
+         szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
+      }
 
-       for (i = 0; i < MAX_ENZYME_AA; i++)
-       {
-           szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
-           szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
-           szSampleEnzymeBreakAA[i] = a.szSampleEnzymeBreakAA[i];
-           szSampleEnzymeNoBreakAA[i] = a.szSampleEnzymeNoBreakAA[i];
-       }
+      for (i = 0; i < MAX_ENZYME_AA; i++)
+      {
+         szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
+         szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
+         szSampleEnzymeBreakAA[i] = a.szSampleEnzymeBreakAA[i];
+         szSampleEnzymeNoBreakAA[i] = a.szSampleEnzymeNoBreakAA[i];
+      }
 
-       return *this;
+      return *this;
    }
 };
 
@@ -514,23 +514,23 @@ struct MassUtil
 
    MassUtil& operator=(MassUtil& a) 
    {
-       bMonoMassesParent = a.bMonoMassesParent;
-       bMonoMassesFragment = a.bMonoMassesFragment;
-       dCO = a.dCO;
-       dNH3 = a.dNH3;
-       dNH2 = a.dNH2;
-       dH2O = a.dH2O;
-       dCOminusH2 = a.dCOminusH2;
-       dOH2fragment = a.dOH2fragment;
-       dOH2parent = a.dOH2parent;
+      bMonoMassesParent = a.bMonoMassesParent;
+      bMonoMassesFragment = a.bMonoMassesFragment;
+      dCO = a.dCO;
+      dNH3 = a.dNH3;
+      dNH2 = a.dNH2;
+      dH2O = a.dH2O;
+      dCOminusH2 = a.dCOminusH2;
+      dOH2fragment = a.dOH2fragment;
+      dOH2parent = a.dOH2parent;
 
-       for (int i = 0; i < SIZE_MASS; i++)
-       {
-           pdAAMassParent[i] = a.pdAAMassParent[i];
-           pdAAMassFragment[i] = a.pdAAMassFragment[i];
-       }
+      for (int i = 0; i < SIZE_MASS; i++)
+      {
+         pdAAMassParent[i] = a.pdAAMassParent[i];
+         pdAAMassFragment[i] = a.pdAAMassFragment[i];
+      }
 
-       return *this;
+      return *this;
    }
 };
 
@@ -546,15 +546,15 @@ struct ToleranceParams
 
    ToleranceParams& operator=(ToleranceParams& a) 
    {
-       iMassToleranceUnits = a.iMassToleranceUnits;
-       iMassToleranceType = a.iMassToleranceType;
-       iIsotopeError = a.iIsotopeError;
-       dInputTolerance = a.dInputTolerance;
-       dFragmentBinSize = a.dFragmentBinSize;
-       dFragmentBinStartOffset = a.dFragmentBinStartOffset;
-       dMatchPeakTolerance = a.dMatchPeakTolerance;
-       
-       return *this;
+      iMassToleranceUnits = a.iMassToleranceUnits;
+      iMassToleranceType = a.iMassToleranceType;
+      iIsotopeError = a.iIsotopeError;
+      dInputTolerance = a.dInputTolerance;
+      dFragmentBinSize = a.dFragmentBinSize;
+      dFragmentBinStartOffset = a.dFragmentBinStartOffset;
+      dMatchPeakTolerance = a.dMatchPeakTolerance;
+
+      return *this;
    }
 
 };
@@ -566,10 +566,10 @@ struct PeaksInfo
 
    PeaksInfo& operator=(PeaksInfo& a)
    {
-       iNumMatchPeaks = a.iNumMatchPeaks;
-       iNumAllowedMatchPeakErrors = a.iNumAllowedMatchPeakErrors;
+      iNumMatchPeaks = a.iNumMatchPeaks;
+      iNumAllowedMatchPeakErrors = a.iNumAllowedMatchPeakErrors;
 
-       return *this;
+      return *this;
    }
 };
 
@@ -583,17 +583,17 @@ struct IonInfo
 
    IonInfo& operator=(IonInfo& a)
    {
-       iNumIonSeriesUsed = a.iNumIonSeriesUsed;
-       bUseNeutralLoss = a.bUseNeutralLoss; 
-       iTheoreticalFragmentIons = a.iTheoreticalFragmentIons;
+      iNumIonSeriesUsed = a.iNumIonSeriesUsed;
+      bUseNeutralLoss = a.bUseNeutralLoss; 
+      iTheoreticalFragmentIons = a.iTheoreticalFragmentIons;
 
-       for (int i = 0; i < NUM_ION_SERIES; i++)
-       {
-           piSelectedIonSeries[i] = a.piSelectedIonSeries[i];
-           iIonVal[i] = a.iIonVal[i];
-       }
+      for (int i = 0; i < NUM_ION_SERIES; i++)
+      {
+         piSelectedIonSeries[i] = a.piSelectedIonSeries[i];
+         iIonVal[i] = a.iIonVal[i];
+      }
 
-       return *this;
+      return *this;
    }
 };
 
@@ -601,13 +601,13 @@ struct IonInfo
 struct StaticParams
 {
    char            szHostName[SIZE_FILE];
-   char            szTimeBuf[200];
-   char            szIonSeries[200];   // used for .out files
-   char            szDisplayLine[200]; // used for .out files
-   char            szMod[280];         // used for .out files
-   char            szDecoyPrefix[200]; // used for prefix to indicate decoys
+   char            szTimeBuf[256];
+   char            szIonSeries[256];   // used for .out files
+   char            szDisplayLine[256]; // used for .out files
+   char            szMod[512];         // used for .out files
+   char            szDecoyPrefix[256]; // used for prefix to indicate decoys
    int             iElapseTime;
-   char            szDate[28];
+   char            szDate[32];
    Options         options;
    DBInfo          databaseInfo;
    InputFileInfo   inputFile;
@@ -625,125 +625,125 @@ struct StaticParams
 
    StaticParams()
    {
-       int i = 0;
+      int i = 0;
 
-       inputFile.iInputType = InputType_MS2;
+      inputFile.iInputType = InputType_MS2;
 
-       szMod[0] = '\0';
+      szMod[0] = '\0';
 
-       szDecoyPrefix[0] = '\0';
+      szDecoyPrefix[0] = '\0';
 
-       for (i=0; i<SIZE_MASS; i++)
-       {
-          massUtility.pdAAMassParent[i] = 999999.;
-          massUtility.pdAAMassFragment[i] = 999999.;
-       }
+      for (i=0; i<SIZE_MASS; i++)
+      {
+         massUtility.pdAAMassParent[i] = 999999.;
+         massUtility.pdAAMassFragment[i] = 999999.;
+      }
 
-       enzymeInformation.iAllowedMissedCleavage = 2;
+      enzymeInformation.iAllowedMissedCleavage = 2;
 
-       for (i=0; i<VMODS; i++)
-       {
-          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 4;
-          variableModParameters.varModList[i].bBinaryMod = 0;
-          variableModParameters.varModList[i].dVarModMass = 0.0;
-          variableModParameters.varModList[i].szVarModChar[0] = '\0';
-       }
+      for (i=0; i<VMODS; i++)
+      {
+         variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 4;
+         variableModParameters.varModList[i].bBinaryMod = 0;
+         variableModParameters.varModList[i].dVarModMass = 0.0;
+         variableModParameters.varModList[i].szVarModChar[0] = '\0';
+      }
 
-       variableModParameters.cModCode[0] = '*';
-       variableModParameters.cModCode[1] = '#';
-       variableModParameters.cModCode[2] = '@';
-       variableModParameters.cModCode[3] = '^';
-       variableModParameters.cModCode[4] = '~';
-       variableModParameters.cModCode[5] = '$';
+      variableModParameters.cModCode[0] = '*';
+      variableModParameters.cModCode[1] = '#';
+      variableModParameters.cModCode[2] = '@';
+      variableModParameters.cModCode[3] = '^';
+      variableModParameters.cModCode[4] = '~';
+      variableModParameters.cModCode[5] = '$';
 
-       variableModParameters.iMaxVarModPerPeptide = 10;
-       variableModParameters.iVarModNtermDistance = -1;
-       variableModParameters.iVarModCtermDistance = -1;
+      variableModParameters.iMaxVarModPerPeptide = 10;
+      variableModParameters.iVarModNtermDistance = -1;
+      variableModParameters.iVarModCtermDistance = -1;
 
-       ionInformation.iTheoreticalFragmentIons = 0;
-       options.iNumPeptideOutputLines = 1;
-       options.iWhichReadingFrame = 0;
-       options.iEnzymeTermini = 2;
-       options.iNumStored = NUM_STORED;                  // # of search results to store for xcorr analysis.
+      ionInformation.iTheoreticalFragmentIons = 0;
+      options.iNumPeptideOutputLines = 1;
+      options.iWhichReadingFrame = 0;
+      options.iEnzymeTermini = 2;
+      options.iNumStored = NUM_STORED;                  // # of search results to store for xcorr analysis.
 
-       options.bNoEnzymeSelected = 1;
-       options.bPrintFragIons = 0;
-       options.bPrintExpectScore = 0;
-       options.iRemovePrecursor = 0;
-       options.dRemovePrecursorTol = DEFAULT_PREC_TOL;  
+      options.bNoEnzymeSelected = 1;
+      options.bPrintFragIons = 0;
+      options.bPrintExpectScore = 0;
+      options.iRemovePrecursor = 0;
+      options.dRemovePrecursorTol = DEFAULT_PREC_TOL;  
 
-       options.bOutputSqtStream = 0;
-       options.bOutputSqtFile = 0;
-       options.bOutputTxtFile = 0;
-       options.bOutputPepXMLFile = 1;
-       options.bOutputPinXMLFile = 0;
-       options.bOutputOutFiles = 0;
+      options.bOutputSqtStream = 0;
+      options.bOutputSqtFile = 0;
+      options.bOutputTxtFile = 0;
+      options.bOutputPepXMLFile = 1;
+      options.bOutputPinXMLFile = 0;
+      options.bOutputOutFiles = 0;
 
-       options.bSkipAlreadyDone = 0;
-       options.iDecoySearch = 0;
-       options.iNumThreads = 0;
-       options.bClipNtermMet = 0;
-       options.bSparseMatrix = 0;
+      options.bSkipAlreadyDone = 0;
+      options.iDecoySearch = 0;
+      options.iNumThreads = 0;
+      options.bClipNtermMet = 0;
+      options.bSparseMatrix = 0;
 
-       // These parameters affect mzXML/RAMP spectra only.
-       options.scanRange.iStart = 0;
-       options.scanRange.iEnd = 0;
-       options.iSpectrumBatchSize = 0;
-       options.iMinPeaks = MINIMUM_PEAKS;
-       options.iStartCharge = 0;
-       options.iMaxFragmentCharge = 3;
-       options.iMaxPrecursorCharge = 6;
-       options.iEndCharge = 0;
-       options.iStartMSLevel = 2;
-       options.iEndMSLevel = 0;
-       options.iMinIntensity = 0;
-       options.dLowPeptideMass = 0.0;
-       options.dHighPeptideMass = 0.0;
-       strcpy(options.szActivationMethod, "ALL");
-       // End of mzXML specific parameters.
+      // These parameters affect mzXML/RAMP spectra only.
+      options.scanRange.iStart = 0;
+      options.scanRange.iEnd = 0;
+      options.iSpectrumBatchSize = 0;
+      options.iMinPeaks = MINIMUM_PEAKS;
+      options.iStartCharge = 0;
+      options.iMaxFragmentCharge = 3;
+      options.iMaxPrecursorCharge = 6;
+      options.iEndCharge = 0;
+      options.iStartMSLevel = 2;
+      options.iEndMSLevel = 0;
+      options.iMinIntensity = 0;
+      options.dLowPeptideMass = 0.0;
+      options.dHighPeptideMass = 0.0;
+      strcpy(options.szActivationMethod, "ALL");
+      // End of mzXML specific parameters.
 
-       options.clearMzRange.dStart = 0.0;
-       options.clearMzRange.dEnd = 0.0;
+      options.clearMzRange.dStart = 0.0;
+      options.clearMzRange.dEnd = 0.0;
 
-       staticModifications.dAddCterminusPeptide = 0.0;
-       staticModifications.dAddNterminusPeptide = 0.0;
-       staticModifications.dAddCterminusProtein = 0.0;
-       staticModifications.dAddNterminusProtein = 0.0;
+      staticModifications.dAddCterminusPeptide = 0.0;
+      staticModifications.dAddNterminusPeptide = 0.0;
+      staticModifications.dAddCterminusProtein = 0.0;
+      staticModifications.dAddNterminusProtein = 0.0;
 
-       tolerances.iMassToleranceUnits = 0;
-       tolerances.iMassToleranceType = 0;
-       tolerances.iIsotopeError = 0;
-       tolerances.dInputTolerance = 1.0;
-       tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
-       tolerances.dFragmentBinStartOffset = DEFAULT_OFFSET;
-       tolerances.dMatchPeakTolerance = 0.5;
+      tolerances.iMassToleranceUnits = 0;
+      tolerances.iMassToleranceType = 0;
+      tolerances.iIsotopeError = 0;
+      tolerances.dInputTolerance = 1.0;
+      tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
+      tolerances.dFragmentBinStartOffset = DEFAULT_OFFSET;
+      tolerances.dMatchPeakTolerance = 0.5;
    }
 
    StaticParams& operator=(StaticParams& a) 
    { 
-       strcpy(szHostName, a.szHostName);
-       strcpy(szTimeBuf, a.szTimeBuf);
-       strcpy(szIonSeries, a.szIonSeries);
-       strcpy(szDisplayLine, a.szDisplayLine);
-       strcpy(szMod, a.szMod);
-       strcpy(szDecoyPrefix, a.szDecoyPrefix);
-       iElapseTime = a.iElapseTime;
-       strcpy(szDate, a.szDate);
-       options = a.options;
-       databaseInfo = a.databaseInfo;
-       inputFile = a.inputFile;
-       bPrintDuplReferences = a.bPrintDuplReferences;
-       variableModParameters = a.variableModParameters;
-       tolerances = a.tolerances;
-       staticModifications = a.staticModifications;
-       precalcMasses = a.precalcMasses;
-       enzymeInformation = a.enzymeInformation;
-       massUtility = a.massUtility;
-       dInverseBinWidth = a.dInverseBinWidth;
-       dOneMinusBinOffset = a.dOneMinusBinOffset;
-       peaksInformation = a.peaksInformation;
-       ionInformation = a.ionInformation;
-       return *this; 
+      strcpy(szHostName, a.szHostName);
+      strcpy(szTimeBuf, a.szTimeBuf);
+      strcpy(szIonSeries, a.szIonSeries);
+      strcpy(szDisplayLine, a.szDisplayLine);
+      strcpy(szMod, a.szMod);
+      strcpy(szDecoyPrefix, a.szDecoyPrefix);
+      iElapseTime = a.iElapseTime;
+      strcpy(szDate, a.szDate);
+      options = a.options;
+      databaseInfo = a.databaseInfo;
+      inputFile = a.inputFile;
+      bPrintDuplReferences = a.bPrintDuplReferences;
+      variableModParameters = a.variableModParameters;
+      tolerances = a.tolerances;
+      staticModifications = a.staticModifications;
+      precalcMasses = a.precalcMasses;
+      enzymeInformation = a.enzymeInformation;
+      massUtility = a.massUtility;
+      dInverseBinWidth = a.dInverseBinWidth;
+      dOneMinusBinOffset = a.dOneMinusBinOffset;
+      peaksInformation = a.peaksInformation;
+      ionInformation = a.ionInformation;
+      return *this; 
    }
 
 };
@@ -916,42 +916,42 @@ enum CometParamType
    CometParamType_EnzymeInfo
 };
 
-/* 
-  A virtual class that provides a generic data structure to store any Comet
-  parameter so that we can store all parameters in one data container 
-  (e.g. std::map). The specific type of parameter will use the TypedCometParam
-  class which inherits from this class and specifies _paramType and
-  _strValue, a string representation of the value of the param 
-*/
+
+// A virtual class that provides a generic data structure to store any Comet
+// parameter so that we can store all parameters in one data container 
+// (e.g. std::map). The specific type of parameter will use the TypedCometParam
+// class which inherits from this class and specifies _paramType and
+// _strValue, a string representation of the value of the param 
+
 class CometParam
 {
 public:
-    CometParam(CometParamType paramType, const string& strValue)
+   CometParam(CometParamType paramType, const string& strValue)
       : _paramType(paramType), _strValue(strValue) {}
-    virtual ~CometParam() {}
-    string& GetStringValue() { return _strValue; }
+   virtual ~CometParam() {}
+   string& GetStringValue() { return _strValue; }
 private:
-    CometParamType _paramType;
-    string _strValue;
+   CometParamType _paramType;
+   string _strValue;
 };
  
-/* 
-  A templated class to store Comet parameters of any type, specifying the type
-  T upon creation. It inherits from CometParam so after creation, an object of
-  this class type can be stored as a CometParam and cast back to 
-  TypedCometParam to access the GetValue() method when needed. 
-*/
+ 
+// A templated class to store Comet parameters of any type, specifying the type
+// T upon creation. It inherits from CometParam so after creation, an object of
+// this class type can be stored as a CometParam and cast back to 
+// TypedCometParam to access the GetValue() method when needed. 
+
 template< typename T >
 class TypedCometParam : public CometParam
 {
 public:
-    TypedCometParam (CometParamType paramType, const string& strValue, const T& value)
-        : CometParam(paramType, strValue), _value(value) {}
+   TypedCometParam (CometParamType paramType, const string& strValue, const T& value)
+      : CometParam(paramType, strValue), _value(value) {}
 
-    T& GetValue() { return _value; }
+   T& GetValue() { return _value; }
 
 private:
-    T _value;
+   T _value;
 };
 
 #endif // _COMETDATA_H_

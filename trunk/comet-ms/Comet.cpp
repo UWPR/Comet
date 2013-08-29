@@ -165,15 +165,14 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
 {
    double dTempMass,
           dDoubleParam;
-   int   i,
-         iSearchEnzymeNumber,
+   int   iSearchEnzymeNumber,
          iSampleEnzymeNumber,
          iIntParam;
    int   iAllowedMissedCleavages = 2;
    char  szParamBuf[SIZE_BUF],
          szParamName[128],
-         szParamVal[128],
-         szParamStringVal[128],
+         szParamVal[512],
+         szParamStringVal[512],
          szVersion[128];
    FILE  *fp;
    bool  bCurrentParamsFile = 0, // Track a parameter to make sure present.
@@ -231,7 +230,10 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
       if (!strncmp(szParamBuf, "[COMET_ENZYME_INFO]", 19))
          break;
 
-      if (! (szParamBuf[0]=='#' || (pStr = strchr(szParamBuf, '='))==NULL))
+      if ( (pStr = strchr(szParamBuf, '#')) != NULL)  // take care of comments
+         *pStr = 0;
+
+      if ( (pStr = strchr(szParamBuf, '=')) != NULL)
       {
          strcpy(szParamVal, pStr + 1);  // Copy over value.
          *pStr = 0;                     // Null rest of szParamName at equal char.
@@ -244,6 +246,15 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
             szDatabase[0] = '\0';
             sscanf(szParamVal, "%512s", szDatabase);
             searchMgr.SetParam("database_name", szDatabase, szDatabase);
+         }
+         else if (!strcmp(szParamName, "decoy_prefix"))
+         {
+            char szDecoyPrefix[256];
+            szDecoyPrefix[0] = '\0';
+            sscanf(szParamVal, "%256s", szDecoyPrefix);
+            searchMgr.SetParam("decoy_prefix", szDecoyPrefix, szDecoyPrefix);
+
+            bCurrentParamsFile = 1;  // this is the new parameter; if this is missing then complain & exit
          }
          else if (!strcmp(szParamName, "nucleotide_reading_frame"))
          {
@@ -487,8 +498,6 @@ void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr)
             szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%d", iIntParam);
             searchMgr.SetParam("peptide_mass_units", szParamStringVal, iIntParam);
-
-            bCurrentParamsFile = 1;
          }
          else if (!strcmp(szParamName, "isotope_error"))
          {
@@ -1409,6 +1418,7 @@ fprintf(fp,
 "nucleotide_reading_frame = 0           # 0=proteinDB, 1-6, 7=forward three, 8=reverse three, 9=all six\n\
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
 spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
+decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
 \n\
 #\n\
 # spectral processing\n\

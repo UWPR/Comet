@@ -413,10 +413,10 @@ void CometSearch::SearchForPeptides(char *szProteinSeq,
                      if (g_staticParams.options.iDecoySearch)
                      {
 #ifdef _WIN32
-                        _snprintf(szDecoyProteinName, WIDTH_REFERENCE, "DECOY_%s", szProteinName);
+                        _snprintf(szDecoyProteinName, WIDTH_REFERENCE, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
                         szDecoyProteinName[WIDTH_REFERENCE-1]=0;  // _snprintf does not guarantee null termination
 #else
-                        snprintf(szDecoyProteinName, WIDTH_REFERENCE, "DECOY_%s", szProteinName);
+                        snprintf(szDecoyProteinName, WIDTH_REFERENCE, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
 #endif
                         // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.
                         // So actual reverse peptide starts at position 1 and ends at len-2 (as len-1
@@ -2271,10 +2271,10 @@ void CometSearch::CalcVarModIons(char *szProteinSeq,
                char pcTmpVarModSearchSites[MAX_PEPTIDE_LEN_P2];  // placeholder to reverse variable mods
 
 #ifdef _WIN32
-               _snprintf(szDecoyProteinName, WIDTH_REFERENCE, "DECOY_%s", _proteinInfo.szProteinName);
+               _snprintf(szDecoyProteinName, WIDTH_REFERENCE, "%s%s", g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
                szDecoyProteinName[WIDTH_REFERENCE-1]=0;    // _snprintf does not guarantee null termination
 #else
-               snprintf(szDecoyProteinName, WIDTH_REFERENCE, "DECOY_%s", _proteinInfo.szProteinName);
+               snprintf(szDecoyProteinName, WIDTH_REFERENCE, "%s_%s", g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
 #endif
 
                // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.

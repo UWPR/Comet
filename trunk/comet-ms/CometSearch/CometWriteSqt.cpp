@@ -40,20 +40,20 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    int i;
    if (!_bWroteHeader)
    {
-       _bWroteHeader = true;
-       if (g_staticParams.options.bOutputSqtFile)
-       {
-          PrintSqtHeader(fpout, searchMgr);
+      _bWroteHeader = true;
+      if (g_staticParams.options.bOutputSqtFile)
+      {
+         PrintSqtHeader(fpout, searchMgr);
 
-          if (g_staticParams.options.iDecoySearch == 2)
-          {
-             // Print this header only if separate decoy search is also run.
-             fprintf(fpout, "H\tTargetSearchResults\nH\n");
+         if (g_staticParams.options.iDecoySearch == 2)
+         {
+            // Print this header only if separate decoy search is also run.
+            fprintf(fpout, "H\tTargetSearchResults\nH\n");
 
-             PrintSqtHeader(fpoutd, searchMgr);
-             fprintf(fpoutd, "H\tDecoySearchResults\nH\n");
-          }
-       }
+            PrintSqtHeader(fpoutd, searchMgr);
+            fprintf(fpoutd, "H\tDecoySearchResults\nH\n");
+         }
+      }
    }
 
    // Print results.
@@ -110,7 +110,6 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
          (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
          (double)g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]);
 
-
    for (int i=0; i<VMODS; i++)
    {
       if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
@@ -125,6 +124,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
          }
       }
    }
+
    if (g_staticParams.variableModParameters.dVarModMassN != 0.0)
    {
       fprintf(fpout, "H\tDiffMod\tnt]=%+0.6f\n",
@@ -156,27 +156,27 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
    for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
    {
-       if (it->first != "[COMET_ENZYME_INFO]")
-       {
-           fprintf(fpout, "H\tCometParams\t%s = %s\n", it->first.c_str(), it->second->GetStringValue().c_str());
-       }
+      if (it->first != "[COMET_ENZYME_INFO]")
+      {
+         fprintf(fpout, "H\tCometParams\t%s = %s\n", it->first.c_str(), it->second->GetStringValue().c_str());
+      }
    }
 
    std::map<string, CometParam*>::iterator it;
    it = mapParams.find("[COMET_ENZYME_INFO]");
    if (it != mapParams.end())
    {
-       fprintf(fpout, "H\tCometParams\n");
-       fprintf(fpout, "H\tCometParams\t%s\n", it->first.c_str());
-       string strEnzymeInfo = it->second->GetStringValue();
-       std::size_t found = strEnzymeInfo.find_first_of("\n");
-       while (found!=std::string::npos)
-       {
-           string strEnzymeInfoLine = strEnzymeInfo.substr(0, found);
-           fprintf(fpout, "H\tCometParams\t%s\n", strEnzymeInfoLine.c_str());
-           strEnzymeInfo =  strEnzymeInfo.substr(found+1);
-           found = strEnzymeInfo.find_first_of("\n");
-       }
+      fprintf(fpout, "H\tCometParams\n");
+      fprintf(fpout, "H\tCometParams\t%s\n", it->first.c_str());
+      string strEnzymeInfo = it->second->GetStringValue();
+      std::size_t found = strEnzymeInfo.find_first_of("\n");
+      while (found!=std::string::npos)
+      {
+         string strEnzymeInfoLine = strEnzymeInfo.substr(0, found);
+         fprintf(fpout, "H\tCometParams\t%s\n", strEnzymeInfoLine.c_str());
+         strEnzymeInfo =  strEnzymeInfo.substr(found+1);
+         found = strEnzymeInfo.find_first_of("\n");
+      }
    }
 
    fprintf(fpout, "H\n");
