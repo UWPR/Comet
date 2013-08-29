@@ -10,6 +10,8 @@ HEADER_PATH = ./include
 
 MZPARSER = mzp.mzp_base64.o mzp.BasicSpectrum.o mzp.mzParser.o mzp.RAMPface.o mzp.saxhandler.o mzp.saxmzmlhandler.o \
 	mzp.saxmzxmlhandler.o mzp.Czran.o mzp.mz5handler.o mzp.mzpMz5Config.o mzp.mzpMz5Structs.o mzp.BasicChromatogram.o mzp.PWIZface.o
+MZPARSERLITE = mzp.mzp_base64_lite.o mzp.BasicSpectrum_lite.o mzp.mzParser_lite.o mzp.RAMPface_lite.o mzp.saxhandler_lite.o mzp.saxmzmlhandler_lite.o \
+	mzp.saxmzxmlhandler_lite.o mzp.Czran_lite.o mzp.mz5handler_lite.o mzp.mzpMz5Config_lite.o mzp.mzpMz5Structs_lite.o mzp.BasicChromatogram_lite.o mzp.PWIZface_lite.o
 EXPAT = xmlparse.o xmlrole.o xmltok.o
 ZLIB = adler32.o compress.o crc32.o deflate.o inffast.o inflate.o infback.o inftrees.o trees.o uncompr.o zutil.o
 MSTOOLKIT = Spectrum.o MSObject.o
@@ -39,20 +41,24 @@ HDF5 = H5AbstractDs.o H5ArrayType.o H5AtomType.o H5Attribute.o H5CommonFG.o H5Co
 CC = g++
 GCC = gcc
 NOSQLITE = -D_NOSQLITE
+MZ5 = -DMST_MZ5 -DMZP_MZ5
 
 H5_CPPFLAGS = -O3 -static -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_BSD_SOURCE  -D_POSIX_C_SOURCE=199506L   -DNDEBUG -UH5_DEBUG_API
 CFLAGS = -O3 -static -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H
 LIBS = -lm -lpthread -ldl
 
-all:  $(ZLIB) $(MZPARSER) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) $(SQLITE) $(HDF5)
-	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZPARSER) $(MSTOOLKIT) $(READERLITE) $(HDF5)
-#	ar rcs libmstoolkit.a $(ZLIB) $(EXPAT) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE) $(HDF5)
+all:  $(ZLIB) $(MZPARSER) $(MZPARSERLITE) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) $(SQLITE) $(HDF5)
+	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZPARSERLITE) $(MSTOOLKIT) $(READERLITE)
+	ar rcs libmstoolkit.a $(ZLIB) $(EXPAT) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE) $(HDF5)
 #	$(CC) $(CFLAGS) MSTDemo.cpp -L. -lmstoolkitlite -o MSTDemo
-#	$(CC) $(CFLAGS) MSSingleScan.cpp -L. -lmstoolkitlite -o MSSingleScan
+#	$(CC) $(CFLAGS) -I./include MSSingleScan/MSSingleScan.cpp -L. -lmstoolkitlite -o msSingleScan
 #	$(CC) $(CFLAGS) MSConvertFile.cpp -L. -lmstoolkitlite -o MSConvertFile
 
+lite: $(ZLIB) $(MZPARSERLITE) $(MSTOOLKIT) $(READERLITE) $(EXPAT)
+	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZPARSERLITE) $(MSTOOLKIT) $(READERLITE)
+
 clean:
-	rm -f *.o libmstoolkitlite.a libmstoolkit.a
+	rm -f *.o libmstoolkitlite.a libmstoolkit.a msSingleScan
 
 # HDF5 objects
 H5%.o : $(HDF5_PATH)/H5%.cpp
@@ -103,6 +109,10 @@ zutil.o : $(ZLIB_PATH)/zutil.c
 
 #mzParser objects
 mzp.%.o : $(MZPARSER_PATH)/%.cpp
+	$(CC) $(CFLAGS) $(MZ5) $< -c -o $@
+
+#mzParserLite objects
+mzp.%_lite.o : $(MZPARSER_PATH)/%.cpp
 	$(CC) $(CFLAGS) $< -c -o $@
 
 
@@ -129,7 +139,7 @@ Spectrum.o : $(MST_PATH)/Spectrum.cpp
 	$(CC) $(CFLAGS) $(MST_PATH)/Spectrum.cpp -c
 
 MSReader.o : $(MST_PATH)/MSReader.cpp
-	$(CC) $(CFLAGS) $(MST_PATH)/MSReader.cpp -c
+	$(CC) $(CFLAGS) $(MZ5) $(MST_PATH)/MSReader.cpp -c
 
 MSReaderLite.o : $(MST_PATH)/MSReader.cpp
 	$(CC) $(CFLAGS) $(NOSQLITE) $(MST_PATH)/MSReader.cpp -c -o MSReaderLite.o

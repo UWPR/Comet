@@ -3,6 +3,7 @@
 #include <iomanip>
 
 using namespace std;
+using namespace MSToolkit;
 
 Spectrum::Spectrum(){
   //cout<<"in Spectrum constructor!"<<endl;

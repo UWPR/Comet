@@ -9,6 +9,10 @@
 #include <cstdio>
 #include <cstdlib>
 
+#ifdef MST_MZ5
+#define MZP_MZ5 1
+#endif
+
 //For mzXML Writing
 //#include "mzXMLWriter.h"
 //#include "MSToolkitInterface.h"
@@ -53,6 +57,7 @@ typedef off_t f_off;
 
 using namespace std;
 
+namespace MSToolkit {
 class MSReader {
  public:
   //Constructors & Destructors
@@ -172,6 +177,8 @@ class MSReader {
   #endif 
 
 };
+
+}
 
 #endif
 

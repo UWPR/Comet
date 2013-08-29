@@ -605,6 +605,7 @@ struct StaticParams
    char            szIonSeries[200];   // used for .out files
    char            szDisplayLine[200]; // used for .out files
    char            szMod[280];         // used for .out files
+   char            szDecoyPrefix[200]; // used for prefix to indicate decoys
    int             iElapseTime;
    char            szDate[28];
    Options         options;
@@ -629,6 +630,8 @@ struct StaticParams
        inputFile.iInputType = InputType_MS2;
 
        szMod[0] = '\0';
+
+       szDecoyPrefix[0] = '\0';
 
        for (i=0; i<SIZE_MASS; i++)
        {
@@ -723,6 +726,7 @@ struct StaticParams
        strcpy(szIonSeries, a.szIonSeries);
        strcpy(szDisplayLine, a.szDisplayLine);
        strcpy(szMod, a.szMod);
+       strcpy(szDecoyPrefix, a.szDecoyPrefix);
        iElapseTime = a.iElapseTime;
        strcpy(szDate, a.szDate);
        options = a.options;

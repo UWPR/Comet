@@ -1,7 +1,7 @@
 CXX = g++
 MSTOOLKIT = MSToolkit
 COMETSEARCH = CometSearch
-CXXFLAGS = -O3 -static -Wall -Wno-char-subscripts -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
+CXXFLAGS = -O3 -Wall -Wno-char-subscripts -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
 EXECNAME = comet.exe
 OBJS = Comet.o
 DEPS = 

@@ -105,7 +105,8 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
 
 		if(m_bHeaderOnly) stopParser();
 
-	}	else if (isElement("precursorMz", el)) {
+	}	
+	else if (isElement("precursorMz", el)) {
 		m_strData.clear();
 		s=getAttrValue("precursorCharge", attr);
 		if(s.length()>0) spec->setPrecursorCharge(atoi(&s[0]));
@@ -117,19 +118,28 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
 		if(s.length()>0) spec->setPrecursorScanNum(atoi(&s[0]));
 		else spec->setPrecursorScanNum(0);
 		m_bInPrecursorMz = true;
+		
+		s=getAttrValue("activationMethod", attr);
+		if(s.length()>0){
+			if(!strcmp("CID",&s[0])) spec->setActivation(CID);
+			else if(!strcmp("ETD",&s[0])) spec->setActivation(ETD);
+			else if(!strcmp("HCD",&s[0])) spec->setActivation(HCD);
+			else if(!strcmp("ECD",&s[0])) spec->setActivation(ECD);
+			else if(!strcmp("ETD+SA",&s[0])) spec->setActivation(ETDSA);
+		} else {
+			spec->setActivation(none);
+		}
 
 		s=getAttrValue("activationMethod", attr);
-    if(s.length()>0){
-      if(!strcmp("CID",&s[0])) spec->setActivation(CID);
-      else if(!strcmp("ETD",&s[0])) spec->setActivation(ETD);
-      else if(!strcmp("HCD",&s[0])) spec->setActivation(HCD);
-      else if(!strcmp("ECD",&s[0])) spec->setActivation(ECD);
-      else if(!strcmp("ETD+SA",&s[0])) spec->setActivation(ETDSA);
-    } else {
-      spec->setActivation(none);
-    }
-
-	}	else if (isElement("scan", el)) {
+		if(s.length()>0){
+			if(!strcmp("CID",&s[0])) spec->setActivation(CID);
+			else if(!strcmp("ETD",&s[0])) spec->setActivation(ETD);
+			else if(!strcmp("HCD",&s[0])) spec->setActivation(HCD);
+			else if(!strcmp("ECD",&s[0])) spec->setActivation(ECD);
+			else if(!strcmp("ETD+SA",&s[0])) spec->setActivation(ETDSA);
+		} 
+	}	
+	else if (isElement("scan", el)) {
 		if(m_bInScan){
 			pushSpectrum();
 			stopParser();
@@ -139,8 +149,11 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
 			spec->setMSLevel(atoi(getAttrValue("msLevel", attr)));
 			spec->setBasePeakIntensity(atof(getAttrValue("basePeakIntensity", attr)));
 			spec->setBasePeakMZ(atof(getAttrValue("basePeakMz", attr)));
+			spec->setCentroid((bool)atoi(getAttrValue("centroided",attr)));
 			spec->setCollisionEnergy(atof(getAttrValue("collisionEnergy", attr)));
 			spec->setCompensationVoltage(atof(getAttrValue("CompensationVoltage", attr)));
+			s=getAttrValue("filterLine", attr);
+			spec->setFilterLine(&s[0]);
 			spec->setHighMZ(atof(getAttrValue("highMz", attr)));
 			spec->setLowMZ(atof(getAttrValue("lowMz", attr)));
 			if(spec->getHighMZ()==0) spec->setHighMZ(atof(getAttrValue("endMz", attr)));
@@ -148,7 +161,6 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
 			spec->setTotalIonCurrent(atof(getAttrValue("totIonCurrent",attr)));
 			m_peaksCount = atoi(getAttrValue("peaksCount", attr));
 			spec->setPeaksCount(m_peaksCount);
-      spec->setCentroid((bool)getAttrValue("centroided",attr));
 			
 			s=getAttrValue("retentionTime", attr);
 			if(s.length()>0){

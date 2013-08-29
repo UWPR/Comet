@@ -56,7 +56,7 @@ void CometSearch::RunSearch(int minNumThreads,
 
    if ((fptr=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
-       fprintf(stderr, " Error - cannot read database file \"%s\".\n\n", g_staticParams.databaseInfo.szDatabase);
+       logerr(" Error - cannot read database file \"%s\".\n\n", g_staticParams.databaseInfo.szDatabase);
        exit(1);
    }
 
@@ -69,7 +69,7 @@ void CometSearch::RunSearch(int minNumThreads,
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      printf(" - Search progress: ");
+      logout(" - Search progress: ");
       fflush(stdout);
    }
 
@@ -85,13 +85,13 @@ void CometSearch::RunSearch(int minNumThreads,
       // Expect a '>' for sequence header line.
       if (iTmpCh != '>')
       {
-         fprintf(stderr, "\n\n Error - database file, expecting definition line here.\n");
+         logerr("\n\n Error - database file, expecting definition line here.\n");
          fgets(szBuf, SIZE_BUF, fptr);
-         fprintf(stderr, "%c%s", iTmpCh, szBuf);
+         logerr("%c%s", iTmpCh, szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
-         fprintf(stderr, "%s", szBuf);
+         logerr("%s", szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
-         fprintf(stderr, "%s", szBuf);
+         logerr("%s", szBuf);
          exit(1);
       } 
 
@@ -125,9 +125,9 @@ void CometSearch::RunSearch(int minNumThreads,
             && !(g_staticParams.databaseInfo.iTotalNumProteins%200))
       {
          lCurrPos = ftell(fptr);
-         printf("%3d%%", (int)(100.0 * (double)lCurrPos/(double)lEndPos));
+         logout("%3d%%", (int)(100.0 * (double)lCurrPos/(double)lEndPos));
          fflush(stdout);
-         printf("\b\b\b\b");
+         logout("\b\b\b\b");
       }
 
       // Now search sequence entry; add threading here so that
@@ -143,7 +143,7 @@ void CometSearch::RunSearch(int minNumThreads,
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      printf(" 100%%\n");
+      logout(" 100%%\n");
    }
 }
 
@@ -214,7 +214,7 @@ void CometSearch::DoSearch(sDBEntry dbe)
          pszTemp=(char *)malloc(seqSize);
          if (pszTemp == NULL)
          {
-            fprintf(stderr, " Error - malloc(szTemp[%d])\n",seqSize);
+            logerr(" Error - malloc(szTemp[%d])\n",seqSize);
             exit(1);
          }
 
@@ -372,7 +372,7 @@ void CometSearch::SearchForPeptides(char *szProteinSeq,
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
                      if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
                      {
-                        fprintf(stderr, " Error - malloc pbDuplFragments; iWhichQuery = %d\n\n", iWhichQuery);
+                        logerr(" Error - malloc pbDuplFragments; iWhichQuery = %d\n\n", iWhichQuery);
                         exit(1);
                      }
 
@@ -779,7 +779,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       }
       else
       {
-         fprintf(stderr, " Error - iIsotopeError=%d, should not be here!\n\n", g_staticParams.tolerances.iIsotopeError);
+         logerr(" Error - iIsotopeError=%d, should not be here!\n\n", g_staticParams.tolerances.iIsotopeError);
          exit(1);
       }
    }
@@ -810,10 +810,10 @@ void CometSearch::TranslateNA2AA(int *frame,
             pTmp=(char *)realloc(_proteinInfo.pszProteinSeq, ii+100);
             if (pTmp == NULL)
             {
-               fprintf(stderr, " Error realloc(szProteinSeq) ... size=%d\n", ii);
-               fprintf(stderr, " A sequence entry is larger than your system can handle.\n");
-               fprintf(stderr, " Either add more memory or edit the database and divide\n");
-               fprintf(stderr, " the sequence into multiple, overlapping, smaller entries.\n\n");
+               logerr(" Error realloc(szProteinSeq) ... size=%d\n", ii);
+               logerr(" A sequence entry is larger than your system can handle.\n");
+               logerr(" Either add more memory or edit the database and divide\n");
+               logerr(" the sequence into multiple, overlapping, smaller entries.\n\n");
                exit(1);
             }
 
@@ -840,10 +840,10 @@ void CometSearch::TranslateNA2AA(int *frame,
             pTmp=(char *)realloc(_proteinInfo.pszProteinSeq, ii+100);
             if (pTmp == NULL)
             {
-               fprintf(stderr, " Error realloc(szProteinSeq) ... size=%d\n", ii);
-               fprintf(stderr, " A sequence entry is larger than your system can handle.\n");
-               fprintf(stderr, " Either add more memory or edit the database and divide\n");
-               fprintf(stderr, " the sequence into multiple, overlapping, smaller entries.\n\n");
+               logerr(" Error realloc(szProteinSeq) ... size=%d\n", ii);
+               logerr(" A sequence entry is larger than your system can handle.\n");
+               logerr(" Either add more memory or edit the database and divide\n");
+               logerr(" the sequence into multiple, overlapping, smaller entries.\n\n");
                exit(1);
             }
 
@@ -2226,7 +2226,7 @@ void CometSearch::CalcVarModIons(char *szProteinSeq,
             // now get the set of binned fragment ions once for all matching peptides
             if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
             {
-               fprintf(stderr, " Error - malloc pbDuplFragments; iWhichQuery = %d\n\n", iWhichQuery);
+               logerr(" Error - malloc pbDuplFragments; iWhichQuery = %d\n\n", iWhichQuery);
                exit(1);
             }
 

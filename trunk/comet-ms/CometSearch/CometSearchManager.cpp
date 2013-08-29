@@ -85,6 +85,12 @@ void CometSearchManager::InitializeStaticParams()
         strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
     }
 
+    strData[0] = '\0';
+    if(GetParamValue("decoy_prefix", strData))
+    {
+        strcpy(g_staticParams.szDecoyPrefix, strData.c_str());
+    }
+
     GetParamValue("nucleotide_reading_frame", g_staticParams.options.iWhichReadingFrame);
     
     GetParamValue("mass_type_parent", g_staticParams.massUtility.bMonoMassesParent);
@@ -699,7 +705,7 @@ void CometSearchManager::InitializeStaticParams()
 
    if (g_staticParams.tolerances.dFragmentBinStartOffset < 0.0 || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
    {
-      fprintf(stderr, " Error - bin offset %f must between 0.0 and 1.0\n",
+      logerr(" Error - bin offset %f must between 0.0 and 1.0\n",
             g_staticParams.tolerances.dFragmentBinStartOffset);
       exit(1);
    }
@@ -949,8 +955,8 @@ void CometSearchManager::DoSearch()
 
        if (!g_staticParams.options.bOutputSqtStream)
        {
-          printf(" Comet version \"%s\"\n", comet_version);
-          printf(" Search start:  %s\n", g_staticParams.szDate);
+          logout(" Comet version \"%s\"\n", comet_version);
+          logout(" Search start:  %s\n", g_staticParams.szDate);
        }
 
        int iFirstScan = g_staticParams.inputFile.iFirstScan;             // First scan to search specified by user.
@@ -981,13 +987,17 @@ void CometSearchManager::DoSearch()
        if (g_staticParams.options.bOutputSqtFile)
        {
           if (iAnalysisType == AnalysisType_EntireFile)
+#ifdef CRUX
+             sprintf(szOutputSQT, "%s.target.sqt", g_staticParams.inputFile.szBaseName);        
+#else
              sprintf(szOutputSQT, "%s.sqt", g_staticParams.inputFile.szBaseName);
+#endif
           else
              sprintf(szOutputSQT, "%s.%d-%d.sqt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
           if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
           {
-             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputSQT);
+             logerr("Error - cannot write to file \"%s\".\n\n", szOutputSQT);
              exit(1);
           }
 
@@ -1000,7 +1010,7 @@ void CometSearchManager::DoSearch()
 
              if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
              {
-                fprintf(stderr, "Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoySQT);
+                logerr("Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoySQT);
                 exit(1);
              }
           }
@@ -1009,13 +1019,17 @@ void CometSearchManager::DoSearch()
        if (g_staticParams.options.bOutputTxtFile)
        {
           if (iAnalysisType == AnalysisType_EntireFile)
+#ifdef CRUX
+             sprintf(szOutputTxt, "%s.target.txt", g_staticParams.inputFile.szBaseName);
+#else
              sprintf(szOutputTxt, "%s.txt", g_staticParams.inputFile.szBaseName);
+#endif
           else
              sprintf(szOutputTxt, "%s.%d-%d.txt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
           if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
           {
-             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputTxt);
+             logerr("Error - cannot write to file \"%s\".\n\n", szOutputTxt);
              exit(1);
           }
 
@@ -1028,7 +1042,7 @@ void CometSearchManager::DoSearch()
 
              if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
              {
-                fprintf(stderr, "Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyTxt);
+                logerr("Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyTxt);
                 exit(1);
              }
           }
@@ -1037,13 +1051,17 @@ void CometSearchManager::DoSearch()
        if (g_staticParams.options.bOutputPepXMLFile)
        {
           if (iAnalysisType == AnalysisType_EntireFile)
+#ifdef CRUX
+             sprintf(szOutputPepXML, "%s.target.pep.xml", g_staticParams.inputFile.szBaseName);
+#else
              sprintf(szOutputPepXML, "%s.pep.xml", g_staticParams.inputFile.szBaseName);
+#endif
           else
              sprintf(szOutputPepXML, "%s.%d-%d.pep.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
           if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
           {
-             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputPepXML);
+             logerr("Error - cannot write to file \"%s\".\n\n", szOutputPepXML);
              exit(1);
           }
 
@@ -1058,7 +1076,7 @@ void CometSearchManager::DoSearch()
 
              if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
              {
-                fprintf(stderr, "Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyPepXML);
+                logerr("Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyPepXML);
                 exit(1);
              }
 
@@ -1069,13 +1087,17 @@ void CometSearchManager::DoSearch()
        if (g_staticParams.options.bOutputPinXMLFile)
        {
           if (iAnalysisType == AnalysisType_EntireFile)
+#ifdef CRUX
+             sprintf(szOutputPinXML, "%s.target.pin.xml", g_staticParams.inputFile.szBaseName);
+#else
              sprintf(szOutputPinXML, "%s.pin.xml", g_staticParams.inputFile.szBaseName);
+#endif
           else
              sprintf(szOutputPinXML, "%s.%d-%d.pin.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
           if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
           {
-             fprintf(stderr, "Error - cannot write to file \"%s\".\n\n", szOutputPinXML);
+             logerr("Error - cannot write to file \"%s\".\n\n", szOutputPinXML);
              exit(1);
           }
 
@@ -1100,7 +1122,7 @@ void CometSearchManager::DoSearch()
        {
           // Load and preprocess all the spectra.
           if (!g_staticParams.options.bOutputSqtStream)
-             printf(" - Load and process input spectra\n");
+             logout(" - Load and process input spectra\n");
 
           CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
@@ -1114,12 +1136,12 @@ void CometSearchManager::DoSearch()
 
           // Allocate memory to store results for each query spectrum.
           if (!g_staticParams.options.bOutputSqtStream)
-             printf(" - Allocate memory to store results\n");
+             logout(" - Allocate memory to store results\n");
 
           AllocateResultsMem();
 
           if (!g_staticParams.options.bOutputSqtStream)
-             printf(" - Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
+             logout(" - Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
 
           // Sort g_pvQuery vector by dExpPepMass.
           std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
@@ -1136,7 +1158,7 @@ void CometSearchManager::DoSearch()
           CalcRunTime(tStartTime);
 
           if (!g_staticParams.options.bOutputSqtStream)
-             printf(" - Write output\n");
+             logout(" - Write output\n");
 
           if (g_staticParams.options.bOutputOutFiles)
              CometWriteOut::WriteOut();
@@ -1163,14 +1185,14 @@ void CometSearchManager::DoSearch()
        }
        if (iTotalSpectraSearched == 0)
        {
-          printf(" Warning - no spectra searched.\n\n");
+          logout(" Warning - no spectra searched.\n\n");
        }
 
        if (!g_staticParams.options.bOutputSqtStream)
        {
           time(&tStartTime);
           strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
-          printf(" Search end:    %s\n\n", g_staticParams.szDate);
+          logout(" Search end:    %s\n\n", g_staticParams.szDate);
        }
 
        if (NULL != fpout_pepxml)
@@ -1266,7 +1288,7 @@ void CometSearchManager::UpdateInputFile(InputFileInfo *pFileInfo)
 
          if (err != EEXIST) 
          {
-            fprintf(stderr, "\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
+            logerr("\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
             exit(1);
          }
       }
@@ -1282,7 +1304,7 @@ void CometSearchManager::UpdateInputFile(InputFileInfo *pFileInfo)
 
             if (err != EEXIST) 
             {
-               fprintf(stderr, "\n Error - could not create directory \"%s\".\n", szDecoyDir);
+               logerr("\n Error - could not create directory \"%s\".\n", szDecoyDir);
                exit(1);
             }
          }
@@ -1290,7 +1312,7 @@ void CometSearchManager::UpdateInputFile(InputFileInfo *pFileInfo)
 #else
       if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
       {
-         fprintf(stderr, "\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
+         logerr("\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
          exit(1);
       }
       if (g_staticParams.options.iDecoySearch == 2)
@@ -1300,7 +1322,7 @@ void CometSearchManager::UpdateInputFile(InputFileInfo *pFileInfo)
 
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
          {
-            fprintf(stderr, "\n Error - could not create directory \"%s\".\n\n", szDecoyDir);
+            logerr("\n Error - could not create directory \"%s\".\n\n", szDecoyDir);
             exit(1);
          }
       }
@@ -1333,7 +1355,7 @@ void CometSearchManager::AllocateResultsMem()
 
       if (pQuery->_pResults == NULL)
       {
-         fprintf(stderr, " Error malloc(_pResults[])\n");
+         logerr(" Error malloc(_pResults[])\n");
          exit(1);
       }
 
@@ -1351,7 +1373,7 @@ void CometSearchManager::AllocateResultsMem()
 
          if (pQuery->_pDecoys == NULL)
          {
-            fprintf(stderr, " Error malloc(_pDecoys[])\n");
+            logerr(" Error malloc(_pDecoys[])\n");
             exit(1);
          }
 

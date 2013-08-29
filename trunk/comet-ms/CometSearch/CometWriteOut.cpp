@@ -139,7 +139,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    if ((fpout = fopen(szOutput, "w")) == NULL)
    {
-      fprintf(stderr, "Error - cannot write to file %s.\n\n", szOutput);
+      logerr("Error - cannot write to file %s.\n\n", szOutput);
       exit(1);
    }
 

@@ -2,6 +2,7 @@
 #include <iostream>
 
 using namespace std;
+using namespace MSToolkit;
 
 MSObject::MSObject(){
   vSpectrum = new vector<Spectrum>;

@@ -1,5 +1,5 @@
 #include "mzParser.h"
-
+#ifdef MZP_MZ5
 mzpMz5Config::mzpMz5Config(){
 	init(false, true, true);
 }
@@ -160,3 +160,5 @@ void mzpMz5Config::setFiltering(const bool flag) const {
 void mzpMz5Config::setTranslating(const bool flag) const {
 	doTranslating_ = flag;
 }
+
+#endif

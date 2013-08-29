@@ -16,18 +16,22 @@ void Chromatogram::getTimeIntensityPairs(vector<TimeIntensityPair>& v){
 ChromatogramList::ChromatogramList(){
 }
 
-ChromatogramList::ChromatogramList(mzpSAXMzmlHandler* ml, mzpMz5Handler* m5, BasicChromatogram* bc){
+ChromatogramList::ChromatogramList(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* bc){
 	mzML=ml;
-	mz5=m5;
+  #ifdef MZP_MZ5
+    mz5=(mzpMz5Handler*)m5;
+  #endif
 	chromat=new Chromatogram();
 	chromat->bc=bc;
 }
 
 ChromatogramList::~ChromatogramList(){
 	mzML=NULL;
-	mz5=NULL;
 	vChromatIndex=NULL;
-	vMz5Index=NULL;
+  #ifdef MZP_MZ5
+	mz5=NULL;
+  vMz5Index=NULL;
+  #endif
 	delete chromat;
 }
 
@@ -38,17 +42,21 @@ ChromatogramPtr ChromatogramList::chromatogram(int index, bool binaryData) {
 		chromat->bc->getIDString(str);
 		chromat->id=str;
 		return chromat;
+  #ifdef MZP_MZ5
 	}	else if(mz5!=NULL) {
 		mz5->readChromatogram(index);
 		chromat->bc->getIDString(str);
 		chromat->id=str;
 		return chromat;
+  #endif
 	}
 	return NULL;
 }
 bool ChromatogramList::get() {
 	if(mzML!=NULL) vChromatIndex = mzML->getChromatIndex();
+  #ifdef MZP_MZ5
 	else if(mz5!=NULL) vMz5Index = mz5->getChromatIndex();
+  #endif
 	else return false;
 	return true;
 }
@@ -59,7 +67,9 @@ unsigned int ChromatogramList::size() {
 		return 0;
 	}
 	if(mzML!=NULL) return vChromatIndex->size();
+  #ifdef MZP_MZ5
 	else if(mz5!=NULL) return vMz5Index->size();
+  #endif
 	else return 0;
 }
 
@@ -67,23 +77,29 @@ PwizRun::PwizRun(){
 	chromatogramListPtr = new ChromatogramList();
 }
 
-PwizRun::PwizRun(mzpSAXMzmlHandler* ml, mzpMz5Handler* m5, BasicChromatogram* b){
+PwizRun::PwizRun(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b){
 	mzML=ml;
-	mz5=m5;
+#ifdef MZP_MZ5
+  mz5=(mzpMz5Handler*)m5;
+#endif
 	bc=b;
 	chromatogramListPtr = new ChromatogramList(ml, m5, b);
 }
 
 PwizRun::~PwizRun(){
 	mzML=NULL;
+#ifdef MZP_MZ5
 	mz5=NULL;
+#endif
 	bc=NULL;
 	delete chromatogramListPtr;
 }
 
-void PwizRun::set(mzpSAXMzmlHandler* ml, mzpMz5Handler* m5, BasicChromatogram* b){
+void PwizRun::set(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b){
 	mzML=ml;
-	mz5=m5;
+#ifdef MZP_MZ5
+	mz5=(mzpMz5Handler*)m5;
+#endif
 	bc=b;
 	delete chromatogramListPtr;
 	chromatogramListPtr = new ChromatogramList(ml, m5, b);
@@ -116,6 +132,7 @@ MSDataFile::MSDataFile(string s){
 				delete bs;
 				delete bc;
 				break;
+#ifdef MZP_MZ5
 			case 5: //mz5
 				mz5Config = new mzpMz5Config();
 				mz5=new mzpMz5Handler(mz5Config, bs, bc);
@@ -127,19 +144,26 @@ MSDataFile::MSDataFile(string s){
 					delete bc;
 				}
 				break;
+#endif
 			default:
 				break;
 		}
+#ifdef MZP_MZ5
 		run.set(mzML,mz5,bc);
+#else
+    run.set(mzML,NULL,bc);
+#endif
 	}
 }
 
 MSDataFile::~MSDataFile(){
   if(mzML!=NULL) delete mzML;
+#ifdef MZP_MZ5
   if(mz5!=NULL){
     delete mz5;
     delete mz5Config;
   }
+#endif
   delete bs;
   delete bc;
 }

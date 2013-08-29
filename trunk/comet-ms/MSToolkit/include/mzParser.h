@@ -31,11 +31,15 @@
 #include <string.h>
 #include "expat.h"
 #include "zlib.h"
+#ifdef MZP_MZ5
 #include "hdf5.h"
 #include "H5Cpp.h"
+#endif
 
 using namespace std;
+#ifdef MZP_MZ5
 using namespace H5;
+#endif
 
 //------------------------------------------------
 // MACROS
@@ -43,11 +47,10 @@ using namespace H5;
 
 //#define OSX				// to compile with cc on Macintosh OSX
 //#define OSX_TIGER // use with OSX if OSX Tiger is being used
-//#define OSX_INTEL // compile with cc on Macintosh OSX on Intel-style processors
-//#define GCC				// to compile with gcc (or g++) on LINUX
 //#define __LINUX__				// to compile with gcc (or g++) on LINUX
 //#define _MSC_VER	// to compile with Microsoft Studio
-
+//#define OSX_INTEL // compile with cc on Macintosh OSX on Intel-style processors
+//#define GCC				// to compile with gcc (or g++) on LINUX
 #define __LINUX__    // Comet project currently only cares about Linux/Windows
 #ifdef _MSC_VER
 #undef __LINUX__
@@ -197,6 +200,7 @@ public:
 	void setCentroid(bool b);
 	void setCollisionEnergy(double d);
 	void setCompensationVoltage(double d);
+	void setFilterLine(char* str);
 	void setHighMZ(double d);
 	void setIDString(char* str);
 	void setLowMZ(double d);
@@ -219,6 +223,7 @@ public:
 	bool					getCentroid();
 	double				getCollisionEnergy();
 	double				getCompensationVoltage();
+	int					getFilterLine(char* str);
 	double				getHighMZ();
 	int						getIDString(char* str);
 	double				getLowMZ();
@@ -244,6 +249,7 @@ protected:
 	bool						centroid;
 	double					collisionEnergy;
 	double					compensationVoltage;	//FAIMS compensation voltage
+	char					filterLine[128];
 	double					highMZ;
 	char						idString[128];
 	double					lowMZ;
@@ -582,6 +588,8 @@ private:
 //------------------------------------------------
 // mz5 Support
 //------------------------------------------------
+
+#ifdef MZP_MZ5
 
 //mz5 constants
 #define CVL 128
@@ -1140,6 +1148,8 @@ private:
 	BasicSpectrum*						spec;
 };
 
+#endif
+
 //------------------------------------------------
 // RAMP API
 //------------------------------------------------
@@ -1154,16 +1164,20 @@ typedef struct RAMPFILE{
 	BasicSpectrum* bs;
 	mzpSAXMzmlHandler* mzML;
 	mzpSAXMzxmlHandler* mzXML;
-	mzpMz5Config* mz5Config;
-	mzpMz5Handler* mz5;
+  #ifdef MZP_MZ5
+	  mzpMz5Config* mz5Config;
+	  mzpMz5Handler* mz5;
+  #endif
 	int fileType;
 	int bIsMzData;
 	RAMPFILE(){
 		bs=NULL;
 		mzML=NULL;
 		mzXML=NULL;
+    #ifdef MZP_MZ5
 		mz5=NULL;
 		mz5Config=NULL;
+    #endif
 		fileType=0;
 		bIsMzData=0;
 	}
@@ -1171,13 +1185,15 @@ typedef struct RAMPFILE{
 		if(bs!=NULL) delete bs;
 		if(mzML!=NULL) delete mzML;
 		if(mzXML!=NULL) delete mzXML;
-		if(mz5!=NULL) delete mz5;
-		if(mz5Config!=NULL) delete mz5Config;
-		bs=NULL;
+    bs=NULL;
 		mzML=NULL;
 		mzXML=NULL;
-		mz5=NULL;
+    #ifdef MZP_MZ5
+		if(mz5!=NULL) delete mz5;
+		if(mz5Config!=NULL) delete mz5Config;
+    mz5=NULL;
 		mz5Config=NULL;
+    #endif	
 	}
 } RAMPFILE;
 
@@ -1185,40 +1201,41 @@ static vector<const char *> data_Ext;
 
 struct ScanHeaderStruct {
    
-   int								acquisitionNum; // scan number as declared in File (may be gaps)
-	 int								mergedScan;  /* only if MS level > 1 */
-   int								mergedResultScanNum; /* scan number of the resultant merged scan */
-   int								mergedResultStartScanNum; /* smallest scan number of the scanOrigin for merged scan */
-   int								mergedResultEndScanNum; /* largest scan number of the scanOrigin for merged scan */
-   int								msLevel;
-	 int								numPossibleCharges;
-   int								peaksCount;
-	 int								precursorCharge;  /* only if MS level > 1 */
-	 int								precursorScanNum; /* only if MS level > 1 */
-	 int								scanIndex; //a sequential index for non-sequential scan numbers (1-based)
-   int								seqNum; // number in sequence observed file (1-based)
+	int						acquisitionNum; // scan number as declared in File (may be gaps)
+	int						mergedScan;  /* only if MS level > 1 */
+	int						mergedResultScanNum; /* scan number of the resultant merged scan */
+	int						mergedResultStartScanNum; /* smallest scan number of the scanOrigin for merged scan */
+	int						mergedResultEndScanNum; /* largest scan number of the scanOrigin for merged scan */
+	int						msLevel;
+	int						numPossibleCharges;
+	int						peaksCount;
+	int						precursorCharge;  /* only if MS level > 1 */
+	int						precursorScanNum; /* only if MS level > 1 */
+	int						scanIndex; //a sequential index for non-sequential scan numbers (1-based)
+	int						seqNum; // number in sequence observed file (1-based)
 	 
-   double							basePeakIntensity;
-   double							basePeakMZ;
-   double							collisionEnergy;
-   double							compensationVoltage;  /* only if MS level > 1 */
-   double							highMZ;
-   double							ionisationEnergy;
-   double							lowMZ;
-	 double							precursorIntensity;  /* only if MS level > 1 */
-   double							precursorMZ;  /* only if MS level > 1 */
-   double							retentionTime;        /* in seconds */
-	 double							totIonCurrent;
+	double					basePeakIntensity;
+	double					basePeakMZ;
+	double					collisionEnergy;
+	double					compensationVoltage;  /* only if MS level > 1 */
+	double					highMZ;
+	double					ionisationEnergy;
+	double					lowMZ;
+	double					precursorIntensity;  /* only if MS level > 1 */
+	double					precursorMZ;  /* only if MS level > 1 */
+	double					retentionTime;        /* in seconds */
+	double					totIonCurrent;
    
-   char								activationMethod[SCANTYPE_LENGTH];
-   char								possibleCharges[SCANTYPE_LENGTH];
-   char								scanType[SCANTYPE_LENGTH];
-   char								idString[CHARGEARRAY_LENGTH];
+	char					activationMethod[SCANTYPE_LENGTH];
+	char					filterLine[CHARGEARRAY_LENGTH];
+	char					possibleCharges[SCANTYPE_LENGTH];
+	char					scanType[SCANTYPE_LENGTH];
+	char					idString[CHARGEARRAY_LENGTH];
    
-   bool               centroid; //true if spectrum is centroided
-   bool								possibleChargesArray[CHARGEARRAY_LENGTH]; /* NOTE: does NOT include "precursorCharge" information; only from "possibleCharges" */
+	bool					centroid; //true if spectrum is centroided
+	bool					possibleChargesArray[CHARGEARRAY_LENGTH]; /* NOTE: does NOT include "precursorCharge" information; only from "possibleCharges" */
    
-	 ramp_fileoffset_t	filePosition; /* where in the file is this header? */
+	ramp_fileoffset_t		filePosition; /* where in the file is this header? */
 };
 
 struct RunHeaderStruct {
@@ -1305,7 +1322,7 @@ typedef class Chromatogram* ChromatogramPtr;
 class ChromatogramList{
 public:
 	ChromatogramList();
-	ChromatogramList(mzpSAXMzmlHandler* ml, mzpMz5Handler* m5, BasicChromatogram* bc);
+	ChromatogramList(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* bc);
 	~ChromatogramList();
 
 	ChromatogramPtr		chromatogram(int index, bool binaryData = false);
@@ -1313,11 +1330,15 @@ public:
 	unsigned int			size();
 
 	vector<cindex>*			vChromatIndex;
-	vector<cMz5Index>*	vMz5Index;
+  #ifdef MZP_MZ5
+	  vector<cMz5Index>*	vMz5Index;
+  #endif
 
 private:
 	mzpSAXMzmlHandler*	mzML;
-	mzpMz5Handler*			mz5;
+  #ifdef MZP_MZ5
+    mzpMz5Handler*			mz5;
+  #endif
 	ChromatogramPtr			chromat;
 };
 typedef class ChromatogramList* ChromatogramListPtr;
@@ -1325,16 +1346,18 @@ typedef class ChromatogramList* ChromatogramListPtr;
 class PwizRun{
 public:
 	PwizRun();
-	PwizRun(mzpSAXMzmlHandler* ml, mzpMz5Handler* m5, BasicChromatogram* b);
+	PwizRun(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b);
 	~PwizRun();
 
 	ChromatogramListPtr chromatogramListPtr;
 
-	void set(mzpSAXMzmlHandler* ml, mzpMz5Handler* m5, BasicChromatogram* b);
+	void set(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b);
 
 private:
 	mzpSAXMzmlHandler*	mzML;
-	mzpMz5Handler*			mz5;
+  #ifdef MZP_MZ5
+	  mzpMz5Handler*			mz5;
+  #endif
 	BasicChromatogram*	bc;
 };
 
@@ -1349,8 +1372,10 @@ private:
 	BasicSpectrum*			bs;
 	BasicChromatogram*	bc;
 	mzpSAXMzmlHandler*	mzML;
-	mzpMz5Config*				mz5Config;
-	mzpMz5Handler*			mz5;
+  #ifdef MZP_MZ5
+	  mzpMz5Config*				mz5Config;
+	  mzpMz5Handler*			mz5;
+  #endif
 };
 
 //------------------------------------------------
@@ -1375,8 +1400,10 @@ public:
 protected:
 	mzpSAXMzmlHandler*		mzML;
 	mzpSAXMzxmlHandler*		mzXML;
-	mzpMz5Handler*				mz5;
-	mzpMz5Config*					mz5Config;
+  #ifdef MZP_MZ5
+    mzpMz5Handler*			mz5;
+	  mzpMz5Config*				mz5Config;
+  #endif
 
 private:
 	//private functions

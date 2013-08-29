@@ -99,7 +99,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // Grab file extension from file name
    if ( (pStr2 = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
    {
-      printf(" Error - in WriteXMLHeader missing last period in file name: %s\n", g_staticParams.inputFile.szFileName);
+      logout(" Error - in WriteXMLHeader missing last period in file name: %s\n", g_staticParams.inputFile.szFileName);
       exit(1);
    }
    pStr2++;
