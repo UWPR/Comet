@@ -1087,11 +1087,7 @@ void CometSearchManager::DoSearch()
       if (g_staticParams.options.bOutputPinXMLFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
-#ifdef CRUX
-            sprintf(szOutputPinXML, "%s.target.pin.xml", g_staticParams.inputFile.szBaseName);
-#else
             sprintf(szOutputPinXML, "%s.pin.xml", g_staticParams.inputFile.szBaseName);
-#endif
          else
             sprintf(szOutputPinXML, "%s.%d-%d.pin.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
