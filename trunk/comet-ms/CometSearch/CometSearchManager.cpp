@@ -987,13 +987,21 @@ void CometSearchManager::DoSearch()
       if (g_staticParams.options.bOutputSqtFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
+         {
 #ifdef CRUX
             sprintf(szOutputSQT, "%s.target.sqt", g_staticParams.inputFile.szBaseName);        
 #else
             sprintf(szOutputSQT, "%s.sqt", g_staticParams.inputFile.szBaseName);
 #endif
+         }
          else
+         {
+#ifdef CRUX
+            sprintf(szOutputSQT, "%s.%d-%d.target.sqt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+#else
             sprintf(szOutputSQT, "%s.%d-%d.sqt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+#endif
+         }
 
          if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
          {
@@ -1019,13 +1027,21 @@ void CometSearchManager::DoSearch()
       if (g_staticParams.options.bOutputTxtFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
+         {
 #ifdef CRUX
             sprintf(szOutputTxt, "%s.target.txt", g_staticParams.inputFile.szBaseName);
 #else
             sprintf(szOutputTxt, "%s.txt", g_staticParams.inputFile.szBaseName);
 #endif
+         }
          else
+         {
+#ifdef CRUX
+            sprintf(szOutputTxt, "%s.%d-%d.target.txt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+#else
             sprintf(szOutputTxt, "%s.%d-%d.txt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+#endif
+         }
 
          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
          {
@@ -1051,13 +1067,21 @@ void CometSearchManager::DoSearch()
       if (g_staticParams.options.bOutputPepXMLFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
+         {
 #ifdef CRUX
             sprintf(szOutputPepXML, "%s.target.pep.xml", g_staticParams.inputFile.szBaseName);
 #else
             sprintf(szOutputPepXML, "%s.pep.xml", g_staticParams.inputFile.szBaseName);
 #endif
+         }
          else
+         {
+#ifdef CRUX
+            sprintf(szOutputPepXML, "%s.%d-%d.target.pep.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+#else
             sprintf(szOutputPepXML, "%s.%d-%d.pep.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+#endif
+         }
 
          if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
          {
