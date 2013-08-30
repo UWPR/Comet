@@ -669,7 +669,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   }
                   else
                   {
-                     logout(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
+                     logerr(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
                            dFragmentIonMass, 
                            iFragmentIonMass,
                            pQuery->_spectrumInfoInternal.iArraySize, 
@@ -688,7 +688,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   }
                   else
                   {
-                     logout(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
+                     logerr(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
                            dFragmentIonMass,
                            iFragmentIonMass,
                            pQuery->_spectrumInfoInternal.iArraySize,

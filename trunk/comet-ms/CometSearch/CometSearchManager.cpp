@@ -1030,7 +1030,7 @@ void CometSearchManager::DoSearch()
          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
          {
             logerr("Error - cannot write to file \"%s\".\n\n", szOutputTxt);
-             exit(1);
+            exit(1);
          }
 
          if (g_staticParams.options.iDecoySearch == 2)

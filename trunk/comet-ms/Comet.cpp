@@ -211,12 +211,10 @@ void LoadParameters(char *pszParamsFile,
 
    if (!bValidParamsFile)
    {
-      logout("\n");
-      logout(" Comet version is %s\n", comet_version);
-      logout(" The comet.params file is from version %s\n", szVersion);
-      logout(" Please update your comet.params file.  You can generate\n");
-      logout(" a new parameters file using \"comet -p\"\n");
-      logout("\n");
+      logerr("\n Comet version is %s\n", comet_version);
+      logerr(" The comet.params file is from version %s\n", szVersion);
+      logerr(" Please update your comet.params file.  You can generate\n");
+      logerr(" a new parameters file using \"comet -p\"\n\n");
       exit(1);
    }
 
@@ -1198,10 +1196,8 @@ void ProcessCmdLine(int argc,
 
    if (iStartInputFile == argc)
    {
-      logout("\n");
-      logout(" Comet version %s\n %s\n", comet_version, copyright);
-      logout("\n");
-      logout(" Error - no input files specified so nothing to do.\n\n");
+      logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
+      logerr(" Error - no input files specified so nothing to do.\n\n");
       exit(1);
    }
 
