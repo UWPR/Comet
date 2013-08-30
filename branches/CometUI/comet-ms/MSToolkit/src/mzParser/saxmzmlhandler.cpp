@@ -130,7 +130,7 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
 		} else {
 			curIndex.scanNum=++m_scanIDXCount;
 			//Suppressing warning.
-			cout << "WARNING: Cannot extract scan number in index offset line: " << &curIndex.idRef[0] << "\tDefaulting to " << m_scanIDXCount << endl;
+			//cout << "WARNING: Cannot extract scan number in index offset line: " << &curIndex.idRef[0] << "\tDefaulting to " << m_scanIDXCount << endl;
 		}
 
 	} else if(isElement("precursor",el)) {
@@ -279,45 +279,51 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 	if(!strcmp(name, "32-bit float") || !strcmp(accession,"MS:1000521"))	{
 		m_bLowPrecision = true;
 
-	}	else if(!strcmp(name, "64-bit float") || !strcmp(accession,"MS:1000523"))	{
+	} else if(!strcmp(name, "64-bit float") || !strcmp(accession,"MS:1000523"))	{
 		m_bLowPrecision = false;
 
-	}	else if(!strcmp(name, "base peak intensity") || !strcmp(accession,"MS:1000505"))	{
+	} else if(!strcmp(name, "base peak intensity") || !strcmp(accession,"MS:1000505"))	{
 		spec->setBasePeakIntensity(atof(value));
 
-	}	else if(!strcmp(name, "base peak m/z") || !strcmp(accession,"MS:1000504"))	{
+	} else if(!strcmp(name, "base peak m/z") || !strcmp(accession,"MS:1000504"))	{
 		spec->setBasePeakMZ(atof(value));
+		
+	} else if(!strcmp(name, "centroid spectrum") || !strcmp(accession,"MS:1000127")) {
+		spec->setCentroid(true);
 
-  } else if(!strcmp(name, "centroid spectrum") || !strcmp(accession,"MS:1000127"))	{
-    spec->setCentroid(true);
-
-	}	else if(!strcmp(name, "charge state") || !strcmp(accession,"MS:1000041"))	{
+	} else if(!strcmp(name, "charge state") || !strcmp(accession,"MS:1000041"))	{
 		spec->setPrecursorCharge(atoi(value));
 
-	}	else if(!strcmp(name, "collision-induced dissociation") || !strcmp(accession,"MS:1000133"))	{
+	} else if(!strcmp(name, "collision-induced dissociation") || !strcmp(accession,"MS:1000133"))	{
 		if(spec->getActivation()==ETD) spec->setActivation(ETDSA);
 		else spec->setActivation(CID);
 
-	}	else if(!strcmp(name, "collision energy") || !strcmp(accession,"MS:1000045"))	{
+	} else if(!strcmp(name, "collision energy") || !strcmp(accession,"MS:1000045"))	{
 		spec->setCollisionEnergy(atof(value));
 
 	} else if(!strcmp(name,"electron multiplier") || !strcmp(accession,"MS:1000253")) {
 		m_instrument.detector=name;
 
-	}	else if(!strcmp(name, "electron transfer dissociation") || !strcmp(accession,"MS:1000598"))	{
+	} else if(!strcmp(name, "electron transfer dissociation") || !strcmp(accession,"MS:1000598"))	{
 		if(spec->getActivation()==CID) spec->setActivation(ETDSA);
 		else spec->setActivation(ETD);
 
-	}	else if(!strcmp(name, "FAIMS compensation voltage") || !strcmp(accession,"MS:1001581"))	{
+	} else if(!strcmp(name, "FAIMS compensation voltage") || !strcmp(accession,"MS:1001581"))	{
 		spec->setCompensationVoltage(atof(value));
+		
+	} else if(!strcmp(name, "filter string") || !strcmp(accession,"MS:1000512"))	{
+    char str[128];
+    strncpy(str,value,127);
+    str[127]='\0';
+		spec->setFilterLine(str);
 
-	}	else if(!strcmp(name, "highest observed m/z") || !strcmp(accession,"MS:1000527"))	{
+	} else if(!strcmp(name, "highest observed m/z") || !strcmp(accession,"MS:1000527"))	{
 		spec->setHighMZ(atof(value));
 
 	} else if(!strcmp(name,"inductive detector") || !strcmp(accession,"MS:1000624")) {
 		m_instrument.detector=name;
 
-	}	else if(!strcmp(name, "intensity array") || !strcmp(accession,"MS:1000515"))	{
+	} else if(!strcmp(name, "intensity array") || !strcmp(accession,"MS:1000515"))	{
 		m_bInintenArrayBinary = true;
 		m_bInmzArrayBinary = false;
 
@@ -327,13 +333,13 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 	} else if(!strcmp(name, "lowest observed m/z") || !strcmp(accession,"MS:1000528"))	{
 		spec->setLowMZ(atof(value));
 
-	} else	if( !strcmp(name, "MS1 spectrum") || !strcmp(accession,"MS:1000579") ){
+	} else if( !strcmp(name, "MS1 spectrum") || !strcmp(accession,"MS:1000579") ){
 		spec->setMSLevel(1);
 
-	} else	if( !strcmp(name, "ms level") || !strcmp(accession,"MS:1000511") ){
+	} else if( !strcmp(name, "ms level") || !strcmp(accession,"MS:1000511") ){
 		spec->setMSLevel(atoi(value));
 
-	}	else if(!strcmp(name, "m/z array") || !strcmp(accession,"MS:1000514"))	{
+	} else if(!strcmp(name, "m/z array") || !strcmp(accession,"MS:1000514"))	{
 		m_bInmzArrayBinary = true;
 		m_bInintenArrayBinary = false;
 
@@ -355,7 +361,7 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 	} else if(!strcmp(name,"radial ejection linear ion trap") || !strcmp(accession,"MS:1000083")) {
 		m_instrument.analyzer=name;
 
-	}	else if(!strcmp(name, "scan start time") || !strcmp(accession,"MS:1000016"))	{
+	} else if(!strcmp(name, "scan start time") || !strcmp(accession,"MS:1000016"))	{
 		if(!strcmp(unitName, "minute") || !strcmp(unitAccession,"UO:0000031"))	{
 			spec->setRTime((float)atof(value));
 		} else {
@@ -370,20 +376,20 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 		//TODO: should we also check the units???
 	    spec->setHighMZ(atof(value));
 		
-	}	else if(!strcmp(name, "selected ion m/z") || !strcmp(accession,"MS:1000744"))	{
+	} else if(!strcmp(name, "selected ion m/z") || !strcmp(accession,"MS:1000744"))	{
 		spec->setPrecursorMZ(atof(value));
 
-	}	else if(!strcmp(name, "time array") || !strcmp(accession,"MS:1000595"))	{
+	} else if(!strcmp(name, "time array") || !strcmp(accession,"MS:1000595"))	{
 		m_bInmzArrayBinary = true; //note that this uses the m/z designation, although it is a time series
 		m_bInintenArrayBinary = false;
 
-	}	else if(!strcmp(name, "total ion current") || !strcmp(accession,"MS:1000285"))	{
+	} else if(!strcmp(name, "total ion current") || !strcmp(accession,"MS:1000285"))	{
 		spec->setTotalIonCurrent(atof(value));
 
 	} else if(!strcmp(name,"Thermo RAW file") || !strcmp(accession,"MS:1000563")) {
 		m_instrument.manufacturer="Thermo Scientific";
 
-	}	else if(!strcmp(name, "zlib compression") || !strcmp(accession,"MS:1000574"))	{
+	} else if(!strcmp(name, "zlib compression") || !strcmp(accession,"MS:1000574"))	{
 		m_bCompressedData=true;
 	}
 }

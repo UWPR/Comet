@@ -44,9 +44,9 @@ typedef pthread_mutex_t Mutex;
 typedef pthread_t ThreadId;
 typedef void* (*ThreadProc)(void*);
 typedef struct PosixSemaphore {
-  pthread_mutex_t mutex;
-  pthread_cond_t condition;
-  bool conditionSet;
+   pthread_mutex_t mutex;
+   pthread_cond_t condition;
+   bool conditionSet;
 } Semaphore;
 
 #endif // ifdef _WIN32

@@ -1,5 +1,7 @@
 #include "RAWReader.h"
 
+using namespace MSToolkit;
+
 // ==========================
 // Constructors & Destructors
 // ==========================
@@ -486,16 +488,16 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	if(MSn==MS2 || MSn==MS3){
 
 		//if charge state is assigned to spectrum, add Z-lines.
-		if(Charge.intVal>0){
+		if(Charge.iVal>0){
 			if(MonoMZ.dblVal>0.01) {
-				pm1 = MonoMZ.dblVal * Charge.intVal - ((Charge.intVal-1)*1.007276466);
+				pm1 = MonoMZ.dblVal * Charge.iVal - ((Charge.iVal-1)*1.007276466);
 				s.setMZ(MonoMZ.dblVal);
 			}	else {
-				pm1 = MZs[0] * Charge.intVal - ((Charge.intVal-1)*1.007276466);
+				pm1 = MZs[0] * Charge.iVal - ((Charge.iVal-1)*1.007276466);
 				s.setMZ(MZs[0]);
 			}
-			s.addZState(Charge.intVal,pm1);
-			s.setCharge(Charge.intVal);
+			s.addZState(Charge.iVal,pm1);
+			s.setCharge(Charge.iVal);
     } else {
 			s.setMZ(MZs[0]);
       charge = calcChargeState(MZs[0], highmass, &varMassList, lArraySize);

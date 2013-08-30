@@ -8,6 +8,7 @@
 
 using namespace std;
 
+namespace MSToolkit {
 class MSObject {
  public:
   //Constructors & Destructors
@@ -40,5 +41,6 @@ class MSObject {
   
 };
 
+}
 #endif
 

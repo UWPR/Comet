@@ -49,15 +49,15 @@ public:
    void InitializeStaticParams();
 
 private:
-    void GetHostName();
-    void UpdateInputFile(InputFileInfo *pFileInfo);
-    void SetMSLevelFilter(MSReader &mstReader);
-    void AllocateResultsMem();
-    static bool compareByPeptideMass(Query const* a, Query const* b);
-    void CalcRunTime(time_t tStartTime);
+   void GetHostName();
+   void UpdateInputFile(InputFileInfo *pFileInfo);
+   void SetMSLevelFilter(MSReader &mstReader);
+   void AllocateResultsMem();
+   static bool compareByPeptideMass(Query const* a, Query const* b);
+   void CalcRunTime(time_t tStartTime);
 
-    bool _bStaticParamsInitialized;
-    std::map<std::string, CometParam*> _mapStaticParams;
+   bool _bStaticParamsInitialized;
+   std::map<std::string, CometParam*> _mapStaticParams;
 };
 
 #endif

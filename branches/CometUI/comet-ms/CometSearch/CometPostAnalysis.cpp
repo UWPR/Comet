@@ -34,7 +34,7 @@ void CometPostAnalysis::PostAnalysis(int minNumThreads,
                                      int maxNumThreads)
 {
    if (!g_staticParams.options.bOutputSqtStream)
-      printf(" - Perform post-search analysis\n");
+      logout(" - Perform post-search analysis\n");
 
    // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to do a post analysis.
@@ -669,7 +669,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   }
                   else
                   {
-                     printf(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
+                     logerr(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
                            dFragmentIonMass, 
                            iFragmentIonMass,
                            pQuery->_spectrumInfoInternal.iArraySize, 
@@ -688,7 +688,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   }
                   else
                   {
-                     printf(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
+                     logerr(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n",
                            dFragmentIonMass,
                            iFragmentIonMass,
                            pQuery->_spectrumInfoInternal.iArraySize,

@@ -16,6 +16,7 @@ BasicSpectrum::BasicSpectrum() {
 	basePeakIntensity=0.0;
 	basePeakMZ=0.0;
 	centroid=false;
+	filterLine[0]='\0';
 	highMZ=0.0;
 	lowMZ=0.0;
 	msLevel=1;
@@ -55,6 +56,7 @@ BasicSpectrum::BasicSpectrum(const BasicSpectrum& s){
 	scanNum=s.scanNum;
 	totalIonCurrent=s.totalIonCurrent;
 	strcpy(idString,s.idString);
+	strcpy(filterLine,s.filterLine);
 }
 BasicSpectrum::~BasicSpectrum() { }
 
@@ -83,6 +85,7 @@ BasicSpectrum& BasicSpectrum::operator=(const BasicSpectrum& s){
 		scanIndex=s.scanIndex;
 		scanNum=s.scanNum;
 		totalIonCurrent=s.totalIonCurrent;
+		strcpy(filterLine,s.filterLine);
 		strcpy(idString,s.idString);
 	}
 	return *this;
@@ -100,7 +103,9 @@ void BasicSpectrum::clear(){
 	basePeakIntensity=0.0;
 	basePeakMZ=0.0;
 	centroid=false;
+	filterLine[0]='\0';
 	highMZ=0.0;
+	idString[0]='\0';
 	lowMZ=0.0;
 	msLevel=1;
 	peaksCount=0;
@@ -122,8 +127,15 @@ void BasicSpectrum::setBasePeakMZ(double d){ basePeakMZ=d;}
 void BasicSpectrum::setCentroid(bool b){ centroid=b;}
 void BasicSpectrum::setCollisionEnergy(double d){ collisionEnergy=d;}
 void BasicSpectrum::setCompensationVoltage(double d){ compensationVoltage=d; }
+void BasicSpectrum::setFilterLine(char* str) { 
+	strncpy(filterLine,str,127);
+	filterLine[127]='\0';
+}
 void BasicSpectrum::setHighMZ(double d){ highMZ=d;}
-void BasicSpectrum::setIDString(char* str) { strcpy(idString,str); } //WARNING: no boundary check
+void BasicSpectrum::setIDString(char* str) { 
+	strncpy(idString,str,127); 
+	idString[127]='\0';
+}
 void BasicSpectrum::setLowMZ(double d){ lowMZ=d;}
 void BasicSpectrum::setMSLevel(int level){ msLevel=level;}
 void BasicSpectrum::setPeaksCount(int i){ peaksCount=i;}
@@ -146,6 +158,10 @@ double BasicSpectrum::getBasePeakMZ(){ return basePeakMZ;}
 bool BasicSpectrum::getCentroid(){ return centroid;}
 double BasicSpectrum::getCollisionEnergy(){ return collisionEnergy;}
 double BasicSpectrum::getCompensationVoltage(){ return compensationVoltage;}
+int BasicSpectrum::getFilterLine(char* str) {
+	strcpy(str,filterLine);
+	return strlen(str);
+}
 double BasicSpectrum::getHighMZ(){ return highMZ;}
 int BasicSpectrum::getIDString(char* str) { 
 	strcpy(str,idString);

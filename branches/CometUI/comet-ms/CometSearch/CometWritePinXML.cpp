@@ -18,6 +18,7 @@
 #include "CometData.h"
 #include "CometMassSpecUtils.h"
 #include "CometWritePinXML.h"
+#include <math.h>
 
 
 CometWritePinXML::CometWritePinXML()
@@ -152,7 +153,7 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
    }
    else
    {
-      fprintf(stderr, " Error, dMZ=0. scan %d\n", pQuery->_spectrumInfoInternal.iScanNumber);
+      logerr(" Error, dMZ=0. scan %d\n", pQuery->_spectrumInfoInternal.iScanNumber);
       exit(1);
    }
 

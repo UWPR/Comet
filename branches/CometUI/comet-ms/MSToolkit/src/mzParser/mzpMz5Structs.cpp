@@ -1,5 +1,5 @@
 #include "mzParser.h"
-
+#ifdef MZP_MZ5
 StrType getStringType() {
 	StrType stringtype(PredType::C_S1, H5T_VARIABLE);
 	return stringtype;
@@ -451,3 +451,4 @@ CompType UserParamMZ5::getType() {
 	ret.insertMember("uRefID", HOFFSET(UserParamMZ5Data, unitCVRefID), PredType::NATIVE_ULONG);
 	return ret;
 }
+#endif

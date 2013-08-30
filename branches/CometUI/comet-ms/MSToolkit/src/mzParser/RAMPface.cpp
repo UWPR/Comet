@@ -215,6 +215,7 @@ RAMPFILE* rampOpenFile(const char* filename){
 				} else {
 					return r;
 				}
+#ifdef MZP_MZ5
 			case 5: //mz5
 				r->mz5Config = new mzpMz5Config();
 				r->mz5=new mzpMz5Handler(r->mz5Config, r->bs);
@@ -224,6 +225,7 @@ RAMPFILE* rampOpenFile(const char* filename){
 				} else {
 					return r;
 				}
+#endif
 			default:
 				delete r;
 				return NULL;
@@ -279,7 +281,9 @@ char* rampValidFileType(const char *buf){
 void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader){
 
 	vector<cindex>* v;
+#ifdef MZP_MZ5
 	vector<cMz5Index>* v2;
+#endif
 	unsigned int i;
 
 	//memset(scanHeader,0,sizeof(struct ScanHeaderStruct));
@@ -287,10 +291,11 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	scanHeader->activationMethod[0]='\0';
 	scanHeader->basePeakIntensity=0.0;
 	scanHeader->basePeakMZ=0.0;
-  scanHeader->centroid=false;
+	scanHeader->centroid=false;
 	scanHeader->collisionEnergy=0.0;
 	scanHeader->compensationVoltage=0.0;
 	scanHeader->filePosition=0;
+	scanHeader->filterLine[0]='\0';
 	scanHeader->highMZ=0.0;
 	scanHeader->idString[0]='\0';
 	scanHeader->ionisationEnergy=0.0;
@@ -339,6 +344,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 				}
 			}
 			break;
+#ifdef MZP_MZ5
 		case 5:
 			v2=pFI->mz5->getSpecIndex();
 			for(i=0;i<v2->size();i++) {
@@ -351,19 +357,24 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 				}
 			}
 			break;
+#endif
 		default:
 			pFI->bs->clear();
 			v=NULL;
+#ifdef MZP_MZ5
 			v2=NULL;
+#endif
 			return;
 	}
 	v=NULL;
+#ifdef MZP_MZ5
 	v2=NULL;
+#endif
 
 	scanHeader->acquisitionNum=pFI->bs->getScanNum();
 	scanHeader->basePeakIntensity=pFI->bs->getBasePeakIntensity();
 	scanHeader->basePeakMZ=pFI->bs->getBasePeakMZ();
-  scanHeader->centroid=pFI->bs->getCentroid();
+	scanHeader->centroid=pFI->bs->getCentroid();
 	scanHeader->collisionEnergy=pFI->bs->getCollisionEnergy();
 	scanHeader->highMZ=pFI->bs->getHighMZ();
 	scanHeader->lowMZ=pFI->bs->getLowMZ();
@@ -379,6 +390,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	scanHeader->scanIndex=pFI->bs->getScanIndex();
 	scanHeader->seqNum=pFI->bs->getScanIndex();
 	
+	pFI->bs->getFilterLine(scanHeader->filterLine);
 	pFI->bs->getIDString(scanHeader->idString);
 
 	switch(pFI->bs->getActivation()){
@@ -396,7 +408,9 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 //if the scan number does not exist.
 ramp_fileoffset_t* readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *iLastScan){
 	vector<cindex>* v;
+#ifdef MZP_MZ5
 	vector<cMz5Index>* v2;
+#endif
 	ramp_fileoffset_t* rIndex;
 	unsigned int i;
 	switch(pFI->fileType){
@@ -418,6 +432,7 @@ ramp_fileoffset_t* readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *
 			rIndex[v->at(i-1).scanNum+1]=-1;
 			*iLastScan=v->at(i-1).scanNum;
 			break;
+#ifdef MZP_MZ5
 		case 5:
 			v2=pFI->mz5->getSpecIndex();
 			rIndex = (ramp_fileoffset_t *) malloc((pFI->mz5->highScan()+2)*sizeof(ramp_fileoffset_t));
@@ -426,19 +441,24 @@ ramp_fileoffset_t* readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *
 			rIndex[v2->at(i-1).scanNum+1]=-1;
 			*iLastScan=v2->at(i-1).scanNum;
 			break;
+#endif
 		default:
 			rIndex=NULL;
 			*iLastScan=0;
 			break;
 	}
 	v=NULL;
+#ifdef MZP_MZ5
 	v2=NULL;
+#endif
 	return rIndex;
 }
 
 int readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
 	vector<cindex>* v;
+#ifdef MZP_MZ5
 	vector<cMz5Index>* v2;
+#endif
 	unsigned int i;
 	
 	if(lScanIndex<0) return 0;
@@ -464,6 +484,7 @@ int readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
 				}
 			}
 			break;
+#ifdef MZP_MZ5
 		case 5:
 			v2=pFI->mz5->getSpecIndex();
 			for(i=0;i<v2->size();i++) {
@@ -473,12 +494,15 @@ int readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
 				}
 			}
 			break;
+#endif
 		default:
 			pFI->bs->clear();
 			break;
 	}
 	v=NULL;
+#ifdef MZP_MZ5
 	v2=NULL;
+#endif
 
 	return pFI->bs->getMSLevel();
 }
@@ -486,7 +510,9 @@ int readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
 void readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 
 	vector<cindex>* v;
+#ifdef MZP_MZ5
 	vector<cMz5Index>* v2;
+#endif
 
 	//memset(scanHeader,0,sizeof(struct ScanHeaderStruct));
 	runHeader->dEndTime=0.0;
@@ -520,6 +546,7 @@ void readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 			pFI->bs->clear();
 			v=NULL;
 			break;
+#ifdef MZP_MZ5
 		case 5:
 			v2=pFI->mz5->getSpecIndex();
 			runHeader->scanCount=v2->size();
@@ -530,6 +557,7 @@ void readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 			pFI->bs->clear();
 			v2=NULL;
 			break;
+#endif
 		default:
 			break;
 	}
@@ -540,7 +568,9 @@ void readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 //making this wrapper much easier to read
 RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
 	vector<cindex>* v;
+#ifdef MZP_MZ5
 	vector<cMz5Index>* v2;
+#endif
 	unsigned int i;
 	RAMPREAL* pPeaks=NULL;
 
@@ -567,6 +597,7 @@ RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
 				}
 			}
 			break;
+#ifdef MZP_MZ5
 		case 5:
 			v2=pFI->mz5->getSpecIndex();
 			for(i=0;i<v2->size();i++) {
@@ -576,12 +607,15 @@ RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
 				}
 			}
 			break;
+#endif
 		default:
 			pFI->bs->clear();
 			break;
 	}
 	v=NULL;
+#ifdef MZP_MZ5
 	v2=NULL;
+#endif
 
 	unsigned int j=0;
 	if(pFI->bs->size()>0){
@@ -606,7 +640,9 @@ int readPeaksCount(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
 
 void readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeaderStruct *runHeader, int iLastScan){
 	vector<cindex>* v;
+#ifdef MZP_MZ5
 	vector<cMz5Index>* v2;
+#endif
 	unsigned int i;
 
 	runHeader->scanCount=0;
@@ -670,6 +706,7 @@ void readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeade
 			pFI->mzXML->readHeader(v->at(v->size()-1).scanNum);
 			break;
 
+#ifdef MZP_MZ5
 		case 5:
 			v2=pFI->mz5->getSpecIndex();
 			runHeader->scanCount=v2->size();
@@ -694,15 +731,20 @@ void readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeade
 			}
 			pFI->mz5->readHeader(v2->at(v2->size()-1).scanNum);
 			break;
+#endif
 
 		default:
 			pFI->bs->clear();
 			v=NULL;
+#ifdef MZP_MZ5
 			v2=NULL;
+#endif
 			return;
 	}
 	v=NULL;
+#ifdef MZP_MZ5
 	v2=NULL;
+#endif
 
 }
 

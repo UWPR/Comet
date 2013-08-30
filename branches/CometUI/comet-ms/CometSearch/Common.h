@@ -42,11 +42,24 @@ using namespace std;
 #include "MSObject.h"
 #include <vector>
 
-#define comet_version   "2013.01 rev. 0"
+#ifdef CRUX
+#include <iostream>
+#endif
+
+#define comet_version   "2013.02 rev. 0"
 #define copyright "(c) University of Washington"
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
 // now between 0.0 and 1.0 and scales to the binWidth.
 #define BIN(dMass) (int)(dMass*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
+
+using namespace MSToolkit;
+#ifdef CRUX
+#define logout(...) {char sbuf[1000]; snprintf(sbuf, 1000, __VA_ARGS__); cerr << sbuf;}
+#define logerr(...) {char sbuf[1000]; snprintf(sbuf, 1000, __VA_ARGS__); cerr << sbuf;}
+#else
+#define logout(...) printf(__VA_ARGS__)
+#define logerr(...) fprintf(stderr, __VA_ARGS__)
+#endif
 
 #endif // _COMMON_H_

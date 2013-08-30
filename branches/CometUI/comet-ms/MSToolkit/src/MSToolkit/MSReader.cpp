@@ -1,6 +1,7 @@
 #include "MSReader.h"
 #include <iostream>
 using namespace std;
+using namespace MSToolkit;
 
 MSReader::MSReader(){
   fileIn=NULL;
@@ -1117,8 +1118,8 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 			setCompression(true);
 			return readMSTFile(c,false,s,scNum);
 			break;
-		case mzXML:
 		case mz5:
+    case mzXML:
 		case mzML:
 		case mzXMLgz:
 		case mzMLgz:
@@ -1436,9 +1437,8 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		if (rampFileIn == NULL) return false;
 	}
 
-   //check scNum is less than rampLastScan otherwise will trigger segfault reading pScanIndex[] below
-   if (scNum > rampLastScan)
-      return false;
+  //check scNum is less than rampLastScan otherwise will trigger segfault reading pScanIndex[] below
+  if(scNum > rampLastScan) return false;
 
 	//clear any spectrum data
 	s.clear();
@@ -1953,7 +1953,14 @@ MSFileFormat MSReader::checkFileFormat(const char *fn){
   if(strcmp(ext,".MSMAT")==0 ) return msmat_ff;
   if(strcmp(ext,".RAW")==0 ) return raw;
   if(strcmp(ext,".MZXML")==0 ) return mzXML;
-  if(strcmp(ext,".MZ5")==0 ) return mz5;
+  if(strcmp(ext,".MZ5")==0 ) {
+#ifdef MST_MZ5
+    return mz5;
+#else
+    cerr << "MZ5 format not supported. Recompile with MZ5 support to use this format." << endl;
+    return dunno;
+#endif
+  }
 	if(strcmp(ext,".MZML")==0 ) return mzML;
   if(strcmp(ext,".MGF")==0 ) return mgf;
 	//add the sqlite3 format
