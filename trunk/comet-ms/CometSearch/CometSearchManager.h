@@ -23,12 +23,13 @@
 class CometSearchManager
 {
 public:
-   //CometSearchManager(StaticParams &staticParams, vector<InputFileInfo*> &pvInputFiles, char *pszParamsFile);
    CometSearchManager();
    ~CometSearchManager();
 
    void DoSearch();
    std::map<std::string, CometParam*>& GetParamsMap();
+   void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
+   void SetOutputFileBaseName(const char *pszBaseName);
    void SetParam(const string &name, const string &strValue, const string &value);
    bool GetParamValue(const string &name, string &value);
    void SetParam(const string &name, const string &strValue, const int &value);
@@ -42,11 +43,8 @@ public:
    void SetParam(const string &name, const string &strValue, const IntRange &value);
    bool GetParamValue(const string &name, IntRange &value);
    void SetParam(const string &name, const string &strValue, const EnzymeInfo &value);
-   bool GetParamValue(const string &name, EnzymeInfo &value);
-   void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
-   StaticParams& GetStaticParams();
-   void SetStaticParams(StaticParams &staticParams);
-   void InitializeStaticParams();
+   bool GetParamValue(const string &name, EnzymeInfo &value);   
+
 
 private:
    void GetHostName();
@@ -55,8 +53,12 @@ private:
    void AllocateResultsMem();
    static bool compareByPeptideMass(Query const* a, Query const* b);
    void CalcRunTime(time_t tStartTime);
-
-   bool _bStaticParamsInitialized;
+   void InitializeStaticParams();
+   void PrintParameters();
+   void ValidateOutputFormat();
+   void ValidateSequenceDatabaseFile();
+   void ValidateScanRange();
+   
    std::map<std::string, CometParam*> _mapStaticParams;
 };
 

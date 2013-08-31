@@ -42,8 +42,6 @@ Mutex                         g_pvQueryMutex;
 
 CometSearchManager::CometSearchManager()
 {
-   _bStaticParamsInitialized = false;
-   
    // Initialize the mutexes we'll use to protect global data.
    Threading::CreateMutex(&g_pvQueryMutex);
 }
@@ -710,22 +708,22 @@ void CometSearchManager::InitializeStaticParams()
       exit(1);
    }
 
-   _bStaticParamsInitialized = true;
-}
-
-StaticParams& CometSearchManager::GetStaticParams()
-{
-   if (!_bStaticParamsInitialized)
+   if (!g_staticParams.options.bOutputOutFiles)
    {
-      InitializeStaticParams();
+      g_staticParams.options.bSkipAlreadyDone = 0;
    }
 
-   return g_staticParams;
-}
+   g_staticParams.precalcMasses.dNtermProton = g_staticParams.staticModifications.dAddNterminusPeptide
+      + PROTON_MASS;
 
-void CometSearchManager::SetStaticParams(StaticParams &staticParams)
-{
-   g_staticParams = staticParams;
+   g_staticParams.precalcMasses.dCtermOH2Proton = g_staticParams.staticModifications.dAddCterminusPeptide
+      + g_staticParams.massUtility.dOH2fragment
+      + PROTON_MASS;
+
+   g_staticParams.precalcMasses.dOH2ProtonCtermNterm = g_staticParams.massUtility.dOH2parent
+      + PROTON_MASS
+      + g_staticParams.staticModifications.dAddCterminusPeptide
+      + g_staticParams.staticModifications.dAddNterminusPeptide;
 }
 
 void CometSearchManager::GetHostName(void)
@@ -756,6 +754,11 @@ void CometSearchManager::AddInputFiles(vector<InputFileInfo*> &pvInputFiles)
    {
       g_pvInputFiles.push_back(pvInputFiles.at(i));
    }
+}
+
+void CometSearchManager::SetOutputFileBaseName(const char *pszBaseName)
+{
+    strcpy(g_staticParams.inputFile.szBaseName, pszBaseName);
 }
 
 std::map<std::string, CometParam*>& CometSearchManager::GetParamsMap()
@@ -938,12 +941,123 @@ bool CometSearchManager::GetParamValue(const string &name, EnzymeInfo &value)
    return true;
 }
 
+void CometSearchManager::PrintParameters()
+{
+   // print parameters
+
+   char szIsotope[16];
+   char szPeak[16];
+
+   sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
+           g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
+           g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
+           g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
+           g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
+           g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
+           g_staticParams.ionInformation.iIonVal[ION_SERIES_Z],
+           g_staticParams.ionInformation.bUseNeutralLoss);
+
+   char szUnits[8];
+   char szDecoy[20];
+   char szReadingFrame[20];
+   char szRemovePrecursor[20];
+
+   if (g_staticParams.tolerances.iMassToleranceUnits==0)
+      strcpy(szUnits, " AMU");
+   else if (g_staticParams.tolerances.iMassToleranceUnits==1)
+      strcpy(szUnits, " MMU");
+   else
+      strcpy(szUnits, " PPM");
+
+   if (g_staticParams.options.iDecoySearch)
+      sprintf(szDecoy, " DECOY%d", g_staticParams.options.iDecoySearch);
+   else
+      szDecoy[0]=0;
+
+   if (g_staticParams.options.iRemovePrecursor)
+      sprintf(szRemovePrecursor, " REMOVEPREC%d", g_staticParams.options.iRemovePrecursor);
+   else
+      szRemovePrecursor[0]=0;
+
+   if (g_staticParams.options.iWhichReadingFrame)
+      sprintf(szReadingFrame, " FRAME%d", g_staticParams.options.iWhichReadingFrame);
+   else
+      szReadingFrame[0]=0;
+
+   szIsotope[0]='\0';
+   if (g_staticParams.tolerances.iIsotopeError==1)
+      strcpy(szIsotope, "ISOTOPE1");
+   else if (g_staticParams.tolerances.iIsotopeError==2)
+      strcpy(szIsotope, "ISOTOPE2");
+
+   szPeak[0]='\0';
+   if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
+      strcpy(szPeak, "PEAK1");
+
+   sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
+         g_staticParams.options.iNumPeptideOutputLines,
+         szRemovePrecursor,
+         szReadingFrame,
+         szPeak,
+         szUnits,
+         (g_staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
+         szIsotope,
+         szDecoy,
+         (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
+}
+
+void CometSearchManager::ValidateOutputFormat()
+{
+   if (!g_staticParams.options.bOutputSqtStream
+         && !g_staticParams.options.bOutputSqtFile
+         && !g_staticParams.options.bOutputTxtFile
+         && !g_staticParams.options.bOutputPepXMLFile
+         && !g_staticParams.options.bOutputPinXMLFile
+         && !g_staticParams.options.bOutputOutFiles)
+   {
+      logout("\n Comet version \"%s\"\n", comet_version);
+      logout(" Please specify at least one output format.\n\n");
+      exit(1);
+   }
+}
+
+void CometSearchManager::ValidateSequenceDatabaseFile()
+{
+   FILE *fpcheck;
+   
+   // Quick sanity check to make sure sequence db file is present before spending
+   // time reading & processing spectra and then reporting this error.
+   if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
+   {
+      logerr("\n Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+      logerr(" Check that the file exists and is readable.\n\n");
+      exit(1);
+   }
+   fclose(fpcheck);
+}
+
+void CometSearchManager::ValidateScanRange()
+{
+   if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
+   {
+      logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
+      logerr(" Error - start scan is %d but end scan is %d.\n", g_staticParams.options.scanRange.iStart, g_staticParams.options.scanRange.iEnd);
+      logerr(" The end scan must be >= to the start scan.\n\n");
+      exit(1);
+   }
+}
+
 void CometSearchManager::DoSearch()
 {
-   if (!_bStaticParamsInitialized)
-   {
-      InitializeStaticParams();
-   }
+   InitializeStaticParams();
+
+   PrintParameters();
+
+   ValidateOutputFormat();
+
+   ValidateSequenceDatabaseFile();
+
+   ValidateScanRange();
    
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
