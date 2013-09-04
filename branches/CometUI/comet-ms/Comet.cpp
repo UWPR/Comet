@@ -36,48 +36,31 @@ void Usage(int failure,
 void ProcessCmdLine(int argc, 
                     char *argv[], 
                     char *szParamsFile,
-                    StaticParams &staticParams,
                     vector<InputFileInfo*> &pvInputFiles,
                     CometSearchManager &searchMgr);
 void SetOptions(char *arg,
                 char *szParamsFile,
                 bool *bPrintParams,
-                StaticParams &staticParams);
+                CometSearchManager &searchMgr);
 void LoadParameters(char *pszParamsFile, CometSearchManager &searchMgr);
-void PrintParameters(StaticParams &staticParams);
 void PrintParams();
 bool ValidateInputMsMsFile(char *pszInputFileName);
 
 
 int main(int argc, char *argv[])
 {
-   char szParamsFile[SIZE_FILE];
-
    if (argc < 2) 
        Usage(0, argv[0]);
 
-   StaticParams staticParams;
    vector<InputFileInfo*> pvInputFiles;
    CometSearchManager cometSearchMgr;
-   ProcessCmdLine(argc, argv, szParamsFile, staticParams, pvInputFiles, cometSearchMgr);
+   char szParamsFile[SIZE_FILE];
+
+   ProcessCmdLine(argc, argv, szParamsFile, pvInputFiles, cometSearchMgr);
    cometSearchMgr.AddInputFiles(pvInputFiles);
-
-   if (!staticParams.options.bOutputSqtStream
-         && !staticParams.options.bOutputSqtFile
-         && !staticParams.options.bOutputTxtFile
-         && !staticParams.options.bOutputPepXMLFile
-         && !staticParams.options.bOutputPinXMLFile
-         && !staticParams.options.bOutputOutFiles)
-   {
-      logout("\n Comet version \"%s\"\n", comet_version);
-      logout(" Please specify at least one output format.\n\n");
-      exit(1);
-   }
-
    cometSearchMgr.DoSearch();
 
    return (0);
-
 } // main
 
 
@@ -109,7 +92,7 @@ void Usage(int failure, char *pszCmd)
 void SetOptions(char *arg,
       char *szParamsFile,
       bool *bPrintParams,
-      StaticParams &staticParams)
+      CometSearchManager &searchMgr)
 {
    char szTmp[512];
 
@@ -119,7 +102,7 @@ void SetOptions(char *arg,
          if (sscanf(arg+2, "%512s", szTmp) == 0)
             logerr("Cannot read command line database: '%s'.  Ignored.\n", szTmp);
          else
-            strcpy(staticParams.databaseInfo.szDatabase, szTmp);
+            searchMgr.SetParam("database_name", szTmp, szTmp);
          break;
       case 'P':   // Alternate parameters file.
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
@@ -131,25 +114,47 @@ void SetOptions(char *arg,
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
             logerr("Missing text for parameter option -N<basename>.  Ignored.\n");
          else
-            strcpy(staticParams.inputFile.szBaseName, szTmp);
+            searchMgr.SetOutputFileBaseName(szTmp);
          break;
       case 'F':
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
             logerr("Missing text for parameter option -F<num>.  Ignored.\n");
          else
-             staticParams.options.scanRange.iStart = atoi(szTmp);
+         {
+             char szParamStringVal[512];
+             IntRange iScanRange;
+             searchMgr.GetParamValue("scan_range", iScanRange);
+             iScanRange.iStart = atoi(szTmp);
+             szParamStringVal[0] = '\0';
+             sprintf(szParamStringVal, "%d %d", iScanRange.iStart, iScanRange.iEnd);
+             searchMgr.SetParam("scan_range", szParamStringVal, iScanRange);
+         }
          break;
       case 'L':
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
             logerr("Missing text for parameter option -L<num>.  Ignored.\n");
          else
-             staticParams.options.scanRange.iEnd = atoi(szTmp);
+         {
+             char szParamStringVal[512];
+             IntRange iScanRange;
+             searchMgr.GetParamValue("scan_range", iScanRange);
+             iScanRange.iEnd = atoi(szTmp);
+             szParamStringVal[0] = '\0';
+             sprintf(szParamStringVal, "%d %d", iScanRange.iStart, iScanRange.iEnd);
+             searchMgr.SetParam("scan_range", szParamStringVal, iScanRange);
+         }
          break;
       case 'B':
          if (sscanf(arg+2, "%512s", szTmp) == 0 )
             logerr("Missing text for parameter option -B<num>.  Ignored.\n");
          else
-             staticParams.options.iSpectrumBatchSize = atoi(szTmp);
+         {
+            char szParamStringVal[512];
+            int iSpectrumBatchSize = atoi(szTmp);
+            szParamStringVal[0] = '\0';
+            sprintf(szParamStringVal, "%d", iSpectrumBatchSize);
+            searchMgr.SetParam("spectrum_batch_size", szParamStringVal, iSpectrumBatchSize);
+         }
          break;
       case 'p':
          *bPrintParams = true;
@@ -158,7 +163,6 @@ void SetOptions(char *arg,
          break;
    }
 }
-
 
 // Reads comet.params parameter file.
 void LoadParameters(char *pszParamsFile,
@@ -1022,75 +1026,8 @@ void LoadParameters(char *pszParamsFile,
    }
 } // LoadParameters
 
-void PrintParameters(StaticParams &staticParams)
-{
-   // print parameters
-
-   char szIsotope[16];
-   char szPeak[16];
-
-   sprintf(staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
-           staticParams.ionInformation.iIonVal[ION_SERIES_A],
-           staticParams.ionInformation.iIonVal[ION_SERIES_B],
-           staticParams.ionInformation.iIonVal[ION_SERIES_C],
-           staticParams.ionInformation.iIonVal[ION_SERIES_X],
-           staticParams.ionInformation.iIonVal[ION_SERIES_Y],
-           staticParams.ionInformation.iIonVal[ION_SERIES_Z],
-           staticParams.ionInformation.bUseNeutralLoss);
-
-   char szUnits[8];
-   char szDecoy[20];
-   char szReadingFrame[20];
-   char szRemovePrecursor[20];
-
-   if (staticParams.tolerances.iMassToleranceUnits==0)
-      strcpy(szUnits, " AMU");
-   else if (staticParams.tolerances.iMassToleranceUnits==1)
-      strcpy(szUnits, " MMU");
-   else
-      strcpy(szUnits, " PPM");
-
-   if (staticParams.options.iDecoySearch)
-      sprintf(szDecoy, " DECOY%d", staticParams.options.iDecoySearch);
-   else
-      szDecoy[0]=0;
-
-   if (staticParams.options.iRemovePrecursor)
-      sprintf(szRemovePrecursor, " REMOVEPREC%d", staticParams.options.iRemovePrecursor);
-   else
-      szRemovePrecursor[0]=0;
-
-   if (staticParams.options.iWhichReadingFrame)
-      sprintf(szReadingFrame, " FRAME%d", staticParams.options.iWhichReadingFrame);
-   else
-      szReadingFrame[0]=0;
-
-   szIsotope[0]='\0';
-   if (staticParams.tolerances.iIsotopeError==1)
-      strcpy(szIsotope, "ISOTOPE1");
-   else if (staticParams.tolerances.iIsotopeError==2)
-      strcpy(szIsotope, "ISOTOPE2");
-
-   szPeak[0]='\0';
-   if (staticParams.ionInformation.iTheoreticalFragmentIons==1)
-      strcpy(szPeak, "PEAK1");
-
-   sprintf(staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
-         staticParams.options.iNumPeptideOutputLines,
-         szRemovePrecursor,
-         szReadingFrame,
-         szPeak,
-         szUnits,
-         (staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
-         szIsotope,
-         szDecoy,
-         (staticParams.options.bClipNtermMet?" CLIPMET":"") );
-
-} // PrintParameters
-
-
 // Parses the command line and determines the type of analysis to perform.
-bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, StaticParams &staticParams)
+bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, CometSearchManager &searchMgr)
 {
    char *tok;
    char *scan;
@@ -1128,7 +1065,13 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, StaticParams &staticPara
    // Analyze entire file.
    if (scan == NULL)
    {
-      if (staticParams.options.scanRange.iStart == 0 && staticParams.options.scanRange.iEnd == 0)
+      IntRange scanRange;
+      if (!searchMgr.GetParamValue("scan_range", scanRange))
+      {
+          return false;
+      }
+
+      if (scanRange.iStart == 0 && scanRange.iEnd == 0)
       {
          pInputFile->iAnalysisType = AnalysisType_EntireFile;
          return true;
@@ -1137,8 +1080,8 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, StaticParams &staticPara
       {
          pInputFile->iAnalysisType = AnalysisType_SpecificScanRange;
 
-         pInputFile->iFirstScan = staticParams.options.scanRange.iStart;
-         pInputFile->iLastScan = staticParams.options.scanRange.iEnd;
+         pInputFile->iFirstScan = scanRange.iStart;
+         pInputFile->iLastScan = scanRange.iEnd;
 
          if (pInputFile->iFirstScan == 0)  // this means iEndScan is specified only
             pInputFile->iFirstScan = 1;    // so start with 1st scan in file
@@ -1185,15 +1128,13 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, StaticParams &staticPara
 void ProcessCmdLine(int argc, 
                     char *argv[], 
                     char *szParamsFile, 
-                    StaticParams &staticParams,
                     vector<InputFileInfo*> &pvInputFiles,
                     CometSearchManager &searchMgr)
 {
    bool bPrintParams = false;
    int iStartInputFile = 1;
    char *arg;
-   FILE *fpcheck;
-
+   
    if (iStartInputFile == argc)
    {
       logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
@@ -1210,7 +1151,7 @@ void ProcessCmdLine(int argc,
    while ((iStartInputFile < argc) && (NULL != arg))
    {
       if (arg[0] == '-')
-         SetOptions(arg, szParamsFile, &bPrintParams, staticParams);
+         SetOptions(arg, szParamsFile, &bPrintParams, searchMgr);
 
       arg = argv[++iStartInputFile];
    }
@@ -1225,11 +1166,6 @@ void ProcessCmdLine(int argc,
    // after parsing command line arguments in case alt file is specified.
    LoadParameters(szParamsFile, searchMgr);
 
-   // Now get the static params structure which will contain the parameters
-   // read in from the params file.
-   staticParams = searchMgr.GetStaticParams();
-   PrintParameters(staticParams);
-
    // Now go through input arguments again.  Command line options will
    // override options specified in params file. 
    iStartInputFile = 1;
@@ -1238,12 +1174,12 @@ void ProcessCmdLine(int argc,
    {
       if (arg[0] == '-')
       {
-         SetOptions(arg, szParamsFile, &bPrintParams, staticParams);
+         SetOptions(arg, szParamsFile, &bPrintParams, searchMgr);
       }
       else if (arg != NULL)
       {
           InputFileInfo *pInputFileInfo = new InputFileInfo();
-          if (!ParseCmdLine(arg, pInputFileInfo, staticParams))
+          if (!ParseCmdLine(arg, pInputFileInfo, searchMgr))
           {
               logerr(" Error - input MS/MS file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
               pvInputFiles.clear();
@@ -1258,47 +1194,6 @@ void ProcessCmdLine(int argc,
 
       arg = argv[++iStartInputFile];
    }
-
-   // Quick sanity check to make sure sequence db file is present before spending
-   // time reading & processing spectra and then reporting this error.
-   string strDatabaseName;
-   searchMgr.GetParamValue("database_name", strDatabaseName);
-   if ((fpcheck=fopen(staticParams.databaseInfo.szDatabase, "r")) == NULL)
-   {
-      logerr("\n Error - cannot read database file \"%s\".\n", staticParams.databaseInfo.szDatabase);
-      logerr(" Check that the file exists and is readable.\n\n");
-      pvInputFiles.clear();
-      exit(1);
-   }
-   fclose(fpcheck);
-
-   if (staticParams.options.scanRange.iEnd < staticParams.options.scanRange.iStart && staticParams.options.scanRange.iEnd != 0)
-   {
-      logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
-      logerr(" Error - start scan is %d but end scan is %d.\n", staticParams.options.scanRange.iStart, staticParams.options.scanRange.iEnd);
-      logerr(" The end scan must be >= to the start scan.\n\n");
-      pvInputFiles.clear();
-      exit(1);
-   }
-
-   if (!staticParams.options.bOutputOutFiles)
-   {
-      staticParams.options.bSkipAlreadyDone = 0;
-   }
-
-   staticParams.precalcMasses.dNtermProton = staticParams.staticModifications.dAddNterminusPeptide
-      + PROTON_MASS;
-
-   staticParams.precalcMasses.dCtermOH2Proton = staticParams.staticModifications.dAddCterminusPeptide
-      + staticParams.massUtility.dOH2fragment
-      + PROTON_MASS;
-
-   staticParams.precalcMasses.dOH2ProtonCtermNterm = staticParams.massUtility.dOH2parent
-      + PROTON_MASS
-      + staticParams.staticModifications.dAddCterminusPeptide
-      + staticParams.staticModifications.dAddNterminusPeptide;
-
-   searchMgr.SetStaticParams(staticParams);
 } // ProcessCmdLine
 
 
