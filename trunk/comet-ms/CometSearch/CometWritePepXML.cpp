@@ -164,7 +164,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
          sprintf(szVariableNterm, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" protein_terminus=\"",
                g_staticParams.variableModParameters.dVarModMassN,
                g_staticParams.variableModParameters.dVarModMassN + g_staticParams.precalcMasses.dNtermProton - PROTON_MASS
-               + g_staticParams.massUtility.pdAAMassFragment['h']);
+               + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
          bPrintVariableN = 1;
       }
    }
@@ -205,7 +205,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       if (dMass != 0.0)
       {
          fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"N\"/>\n",
-               dMass, g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment['h']);
+               dMass, g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
       }
    }
 
@@ -225,7 +225,7 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       if (dMass != 0.0)
       {
          fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
-               dMass, dMass + g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment['h']); //FIX??
+               dMass, dMass + g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']); //FIX??
       }
    }
 
@@ -567,7 +567,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
             || (pOutput[iWhichResult].szPrevNextAA[0]=='-' && g_staticParams.staticModifications.dAddNterminusProtein != 0.0) )
       {
          // static peptide n-term mod already accounted for here
-         double dMass = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment['h'];
+         double dMass = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
          if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
             dMass += g_staticParams.variableModParameters.dVarModMassN;

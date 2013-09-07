@@ -77,7 +77,6 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 {
    char szEndDate[28];
    time_t tTime;
-   FILE *fp;
 
    fprintf(fpout, "H\tSQTGenerator Comet\n");
    fprintf(fpout, "H\tComment\tCometVersion %s\n", comet_version);

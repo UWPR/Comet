@@ -226,132 +226,132 @@ void CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("add_G_glycine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['G'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'G'] = dDoubleData;
    }
     
    if (GetParamValue("add_A_alanine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['A'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'A'] = dDoubleData;
    }
 
    if (GetParamValue("add_S_serine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['S'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'S'] = dDoubleData;
    }
 
    if (GetParamValue("add_P_proline", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['P'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'P'] = dDoubleData;
    }
 
    if (GetParamValue("add_V_valine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['V'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'V'] = dDoubleData;
    }
 
    if (GetParamValue("add_T_threonine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['T'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'T'] = dDoubleData;
    }
 
    if (GetParamValue("add_C_cysteine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['C'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'C'] = dDoubleData;
    }
 
    if (GetParamValue("add_L_leucine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['L'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'L'] = dDoubleData;
    }
 
    if (GetParamValue("add_I_isoleucine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['I'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'I'] = dDoubleData;
    }
 
    if (GetParamValue("add_N_asparagine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['N'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'N'] = dDoubleData;
    }
 
    if (GetParamValue("add_O_ornithine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['O'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'O'] = dDoubleData;
    }
 
    if (GetParamValue("add_D_aspartic_acid", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['D'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'D'] = dDoubleData;
    }
 
    if (GetParamValue("add_Q_glutamine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['Q'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'Q'] = dDoubleData;
    }
 
    if (GetParamValue("add_K_lysine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['K'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'K'] = dDoubleData;
    }
 
    if (GetParamValue("add_E_glutamic_acid", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['E'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'E'] = dDoubleData;
    }
    
    if (GetParamValue("add_M_methionine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['M'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'M'] = dDoubleData;
    }
    
    if (GetParamValue("add_H_histidine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['H'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'H'] = dDoubleData;
    }
 
    if (GetParamValue("add_F_phenylalanine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['F'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'F'] = dDoubleData;
    }
 
    if (GetParamValue("add_R_arginine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['R'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'R'] = dDoubleData;
    }
 
    if (GetParamValue("add_Y_tyrosine", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['Y'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'Y'] = dDoubleData;
    }
 
    if (GetParamValue("add_W_tryptophan", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['W'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'W'] = dDoubleData;
    }
 
    if (GetParamValue("add_B_user_amino_acid", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['B'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'B'] = dDoubleData;
    }
 
    if (GetParamValue("add_J_user_amino_acid", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['J'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'J'] = dDoubleData;
    }
 
    if (GetParamValue("add_U_user_amino_acid", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['U'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'U'] = dDoubleData;
    }
 
    if (GetParamValue("add_X_user_amino_acid", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['X'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'X'] = dDoubleData;
    }
 
    if (GetParamValue("add_Z_user_amino_acid", dDoubleData))
    {
-      g_staticParams.staticModifications.pdStaticMods['Z'] = dDoubleData;
+      g_staticParams.staticModifications.pdStaticMods[(int)'Z'] = dDoubleData;
    }
 
    GetParamValue("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
@@ -504,25 +504,25 @@ void CometSearchManager::InitializeStaticParams()
                                   g_staticParams.massUtility.bMonoMassesFragment, 
                                   &g_staticParams.massUtility.dOH2fragment); 
 
-   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment['c'] 
-            + g_staticParams.massUtility.pdAAMassFragment['o'];
+   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment[(int)'c'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
 
-   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment['h'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h']
-            + g_staticParams.massUtility.pdAAMassFragment['o'];
+   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
 
-   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment['n'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'];
+   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment[(int)'n'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment['n'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'];
+   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment[(int)'n'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    g_staticParams.massUtility.dCOminusH2 = g_staticParams.massUtility.dCO
-            - g_staticParams.massUtility.pdAAMassFragment['h']
-            - g_staticParams.massUtility.pdAAMassFragment['h'];
+            - g_staticParams.massUtility.pdAAMassFragment[(int)'h']
+            - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    GetHostName();
 
@@ -556,25 +556,25 @@ void CometSearchManager::InitializeStaticParams()
                                   g_staticParams.massUtility.bMonoMassesFragment, 
                                   &g_staticParams.massUtility.dOH2fragment); 
 
-   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment['c'] 
-            + g_staticParams.massUtility.pdAAMassFragment['o'];
+   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment[(int)'c'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
 
-   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment['h'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h']
-            + g_staticParams.massUtility.pdAAMassFragment['o'];
+   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
 
-   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment['n'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'];
+   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment[(int)'n'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment['n'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'] 
-            + g_staticParams.massUtility.pdAAMassFragment['h'];
+   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment[(int)'n'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    g_staticParams.massUtility.dCOminusH2 = g_staticParams.massUtility.dCO
-            - g_staticParams.massUtility.pdAAMassFragment['h']
-            - g_staticParams.massUtility.pdAAMassFragment['h'];
+            - g_staticParams.massUtility.pdAAMassFragment[(int)'h']
+            - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    GetParamValue("[COMET_ENZYME_INFO]", g_staticParams.enzymeInformation);
    if (!strncmp(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, "-", 1) && 

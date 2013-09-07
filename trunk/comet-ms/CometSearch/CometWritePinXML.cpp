@@ -62,7 +62,8 @@ void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
    fprintf(fpout, "xsi:schemaLocation=\"http://per-colator.com/percolator_in/12 ");
    fprintf(fpout, "https://github.com/percolator/percolator/raw/pin-1-2/src/xml/percolator_in.xsd\"> \n");
    
-   for (i=0; i<strlen(g_staticParams.enzymeInformation.szSampleEnzymeName); i++)
+   int iLen = strlen(g_staticParams.enzymeInformation.szSampleEnzymeName);
+   for (i=0; i<iLen ; i++)
    {
       szEnzyme[i] = tolower(g_staticParams.enzymeInformation.szSampleEnzymeName[i]);
       if (szEnzyme[i] == '_')

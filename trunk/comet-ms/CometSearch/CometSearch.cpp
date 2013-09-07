@@ -18,8 +18,6 @@
 #include "CometSearch.h"
 #include "ThreadPool.h"
 
-#define SEARCHED_WIN_LEN    820000
-
 
 CometSearch::CometSearch()
 {
