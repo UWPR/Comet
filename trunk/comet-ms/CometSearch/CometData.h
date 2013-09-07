@@ -44,8 +44,8 @@ class CometSearchManager;
 #define WIDTH_REFERENCE             40       // size of the protein accession field to store
 #define DEFAULT_PREC_TOL            2.0      // default precursor removal tolerance
 #define MAX_THREADS                 32
-#define DEFAULT_BIN_WIDTH           0.36
-#define DEFAULT_OFFSET              0.11
+#define DEFAULT_BIN_WIDTH           1.0005
+#define DEFAULT_OFFSET              0.4
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
@@ -660,7 +660,7 @@ struct StaticParams
       variableModParameters.iVarModNtermDistance = -1;
       variableModParameters.iVarModCtermDistance = -1;
 
-      ionInformation.iTheoreticalFragmentIons = 0;
+      ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
       options.iNumPeptideOutputLines = 1;
       options.iWhichReadingFrame = 0;
       options.iEnzymeTermini = 2;
