@@ -76,7 +76,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   sprintf(szMassLine, "(M+H)+ mass = %0.6f ~ %0.6f (%+d), fragment tol = %0.4f, binoffset = %0.3f",
+   sprintf(szMassLine, "(M+H)+ mass = %0.6f ~ %0.6f (+%d), fragment tol = %0.4f, binoffset = %0.3f",
             pQuery->_pepMassInfo.dExpPepMass,
             pQuery->_pepMassInfo.dPeptideMassTolerance,
             pQuery->_spectrumInfoInternal.iChargeState,
@@ -123,16 +123,16 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    if (g_staticParams.options.iWhichReadingFrame)
    {
-      sprintf(szDbLine, "# bases = %ld (frame=%d), # proteins = %d, %s",
-            g_staticParams.databaseInfo.liTotAACount, 
+      sprintf(szDbLine, "# bases = %lu (frame=%d), # proteins = %d, %s",
+            g_staticParams.databaseInfo.uliTotAACount, 
             g_staticParams.options.iWhichReadingFrame, 
             g_staticParams.databaseInfo.iTotalNumProteins, 
             g_staticParams.databaseInfo.szDatabase);
    }
    else
    {
-      sprintf(szDbLine, "# amino acids = %ld, # proteins = %d, %s",
-            g_staticParams.databaseInfo.liTotAACount, 
+      sprintf(szDbLine, "# amino acids = %lu, # proteins = %d, %s",
+            g_staticParams.databaseInfo.uliTotAACount, 
             g_staticParams.databaseInfo.iTotalNumProteins, 
             g_staticParams.databaseInfo.szDatabase);
    }
@@ -145,17 +145,17 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    if (bDecoySearch)
    {
-      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %ld",
+      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %lu",
             pQuery->_spectrumInfoInternal.dTotalIntensity, 
             pQuery->fLowestDecoySpScore, 
-            pQuery->_liNumMatchedDecoyPeptides);
+            pQuery->_uliNumMatchedDecoyPeptides);
    }
    else
    {
-      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %ld",
+      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %lu",
             pQuery->_spectrumInfoInternal.dTotalIntensity, 
             pQuery->fLowestSpScore, 
-            pQuery->_liNumMatchedPeptides);
+            pQuery->_uliNumMatchedPeptides);
    }
 
    sprintf(szBuf, "\n");
@@ -207,7 +207,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    iLenMaxDuplicates = 0;
    for (i=0; i<iDoXcorrCount; i++)
    {
-      if (pOutput[i].iDuplicateCount>(unsigned int)iLenMaxDuplicates)
+      if (pOutput[i].iDuplicateCount > iLenMaxDuplicates)
          iLenMaxDuplicates = pOutput[i].iDuplicateCount;
 
       for (ii=0; ii<WIDTH_REFERENCE; ii++)
@@ -269,11 +269,11 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    for (i=0; i<iDoXcorrCount; i++)
    {
-      if ((i > 0) && (pOutput[i].fXcorr != pOutput[i-1].fXcorr))
+      if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > 0)
-         PrintOutputLine(iWhichQuery, iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, bDecoySearch, pOutput, fpout);
+         PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, pOutput, fpout);
    } 
 
    fprintf(fpout, "\n");
@@ -282,9 +282,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    // and mark matched ions in the sp scoring routine.
    if (g_staticParams.options.bPrintFragIons && iDoXcorrCount > 0)
    {
-      PrintIons(iWhichQuery,
-            pQuery->_spectrumInfoInternal.iChargeState,
-            fpout);
+      PrintIons(iWhichQuery, fpout);
    }
 
    // Print out expect score histogram.
@@ -354,12 +352,10 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 }
 
 
-void CometWriteOut::PrintOutputLine(int iWhichQuery,
-                                    int iRankXcorr,
+void CometWriteOut::PrintOutputLine( int iRankXcorr,
                                     int iLenMaxDuplicates,
                                     int iMaxWidthReference,
                                     int iWhichResult,
-                                    bool bDecoySearch,
                                     Results *pOutput,
                                     FILE *fpout)
 {
@@ -467,13 +463,13 @@ void CometWriteOut::PrintOutputLine(int iWhichQuery,
    // Print peptide sequence.
    for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
    {
-      sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
+      sprintf(szBuf+strlen(szBuf), "%c", (int)pOutput[iWhichResult].szPeptide[i]);
 
       if (g_staticParams.variableModParameters.bVarModSearch
-            && 0.0 != g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass)
+            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
       {
          sprintf(szBuf+strlen(szBuf), "%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+               (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
       }
    }
 
@@ -493,7 +489,6 @@ void CometWriteOut::PrintOutputLine(int iWhichQuery,
 
 // Print out fragment ions at end of .out files.
 void CometWriteOut::PrintIons(int iWhichQuery,
-                              int iChargeState,
                               FILE *fpout)
 {
    int  i,

@@ -62,7 +62,8 @@ void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
    fprintf(fpout, "xsi:schemaLocation=\"http://per-colator.com/percolator_in/12 ");
    fprintf(fpout, "https://github.com/percolator/percolator/raw/pin-1-2/src/xml/percolator_in.xsd\"> \n");
    
-   for (i=0; i<strlen(g_staticParams.enzymeInformation.szSampleEnzymeName); i++)
+   int iLen = strlen(g_staticParams.enzymeInformation.szSampleEnzymeName);
+   for (i=0; i<iLen ; i++)
    {
       szEnzyme[i] = tolower(g_staticParams.enzymeInformation.szSampleEnzymeName[i]);
       if (szEnzyme[i] == '_')
@@ -224,17 +225,14 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
    if (bNoDeltaCnYet)
       dDeltaCn = 1.0;
 
-   PrintPinXMLSearchHit(iWhichQuery, iRankXcorr, 0, iDoXcorrCount, bDecoy,
-         pOutput, fpout, dDeltaCn, dLastDeltaCn, dMZ, dMZdiff);
+   PrintPinXMLSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn, dMZ, dMZdiff);
 
    fprintf(fpout, " </peptideSpectrumMatch>\n");
 }
 
 
 void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
-                                            int iRankXcorr,
                                             int iWhichResult,
-                                            int iDoXcorrCount,
                                             bool bDecoy,
                                             Results *pOutput,
                                             FILE *fpout,
@@ -252,10 +250,10 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    CalcNTTNMC(pOutput, iWhichResult, &iNterm, &iCterm, &iNMC);
 
    fprintf(fpout, "  <features>\n");
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", (double)log((double)pOutput[iWhichResult].iRankSp) );  // lnrSp
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", log((double)pOutput[iWhichResult].iRankSp) );  // lnrSp
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dLastDeltaCn); // deltLCn  last dCn in output list
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dDeltaCn); // deltCn
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", (double)log(pOutput[iWhichResult].dExpect)); // ln(Expect)
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", log(pOutput[iWhichResult].dExpect)); // ln(Expect)
    fprintf(fpout, "   <feature>%0.6f</feature>\n", pOutput[iWhichResult].fXcorr); // xcorr
    fprintf(fpout, "   <feature>%0.6f</feature>\n", pOutput[iWhichResult].fScoreSp); // Sp
    fprintf(fpout, "   <feature>%0.4f</feature>\n", (double)pOutput[iWhichResult].iMatchedIons / pOutput[iWhichResult].iTotalIons); // IonFrac
@@ -268,7 +266,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "   <feature>%d</feature>\n", iNterm); // enzN
    fprintf(fpout, "   <feature>%d</feature>\n", iCterm); // enzC
    fprintf(fpout, "   <feature>%d</feature>\n", iNMC); // enzInt
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", (double)log((double)(bDecoy?(pQuery->_liNumMatchedDecoyPeptides):(pQuery->_liNumMatchedPeptides))) ); // lnNumSP
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", log((double)(bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides))) ); // lnNumSP
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dMZdiff); // dM  is m/z diff
    fprintf(fpout, "   <feature>%0.6f</feature>\n", abs(dMZdiff)); // absdM
    fprintf(fpout, "  </features>\n");
@@ -276,18 +274,18 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "   <peptideSequence>%s</peptideSequence>\n", pOutput[iWhichResult].szPeptide);
 
 
-   if (g_staticParams.staticModifications.dAddNterminusPeptide != 0.0
+   if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
          || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
-            && g_staticParams.staticModifications.dAddNterminusProtein != 0.0))
+            && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", 0);
       fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 10); // some random number for N-term mod
       fprintf(fpout, "   </modification>\n");
    }
 
-   if (g_staticParams.staticModifications.dAddCterminusPeptide != 0.0
+   if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0)
          || (pOutput[iWhichResult].szPrevNextAA[1]=='-'
-            && g_staticParams.staticModifications.dAddCterminusProtein != 0.0))
+            && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", pOutput[iWhichResult].iLenPeptide + 1);
       fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 11); // some random number for C-term mod
@@ -300,7 +298,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    // So, just like sqt2pin, we are supplying bogus ones.
    for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
    {
-      if (g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]] != 0.0)
+      if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0))
       {
          fprintf(fpout, "   <modification location=\"%d\">\n", i+1);
          // using ascii value of residue for bogus unimod number here
@@ -322,35 +320,6 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
          pOutput[iWhichResult].szPrevNextAA[1],
          pOutput[iWhichResult].szPrevNextAA[0],
          pOutput[iWhichResult].szProtein); // wrong spelling of "occurrence" in schema
-}
-
-
-void CometWritePinXML::GetVal(char *szElement,
-                              char *szAttribute,
-                              char *szAttributeVal)
-{
-   char *pStr;
-
-   if ((pStr=strstr(szElement, szAttribute)))
-   {
-      strncpy(szAttributeVal, pStr+strlen(szAttribute)+2, SIZE_FILE);  // +2 to skip ="
-
-      if ((pStr=strchr(szAttributeVal, '"')))
-      {
-         *pStr='\0';
-         return;
-      }
-      else
-      {
-         strcpy(szAttributeVal, "unknown");  // Error - expecting an end quote in szAttributeVal.
-         return;
-      }
-   }
-   else
-   {
-      strcpy(szAttributeVal, "unknown"); // Attribute not found.
-      return;
-   }
 }
 
 

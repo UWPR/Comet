@@ -45,8 +45,6 @@ private:
   static void AnalyzeSP(int i);
   static void CalculateSP(Results *pOutput,
                           int iWhichQuery,
-                          int iArraySize,
-                          int iChargeState,
                           int iSize);
   static int SPQSortFn(const void *a, const void *b);
   static int XcorrQSortFn(const void *a, const void *b);

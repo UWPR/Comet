@@ -60,9 +60,7 @@ public:
 private:
    
    // Private static methods
-   static void PreprocessSpectrum(Spectrum &spec, 
-                                  int iAnalysisType, 
-                                  int iFileLastScan);
+   static void PreprocessSpectrum(Spectrum &spec);
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
    static void AdjustMassTol(struct Query *pScoring);

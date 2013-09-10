@@ -53,6 +53,8 @@ using namespace std;
 // now between 0.0 and 1.0 and scales to the binWidth.
 #define BIN(dMass) (int)(dMass*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
 
+#define isEqual(x, y) (std::abs(x-y) <= 1e-6 * std::abs(x))
+
 using namespace MSToolkit;
 #ifdef CRUX
 #define logout(...) {char sbuf[1000]; snprintf(sbuf, 1000, __VA_ARGS__); cerr << sbuf;}

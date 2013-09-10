@@ -24,21 +24,15 @@ public:
    CometWriteTxt();
    ~CometWriteTxt();
    static void WriteTxt(FILE *fpout,
-                        FILE *fpoutd,
-                        char *szOutput,
-                        char *szOutputDecoy);
+                        FILE *fpoutd);
 
 
 private:
    static void PrintTxtHeader(FILE *fpout);
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
-                            FILE *fpOut,
-                            char *szOutput);
-   static void PrintTxtLine(int iWhichQuery,
-                            int iRankXcorr,
-                            int iWhichResult,
-                            bool bDecoy,
+                            FILE *fpOut);
+   static void PrintTxtLine( int iRankXcorr,
                             Results *pOutput,
                             FILE *fpOut);
 

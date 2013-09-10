@@ -33,9 +33,7 @@ private:
                             FILE *fpOut,
                             bool bDecoy);
    static void PrintPinXMLSearchHit(int iWhichQuery,
-                                    int iRankXcorr,
                                     int iWhichResult,
-                                    int iDoXcorrCount,
                                     bool bDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
@@ -43,10 +41,6 @@ private:
                                     double dLastDeltaCn,
                                     double dMZ,
                                     double dMZdiff);
-   static void GetVal(char *szElement,
-                      char *szAttribute,
-                      char *szAttributeVal);
-
    static void CalcNTTNMC(Results *pOutput,
                           int iWhichQuery,
                           int *iNterm,

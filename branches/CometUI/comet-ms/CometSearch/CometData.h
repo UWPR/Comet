@@ -31,7 +31,7 @@ class CometSearchManager;
 #define SIZE_MASS                   128
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_STORED                  100      // number of internal search results to store
-#define NUM_ION_SERIES                9
+#define NUM_ION_SERIES              9
 
 #define DEFAULT_FRAGMENT_CHARGE     3
 #define DEFAULT_PRECURSOR_CHARGE    6
@@ -44,8 +44,8 @@ class CometSearchManager;
 #define WIDTH_REFERENCE             40       // size of the protein accession field to store
 #define DEFAULT_PREC_TOL            2.0      // default precursor removal tolerance
 #define MAX_THREADS                 32
-#define DEFAULT_BIN_WIDTH           0.36
-#define DEFAULT_OFFSET              0.11
+#define DEFAULT_BIN_WIDTH           1.0005
+#define DEFAULT_OFFSET              0.4
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
@@ -104,21 +104,21 @@ struct DoubleRange
    
    DoubleRange()
    {
-       dStart = 0.0;
-       dEnd = 0.0;
+      dStart = 0.0;
+      dEnd = 0.0;
    }
 
    DoubleRange(double dStart_in, double dEnd_in)
    {
-       dStart = dStart_in;
-       dEnd = dEnd_in;
+      dStart = dStart_in;
+      dEnd = dEnd_in;
    }
 
    DoubleRange& operator=(DoubleRange& a) 
    {
-       dStart = a.dStart;
-       dEnd = a.dEnd;
-       return *this;
+      dStart = a.dStart;
+      dEnd = a.dEnd;
+      return *this;
    }
 };
 
@@ -129,21 +129,21 @@ struct IntRange
    
    IntRange()
    {
-       iStart = 0;
-       iEnd = 0;
+      iStart = 0;
+      iEnd = 0;
    }
 
    IntRange(int iStart_in, int iEnd_in)
    {
-       iStart = iStart_in;
-       iEnd = iEnd_in;
+      iStart = iStart_in;
+      iEnd = iEnd_in;
    }
 
    IntRange& operator=(IntRange& a) 
    {
-       iStart = a.iStart;
-       iEnd = a.iEnd;
-       return *this;
+      iStart = a.iStart;
+      iEnd = a.iEnd;
+      return *this;
    }
 };
 
@@ -231,11 +231,11 @@ struct Results
    double dExpect;
    float  fScoreSp;
    float  fXcorr;
-   unsigned int   iDuplicateCount;
-   unsigned short iLenPeptide;
-   unsigned short iRankSp;
-   unsigned short iMatchedIons;
-   unsigned short iTotalIons;
+   int    iDuplicateCount;
+   int    iLenPeptide;
+   int    iRankSp;
+   int    iMatchedIons;
+   int    iTotalIons;
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];    // store variable mods encoding, +2 to accomodate N/C-term
    char szProtein[WIDTH_REFERENCE];
    char szPeptide[MAX_PEPTIDE_LEN];
@@ -256,8 +256,8 @@ struct SpectrumInfoInternal
    int iArraySize;     // m/z versus intensity array
    int iHighestIon;
    int iScanNumber;
-   unsigned short iChargeState;
-   unsigned short iMaxFragCharge;
+   int iChargeState;
+   int iMaxFragCharge;
    double dTotalIntensity;
    double dRTime;
 };
@@ -268,7 +268,7 @@ struct MassRange
 {
    double dMinMass;
    double dMaxMass;
-   unsigned short iMaxFragmentCharge;  // global maximum fragment charge
+   int    iMaxFragmentCharge;  // global maximum fragment charge
 };
 
 extern MassRange g_massRange;
@@ -293,7 +293,7 @@ typedef struct sDBEntry
 typedef struct sDBTable
 {
    int  iStart;   // pointer to the start of this mass value
-   int  iStop;    // pointer to the end of this mass valuse
+   int  iStop;    // pointer to the end of this mass value
    char cFile;    // which index file has the start of the data
 } sDBTable; 
 
@@ -302,16 +302,16 @@ struct DBInfo
    char szDatabase[SIZE_FILE];
    char szFileName[SIZE_FILE];
    int  iTotalNumProteins;
-   unsigned long int liTotAACount;
+   unsigned long int uliTotAACount;
 
    DBInfo& operator=(DBInfo& a)
    {
-       strcpy(szDatabase, a.szDatabase);
-       strcpy(szFileName, a.szFileName);
-       iTotalNumProteins = a.iTotalNumProteins;
-       liTotAACount = a.liTotAACount;
+      strcpy(szDatabase, a.szDatabase);
+      strcpy(szFileName, a.szFileName);
+      iTotalNumProteins = a.iTotalNumProteins;
+      uliTotAACount = a.uliTotAACount;
 
-       return *this;
+      return *this;
    }
 };
 
@@ -394,8 +394,8 @@ struct PrecalcMasses
    double dNtermProton;          // dAddNterminusPeptide + PROTON_MASS
    double dCtermOH2Proton;       // dAddCterminusPeptide + dOH2fragment + PROTON_MASS
    double dOH2ProtonCtermNterm;  // dOH2parent + PROTON_MASS + dAddCterminusPeptide + dAddNterminusPeptide
-   int iMinus17;      // BIN'd value of mass(NH3)
-   int iMinus18;      // BIN'd value of mass(H2O)
+   int iMinus17;                 // BIN'd value of mass(NH3)
+   int iMinus18;                 // BIN'd value of mass(H2O)
 
    PrecalcMasses& operator=(PrecalcMasses& a) 
    {
@@ -660,7 +660,7 @@ struct StaticParams
       variableModParameters.iVarModNtermDistance = -1;
       variableModParameters.iVarModCtermDistance = -1;
 
-      ionInformation.iTheoreticalFragmentIons = 0;
+      ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
       options.iNumPeptideOutputLines = 1;
       options.iWhichReadingFrame = 0;
       options.iEnzymeTermini = 2;
@@ -780,8 +780,8 @@ struct Query
    float fLowestCorrScore;
    float fLowestDecoyCorrScore;
 
-   unsigned long int  _liNumMatchedPeptides;
-   unsigned long int  _liNumMatchedDecoyPeptides;
+   unsigned long int  _uliNumMatchedPeptides;
+   unsigned long int  _uliNumMatchedDecoyPeptides;
 
    // Sparse matrix representation of data
    int iSpScoreData;  //size of sparse matrix
@@ -832,8 +832,8 @@ struct Query
       fLowestCorrScore = 0.0;
       fLowestDecoyCorrScore = 0.0;
 
-      _liNumMatchedPeptides = 0;
-      _liNumMatchedDecoyPeptides = 0;
+      _uliNumMatchedPeptides = 0;
+      _uliNumMatchedDecoyPeptides = 0;
 
       pSparseSpScoreData = NULL;
       pSparseFastXcorrData = NULL;

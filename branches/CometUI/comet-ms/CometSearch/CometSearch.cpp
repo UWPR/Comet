@@ -18,8 +18,6 @@
 #include "CometSearch.h"
 #include "ThreadPool.h"
 
-#define SEARCHED_WIN_LEN    820000
-
 
 CometSearch::CometSearch()
 {
@@ -51,7 +49,7 @@ void CometSearch::RunSearch(int minNumThreads,
    // each hanging around and sleeping until asked to so a search.
    ThreadPool<SearchThreadData *> searchThreadPool(SearchThreadProc, minNumThreads, maxNumThreads);
 
-   g_staticParams.databaseInfo.liTotAACount = 0;
+   g_staticParams.databaseInfo.uliTotAACount = 0;
    g_staticParams.databaseInfo.iTotalNumProteins = 0;
 
    if ((fptr=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
@@ -115,7 +113,7 @@ void CometSearch::RunSearch(int minNumThreads,
          {
             // Convert all sequences to upper case.
             dbe.strSeq += toupper(iTmpCh);
-            g_staticParams.databaseInfo.liTotAACount++;
+            g_staticParams.databaseInfo.uliTotAACount++;
          }
       }
 
@@ -1056,9 +1054,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    // Increment matched peptide counts.
    if (bDecoyPep && g_staticParams.options.iDecoySearch == 2)
-      pQuery->_liNumMatchedDecoyPeptides++;
+      pQuery->_uliNumMatchedDecoyPeptides++;
    else
-      pQuery->_liNumMatchedPeptides++;
+      pQuery->_uliNumMatchedPeptides++;
 
    if (g_staticParams.options.bPrintExpectScore)
    {
@@ -1079,7 +1077,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       if (dXcorr > pQuery->fLowestDecoyCorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
-                  szProteinSeq, szProteinName, 1, pcVarModSites))
+                  szProteinSeq, 1, pcVarModSites))
          {
             StorePeptide(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq,
                   dCalcPepMass, dXcorr, szProteinName, 1,  pcVarModSites);
@@ -1091,7 +1089,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       if (dXcorr > pQuery->fLowestCorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
-                  szProteinSeq, szProteinName, 0, pcVarModSites))
+                  szProteinSeq, 0, pcVarModSites))
          {
             StorePeptide(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq,
                   dCalcPepMass, dXcorr, szProteinName, 0, pcVarModSites);
@@ -1164,7 +1162,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       siLowestDecoySpScoreIndex = pQuery->siLowestDecoySpScoreIndex;
 
       pQuery->iDoDecoyXcorrCount++;
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iLenPeptide=iLenPeptide;
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iLenPeptide = iLenPeptide;
 
       memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide[iLenPeptide]='\0';
@@ -1235,7 +1233,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       siLowestSpScoreIndex = pQuery->siLowestSpScoreIndex;
 
       pQuery->iDoXcorrCount++;
-      pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide=iLenPeptide;
+      pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide = iLenPeptide;
 
       memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
       pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
@@ -1311,7 +1309,6 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                                 bool bFoundVariableMod,
                                 double dCalcPepMass,
                                 char *szProteinSeq,
-                                char *szProteinName,
                                 bool bDecoyResults,
                                 char *pcVarModSites)
 {
@@ -1406,14 +1403,14 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
 
 void CometSearch::SubtractVarMods(int *piVarModCounts,
-                                int character)
+                                  int character)
 {
    if (g_staticParams.variableModParameters.bVarModSearch)
    {
       int i;
       for (i=0; i<VMODS; i++)
       {
-         if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0) &&
+         if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0) &&
                strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, character))
          {
             piVarModCounts[i]--;
@@ -1424,12 +1421,12 @@ void CometSearch::SubtractVarMods(int *piVarModCounts,
 
 
 void CometSearch::CountVarMods(int *piVarModCounts,
-                             int character) 
+                               int character) 
 {
    int i;
    for (i=0; i<VMODS; i++)
    {
-      if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, character))
       {
          piVarModCounts[i]++;
@@ -1439,9 +1436,9 @@ void CometSearch::CountVarMods(int *piVarModCounts,
 
 
 void CometSearch::CountBinaryModN(int *piVarModCounts,
-                                   int iStartPos)
+                                  int iStartPos)
 {
-   if ((g_staticParams.variableModParameters.dVarModMassN != 0.0)
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0)
          && ((g_staticParams.variableModParameters.iVarModNtermDistance == -1)
               || (iStartPos <= g_staticParams.variableModParameters.iVarModNtermDistance)))
    {
@@ -1455,9 +1452,9 @@ void CometSearch::CountBinaryModN(int *piVarModCounts,
 
 
 void CometSearch::CountBinaryModC(int *piVarModCounts,
-                                   int iEndPos)
+                                  int iEndPos)
 {
-   if ((g_staticParams.variableModParameters.dVarModMassC != 0.0)
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0)
          && ((g_staticParams.variableModParameters.iVarModCtermDistance == -1) 
               || ((iEndPos + g_staticParams.variableModParameters.iVarModCtermDistance) 
                      >= (_proteinInfo.iProteinSeqLength-1))))
@@ -1472,8 +1469,8 @@ void CometSearch::CountBinaryModC(int *piVarModCounts,
 
 
 int CometSearch::TotalVarModCount(int *pVarModCounts,
-                                int iCVarModCount,
-                                int iNVarModCount)
+                                  int iCVarModCount,
+                                  int iNVarModCount)
 {
    int i;
    int iTotalVarMods= 0;
@@ -1491,10 +1488,10 @@ int CometSearch::TotalVarModCount(int *pVarModCounts,
 
 
 void CometSearch::VarModSearch(char *szProteinSeq,
-                             char *szProteinName,
-                             int varModCounts[],
-                             int iStartPos,
-                             int iEndPos)
+                               char *szProteinName,
+                               int varModCounts[],
+                               int iStartPos,
+                               int iEndPos)
 {
    int i,
        i1,
@@ -1568,7 +1565,7 @@ void CometSearch::VarModSearch(char *szProteinSeq,
                         int varModCounts[] = {i1, i2, i3, i4, i5, i6};
 
                         if ((TotalVarModCount(varModCounts, 0, iN) > 0)
-                              || g_staticParams.variableModParameters.dVarModMassC != 0.0)
+                              || !isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0))
                         {
                            double dCalcPepMass;
                            int iTmpEnd;
@@ -1588,14 +1585,14 @@ void CometSearch::VarModSearch(char *szProteinSeq,
    
                                  for (i=0; i<VMODS; i++)
                                  {
-                                    if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
+                                    if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
                                           && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, szProteinSeq[iTmpEnd]))
                                     {
                                        _varModInfo.varModStatList[i].iTotVarModCt++;
                                     }
                                  }
    
-                                 if ((g_staticParams.variableModParameters.dVarModMassC != 0.0)
+                                 if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0)
                                        && ((g_staticParams.variableModParameters.iVarModCtermDistance == -1)
                                           || ((iTmpEnd + g_staticParams.variableModParameters.iVarModCtermDistance) >= (_proteinInfo.iProteinSeqLength - 1))))
                                  {
@@ -1685,8 +1682,8 @@ void CometSearch::VarModSearch(char *szProteinSeq,
 
 
 double CometSearch::TotalVarModMass(int *pVarModCounts,
-                                  int iCVarModCount,
-                                  int iNVarModCount)
+                                    int iCVarModCount,
+                                    int iNVarModCount)
 {
    double dTotVarModMass = 0;
 
@@ -2112,7 +2109,7 @@ void CometSearch::inittwiddle(int m, int n, int *p)
 
 
 void CometSearch::CalcVarModIons(char *szProteinSeq,
-                              int iWhichQuery)
+                                 int iWhichQuery)
 {
    int iLenPeptide = 0;
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];
@@ -2191,7 +2188,7 @@ void CometSearch::CalcVarModIons(char *szProteinSeq,
                // This loop is where all individual variable mods are combined
                for (j=0; j<VMODS; j++)
                {
-                  if ((g_staticParams.variableModParameters.varModList[j].dVarModMass != 0.0)
+                  if (!isEqual(g_staticParams.variableModParameters.varModList[j].dVarModMass, 0.0)
                         && (_varModInfo.varModStatList[j].iMatchVarModCt > 0)
                         && strchr(g_staticParams.variableModParameters.varModList[j].szVarModChar, szProteinSeq[i]))
                   {
