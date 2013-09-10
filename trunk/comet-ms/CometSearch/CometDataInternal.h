@@ -32,16 +32,8 @@ class CometSearchManager;
 #define NUM_STORED                  100      // number of internal search results to store
 #define NUM_ION_SERIES              9
 
-#define DEFAULT_FRAGMENT_CHARGE     3
-#define DEFAULT_PRECURSOR_CHARGE    6
-#define MAX_FRAGMENT_CHARGE         5
-#define MAX_PRECURSOR_CHARGE        9
-#define MINIMUM_PEAKS               10
-
-#define SIZE_BUF                    8192
 #define WIDTH_REFERENCE             40       // size of the protein accession field to store
 #define DEFAULT_PREC_TOL            2.0      // default precursor removal tolerance
-#define MAX_THREADS                 32
 #define DEFAULT_BIN_WIDTH           1.0005
 #define DEFAULT_OFFSET              0.4
 
