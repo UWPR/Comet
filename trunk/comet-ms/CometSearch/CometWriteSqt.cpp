@@ -32,10 +32,8 @@ CometWriteSqt::~CometWriteSqt()
 }
 
 void CometWriteSqt::WriteSqt(FILE *fpout,
-                    FILE *fpoutd,
-                    char *szOutput,
-                    char *szOutputDecoy,
-                    CometSearchManager &searchMgr)
+                             FILE *fpoutd,
+                             CometSearchManager &searchMgr)
 {
    int i;
    if (!_bWroteHeader)
@@ -59,7 +57,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      PrintResults(i, 0, fpout, szOutput);
+      PrintResults(i, 0, fpout);
    }
 
    // Print out the separate decoy hits.
@@ -67,13 +65,13 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
-         PrintResults(i, 1, fpoutd, szOutputDecoy);
+         PrintResults(i, 1, fpoutd);
       }
    }
 }
 
 void CometWriteSqt::PrintSqtHeader(FILE *fpout,
-    CometSearchManager &searchMgr)
+                                   CometSearchManager &searchMgr)
 {
    char szEndDate[28];
    time_t tTime;
@@ -87,7 +85,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    fprintf(fpout, "H\tEndTime\t%s\n", szEndDate);
    fprintf(fpout, "H\n");
 
-   fprintf(fpout, "H\tDBSeqLength\t%lu\n", g_staticParams.databaseInfo.liTotAACount);
+   fprintf(fpout, "H\tDBSeqLength\t%lu\n", g_staticParams.databaseInfo.uliTotAACount);
    fprintf(fpout, "H\tDBLocusCount\t%d\n", g_staticParams.databaseInfo.iTotalNumProteins);
 
    fprintf(fpout, "H\tFragmentMassMode\tAMU\n");
@@ -111,10 +109,12 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
    for (int i=0; i<VMODS; i++)
    {
-      if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
-         for (unsigned int ii=0; ii<strlen(g_staticParams.variableModParameters.varModList[i].szVarModChar); ii++)
+         int iLen = strlen(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+
+         for (unsigned int ii=0; ii<iLen; ii++)
          {
             fprintf(fpout, "H\tDiffMod\t%c%c=%+0.6f\n",
                   g_staticParams.variableModParameters.varModList[i].szVarModChar[ii],
@@ -124,16 +124,11 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
       }
    }
 
-   if (g_staticParams.variableModParameters.dVarModMassN != 0.0)
-   {
-      fprintf(fpout, "H\tDiffMod\tnt]=%+0.6f\n",
-            g_staticParams.variableModParameters.dVarModMassN);
-   }
-   if (g_staticParams.variableModParameters.dVarModMassC != 0.0)
-   {
-      fprintf(fpout, "H\tDiffMod\tct[=%+0.6f\n",
-            g_staticParams.variableModParameters.dVarModMassC);
-   }
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0))
+      fprintf(fpout, "H\tDiffMod\tnt]=%+0.6f\n", g_staticParams.variableModParameters.dVarModMassN);
+
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0))
+      fprintf(fpout, "H\tDiffMod\tct[=%+0.6f\n", g_staticParams.variableModParameters.dVarModMassC);
 
    char *pStr;
    while ((pStr = strrchr(g_staticParams.szMod, '='))!=NULL)
@@ -183,8 +178,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
 void CometWriteSqt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
-                                 FILE *fpout,
-                                 char *szOutput)
+                                 FILE *fpout)
 {
    int  i,
         iDoXcorrCount,
@@ -209,7 +203,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
             pQuery->_pepMassInfo.dExpPepMass,
             pQuery->_spectrumInfoInternal.dTotalIntensity, 
             pQuery->fLowestDecoySpScore, 
-            pQuery->_liNumMatchedDecoyPeptides);
+            pQuery->_uliNumMatchedDecoyPeptides);
    }
    else
    {
@@ -222,7 +216,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
             pQuery->_pepMassInfo.dExpPepMass,
             pQuery->_spectrumInfoInternal.dTotalIntensity, 
             pQuery->fLowestSpScore, 
-            pQuery->_liNumMatchedPeptides);
+            pQuery->_uliNumMatchedPeptides);
    }
 
    if (g_staticParams.options.bOutputSqtStream)
@@ -250,19 +244,17 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 
    for (i=0; i<iDoXcorrCount; i++)
    {
-      if ((i > 0) && (pOutput[i].fXcorr != pOutput[i-1].fXcorr))
+      if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > 0)
-         PrintSqtLine(iWhichQuery, iRankXcorr, i, bDecoy, pOutput, fpout);
+         PrintSqtLine(iRankXcorr, i, pOutput, fpout);
    } 
 }
 
 
-void CometWriteSqt::PrintSqtLine(int iWhichQuery,
-                                 int iRankXcorr,
+void CometWriteSqt::PrintSqtLine(int iRankXcorr,
                                  int iWhichResult,
-                                 bool bDecoy,
                                  Results *pOutput,
                                  FILE *fpout)
 {
@@ -301,7 +293,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 
       if (g_staticParams.variableModParameters.bVarModSearch
-            && 0.0 != g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass)
+            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
       {
          sprintf(szBuf+strlen(szBuf), "%c",
                g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
@@ -326,7 +318,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       fprintf(stdout, "L\t%s", pOutput[iWhichResult].szProtein);
 
       if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(stdout, "\t+%u", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(stdout, "\t+%d", pOutput[iWhichResult].iDuplicateCount); 
 
       fprintf(stdout, "\n");
    }
@@ -338,7 +330,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       fprintf(fpout, "L\t%s", pOutput[iWhichResult].szProtein);
 
       if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(fpout, "\t+%u", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(fpout, "\t+%d", pOutput[iWhichResult].iDuplicateCount); 
 
       fprintf(fpout, "\n");
    }

@@ -26,8 +26,6 @@ public:
 
    static void WriteSqt(FILE *fpout,
                     FILE *fpoutd,
-                    char *szOutput,
-                    char *szOutputDecoy,
                     CometSearchManager &searchMgr);
 
 
@@ -36,12 +34,9 @@ private:
                            CometSearchManager &searchMgr);
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
-                            FILE *fpOut,
-                            char *szOutput);
-   static void PrintSqtLine(int iWhichQuery,
-                            int iRankXcorr,
+                            FILE *fpOut);
+   static void PrintSqtLine( int iRankXcorr,
                             int iWhichResult,
-                            bool bDecoy,
                             Results *pOutput,
                             FILE *fpOut);
 

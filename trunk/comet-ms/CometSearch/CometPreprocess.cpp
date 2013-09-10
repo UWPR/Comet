@@ -203,9 +203,7 @@ void CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
 void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData)
 {
-   PreprocessSpectrum(pPreprocessThreadData->mstSpectrum, 
-                      pPreprocessThreadData->iAnalysisType, 
-                      pPreprocessThreadData->iFileLastScan);
+   PreprocessSpectrum(pPreprocessThreadData->mstSpectrum);
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
@@ -218,7 +216,8 @@ bool CometPreprocess::DoneProcessingAllSpectra()
 }
 
 
-void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
+void CometPreprocess::Preprocess(struct Query *pScoring,
+                                 Spectrum mstSpectrum)
 {
    int i;
    int j;
@@ -307,7 +306,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
       }
 
       //MH: Count number of sparse entries needed
-      if (g_staticParams.options.bSparseMatrix && i>0 && pScoring->pfFastXcorrData[i] != pScoring->pfFastXcorrData[i-1])
+      if (g_staticParams.options.bSparseMatrix && i>0 && !isEqual(pScoring->pfFastXcorrData[i], pScoring->pfFastXcorrData[i-1]))
          pScoring->iFastXcorrData++;
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
@@ -331,7 +330,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
          }
 
          //MH: Count number of sparse entries needed
-         if(g_staticParams.options.bSparseMatrix && i>0 && pScoring->pfFastXcorrDataNL[i] != pScoring->pfFastXcorrDataNL[i-1])
+         if(g_staticParams.options.bSparseMatrix && i>0 && !isEqual(pScoring->pfFastXcorrDataNL[i], pScoring->pfFastXcorrDataNL[i-1]))
             pScoring->iFastXcorrDataNL++;
       }
    }
@@ -358,7 +357,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
       j=1;
       for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
       {
-         if (pScoring->pfFastXcorrData[i] != pScoring->pfFastXcorrData[i-1])
+         if (!isEqual(pScoring->pfFastXcorrData[i], pScoring->pfFastXcorrData[i-1]))
          {
             pScoring->pSparseFastXcorrData[j].bin = i;
             pScoring->pSparseFastXcorrData[j++].fIntensity = pScoring->pfFastXcorrData[i];
@@ -387,7 +386,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring, Spectrum mstSpectrum)
          j=1;
          for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
          {
-            if (pScoring->pfFastXcorrDataNL[i] != pScoring->pfFastXcorrDataNL[i-1])
+            if (!isEqual(pScoring->pfFastXcorrDataNL[i], pScoring->pfFastXcorrDataNL[i-1]))
             {
                pScoring->pSparseFastXcorrDataNL[j].bin = i;
                pScoring->pSparseFastXcorrDataNL[j].fIntensity = pScoring->pfFastXcorrDataNL[i];
@@ -485,7 +484,7 @@ bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
    bool bSearchSpectrum = true;
   
    // Check possible activation method filter.
-   if (strcmp(g_staticParams.options.szActivationMethod, "ALL") && (act != mstNA))
+   if (strcmp(g_staticParams.options.szActivationMethod, "ALL")!=0 && (act != mstNA))
    {
       if (!strcmp(g_staticParams.options.szActivationMethod, "CID") && (act != mstCID))
       {
@@ -569,9 +568,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 }
 
 
-void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
-                                         int iAnalysisType,
-                                         int iFileLastScan)
+void CometPreprocess::PreprocessSpectrum(Spectrum &spec)
 {
    int z;
    int zStart;
@@ -603,7 +600,7 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             i++;
          }
 
-         if ((dSumTotal == 0.0) || ((dSumBelow/dSumTotal) > 0.95))
+         if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
          {
             z = 1;
             spec.addZState(z, spec.getMZ() * z - (z-1) * PROTON_MASS);
@@ -635,7 +632,7 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       double dMass = spec.atZ(z).mz;
 
       if (CheckExistOutFile(iPrecursorCharge, iScanNumber)
-            && ((g_staticParams.options.dLowPeptideMass == 0.0)
+            && (isEqual(g_staticParams.options.dLowPeptideMass, 0.0)
                || ((dMass >= g_staticParams.options.dLowPeptideMass)
                   && (dMass <= g_staticParams.options.dHighPeptideMass)))
             && iPrecursorCharge <= g_staticParams.options.iMaxPrecursorCharge)

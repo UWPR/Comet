@@ -34,9 +34,7 @@ public:
     CometSearchManager &searchMgr, string varModName);
 
    static void WritePepXML(FILE *fpout,
-                           FILE *fpoutd,
-                           char *szOutput,
-                           char *szOutputDecoy);
+                           FILE *fpoutd);
 
    static void WritePepXMLEndTags(FILE *fpout);
 
@@ -44,12 +42,9 @@ public:
 private:
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
-                            FILE *fpOut,
-                            char *szOutput);
+                            FILE *fpOut);
    static void PrintPepXMLSearchHit(int iWhichQuery,
-                                    int iRankXcorr,
                                     int iWhichResult,
-                                    int iDoXcorrCount,
                                     bool bDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,

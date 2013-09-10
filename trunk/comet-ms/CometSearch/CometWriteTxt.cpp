@@ -32,9 +32,7 @@ CometWriteTxt::~CometWriteTxt()
 
 
 void CometWriteTxt::WriteTxt(FILE *fpout,
-                             FILE *fpoutd,
-                             char *szOutput,
-                             char *szOutputDecoy)
+                             FILE *fpoutd)
 {
    int i;
 
@@ -49,13 +47,13 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
-      PrintResults(i, 0, fpout, szOutput);
+      PrintResults(i, 0, fpout);
 
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
-         PrintResults(i, 1, fpoutd, szOutputDecoy);
+         PrintResults(i, 1, fpoutd);
    }
 }
 
@@ -83,8 +81,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
 
 void CometWriteTxt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
-                                 FILE *fpout,
-                                 char *szOutput)
+                                 FILE *fpout)
 {
    char szBuf[SIZE_BUF];
 
@@ -105,16 +102,13 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       pOutput = pQuery->_pResults;
 
    if (pOutput[0].fXcorr > 0.0)
-      PrintTxtLine(iWhichQuery, 1, 0, bDecoy, pOutput, fpout);  // print top hit only right now
+      PrintTxtLine(1, pOutput, fpout);  // print top hit only right now
    else
       fprintf(fpout, "\n");
 }
 
 
-void CometWriteTxt::PrintTxtLine(int iWhichQuery,
-                                 int iRankXcorr,
-                                 int iWhichResult,
-                                 bool bDecoy,
+void CometWriteTxt::PrintTxtLine( int iWhichResult,
                                  Results *pOutput,
                                  FILE *fpout)
 {
@@ -152,7 +146,7 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
       sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 
       if (g_staticParams.variableModParameters.bVarModSearch
-            && 0.0 != g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass)
+            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
       {
          sprintf(szBuf+strlen(szBuf), "%c",
                g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
@@ -176,7 +170,7 @@ void CometWriteTxt::PrintTxtLine(int iWhichQuery,
    // Print protein reference/accession.
    fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
 
-   fprintf(fpout, "%u", pOutput[iWhichResult].iDuplicateCount); 
+   fprintf(fpout, "%d", pOutput[iWhichResult].iDuplicateCount); 
 
    fprintf(fpout, "\n");
 }

@@ -58,7 +58,7 @@ CometSearchManager::~CometSearchManager()
    }
    g_pvInputFiles.clear();
 
-   for (std::map<string, CometParam*>::iterator it = _mapStaticParams.begin(); it != _mapStaticParams.end(); it++)
+   for (std::map<string, CometParam*>::iterator it = _mapStaticParams.begin(); it != _mapStaticParams.end(); ++it)
    {
        delete it->second;
    }
@@ -486,7 +486,7 @@ void CometSearchManager::InitializeStaticParams()
       g_staticParams.options.iDecoySearch = 0;
    }
 
-   if (g_staticParams.tolerances.dFragmentBinSize == 0.0)
+   if (isEqual(g_staticParams.tolerances.dFragmentBinSize, 0.0))
    {
       g_staticParams.tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
    }
@@ -540,7 +540,7 @@ void CometSearchManager::InitializeStaticParams()
           g_staticParams.options.iNumThreads = 2;  // Default to 2 threads.
    }
 
-   if (g_staticParams.tolerances.dFragmentBinSize == 0.0)
+   if (isEqual(g_staticParams.tolerances.dFragmentBinSize, 0.0))
       g_staticParams.tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
 
    // Set dInverseBinWidth to its inverse in order to use a multiply instead of divide in BIN macro.
@@ -605,7 +605,7 @@ void CometSearchManager::InitializeStaticParams()
    g_staticParams.szMod[0] = '\0';
    for (int i=0; i<VMODS; i++)
    {
-      if ((g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0) &&
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0) &&
           (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
          sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(%s%c %+0.6f) ", 
@@ -616,13 +616,13 @@ void CometSearchManager::InitializeStaticParams()
       }
    }
 
-   if (g_staticParams.variableModParameters.dVarModMassN != 0.0)
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(nt] %+0.6f) ", 
             g_staticParams.variableModParameters.dVarModMassN);       // FIX determine .out file header string for this?
       g_staticParams.variableModParameters.bVarModSearch = 1;
    }
-   if (g_staticParams.variableModParameters.dVarModMassC != 0.0)
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(ct[ %+0.6f) ", 
             g_staticParams.variableModParameters.dVarModMassC);
@@ -645,22 +645,22 @@ void CometSearchManager::InitializeStaticParams()
       g_staticParams.peaksInformation.iNumMatchPeaks = 5;
 
    // FIX how to deal with term mod on both peptide and protein?
-   if (g_staticParams.staticModifications.dAddCterminusPeptide != 0.0)
+   if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ct=%0.6f ", 
             g_staticParams.staticModifications.dAddCterminusPeptide);
    }
-   if (g_staticParams.staticModifications.dAddNterminusPeptide != 0.0)
+   if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+nt=%0.6f ", 
             g_staticParams.staticModifications.dAddNterminusPeptide);
    }
-   if (g_staticParams.staticModifications.dAddCterminusProtein!= 0.0)
+   if (!isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ctprot=%0.6f ", 
             g_staticParams.staticModifications.dAddCterminusProtein);
    }
-   if (g_staticParams.staticModifications.dAddNterminusProtein!= 0.0)
+   if (!isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ntprot=%0.6f ", 
             g_staticParams.staticModifications.dAddNterminusProtein);
@@ -668,7 +668,7 @@ void CometSearchManager::InitializeStaticParams()
 
    for (int i=65; i<=90; i++)  // 65-90 represents upper case letters in ASCII
    {
-      if (g_staticParams.staticModifications.pdStaticMods[i] != 0.0)
+      if (!isEqual(g_staticParams.staticModifications.pdStaticMods[i], 0.0))
       {
          sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "%c=%0.6f ", i,
                g_staticParams.massUtility.pdAAMassParent[i] += g_staticParams.staticModifications.pdStaticMods[i]);
@@ -1298,17 +1298,17 @@ void CometSearchManager::DoSearch()
             CometWriteOut::WriteOut();
 
          if (g_staticParams.options.bOutputPepXMLFile)
-            CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, szOutputPepXML, szOutputDecoyPepXML);
+            CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml);
 
          if (g_staticParams.options.bOutputPinXMLFile)
             CometWritePinXML::WritePinXML(fpout_pinxml);
 
          if (g_staticParams.options.bOutputTxtFile)
-            CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, szOutputTxt, szOutputDecoyTxt);
+            CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt);
 
          //// Write SQT last as I destroy the g_staticParams.szMod string during that process
          if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
-            CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, szOutputSQT, szOutputDecoySQT, *this);
+            CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, *this);
 
          // Deleting each Query object in the vector calls its destructor, which 
          // frees the spectral memory (see definition for Query in CometData.h).

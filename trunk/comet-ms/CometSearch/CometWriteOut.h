@@ -31,16 +31,13 @@ private:
                             int bin);
    static void PrintResults(int iWhichQuery,
                             bool bDecoySearch);
-   static void PrintOutputLine(int iWhichQuery,
-                               int iRankXcorr,
+   static void PrintOutputLine( int iRankXcorr,
                                int iLenMaxDuplicates,
                                int iMaxWidthReference,
                                int iWhichResult,
-                               bool bDecoySearch,
                                Results *pOutput,
                                FILE *fpout);
    static void PrintIons(int iWhichQuery,
-                         int iChargeState,
                          FILE *fpout);
 };
 

@@ -125,7 +125,6 @@ private:
                       bool bFoundVariableMod,
                       double dCalcPepMass,
                       char *szProteinSeq,
-                      char *szProteinName,
                       bool bDecoyResults,
                       char *pcVarModSites);
    void StorePeptide(int iWhichQuery,

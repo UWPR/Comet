@@ -95,8 +95,6 @@ void CometPostAnalysis::AnalyzeSP(int i)
    // Target search.
    CalculateSP(pQuery->_pResults,
                i,
-               pQuery->_spectrumInfoInternal.iArraySize,
-               pQuery->_spectrumInfoInternal.iChargeState,
                iSize);
 
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), SPQSortFn);
@@ -105,7 +103,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    for (int ii=1; ii<iSize; ii++)
    {
       // Determine score rankings.
-      if (pQuery->_pResults[ii].fScoreSp == pQuery->_pResults[ii-1].fScoreSp)
+      if (isEqual(pQuery->_pResults[ii].fScoreSp, pQuery->_pResults[ii-1].fScoreSp))
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp;
       else
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp + 1;
@@ -120,8 +118,6 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
       CalculateSP(pQuery->_pDecoys,
                   i,
-                  pQuery->_spectrumInfoInternal.iArraySize,
-                  pQuery->_spectrumInfoInternal.iChargeState,
                   iSize);
 
       qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), SPQSortFn);
@@ -130,7 +126,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
       for (int ii=1; ii<iSize; ii++)
       {
          // Determine score rankings.
-         if (pQuery->_pDecoys[ii].fScoreSp == pQuery->_pDecoys[ii-1].fScoreSp)
+         if (isEqual(pQuery->_pDecoys[ii].fScoreSp, pQuery->_pDecoys[ii-1].fScoreSp))
             pQuery->_pDecoys[ii].iRankSp = pQuery->_pDecoys[ii-1].iRankSp;
          else
             pQuery->_pDecoys[ii].iRankSp = pQuery->_pDecoys[ii-1].iRankSp + 1;
@@ -144,8 +140,6 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
 void CometPostAnalysis::CalculateSP(Results *pOutput,
                                     int iWhichQuery,
-                                    int iArraySize,
-                                    int iChargeState,
                                     int iSize)
 {
    int i;
