@@ -19,7 +19,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "Common.h"
-#include "CometData.h"
+#include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometMassSpecUtils.h"
 

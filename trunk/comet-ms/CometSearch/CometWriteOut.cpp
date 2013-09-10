@@ -15,7 +15,7 @@
 */
 
 #include "Common.h"
-#include "CometData.h"
+#include "CometDataInternal.h"
 #include "CometMassSpecUtils.h"
 #include "CometWriteOut.h"
 

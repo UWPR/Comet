@@ -18,6 +18,7 @@
 #include "CometMassSpecUtils.h"
 #include "CometSearch.h"
 #include "CometPostAnalysis.h"
+#include "CometPreprocess.h"
 #include "CometWriteOut.h"
 #include "CometWriteSqt.h"
 #include "CometWriteTxt.h"
@@ -25,6 +26,7 @@
 #include "CometWritePinXML.h"
 #include "Threading.h"
 #include "ThreadPool.h"
+#include "CometDataInternal.h"
 #include "CometSearchManager.h"
 
 #ifdef _WIN32
@@ -33,12 +35,362 @@
 #define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
 #endif
 
-
 std::vector<Query*>           g_pvQuery;
 std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
+
+/******************************************************************************
+*
+* Static helper functions
+*
+******************************************************************************/
+static void GetHostName()
+{
+#ifdef _WIN32
+    WSADATA WSAData;
+    WSAStartup(MAKEWORD(1, 0), &WSAData);
+
+    if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
+        strcpy(g_staticParams.szHostName, "locahost");
+
+    WSACleanup();
+#else
+    if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
+        strcpy(g_staticParams.szHostName, "locahost");
+#endif
+
+    char *pStr;
+    if ((pStr = strchr(g_staticParams.szHostName, '.'))!=NULL)
+        *pStr = '\0';
+}
+
+static void UpdateInputFile(InputFileInfo *pFileInfo)
+{
+    bool bUpdateBaseName = false;
+    char szTmpBaseName[SIZE_FILE];
+
+    // Make sure not set on command line OR more than 1 input file
+    // Need to do this check here before g_staticParams.inputFile is set to *pFileInfo
+    if (g_staticParams.inputFile.szBaseName[0] =='\0' || g_pvInputFiles.size()>1)
+        bUpdateBaseName = true;
+    else
+        strcpy(szTmpBaseName, g_staticParams.inputFile.szBaseName);
+
+    g_staticParams.inputFile = *pFileInfo;
+
+    int iLen = strlen(g_staticParams.inputFile.szFileName);
+
+    if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 6, ".mzXML")
+            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 5, ".mzML")
+            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 4, ".mz5")
+            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+
+    {
+        g_staticParams.inputFile.iInputType = InputType_MZXML;
+    } 
+
+    if (bUpdateBaseName) // set individual basename from input file
+    {
+        char *pStr;
+
+        strcpy(g_staticParams.inputFile.szBaseName, g_staticParams.inputFile.szFileName);
+
+        if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
+            *pStr = '\0';
+
+        if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+        {
+            if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
+            *pStr = '\0';
+        }
+    }
+    else
+    {
+        strcpy(g_staticParams.inputFile.szBaseName, szTmpBaseName);  // set basename from command line
+    }
+
+    // Create .out directory.
+    if (g_staticParams.options.bOutputOutFiles)
+    {
+#ifdef _WIN32
+        if (_mkdir(g_staticParams.inputFile.szBaseName) == -1)
+        {
+            errno_t err;
+            _get_errno(&err);
+
+            if (err != EEXIST) 
+            {
+            logerr("\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
+            exit(1);
+            }
+        }
+        if (g_staticParams.options.iDecoySearch == 2)
+        {
+            char szDecoyDir[SIZE_FILE];
+            sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
+
+            if (_mkdir(szDecoyDir) == -1)
+            {
+            errno_t err;
+            _get_errno(&err);
+
+            if (err != EEXIST) 
+            {
+                logerr("\n Error - could not create directory \"%s\".\n", szDecoyDir);
+                exit(1);
+            }
+            }
+        }
+#else
+        if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
+        {
+            logerr("\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
+            exit(1);
+        }
+        if (g_staticParams.options.iDecoySearch == 2)
+        {
+            char szDecoyDir[SIZE_FILE];
+            sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
+
+            if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
+            {
+            logerr("\n Error - could not create directory \"%s\".\n\n", szDecoyDir);
+            exit(1);
+            }
+        }
+#endif
+    }
+}
+
+static void SetMSLevelFilter(MSReader &mstReader)
+{
+    vector<MSSpectrumType> msLevel;
+    if (g_staticParams.options.iStartMSLevel == 3)
+    {
+        msLevel.push_back(MS3);
+    }
+    else
+    {
+        msLevel.push_back(MS2);
+    }
+    mstReader.setFilter(msLevel);
+}
+   
+// Allocate memory for the _pResults struct for each g_pvQuery entry.
+static void AllocateResultsMem()
+{
+    for (unsigned i=0; i<g_pvQuery.size(); i++)
+    {
+        Query* pQuery = g_pvQuery.at(i);
+
+        pQuery->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+
+        if (pQuery->_pResults == NULL)
+        {
+            logerr(" Error malloc(_pResults[])\n");
+            exit(1);
+        }
+
+        //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
+        for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
+            pQuery->_pResults[xx].iLenPeptide=0;
+
+        pQuery->iDoXcorrCount = 0;
+        pQuery->siLowestSpScoreIndex = 0;
+        pQuery->fLowestSpScore = 0.0;
+
+        if (g_staticParams.options.iDecoySearch==2)
+        {
+            pQuery->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+
+            if (pQuery->_pDecoys == NULL)
+            {
+            logerr(" Error malloc(_pDecoys[])\n");
+            exit(1);
+            }
+
+            //MH: same logic as my comment above
+            for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
+            pQuery->_pDecoys[xx].iLenPeptide=0;
+
+            pQuery->iDoDecoyXcorrCount = 0;
+            pQuery->siLowestDecoySpScoreIndex = 0;
+            pQuery->fLowestDecoySpScore = 0.0;
+        }
+
+        int j;
+        for (j=0; j<HISTO_SIZE; j++)
+        {
+            pQuery->iCorrelationHistogram[j]=0;
+            pQuery->iDecoyCorrelationHistogram[j]=0;
+        }
+
+        for (j=0; j<g_staticParams.options.iNumStored; j++)
+        {
+            pQuery->_pResults[j].fXcorr = 0.0;
+            pQuery->_pResults[j].fScoreSp = 0.0;
+            pQuery->_pResults[j].dExpect = 0.0;
+            pQuery->_pResults[j].szPeptide[0] = '\0';
+            pQuery->_pResults[j].szProtein[0] = '\0';
+
+            if (g_staticParams.options.iDecoySearch==2)
+            {
+            pQuery->_pDecoys[j].fXcorr = 0.0;
+            pQuery->_pDecoys[j].fScoreSp = 0.0;
+            pQuery->_pDecoys[j].dExpect = 0.0;
+            pQuery->_pDecoys[j].szPeptide[0] = '\0';
+            pQuery->_pDecoys[j].szProtein[0] = '\0';
+            }
+        }
+    }
+}
+
+static bool compareByPeptideMass(Query const* a, Query const* b)
+{
+    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
+}
+
+static void CalcRunTime(time_t tStartTime)
+{
+    char szTimeBuf[512];
+    time_t tEndTime;
+    int iTmp;
+
+    time(&tEndTime);
+
+    int iElapseTime=(int)difftime(tEndTime, tStartTime);
+
+    // Print out header/search info.
+    sprintf(szTimeBuf, "%s,", g_staticParams.szDate);
+    if ( (iTmp = (int)(iElapseTime/3600) )>0)
+        sprintf(szTimeBuf+strlen(szTimeBuf), " %d hr.", iTmp);
+    if ( (iTmp = (int)((iElapseTime-(int)(iElapseTime/3600)*3600)/60) )>0)
+        sprintf(szTimeBuf+strlen(szTimeBuf), " %d min.", iTmp);
+    if ( (iTmp = (int)((iElapseTime-((int)(iElapseTime/3600))*3600)%60) )>0)
+        sprintf(szTimeBuf+strlen(szTimeBuf), " %d sec.", iTmp);
+    if (iElapseTime == 0)
+        sprintf(szTimeBuf+strlen(szTimeBuf), " 0 sec.");
+    sprintf(szTimeBuf+strlen(szTimeBuf), " on %s", g_staticParams.szHostName);
+
+    g_staticParams.iElapseTime = iElapseTime;
+    strncpy(g_staticParams.szTimeBuf, szTimeBuf, 256);
+    g_staticParams.szTimeBuf[255]='\0';
+}
+static void PrintParameters()
+{
+    // print parameters
+
+    char szIsotope[16];
+    char szPeak[16];
+
+    sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
+            g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
+            g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
+            g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
+            g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
+            g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
+            g_staticParams.ionInformation.iIonVal[ION_SERIES_Z],
+            g_staticParams.ionInformation.bUseNeutralLoss);
+
+    char szUnits[8];
+    char szDecoy[20];
+    char szReadingFrame[20];
+    char szRemovePrecursor[20];
+
+    if (g_staticParams.tolerances.iMassToleranceUnits==0)
+        strcpy(szUnits, " AMU");
+    else if (g_staticParams.tolerances.iMassToleranceUnits==1)
+        strcpy(szUnits, " MMU");
+    else
+        strcpy(szUnits, " PPM");
+
+    if (g_staticParams.options.iDecoySearch)
+        sprintf(szDecoy, " DECOY%d", g_staticParams.options.iDecoySearch);
+    else
+        szDecoy[0]=0;
+
+    if (g_staticParams.options.iRemovePrecursor)
+        sprintf(szRemovePrecursor, " REMOVEPREC%d", g_staticParams.options.iRemovePrecursor);
+    else
+        szRemovePrecursor[0]=0;
+
+    if (g_staticParams.options.iWhichReadingFrame)
+        sprintf(szReadingFrame, " FRAME%d", g_staticParams.options.iWhichReadingFrame);
+    else
+        szReadingFrame[0]=0;
+
+    szIsotope[0]='\0';
+    if (g_staticParams.tolerances.iIsotopeError==1)
+        strcpy(szIsotope, "ISOTOPE1");
+    else if (g_staticParams.tolerances.iIsotopeError==2)
+        strcpy(szIsotope, "ISOTOPE2");
+
+    szPeak[0]='\0';
+    if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
+        strcpy(szPeak, "PEAK1");
+
+    sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
+            g_staticParams.options.iNumPeptideOutputLines,
+            szRemovePrecursor,
+            szReadingFrame,
+            szPeak,
+            szUnits,
+            (g_staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
+            szIsotope,
+            szDecoy,
+            (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
+}
+
+static void ValidateOutputFormat()
+{
+   if (!g_staticParams.options.bOutputSqtStream
+         && !g_staticParams.options.bOutputSqtFile
+         && !g_staticParams.options.bOutputTxtFile
+         && !g_staticParams.options.bOutputPepXMLFile
+         && !g_staticParams.options.bOutputPinXMLFile
+         && !g_staticParams.options.bOutputOutFiles)
+   {
+      logout("\n Comet version \"%s\"\n", comet_version);
+      logout(" Please specify at least one output format.\n\n");
+      exit(1);
+   }
+}
+
+static void ValidateSequenceDatabaseFile()
+{
+   FILE *fpcheck;
+   
+   // Quick sanity check to make sure sequence db file is present before spending
+   // time reading & processing spectra and then reporting this error.
+   if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
+   {
+      logerr("\n Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+      logerr(" Check that the file exists and is readable.\n\n");
+      exit(1);
+   }
+   fclose(fpcheck);
+}
+
+static void ValidateScanRange()
+{
+   if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
+   {
+      logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
+      logerr(" Error - start scan is %d but end scan is %d.\n", g_staticParams.options.scanRange.iStart, g_staticParams.options.scanRange.iEnd);
+      logerr(" The end scan must be >= to the start scan.\n\n");
+      exit(1);
+   }
+}
+
+/******************************************************************************
+*
+* CometSearchManager class implementation.
+*
+******************************************************************************/
 
 CometSearchManager::CometSearchManager()
 {
@@ -726,27 +1078,6 @@ void CometSearchManager::InitializeStaticParams()
       + g_staticParams.staticModifications.dAddNterminusPeptide;
 }
 
-void CometSearchManager::GetHostName(void)
-{
-#ifdef _WIN32
-   WSADATA WSAData;
-   WSAStartup(MAKEWORD(1, 0), &WSAData);
-
-   if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
-      strcpy(g_staticParams.szHostName, "locahost");
-
-   WSACleanup();
-#else
-   if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
-      strcpy(g_staticParams.szHostName, "locahost");
-#endif
-
-   char *pStr;
-   if ((pStr = strchr(g_staticParams.szHostName, '.'))!=NULL)
-      *pStr = '\0';
-}
-
-
 void CometSearchManager::AddInputFiles(vector<InputFileInfo*> &pvInputFiles)
 {
    int numInputFiles = pvInputFiles.size();
@@ -939,112 +1270,6 @@ bool CometSearchManager::GetParamValue(const string &name, EnzymeInfo &value)
    TypedCometParam<EnzymeInfo> *pParam = static_cast<TypedCometParam<EnzymeInfo>*>(it->second);
    value = pParam->GetValue();
    return true;
-}
-
-void CometSearchManager::PrintParameters()
-{
-   // print parameters
-
-   char szIsotope[16];
-   char szPeak[16];
-
-   sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
-           g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
-           g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
-           g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
-           g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
-           g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
-           g_staticParams.ionInformation.iIonVal[ION_SERIES_Z],
-           g_staticParams.ionInformation.bUseNeutralLoss);
-
-   char szUnits[8];
-   char szDecoy[20];
-   char szReadingFrame[20];
-   char szRemovePrecursor[20];
-
-   if (g_staticParams.tolerances.iMassToleranceUnits==0)
-      strcpy(szUnits, " AMU");
-   else if (g_staticParams.tolerances.iMassToleranceUnits==1)
-      strcpy(szUnits, " MMU");
-   else
-      strcpy(szUnits, " PPM");
-
-   if (g_staticParams.options.iDecoySearch)
-      sprintf(szDecoy, " DECOY%d", g_staticParams.options.iDecoySearch);
-   else
-      szDecoy[0]=0;
-
-   if (g_staticParams.options.iRemovePrecursor)
-      sprintf(szRemovePrecursor, " REMOVEPREC%d", g_staticParams.options.iRemovePrecursor);
-   else
-      szRemovePrecursor[0]=0;
-
-   if (g_staticParams.options.iWhichReadingFrame)
-      sprintf(szReadingFrame, " FRAME%d", g_staticParams.options.iWhichReadingFrame);
-   else
-      szReadingFrame[0]=0;
-
-   szIsotope[0]='\0';
-   if (g_staticParams.tolerances.iIsotopeError==1)
-      strcpy(szIsotope, "ISOTOPE1");
-   else if (g_staticParams.tolerances.iIsotopeError==2)
-      strcpy(szIsotope, "ISOTOPE2");
-
-   szPeak[0]='\0';
-   if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
-      strcpy(szPeak, "PEAK1");
-
-   sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
-         g_staticParams.options.iNumPeptideOutputLines,
-         szRemovePrecursor,
-         szReadingFrame,
-         szPeak,
-         szUnits,
-         (g_staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
-         szIsotope,
-         szDecoy,
-         (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
-}
-
-void CometSearchManager::ValidateOutputFormat()
-{
-   if (!g_staticParams.options.bOutputSqtStream
-         && !g_staticParams.options.bOutputSqtFile
-         && !g_staticParams.options.bOutputTxtFile
-         && !g_staticParams.options.bOutputPepXMLFile
-         && !g_staticParams.options.bOutputPinXMLFile
-         && !g_staticParams.options.bOutputOutFiles)
-   {
-      logout("\n Comet version \"%s\"\n", comet_version);
-      logout(" Please specify at least one output format.\n\n");
-      exit(1);
-   }
-}
-
-void CometSearchManager::ValidateSequenceDatabaseFile()
-{
-   FILE *fpcheck;
-   
-   // Quick sanity check to make sure sequence db file is present before spending
-   // time reading & processing spectra and then reporting this error.
-   if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
-   {
-      logerr("\n Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
-      logerr(" Check that the file exists and is readable.\n\n");
-      exit(1);
-   }
-   fclose(fpcheck);
-}
-
-void CometSearchManager::ValidateScanRange()
-{
-   if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
-   {
-      logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
-      logerr(" Error - start scan is %d but end scan is %d.\n", g_staticParams.options.scanRange.iStart, g_staticParams.options.scanRange.iEnd);
-      logerr(" The end scan must be >= to the start scan.\n\n");
-      exit(1);
-   }
 }
 
 void CometSearchManager::DoSearch()
@@ -1365,217 +1590,3 @@ void CometSearchManager::DoSearch()
    }
 }
 
-void CometSearchManager::UpdateInputFile(InputFileInfo *pFileInfo)
-{
-   bool bUpdateBaseName = false;
-   char szTmpBaseName[SIZE_FILE];
-
-   // Make sure not set on command line OR more than 1 input file
-   // Need to do this check here before g_staticParams.inputFile is set to *pFileInfo
-   if (g_staticParams.inputFile.szBaseName[0] =='\0' || g_pvInputFiles.size()>1)
-      bUpdateBaseName = true;
-   else
-      strcpy(szTmpBaseName, g_staticParams.inputFile.szBaseName);
-
-   g_staticParams.inputFile = *pFileInfo;
-
-   int iLen = strlen(g_staticParams.inputFile.szFileName);
-
-   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 6, ".mzXML")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 5, ".mzML")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 4, ".mz5")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
-
-   {
-      g_staticParams.inputFile.iInputType = InputType_MZXML;
-   } 
-
-   if (bUpdateBaseName) // set individual basename from input file
-   {
-      char *pStr;
-
-      strcpy(g_staticParams.inputFile.szBaseName, g_staticParams.inputFile.szFileName);
-
-      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
-         *pStr = '\0';
-
-      if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
-      {
-         if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
-            *pStr = '\0';
-      }
-   }
-   else
-   {
-      strcpy(g_staticParams.inputFile.szBaseName, szTmpBaseName);  // set basename from command line
-   }
-
-   // Create .out directory.
-   if (g_staticParams.options.bOutputOutFiles)
-   {
-#ifdef _WIN32
-      if (_mkdir(g_staticParams.inputFile.szBaseName) == -1)
-      {
-         errno_t err;
-         _get_errno(&err);
-
-         if (err != EEXIST) 
-         {
-            logerr("\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
-            exit(1);
-         }
-      }
-      if (g_staticParams.options.iDecoySearch == 2)
-      {
-         char szDecoyDir[SIZE_FILE];
-         sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
-
-         if (_mkdir(szDecoyDir) == -1)
-         {
-            errno_t err;
-            _get_errno(&err);
-
-            if (err != EEXIST) 
-            {
-               logerr("\n Error - could not create directory \"%s\".\n", szDecoyDir);
-               exit(1);
-            }
-         }
-      }
-#else
-      if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
-      {
-         logerr("\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
-         exit(1);
-      }
-      if (g_staticParams.options.iDecoySearch == 2)
-      {
-         char szDecoyDir[SIZE_FILE];
-         sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
-
-         if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
-         {
-            logerr("\n Error - could not create directory \"%s\".\n\n", szDecoyDir);
-            exit(1);
-         }
-      }
-#endif
-   }
-}
-
-void CometSearchManager::SetMSLevelFilter(MSReader &mstReader)
-{
-   vector<MSSpectrumType> msLevel;
-   if (g_staticParams.options.iStartMSLevel == 3)
-   {
-      msLevel.push_back(MS3);
-   }
-   else
-   {
-      msLevel.push_back(MS2);
-   }
-   mstReader.setFilter(msLevel);
-}
-
-// Allocate memory for the _pResults struct for each g_pvQuery entry.
-void CometSearchManager::AllocateResultsMem()
-{
-   for (unsigned i=0; i<g_pvQuery.size(); i++)
-   {
-      Query* pQuery = g_pvQuery.at(i);
-
-      pQuery->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
-
-      if (pQuery->_pResults == NULL)
-      {
-         logerr(" Error malloc(_pResults[])\n");
-         exit(1);
-      }
-
-      //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
-      for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
-         pQuery->_pResults[xx].iLenPeptide=0;
-
-      pQuery->iDoXcorrCount = 0;
-      pQuery->siLowestSpScoreIndex = 0;
-      pQuery->fLowestSpScore = 0.0;
-
-      if (g_staticParams.options.iDecoySearch==2)
-      {
-         pQuery->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
-
-         if (pQuery->_pDecoys == NULL)
-         {
-            logerr(" Error malloc(_pDecoys[])\n");
-            exit(1);
-         }
-
-         //MH: same logic as my comment above
-         for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
-            pQuery->_pDecoys[xx].iLenPeptide=0;
-
-         pQuery->iDoDecoyXcorrCount = 0;
-         pQuery->siLowestDecoySpScoreIndex = 0;
-         pQuery->fLowestDecoySpScore = 0.0;
-      }
-
-      int j;
-      for (j=0; j<HISTO_SIZE; j++)
-      {
-         pQuery->iCorrelationHistogram[j]=0;
-         pQuery->iDecoyCorrelationHistogram[j]=0;
-      }
-
-      for (j=0; j<g_staticParams.options.iNumStored; j++)
-      {
-         pQuery->_pResults[j].fXcorr = 0.0;
-         pQuery->_pResults[j].fScoreSp = 0.0;
-         pQuery->_pResults[j].dExpect = 0.0;
-         pQuery->_pResults[j].szPeptide[0] = '\0';
-         pQuery->_pResults[j].szProtein[0] = '\0';
-
-         if (g_staticParams.options.iDecoySearch==2)
-         {
-            pQuery->_pDecoys[j].fXcorr = 0.0;
-            pQuery->_pDecoys[j].fScoreSp = 0.0;
-            pQuery->_pDecoys[j].dExpect = 0.0;
-            pQuery->_pDecoys[j].szPeptide[0] = '\0';
-            pQuery->_pDecoys[j].szProtein[0] = '\0';
-         }
-      }
-   }
-}
-
-bool CometSearchManager::compareByPeptideMass(Query const* a, Query const* b)
-{
-   return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
-}
-
-void CometSearchManager::CalcRunTime(time_t tStartTime)
-{
-   char szTimeBuf[512];
-   time_t tEndTime;
-   int iTmp;
-
-   time(&tEndTime);
-
-   int iElapseTime=(int)difftime(tEndTime, tStartTime);
-
-   // Print out header/search info.
-   sprintf(szTimeBuf, "%s,", g_staticParams.szDate);
-   if ( (iTmp = (int)(iElapseTime/3600) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d hr.", iTmp);
-   if ( (iTmp = (int)((iElapseTime-(int)(iElapseTime/3600)*3600)/60) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d min.", iTmp);
-   if ( (iTmp = (int)((iElapseTime-((int)(iElapseTime/3600))*3600)%60) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d sec.", iTmp);
-   if (iElapseTime == 0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " 0 sec.");
-   sprintf(szTimeBuf+strlen(szTimeBuf), " on %s", g_staticParams.szHostName);
-
-   g_staticParams.iElapseTime = iElapseTime;
-   strncpy(g_staticParams.szTimeBuf, szTimeBuf, 256);
-   g_staticParams.szTimeBuf[255]='\0';
-}
