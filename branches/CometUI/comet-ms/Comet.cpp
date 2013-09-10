@@ -17,17 +17,7 @@
 
 #include "Common.h"
 #include "CometData.h"
-#include "CometMassSpecUtils.h"
-#include "CometSearch.h"
-#include "CometPreprocess.h"
-#include "CometPostAnalysis.h"
-#include "CometWriteOut.h"
-#include "CometWriteSqt.h"
-#include "CometWriteTxt.h"
-#include "CometWritePepXML.h"
 #include "CometSearchManager.h"
-#include "Threading.h"
-#include "ThreadPool.h"
 
 #include <algorithm>
 
