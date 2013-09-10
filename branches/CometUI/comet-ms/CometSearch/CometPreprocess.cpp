@@ -15,7 +15,7 @@
 */
 
 #include "Common.h"
-#include "CometData.h"
+#include "CometDataInternal.h"
 #include "CometPreprocess.h"
 
 Mutex CometPreprocess::_maxChargeMutex;

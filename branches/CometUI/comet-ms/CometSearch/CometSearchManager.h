@@ -17,7 +17,6 @@
 #ifndef _COMETSEARCHMANAGER_H_
 #define _COMETSEARCHMANAGER_H_
 
-#include "CometPreprocess.h"
 #include "CometData.h"
 
 class CometSearchManager
@@ -47,17 +46,7 @@ public:
 
 
 private:
-   void GetHostName();
-   void UpdateInputFile(InputFileInfo *pFileInfo);
-   void SetMSLevelFilter(MSReader &mstReader);
-   void AllocateResultsMem();
-   static bool compareByPeptideMass(Query const* a, Query const* b);
-   void CalcRunTime(time_t tStartTime);
    void InitializeStaticParams();
-   void PrintParameters();
-   void ValidateOutputFormat();
-   void ValidateSequenceDatabaseFile();
-   void ValidateScanRange();
    
    std::map<std::string, CometParam*> _mapStaticParams;
 };

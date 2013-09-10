@@ -62,6 +62,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CometData.h" />
+    <ClInclude Include="CometDataInternal.h" />
     <ClInclude Include="CometMassSpecUtils.h" />
     <ClInclude Include="CometPostAnalysis.h" />
     <ClInclude Include="CometPreprocess.h" />

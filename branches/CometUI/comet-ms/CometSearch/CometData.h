@@ -17,85 +17,12 @@
 #ifndef _COMETDATA_H_
 #define _COMETDATA_H_
 
-#include "Threading.h"
-
-class CometSearchManager;
-
-#define PROTON_MASS                 1.00727646688
-
-#define FLOAT_ZERO                  0.000001
-#define MAX_VARMOD_AA               20       // max # of modified AAs in a peptide per variable modification 
-#define MAX_ENZYME_AA               20       // max # of AA for enzyme break point
-#define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
-#define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
-#define SIZE_MASS                   128
-#define NUM_SP_IONS                 200      // num ions for preliminary scoring
-#define NUM_STORED                  100      // number of internal search results to store
-#define NUM_ION_SERIES              9
-
-#define DEFAULT_FRAGMENT_CHARGE     3
-#define DEFAULT_PRECURSOR_CHARGE    6
-#define MAX_FRAGMENT_CHARGE         5
-#define MAX_PRECURSOR_CHARGE        9
-#define MINIMUM_PEAKS               10
-
-#define SIZE_BUF                    8192
 #define SIZE_FILE                   512
-#define WIDTH_REFERENCE             40       // size of the protein accession field to store
-#define DEFAULT_PREC_TOL            2.0      // default precursor removal tolerance
-#define MAX_THREADS                 32
-#define DEFAULT_BIN_WIDTH           1.0005
-#define DEFAULT_OFFSET              0.4
 
-#define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
+#define MAX_ENZYME_AA               20       // max # of AA for enzyme break point
+#define MAX_VARMOD_AA               20       // max # of modified AAs in a peptide per variable modification 
 
-#define DECOY_SIZE                  500      // minimum # of decoys to have for e-value calculation
-
-#define VMODS                       6
-#define VMODS_ALL                   VMODS + 2
-#define VMOD_1_INDEX                0
-#define VMOD_2_INDEX                1
-#define VMOD_3_INDEX                2
-#define VMOD_4_INDEX                3
-#define VMOD_5_INDEX                4
-#define VMOD_6_INDEX                5
-#define VMOD_N_INDEX                6
-#define VMOD_C_INDEX                7
-
-#define ENZYME_SINGLE_TERMINI       1
-#define ENZYME_DOUBLE_TERMINI       2
-#define ENZYME_N_TERMINI            8
-#define ENZYME_C_TERMINI            9
-#define ENZYME_NAME_LEN            48
-
-#define ION_SERIES_A                0
-#define ION_SERIES_B                1
-#define ION_SERIES_C                2
-#define ION_SERIES_X                3
-#define ION_SERIES_Y                4
-#define ION_SERIES_Z                5
-
-
-enum AnalysisType 
-{
-   AnalysisType_Unknown = 0,
-   AnalysisType_DTA,
-   AnalysisType_SpecificScan,
-   AnalysisType_SpecificScanRange,
-   AnalysisType_EntireFile
-};
-
-enum InputType 
-{
-   InputType_MS2 = 0,           // ms2, cms2, bms2, etc.
-   InputType_MZXML
-};
-
-struct msdata                    // used in the preprocessing
-{
-   double dIon;
-   double dIntensity;
-};
+#define ENZYME_NAME_LEN             48
 
 struct DoubleRange
 {
@@ -147,172 +74,72 @@ struct IntRange
    }
 };
 
-struct Options             // output parameters 
+struct VarMods 
 {
-   int iNumPeptideOutputLines;
-   int iWhichReadingFrame;
-   int iEnzymeTermini;
-   int iNumStored;               // # of search results to store for xcorr analysis
-   IntRange scanRange;
-   int iSpectrumBatchSize;		   // # of spectra to search at a time within the scan range
-   int iStartCharge;
-   int iEndCharge;
-   int iMaxFragmentCharge;
-   int iMaxPrecursorCharge;
-   int iStartMSLevel;            // mzXML only
-   int iEndMSLevel;              // mzXML only
-   int iMinPeaks;
-   int iMinIntensity;
-   int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors
-   int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search
-   int iNumThreads;              // 0=poll CPU else set # threads to spawn
-   int bOutputSqtStream;
-   int bOutputSqtFile;
-   int bOutputTxtFile;
-   int bOutputPepXMLFile;
-   int bOutputPinXMLFile;
-   int bOutputOutFiles;
-   int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
-   int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
-   int bNoEnzymeSelected;
-   int bPrintFragIons;
-   int bPrintExpectScore;
-   int bSparseMatrix;
-   double dRemovePrecursorTol;
-   DoubleRange clearMzRange;
-   double dLowPeptideMass;       // MH+ mass
-   double dHighPeptideMass;      // MH+ mass
-   char szActivationMethod[24];  // mzXML only
+   int    bBinaryMod;
+   int    iMaxNumVarModAAPerMod;
+   double dVarModMass;
+   char   szVarModChar[MAX_VARMOD_AA];
 
-   Options& operator=(Options& a) 
+   VarMods& operator=(VarMods& a) 
    {
-      iNumPeptideOutputLines = a.iNumPeptideOutputLines;
-      iWhichReadingFrame = a.iWhichReadingFrame;
-      iEnzymeTermini = a.iEnzymeTermini;
-      iNumStored = a.iNumStored;
-      scanRange = a.scanRange;
-      iSpectrumBatchSize = a.iSpectrumBatchSize;
-      iStartCharge = a.iStartCharge;
-      iEndCharge = a.iEndCharge;
-      iMaxFragmentCharge = a.iMaxFragmentCharge;
-      iMaxPrecursorCharge = a.iMaxPrecursorCharge;
-      iStartMSLevel = a.iStartMSLevel;
-      iEndMSLevel = a.iEndMSLevel; 
-      iMinPeaks = a.iMinPeaks;
-      iMinIntensity = a.iMinIntensity;
-      iRemovePrecursor = a.iRemovePrecursor;
-      iDecoySearch = a.iDecoySearch;
-      iNumThreads = a.iNumThreads;
-      bOutputSqtStream = a.bOutputSqtStream;
-      bOutputSqtFile = a.bOutputSqtFile;
-      bOutputTxtFile = a.bOutputTxtFile;
-      bOutputPepXMLFile = a.bOutputPepXMLFile;
-      bOutputPinXMLFile = a.bOutputPinXMLFile;
-      bOutputOutFiles = a.bOutputOutFiles;
-      bClipNtermMet = a.bClipNtermMet;
-      bSkipAlreadyDone = a.bSkipAlreadyDone;
-      bNoEnzymeSelected = a.bNoEnzymeSelected;
-      bPrintFragIons = a.bPrintFragIons;
-      bPrintExpectScore = a.bPrintExpectScore;
-      bSparseMatrix = a.bSparseMatrix;
-      dRemovePrecursorTol = a.dRemovePrecursorTol;
-      clearMzRange = a.clearMzRange;
-      dLowPeptideMass = a.dLowPeptideMass;
-      dHighPeptideMass = a.dHighPeptideMass;
-      strcpy(szActivationMethod, a.szActivationMethod);
+      bBinaryMod = a.bBinaryMod;
+      iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
+      dVarModMass = a.dVarModMass;
+      strcpy(szVarModChar, a.szVarModChar);
+
+      return *this;
+   }
+
+};
+
+struct EnzymeInfo
+{
+   int  iAllowedMissedCleavage;
+
+   int  iSearchEnzymeOffSet;
+   char szSearchEnzymeName[ENZYME_NAME_LEN];
+   char szSearchEnzymeBreakAA[MAX_ENZYME_AA];
+   char szSearchEnzymeNoBreakAA[MAX_ENZYME_AA];
+
+   int  iSampleEnzymeOffSet;
+   char szSampleEnzymeName[ENZYME_NAME_LEN];
+   char szSampleEnzymeBreakAA[MAX_ENZYME_AA];
+   char szSampleEnzymeNoBreakAA[MAX_ENZYME_AA];
+
+   EnzymeInfo& operator=(EnzymeInfo& a) 
+   {
+      iAllowedMissedCleavage = a.iAllowedMissedCleavage;
+      iSearchEnzymeOffSet = a.iSearchEnzymeOffSet;
+      iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
+
+      int i;
+
+      for (i = 0; i < ENZYME_NAME_LEN; i++)
+      {
+         szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
+         szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
+      }
+
+      for (i = 0; i < MAX_ENZYME_AA; i++)
+      {
+         szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
+         szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
+         szSampleEnzymeBreakAA[i] = a.szSampleEnzymeBreakAA[i];
+         szSampleEnzymeNoBreakAA[i] = a.szSampleEnzymeNoBreakAA[i];
+      }
 
       return *this;
    }
 };
 
-struct Results 
+enum AnalysisType 
 {
-   double dPepMass;
-   double dExpect;
-   float  fScoreSp;
-   float  fXcorr;
-   int    iDuplicateCount;
-   int    iLenPeptide;
-   int    iRankSp;
-   int    iMatchedIons;
-   int    iTotalIons;
-   char pcVarModSites[MAX_PEPTIDE_LEN_P2];    // store variable mods encoding, +2 to accomodate N/C-term
-   char szProtein[WIDTH_REFERENCE];
-   char szPeptide[MAX_PEPTIDE_LEN];
-   char szPrevNextAA[4];                      // [0] stores prev AA, [1] stores next AA
-};
-
-struct PepMassInfo
-{
-   double dCalcPepMass;
-   double dExpPepMass;
-   double dPeptideMassTolerance;
-   double dPeptideMassToleranceMinus;
-   double dPeptideMassTolerancePlus;
-};
-
-struct SpectrumInfoInternal
-{
-   int iArraySize;     // m/z versus intensity array
-   int iHighestIon;
-   int iScanNumber;
-   int iChargeState;
-   int iMaxFragCharge;
-   double dTotalIntensity;
-   double dRTime;
-};
-
-// The minimum and maximum mass range of all peptides to consider
-// i.e. lowestPepMass - tolerance to highestPepMass + tolerance
-struct MassRange
-{
-   double dMinMass;
-   double dMaxMass;
-   int    iMaxFragmentCharge;  // global maximum fragment charge
-};
-
-extern MassRange g_massRange;
-
-// PreprocessStruct stores information used in preprocessing
-// each spectrum.  Information not kept around otherwise
-struct PreprocessStruct
-{
-   int iHighestIon;
-   double dHighestIntensity;
-   double *pdCorrelationData;
-   struct msdata pTempSpData[NUM_SP_IONS];
-};
-
-//-->MH
-typedef struct sDBEntry
-{
-   string strName;
-   string strSeq;
-} sDBEntry;
-
-typedef struct sDBTable
-{
-   int  iStart;   // pointer to the start of this mass value
-   int  iStop;    // pointer to the end of this mass value
-   char cFile;    // which index file has the start of the data
-} sDBTable; 
-
-struct DBInfo
-{  
-   char szDatabase[SIZE_FILE];
-   char szFileName[SIZE_FILE];
-   int  iTotalNumProteins;
-   unsigned long int uliTotAACount;
-
-   DBInfo& operator=(DBInfo& a)
-   {
-      strcpy(szDatabase, a.szDatabase);
-      strcpy(szFileName, a.szFileName);
-      iTotalNumProteins = a.iTotalNumProteins;
-      uliTotAACount = a.uliTotAACount;
-
-      return *this;
-   }
+   AnalysisType_Unknown = 0,
+   AnalysisType_DTA,
+   AnalysisType_SpecificScan,
+   AnalysisType_SpecificScanRange,
+   AnalysisType_EntireFile
 };
 
 struct InputFileInfo
@@ -362,546 +189,6 @@ struct InputFileInfo
       strcpy(szFileName, inputObj.szFileName);
       return *this;
    }
-
-};
-
-struct StaticMod
-{
-   double dAddCterminusPeptide;
-   double dAddNterminusPeptide;
-   double dAddCterminusProtein;
-   double dAddNterminusProtein;
-   double pdStaticMods[SIZE_MASS];
-
-   StaticMod& operator=(StaticMod& a) 
-   {
-      dAddCterminusPeptide = a.dAddCterminusPeptide;
-      dAddNterminusPeptide = a.dAddNterminusPeptide;
-      dAddCterminusProtein = a.dAddCterminusProtein;
-      dAddNterminusProtein = a.dAddNterminusProtein;
-
-      for (int i = 0; i < SIZE_MASS; i++)
-      {
-         pdStaticMods[i] = a.pdStaticMods[i];
-      }
-
-      return *this;
-   }
-};
-
-struct PrecalcMasses
-{
-   double dNtermProton;          // dAddNterminusPeptide + PROTON_MASS
-   double dCtermOH2Proton;       // dAddCterminusPeptide + dOH2fragment + PROTON_MASS
-   double dOH2ProtonCtermNterm;  // dOH2parent + PROTON_MASS + dAddCterminusPeptide + dAddNterminusPeptide
-   int iMinus17;                 // BIN'd value of mass(NH3)
-   int iMinus18;                 // BIN'd value of mass(H2O)
-
-   PrecalcMasses& operator=(PrecalcMasses& a) 
-   {
-      dNtermProton = a.dNtermProton;
-      dCtermOH2Proton = a.dCtermOH2Proton;
-      dOH2ProtonCtermNterm = a.dOH2ProtonCtermNterm;
-      iMinus17 = a.iMinus17;
-      iMinus18 = a.iMinus18;
-
-      return *this;
-   }
-};
-
-struct VarMods 
-{
-   int    bBinaryMod;
-   int    iMaxNumVarModAAPerMod;
-   double dVarModMass;
-   char   szVarModChar[MAX_VARMOD_AA];
-
-   VarMods& operator=(VarMods& a) 
-   {
-      bBinaryMod = a.bBinaryMod;
-      iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
-      dVarModMass = a.dVarModMass;
-      strcpy(szVarModChar, a.szVarModChar);
-
-      return *this;
-   }
-
-};
-
-struct VarModParams
-{
-   int     bVarModSearch; 
-   double  dVarModMassN;
-   double  dVarModMassC;
-   int     iVarModNtermDistance;
-   int     iVarModCtermDistance;
-   int     iMaxVarModPerPeptide;
-   VarMods varModList[VMODS];
-   char    cModCode[VMODS];
-
-   VarModParams& operator=(VarModParams& a) 
-   {
-      bVarModSearch = a.bVarModSearch;
-      dVarModMassN = a.dVarModMassN;
-      dVarModMassC = a.dVarModMassC;
-      iVarModNtermDistance = a.iVarModNtermDistance;
-      iVarModCtermDistance = a.iVarModCtermDistance;
-      iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
-
-      for (int i = 0; i < VMODS; i++)
-      {
-         varModList[i] = a.varModList[i];
-         cModCode[i] = a.cModCode[i];
-      }
-
-      return *this;
-   }
-};
-
-struct EnzymeInfo
-{
-   int  iAllowedMissedCleavage;
-
-   int  iSearchEnzymeOffSet;
-   char szSearchEnzymeName[ENZYME_NAME_LEN];
-   char szSearchEnzymeBreakAA[MAX_ENZYME_AA];
-   char szSearchEnzymeNoBreakAA[MAX_ENZYME_AA];
-
-   int  iSampleEnzymeOffSet;
-   char szSampleEnzymeName[ENZYME_NAME_LEN];
-   char szSampleEnzymeBreakAA[MAX_ENZYME_AA];
-   char szSampleEnzymeNoBreakAA[MAX_ENZYME_AA];
-
-   EnzymeInfo& operator=(EnzymeInfo& a) 
-   {
-      iAllowedMissedCleavage = a.iAllowedMissedCleavage;
-      iSearchEnzymeOffSet = a.iSearchEnzymeOffSet;
-      iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
-
-      int i;
-
-      for (i = 0; i < ENZYME_NAME_LEN; i++)
-      {
-         szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
-         szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
-      }
-
-      for (i = 0; i < MAX_ENZYME_AA; i++)
-      {
-         szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
-         szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
-         szSampleEnzymeBreakAA[i] = a.szSampleEnzymeBreakAA[i];
-         szSampleEnzymeNoBreakAA[i] = a.szSampleEnzymeNoBreakAA[i];
-      }
-
-      return *this;
-   }
-};
-
-struct MassUtil
-{
-   int    bMonoMassesParent;
-   int    bMonoMassesFragment;
-   double dCO;
-   double dNH3;
-   double dNH2;
-   double dH2O;
-   double dCOminusH2;
-   double dOH2fragment;
-   double dOH2parent;
-   double pdAAMassParent[SIZE_MASS];
-   double pdAAMassFragment[SIZE_MASS];
-
-   MassUtil& operator=(MassUtil& a) 
-   {
-      bMonoMassesParent = a.bMonoMassesParent;
-      bMonoMassesFragment = a.bMonoMassesFragment;
-      dCO = a.dCO;
-      dNH3 = a.dNH3;
-      dNH2 = a.dNH2;
-      dH2O = a.dH2O;
-      dCOminusH2 = a.dCOminusH2;
-      dOH2fragment = a.dOH2fragment;
-      dOH2parent = a.dOH2parent;
-
-      for (int i = 0; i < SIZE_MASS; i++)
-      {
-         pdAAMassParent[i] = a.pdAAMassParent[i];
-         pdAAMassFragment[i] = a.pdAAMassFragment[i];
-      }
-
-      return *this;
-   }
-};
-
-struct ToleranceParams
-{
-   int    iMassToleranceUnits;    // 0=ppm, 1=da (default)
-   int    iMassToleranceType;     // 0=MH+ (default), 1=precursor m/z
-   int    iIsotopeError;
-   double dInputTolerance;        // tolerance from param file
-   double dFragmentBinSize;
-   double dFragmentBinStartOffset;
-   double dMatchPeakTolerance;
-
-   ToleranceParams& operator=(ToleranceParams& a) 
-   {
-      iMassToleranceUnits = a.iMassToleranceUnits;
-      iMassToleranceType = a.iMassToleranceType;
-      iIsotopeError = a.iIsotopeError;
-      dInputTolerance = a.dInputTolerance;
-      dFragmentBinSize = a.dFragmentBinSize;
-      dFragmentBinStartOffset = a.dFragmentBinStartOffset;
-      dMatchPeakTolerance = a.dMatchPeakTolerance;
-
-      return *this;
-   }
-
-};
-
-struct PeaksInfo
-{
-   int iNumMatchPeaks;
-   int iNumAllowedMatchPeakErrors;
-
-   PeaksInfo& operator=(PeaksInfo& a)
-   {
-      iNumMatchPeaks = a.iNumMatchPeaks;
-      iNumAllowedMatchPeakErrors = a.iNumAllowedMatchPeakErrors;
-
-      return *this;
-   }
-};
-
-struct IonInfo
-{
-   int iNumIonSeriesUsed;
-   int piSelectedIonSeries[NUM_ION_SERIES];
-   int bUseNeutralLoss;
-   int iTheoreticalFragmentIons;
-   int iIonVal[NUM_ION_SERIES];
-
-   IonInfo& operator=(IonInfo& a)
-   {
-      iNumIonSeriesUsed = a.iNumIonSeriesUsed;
-      bUseNeutralLoss = a.bUseNeutralLoss; 
-      iTheoreticalFragmentIons = a.iTheoreticalFragmentIons;
-
-      for (int i = 0; i < NUM_ION_SERIES; i++)
-      {
-         piSelectedIonSeries[i] = a.piSelectedIonSeries[i];
-         iIonVal[i] = a.iIonVal[i];
-      }
-
-      return *this;
-   }
-};
-
-// static user params, won't change per thread - can make global!
-struct StaticParams
-{
-   char            szHostName[SIZE_FILE];
-   char            szTimeBuf[256];
-   char            szIonSeries[256];   // used for .out files
-   char            szDisplayLine[256]; // used for .out files
-   char            szMod[512];         // used for .out files
-   char            szDecoyPrefix[256]; // used for prefix to indicate decoys
-   int             iElapseTime;
-   char            szDate[32];
-   Options         options;
-   DBInfo          databaseInfo;
-   InputFileInfo   inputFile;
-   int             bPrintDuplReferences;
-   VarModParams    variableModParameters;
-   ToleranceParams tolerances;
-   StaticMod       staticModifications;
-   PrecalcMasses   precalcMasses;
-   EnzymeInfo      enzymeInformation;
-   MassUtil        massUtility;
-   double          dInverseBinWidth;    // this is used in BIN() many times so use inverse binWidth to do multiply vs. divide
-   double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
-   PeaksInfo       peaksInformation;
-   IonInfo         ionInformation;
-
-   StaticParams()
-   {
-      int i = 0;
-
-      inputFile.iInputType = InputType_MS2;
-
-      szMod[0] = '\0';
-
-      szDecoyPrefix[0] = '\0';
-
-      for (i=0; i<SIZE_MASS; i++)
-      {
-         massUtility.pdAAMassParent[i] = 999999.;
-         massUtility.pdAAMassFragment[i] = 999999.;
-      }
-
-      enzymeInformation.iAllowedMissedCleavage = 2;
-
-      for (i=0; i<VMODS; i++)
-      {
-         variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 4;
-         variableModParameters.varModList[i].bBinaryMod = 0;
-         variableModParameters.varModList[i].dVarModMass = 0.0;
-         variableModParameters.varModList[i].szVarModChar[0] = '\0';
-      }
-
-      variableModParameters.cModCode[0] = '*';
-      variableModParameters.cModCode[1] = '#';
-      variableModParameters.cModCode[2] = '@';
-      variableModParameters.cModCode[3] = '^';
-      variableModParameters.cModCode[4] = '~';
-      variableModParameters.cModCode[5] = '$';
-
-      variableModParameters.iMaxVarModPerPeptide = 10;
-      variableModParameters.iVarModNtermDistance = -1;
-      variableModParameters.iVarModCtermDistance = -1;
-
-      ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
-      options.iNumPeptideOutputLines = 1;
-      options.iWhichReadingFrame = 0;
-      options.iEnzymeTermini = 2;
-      options.iNumStored = NUM_STORED;                  // # of search results to store for xcorr analysis.
-
-      options.bNoEnzymeSelected = 1;
-      options.bPrintFragIons = 0;
-      options.bPrintExpectScore = 0;
-      options.iRemovePrecursor = 0;
-      options.dRemovePrecursorTol = DEFAULT_PREC_TOL;  
-
-      options.bOutputSqtStream = 0;
-      options.bOutputSqtFile = 0;
-      options.bOutputTxtFile = 0;
-      options.bOutputPepXMLFile = 1;
-      options.bOutputPinXMLFile = 0;
-      options.bOutputOutFiles = 0;
-
-      options.bSkipAlreadyDone = 0;
-      options.iDecoySearch = 0;
-      options.iNumThreads = 0;
-      options.bClipNtermMet = 0;
-      options.bSparseMatrix = 0;
-
-      // These parameters affect mzXML/RAMP spectra only.
-      options.scanRange.iStart = 0;
-      options.scanRange.iEnd = 0;
-      options.iSpectrumBatchSize = 0;
-      options.iMinPeaks = MINIMUM_PEAKS;
-      options.iStartCharge = 0;
-      options.iMaxFragmentCharge = 3;
-      options.iMaxPrecursorCharge = 6;
-      options.iEndCharge = 0;
-      options.iStartMSLevel = 2;
-      options.iEndMSLevel = 0;
-      options.iMinIntensity = 0;
-      options.dLowPeptideMass = 0.0;
-      options.dHighPeptideMass = 0.0;
-      strcpy(options.szActivationMethod, "ALL");
-      // End of mzXML specific parameters.
-
-      options.clearMzRange.dStart = 0.0;
-      options.clearMzRange.dEnd = 0.0;
-
-      staticModifications.dAddCterminusPeptide = 0.0;
-      staticModifications.dAddNterminusPeptide = 0.0;
-      staticModifications.dAddCterminusProtein = 0.0;
-      staticModifications.dAddNterminusProtein = 0.0;
-
-      tolerances.iMassToleranceUnits = 0;
-      tolerances.iMassToleranceType = 0;
-      tolerances.iIsotopeError = 0;
-      tolerances.dInputTolerance = 1.0;
-      tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
-      tolerances.dFragmentBinStartOffset = DEFAULT_OFFSET;
-      tolerances.dMatchPeakTolerance = 0.5;
-   }
-
-   StaticParams& operator=(StaticParams& a) 
-   { 
-      strcpy(szHostName, a.szHostName);
-      strcpy(szTimeBuf, a.szTimeBuf);
-      strcpy(szIonSeries, a.szIonSeries);
-      strcpy(szDisplayLine, a.szDisplayLine);
-      strcpy(szMod, a.szMod);
-      strcpy(szDecoyPrefix, a.szDecoyPrefix);
-      iElapseTime = a.iElapseTime;
-      strcpy(szDate, a.szDate);
-      options = a.options;
-      databaseInfo = a.databaseInfo;
-      inputFile = a.inputFile;
-      bPrintDuplReferences = a.bPrintDuplReferences;
-      variableModParameters = a.variableModParameters;
-      tolerances = a.tolerances;
-      staticModifications = a.staticModifications;
-      precalcMasses = a.precalcMasses;
-      enzymeInformation = a.enzymeInformation;
-      massUtility = a.massUtility;
-      dInverseBinWidth = a.dInverseBinWidth;
-      dOneMinusBinOffset = a.dOneMinusBinOffset;
-      peaksInformation = a.peaksInformation;
-      ionInformation = a.ionInformation;
-      return *this; 
-   }
-
-};
-
-extern StaticParams g_staticParams;
-
-struct SparseMatrix
-{
-   int bin;
-   float fIntensity;
-};
-
-// Query stores information for peptide scoring and results
-// This struct is allocated for each spectrum/charge combination
-struct Query
-{
-   int   iCorrelationHistogram[HISTO_SIZE];
-   int   iDoXcorrCount;
-   float fPar[4];           // parameters of LMA regression
-
-   int   iDecoyCorrelationHistogram[HISTO_SIZE];
-   int   iDoDecoyXcorrCount;
-   float fDecoyPar[4];      // parameters of LMA regression
-
-   short siMaxXcorr;        // index of maximum correlation score in iCorrelationHistogram
-   short siMaxDecoyXcorr;   // index of maximum correlation score in iDecoyCorrelationHistogram
-
-   short siLowestSpScoreIndex;
-   short siLowestDecoySpScoreIndex;
-
-   float fLowestSpScore;
-   float fLowestDecoySpScore;
-
-   float fLowestCorrScore;
-   float fLowestDecoyCorrScore;
-
-   unsigned long int  _uliNumMatchedPeptides;
-   unsigned long int  _uliNumMatchedDecoyPeptides;
-
-   // Sparse matrix representation of data
-   int iSpScoreData;  //size of sparse matrix
-   int iFastXcorrData;
-   int iFastXcorrDataNL;
-   struct SparseMatrix *pSparseSpScoreData;
-   struct SparseMatrix *pSparseFastXcorrData;
-   struct SparseMatrix *pSparseFastXcorrDataNL;
-
-   // Standard array representation of data
-   float *pfSpScoreData;
-   float *pfFastXcorrData;
-   float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
-
-   PepMassInfo          _pepMassInfo;
-   SpectrumInfoInternal _spectrumInfoInternal;
-   Results              *_pResults;
-   Results              *_pDecoys;
-
-   Mutex accessMutex;
-
-   Query()
-   {
-      for (int i = 0; i < HISTO_SIZE; i++)
-      {
-         iCorrelationHistogram[i] = 0;
-         iDecoyCorrelationHistogram[i] = 0;
-      }
-
-      iDoXcorrCount = 0;
-      fPar[0]=0.0;
-      fPar[1]=0.0;
-      fPar[2]=0.0;
-
-      iDoDecoyXcorrCount = 0;
-      fDecoyPar[0]=0.0;
-      fDecoyPar[1]=0.0;
-      fDecoyPar[2]=0.0;
-
-      siMaxXcorr = 0;                        // index of maximum correlation score in iCorrelationHistogram
-      siMaxDecoyXcorr = 0;                   // index of maximum correlation score in iDecoyCorrelationHistogram
-      siLowestSpScoreIndex = 0;
-      siLowestDecoySpScoreIndex = 0;
-
-      fLowestSpScore = 0.0;
-      fLowestDecoySpScore = 0.0;
-
-      fLowestCorrScore = 0.0;
-      fLowestDecoyCorrScore = 0.0;
-
-      _uliNumMatchedPeptides = 0;
-      _uliNumMatchedDecoyPeptides = 0;
-
-      pSparseSpScoreData = NULL;
-      pSparseFastXcorrData = NULL;
-      pSparseFastXcorrDataNL= NULL;           // pfFastXcorrData with NH3, H2O contributions
-
-      _pepMassInfo.dCalcPepMass = 0;
-      _pepMassInfo.dExpPepMass = 0;
-      _pepMassInfo.dPeptideMassTolerance = 0;
-      _pepMassInfo.dPeptideMassToleranceMinus = 0;
-      _pepMassInfo.dPeptideMassTolerancePlus = 0;
-   
-      _spectrumInfoInternal.dTotalIntensity = 0;
-      _spectrumInfoInternal.iArraySize = 0;
-      _spectrumInfoInternal.iHighestIon = 0;
-      _spectrumInfoInternal.iScanNumber = 0;
-      _spectrumInfoInternal.dTotalIntensity = 0;
-
-      _pResults = NULL;
-      _pDecoys = NULL;
-
-      Threading::CreateMutex(&accessMutex);
-   }
-
-   ~Query()
-   {
-      if (g_staticParams.options.bSparseMatrix)
-      {
-         free(pSparseSpScoreData);
-         free(pSparseFastXcorrData);
-         if (g_staticParams.ionInformation.bUseNeutralLoss
-               && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-         {
-            free(pSparseFastXcorrDataNL);
-         }
-      }
-      else
-      {
-         free(pfSpScoreData);
-         free(pfFastXcorrData);
-         if (g_staticParams.ionInformation.bUseNeutralLoss
-               && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-         {
-            free(pfFastXcorrDataNL);
-         }
-      }
-
-      free(_pResults);
-
-      if (g_staticParams.options.iDecoySearch==2)
-      {
-         free(_pDecoys);
-      }
-
-      Threading::DestroyMutex(accessMutex);
-   }
-};
-
-extern vector <Query*>  g_pvQuery;
-extern vector <InputFileInfo*> g_pvInputFiles;
-extern Mutex            g_pvQueryMutex;
-
-struct IonSeriesStruct         // defines which fragment ion series are considered
-{
-   int bPreviousMatch[8];
 };
 
 enum CometParamType 
