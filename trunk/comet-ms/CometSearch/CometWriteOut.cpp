@@ -185,8 +185,6 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    fprintf(fpout, "%s\n", szBuf);
 
-   szBuf[0]='\0';
-
    if (bDecoySearch)
       iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
    else

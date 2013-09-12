@@ -121,7 +121,6 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
 {
    int  i,
         iDoXcorrCount,
-        iRankXcorr,
         iMinLength;
    double dMZ,
           dMZexp,
@@ -169,8 +168,6 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
 
    if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
       iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
-
-   iRankXcorr = 1;
 
    iMinLength = 999;
    for (i=0; i<iDoXcorrCount; i++)
