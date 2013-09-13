@@ -27,3 +27,11 @@ CometSearchManagerWrapper::~CometSearchManagerWrapper()
         _pSearchMgr = NULL;
     }
 }
+
+void CometSearchManagerWrapper::DoSearch()
+{
+    if (_pSearchMgr)
+    {
+        _pSearchMgr->DoSearch();
+    }
+}

@@ -9,12 +9,13 @@ using namespace System;
 
 namespace CometWrapper {
 
-	public ref class CometSearchManagerWrapper
+    public ref class CometSearchManagerWrapper
 	{
     public:
         CometSearchManagerWrapper();
         virtual ~CometSearchManagerWrapper();
-		// TODO: Add your methods for this class here.
+		
+        void DoSearch();
 
     private:
         CometSearchManager *_pSearchMgr;
