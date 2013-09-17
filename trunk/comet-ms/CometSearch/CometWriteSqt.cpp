@@ -46,10 +46,10 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
          if (g_staticParams.options.iDecoySearch == 2)
          {
             // Print this header only if separate decoy search is also run.
-            fprintf(fpout, "H\tTargetSearchResults\nH\n");
+            fprintf(fpout, "H\tTarget search results\nH\n");
 
             PrintSqtHeader(fpoutd, searchMgr);
-            fprintf(fpoutd, "H\tDecoySearchResults\nH\n");
+            fprintf(fpoutd, "H\tDecoy search results\nH\n");
          }
       }
    }
@@ -114,7 +114,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
       {
          int iLen = strlen(g_staticParams.variableModParameters.varModList[i].szVarModChar);
 
-         for (unsigned int ii=0; ii<iLen; ii++)
+         for (int ii=0; ii<iLen; ii++)
          {
             fprintf(fpout, "H\tDiffMod\t%c%c=%+0.6f\n",
                   g_staticParams.variableModParameters.varModList[i].szVarModChar[ii],
@@ -145,7 +145,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
    fprintf(fpout, "H\n");
    
-   fprintf(fpout, "H\tCometParams\t comet_version = %s\n", comet_version);
+// fprintf(fpout, "H\tCometParams\tcomet_version = %s\n", comet_version);
 
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
    for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)

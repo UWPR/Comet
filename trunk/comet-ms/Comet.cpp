@@ -160,8 +160,8 @@ void LoadParameters(char *pszParamsFile,
 {
    double dTempMass,
           dDoubleParam;
-   int   iSearchEnzymeNumber,
-         iSampleEnzymeNumber,
+   int   iSearchEnzymeNumber = 0,
+         iSampleEnzymeNumber = 0,
          iIntParam,
          iAllowedMissedCleavages = 2;
    char  szParamBuf[SIZE_BUF],
@@ -1058,7 +1058,8 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, CometSearchManager &sear
       IntRange scanRange;
       if (!searchMgr.GetParamValue("scan_range", scanRange))
       {
-          return false;
+         scanRange.iStart = 0;
+         scanRange.iEnd = 0;
       }
 
       if (scanRange.iStart == 0 && scanRange.iEnd == 0)
@@ -1288,11 +1289,9 @@ activation_method = ALL                # activation method; used if activation m
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
 num_results = 50                       # number of search hits to store internally\n\
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
-max_fragment_charge = %d                # set maximum fragment charge state to analyze (allowed max %d)\n\
-max_precursor_charge = %d               # set maximum precursor charge state to analyze (allowed max %d)\n",
-      DEFAULT_FRAGMENT_CHARGE,
+max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
+max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
       MAX_FRAGMENT_CHARGE,
-      DEFAULT_PRECURSOR_CHARGE,
       MAX_PRECURSOR_CHARGE);
 
 fprintf(fp,
@@ -1304,7 +1303,7 @@ decoy_prefix = DECOY_                  # decoy entries are denoted by this strin
 #\n\
 # spectral processing\n\
 #\n\
-minimum_peaks = 10                     # minimum num. of peaks in spectrum to search (default %d)\n", MINIMUM_PEAKS);
+minimum_peaks = 10                     # required minimum number of peaks in spectrum to search\n");
 
 fprintf(fp,
 "minimum_intensity = 0                  # minimum intensity value to read in\n\

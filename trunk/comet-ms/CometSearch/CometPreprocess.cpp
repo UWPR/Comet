@@ -652,12 +652,8 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec)
          {
             pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
 
-            if (g_staticParams.options.iMaxFragmentCharge != 0)
-               if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
-                  pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
-
-            if (pScoring->_spectrumInfoInternal.iMaxFragCharge > MAX_FRAGMENT_CHARGE)
-               pScoring->_spectrumInfoInternal.iMaxFragCharge = MAX_FRAGMENT_CHARGE;
+            if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
+               pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
          }
 
          Threading::LockMutex(_maxChargeMutex);
@@ -738,7 +734,7 @@ void CometPreprocess::AdjustMassTol(struct Query *pScoring)
    {
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance * 0.001;
    }
-   else
+   else // ppm
    {
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance
          * pScoring->_pepMassInfo.dExpPepMass / 1000000.0;
@@ -813,7 +809,7 @@ void CometPreprocess::LoadIons(struct Query *pScoring,
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
 
-      if ((dIntensity >= g_staticParams.options.iMinIntensity) && (dIntensity > 0.0))
+      if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
       {
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
          {

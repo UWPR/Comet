@@ -70,7 +70,7 @@ void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
          szEnzyme[i] = '-';
    }
    szEnzyme[i]='\0';
-   fprintf(fpout, "\n<enzyme>%s</enzyme>\n\n", szEnzyme);
+   fprintf(fpout, "<enzyme>%s</enzyme>\n", szEnzyme);
 
    // These are the currently support enzyme names:
    //    no_enzyme, elastase, pepsin, proteinasek, thermolysin, chymotrypsin,
@@ -81,7 +81,7 @@ void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
 
    fprintf(fpout, "<process_info>\n");
    fprintf(fpout, " <command_line>comet</command_line>\n");
-   fprintf(fpout, "</process_info>\n\n");
+   fprintf(fpout, "</process_info>\n");
 
    fprintf(fpout, "<featureDescriptions xmlns=\"http://per-colator.com/percolator_in/12\">\n");
    fprintf(fpout, " <featureDescription name=\"lnrSp\" />\n");
@@ -104,7 +104,7 @@ void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
    fprintf(fpout, " <featureDescription name=\"dM\" />\n");
    fprintf(fpout, " <featureDescription name=\"absdM\" />\n");
 
-   fprintf(fpout, "</featureDescriptions>\n\n");
+   fprintf(fpout, "</featureDescriptions>\n");
 
    fflush(fpout);
 }

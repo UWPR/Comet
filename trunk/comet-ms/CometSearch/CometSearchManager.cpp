@@ -169,7 +169,7 @@ static void UpdateInputFile(InputFileInfo *pFileInfo)
 static void SetMSLevelFilter(MSReader &mstReader)
 {
     vector<MSSpectrumType> msLevel;
-    if (g_staticParams.options.iStartMSLevel == 3)
+    if (g_staticParams.options.iMSLevel == 3)
     {
         msLevel.push_back(MS3);
     }
@@ -425,17 +425,11 @@ void CometSearchManager::InitializeStaticParams()
    IntRange intRangeData;
    DoubleRange doubleRangeData;
     
-   for (int i=0; i<SIZE_MASS; i++)
-   {
-      g_staticParams.staticModifications.pdStaticMods[i] = 0.0;
-   }
-
    if(GetParamValue("database_name", strData))
    {
       strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
    }
 
-   strData[0] = '\0';
    if(GetParamValue("decoy_prefix", strData))
    {
       strcpy(g_staticParams.szDecoyPrefix, strData.c_str());
@@ -447,7 +441,7 @@ void CometSearchManager::InitializeStaticParams()
     
    GetParamValue("mass_type_fragment", g_staticParams.massUtility.bMonoMassesFragment);
 
-   GetParamValue("show_fragment_ions", g_staticParams.options.bPrintFragIons);
+   GetParamValue("show_fragment_ions", g_staticParams.options.bShowFragmentIons);
 
    GetParamValue("num_threads", g_staticParams.options.iNumThreads);
 
@@ -769,10 +763,7 @@ void CometSearchManager::InitializeStaticParams()
       {
          g_staticParams.options.iMaxFragmentCharge = iIntData;
       }
-      else
-      {
-         g_staticParams.options.iMaxFragmentCharge = DEFAULT_FRAGMENT_CHARGE;
-      }
+      // else will go to default value (3)
    }
 
    iIntData = 0;
@@ -787,10 +778,7 @@ void CometSearchManager::InitializeStaticParams()
       {
          g_staticParams.options.iMaxPrecursorCharge = iIntData;
       }
-      else
-      {
-         g_staticParams.options.iMaxPrecursorCharge = DEFAULT_PRECURSOR_CHARGE;
-      }
+      // else will go to default value (6)
    }
 
    if (GetParamValue("digest_mass_range", doubleRangeData))
@@ -804,21 +792,11 @@ void CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("ms_level", iIntData))
    {
-      if (iIntData == 2)
+      if (iIntData == 3)
       {
-         g_staticParams.options.iStartMSLevel = 2;
-         g_staticParams.options.iEndMSLevel = 0;
+         g_staticParams.options.iMSLevel = 3;
       }
-      else if (iIntData == 3)
-      {
-         g_staticParams.options.iStartMSLevel = 3;
-         g_staticParams.options.iEndMSLevel = 0;
-      }
-      else
-      {
-         g_staticParams.options.iStartMSLevel = 2;
-         g_staticParams.options.iEndMSLevel = 3;
-      }
+      // else will go to default value (2)
    }
 
    if (GetParamValue("activation_method", strData))
@@ -826,10 +804,10 @@ void CometSearchManager::InitializeStaticParams()
       strcpy(g_staticParams.options.szActivationMethod, strData.c_str());
    }
 
-   GetParamValue("minimum_intensity", g_staticParams.options.iMinIntensity);
-   if (g_staticParams.options.iMinIntensity < 0)
+   GetParamValue("minimum_intensity", g_staticParams.options.dMinIntensity);
+   if (g_staticParams.options.dMinIntensity < 0.0)
    {
-      g_staticParams.options.iMinIntensity = 0;
+      g_staticParams.options.dMinIntensity = 0.0;
    }
 
    GetParamValue("decoy_search", g_staticParams.options.iDecoySearch);
@@ -838,12 +816,8 @@ void CometSearchManager::InitializeStaticParams()
       g_staticParams.options.iDecoySearch = 0;
    }
 
-   if (isEqual(g_staticParams.tolerances.dFragmentBinSize, 0.0))
-   {
-      g_staticParams.tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
-   }
-
    // Set dInverseBinWidth to its inverse in order to use a multiply instead of divide in BIN macro.
+   // Safe to divide by dFragmentBinSize because of check earlier where minimum value is 0.01.
    g_staticParams.dInverseBinWidth = 1.0 /g_staticParams.tolerances.dFragmentBinSize;
    g_staticParams.dOneMinusBinOffset = 1.0 - g_staticParams.tolerances.dFragmentBinStartOffset;
  
@@ -892,13 +866,6 @@ void CometSearchManager::InitializeStaticParams()
           g_staticParams.options.iNumThreads = 2;  // Default to 2 threads.
    }
 
-   if (isEqual(g_staticParams.tolerances.dFragmentBinSize, 0.0))
-      g_staticParams.tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
-
-   // Set dInverseBinWidth to its inverse in order to use a multiply instead of divide in BIN macro.
-   g_staticParams.dInverseBinWidth = 1.0 /g_staticParams.tolerances.dFragmentBinSize;
-   g_staticParams.dOneMinusBinOffset = 1.0 - g_staticParams.tolerances.dFragmentBinStartOffset;
- 
    // Set masses to either average or monoisotopic.
    CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent, 
                                   g_staticParams.massUtility.bMonoMassesParent, 
@@ -1443,7 +1410,7 @@ void CometSearchManager::DoSearch()
                exit(1);
             }
 
-            CometWritePepXML::WritePepXMLHeader(fpout_pepxml, *this);
+            CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, *this);
          }
       }
 
