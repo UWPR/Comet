@@ -49,300 +49,305 @@ Mutex                         g_pvQueryMutex;
 static void GetHostName()
 {
 #ifdef _WIN32
-    WSADATA WSAData;
-    WSAStartup(MAKEWORD(1, 0), &WSAData);
+   WSADATA WSAData;
+   WSAStartup(MAKEWORD(1, 0), &WSAData);
 
-    if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
-        strcpy(g_staticParams.szHostName, "locahost");
+   if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
+      strcpy(g_staticParams.szHostName, "locahost");
 
-    WSACleanup();
+   WSACleanup();
 #else
-    if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
-        strcpy(g_staticParams.szHostName, "locahost");
+   if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
+      strcpy(g_staticParams.szHostName, "locahost");
 #endif
 
-    char *pStr;
-    if ((pStr = strchr(g_staticParams.szHostName, '.'))!=NULL)
-        *pStr = '\0';
+   char *pStr;
+   if ((pStr = strchr(g_staticParams.szHostName, '.'))!=NULL)
+      *pStr = '\0';
 }
 
 static void UpdateInputFile(InputFileInfo *pFileInfo)
 {
-    bool bUpdateBaseName = false;
-    char szTmpBaseName[SIZE_FILE];
+   bool bUpdateBaseName = false;
+   char szTmpBaseName[SIZE_FILE];
 
-    // Make sure not set on command line OR more than 1 input file
-    // Need to do this check here before g_staticParams.inputFile is set to *pFileInfo
-    if (g_staticParams.inputFile.szBaseName[0] =='\0' || g_pvInputFiles.size()>1)
-        bUpdateBaseName = true;
-    else
-        strcpy(szTmpBaseName, g_staticParams.inputFile.szBaseName);
+   // Make sure not set on command line OR more than 1 input file
+   // Need to do this check here before g_staticParams.inputFile is set to *pFileInfo
+   if (g_staticParams.inputFile.szBaseName[0] =='\0' || g_pvInputFiles.size()>1)
+      bUpdateBaseName = true;
+   else
+      strcpy(szTmpBaseName, g_staticParams.inputFile.szBaseName);
 
-    g_staticParams.inputFile = *pFileInfo;
+   g_staticParams.inputFile = *pFileInfo;
 
-    int iLen = strlen(g_staticParams.inputFile.szFileName);
+   int iLen = strlen(g_staticParams.inputFile.szFileName);
 
-    if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 6, ".mzXML")
-            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 5, ".mzML")
-            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 4, ".mz5")
-            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 6, ".mzXML")
+         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 5, ".mzML")
+         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 4, ".mz5")
+         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+
+   {
+      g_staticParams.inputFile.iInputType = InputType_MZXML;
+   } 
+
+   if (bUpdateBaseName) // set individual basename from input file
+   {
+      char *pStr;
+
+      strcpy(g_staticParams.inputFile.szBaseName, g_staticParams.inputFile.szFileName);
+
+      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
+         *pStr = '\0';
+
+      if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
             || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
-
-    {
-        g_staticParams.inputFile.iInputType = InputType_MZXML;
-    } 
-
-    if (bUpdateBaseName) // set individual basename from input file
-    {
-        char *pStr;
-
-        strcpy(g_staticParams.inputFile.szBaseName, g_staticParams.inputFile.szFileName);
-
-        if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
+      {
+         if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
             *pStr = '\0';
+      }
+   }
+   else
+   {
+      strcpy(g_staticParams.inputFile.szBaseName, szTmpBaseName);  // set basename from command line
+   }
 
-        if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
-        {
-            if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
-            *pStr = '\0';
-        }
-    }
-    else
-    {
-        strcpy(g_staticParams.inputFile.szBaseName, szTmpBaseName);  // set basename from command line
-    }
-
-    // Create .out directory.
-    if (g_staticParams.options.bOutputOutFiles)
-    {
+   // Create .out directory.
+   if (g_staticParams.options.bOutputOutFiles)
+   {
 #ifdef _WIN32
-        if (_mkdir(g_staticParams.inputFile.szBaseName) == -1)
-        {
-            errno_t err;
-            _get_errno(&err);
+      if (_mkdir(g_staticParams.inputFile.szBaseName) == -1)
+      {
+         errno_t err;
+         _get_errno(&err);
 
-            if (err != EEXIST) 
-            {
-            logerr("\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
+         if (err != EEXIST) 
+         {
+            logerr("\n Comet version \"%s\"\n\n", comet_version);
+            logerr(" Error - could not create directory \"%s\".\n\n", g_staticParams.inputFile.szBaseName);
             exit(1);
-            }
-        }
-        if (g_staticParams.options.iDecoySearch == 2)
-        {
-            char szDecoyDir[SIZE_FILE];
-            sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
+         }
+      }
+      if (g_staticParams.options.iDecoySearch == 2)
+      {
+         char szDecoyDir[SIZE_FILE];
+         sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
 
-            if (_mkdir(szDecoyDir) == -1)
-            {
+         if (_mkdir(szDecoyDir) == -1)
+         {
             errno_t err;
             _get_errno(&err);
 
             if (err != EEXIST) 
             {
-                logerr("\n Error - could not create directory \"%s\".\n", szDecoyDir);
-                exit(1);
+               logerr("\n Comet version \"%s\"\n\n", comet_version);
+               logerr(" Error - could not create directory \"%s\".\n\n", szDecoyDir);
+               exit(1);
             }
-            }
-        }
+         }
+      }
 #else
-        if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
-        {
-            logerr("\n Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
-            exit(1);
-        }
-        if (g_staticParams.options.iDecoySearch == 2)
-        {
-            char szDecoyDir[SIZE_FILE];
-            sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
+      if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
+      {
+         logerr("\n Comet version \"%s\"\n\n", comet_version);
+         logerr(" Error - could not create directory \"%s\".\n\n", g_staticParams.inputFile.szBaseName);
+         exit(1);
+      }
+      if (g_staticParams.options.iDecoySearch == 2)
+      {
+         char szDecoyDir[SIZE_FILE];
+         sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
 
-            if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
-            {
-            logerr("\n Error - could not create directory \"%s\".\n\n", szDecoyDir);
+         if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
+         {
+            logerr("\n Comet version \"%s\"\n\n", comet_version);
+            logerr(" Error - could not create directory \"%s\".\n\n", szDecoyDir);
             exit(1);
-            }
-        }
+         }
+      }
 #endif
-    }
+   }
 }
 
 static void SetMSLevelFilter(MSReader &mstReader)
 {
-    vector<MSSpectrumType> msLevel;
-    if (g_staticParams.options.iMSLevel == 3)
-    {
-        msLevel.push_back(MS3);
-    }
-    else
-    {
-        msLevel.push_back(MS2);
-    }
-    mstReader.setFilter(msLevel);
+   vector<MSSpectrumType> msLevel;
+   if (g_staticParams.options.iMSLevel == 3)
+   {
+      msLevel.push_back(MS3);
+   }
+   else
+   {
+      msLevel.push_back(MS2);
+   }
+   mstReader.setFilter(msLevel);
 }
    
 // Allocate memory for the _pResults struct for each g_pvQuery entry.
 static void AllocateResultsMem()
 {
-    for (unsigned i=0; i<g_pvQuery.size(); i++)
-    {
-        Query* pQuery = g_pvQuery.at(i);
+   for (unsigned i=0; i<g_pvQuery.size(); i++)
+   {
+      Query* pQuery = g_pvQuery.at(i);
 
-        pQuery->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+      pQuery->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
 
-        if (pQuery->_pResults == NULL)
-        {
-            logerr(" Error malloc(_pResults[])\n");
+      if (pQuery->_pResults == NULL)
+      {
+         logerr(" Error malloc(_pResults[])\n\n");
+         exit(1);
+      }
+
+      //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
+      for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
+         pQuery->_pResults[xx].iLenPeptide=0;
+
+      pQuery->iDoXcorrCount = 0;
+      pQuery->siLowestSpScoreIndex = 0;
+      pQuery->fLowestSpScore = 0.0;
+
+      if (g_staticParams.options.iDecoySearch==2)
+      {
+         pQuery->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+
+         if (pQuery->_pDecoys == NULL)
+         {
+            logerr(" Error malloc(_pDecoys[])\n\n");
             exit(1);
-        }
+         }
 
-        //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
-        for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
-            pQuery->_pResults[xx].iLenPeptide=0;
-
-        pQuery->iDoXcorrCount = 0;
-        pQuery->siLowestSpScoreIndex = 0;
-        pQuery->fLowestSpScore = 0.0;
-
-        if (g_staticParams.options.iDecoySearch==2)
-        {
-            pQuery->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
-
-            if (pQuery->_pDecoys == NULL)
-            {
-            logerr(" Error malloc(_pDecoys[])\n");
-            exit(1);
-            }
-
-            //MH: same logic as my comment above
-            for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
+         //MH: same logic as my comment above
+         for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
             pQuery->_pDecoys[xx].iLenPeptide=0;
 
-            pQuery->iDoDecoyXcorrCount = 0;
-            pQuery->siLowestDecoySpScoreIndex = 0;
-            pQuery->fLowestDecoySpScore = 0.0;
-        }
+         pQuery->iDoDecoyXcorrCount = 0;
+         pQuery->siLowestDecoySpScoreIndex = 0;
+         pQuery->fLowestDecoySpScore = 0.0;
+      }
 
-        int j;
-        for (j=0; j<HISTO_SIZE; j++)
-        {
-            pQuery->iCorrelationHistogram[j]=0;
-            pQuery->iDecoyCorrelationHistogram[j]=0;
-        }
+      int j;
+      for (j=0; j<HISTO_SIZE; j++)
+      {
+         pQuery->iCorrelationHistogram[j]=0;
+         pQuery->iDecoyCorrelationHistogram[j]=0;
+      }
 
-        for (j=0; j<g_staticParams.options.iNumStored; j++)
-        {
-            pQuery->_pResults[j].fXcorr = 0.0;
-            pQuery->_pResults[j].fScoreSp = 0.0;
-            pQuery->_pResults[j].dExpect = 0.0;
-            pQuery->_pResults[j].szPeptide[0] = '\0';
-            pQuery->_pResults[j].szProtein[0] = '\0';
+      for (j=0; j<g_staticParams.options.iNumStored; j++)
+      {
+         pQuery->_pResults[j].fXcorr = 0.0;
+         pQuery->_pResults[j].fScoreSp = 0.0;
+         pQuery->_pResults[j].dExpect = 0.0;
+         pQuery->_pResults[j].szPeptide[0] = '\0';
+         pQuery->_pResults[j].szProtein[0] = '\0';
 
-            if (g_staticParams.options.iDecoySearch==2)
-            {
+         if (g_staticParams.options.iDecoySearch==2)
+         {
             pQuery->_pDecoys[j].fXcorr = 0.0;
             pQuery->_pDecoys[j].fScoreSp = 0.0;
             pQuery->_pDecoys[j].dExpect = 0.0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
             pQuery->_pDecoys[j].szProtein[0] = '\0';
-            }
-        }
-    }
+         }
+      }
+   }
 }
 
 static bool compareByPeptideMass(Query const* a, Query const* b)
 {
-    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
+   return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
 }
 
 static void CalcRunTime(time_t tStartTime)
 {
-    char szTimeBuf[512];
-    time_t tEndTime;
-    int iTmp;
+   char szTimeBuf[512];
+   time_t tEndTime;
+   int iTmp;
 
-    time(&tEndTime);
+   time(&tEndTime);
 
-    int iElapseTime=(int)difftime(tEndTime, tStartTime);
+   int iElapseTime=(int)difftime(tEndTime, tStartTime);
 
-    // Print out header/search info.
-    sprintf(szTimeBuf, "%s,", g_staticParams.szDate);
-    if ( (iTmp = (int)(iElapseTime/3600) )>0)
-        sprintf(szTimeBuf+strlen(szTimeBuf), " %d hr.", iTmp);
-    if ( (iTmp = (int)((iElapseTime-(int)(iElapseTime/3600)*3600)/60) )>0)
-        sprintf(szTimeBuf+strlen(szTimeBuf), " %d min.", iTmp);
-    if ( (iTmp = (int)((iElapseTime-((int)(iElapseTime/3600))*3600)%60) )>0)
-        sprintf(szTimeBuf+strlen(szTimeBuf), " %d sec.", iTmp);
-    if (iElapseTime == 0)
-        sprintf(szTimeBuf+strlen(szTimeBuf), " 0 sec.");
-    sprintf(szTimeBuf+strlen(szTimeBuf), " on %s", g_staticParams.szHostName);
+   // Print out header/search info.
+   sprintf(szTimeBuf, "%s,", g_staticParams.szDate);
+   if ( (iTmp = (int)(iElapseTime/3600) )>0)
+      sprintf(szTimeBuf+strlen(szTimeBuf), " %d hr.", iTmp);
+   if ( (iTmp = (int)((iElapseTime-(int)(iElapseTime/3600)*3600)/60) )>0)
+      sprintf(szTimeBuf+strlen(szTimeBuf), " %d min.", iTmp);
+   if ( (iTmp = (int)((iElapseTime-((int)(iElapseTime/3600))*3600)%60) )>0)
+      sprintf(szTimeBuf+strlen(szTimeBuf), " %d sec.", iTmp);
+   if (iElapseTime == 0)
+      sprintf(szTimeBuf+strlen(szTimeBuf), " 0 sec.");
+   sprintf(szTimeBuf+strlen(szTimeBuf), " on %s", g_staticParams.szHostName);
 
-    g_staticParams.iElapseTime = iElapseTime;
-    strncpy(g_staticParams.szTimeBuf, szTimeBuf, 256);
-    g_staticParams.szTimeBuf[255]='\0';
+   g_staticParams.iElapseTime = iElapseTime;
+   strncpy(g_staticParams.szTimeBuf, szTimeBuf, 256);
+   g_staticParams.szTimeBuf[255]='\0';
 }
+
 static void PrintParameters()
 {
-    // print parameters
+   // print parameters
 
-    char szIsotope[16];
-    char szPeak[16];
+   char szIsotope[16];
+   char szPeak[16];
 
-    sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
-            g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
-            g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
-            g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
-            g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
-            g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
-            g_staticParams.ionInformation.iIonVal[ION_SERIES_Z],
-            g_staticParams.ionInformation.bUseNeutralLoss);
+   sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
+         g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
+         g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
+         g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
+         g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
+         g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
+         g_staticParams.ionInformation.iIonVal[ION_SERIES_Z],
+         g_staticParams.ionInformation.bUseNeutralLoss);
 
-    char szUnits[8];
-    char szDecoy[20];
-    char szReadingFrame[20];
-    char szRemovePrecursor[20];
+   char szUnits[8];
+   char szDecoy[20];
+   char szReadingFrame[20];
+   char szRemovePrecursor[20];
 
-    if (g_staticParams.tolerances.iMassToleranceUnits==0)
-        strcpy(szUnits, " AMU");
-    else if (g_staticParams.tolerances.iMassToleranceUnits==1)
-        strcpy(szUnits, " MMU");
-    else
-        strcpy(szUnits, " PPM");
+   if (g_staticParams.tolerances.iMassToleranceUnits==0)
+      strcpy(szUnits, " AMU");
+   else if (g_staticParams.tolerances.iMassToleranceUnits==1)
+      strcpy(szUnits, " MMU");
+   else
+      strcpy(szUnits, " PPM");
 
-    if (g_staticParams.options.iDecoySearch)
-        sprintf(szDecoy, " DECOY%d", g_staticParams.options.iDecoySearch);
-    else
-        szDecoy[0]=0;
+   if (g_staticParams.options.iDecoySearch)
+      sprintf(szDecoy, " DECOY%d", g_staticParams.options.iDecoySearch);
+   else
+      szDecoy[0]=0;
 
-    if (g_staticParams.options.iRemovePrecursor)
-        sprintf(szRemovePrecursor, " REMOVEPREC%d", g_staticParams.options.iRemovePrecursor);
-    else
-        szRemovePrecursor[0]=0;
+   if (g_staticParams.options.iRemovePrecursor)
+      sprintf(szRemovePrecursor, " REMOVEPREC%d", g_staticParams.options.iRemovePrecursor);
+   else
+      szRemovePrecursor[0]=0;
 
-    if (g_staticParams.options.iWhichReadingFrame)
-        sprintf(szReadingFrame, " FRAME%d", g_staticParams.options.iWhichReadingFrame);
-    else
-        szReadingFrame[0]=0;
+   if (g_staticParams.options.iWhichReadingFrame)
+      sprintf(szReadingFrame, " FRAME%d", g_staticParams.options.iWhichReadingFrame);
+   else
+      szReadingFrame[0]=0;
 
-    szIsotope[0]='\0';
-    if (g_staticParams.tolerances.iIsotopeError==1)
-        strcpy(szIsotope, "ISOTOPE1");
-    else if (g_staticParams.tolerances.iIsotopeError==2)
-        strcpy(szIsotope, "ISOTOPE2");
+   szIsotope[0]='\0';
+   if (g_staticParams.tolerances.iIsotopeError==1)
+      strcpy(szIsotope, "ISOTOPE1");
+   else if (g_staticParams.tolerances.iIsotopeError==2)
+      strcpy(szIsotope, "ISOTOPE2");
 
-    szPeak[0]='\0';
-    if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
-        strcpy(szPeak, "PEAK1");
+   szPeak[0]='\0';
+   if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
+      strcpy(szPeak, "PEAK1");
 
-    sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
-            g_staticParams.options.iNumPeptideOutputLines,
-            szRemovePrecursor,
-            szReadingFrame,
-            szPeak,
-            szUnits,
-            (g_staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
-            szIsotope,
-            szDecoy,
-            (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
+   sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
+         g_staticParams.options.iNumPeptideOutputLines,
+         szRemovePrecursor,
+         szReadingFrame,
+         szPeak,
+         szUnits,
+         (g_staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
+         szIsotope,
+         szDecoy,
+         (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
 }
 
 static void ValidateOutputFormat()
@@ -354,8 +359,8 @@ static void ValidateOutputFormat()
          && !g_staticParams.options.bOutputPinXMLFile
          && !g_staticParams.options.bOutputOutFiles)
    {
-      logout("\n Comet version \"%s\"\n", comet_version);
-      logout(" Please specify at least one output format.\n\n");
+      logerr("\n Comet version \"%s\"\n\n", comet_version);
+      logerr(" Please specify at least one output format.\n\n");
       exit(1);
    }
 }
@@ -368,7 +373,8 @@ static void ValidateSequenceDatabaseFile()
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      logerr("\n Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+      logerr("\n Comet version \"%s\"\n\n", comet_version);
+      logerr(" Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
       logerr(" Check that the file exists and is readable.\n\n");
       exit(1);
    }
@@ -379,8 +385,10 @@ static void ValidateScanRange()
 {
    if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
    {
-      logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
-      logerr(" Error - start scan is %d but end scan is %d.\n", g_staticParams.options.scanRange.iStart, g_staticParams.options.scanRange.iEnd);
+      logerr("\n Comet version \"%s\"\n\n", comet_version);
+      logerr(" Error - start scan is %d but end scan is %d.\n",
+            g_staticParams.options.scanRange.iStart,
+            g_staticParams.options.scanRange.iEnd);
       logerr(" The end scan must be >= to the start scan.\n\n");
       exit(1);
    }
@@ -412,7 +420,7 @@ CometSearchManager::~CometSearchManager()
 
    for (std::map<string, CometParam*>::iterator it = _mapStaticParams.begin(); it != _mapStaticParams.end(); ++it)
    {
-       delete it->second;
+      delete it->second;
    }
    _mapStaticParams.clear();
 }
@@ -425,12 +433,12 @@ void CometSearchManager::InitializeStaticParams()
    IntRange intRangeData;
    DoubleRange doubleRangeData;
     
-   if(GetParamValue("database_name", strData))
+   if (GetParamValue("database_name", strData))
    {
       strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
    }
 
-   if(GetParamValue("decoy_prefix", strData))
+   if (GetParamValue("decoy_prefix", strData))
    {
       strcpy(g_staticParams.szDecoyPrefix, strData.c_str());
    }
@@ -501,22 +509,22 @@ void CometSearchManager::InitializeStaticParams()
    GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerance);
 
    GetParamValue("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
-   if ((g_staticParams.tolerances.iMassToleranceType < 0) || 
-       (g_staticParams.tolerances.iMassToleranceType > 1))
+   if ((g_staticParams.tolerances.iMassToleranceType < 0)
+         || (g_staticParams.tolerances.iMassToleranceType > 1))
    {
       g_staticParams.tolerances.iMassToleranceType = 0;
    }
 
    GetParamValue("peptide_mass_units", g_staticParams.tolerances.iMassToleranceUnits);
-   if ((g_staticParams.tolerances.iMassToleranceUnits < 0) || 
-       (g_staticParams.tolerances.iMassToleranceUnits > 2))
+   if ((g_staticParams.tolerances.iMassToleranceUnits < 0)
+         || (g_staticParams.tolerances.iMassToleranceUnits > 2))
    {
       g_staticParams.tolerances.iMassToleranceUnits = 0;  // 0=amu, 1=mmu, 2=ppm
    }
 
    GetParamValue("isotope_error", g_staticParams.tolerances.iIsotopeError);
-   if ((g_staticParams.tolerances.iIsotopeError < 0) || 
-       (g_staticParams.tolerances.iIsotopeError > 2))
+   if ((g_staticParams.tolerances.iIsotopeError < 0)
+         || (g_staticParams.tolerances.iIsotopeError > 2))
    {
       g_staticParams.tolerances.iIsotopeError = 0;
    }
@@ -701,9 +709,9 @@ void CometSearchManager::InitializeStaticParams()
    }
 
    GetParamValue("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
-   if ((g_staticParams.options.iEnzymeTermini != 1) && 
-       (g_staticParams.options.iEnzymeTermini != 8) && 
-       (g_staticParams.options.iEnzymeTermini != 9))
+   if ((g_staticParams.options.iEnzymeTermini != 1)
+         && (g_staticParams.options.iEnzymeTermini != 8)
+         && (g_staticParams.options.iEnzymeTermini != 9))
    {
       g_staticParams.options.iEnzymeTermini = 2;
    }
@@ -941,6 +949,7 @@ void CometSearchManager::InitializeStaticParams()
             g_staticParams.variableModParameters.dVarModMassN);       // FIX determine .out file header string for this?
       g_staticParams.variableModParameters.bVarModSearch = 1;
    }
+
    if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(ct[ %+0.6f) ", 
@@ -953,7 +962,6 @@ void CometSearchManager::InitializeStaticParams()
       g_staticParams.options.iNumStored = NUM_STORED;
    else if (g_staticParams.options.iNumStored < 1)
       g_staticParams.options.iNumStored = 1;
-
 
    if (g_staticParams.options.iNumPeptideOutputLines > g_staticParams.options.iNumStored)
       g_staticParams.options.iNumPeptideOutputLines = g_staticParams.options.iNumStored;
@@ -969,16 +977,19 @@ void CometSearchManager::InitializeStaticParams()
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ct=%0.6f ", 
             g_staticParams.staticModifications.dAddCterminusPeptide);
    }
+
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+nt=%0.6f ", 
             g_staticParams.staticModifications.dAddNterminusPeptide);
    }
+
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ctprot=%0.6f ", 
             g_staticParams.staticModifications.dAddCterminusProtein);
    }
+
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ntprot=%0.6f ", 
@@ -1020,10 +1031,20 @@ void CometSearchManager::InitializeStaticParams()
             g_staticParams.enzymeInformation.szSearchEnzymeName);
    }
 
-   if (g_staticParams.tolerances.dFragmentBinStartOffset < 0.0 || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
+   if (g_staticParams.tolerances.dFragmentBinStartOffset < 0.0
+         || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
    {
-      logerr(" Error - bin offset %f must between 0.0 and 1.0\n",
+      logerr("\n Comet version \"%s\"\n\n", comet_version);
+      logerr(" Error - bin offset %f must between 0.0 and 1.0\n\n",
             g_staticParams.tolerances.dFragmentBinStartOffset);
+      exit(1);
+   }
+
+   if (g_staticParams.options.bOutputPinXMLFile
+         && g_staticParams.options.iDecoySearch != 2)
+   {
+      logerr("\n Comet version \"%s\"\n\n", comet_version);
+      logerr(" Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 2\"\n\n");
       exit(1);
    }
 
@@ -1056,7 +1077,7 @@ void CometSearchManager::AddInputFiles(vector<InputFileInfo*> &pvInputFiles)
 
 void CometSearchManager::SetOutputFileBaseName(const char *pszBaseName)
 {
-    strcpy(g_staticParams.inputFile.szBaseName, pszBaseName);
+   strcpy(g_staticParams.inputFile.szBaseName, pszBaseName);
 }
 
 std::map<std::string, CometParam*>& CometSearchManager::GetParamsMap()
@@ -1261,7 +1282,7 @@ void CometSearchManager::DoSearch()
 
       if (!g_staticParams.options.bOutputSqtStream)
       {
-         logout(" Comet version \"%s\"\n", comet_version);
+         logout(" Comet version \"%s\"\n\n", comet_version);
          logout(" Search start:  %s\n", g_staticParams.szDate);
       }
 
@@ -1311,7 +1332,7 @@ void CometSearchManager::DoSearch()
 
          if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
          {
-            logerr("Error - cannot write to file \"%s\".\n\n", szOutputSQT);
+            logerr(" Error - cannot write to file \"%s\".\n\n", szOutputSQT);
             exit(1);
          }
 
@@ -1324,7 +1345,7 @@ void CometSearchManager::DoSearch()
 
             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
             {
-               logerr("Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoySQT);
+               logerr(" Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoySQT);
                exit(1);
             }
          }
@@ -1351,7 +1372,7 @@ void CometSearchManager::DoSearch()
 
          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
          {
-            logerr("Error - cannot write to file \"%s\".\n\n", szOutputTxt);
+            logerr(" Error - cannot write to file \"%s\".\n\n", szOutputTxt);
             exit(1);
          }
 
@@ -1364,7 +1385,7 @@ void CometSearchManager::DoSearch()
 
             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
             {
-               logerr("Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyTxt);
+               logerr(" Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyTxt);
                exit(1);
             }
          }
@@ -1391,7 +1412,7 @@ void CometSearchManager::DoSearch()
 
          if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
          {
-            logerr("Error - cannot write to file \"%s\".\n\n", szOutputPepXML);
+            logerr(" Error - cannot write to file \"%s\".\n\n", szOutputPepXML);
             exit(1);
          }
 
@@ -1406,7 +1427,7 @@ void CometSearchManager::DoSearch()
 
             if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
             {
-               logerr("Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyPepXML);
+               logerr(" Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyPepXML);
                exit(1);
             }
 
@@ -1423,7 +1444,7 @@ void CometSearchManager::DoSearch()
 
          if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
          {
-            logerr("Error - cannot write to file \"%s\".\n\n", szOutputPinXML);
+            logerr(" Error - cannot write to file \"%s\".\n\n", szOutputPinXML);
             exit(1);
          }
 

@@ -260,7 +260,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->pfFastXcorrDataNL = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
       if (pScoring->pfFastXcorrDataNL == NULL)
       {
-         logerr(" Error - calloc(pfFastXcorrDataNL[%d]).\n", pScoring->_spectrumInfoInternal.iArraySize);
+         logerr(" Error - calloc(pfFastXcorrDataNL[%d]).\n\n", pScoring->_spectrumInfoInternal.iArraySize);
          exit(1);
       }
    }
@@ -451,7 +451,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->pfSpScoreData = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float ));
       if (pScoring->pfSpScoreData == NULL)
       {
-         logerr(" Error - calloc(pfSpScoreData[%d])\n", pScoring->_spectrumInfoInternal.iArraySize);
+         logerr(" Error - calloc(pfSpScoreData[%d])\n\n", pScoring->_spectrumInfoInternal.iArraySize);
          exit(1);
       }
 
@@ -955,7 +955,7 @@ void CometPreprocess::Smooth(double *data,
 
    if (pdSmoothedSpectrum == NULL)
    {
-      logerr(" Error - calloc(pdSmoothedSpectrum[%d]).\n", iArraySize);
+      logerr(" Error - calloc(pdSmoothedSpectrum[%d]).\n\n", iArraySize);
       exit(1);
    }
 
@@ -986,7 +986,7 @@ void CometPreprocess::PeakExtract(double *data,
    pdPeakExtracted = (double *)calloc((size_t)iArraySize, (size_t)sizeof(double));
    if (pdPeakExtracted == NULL)
    {
-      logerr(" Error - calloc(pdPeakExtracted[%d]).\n", iArraySize);
+      logerr(" Error - calloc(pdPeakExtracted[%d]).\n\n", iArraySize);
       exit(1);
    }
 

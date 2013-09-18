@@ -180,7 +180,7 @@ void LoadParameters(char *pszParamsFile,
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
-      logerr("\n Comet version %s\n %s\n", comet_version, copyright);
+      logerr("\n Comet version %s\n\n", comet_version);
       logerr(" Error - cannot open parameter file \"%s\".\n\n", pszParamsFile);
       exit(1);
    }
@@ -205,7 +205,7 @@ void LoadParameters(char *pszParamsFile,
 
    if (!bValidParamsFile)
    {
-      logerr("\n Comet version is %s\n", comet_version);
+      logerr("\n Comet version %s\n\n", comet_version);
       logerr(" The comet.params file is from version %s\n", szVersion);
       logerr(" Please update your comet.params file.  You can generate\n");
       logerr(" a new parameters file using \"comet -p\"\n\n");
@@ -994,26 +994,31 @@ void LoadParameters(char *pszParamsFile,
       fgets(szParamBuf, SIZE_BUF, fp);
    }
    fclose(fp);
+   
+   if (!bCurrentParamsFile)
+   {
+      logerr("\n Comet version %s\n\n", comet_version);
+      logerr(" Error - outdated params file; generate an update params file using '-p' option.\n\n");
+      exit(1);
+   }
 
    if (!strcmp(enzymeInformation.szSearchEnzymeName, "-"))
    {
-      logout(" Error - search enzyme number %d is missing definition in params file.\n\n", iSearchEnzymeNumber);
+      logerr("\n Comet version %s\n\n", comet_version);
+      logerr(" Error - search enzyme number %d is missing definition in params file.\n\n", iSearchEnzymeNumber);
       exit(1);
    }
+
    if (!strcmp(enzymeInformation.szSampleEnzymeName, "-"))
    {
-      logout(" Error - sample enzyme number %d is missing definition in params file.\n\n", iSampleEnzymeNumber);
+      logerr("\n Comet version %s\n\n", comet_version);
+      logerr(" Error - sample enzyme number %d is missing definition in params file.\n\n", iSampleEnzymeNumber);
       exit(1);
    }
 
    enzymeInformation.iAllowedMissedCleavage = iAllowedMissedCleavages;
    searchMgr.SetParam("[COMET_ENZYME_INFO]", enzymeInfoStrVal, enzymeInformation);
-   
-   if (!bCurrentParamsFile)
-   {
-      logerr(" Error - outdated params file; generate an update params file using '-p' option.\n\n");
-      exit(1);
-   }
+
 } // LoadParameters
 
 // Parses the command line and determines the type of analysis to perform.
@@ -1128,7 +1133,7 @@ void ProcessCmdLine(int argc,
    
    if (iStartInputFile == argc)
    {
-      logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
+      logerr("\n Comet version %s\n\n", comet_version);
       logerr(" Error - no input files specified so nothing to do.\n\n");
       exit(1);
    }
@@ -1172,7 +1177,8 @@ void ProcessCmdLine(int argc,
           InputFileInfo *pInputFileInfo = new InputFileInfo();
           if (!ParseCmdLine(arg, pInputFileInfo, searchMgr))
           {
-              logerr(" Error - input MS/MS file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
+              logerr("\n Comet version %s\n\n", comet_version);
+              logerr(" Error - input file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
               pvInputFiles.clear();
               exit(1);
           }
@@ -1194,7 +1200,8 @@ void PrintParams(void)
 
    if ( (fp=fopen("comet.params.new", "w"))==NULL)
    {
-      logerr("\n Error - cannot write file comet.params.new\n\n");
+      logerr("\n Comet version %s\n\n", comet_version);
+      logerr(" Error - cannot write file comet.params.new\n\n");
       exit(1);
    }
 
