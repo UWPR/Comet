@@ -260,7 +260,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->pfFastXcorrDataNL = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
       if (pScoring->pfFastXcorrDataNL == NULL)
       {
-         logerr(" Error - calloc(pfFastXcorrDataNL[%d]).\n", pScoring->_spectrumInfoInternal.iArraySize);
+         logerr(" Error - calloc(pfFastXcorrDataNL[%d]).\n\n", pScoring->_spectrumInfoInternal.iArraySize);
          exit(1);
       }
    }
@@ -451,7 +451,7 @@ void CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->pfSpScoreData = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float ));
       if (pScoring->pfSpScoreData == NULL)
       {
-         logerr(" Error - calloc(pfSpScoreData[%d])\n", pScoring->_spectrumInfoInternal.iArraySize);
+         logerr(" Error - calloc(pfSpScoreData[%d])\n\n", pScoring->_spectrumInfoInternal.iArraySize);
          exit(1);
       }
 
@@ -652,12 +652,8 @@ void CometPreprocess::PreprocessSpectrum(Spectrum &spec)
          {
             pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
 
-            if (g_staticParams.options.iMaxFragmentCharge != 0)
-               if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
-                  pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
-
-            if (pScoring->_spectrumInfoInternal.iMaxFragCharge > MAX_FRAGMENT_CHARGE)
-               pScoring->_spectrumInfoInternal.iMaxFragCharge = MAX_FRAGMENT_CHARGE;
+            if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
+               pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
          }
 
          Threading::LockMutex(_maxChargeMutex);
@@ -738,7 +734,7 @@ void CometPreprocess::AdjustMassTol(struct Query *pScoring)
    {
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance * 0.001;
    }
-   else
+   else // ppm
    {
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance
          * pScoring->_pepMassInfo.dExpPepMass / 1000000.0;
@@ -813,7 +809,7 @@ void CometPreprocess::LoadIons(struct Query *pScoring,
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
 
-      if ((dIntensity >= g_staticParams.options.iMinIntensity) && (dIntensity > 0.0))
+      if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
       {
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
          {
@@ -959,7 +955,7 @@ void CometPreprocess::Smooth(double *data,
 
    if (pdSmoothedSpectrum == NULL)
    {
-      logerr(" Error - calloc(pdSmoothedSpectrum[%d]).\n", iArraySize);
+      logerr(" Error - calloc(pdSmoothedSpectrum[%d]).\n\n", iArraySize);
       exit(1);
    }
 
@@ -990,7 +986,7 @@ void CometPreprocess::PeakExtract(double *data,
    pdPeakExtracted = (double *)calloc((size_t)iArraySize, (size_t)sizeof(double));
    if (pdPeakExtracted == NULL)
    {
-      logerr(" Error - calloc(pdPeakExtracted[%d]).\n", iArraySize);
+      logerr(" Error - calloc(pdPeakExtracted[%d]).\n\n", iArraySize);
       exit(1);
    }
 

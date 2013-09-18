@@ -83,13 +83,13 @@ void CometSearch::RunSearch(int minNumThreads,
       // Expect a '>' for sequence header line.
       if (iTmpCh != '>')
       {
-         logerr("\n\n Error - database file, expecting definition line here.\n");
+         logerr(" Error - database file, expecting definition line here.\n");
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr("%c%s", iTmpCh, szBuf);
+         logerr(" %c%s", iTmpCh, szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr("%s", szBuf);
+         logerr(" %s", szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr("%s", szBuf);
+         logerr(" %s", szBuf);
          exit(1);
       } 
 
@@ -212,7 +212,7 @@ void CometSearch::DoSearch(sDBEntry dbe)
          pszTemp=(char *)malloc(seqSize);
          if (pszTemp == NULL)
          {
-            logerr(" Error - malloc(szTemp[%d])\n",seqSize);
+            logerr(" Error - malloc(szTemp[%d])\n\n", seqSize);
             exit(1);
          }
 

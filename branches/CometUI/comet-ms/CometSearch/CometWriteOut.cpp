@@ -139,7 +139,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    if ((fpout = fopen(szOutput, "w")) == NULL)
    {
-      logerr("Error - cannot write to file %s.\n\n", szOutput);
+      logerr(" Error - cannot write to file %s.\n", szOutput);
       exit(1);
    }
 
@@ -184,8 +184,6 @@ void CometWriteOut::PrintResults(int iWhichQuery,
    }
 
    fprintf(fpout, "%s\n", szBuf);
-
-   szBuf[0]='\0';
 
    if (bDecoySearch)
       iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
@@ -280,7 +278,7 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    // Print out the fragment ions for the selected ion series
    // and mark matched ions in the sp scoring routine.
-   if (g_staticParams.options.bPrintFragIons && iDoXcorrCount > 0)
+   if (g_staticParams.options.bShowFragmentIons && iDoXcorrCount > 0)
    {
       PrintIons(iWhichQuery, fpout);
    }

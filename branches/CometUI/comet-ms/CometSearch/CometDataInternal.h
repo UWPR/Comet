@@ -33,9 +33,6 @@ class CometSearchManager;
 #define NUM_ION_SERIES              9
 
 #define WIDTH_REFERENCE             40       // size of the protein accession field to store
-#define DEFAULT_PREC_TOL            2.0      // default precursor removal tolerance
-#define DEFAULT_BIN_WIDTH           1.0005
-#define DEFAULT_OFFSET              0.4
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
@@ -83,16 +80,13 @@ struct Options             // output parameters
    int iWhichReadingFrame;
    int iEnzymeTermini;
    int iNumStored;               // # of search results to store for xcorr analysis
-   IntRange scanRange;
    int iSpectrumBatchSize;		   // # of spectra to search at a time within the scan range
    int iStartCharge;
    int iEndCharge;
    int iMaxFragmentCharge;
    int iMaxPrecursorCharge;
-   int iStartMSLevel;            // mzXML only
-   int iEndMSLevel;              // mzXML only
+   int iMSLevel;                 // mzXML only
    int iMinPeaks;
-   int iMinIntensity;
    int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors
    int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search
    int iNumThreads;              // 0=poll CPU else set # threads to spawn
@@ -105,13 +99,15 @@ struct Options             // output parameters
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
    int bNoEnzymeSelected;
-   int bPrintFragIons;
+   int bShowFragmentIons;
    int bPrintExpectScore;
    int bSparseMatrix;
+   double dMinIntensity;
    double dRemovePrecursorTol;
-   DoubleRange clearMzRange;
    double dLowPeptideMass;       // MH+ mass
    double dHighPeptideMass;      // MH+ mass
+   IntRange scanRange;
+   DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
 
    Options& operator=(Options& a) 
@@ -126,10 +122,9 @@ struct Options             // output parameters
       iEndCharge = a.iEndCharge;
       iMaxFragmentCharge = a.iMaxFragmentCharge;
       iMaxPrecursorCharge = a.iMaxPrecursorCharge;
-      iStartMSLevel = a.iStartMSLevel;
-      iEndMSLevel = a.iEndMSLevel; 
+      iMSLevel = a.iMSLevel;
       iMinPeaks = a.iMinPeaks;
-      iMinIntensity = a.iMinIntensity;
+      dMinIntensity = a.dMinIntensity;
       iRemovePrecursor = a.iRemovePrecursor;
       iDecoySearch = a.iDecoySearch;
       iNumThreads = a.iNumThreads;
@@ -142,7 +137,7 @@ struct Options             // output parameters
       bClipNtermMet = a.bClipNtermMet;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
       bNoEnzymeSelected = a.bNoEnzymeSelected;
-      bPrintFragIons = a.bPrintFragIons;
+      bShowFragmentIons = a.bShowFragmentIons;
       bPrintExpectScore = a.bPrintExpectScore;
       bSparseMatrix = a.bSparseMatrix;
       dRemovePrecursorTol = a.dRemovePrecursorTol;
@@ -446,18 +441,28 @@ struct StaticParams
 
    StaticParams()
    {
-      int i = 0;
+      int i;
 
       inputFile.iInputType = InputType_MS2;
 
       szMod[0] = '\0';
 
-      szDecoyPrefix[0] = '\0';
+      databaseInfo.szDatabase[0] = '\0';
+
+      strcpy(szDecoyPrefix, "DECOY_");
 
       for (i=0; i<SIZE_MASS; i++)
       {
          massUtility.pdAAMassParent[i] = 999999.;
          massUtility.pdAAMassFragment[i] = 999999.;
+      }
+
+      massUtility.bMonoMassesFragment = 1;
+      massUtility.bMonoMassesParent = 1;
+
+      for (int i=0; i<SIZE_MASS; i++)
+      {
+         staticModifications.pdStaticMods[i] = 0.0;
       }
 
       enzymeInformation.iAllowedMissedCleavage = 2;
@@ -481,17 +486,28 @@ struct StaticParams
       variableModParameters.iVarModNtermDistance = -1;
       variableModParameters.iVarModCtermDistance = -1;
 
+      variableModParameters.dVarModMassC = 0.0;
+      variableModParameters.dVarModMassN = 0.0;
+
+      ionInformation.bUseNeutralLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
-      options.iNumPeptideOutputLines = 1;
+      ionInformation.iIonVal[ION_SERIES_A] = 0;
+      ionInformation.iIonVal[ION_SERIES_B] = 0;
+      ionInformation.iIonVal[ION_SERIES_C] = 0;
+      ionInformation.iIonVal[ION_SERIES_X] = 0;
+      ionInformation.iIonVal[ION_SERIES_Y] = 0;
+      ionInformation.iIonVal[ION_SERIES_Z] = 0;
+
+      options.iNumPeptideOutputLines = 10;
       options.iWhichReadingFrame = 0;
       options.iEnzymeTermini = 2;
       options.iNumStored = NUM_STORED;                  // # of search results to store for xcorr analysis.
 
       options.bNoEnzymeSelected = 1;
-      options.bPrintFragIons = 0;
+      options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 0;
       options.iRemovePrecursor = 0;
-      options.dRemovePrecursorTol = DEFAULT_PREC_TOL;  
+      options.dRemovePrecursorTol = 2.0;  
 
       options.bOutputSqtStream = 0;
       options.bOutputSqtFile = 0;
@@ -510,16 +526,15 @@ struct StaticParams
       options.scanRange.iStart = 0;
       options.scanRange.iEnd = 0;
       options.iSpectrumBatchSize = 0;
-      options.iMinPeaks = MINIMUM_PEAKS;
+      options.iMinPeaks = 10;
       options.iStartCharge = 0;
       options.iMaxFragmentCharge = 3;
       options.iMaxPrecursorCharge = 6;
       options.iEndCharge = 0;
-      options.iStartMSLevel = 2;
-      options.iEndMSLevel = 0;
-      options.iMinIntensity = 0;
+      options.iMSLevel = 2;
+      options.dMinIntensity = 0.0;
       options.dLowPeptideMass = 0.0;
-      options.dHighPeptideMass = 0.0;
+      options.dHighPeptideMass = 10000.0;
       strcpy(options.szActivationMethod, "ALL");
       // End of mzXML specific parameters.
 
@@ -534,9 +549,9 @@ struct StaticParams
       tolerances.iMassToleranceUnits = 0;
       tolerances.iMassToleranceType = 0;
       tolerances.iIsotopeError = 0;
-      tolerances.dInputTolerance = 1.0;
-      tolerances.dFragmentBinSize = DEFAULT_BIN_WIDTH;
-      tolerances.dFragmentBinStartOffset = DEFAULT_OFFSET;
+      tolerances.dInputTolerance = 1.0;                     // peptide_mass_tolerance
+      tolerances.dFragmentBinSize = 1.0005;
+      tolerances.dFragmentBinStartOffset = 0.4;
       tolerances.dMatchPeakTolerance = 0.5;
    }
 
@@ -660,17 +675,17 @@ struct Query
       pSparseFastXcorrData = NULL;
       pSparseFastXcorrDataNL= NULL;           // pfFastXcorrData with NH3, H2O contributions
 
-      _pepMassInfo.dCalcPepMass = 0;
-      _pepMassInfo.dExpPepMass = 0;
-      _pepMassInfo.dPeptideMassTolerance = 0;
-      _pepMassInfo.dPeptideMassToleranceMinus = 0;
-      _pepMassInfo.dPeptideMassTolerancePlus = 0;
+      _pepMassInfo.dCalcPepMass = 0.0;
+      _pepMassInfo.dExpPepMass = 0.0;
+      _pepMassInfo.dPeptideMassTolerance = 0.0;
+      _pepMassInfo.dPeptideMassToleranceMinus = 0.0;
+      _pepMassInfo.dPeptideMassTolerancePlus = 0.0;
    
-      _spectrumInfoInternal.dTotalIntensity = 0;
+      _spectrumInfoInternal.dTotalIntensity = 0.0;
       _spectrumInfoInternal.iArraySize = 0;
       _spectrumInfoInternal.iHighestIon = 0;
       _spectrumInfoInternal.iScanNumber = 0;
-      _spectrumInfoInternal.dTotalIntensity = 0;
+      _spectrumInfoInternal.dTotalIntensity = 0.0;
 
       _pResults = NULL;
       _pDecoys = NULL;

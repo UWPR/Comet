@@ -160,8 +160,8 @@ void LoadParameters(char *pszParamsFile,
 {
    double dTempMass,
           dDoubleParam;
-   int   iSearchEnzymeNumber,
-         iSampleEnzymeNumber,
+   int   iSearchEnzymeNumber = 0,
+         iSampleEnzymeNumber = 0,
          iIntParam,
          iAllowedMissedCleavages = 2;
    char  szParamBuf[SIZE_BUF],
@@ -180,7 +180,7 @@ void LoadParameters(char *pszParamsFile,
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
-      logerr("\n Comet version %s\n %s\n", comet_version, copyright);
+      logerr("\n Comet version %s\n\n", comet_version);
       logerr(" Error - cannot open parameter file \"%s\".\n\n", pszParamsFile);
       exit(1);
    }
@@ -205,7 +205,7 @@ void LoadParameters(char *pszParamsFile,
 
    if (!bValidParamsFile)
    {
-      logerr("\n Comet version is %s\n", comet_version);
+      logerr("\n Comet version %s\n\n", comet_version);
       logerr(" The comet.params file is from version %s\n", szVersion);
       logerr(" Please update your comet.params file.  You can generate\n");
       logerr(" a new parameters file using \"comet -p\"\n\n");
@@ -994,26 +994,31 @@ void LoadParameters(char *pszParamsFile,
       fgets(szParamBuf, SIZE_BUF, fp);
    }
    fclose(fp);
+   
+   if (!bCurrentParamsFile)
+   {
+      logerr("\n Comet version %s\n\n", comet_version);
+      logerr(" Error - outdated params file; generate an update params file using '-p' option.\n\n");
+      exit(1);
+   }
 
    if (!strcmp(enzymeInformation.szSearchEnzymeName, "-"))
    {
-      logout(" Error - search enzyme number %d is missing definition in params file.\n\n", iSearchEnzymeNumber);
+      logerr("\n Comet version %s\n\n", comet_version);
+      logerr(" Error - search enzyme number %d is missing definition in params file.\n\n", iSearchEnzymeNumber);
       exit(1);
    }
+
    if (!strcmp(enzymeInformation.szSampleEnzymeName, "-"))
    {
-      logout(" Error - sample enzyme number %d is missing definition in params file.\n\n", iSampleEnzymeNumber);
+      logerr("\n Comet version %s\n\n", comet_version);
+      logerr(" Error - sample enzyme number %d is missing definition in params file.\n\n", iSampleEnzymeNumber);
       exit(1);
    }
 
    enzymeInformation.iAllowedMissedCleavage = iAllowedMissedCleavages;
    searchMgr.SetParam("[COMET_ENZYME_INFO]", enzymeInfoStrVal, enzymeInformation);
-   
-   if (!bCurrentParamsFile)
-   {
-      logerr(" Error - outdated params file; generate an update params file using '-p' option.\n\n");
-      exit(1);
-   }
+
 } // LoadParameters
 
 // Parses the command line and determines the type of analysis to perform.
@@ -1058,7 +1063,8 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, CometSearchManager &sear
       IntRange scanRange;
       if (!searchMgr.GetParamValue("scan_range", scanRange))
       {
-          return false;
+         scanRange.iStart = 0;
+         scanRange.iEnd = 0;
       }
 
       if (scanRange.iStart == 0 && scanRange.iEnd == 0)
@@ -1127,7 +1133,7 @@ void ProcessCmdLine(int argc,
    
    if (iStartInputFile == argc)
    {
-      logerr("\n Comet version %s\n %s\n\n", comet_version, copyright);
+      logerr("\n Comet version %s\n\n", comet_version);
       logerr(" Error - no input files specified so nothing to do.\n\n");
       exit(1);
    }
@@ -1171,7 +1177,8 @@ void ProcessCmdLine(int argc,
           InputFileInfo *pInputFileInfo = new InputFileInfo();
           if (!ParseCmdLine(arg, pInputFileInfo, searchMgr))
           {
-              logerr(" Error - input MS/MS file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
+              logerr("\n Comet version %s\n\n", comet_version);
+              logerr(" Error - input file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
               pvInputFiles.clear();
               exit(1);
           }
@@ -1193,7 +1200,8 @@ void PrintParams(void)
 
    if ( (fp=fopen("comet.params.new", "w"))==NULL)
    {
-      logerr("\n Error - cannot write file comet.params.new\n\n");
+      logerr("\n Comet version %s\n\n", comet_version);
+      logerr(" Error - cannot write file comet.params.new\n\n");
       exit(1);
    }
 
@@ -1288,11 +1296,9 @@ activation_method = ALL                # activation method; used if activation m
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
 num_results = 50                       # number of search hits to store internally\n\
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
-max_fragment_charge = %d                # set maximum fragment charge state to analyze (allowed max %d)\n\
-max_precursor_charge = %d               # set maximum precursor charge state to analyze (allowed max %d)\n",
-      DEFAULT_FRAGMENT_CHARGE,
+max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
+max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
       MAX_FRAGMENT_CHARGE,
-      DEFAULT_PRECURSOR_CHARGE,
       MAX_PRECURSOR_CHARGE);
 
 fprintf(fp,
@@ -1304,7 +1310,7 @@ decoy_prefix = DECOY_                  # decoy entries are denoted by this strin
 #\n\
 # spectral processing\n\
 #\n\
-minimum_peaks = 10                     # minimum num. of peaks in spectrum to search (default %d)\n", MINIMUM_PEAKS);
+minimum_peaks = 10                     # required minimum number of peaks in spectrum to search\n");
 
 fprintf(fp,
 "minimum_intensity = 0                  # minimum intensity value to read in\n\

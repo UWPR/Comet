@@ -20,18 +20,15 @@
 #define SIZE_BUF                    8192
 #define SIZE_FILE                   512
 
-#define MAX_THREADS                 32
+#define MAX_THREADS                 64
 
 #define MAX_ENZYME_AA               20       // max # of AA for enzyme break point
 #define MAX_VARMOD_AA               20       // max # of modified AAs in a peptide per variable modification 
 
 #define ENZYME_NAME_LEN             48
 
-#define DEFAULT_FRAGMENT_CHARGE     3
-#define DEFAULT_PRECURSOR_CHARGE    6
 #define MAX_FRAGMENT_CHARGE         5
 #define MAX_PRECURSOR_CHARGE        9
-#define MINIMUM_PEAKS               10
 
 struct DoubleRange
 {
