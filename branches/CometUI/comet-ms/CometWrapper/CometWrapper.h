@@ -15,7 +15,8 @@ namespace CometWrapper {
         CometSearchManagerWrapper();
         virtual ~CometSearchManagerWrapper();
 		
-        void DoSearch();
+        bool DoSearch();
+        bool SetParam(System::String^ name, System::String^ strValue, System::String^ value);
 
     private:
         CometSearchManager *_pSearchMgr;

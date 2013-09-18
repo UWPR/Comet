@@ -25,7 +25,6 @@
 #include <ctime>
 
 #ifdef _WIN32
-#include <winsock2.h>
 #include <direct.h>
 #include <errno.h>
 #else

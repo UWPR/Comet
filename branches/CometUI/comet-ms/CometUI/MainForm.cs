@@ -16,7 +16,10 @@ namespace CometUI
 
         private void BtnTestClick(object sender, EventArgs e)
         {
-            _searchMgr.DoSearch();
+            if (_searchMgr.SetParam("database_name", "18mix.fasta", "18mix.fasta"))
+            {
+                _searchMgr.DoSearch();
+            }
         }
     }
 }
