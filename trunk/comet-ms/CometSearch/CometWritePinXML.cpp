@@ -41,8 +41,10 @@ void CometWritePinXML::WritePinXML(FILE *fpout)
       fprintf(fpout, "<fragSpectrumScan xmlns=\"http://per-colator.com/percolator_in/12\" scanNumber=\"%d\">\n",
             g_pvQuery[i]->_spectrumInfoInternal.iScanNumber);
 
-      PrintResults(i, fpout, 0);  // print target hit
-      PrintResults(i, fpout, 1);  // print decoy hit
+      PrintResults(i, fpout, 0);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+
+      if (g_staticParams.options.iDecoySearch == 2)
+         PrintResults(i, fpout, 1);  // print decoy hit
 
       fprintf(fpout, "</fragSpectrumScan>\n");
    }
@@ -164,7 +166,12 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
          g_staticParams.inputFile.szBaseName,
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iChargeState );   //basename_scannum_charge_1
-   fprintf(fpout, "isDecoy=\"%s\">\n", bDecoy?"true":"false");
+
+   if (bDecoy || !strncmp(pOutput[0].szProtein, g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)))
+      fprintf(fpout, "isDecoy=\"true\">\n");
+   else
+      fprintf(fpout, "isDecoy=\"false\">\n");
+
 
    if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
       iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
@@ -291,20 +298,23 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
 
    int i;
 
-   // We don't supply any mechanism to provide real UniMod accession numbers here.
+   // We don't have any mechanism to provide real UniMod accession numbers here.
    // So, just like sqt2pin, we are supplying bogus ones.
    for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
    {
       if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0))
       {
+         // static mods - use ascii value of residue for bogus unimod number here (A=65 thru Z=90)
+
          fprintf(fpout, "   <modification location=\"%d\">\n", i+1);
-         // using ascii value of residue for bogus unimod number here
-         fprintf(fpout, "    <uniMod accession=\"%d\" />\n",
-               (int)g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]]);
+         fprintf(fpout, "    <uniMod accession=\"%d\" />\n", (int)pOutput[iWhichResult].szPeptide[i]);
          fprintf(fpout, "   </modification>\n");
       }
-      else if (pOutput[iWhichResult].pcVarModSites[i] > 0)
+
+      if (pOutput[iWhichResult].pcVarModSites[i] > 0)
       {
+         // variable mods - use modification number i.e. 1 for variable_mod1, 2 for variable_mod2, etc.
+
          fprintf(fpout, "   <modification location=\"%d\">\n", i+1);
          fprintf(fpout, "    <uniMod accession=\"%d\" />\n", pOutput[iWhichResult].pcVarModSites[i]);
          fprintf(fpout, "   </modification>\n");

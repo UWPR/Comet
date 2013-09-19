@@ -1041,10 +1041,10 @@ void CometSearchManager::InitializeStaticParams()
    }
 
    if (g_staticParams.options.bOutputPinXMLFile
-         && g_staticParams.options.iDecoySearch != 2)
+         && g_staticParams.options.iDecoySearch == 0)
    {
       logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr(" Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 2\"\n\n");
+      logerr(" Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 1\" or \"decoy_search = 2\" \n\n");
       exit(1);
    }
 
