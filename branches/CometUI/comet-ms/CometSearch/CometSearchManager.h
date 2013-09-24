@@ -19,6 +19,31 @@
 
 #include "CometData.h"
 
+class ICometSearchMgr
+{
+    public:
+        virtual ~ICometSearchMgr() {}
+        virtual void DoSearch() = 0;
+        virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles) = 0;
+        virtual void SetOutputFileBaseName(const char *pszBaseName) = 0;
+        virtual void SetParam(const string &name, const string &strValue, const string &value) = 0;
+        virtual bool GetParamValue(const string &name, string &value) = 0;
+        virtual void SetParam(const string &name, const string &strValue, const int &value) = 0;
+        virtual bool GetParamValue(const string &name, int &value) = 0;
+        virtual void SetParam(const string &name, const string &strValue, const double &value) = 0;
+        virtual bool GetParamValue(const string &name, double &value) = 0;
+        virtual void SetParam(const string &name, const string &strValue, const VarMods &value) = 0;
+        virtual bool GetParamValue(const string &name, VarMods &value) = 0;
+        virtual void SetParam(const string &name, const string &strValue, const DoubleRange &value) = 0;
+        virtual bool GetParamValue(const string &name, DoubleRange &value) = 0;
+        virtual void SetParam(const string &name, const string &strValue, const IntRange &value) = 0;
+        virtual bool GetParamValue(const string &name, IntRange &value) = 0;
+        virtual void SetParam(const string &name, const string &strValue, const EnzymeInfo &value) = 0;
+        virtual bool GetParamValue(const string &name, EnzymeInfo &value) = 0;
+};
+
+
+
 class CometSearchManager
 {
 public:
