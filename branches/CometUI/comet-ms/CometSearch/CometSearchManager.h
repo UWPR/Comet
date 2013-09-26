@@ -18,56 +18,36 @@
 #define _COMETSEARCHMANAGER_H_
 
 #include "CometData.h"
+#include "CometInterfaces.h"
 
-class ICometSearchMgr
-{
-    public:
-        virtual ~ICometSearchMgr() {}
-        virtual void DoSearch() = 0;
-        virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles) = 0;
-        virtual void SetOutputFileBaseName(const char *pszBaseName) = 0;
-        virtual void SetParam(const string &name, const string &strValue, const string &value) = 0;
-        virtual bool GetParamValue(const string &name, string &value) = 0;
-        virtual void SetParam(const string &name, const string &strValue, const int &value) = 0;
-        virtual bool GetParamValue(const string &name, int &value) = 0;
-        virtual void SetParam(const string &name, const string &strValue, const double &value) = 0;
-        virtual bool GetParamValue(const string &name, double &value) = 0;
-        virtual void SetParam(const string &name, const string &strValue, const VarMods &value) = 0;
-        virtual bool GetParamValue(const string &name, VarMods &value) = 0;
-        virtual void SetParam(const string &name, const string &strValue, const DoubleRange &value) = 0;
-        virtual bool GetParamValue(const string &name, DoubleRange &value) = 0;
-        virtual void SetParam(const string &name, const string &strValue, const IntRange &value) = 0;
-        virtual bool GetParamValue(const string &name, IntRange &value) = 0;
-        virtual void SetParam(const string &name, const string &strValue, const EnzymeInfo &value) = 0;
-        virtual bool GetParamValue(const string &name, EnzymeInfo &value) = 0;
-};
+using namespace CometInterfaces;
 
-
-
-class CometSearchManager
+class CometSearchManager : public ICometSearchManager
 {
 public:
    CometSearchManager();
    ~CometSearchManager();
 
-   void DoSearch();
    std::map<std::string, CometParam*>& GetParamsMap();
-   void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
-   void SetOutputFileBaseName(const char *pszBaseName);
-   void SetParam(const string &name, const string &strValue, const string &value);
-   bool GetParamValue(const string &name, string &value);
-   void SetParam(const string &name, const string &strValue, const int &value);
-   bool GetParamValue(const string &name, int &value);
-   void SetParam(const string &name, const string &strValue, const double &value);
-   bool GetParamValue(const string &name, double &value);
-   void SetParam(const string &name, const string &strValue, const VarMods &value);
-   bool GetParamValue(const string &name, VarMods &value);
-   void SetParam(const string &name, const string &strValue, const DoubleRange &value);
-   bool GetParamValue(const string &name, DoubleRange &value);
-   void SetParam(const string &name, const string &strValue, const IntRange &value);
-   bool GetParamValue(const string &name, IntRange &value);
-   void SetParam(const string &name, const string &strValue, const EnzymeInfo &value);
-   bool GetParamValue(const string &name, EnzymeInfo &value);   
+
+   // Methods inherited from ICometSearchManager
+   virtual void DoSearch();
+   virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
+   virtual void SetOutputFileBaseName(const char *pszBaseName);
+   virtual void SetParam(const string &name, const string &strValue, const string &value);
+   virtual bool GetParamValue(const string &name, string &value);
+   virtual void SetParam(const string &name, const string &strValue, const int &value);
+   virtual bool GetParamValue(const string &name, int &value);
+   virtual void SetParam(const string &name, const string &strValue, const double &value);
+   virtual bool GetParamValue(const string &name, double &value);
+   virtual void SetParam(const string &name, const string &strValue, const VarMods &value);
+   virtual bool GetParamValue(const string &name, VarMods &value);
+   virtual void SetParam(const string &name, const string &strValue, const DoubleRange &value);
+   virtual bool GetParamValue(const string &name, DoubleRange &value);
+   virtual void SetParam(const string &name, const string &strValue, const IntRange &value);
+   virtual bool GetParamValue(const string &name, IntRange &value);
+   virtual void SetParam(const string &name, const string &strValue, const EnzymeInfo &value);
+   virtual bool GetParamValue(const string &name, EnzymeInfo &value);   
 
 
 private:

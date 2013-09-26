@@ -3,12 +3,12 @@
 #pragma once
 
 #include "Common.h"
-#include "CometSearchManager.h"
+#include "CometInterfaces.h"
 #include <msclr/marshal.h>
 
 using namespace System;
 using namespace msclr::interop;
-
+using namespace CometInterfaces;
 
 namespace CometWrapper {
     public ref class CometSearchManagerWrapper
@@ -27,7 +27,7 @@ namespace CometWrapper {
         bool GetParamValue(System::String^ name, double% value);
 
     private:
-        CometSearchManager *_pSearchMgr;
+        ICometSearchManager *_pSearchMgr;
         msclr::interop::marshal_context _marshalContext;
 	};
 }

@@ -17,17 +17,13 @@ using namespace System::Runtime::InteropServices;
 
 CometSearchManagerWrapper::CometSearchManagerWrapper()
 {
-    // Instantiate the native C++ class CSimpleObject.
-    _pSearchMgr = new CometSearchManager();
+    // Instantiate the native C++ class
+    _pSearchMgr = GetCometSearchManager();
 }
 
 CometSearchManagerWrapper::~CometSearchManagerWrapper()
 {
-    if (_pSearchMgr)
-    {
-        delete _pSearchMgr;
-        _pSearchMgr = NULL;
-    }
+    ReleaseCometSearchManager();
 }
 
 bool CometSearchManagerWrapper::DoSearch()
