@@ -80,6 +80,7 @@
     <ClInclude Include="..\CometSearch\CometData.h" />
     <ClInclude Include="..\CometSearch\CometSearchManager.h" />
     <ClInclude Include="..\CometSearch\Common.h" />
+    <ClInclude Include="CometDataWrapper.h" />
     <ClInclude Include="CometWrapper.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Stdafx.h" />

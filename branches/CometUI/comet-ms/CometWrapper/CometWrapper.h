@@ -11,7 +11,6 @@ using namespace msclr::interop;
 
 
 namespace CometWrapper {
-
     public ref class CometSearchManagerWrapper
 	{
     public:
