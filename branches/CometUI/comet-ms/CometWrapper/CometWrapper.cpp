@@ -154,3 +154,37 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, double% valu
 
     return true;
 }
+
+bool CometSearchManagerWrapper::SetParam(System::String^ name, System::String^ strValue, IntRangeWrapper^ value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name); 
+    std::string stdStringStrValue = marshal_as<std::string>(strValue);
+    IntRange *pIntRange = value->get_IntRangePtr();
+    _pSearchMgr->SetParam(stdStringName, stdStringStrValue, *pIntRange);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::GetParamValue(System::String^ name, IntRangeWrapper^% value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name);
+    IntRange intRangeParam(0,0);
+    if (!_pSearchMgr->GetParamValue(stdStringName, intRangeParam))
+    {
+        return false;
+    }
+
+    value = gcnew IntRangeWrapper(intRangeParam);
+
+    return true;
+}

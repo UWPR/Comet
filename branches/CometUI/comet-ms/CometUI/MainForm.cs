@@ -22,6 +22,12 @@ namespace CometUI
             _searchMgr.SetParam("num_threads", "5", 5);
             _searchMgr.GetParamValue("num_threads", ref numThreads);
 
+            IntRangeWrapper scanRange = new IntRangeWrapper(0, 544);
+            _searchMgr.SetParam("scan_range", "0 544", scanRange);
+            scanRange.set_iStart(20);
+            scanRange.set_iEnd(4000);
+            _searchMgr.GetParamValue("scan_range", ref scanRange);
+
             double dPepMassTol = 0;
             _searchMgr.SetParam("peptide_mass_tolerance", "2", (double)2);
             _searchMgr.GetParamValue("peptide_mass_tolerance", ref dPepMassTol);
