@@ -28,6 +28,13 @@ namespace CometUI
             scanRange.set_iEnd(4000);
             _searchMgr.GetParamValue("scan_range", ref scanRange);
 
+
+            DoubleRangeWrapper digestMassRange = new DoubleRangeWrapper(0.0, 678.9);
+            _searchMgr.SetParam("digest_mass_range", "0.0, 678.9", digestMassRange);
+            digestMassRange.set_dStart(999.99);
+            digestMassRange.set_dEnd(9999.99);
+            _searchMgr.GetParamValue("digest_mass_range", ref digestMassRange);
+
             double dPepMassTol = 0;
             _searchMgr.SetParam("peptide_mass_tolerance", "2", (double)2);
             _searchMgr.GetParamValue("peptide_mass_tolerance", ref dPepMassTol);

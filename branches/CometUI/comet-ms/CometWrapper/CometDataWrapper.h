@@ -34,4 +34,31 @@ namespace CometWrapper {
     private:
         IntRange* _pIntRange;
     };
+
+    public ref class DoubleRangeWrapper
+    {
+    public:
+        DoubleRangeWrapper() { _pDoubleRange = new DoubleRange(); }
+        DoubleRangeWrapper(DoubleRange &doubleRangeParam) { _pDoubleRange = new DoubleRange(doubleRangeParam.dStart, doubleRangeParam.dEnd); }
+        DoubleRangeWrapper(double dStart, double dEnd) { _pDoubleRange = new DoubleRange(dStart, dEnd); }
+        virtual ~DoubleRangeWrapper() 
+        { 
+            if (NULL != _pDoubleRange)
+            {
+                delete _pDoubleRange;
+                _pDoubleRange = NULL;
+            }
+        }
+        
+        int get_dStart() {return _pDoubleRange->dStart;}
+        void set_dStart(double dStart) {_pDoubleRange->dStart = dStart;}
+
+        int get_dEnd() {return _pDoubleRange->dEnd;}
+        void set_dEnd(double dEnd) {_pDoubleRange->dEnd = dEnd;}
+
+        DoubleRange* get_DoubleRangePtr() {return _pDoubleRange;}
+
+    private:
+        DoubleRange* _pDoubleRange;
+    };
 }
