@@ -154,3 +154,105 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, double% valu
 
     return true;
 }
+
+bool CometSearchManagerWrapper::SetParam(System::String^ name, System::String^ strValue, IntRangeWrapper^ value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name); 
+    std::string stdStringStrValue = marshal_as<std::string>(strValue);
+    IntRange *pIntRange = value->get_IntRangePtr();
+    _pSearchMgr->SetParam(stdStringName, stdStringStrValue, *pIntRange);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::GetParamValue(System::String^ name, IntRangeWrapper^% value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name);
+    IntRange intRangeParam(0, 0);
+    if (!_pSearchMgr->GetParamValue(stdStringName, intRangeParam))
+    {
+        return false;
+    }
+
+    value = gcnew IntRangeWrapper(intRangeParam);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::SetParam(System::String^ name, System::String^ strValue, DoubleRangeWrapper^ value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name); 
+    std::string stdStringStrValue = marshal_as<std::string>(strValue);
+    DoubleRange *pDoubleRange = value->get_DoubleRangePtr();
+    _pSearchMgr->SetParam(stdStringName, stdStringStrValue, *pDoubleRange);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::GetParamValue(System::String^ name, DoubleRangeWrapper^% value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name);
+    DoubleRange doubleRangeParam(0.0, 0.0);
+    if (!_pSearchMgr->GetParamValue(stdStringName, doubleRangeParam))
+    {
+        return false;
+    }
+
+    value = gcnew DoubleRangeWrapper(doubleRangeParam);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::SetParam(System::String^ name, System::String^ strValue, VarModsWrapper^ value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name); 
+    std::string stdStringStrValue = marshal_as<std::string>(strValue);
+    VarMods *pVarMods = value->get_VarModsPtr();
+    _pSearchMgr->SetParam(stdStringName, stdStringStrValue, *pVarMods);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::GetParamValue(System::String^ name, VarModsWrapper^% value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name);
+    VarMods varModsParam;
+    if (!_pSearchMgr->GetParamValue(stdStringName, varModsParam))
+    {
+        return false;
+    }
+
+    value = gcnew VarModsWrapper(varModsParam);
+
+    return true;
+}

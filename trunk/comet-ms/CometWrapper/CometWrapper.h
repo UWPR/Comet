@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Common.h"
+#include "CometDataWrapper.h"
 #include "CometInterfaces.h"
 #include <msclr/marshal.h>
 
@@ -25,6 +26,12 @@ namespace CometWrapper {
         bool GetParamValue(System::String^ name, int %value);
         bool SetParam(System::String^ name, System::String^ strValue, double value);
         bool GetParamValue(System::String^ name, double% value);
+        bool SetParam(System::String^ name, System::String^ strValue, IntRangeWrapper^ value);
+        bool GetParamValue(System::String^ name, IntRangeWrapper^% value);
+        bool SetParam(System::String^ name, System::String^ strValue, DoubleRangeWrapper^ value);
+        bool GetParamValue(System::String^ name, DoubleRangeWrapper^% value);
+        bool SetParam(System::String^ name, System::String^ strValue, VarModsWrapper^ value);
+        bool GetParamValue(System::String^ name, VarModsWrapper^% value);
 
     private:
         ICometSearchManager *_pSearchMgr;
