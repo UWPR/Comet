@@ -3,8 +3,12 @@
 #pragma once
 
 #include "CometData.h"
+#include <msclr/marshal.h>
+#include <msclr/marshal_cppstd.h>
 
 using namespace System;
+using namespace msclr::interop;
+using namespace System::Runtime::InteropServices;
 
 namespace CometWrapper {
 
@@ -12,7 +16,7 @@ namespace CometWrapper {
     {
     public:
         IntRangeWrapper() { _pIntRange = new IntRange(); }
-        IntRangeWrapper(IntRange &intRangeParam) { _pIntRange = new IntRange(intRangeParam.iStart, intRangeParam.iEnd); }
+        IntRangeWrapper(IntRange &intRangeParam) { _pIntRange = new IntRange(intRangeParam); }
         IntRangeWrapper(int iStart, int iEnd) { _pIntRange = new IntRange(iStart, iEnd); }
         virtual ~IntRangeWrapper() 
         { 
@@ -39,7 +43,7 @@ namespace CometWrapper {
     {
     public:
         DoubleRangeWrapper() { _pDoubleRange = new DoubleRange(); }
-        DoubleRangeWrapper(DoubleRange &doubleRangeParam) { _pDoubleRange = new DoubleRange(doubleRangeParam.dStart, doubleRangeParam.dEnd); }
+        DoubleRangeWrapper(DoubleRange &doubleRangeParam) { _pDoubleRange = new DoubleRange(doubleRangeParam); }
         DoubleRangeWrapper(double dStart, double dEnd) { _pDoubleRange = new DoubleRange(dStart, dEnd); }
         virtual ~DoubleRangeWrapper() 
         { 
@@ -60,5 +64,41 @@ namespace CometWrapper {
 
     private:
         DoubleRange* _pDoubleRange;
+    };
+
+    public ref class VarModsWrapper
+    {
+    public:
+        VarModsWrapper() { _pVarMods = new VarMods(); }
+        VarModsWrapper(VarMods &varMods) { _pVarMods = new VarMods(varMods);}
+        virtual ~VarModsWrapper() 
+        { 
+            if (NULL != _pVarMods)
+            {
+                delete _pVarMods;
+                _pVarMods = NULL;
+            }
+        }
+
+        int get_BinaryMod() {return _pVarMods->bBinaryMod;}
+        void set_BinaryMod(int bBinaryMod) {_pVarMods->bBinaryMod = bBinaryMod;}
+
+        int get_MaxNumVarModAAPerMod() {return _pVarMods->iMaxNumVarModAAPerMod;}
+        void set_MaxNumVarModAAPerMod(int iMaxNumVarModAAPerMod) {_pVarMods->iMaxNumVarModAAPerMod = iMaxNumVarModAAPerMod;}
+
+        int get_VarModMass() {return _pVarMods->dVarModMass;}
+        void set_VarModMass(double dVarModMass) {_pVarMods->dVarModMass = dVarModMass;}
+
+        System::String^% get_VarModChar() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pVarMods->szVarModChar))));}
+        void set_VarModChar(System::String^ varModChar) 
+        {
+            std::string stdVarModChar = marshal_as<std::string>(varModChar);    
+            strcpy(_pVarMods->szVarModChar, stdVarModChar.c_str());
+        }
+
+        VarMods* get_VarModsPtr() {return _pVarMods;}
+
+    private:
+        VarMods *_pVarMods;
     };
 }

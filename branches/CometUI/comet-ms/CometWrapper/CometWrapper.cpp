@@ -222,3 +222,37 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, DoubleRangeW
 
     return true;
 }
+
+bool CometSearchManagerWrapper::SetParam(System::String^ name, System::String^ strValue, VarModsWrapper^ value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name); 
+    std::string stdStringStrValue = marshal_as<std::string>(strValue);
+    VarMods *pVarMods = value->get_VarModsPtr();
+    _pSearchMgr->SetParam(stdStringName, stdStringStrValue, *pVarMods);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::GetParamValue(System::String^ name, VarModsWrapper^% value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name);
+    VarMods varModsParam;
+    if (!_pSearchMgr->GetParamValue(stdStringName, varModsParam))
+    {
+        return false;
+    }
+
+    value = gcnew VarModsWrapper(varModsParam);
+
+    return true;
+}

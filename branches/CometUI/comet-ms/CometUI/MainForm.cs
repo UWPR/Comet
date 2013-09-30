@@ -35,6 +35,18 @@ namespace CometUI
             digestMassRange.set_dEnd(9999.99);
             _searchMgr.GetParamValue("digest_mass_range", ref digestMassRange);
 
+            VarModsWrapper varMods = new VarModsWrapper();
+            varMods.set_BinaryMod(1);
+            varMods.set_MaxNumVarModAAPerMod(5);
+            varMods.set_VarModMass(15.9949);
+            varMods.set_VarModChar("M");
+            _searchMgr.SetParam("variable_mod1", "1, 5, 15.9949, M", varMods);
+            varMods.set_BinaryMod(0);
+            varMods.set_MaxNumVarModAAPerMod(0);
+            varMods.set_VarModMass(0.0);
+            varMods.set_VarModChar(" ");
+            _searchMgr.GetParamValue("variable_mod1", ref varMods);
+
             double dPepMassTol = 0;
             _searchMgr.SetParam("peptide_mass_tolerance", "2", (double)2);
             _searchMgr.GetParamValue("peptide_mass_tolerance", ref dPepMassTol);

@@ -41,6 +41,12 @@ struct DoubleRange
       dEnd = 0.0;
    }
 
+   DoubleRange(const DoubleRange& a)
+   {
+      dStart = a.dStart;
+      dEnd = a.dEnd;
+   }
+
    DoubleRange(double dStart_in, double dEnd_in)
    {
       dStart = dStart_in;
@@ -66,6 +72,12 @@ struct IntRange
       iEnd = 0;
    }
 
+   IntRange(const IntRange& a)
+   {
+      iStart = a.iStart;
+      iEnd = a.iEnd;
+   }
+
    IntRange(int iStart_in, int iEnd_in)
    {
       iStart = iStart_in;
@@ -87,6 +99,22 @@ struct VarMods
    double dVarModMass;
    char   szVarModChar[MAX_VARMOD_AA];
 
+   VarMods()
+   {
+       bBinaryMod = 0;
+       iMaxNumVarModAAPerMod = 0;
+       dVarModMass = 0.0;
+       szVarModChar[0] = '\0';
+   }
+
+   VarMods(const VarMods& a)
+   {
+      bBinaryMod = a.bBinaryMod;
+      iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
+      dVarModMass = a.dVarModMass;
+      strcpy(szVarModChar, a.szVarModChar);
+   }
+
    VarMods& operator=(VarMods& a) 
    {
       bBinaryMod = a.bBinaryMod;
@@ -96,7 +124,6 @@ struct VarMods
 
       return *this;
    }
-
 };
 
 struct EnzymeInfo
@@ -112,6 +139,44 @@ struct EnzymeInfo
    char szSampleEnzymeName[ENZYME_NAME_LEN];
    char szSampleEnzymeBreakAA[MAX_ENZYME_AA];
    char szSampleEnzymeNoBreakAA[MAX_ENZYME_AA];
+
+   EnzymeInfo()
+   {
+       iAllowedMissedCleavage = 0;
+       iSearchEnzymeOffSet = 0;
+       iSampleEnzymeOffSet = 0;
+
+       szSearchEnzymeName[0] = '\0';
+       szSearchEnzymeBreakAA[0] = '\0';
+       szSearchEnzymeNoBreakAA[0] = '\0';
+
+       szSampleEnzymeName[0] = '\0';
+       szSampleEnzymeBreakAA[0] = '\0';
+       szSampleEnzymeNoBreakAA[0] = '\0';
+   }
+
+   EnzymeInfo(const EnzymeInfo& a)
+   {
+      iAllowedMissedCleavage = a.iAllowedMissedCleavage;
+      iSearchEnzymeOffSet = a.iSearchEnzymeOffSet;
+      iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
+
+      int i;
+
+      for (i = 0; i < ENZYME_NAME_LEN; i++)
+      {
+         szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
+         szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
+      }
+
+      for (i = 0; i < MAX_ENZYME_AA; i++)
+      {
+         szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
+         szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
+         szSampleEnzymeBreakAA[i] = a.szSampleEnzymeBreakAA[i];
+         szSampleEnzymeNoBreakAA[i] = a.szSampleEnzymeNoBreakAA[i];
+      }
+   }
 
    EnzymeInfo& operator=(EnzymeInfo& a) 
    {
@@ -166,6 +231,20 @@ struct InputFileInfo
 
       szFileName[0] = '\0';
       szBaseName[0] = '\0';
+   }
+
+   InputFileInfo(const InputFileInfo& inputObj)
+   {
+      iInputType = inputObj.iInputType;
+      iAnalysisType = inputObj.iAnalysisType;
+      iFirstScan = inputObj.iFirstScan;
+      iLastScan = inputObj.iLastScan;
+
+      szBaseName[0] = '\0';
+      strcpy(szBaseName, inputObj.szBaseName);
+
+      szFileName[0] = '\0';
+      strcpy(szFileName, inputObj.szFileName);
    }
 
    InputFileInfo(char *pszFileName)
