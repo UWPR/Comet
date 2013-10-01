@@ -176,7 +176,6 @@ void LoadParameters(char *pszParamsFile,
    VarMods varModsParam;
    IntRange intRangeParam;
    DoubleRange doubleRangeParam;
-   string strParamValue;
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
