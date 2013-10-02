@@ -256,3 +256,38 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, VarModsWrapp
 
     return true;
 }
+
+bool CometSearchManagerWrapper::SetParam(System::String^ name, System::String^ strValue, EnzymeInfoWrapper^ value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name); 
+    std::string stdStringStrValue = marshal_as<std::string>(strValue);
+    EnzymeInfo *pEnzymInfo = value->get_EnzymeInfoPtr();
+    _pSearchMgr->SetParam(stdStringName, stdStringStrValue, *pEnzymInfo);
+
+    return true;
+}
+
+
+bool CometSearchManagerWrapper::GetParamValue(System::String^ name, EnzymeInfoWrapper^% value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name);
+    EnzymeInfo enzymeInfoParam;
+    if (!_pSearchMgr->GetParamValue(stdStringName, enzymeInfoParam))
+    {
+        return false;
+    }
+
+    value = gcnew EnzymeInfoWrapper(enzymeInfoParam);
+
+    return true;
+}

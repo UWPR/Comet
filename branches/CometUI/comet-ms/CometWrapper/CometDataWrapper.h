@@ -101,4 +101,75 @@ namespace CometWrapper {
     private:
         VarMods *_pVarMods;
     };
+
+    public ref class EnzymeInfoWrapper
+    {
+    public:
+        EnzymeInfoWrapper() { _pEnzymeInfo = new EnzymeInfo(); }
+        EnzymeInfoWrapper(EnzymeInfo &enzymeInfo) { _pEnzymeInfo = new EnzymeInfo(enzymeInfo);}
+        virtual ~EnzymeInfoWrapper() 
+        { 
+            if (NULL != _pEnzymeInfo)
+            {
+                delete _pEnzymeInfo;
+                _pEnzymeInfo = NULL;
+            }
+        }
+        
+        EnzymeInfo* get_EnzymeInfoPtr() {return _pEnzymeInfo;}
+
+        int get_AllowedMissedCleavge() {return _pEnzymeInfo->iAllowedMissedCleavage;}
+        void set_AllowedMissedCleavge(int iAllowedMissedCleavage) {_pEnzymeInfo->iAllowedMissedCleavage = iAllowedMissedCleavage;}
+
+        int get_SearchEnzymeOffSet() {return _pEnzymeInfo->iSearchEnzymeOffSet;}
+        void set_SearchEnzymeOffSet(int iSearchEnzymeOffSet) {_pEnzymeInfo->iSearchEnzymeOffSet = iSearchEnzymeOffSet;}
+
+        int get_SampleEnzymeOffSet() {return _pEnzymeInfo->iSampleEnzymeOffSet;}
+        void set_SampleEnzymeOffSet(int iSampleEnzymeOffSet) {_pEnzymeInfo->iSampleEnzymeOffSet = iSampleEnzymeOffSet;}
+
+        System::String^% get_SearchEnzymeName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSearchEnzymeName))));}
+        void set_SearchEnzymeName(System::String^ searchEnzymeName) 
+        {
+            std::string stdSearchEnzymeName = marshal_as<std::string>(searchEnzymeName);    
+            strcpy(_pEnzymeInfo->szSearchEnzymeName, stdSearchEnzymeName.c_str());
+        }
+
+        System::String^% get_SearchEnzymeBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSearchEnzymeBreakAA))));}
+        void set_SearchEnzymeBreakAA(System::String^ searchEnzymeBreakAA) 
+        {
+            std::string stdSearchEnzymeBreakAA = marshal_as<std::string>(searchEnzymeBreakAA);    
+            strcpy(_pEnzymeInfo->szSearchEnzymeBreakAA, stdSearchEnzymeBreakAA.c_str());
+        }
+
+        System::String^% get_SearchEnzymeNoBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSearchEnzymeNoBreakAA))));}
+        void set_SearchEnzymeNoBreakAA(System::String^ searchEnzymeNoBreakAA) 
+        {
+            std::string stdSearchEnzymeNoBreakAA = marshal_as<std::string>(searchEnzymeNoBreakAA);    
+            strcpy(_pEnzymeInfo->szSearchEnzymeNoBreakAA, stdSearchEnzymeNoBreakAA.c_str());
+        }
+
+        System::String^% get_SampleEnzymeName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSampleEnzymeName))));}
+        void set_SampleEnzymeName(System::String^ sampleEnzymeName) 
+        {
+            std::string stdSampleEnzymeName = marshal_as<std::string>(sampleEnzymeName);    
+            strcpy(_pEnzymeInfo->szSampleEnzymeName, stdSampleEnzymeName.c_str());
+        }
+
+        System::String^% get_SampleEnzymeBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSampleEnzymeBreakAA))));}
+        void set_SampleEnzymeBreakAA(System::String^ sampleEnzymeBreakAA) 
+        {
+            std::string stdSampleEnzymeBreakAA = marshal_as<std::string>(sampleEnzymeBreakAA);    
+            strcpy(_pEnzymeInfo->szSampleEnzymeBreakAA, stdSampleEnzymeBreakAA.c_str());
+        }
+
+        System::String^% get_SampleEnzymeNoBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSampleEnzymeNoBreakAA))));}
+        void set_SampleEnzymeNoBreakAA(System::String^ sampleEnzymeNoBreakAA) 
+        {
+            std::string stdSampleEnzymeNoBreakAA = marshal_as<std::string>(sampleEnzymeNoBreakAA);    
+            strcpy(_pEnzymeInfo->szSampleEnzymeNoBreakAA, stdSampleEnzymeNoBreakAA.c_str());
+        }
+
+    private:
+        EnzymeInfo *_pEnzymeInfo;
+    };
 }

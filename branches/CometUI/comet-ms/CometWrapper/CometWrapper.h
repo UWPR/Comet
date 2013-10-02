@@ -32,6 +32,8 @@ namespace CometWrapper {
         bool GetParamValue(System::String^ name, DoubleRangeWrapper^% value);
         bool SetParam(System::String^ name, System::String^ strValue, VarModsWrapper^ value);
         bool GetParamValue(System::String^ name, VarModsWrapper^% value);
+        bool SetParam(System::String^ name, System::String^ strValue, EnzymeInfoWrapper^ value);
+        bool GetParamValue(System::String^ name, EnzymeInfoWrapper^% value);
 
     private:
         ICometSearchManager *_pSearchMgr;

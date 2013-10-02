@@ -41,11 +41,22 @@ namespace CometUI
             varMods.set_VarModMass(15.9949);
             varMods.set_VarModChar("M");
             _searchMgr.SetParam("variable_mod1", "1, 5, 15.9949, M", varMods);
-            varMods.set_BinaryMod(0);
-            varMods.set_MaxNumVarModAAPerMod(0);
-            varMods.set_VarModMass(0.0);
-            varMods.set_VarModChar(" ");
-            _searchMgr.GetParamValue("variable_mod1", ref varMods);
+            VarModsWrapper varModsGet = new VarModsWrapper();
+            _searchMgr.GetParamValue("variable_mod1", ref varModsGet);
+
+            EnzymeInfoWrapper enzymeInfo = new EnzymeInfoWrapper();
+            enzymeInfo.set_AllowedMissedCleavge(3);
+            enzymeInfo.set_SearchEnzymeOffSet(1);
+            enzymeInfo.set_SearchEnzymeName("Trypsin");
+            enzymeInfo.set_SearchEnzymeBreakAA("KR");
+            enzymeInfo.set_SearchEnzymeNoBreakAA("P");
+            //enzymeInfo.set_SampleEnzymeOffSet(3);
+            //enzymeInfo.set_SampleEnzymeName("Lys_C");
+            //enzymeInfo.set_SampleEnzymeBreakAA("K");
+            //enzymeInfo.set_SampleEnzymeNoBreakAA("P");
+            _searchMgr.SetParam("[COMET_ENZYME_INFO]", "1.  Trypsin                1      KR          P", enzymeInfo);
+            EnzymeInfoWrapper ezymeInfoGet = new EnzymeInfoWrapper();
+            _searchMgr.GetParamValue("[COMET_ENZYME_INFO]", ref ezymeInfoGet);
 
             double dPepMassTol = 0;
             _searchMgr.SetParam("peptide_mass_tolerance", "2", (double)2);
