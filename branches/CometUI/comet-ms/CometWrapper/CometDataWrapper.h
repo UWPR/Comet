@@ -12,6 +12,21 @@ using namespace System::Runtime::InteropServices;
 
 namespace CometWrapper {
 
+    public enum class InputType
+    {
+        MS2 = 0,
+        MZXML
+    };
+
+    public enum class AnalysisType
+    {
+        Unknown = 0,
+        DTA,
+        SpecificScan,
+        SpecificScanRange,
+        EntireFile
+    };
+
     public ref class IntRangeWrapper
     {
     public:
@@ -171,5 +186,51 @@ namespace CometWrapper {
 
     private:
         EnzymeInfo *_pEnzymeInfo;
+    };
+
+    public ref class InputFileInfoWrapper
+    {
+    public:
+        InputFileInfoWrapper() { _pInputFileInfo = new InputFileInfo(); }
+        InputFileInfoWrapper(InputFileInfo &inputFileInfo) { _pInputFileInfo = new InputFileInfo(inputFileInfo);}
+        virtual ~InputFileInfoWrapper() 
+        { 
+            if (NULL != _pInputFileInfo)
+            {
+                delete _pInputFileInfo;
+                _pInputFileInfo = NULL;
+            }
+        }
+        
+        InputFileInfo* get_InputFileInfoPtr() {return _pInputFileInfo;}
+
+        InputType get_InputType() {return static_cast<InputType>(_pInputFileInfo->iInputType);}
+        void set_InputType(InputType inputType) {_pInputFileInfo->iInputType = static_cast<int>(inputType);}
+
+        AnalysisType get_AnalysisType() {return static_cast<AnalysisType>(_pInputFileInfo->iAnalysisType);}
+        void set_AnalysisType(AnalysisType analysisType) {_pInputFileInfo->iAnalysisType = static_cast<int>(analysisType);}
+
+        int get_FirstScan() {return _pInputFileInfo->iFirstScan;}
+        void set_FirstScan(int iFirstScan) {_pInputFileInfo->iFirstScan = iFirstScan;}
+
+        int get_LastScan() {return _pInputFileInfo->iLastScan;}
+        void set_LastScan(int iLastScan) {_pInputFileInfo->iLastScan = iLastScan;}
+
+        System::String^% get_FileName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pInputFileInfo->szFileName))));}
+        void set_FileName(System::String^ fileName) 
+        {
+            std::string stdFileName = marshal_as<std::string>(fileName);    
+            strcpy(_pInputFileInfo->szFileName, stdFileName.c_str());
+        }
+
+        System::String^% get_BaseName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pInputFileInfo->szBaseName))));}
+        void set_BaseName(System::String^ baseName) 
+        {
+            std::string stdBaseName = marshal_as<std::string>(baseName);
+            strcpy(_pInputFileInfo->szBaseName, stdBaseName.c_str());
+        }
+
+    private:
+        InputFileInfo *_pInputFileInfo;
     };
 }

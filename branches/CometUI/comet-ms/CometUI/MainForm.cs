@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 using CometWrapper;
 
@@ -18,22 +19,30 @@ namespace CometUI
         {
             _searchMgr.SetOutputFileBaseName("MyTestBaseName");
 
+            List<InputFileInfoWrapper> inputFiles = new List<InputFileInfoWrapper>();
+            InputFileInfoWrapper inputFile = new InputFileInfoWrapper();
+            inputFile.set_InputType(InputType.MZXML);
+            inputFile.set_FirstScan(0);
+            inputFile.set_LastScan(0);
+            inputFile.set_AnalysisType(AnalysisType.EntireFile);
+            inputFile.set_FileName("test.MZXML");
+            inputFile.set_BaseName("test");
+            inputFiles.Add(inputFile);
+            _searchMgr.AddInputFiles(inputFiles);
+
+            _searchMgr.SetParam("num_threads", "1", 1);
             int numThreads = 0;
-            _searchMgr.SetParam("num_threads", "5", 5);
             _searchMgr.GetParamValue("num_threads", ref numThreads);
 
-            IntRangeWrapper scanRange = new IntRangeWrapper(0, 544);
-            _searchMgr.SetParam("scan_range", "0 544", scanRange);
-            scanRange.set_iStart(20);
-            scanRange.set_iEnd(4000);
-            _searchMgr.GetParamValue("scan_range", ref scanRange);
-
+            IntRangeWrapper scanRange = new IntRangeWrapper(0, 0);
+            _searchMgr.SetParam("scan_range", "0 0", scanRange);
+            IntRangeWrapper scanRangeGet = new IntRangeWrapper(5, 544);
+            _searchMgr.GetParamValue("scan_range", ref scanRangeGet);
 
             DoubleRangeWrapper digestMassRange = new DoubleRangeWrapper(0.0, 678.9);
-            _searchMgr.SetParam("digest_mass_range", "0.0, 678.9", digestMassRange);
-            digestMassRange.set_dStart(999.99);
-            digestMassRange.set_dEnd(9999.99);
-            _searchMgr.GetParamValue("digest_mass_range", ref digestMassRange);
+            _searchMgr.SetParam("digest_mass_range", "600.0, 5000.0", digestMassRange);
+            DoubleRangeWrapper digestMassRangeGet = new DoubleRangeWrapper(0.0, 0.0);
+            _searchMgr.GetParamValue("digest_mass_range", ref digestMassRangeGet);
 
             VarModsWrapper varMods = new VarModsWrapper();
             varMods.set_BinaryMod(1);
@@ -50,16 +59,12 @@ namespace CometUI
             enzymeInfo.set_SearchEnzymeName("Trypsin");
             enzymeInfo.set_SearchEnzymeBreakAA("KR");
             enzymeInfo.set_SearchEnzymeNoBreakAA("P");
-            //enzymeInfo.set_SampleEnzymeOffSet(3);
-            //enzymeInfo.set_SampleEnzymeName("Lys_C");
-            //enzymeInfo.set_SampleEnzymeBreakAA("K");
-            //enzymeInfo.set_SampleEnzymeNoBreakAA("P");
             _searchMgr.SetParam("[COMET_ENZYME_INFO]", "1.  Trypsin                1      KR          P", enzymeInfo);
             EnzymeInfoWrapper ezymeInfoGet = new EnzymeInfoWrapper();
             _searchMgr.GetParamValue("[COMET_ENZYME_INFO]", ref ezymeInfoGet);
 
+            _searchMgr.SetParam("peptide_mass_tolerance", "3.00", 3.00);
             double dPepMassTol = 0;
-            _searchMgr.SetParam("peptide_mass_tolerance", "2", (double)2);
             _searchMgr.GetParamValue("peptide_mass_tolerance", ref dPepMassTol);
 
             if (_searchMgr.SetParam("database_name", "18mix.fasta", "18mix.fasta"))

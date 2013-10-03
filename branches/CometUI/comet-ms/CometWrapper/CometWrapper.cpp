@@ -19,11 +19,21 @@ CometSearchManagerWrapper::CometSearchManagerWrapper()
 {
     // Instantiate the native C++ class
     _pSearchMgr = GetCometSearchManager();
+
+    _pvInputFilesList = new vector<InputFileInfo*>();
 }
 
 CometSearchManagerWrapper::~CometSearchManagerWrapper()
 {
     ReleaseCometSearchManager();
+
+    // CometSearchManager releases all the objects stored in the vector, we just
+    // need to release the vector itself here.
+    if (NULL != _pvInputFilesList)
+    {
+        delete _pvInputFilesList;
+        _pvInputFilesList = NULL;
+    }
 }
 
 bool CometSearchManagerWrapper::DoSearch()
@@ -35,6 +45,25 @@ bool CometSearchManagerWrapper::DoSearch()
 
     _pSearchMgr->DoSearch();
     
+    return true;
+}
+
+bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+    
+    int numFiles = inputFilesList->Count;
+    for (int i = 0; i < numFiles; i++)
+    {
+        InputFileInfoWrapper^ inputFile = inputFilesList[i];
+        _pvInputFilesList->push_back(inputFile->get_InputFileInfoPtr());
+    }
+
+    _pSearchMgr->AddInputFiles(*_pvInputFilesList);
+
     return true;
 }
 

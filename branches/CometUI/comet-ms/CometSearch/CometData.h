@@ -213,6 +213,12 @@ enum AnalysisType
    AnalysisType_EntireFile
 };
 
+enum InputType 
+{
+   InputType_MS2 = 0,           // ms2, cms2, bms2, etc.
+   InputType_MZXML
+};
+
 struct InputFileInfo
 {
    int  iInputType;
