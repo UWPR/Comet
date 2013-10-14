@@ -5,10 +5,10 @@ using CometWrapper;
 
 namespace CometUI
 {
-    public partial class MainForm : Form
+    public partial class CometMainForm : Form
     {
         private readonly CometSearchManagerWrapper _searchMgr;
-        public MainForm()
+        public CometMainForm()
         {
             InitializeComponent();
 
