@@ -42,6 +42,8 @@
             this.proteomeDbFileCombo = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.btnBrowseProteomeDbFile = new System.Windows.Forms.Button();
+            this.button1 = new System.Windows.Forms.Button();
+            this.label2 = new System.Windows.Forms.Label();
             this.mainMenuStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).BeginInit();
             this.mainSplitContainer.Panel1.SuspendLayout();
@@ -110,6 +112,8 @@
             // 
             // mainSplitContainer.Panel1
             // 
+            this.mainSplitContainer.Panel1.Controls.Add(this.label2);
+            this.mainSplitContainer.Panel1.Controls.Add(this.button1);
             this.mainSplitContainer.Panel1.Controls.Add(this.btnBrowseProteomeDbFile);
             this.mainSplitContainer.Panel1.Controls.Add(this.label1);
             this.mainSplitContainer.Panel1.Controls.Add(this.proteomeDbFileCombo);
@@ -199,6 +203,26 @@
             this.btnBrowseProteomeDbFile.Text = "&Browse";
             this.btnBrowseProteomeDbFile.UseVisualStyleBackColor = true;
             // 
+            // button1
+            // 
+            this.button1.Font = new System.Drawing.Font("Baskerville Old Face", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.button1.Location = new System.Drawing.Point(15, 245);
+            this.button1.Margin = new System.Windows.Forms.Padding(0);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(20, 20);
+            this.button1.TabIndex = 0;
+            this.button1.Text = "+";
+            this.button1.UseVisualStyleBackColor = true;
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(38, 248);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(74, 13);
+            this.label2.TabIndex = 11;
+            this.label2.Text = "Search Status";
+            // 
             // CometMainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -238,6 +262,8 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.ComboBox proteomeDbFileCombo;
         private System.Windows.Forms.Button btnBrowseProteomeDbFile;
+        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Label label2;
     }
 }
 
