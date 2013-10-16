@@ -458,12 +458,15 @@ void CometSearch::SearchForPeptides(char *szProteinSeq,
                         if (iEndPos == iProteinSeqLengthMinus1)
                            dYion += g_staticParams.staticModifications.dAddCterminusProtein;
             
-                        for (i=1; i<iLenMinus1; i++)
+                        int iDecoyStartPos = 1;
+                        int iDecoyEndPos = strlen(szDecoyPeptide)-2;
+
+                        for (i=iDecoyStartPos; i<iDecoyEndPos; i++)
                         {
                            dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
                            _pdAAforwardDecoy[i] = dBion;
             
-                           dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iLenMinus1-i]];
+                           dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iDecoyEndPos+1-i]];
                            _pdAAreverseDecoy[i] = dYion;
                         }
 
