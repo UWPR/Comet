@@ -38,15 +38,21 @@ void CometWritePinXML::WritePinXML(FILE *fpout)
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      fprintf(fpout, "<fragSpectrumScan xmlns=\"http://per-colator.com/percolator_in/12\" scanNumber=\"%d\">\n",
-            g_pvQuery[i]->_spectrumInfoInternal.iScanNumber);
+      // print out entry only if there's a valid target or decoy search hit
+      if (g_pvQuery.at(i)->_pResults[0].fXcorr > 0.0
+            || (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > 0.0))
+      {
+         fprintf(fpout, "<fragSpectrumScan xmlns=\"http://per-colator.com/percolator_in/12\" scanNumber=\"%d\">\n",
+               g_pvQuery[i]->_spectrumInfoInternal.iScanNumber);
 
-      PrintResults(i, fpout, 0);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+         if (g_pvQuery.at(i)->_pResults[0].fXcorr > 0.0)
+            PrintResults(i, fpout, 0);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
 
-      if (g_staticParams.options.iDecoySearch == 2)
-         PrintResults(i, fpout, 1);  // print decoy hit
+         if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > 0.0)
+            PrintResults(i, fpout, 1);  // print decoy hit
 
-      fprintf(fpout, "</fragSpectrumScan>\n");
+         fprintf(fpout, "</fragSpectrumScan>\n");
+      }
    }
 
    fflush(fpout);
@@ -254,13 +260,28 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    CalcNTTNMC(pOutput, iWhichResult, &iNterm, &iCterm, &iNMC);
 
    fprintf(fpout, "  <features>\n");
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", log((double)pOutput[iWhichResult].iRankSp) );  // lnrSp
+
+   if (pOutput[iWhichResult].iRankSp > 0)
+      fprintf(fpout, "   <feature>%0.6f</feature>\n", log((double)pOutput[iWhichResult].iRankSp) );  // lnrSp
+   else
+      fprintf(fpout, "   <feature>%0.6f</feature>\n", -20.0);
+
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dLastDeltaCn); // deltLCn  last dCn in output list
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dDeltaCn); // deltCn
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", log(pOutput[iWhichResult].dExpect)); // ln(Expect)
+
+   if (pOutput[iWhichResult].dExpect > 0.0)
+      fprintf(fpout, "   <feature>%0.6f</feature>\n", log(pOutput[iWhichResult].dExpect)); // ln(Expect)
+   else
+      fprintf(fpout, "   <feature>%0.6f</feature>\n", -20.0);
+
    fprintf(fpout, "   <feature>%0.6f</feature>\n", pOutput[iWhichResult].fXcorr); // xcorr
    fprintf(fpout, "   <feature>%0.6f</feature>\n", pOutput[iWhichResult].fScoreSp); // Sp
-   fprintf(fpout, "   <feature>%0.4f</feature>\n", (double)pOutput[iWhichResult].iMatchedIons / pOutput[iWhichResult].iTotalIons); // IonFrac
+
+   if (pOutput[iWhichResult].iTotalIons > 0)
+      fprintf(fpout, "   <feature>%0.4f</feature>\n", (double)pOutput[iWhichResult].iMatchedIons / pOutput[iWhichResult].iTotalIons); // IonFrac
+   else
+      fprintf(fpout, "   <feature>%0.4f</feature>\n", 0.0);
+
    fprintf(fpout, "   <feature>%0.6f</feature>\n",dMZ); // Mass is m/z
    fprintf(fpout, "   <feature>%d</feature>\n", pOutput[iWhichResult].iLenPeptide); // PepLen
 
@@ -270,7 +291,12 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "   <feature>%d</feature>\n", iNterm); // enzN
    fprintf(fpout, "   <feature>%d</feature>\n", iCterm); // enzC
    fprintf(fpout, "   <feature>%d</feature>\n", iNMC); // enzInt
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", log((double)(bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides))) ); // lnNumSP
+
+   if ((bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides)) > 0)
+      fprintf(fpout, "   <feature>%0.6f</feature>\n", log((double)(bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides))) ); // lnNumSP
+   else
+      fprintf(fpout, "   <feature>%0.6f</feature>\n", -20.0);
+
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dMZdiff); // dM  is m/z diff
    fprintf(fpout, "   <feature>%0.6f</feature>\n", abs(dMZdiff)); // absdM
    fprintf(fpout, "  </features>\n");
