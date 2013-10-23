@@ -458,13 +458,22 @@ void CometSearch::SearchForPeptides(char *szProteinSeq,
                         if (iEndPos == iProteinSeqLengthMinus1)
                            dYion += g_staticParams.staticModifications.dAddCterminusProtein;
             
-                        for (i=1; i<iLenMinus1; i++)
+                        int iDecoyStartPos;       // This is start/end for newly created decoy peptide
+                        int iDecoyEndPos;
+                        int iTmp;
+
+                        iDecoyStartPos = 1;
+                        iDecoyEndPos = strlen(szDecoyPeptide)-2;
+
+                        for (i=iDecoyStartPos; i<iDecoyEndPos; i++)
                         {
+                           iTmp = i-iDecoyStartPos;
+
                            dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
-                           _pdAAforwardDecoy[i] = dBion;
+                           _pdAAforwardDecoy[iTmp] = dBion;
             
-                           dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iLenMinus1-i]];
-                           _pdAAreverseDecoy[i] = dYion;
+                           dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iDecoyEndPos - iTmp]];
+                           _pdAAreverseDecoy[iTmp] = dYion;
                         }
 
                         for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -2332,13 +2341,14 @@ void CometSearch::CalcVarModIons(char *szProteinSeq,
                if (_varModInfo.iEndPos == _proteinInfo.iProteinSeqLength-1)
                   dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
-               int iStartPos;  // This is start/end for newly created decoy peptide
-               int iEndPos;
+               int iDecoyStartPos;  // This is start/end for newly created decoy peptide
+               int iDecoyEndPos;
 
-               iStartPos = 1;
-               iEndPos = strlen(szDecoyPeptide)-2;
+               iDecoyStartPos = 1;
+               iDecoyEndPos = strlen(szDecoyPeptide)-2;
 
-               int iTmp;
+               int iTmp1;
+               int iTmp2;
 
                if (pcVarModSitesDecoy[iLenPeptide])      // N-term mod
                   dBion += g_staticParams.variableModParameters.dVarModMassN;
@@ -2347,20 +2357,21 @@ void CometSearch::CalcVarModIons(char *szProteinSeq,
                   dYion += g_staticParams.variableModParameters.dVarModMassC;
 
                // Generate pdAAforward for szDecoyPeptide
-               for (i=iStartPos; i<iEndPos; i++)
+               for (i=iDecoyStartPos; i<iDecoyEndPos; i++)
                {
-                  iTmp = iEndPos - (i-iStartPos);
+                  iTmp1 = i-iDecoyStartPos;
+                  iTmp2 = iDecoyEndPos - iTmp1;
  
                   dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
-                  if (pcVarModSitesDecoy[i-iStartPos] > 0)
-                     dBion += g_staticParams.variableModParameters.varModList[pcVarModSitesDecoy[i-iStartPos]-1].dVarModMass;
+                  if (pcVarModSitesDecoy[iTmp1] > 0)
+                     dBion += g_staticParams.variableModParameters.varModList[pcVarModSitesDecoy[iTmp1]-1].dVarModMass;
 
-                  dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iTmp]];
-                  if (pcVarModSitesDecoy[iTmp-iStartPos] > 0)
-                     dYion += g_staticParams.variableModParameters.varModList[pcVarModSitesDecoy[iTmp-iStartPos]-1].dVarModMass;
+                  dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iTmp2]];
+                  if (pcVarModSitesDecoy[iTmp2-iDecoyStartPos] > 0)
+                     dYion += g_staticParams.variableModParameters.varModList[pcVarModSitesDecoy[iTmp2-iDecoyStartPos]-1].dVarModMass;
 
-                  _pdAAforwardDecoy[i-iStartPos] = dBion;
-                  _pdAAreverseDecoy[i-iStartPos] = dYion;
+                  _pdAAforwardDecoy[iTmp1] = dBion;
+                  _pdAAreverseDecoy[iTmp1] = dYion;
                }
 
                // now get the set of binned fragment ions once for all matching decoy peptides

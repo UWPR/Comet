@@ -671,7 +671,7 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                            pQuery->_pepMassInfo.dExpPepMass,
                            pQuery->_spectrumInfoInternal.iScanNumber,
                            ctCharge);
-                     exit(1);
+                     return false;
                   }
                }
                else
@@ -720,6 +720,8 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
       j++;  // Go to next candidate peptide.
    }
+
+   return true;
 }
 
 
