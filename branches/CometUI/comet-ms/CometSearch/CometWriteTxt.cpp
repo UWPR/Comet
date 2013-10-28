@@ -108,32 +108,36 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
                                  FILE *fpout)
 {
-   char szBuf[SIZE_BUF];
-
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
-
-   int charge = pQuery->_spectrumInfoInternal.iChargeState;
-   double spectrum_neutral_mass = pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS;
-   double spectrum_mz = (spectrum_neutral_mass + charge*PROTON_MASS) / (double)charge;
-   
-   sprintf(szBuf, "%d\t%d\t%0.4f\t%0.4f\t%lu\t",
-         pQuery->_spectrumInfoInternal.iScanNumber, 
-         pQuery->_spectrumInfoInternal.iChargeState,
-         spectrum_mz,
-         spectrum_neutral_mass,
-         pQuery->_uliNumMatchedPeptides);
-
-   Results *pOutput;
-
-   if (bDecoy)
-      pOutput = pQuery->_pDecoys;
-   else
-      pOutput = pQuery->_pResults;
-
-   for (int i=1; i<=min((unsigned long)5, pQuery->_uliNumMatchedPeptides); i++)
+   if ((!bDecoy && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > 0.0)
+         || (bDecoy && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > 0.0))
    {
-      fprintf(fpout, "%s", szBuf);      
-      PrintTxtLine(i, pOutput, fpout);  // print top hit only right now
+      char szBuf[SIZE_BUF];
+
+      Query* pQuery = g_pvQuery.at(iWhichQuery);
+
+      int charge = pQuery->_spectrumInfoInternal.iChargeState;
+      double spectrum_neutral_mass = pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS;
+      double spectrum_mz = (spectrum_neutral_mass + charge*PROTON_MASS) / (double)charge;
+
+      sprintf(szBuf, "%d\t%d\t%0.4f\t%0.4f\t%lu\t",
+            pQuery->_spectrumInfoInternal.iScanNumber, 
+            pQuery->_spectrumInfoInternal.iChargeState,
+            spectrum_mz,
+            spectrum_neutral_mass,
+            pQuery->_uliNumMatchedPeptides);
+
+      Results *pOutput;
+
+      if (bDecoy)
+         pOutput = pQuery->_pDecoys;
+      else
+         pOutput = pQuery->_pResults;
+
+      for (int i=0; i<=min((unsigned long)4, pQuery->_uliNumMatchedPeptides); i++)
+      {
+         fprintf(fpout, "%s", szBuf);      
+         PrintTxtLine(i, pOutput, fpout);  // print top hit only right now
+      }
    }
 }
 
@@ -161,7 +165,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       pOutput = pQuery->_pResults;
 
    if (pOutput[0].fXcorr > 0.0)
-      PrintTxtLine(1, pOutput, fpout);  // print top hit only right now
+      PrintTxtLine(0, pOutput, fpout);  // print top hit only right now
    else
       fprintf(fpout, "\n");
 }
@@ -179,7 +183,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
-         iWhichResult,
+         iWhichResult + 1,                  // assuming want index starting at 1
          1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr,   // pOutput[0].fXcorr is >0 to enter this fn
          pOutput[iWhichResult].fScoreSp,
          pOutput[iWhichResult].iRankSp,
