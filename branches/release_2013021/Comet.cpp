@@ -234,8 +234,22 @@ void LoadParameters(char *pszParamsFile,
          if (!strcmp(szParamName, "database_name"))
          {
             char szDatabase[512];
-            szDatabase[0] = '\0';
-            sscanf(szParamVal, "%512s", szDatabase);
+
+            // remove white spaces at beginning/end of szParamVal
+            int iLen = strlen(szParamVal);
+            char *szTrimmed = szParamVal;
+
+            while (isspace(szTrimmed[iLen -1]))  // trim end
+               szTrimmed[--iLen] = 0;
+            while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
+            {
+               ++szTrimmed;
+               --iLen;
+            }
+
+            memmove(szParamVal, szTrimmed, iLen+1);
+
+            strcpy(szDatabase, szParamVal);
             searchMgr.SetParam("database_name", szDatabase, szDatabase);
          }
          else if (!strcmp(szParamName, "decoy_prefix"))
