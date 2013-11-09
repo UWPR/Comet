@@ -522,6 +522,11 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
             break;
          }
       }
+
+      // check n- and c-terminal variable mods
+      i=pOutput[iWhichResult].iLenPeptide;
+      if (pOutput[iWhichResult].pcVarModSites[i+1]!='0' || pOutput[iWhichResult].pcVarModSites[i+2]!='0')
+         bModified = 1;
    }
 
    if (bModified)

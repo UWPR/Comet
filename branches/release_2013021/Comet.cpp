@@ -235,7 +235,10 @@ void LoadParameters(char *pszParamsFile,
          {
             char szDatabase[512];
 
-            // remove white spaces at beginning/end of szParamVal
+            // Support parsing a database string from params file that
+            // includes spaces in the path.
+
+            // Remove white spaces at beginning/end of szParamVal
             int iLen = strlen(szParamVal);
             char *szTrimmed = szParamVal;
 

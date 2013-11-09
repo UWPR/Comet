@@ -304,12 +304,13 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "   <peptideSequence>%s</peptideSequence>\n", pOutput[iWhichResult].szPeptide);
 
 
+   // terminal static mods
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
          || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
             && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", 0);
-      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 10); // some random number for N-term mod
+      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 10); // some random number for N-term static mod
       fprintf(fpout, "   </modification>\n");
    }
 
@@ -318,7 +319,24 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
             && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", pOutput[iWhichResult].iLenPeptide + 1);
-      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 11); // some random number for C-term mod
+      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 11); // some random number for C-term static mod
+      fprintf(fpout, "   </modification>\n");
+   }
+
+   // terminal variable mods
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0)
+         && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide + 1] != '0'))  // nterm
+   {
+      fprintf(fpout, "   <modification location=\"%d\">\n", 0);
+      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 12); // some random number for N-term variable mod
+      fprintf(fpout, "   </modification>\n");
+   }
+
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0)
+         && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide + 2] != '0'))  // cterm
+   {
+      fprintf(fpout, "   <modification location=\"%d\">\n", pOutput[iWhichResult].iLenPeptide + 1);
+      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 13); // some random number for N-term variable mod
       fprintf(fpout, "   </modification>\n");
    }
 
