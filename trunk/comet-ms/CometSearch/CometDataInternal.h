@@ -62,12 +62,6 @@ class CometSearchManager;
 #define ION_SERIES_Z                5
 
 
-enum InputType 
-{
-   InputType_MS2 = 0,           // ms2, cms2, bms2, etc.
-   InputType_MZXML
-};
-
 struct msdata                    // used in the preprocessing
 {
    double dIon;

@@ -19,11 +19,21 @@ CometSearchManagerWrapper::CometSearchManagerWrapper()
 {
     // Instantiate the native C++ class
     _pSearchMgr = GetCometSearchManager();
+
+    _pvInputFilesList = new vector<InputFileInfo*>();
 }
 
 CometSearchManagerWrapper::~CometSearchManagerWrapper()
 {
     ReleaseCometSearchManager();
+
+    // CometSearchManager releases all the objects stored in the vector, we just
+    // need to release the vector itself here.
+    if (NULL != _pvInputFilesList)
+    {
+        delete _pvInputFilesList;
+        _pvInputFilesList = NULL;
+    }
 }
 
 bool CometSearchManagerWrapper::DoSearch()
@@ -34,6 +44,25 @@ bool CometSearchManagerWrapper::DoSearch()
     }
 
     return _pSearchMgr->DoSearch();
+}
+
+bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+    
+    int numFiles = inputFilesList->Count;
+    for (int i = 0; i < numFiles; i++)
+    {
+        InputFileInfoWrapper^ inputFile = inputFilesList[i];
+        _pvInputFilesList->push_back(inputFile->get_InputFileInfoPtr());
+    }
+
+    _pSearchMgr->AddInputFiles(*_pvInputFilesList);
+
+    return true;
 }
 
 bool CometSearchManagerWrapper::SetOutputFileBaseName(System::String^ baseName)
@@ -251,6 +280,41 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, VarModsWrapp
     }
 
     value = gcnew VarModsWrapper(varModsParam);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::SetParam(System::String^ name, System::String^ strValue, EnzymeInfoWrapper^ value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name); 
+    std::string stdStringStrValue = marshal_as<std::string>(strValue);
+    EnzymeInfo *pEnzymInfo = value->get_EnzymeInfoPtr();
+    _pSearchMgr->SetParam(stdStringName, stdStringStrValue, *pEnzymInfo);
+
+    return true;
+}
+
+
+bool CometSearchManagerWrapper::GetParamValue(System::String^ name, EnzymeInfoWrapper^% value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name);
+    EnzymeInfo enzymeInfoParam;
+    if (!_pSearchMgr->GetParamValue(stdStringName, enzymeInfoParam))
+    {
+        return false;
+    }
+
+    value = gcnew EnzymeInfoWrapper(enzymeInfoParam);
 
     return true;
 }

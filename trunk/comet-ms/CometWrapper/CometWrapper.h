@@ -8,6 +8,7 @@
 #include <msclr/marshal.h>
 
 using namespace System;
+using namespace System::Collections::Generic;
 using namespace msclr::interop;
 using namespace CometInterfaces;
 
@@ -19,23 +20,28 @@ namespace CometWrapper {
         virtual ~CometSearchManagerWrapper();
 		
         bool DoSearch();
-        bool SetOutputFileBaseName(System::String^ baseName);
-        bool SetParam(System::String^ name, System::String^ strValue, System::String^ value);
-        bool GetParamValue(System::String^ name, System::String^% value);
-        bool SetParam(System::String^ name, System::String^ strValue, int value);
-        bool GetParamValue(System::String^ name, int %value);
-        bool SetParam(System::String^ name, System::String^ strValue, double value);
-        bool GetParamValue(System::String^ name, double% value);
-        bool SetParam(System::String^ name, System::String^ strValue, IntRangeWrapper^ value);
-        bool GetParamValue(System::String^ name, IntRangeWrapper^% value);
-        bool SetParam(System::String^ name, System::String^ strValue, DoubleRangeWrapper^ value);
-        bool GetParamValue(System::String^ name, DoubleRangeWrapper^% value);
-        bool SetParam(System::String^ name, System::String^ strValue, VarModsWrapper^ value);
-        bool GetParamValue(System::String^ name, VarModsWrapper^% value);
+        // Need to convert vector to List and back
+        bool AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList);
+        bool SetOutputFileBaseName(String^ baseName);
+        bool SetParam(String^ name, String^ strValue, String^ value);
+        bool GetParamValue(String^ name, String^% value);
+        bool SetParam(String^ name, String^ strValue, int value);
+        bool GetParamValue(String^ name, int %value);
+        bool SetParam(String^ name, String^ strValue, double value);
+        bool GetParamValue(String^ name, double% value);
+        bool SetParam(String^ name, String^ strValue, IntRangeWrapper^ value);
+        bool GetParamValue(String^ name, IntRangeWrapper^% value);
+        bool SetParam(String^ name, String^ strValue, DoubleRangeWrapper^ value);
+        bool GetParamValue(String^ name, DoubleRangeWrapper^% value);
+        bool SetParam(String^ name, String^ strValue, VarModsWrapper^ value);
+        bool GetParamValue(String^ name, VarModsWrapper^% value);
+        bool SetParam(String^ name, String^ strValue, EnzymeInfoWrapper^ value);
+        bool GetParamValue(String^ name, EnzymeInfoWrapper^% value);
         bool GetErrorMessage(System::String^% strErrorMsg);
 
     private:
         ICometSearchManager *_pSearchMgr;
         msclr::interop::marshal_context _marshalContext;
+        vector<InputFileInfo*>* _pvInputFilesList;
 	};
 }
