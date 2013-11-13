@@ -19,6 +19,7 @@
 #include "ThreadPool.h"
 #include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
+#include "CometStatus.h"
 
 CometPostAnalysis::CometPostAnalysis()
 {
@@ -30,9 +31,11 @@ CometPostAnalysis::~CometPostAnalysis()
 }
 
 
-void CometPostAnalysis::PostAnalysis(int minNumThreads,
+bool CometPostAnalysis::PostAnalysis(int minNumThreads,
                                      int maxNumThreads)
 {
+   bool bSucceeded = true;
+
    if (!g_staticParams.options.bOutputSqtStream)
       logout(" - Perform post-search analysis\n");
 
@@ -45,16 +48,39 @@ void CometPostAnalysis::PostAnalysis(int minNumThreads,
    {
       PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
       postAnalysisThreadPool.Launch(pThreadData);
+
+      bool bError = false;
+      g_cometStatus.GetError(bError);
+      if (bError)
+      {
+         bSucceeded = false;
+         break;
+      }
    }
 
    // Wait for active post analysis threads to complete processing.
    postAnalysisThreadPool.WaitForThreads();
+
+   // Check for errors one more time since there might have been an error 
+   // while we were waiting for the threads.
+   if (bSucceeded)
+   {
+      bool bError = false;
+      g_cometStatus.GetError(bError);
+      if (bError)
+      {
+         bSucceeded = false;
+      }
+   }
+
+   return bSucceeded;
 }
 
 
 void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData)
 {
    int iQueryIndex = pThreadData->iQueryIndex;
+   bool bSucceeded = true;
 
    AnalyzeSP(iQueryIndex);
 
@@ -68,16 +94,19 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    {
       if (g_pvQuery.at(iQueryIndex)->iDoXcorrCount> 0)
       {
-         CalculateEValue(iQueryIndex, 0);
+         bSucceeded = CalculateEValue(iQueryIndex, 0);
       }
       
-      if (g_staticParams.options.iDecoySearch == 2
+      if (bSucceeded && g_staticParams.options.iDecoySearch == 2
             && g_pvQuery.at(iQueryIndex)->iDoDecoyXcorrCount> 0)
       {
+         // No need to check the return value here, errors have already been 
+         // logged, so nothing to do.
          CalculateEValue(iQueryIndex, 1);
       }
    }
 
+exit:
    delete pThreadData;
    pThreadData = NULL;
 }
@@ -301,7 +330,7 @@ int CometPostAnalysis::XcorrQSortFn(const void *a,
 }
 
 
-void CometPostAnalysis::CalculateEValue(int iWhichQuery,
+bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
                                         bool bDecoy)
 {
    int i;
@@ -328,7 +357,12 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery,
    }
 
    if (iHistogramCount < DECOY_SIZE)
-      GenerateXcorrDecoys(iWhichQuery, bDecoy);
+   {
+      if (!GenerateXcorrDecoys(iWhichQuery, bDecoy))
+      {
+          return false;
+      }
+   }
 
    LinearRegression(piHistogram, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
 
@@ -393,6 +427,8 @@ void CometPostAnalysis::CalculateEValue(int iWhichQuery,
             pQuery->_pResults[i].dExpect = dExpect;
       }
    }
+
+   return true;
 }
 
 
@@ -527,7 +563,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
 // Make synthetic decoy spectra to fill out correlation histogram by going
 // through each candidate peptide and rotating spectra in m/z space.
-void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
+bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                                             bool bDecoy)
 {
    int i;
@@ -663,15 +699,22 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   }
                   else
                   {
-                     logerr("\n Comet version \"%s\"\n\n", comet_version);
-                     logerr(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n\n",
+                     char szErrorMsg[256];
+                     szErrorMsg[0] = '\0';
+                     sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
                            dFragmentIonMass, 
                            iFragmentIonMass,
                            pQuery->_spectrumInfoInternal.iArraySize, 
                            pQuery->_pepMassInfo.dExpPepMass,
                            pQuery->_spectrumInfoInternal.iScanNumber,
                            ctCharge);
-                     exit(1);
+                  
+                     g_cometStatus.SetError(true, string(szErrorMsg));      
+      
+                     logerr("\n Comet version \"%s\"\n\n", comet_version);
+                     logerr("%s\n\n", szErrorMsg);
+      
+                     return false;
                   }
                }
                else
@@ -683,15 +726,22 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   }
                   else
                   {
-                     logerr("\n Comet version \"%s\"\n\n", comet_version);
-                     logerr(" Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d\n\n",
+                     char szErrorMsg[256];
+                     szErrorMsg[0] = '\0';
+                     sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
                            dFragmentIonMass,
                            iFragmentIonMass,
                            pQuery->_spectrumInfoInternal.iArraySize,
                            pQuery->_pepMassInfo.dExpPepMass,
                            pQuery->_spectrumInfoInternal.iScanNumber,
                            ctCharge);
-                     exit(1);
+                  
+                     g_cometStatus.SetError(true, string(szErrorMsg));      
+      
+                     logerr("\n Comet version \"%s\"\n\n", comet_version);
+                     logerr("%s\n\n", szErrorMsg);
+      
+                     return false;
                   }
                }
 
@@ -720,6 +770,8 @@ void CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
       j++;  // Go to next candidate peptide.
    }
+
+   return true;
 }
 
 

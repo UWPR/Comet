@@ -27,7 +27,7 @@ namespace CometInterfaces {
     {
     public:
         virtual ~ICometSearchManager() {}
-        virtual void DoSearch() = 0;
+        virtual bool DoSearch() = 0;
         virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles) = 0;
         virtual void SetOutputFileBaseName(const char *pszBaseName) = 0;
         virtual void SetParam(const string &name, const string &strValue, const string &value) = 0;
@@ -44,6 +44,7 @@ namespace CometInterfaces {
         virtual bool GetParamValue(const string &name, IntRange &value) = 0;
         virtual void SetParam(const string &name, const string &strValue, const EnzymeInfo &value) = 0;
         virtual bool GetParamValue(const string &name, EnzymeInfo &value) = 0;
+        virtual void GetErrorMessage(string &strErrorMsg) = 0;
     };
 
     ICometSearchManager *GetCometSearchManager();

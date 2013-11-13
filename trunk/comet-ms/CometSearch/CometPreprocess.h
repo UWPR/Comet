@@ -48,7 +48,7 @@ public:
    ~CometPreprocess();
 
    static void Reset();
-   static void LoadAndPreprocessSpectra(MSReader &mstReader,
+   static bool LoadAndPreprocessSpectra(MSReader &mstReader,
                                         int iFirstScan, 
                                         int iLastScan, 
                                         int iAnalysisType,
@@ -60,10 +60,10 @@ public:
 private:
    
    // Private static methods
-   static void PreprocessSpectrum(Spectrum &spec);
+   static bool PreprocessSpectrum(Spectrum &spec);
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
-   static void AdjustMassTol(struct Query *pScoring);
+   static bool AdjustMassTol(struct Query *pScoring);
    static void PreloadIons(MSReader &mstReader,
                            Spectrum &spec,
                            bool bNext=false,
@@ -75,17 +75,17 @@ private:
                          int iLastScan,
                          int iReaderLastScan,
                          int iNumSpectraLoaded);
-   static void Preprocess(struct Query *pScoring,
+   static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum);
-   static void LoadIons(struct Query *pScoring,
+   static bool LoadIons(struct Query *pScoring,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
    static void MakeCorrData(double *pdTempRawData,
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);
-   static void Smooth(double *data,
+   static bool Smooth(double *data,
                       int iArraySize);
-   static void PeakExtract(double *data,
+   static bool PeakExtract(double *data,
                            int iArraySize);
    static void GetTopIons(double *pdTempRawData,
                           struct msdata *pTempSpData,

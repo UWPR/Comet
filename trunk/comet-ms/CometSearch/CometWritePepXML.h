@@ -24,7 +24,7 @@ public:
    CometWritePepXML();
    ~CometWritePepXML();
 
-   static void WritePepXMLHeader(FILE *fpout,
+   static bool WritePepXMLHeader(FILE *fpout,
        CometSearchManager &searchMgr);
 
    static void WriteVariableModN(FILE *fpout,

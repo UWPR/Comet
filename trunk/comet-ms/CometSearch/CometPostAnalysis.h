@@ -38,7 +38,7 @@ class CometPostAnalysis
 public:
   CometPostAnalysis();
   ~CometPostAnalysis();
-  static void PostAnalysis(int minNumThreads, int maxNumThreads);
+  static bool PostAnalysis(int minNumThreads, int maxNumThreads);
   static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData);
 
 private:
@@ -48,8 +48,8 @@ private:
                           int iSize);
   static int SPQSortFn(const void *a, const void *b);
   static int XcorrQSortFn(const void *a, const void *b);
-  static void CalculateEValue(int iWhichQuery, bool bDecoy);
-  static void GenerateXcorrDecoys(int iWhichQuery, bool bDecoy);
+  static bool CalculateEValue(int iWhichQuery, bool bDecoy);
+  static bool GenerateXcorrDecoys(int iWhichQuery, bool bDecoy);
   static void LinearRegression(int *pHistogram,
                                double *dSlope,
                                double *dIntercept,

@@ -50,9 +50,18 @@ int main(int argc, char *argv[])
 
    ProcessCmdLine(argc, argv, szParamsFile, pvInputFiles, pCometSearchMgr);
    pCometSearchMgr->AddInputFiles(pvInputFiles);
-   pCometSearchMgr->DoSearch();
+
+   bool bSearchSucceeded = pCometSearchMgr->DoSearch();
    
    ReleaseCometSearchManager();
+   
+   if (!bSearchSucceeded)
+   {
+      // We already log errors when search fails, so no need to log the 
+      // error message again via g_cometStatus
+      exit(1);
+   }
+
    return (0);
 } // main
 

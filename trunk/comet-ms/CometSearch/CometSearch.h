@@ -41,9 +41,9 @@ public:
    CometSearch();
    ~CometSearch();
 
-   static void RunSearch(int minNumThreads, int maxNumThreads);
+   static bool RunSearch(int minNumThreads, int maxNumThreads);
    static void SearchThreadProc(SearchThreadData *pSearchThreadData);
-   void DoSearch(sDBEntry dbe);
+   bool DoSearch(sDBEntry dbe);
     
 private:
     
@@ -146,7 +146,7 @@ private:
                      double dCalcPepMass,
                      double dScoreSp,
                      char *szProteinName);
-   void VarModSearch(char *szProteinSeq,
+   bool VarModSearch(char *szProteinSeq,
                    char *szProteinName,
                    int varModCounts[],
                    int iStartPos,
@@ -154,28 +154,28 @@ private:
    double TotalVarModMass(int *pVarModCounts,
                          int iCVarModCount,
                          int iNVarModCount);
-   void Permute1(char *szProteinSeq, 
+   bool Permute1(char *szProteinSeq, 
                  int iWhichQuery);
-   void Permute2(char *szProteinSeq,
+   bool Permute2(char *szProteinSeq,
                  int iWhichQuery);
-   void Permute3(char *szProteinSeq,
+   bool Permute3(char *szProteinSeq,
                  int iWhichQuery);
-   void Permute4(char *szProteinSeq,
+   bool Permute4(char *szProteinSeq,
                  int iWhichQuery);
-   void Permute5(char *szProteinSeq,
+   bool Permute5(char *szProteinSeq,
                  int iWhichQuery);
-   void Permute6(char *szProteinSeq,
+   bool Permute6(char *szProteinSeq,
                  int iWhichQuery);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
-   void CalcVarModIons(char *szProteinSeq,
+   bool CalcVarModIons(char *szProteinSeq,
                     int iWhichQuery);
    void ResetIndexTable();
    void FullDBSearch();
-   void SearchForPeptides(char *szProteinSeq,
+   bool SearchForPeptides(char *szProteinSeq,
                           char *szProteinName,
                           bool bNtermPeptideOnly);
-   void TranslateNA2AA(int *frame,
+   bool TranslateNA2AA(int *frame,
                        int iDirection,
                        char *sDNASequence);
    char GetAA(int i,

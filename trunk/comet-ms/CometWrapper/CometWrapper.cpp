@@ -33,9 +33,7 @@ bool CometSearchManagerWrapper::DoSearch()
         return false;
     }
 
-    _pSearchMgr->DoSearch();
-    
-    return true;
+    return _pSearchMgr->DoSearch();
 }
 
 bool CometSearchManagerWrapper::SetOutputFileBaseName(System::String^ baseName)
@@ -253,6 +251,20 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, VarModsWrapp
     }
 
     value = gcnew VarModsWrapper(varModsParam);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::GetErrorMessage(System::String^% strErrorMsg)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStrErrorMsg;
+    _pSearchMgr->GetErrorMessage(stdStrErrorMsg);
+    strErrorMsg = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStrErrorMsg.c_str())))); 
 
     return true;
 }

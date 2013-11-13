@@ -28,6 +28,7 @@
 #include "ThreadPool.h"
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
+#include "CometStatus.h"
 
 #ifdef _WIN32
 #define STRCMP_IGNORE_CASE(a,b) strcmpi(a,b)
@@ -40,6 +41,7 @@ std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
+CometStatus                   g_cometStatus;
 
 /******************************************************************************
 *
@@ -66,7 +68,7 @@ static void GetHostName()
       *pStr = '\0';
 }
 
-static void UpdateInputFile(InputFileInfo *pFileInfo)
+static bool UpdateInputFile(InputFileInfo *pFileInfo)
 {
    bool bUpdateBaseName = false;
    char szTmpBaseName[SIZE_FILE];
@@ -124,9 +126,15 @@ static void UpdateInputFile(InputFileInfo *pFileInfo)
 
          if (err != EEXIST) 
          {
+            char szErrorMsg[256];
+            szErrorMsg[0] = '\0';
+            sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
+                  
+            g_cometStatus.SetError(true, string(szErrorMsg));
+            
             logerr("\n Comet version \"%s\"\n\n", comet_version);
-            logerr(" Error - could not create directory \"%s\".\n\n", g_staticParams.inputFile.szBaseName);
-            exit(1);
+            logerr("%s\n\n", szErrorMsg);
+            return false;
          }
       }
       if (g_staticParams.options.iDecoySearch == 2)
@@ -141,18 +149,30 @@ static void UpdateInputFile(InputFileInfo *pFileInfo)
 
             if (err != EEXIST) 
             {
+               char szErrorMsg[256];
+               szErrorMsg[0] = '\0';
+               sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
+                  
+               g_cometStatus.SetError(true, string(szErrorMsg));
+            
                logerr("\n Comet version \"%s\"\n\n", comet_version);
-               logerr(" Error - could not create directory \"%s\".\n\n", szDecoyDir);
-               exit(1);
+               logerr("%s\n\n", szErrorMsg);
+               return false;
             }
          }
       }
 #else
       if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
       {
+         char szErrorMsg[256];
+         szErrorMsg[0] = '\0';
+         sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
+                  
+         g_cometStatus.SetError(true, string(szErrorMsg));
+            
          logerr("\n Comet version \"%s\"\n\n", comet_version);
-         logerr(" Error - could not create directory \"%s\".\n\n", g_staticParams.inputFile.szBaseName);
-         exit(1);
+         logerr("%s\n\n", szErrorMsg);
+         return false;
       }
       if (g_staticParams.options.iDecoySearch == 2)
       {
@@ -161,13 +181,21 @@ static void UpdateInputFile(InputFileInfo *pFileInfo)
 
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
          {
+            char szErrorMsg[256];
+            szErrorMsg[0] = '\0';
+            sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
+                  
+            g_cometStatus.SetError(true, string(szErrorMsg));
+            
             logerr("\n Comet version \"%s\"\n\n", comet_version);
-            logerr(" Error - could not create directory \"%s\".\n\n", szDecoyDir);
-            exit(1);
+            logerr("%s\n\n", szErrorMsg);
+            return false;
          }
       }
 #endif
    }
+
+   return true;
 }
 
 static void SetMSLevelFilter(MSReader &mstReader)
@@ -185,7 +213,7 @@ static void SetMSLevelFilter(MSReader &mstReader)
 }
    
 // Allocate memory for the _pResults struct for each g_pvQuery entry.
-static void AllocateResultsMem()
+static bool AllocateResultsMem()
 {
    for (unsigned i=0; i<g_pvQuery.size(); i++)
    {
@@ -195,8 +223,13 @@ static void AllocateResultsMem()
 
       if (pQuery->_pResults == NULL)
       {
-         logerr(" Error malloc(_pResults[])\n\n");
-         exit(1);
+         string strError = " Error malloc(_pResults[])";
+         string strFormatError = strError + "\n\n";
+         logerr(strFormatError.c_str());
+
+         g_cometStatus.SetError(true, strError);
+
+         return false;
       }
 
       //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
@@ -213,8 +246,13 @@ static void AllocateResultsMem()
 
          if (pQuery->_pDecoys == NULL)
          {
-            logerr(" Error malloc(_pDecoys[])\n\n");
-            exit(1);
+            string strError = " Error malloc(_pDecoys[])";
+            string strFormatError = strError + "\n\n";
+            logerr(strFormatError.c_str());
+
+            g_cometStatus.SetError(true, strError);
+
+            return false;
          }
 
          //MH: same logic as my comment above
@@ -251,6 +289,8 @@ static void AllocateResultsMem()
          }
       }
    }
+
+   return true;
 }
 
 static bool compareByPeptideMass(Query const* a, Query const* b)
@@ -350,7 +390,7 @@ static void PrintParameters()
          (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
 }
 
-static void ValidateOutputFormat()
+static bool ValidateOutputFormat()
 {
    if (!g_staticParams.options.bOutputSqtStream
          && !g_staticParams.options.bOutputSqtFile
@@ -359,13 +399,21 @@ static void ValidateOutputFormat()
          && !g_staticParams.options.bOutputPinXMLFile
          && !g_staticParams.options.bOutputOutFiles)
    {
+      string strError = " Please specify at least one output format.";
+      
+      g_cometStatus.SetError(true, strError);
+
       logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr(" Please specify at least one output format.\n\n");
-      exit(1);
+      string strErrorFormat = strError + "\n\n";
+      logerr(strErrorFormat.c_str());
+      
+      return false;
    }
+
+   return true;
 }
 
-static void ValidateSequenceDatabaseFile()
+static bool ValidateSequenceDatabaseFile()
 {
    FILE *fpcheck;
    
@@ -373,25 +421,41 @@ static void ValidateSequenceDatabaseFile()
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.", g_staticParams.databaseInfo.szDatabase);
+      
+      g_cometStatus.SetError(true, string(szErrorMsg));
+
       logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr(" Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
-      logerr(" Check that the file exists and is readable.\n\n");
-      exit(1);
+      logerr("%s\n\n", szErrorMsg);
+
+      return false;
    }
+
    fclose(fpcheck);
+   return true;
 }
 
-static void ValidateScanRange()
+static bool ValidateScanRange()
 {
    if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
    {
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.", 
+          g_staticParams.options.scanRange.iStart,
+          g_staticParams.options.scanRange.iEnd);
+      
+      g_cometStatus.SetError(true, string(szErrorMsg));
+
       logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr(" Error - start scan is %d but end scan is %d.\n",
-            g_staticParams.options.scanRange.iStart,
-            g_staticParams.options.scanRange.iEnd);
-      logerr(" The end scan must be >= to the start scan.\n\n");
-      exit(1);
+      logerr("%s\n\n", szErrorMsg);
+            
+      return false;
    }
+
+   return true;
 }
 
 /******************************************************************************
@@ -425,7 +489,7 @@ CometSearchManager::~CometSearchManager()
    _mapStaticParams.clear();
 }
 
-void CometSearchManager::InitializeStaticParams()
+bool CometSearchManager::InitializeStaticParams()
 {
    int iIntData;
    double dDoubleData;
@@ -1034,18 +1098,30 @@ void CometSearchManager::InitializeStaticParams()
    if (g_staticParams.tolerances.dFragmentBinStartOffset < 0.0
          || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
    {
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error - bin offset %f must between 0.0 and 1.0\n\n",
+          g_staticParams.tolerances.dFragmentBinStartOffset);
+                  
+      g_cometStatus.SetError(true, string(szErrorMsg));
+             
       logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr(" Error - bin offset %f must between 0.0 and 1.0\n\n",
-            g_staticParams.tolerances.dFragmentBinStartOffset);
-      exit(1);
+      logerr("%s\n\n", szErrorMsg);
+      return false;
    }
 
    if (g_staticParams.options.bOutputPinXMLFile
          && g_staticParams.options.iDecoySearch == 0)
    {
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 1\" or \"decoy_search = 2\" ");
+                  
+      g_cometStatus.SetError(true, string(szErrorMsg));
+             
       logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr(" Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 1\" or \"decoy_search = 2\" \n\n");
-      exit(1);
+      logerr("%s\n\n", szErrorMsg);
+      return false;
    }
 
    if (!g_staticParams.options.bOutputOutFiles)
@@ -1260,21 +1336,43 @@ bool CometSearchManager::GetParamValue(const string &name, EnzymeInfo &value)
    return true;
 }
 
-void CometSearchManager::DoSearch()
+void CometSearchManager::GetErrorMessage(string &strErrorMsg)
 {
-   InitializeStaticParams();
+   g_cometStatus.GetErrorMsg(strErrorMsg);
+}
+
+bool CometSearchManager::DoSearch()
+{
+   if (!InitializeStaticParams())
+   {
+      return false;
+   }
 
    PrintParameters();
 
-   ValidateOutputFormat();
+   if (!ValidateOutputFormat())
+   {
+      return false;
+   }
 
-   ValidateSequenceDatabaseFile();
+   if (!ValidateSequenceDatabaseFile())
+   {
+      return false;
+   }
 
-   ValidateScanRange();
+   if (!ValidateScanRange())
+   {
+      return false;
+   }
    
+   bool bSucceeded = true;
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
-      UpdateInputFile(g_pvInputFiles.at(i));
+      bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
+      if (!bSucceeded)
+      {
+         break;
+      }
 
       time_t tStartTime;
       time(&tStartTime);
@@ -1332,11 +1430,18 @@ void CometSearchManager::DoSearch()
 
          if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
          {
-            logerr(" Error - cannot write to file \"%s\".\n\n", szOutputSQT);
-            exit(1);
+            char szErrorMsg[256];
+            szErrorMsg[0] = '\0';
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputSQT);
+                  
+            g_cometStatus.SetError(true, string(szErrorMsg));
+            
+            logerr("%s\n\n", szErrorMsg);
+            
+            bSucceeded = false;
          }
 
-         if (g_staticParams.options.iDecoySearch == 2)
+         if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
                sprintf(szOutputDecoySQT, "%s.decoy.sqt", g_staticParams.inputFile.szBaseName);
@@ -1344,14 +1449,21 @@ void CometSearchManager::DoSearch()
                sprintf(szOutputDecoySQT, "%s.%d-%d.decoy.sqt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
 
             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
-            {
-               logerr(" Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoySQT);
-               exit(1);
+            {   
+               char szErrorMsg[256];
+               szErrorMsg[0] = '\0';
+               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoySQT);
+                 
+               g_cometStatus.SetError(true, string(szErrorMsg));
+            
+               logerr("%s\n\n", szErrorMsg);
+               
+               bSucceeded = false;
             }
          }
       }
 
-      if (g_staticParams.options.bOutputTxtFile)
+      if (bSucceeded && g_staticParams.options.bOutputTxtFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
@@ -1372,11 +1484,18 @@ void CometSearchManager::DoSearch()
 
          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
          {
-            logerr(" Error - cannot write to file \"%s\".\n\n", szOutputTxt);
-            exit(1);
+            char szErrorMsg[256];
+            szErrorMsg[0] = '\0';
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputTxt);
+                  
+            g_cometStatus.SetError(true, string(szErrorMsg));
+            
+            logerr("%s\n\n", szErrorMsg);
+
+            bSucceeded = false;
          }
 
-         if (g_staticParams.options.iDecoySearch == 2)
+         if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
                sprintf(szOutputDecoyTxt, "%s.decoy.txt", g_staticParams.inputFile.szBaseName);
@@ -1385,13 +1504,19 @@ void CometSearchManager::DoSearch()
 
             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
             {
-               logerr(" Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyTxt);
-               exit(1);
+               char szErrorMsg[256];
+               szErrorMsg[0] = '\0';
+               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyTxt);
+                 
+               g_cometStatus.SetError(true, string(szErrorMsg));
+            
+               logerr("%s\n\n", szErrorMsg);
+               bSucceeded = false;
             }
          }
       }
 
-      if (g_staticParams.options.bOutputPepXMLFile)
+      if (bSucceeded && g_staticParams.options.bOutputPepXMLFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
@@ -1412,13 +1537,23 @@ void CometSearchManager::DoSearch()
 
          if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
          {
-            logerr(" Error - cannot write to file \"%s\".\n\n", szOutputPepXML);
-            exit(1);
+            char szErrorMsg[256];
+            szErrorMsg[0] = '\0';
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPepXML);
+                  
+            g_cometStatus.SetError(true, string(szErrorMsg));
+            
+            logerr("%s\n\n", szErrorMsg);
+
+            bSucceeded = false;
          }
 
-         CometWritePepXML::WritePepXMLHeader(fpout_pepxml, *this);
+         if (bSucceeded)
+         {
+            bSucceeded = CometWritePepXML::WritePepXMLHeader(fpout_pepxml, *this);
+         }
 
-         if (g_staticParams.options.iDecoySearch == 2)
+         if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
                sprintf(szOutputDecoyPepXML, "%s.decoy.pep.xml", g_staticParams.inputFile.szBaseName);
@@ -1427,15 +1562,25 @@ void CometSearchManager::DoSearch()
 
             if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
             {
-               logerr(" Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyPepXML);
-               exit(1);
+               char szErrorMsg[256];
+               szErrorMsg[0] = '\0';
+               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyPepXML);
+                  
+               g_cometStatus.SetError(true, string(szErrorMsg));
+            
+               logerr("%s\n\n", szErrorMsg);
+
+               bSucceeded = false;
             }
 
-            CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, *this);
+            if (bSucceeded)
+            {
+               bSucceeded = CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, *this);
+            }
          }
       }
 
-      if (g_staticParams.options.bOutputPinXMLFile)
+      if (bSucceeded && g_staticParams.options.bOutputPinXMLFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
             sprintf(szOutputPinXML, "%s.pin.xml", g_staticParams.inputFile.szBaseName);
@@ -1444,122 +1589,185 @@ void CometSearchManager::DoSearch()
 
          if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
          {
-            logerr(" Error - cannot write to file \"%s\".\n\n", szOutputPinXML);
-            exit(1);
+            char szErrorMsg[256];
+            szErrorMsg[0] = '\0';
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPinXML);
+                  
+            g_cometStatus.SetError(true, string(szErrorMsg));
+            
+            logerr("%s\n\n", szErrorMsg);
+            
+            bSucceeded = false;
          }
 
-         // We need knowledge of max charge state in all searches
-         // here in order to write the featureDescription header
+         if (bSucceeded)
+         {
+            // We need knowledge of max charge state in all searches
+            // here in order to write the featureDescription header
 
-         CometWritePinXML::WritePinXMLHeader(fpout_pinxml);
+            CometWritePinXML::WritePinXMLHeader(fpout_pinxml);
+         }
       }
 
-      // For file access using MSToolkit.
-      MSReader mstReader;
-
-      // We want to read only MS2/MS3 scans.
-      SetMSLevelFilter(mstReader);
-
-      int iTotalSpectraSearched = 0;
-
-      // We need to reset some of the static variables in-between input files 
-      CometPreprocess::Reset();
-
-      while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
+      if (bSucceeded)
       {
-         // Load and preprocess all the spectra.
-         if (!g_staticParams.options.bOutputSqtStream)
-            logout(" - Load and process input spectra\n");
+         // For file access using MSToolkit.
+         MSReader mstReader;
 
-         CometPreprocess::LoadAndPreprocessSpectra(mstReader,
-               iFirstScan, iLastScan, iAnalysisType,
-               g_staticParams.options.iNumThreads,  // min # threads
-               g_staticParams.options.iNumThreads); // max # threads
+         // We want to read only MS2/MS3 scans.
+         SetMSLevelFilter(mstReader);
 
-         if (g_pvQuery.empty())
-            break; // no search to run
-         else
-            iTotalSpectraSearched += g_pvQuery.size();
+         int iTotalSpectraSearched = 0;
 
-         // Allocate memory to store results for each query spectrum.
-         if (!g_staticParams.options.bOutputSqtStream)
-            logout(" - Allocate memory to store results\n");
+         // We need to reset some of the static variables in-between input files 
+         CometPreprocess::Reset();
 
-         AllocateResultsMem();
+         while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
+         {
+            // Load and preprocess all the spectra.
+            if (!g_staticParams.options.bOutputSqtStream)
+               logout(" - Load and process input spectra\n");
 
-         if (!g_staticParams.options.bOutputSqtStream)
-            logout(" - Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
+            bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
+                iFirstScan, iLastScan, iAnalysisType,
+                g_staticParams.options.iNumThreads,  // min # threads
+                g_staticParams.options.iNumThreads); // max # threads
 
-         // Sort g_pvQuery vector by dExpPepMass.
-         std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
+            if (!bSucceeded)
+            {
+               break;
+            }
 
-         g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
-         g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
+            if (g_pvQuery.empty())
+               break; // no search to run
+            else
+               iTotalSpectraSearched += g_pvQuery.size();
 
-         // Now that spectra are loaded to memory and sorted, do search.
-         CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+            // Allocate memory to store results for each query spectrum.
+            if (!g_staticParams.options.bOutputSqtStream)
+               logout(" - Allocate memory to store results\n");
 
-         // Sort each entry by xcorr, calculate E-values, etc.
-         CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+            bSucceeded = AllocateResultsMem();
+            if (!bSucceeded)
+            {
+               goto cleanup_results;
+            }
 
-         CalcRunTime(tStartTime);
+            if (!g_staticParams.options.bOutputSqtStream)
+               logout(" - Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
 
-         if (!g_staticParams.options.bOutputSqtStream)
-            logout(" - Write output\n");
+            // Sort g_pvQuery vector by dExpPepMass.
+            std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
 
-         if (g_staticParams.options.bOutputOutFiles)
-            CometWriteOut::WriteOut();
+            g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
+            g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
-         if (g_staticParams.options.bOutputPepXMLFile)
-            CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml);
+            // Now that spectra are loaded to memory and sorted, do search.
+            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+            if (!bSucceeded)
+            {
+               goto cleanup_results;
+            }
 
-         if (g_staticParams.options.bOutputPinXMLFile)
-            CometWritePinXML::WritePinXML(fpout_pinxml);
+            // Sort each entry by xcorr, calculate E-values, etc.
+            bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+            if (!bSucceeded)
+            {
+               goto cleanup_results;
+            }
 
-         if (g_staticParams.options.bOutputTxtFile)
-            CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt);
+            CalcRunTime(tStartTime);
 
-         //// Write SQT last as I destroy the g_staticParams.szMod string during that process
-         if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
-            CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, *this);
+            if (!g_staticParams.options.bOutputSqtStream)
+               logout(" - Write output\n");
 
-         // Deleting each Query object in the vector calls its destructor, which 
-         // frees the spectral memory (see definition for Query in CometData.h).
-         for (int i=0; i<(int)g_pvQuery.size(); i++)
-            delete g_pvQuery.at(i);
+            if (g_staticParams.options.bOutputOutFiles)
+            {
+               bSucceeded = CometWriteOut::WriteOut();
+               if (!bSucceeded)
+               {
+                  goto cleanup_results;
+               }
+            }
 
-         g_pvQuery.clear();
-      }
+            if (g_staticParams.options.bOutputPepXMLFile)
+               CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml);
 
-      if (iTotalSpectraSearched == 0)
-      {
-         logout(" Warning - no spectra searched.\n\n");
-      }
+            if (g_staticParams.options.bOutputPinXMLFile)
+            {
+               bSucceeded = CometWritePinXML::WritePinXML(fpout_pinxml);
+               if (!bSucceeded)
+               {
+                  goto cleanup_results;
+               }
+            }
 
-      if (!g_staticParams.options.bOutputSqtStream)
-      {
-         time(&tStartTime);
-         strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
-         logout(" Search end:    %s\n\n", g_staticParams.szDate);
+            if (g_staticParams.options.bOutputTxtFile)
+               CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt);
+
+            //// Write SQT last as I destroy the g_staticParams.szMod string during that process
+            if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
+               CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, *this);
+
+   cleanup_results:
+            // Deleting each Query object in the vector calls its destructor, which 
+            // frees the spectral memory (see definition for Query in CometData.h).
+            for (int i=0; i<(int)g_pvQuery.size(); i++)
+               delete g_pvQuery.at(i);
+
+            g_pvQuery.clear();
+
+            if (!bSucceeded)
+            {
+               break;
+            }
+         }
+
+         if (bSucceeded)
+         {
+            if (iTotalSpectraSearched == 0)
+            {
+               logout(" Warning - no spectra searched.\n\n");
+            }
+
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               time(&tStartTime);
+               strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
+               logout(" Search end:    %s\n\n", g_staticParams.szDate);
+            }
+
+            if (NULL != fpout_pepxml)
+            {
+               CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
+            }
+
+            if (NULL != fpoutd_pepxml)
+            {
+               CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
+            }
+
+            if (NULL != fpout_pinxml)
+            {
+               CometWritePinXML::WritePinXMLEndTags(fpout_pinxml);
+            }
+         }
       }
 
       if (NULL != fpout_pepxml)
       {
-         CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
          fclose(fpout_pepxml);
          fpout_pepxml = NULL;
       }
 
       if (NULL != fpoutd_pepxml)
       {
-         CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
          fclose(fpoutd_pepxml);
          fpoutd_pepxml = NULL;
       }
 
       if (NULL != fpout_pinxml)
       {
-         CometWritePinXML::WritePinXMLEndTags(fpout_pinxml);
          fclose(fpout_pinxml);
          fpout_pinxml = NULL;
       }
@@ -1574,7 +1782,14 @@ void CometSearchManager::DoSearch()
       {
          fclose(fpoutd_sqt);
          fpoutd_sqt = NULL;
+      }     
+
+      if (!bSucceeded)
+      {
+         break;
       }
    }
+
+   return bSucceeded;
 }
 

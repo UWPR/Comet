@@ -35,6 +35,7 @@
 #include <deque>
 #include <stdint.h>
 #include "Threading.h"
+#include "CometStatus.h"
 
 template<class T> class ThreadManager;
 
@@ -112,6 +113,16 @@ public:
       // Have we exceeded the min num threads allowed?  If yes, reduce
       // the number back down.
       if (_numCurrThreads > _minThreads) 
+      {
+         _numCurrThreads--;
+         Threading::UnlockMutex(_poolAccessMutex);
+         return ThreadPool<T>::Die;
+      }
+
+      // Has there been an error? If so, we need to kill the thread.
+      bool bError = false;
+      g_cometStatus.GetError(bError);
+      if (bError)
       {
          _numCurrThreads--;
          Threading::UnlockMutex(_poolAccessMutex);

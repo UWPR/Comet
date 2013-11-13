@@ -24,12 +24,12 @@ public:
    CometWritePinXML();
    ~CometWritePinXML();
    static void WritePinXMLHeader(FILE *fpout);
-   static void WritePinXML(FILE *fpout);
+   static bool WritePinXML(FILE *fpout);
    static void WritePinXMLEndTags(FILE *fpout);
 
 
 private:
-   static void PrintResults(int iWhichQuery,
+   static bool PrintResults(int iWhichQuery,
                             FILE *fpOut,
                             bool bDecoy);
    static void PrintPinXMLSearchHit(int iWhichQuery,

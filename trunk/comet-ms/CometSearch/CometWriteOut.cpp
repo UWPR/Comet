@@ -18,7 +18,7 @@
 #include "CometDataInternal.h"
 #include "CometMassSpecUtils.h"
 #include "CometWriteOut.h"
-
+#include "CometStatus.h"
 
 
 CometWriteOut::CometWriteOut()
@@ -31,14 +31,17 @@ CometWriteOut::~CometWriteOut()
 }
 
 
-void CometWriteOut::WriteOut(void)
+bool CometWriteOut::WriteOut(void)
 {
    int i;
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      PrintResults(i, false);
+      if (!PrintResults(i, false))
+      {
+         return false;
+      }
    }
 
    // Print out the separate decoy hits.
@@ -46,13 +49,18 @@ void CometWriteOut::WriteOut(void)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
-         PrintResults(i, true);
+         if (!PrintResults(i, true))
+         {
+            return false;
+         }
       }
    }
+
+   return true;
 }
 
 
-void CometWriteOut::PrintResults(int iWhichQuery,
+bool CometWriteOut::PrintResults(int iWhichQuery,
                                  bool bDecoySearch)
 {
    int  i,
@@ -139,8 +147,14 @@ void CometWriteOut::PrintResults(int iWhichQuery,
 
    if ((fpout = fopen(szOutput, "w")) == NULL)
    {
-      logerr(" Error - cannot write to file %s.\n", szOutput);
-      exit(1);
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error - cannot write to file %s.\n", szOutput);
+                  
+      g_cometStatus.SetError(true, string(szErrorMsg));
+            
+      logerr("%s\n", szErrorMsg);
+      return false;
    }
 
    if (bDecoySearch)
@@ -347,6 +361,8 @@ void CometWriteOut::PrintResults(int iWhichQuery,
       }
    }
    fclose(fpout);
+
+   return true;
 }
 
 

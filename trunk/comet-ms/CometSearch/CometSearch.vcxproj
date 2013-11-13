@@ -132,6 +132,7 @@
     <ClInclude Include="CometPreprocess.h" />
     <ClInclude Include="CometSearch.h" />
     <ClInclude Include="CometSearchManager.h" />
+    <ClInclude Include="CometStatus.h" />
     <ClInclude Include="CometWriteOut.h" />
     <ClInclude Include="CometWritePepXML.h" />
     <ClInclude Include="CometWritePinXML.h" />

@@ -31,7 +31,7 @@ public:
    std::map<std::string, CometParam*>& GetParamsMap();
 
    // Methods inherited from ICometSearchManager
-   virtual void DoSearch();
+   virtual bool DoSearch();
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);
@@ -48,10 +48,11 @@ public:
    virtual bool GetParamValue(const string &name, IntRange &value);
    virtual void SetParam(const string &name, const string &strValue, const EnzymeInfo &value);
    virtual bool GetParamValue(const string &name, EnzymeInfo &value);   
+   virtual void GetErrorMessage(string &strErrorMsg);
 
 
 private:
-   void InitializeStaticParams();
+   bool InitializeStaticParams();
    
    std::map<std::string, CometParam*> _mapStaticParams;
 };

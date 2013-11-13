@@ -23,13 +23,13 @@ class CometWriteOut
 public:
    CometWriteOut();
    ~CometWriteOut();
-   static void WriteOut(void);
+   static bool WriteOut(void);
 
 
 private:
    static float FindSpScore(Query *pQuery,
                             int bin);
-   static void PrintResults(int iWhichQuery,
+   static bool PrintResults(int iWhichQuery,
                             bool bDecoySearch);
    static void PrintOutputLine( int iRankXcorr,
                                int iLenMaxDuplicates,

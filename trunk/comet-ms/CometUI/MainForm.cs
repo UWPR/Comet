@@ -16,6 +16,15 @@ namespace CometUI
 
         private void BtnTestClick(object sender, EventArgs e)
         {
+            if (!_searchMgr.DoSearch())
+            {
+                String strErrorMsg = String.Empty;
+                if (_searchMgr.GetErrorMessage(ref strErrorMsg))
+                {
+                    MessageBox.Show(strErrorMsg);
+                }
+            }
+
             _searchMgr.SetOutputFileBaseName("MyTestBaseName");
 
             int numThreads = 0;

@@ -18,6 +18,7 @@
 #include "CometDataInternal.h"
 #include "CometMassSpecUtils.h"
 #include "CometWritePinXML.h"
+#include "CometStatus.h"
 #include <math.h>
 
 
@@ -31,7 +32,7 @@ CometWritePinXML::~CometWritePinXML()
 }
 
 
-void CometWritePinXML::WritePinXML(FILE *fpout)
+bool CometWritePinXML::WritePinXML(FILE *fpout)
 {
    int i;
 
@@ -46,16 +47,28 @@ void CometWritePinXML::WritePinXML(FILE *fpout)
                g_pvQuery[i]->_spectrumInfoInternal.iScanNumber);
 
          if (g_pvQuery.at(i)->_pResults[0].fXcorr > 0.0)
-            PrintResults(i, fpout, 0);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+         {
+            if (!PrintResults(i, fpout, 0))  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+            {
+               return false;
+            }
+         }
 
          if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > 0.0)
-            PrintResults(i, fpout, 1);  // print decoy hit
+         {
+            if (!PrintResults(i, fpout, 1))  // print decoy hit
+            {
+               return false;
+            }
+         }
 
          fprintf(fpout, "</fragSpectrumScan>\n");
       }
    }
 
    fflush(fpout);
+
+   return true;
 }
 
 void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
@@ -123,7 +136,7 @@ void CometWritePinXML::WritePinXMLEndTags(FILE *fpout)
    fflush(fpout);
 }
 
-void CometWritePinXML::PrintResults(int iWhichQuery,
+bool CometWritePinXML::PrintResults(int iWhichQuery,
                                     FILE *fpout,
                                     bool bDecoy)
 {
@@ -161,8 +174,15 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
    }
    else
    {
-      logerr(" Error, dMZ=0. scan %d\n", pQuery->_spectrumInfoInternal.iScanNumber);
-      exit(1);
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error, dMZ=0. scan %d",  pQuery->_spectrumInfoInternal.iScanNumber);
+                  
+      g_cometStatus.SetError(true, string(szErrorMsg));
+
+      logerr("%s\n", szErrorMsg);
+      
+      return false;
    }
 
    fprintf(fpout, " <peptideSpectrumMatch calculatedMassToCharge=\"%0.6f\" ", dMZexp);
@@ -238,6 +258,8 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
    PrintPinXMLSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn, dMZ, dMZdiff);
 
    fprintf(fpout, " </peptideSpectrumMatch>\n");
+
+   return true;
 }
 
 

@@ -66,6 +66,9 @@
     <ClInclude Include="CometInterfaces.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CometStatus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CometMassSpecUtils.cpp">

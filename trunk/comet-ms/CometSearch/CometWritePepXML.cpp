@@ -19,6 +19,7 @@
 #include "CometMassSpecUtils.h"
 #include "CometWritePepXML.h"
 #include "CometSearchManager.h"
+#include "CometStatus.h"
 
 
 CometWritePepXML::CometWritePepXML()
@@ -54,7 +55,7 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
    fflush(fpout);
 }
 
-void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
+bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
     CometSearchManager &searchMgr)
 {
    time_t tTime;
@@ -97,8 +98,15 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // Grab file extension from file name
    if ( (pStr2 = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
    {
-      logerr(" Error - in WriteXMLHeader missing last period in file name: %s\n", g_staticParams.inputFile.szFileName);
-      exit(1);
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error - in WriteXMLHeader missing last period in file name: %s", g_staticParams.inputFile.szFileName);
+                  
+      g_cometStatus.SetError(true, string(szErrorMsg));
+      
+      logerr("%s\n", szErrorMsg);
+
+      return false;
    }
    pStr2++;
    fprintf(fpout, "raw_data=\"%s\" ", pStr2);
@@ -275,6 +283,8 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    fprintf(fpout, " </search_summary>\n");
    fflush(fpout);
+
+   return true;
 }
 
 void CometWritePepXML::WriteVariableModN(FILE *fpout,
