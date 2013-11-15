@@ -325,7 +325,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
 
    // terminal variable mods
    if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0)
-         && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide + 1] != '0'))  // nterm
+         && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] != 0))  // nterm
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", 0);
       fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 12); // some random number for N-term variable mod
@@ -333,7 +333,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    }
 
    if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0)
-         && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide + 2] != '0'))  // cterm
+         && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide + 1] != 0))  // cterm
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", pOutput[iWhichResult].iLenPeptide + 1);
       fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 13); // some random number for N-term variable mod

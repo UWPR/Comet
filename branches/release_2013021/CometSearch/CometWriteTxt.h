@@ -26,9 +26,9 @@ public:
    static void WriteTxt(FILE *fpout,
                         FILE *fpoutd);
 
+   static void PrintTxtHeader(FILE *fpout);
 
 private:
-   static void PrintTxtHeader(FILE *fpout);
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
                             FILE *fpOut);
@@ -37,7 +37,7 @@ private:
                             FILE *fpOut);
 
    // Private member variables
-   static bool _bWroteHeader;
+//   static bool _bWroteHeader;
 };
 
 #endif

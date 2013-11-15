@@ -25,13 +25,12 @@ public:
    ~CometWriteSqt();
 
    static void WriteSqt(FILE *fpout,
-                    FILE *fpoutd,
-                    CometSearchManager &searchMgr);
+                    FILE *fpoutd);
 
-
-private:
    static void PrintSqtHeader(FILE *fpout,
                            CometSearchManager &searchMgr);
+
+private:
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
                             FILE *fpOut);
@@ -41,7 +40,7 @@ private:
                             FILE *fpOut);
 
    // Private member variables
-   static bool _bWroteHeader;
+//   static bool _bWroteHeader;
 };
 
 #endif

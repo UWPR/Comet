@@ -1336,6 +1336,8 @@ void CometSearchManager::DoSearch()
             exit(1);
          }
 
+         CometWriteSqt::PrintSqtHeader(fpout_sqt, *this);
+
          if (g_staticParams.options.iDecoySearch == 2)
          {
             if (iAnalysisType == AnalysisType_EntireFile)
@@ -1348,6 +1350,8 @@ void CometSearchManager::DoSearch()
                logerr(" Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoySQT);
                exit(1);
             }
+
+            CometWriteSqt::PrintSqtHeader(fpoutd_sqt, *this);
          }
       }
 
@@ -1376,6 +1380,8 @@ void CometSearchManager::DoSearch()
             exit(1);
          }
 
+         CometWriteTxt::PrintTxtHeader(fpout_txt);
+
          if (g_staticParams.options.iDecoySearch == 2)
          {
             if (iAnalysisType == AnalysisType_EntireFile)
@@ -1388,6 +1394,8 @@ void CometSearchManager::DoSearch()
                logerr(" Error - cannot write to decoy file \"%s\".\n\n", szOutputDecoyTxt);
                exit(1);
             }
+
+            CometWriteTxt::PrintTxtHeader(fpoutd_txt);
          }
       }
 
@@ -1521,7 +1529,7 @@ void CometSearchManager::DoSearch()
 
          //// Write SQT last as I destroy the g_staticParams.szMod string during that process
          if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
-            CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, *this);
+            CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt);
 
          // Deleting each Query object in the vector calls its destructor, which 
          // frees the spectral memory (see definition for Query in CometData.h).

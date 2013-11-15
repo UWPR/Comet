@@ -20,39 +20,20 @@
 #include "CometWriteSqt.h"
 #include "CometSearchManager.h"
 
-bool CometWriteSqt::_bWroteHeader = false;
 
 CometWriteSqt::CometWriteSqt()
 {
 }
 
-
 CometWriteSqt::~CometWriteSqt()
 {
 }
 
+
 void CometWriteSqt::WriteSqt(FILE *fpout,
-                             FILE *fpoutd,
-                             CometSearchManager &searchMgr)
+                             FILE *fpoutd)
 {
    int i;
-   if (!_bWroteHeader)
-   {
-      _bWroteHeader = true;
-      if (g_staticParams.options.bOutputSqtFile)
-      {
-         PrintSqtHeader(fpout, searchMgr);
-
-         if (g_staticParams.options.iDecoySearch == 2)
-         {
-            // Print this header only if separate decoy search is also run.
-            fprintf(fpout, "H\tTarget search results\nH\n");
-
-            PrintSqtHeader(fpoutd, searchMgr);
-            fprintf(fpoutd, "H\tDecoy search results\nH\n");
-         }
-      }
-   }
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
@@ -69,6 +50,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
       }
    }
 }
+
 
 void CometWriteSqt::PrintSqtHeader(FILE *fpout,
                                    CometSearchManager &searchMgr)
@@ -175,6 +157,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
    fprintf(fpout, "H\n");
 }
+
 
 void CometWriteSqt::PrintResults(int iWhichQuery,
                                  bool bDecoy,

@@ -19,7 +19,6 @@
 #include "CometMassSpecUtils.h"
 #include "CometWriteTxt.h"
 
-bool CometWriteTxt::_bWroteHeader = false;
 
 CometWriteTxt::CometWriteTxt()
 {
@@ -35,15 +34,6 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
                              FILE *fpoutd)
 {
    int i;
-
-   if (!_bWroteHeader)
-   {
-      _bWroteHeader = true;
-      PrintTxtHeader(fpout);
-
-      if (g_staticParams.options.iDecoySearch == 2)
-         PrintTxtHeader(fpoutd);
-   }
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
@@ -102,6 +92,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "duplicate_protein_count\n");
 #endif
 }
+
 
 #ifdef CRUX
 void CometWriteTxt::PrintResults(int iWhichQuery,
@@ -171,6 +162,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 }
 #endif
 
+
 #ifdef CRUX
 void CometWriteTxt::PrintTxtLine( int iWhichResult,
                                  Results *pOutput,
@@ -227,6 +219,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
    fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
    fprintf(fpout, "\n");
 }
+
 #else
 void CometWriteTxt::PrintTxtLine( int iWhichResult,
                                  Results *pOutput,
