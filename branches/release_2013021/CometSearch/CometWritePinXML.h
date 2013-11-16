@@ -38,9 +38,7 @@ private:
                                     Results *pOutput,
                                     FILE *fpOut,
                                     double dDeltaCn,
-                                    double dLastDeltaCn,
-                                    double dMZ,
-                                    double dMZdiff);
+                                    double dLastDeltaCn);
    static void CalcNTTNMC(Results *pOutput,
                           int iWhichQuery,
                           int *iNterm,

@@ -131,8 +131,7 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
         iDoXcorrCount,
         iMinLength;
    double dMZ,
-          dMZexp,
-          dMZdiff;
+          dMZexp;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
@@ -155,16 +154,6 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
    dMZexp = (pOutput[0].dPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
       / pQuery->_spectrumInfoInternal.iChargeState;
 
-   if (dMZ > 0.0)
-   {  
-      dMZdiff = (dMZ - dMZexp) / dMZ;
-   }
-   else
-   {
-      logerr(" Error, dMZ=0. scan %d\n", pQuery->_spectrumInfoInternal.iScanNumber);
-      exit(1);
-   }
-
    fprintf(fpout, " <peptideSpectrumMatch calculatedMassToCharge=\"%0.6f\" ", dMZexp);
    fprintf(fpout, "chargeState=\"%d\" ", pQuery->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, "experimentalMassToCharge=\"%0.6f\" ", dMZ);
@@ -177,7 +166,6 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
       fprintf(fpout, "isDecoy=\"true\">\n");
    else
       fprintf(fpout, "isDecoy=\"false\">\n");
-
 
    if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
       iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
@@ -235,7 +223,7 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
    if (bNoDeltaCnYet)
       dDeltaCn = 1.0;
 
-   PrintPinXMLSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn, dMZ, dMZdiff);
+   PrintPinXMLSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn);
 
    fprintf(fpout, " </peptideSpectrumMatch>\n");
 }
@@ -247,9 +235,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
                                             Results *pOutput,
                                             FILE *fpout,
                                             double dDeltaCn,
-                                            double dLastDeltaCn,
-                                            double dMZ,
-                                            double dMZdiff)
+                                            double dLastDeltaCn)
 {
    int iNterm;
    int iCterm;
@@ -282,7 +268,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "   <feature>%0.4f</feature>\n", 0.0);
 
-   fprintf(fpout, "   <feature>%0.6f</feature>\n",dMZ); // Mass is m/z
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", pQuery->_pepMassInfo.dExpPepMass); // Mass is observed MH+
    fprintf(fpout, "   <feature>%d</feature>\n", pOutput[iWhichResult].iLenPeptide); // PepLen
 
    for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
@@ -297,8 +283,10 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "   <feature>%0.6f</feature>\n", -20.0);
 
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", dMZdiff); // dM  is m/z diff
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", abs(dMZdiff)); // absdM
+   double dMassDiff = pOutput[0].dPepMass - pQuery->_pepMassInfo.dExpPepMass;
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", dMassDiff); // dM  is mass diff
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", abs(dMassDiff)); // absdM
+
    fprintf(fpout, "  </features>\n");
    fprintf(fpout, "  <peptide>\n");
    fprintf(fpout, "   <peptideSequence>%s</peptideSequence>\n", pOutput[iWhichResult].szPeptide);
