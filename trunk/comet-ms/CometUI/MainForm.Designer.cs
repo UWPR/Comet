@@ -436,6 +436,7 @@
             // 
             // btnLoadParams
             // 
+            this.btnLoadParams.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnLoadParams.Location = new System.Drawing.Point(301, 0);
             this.btnLoadParams.Name = "btnLoadParams";
             this.btnLoadParams.Size = new System.Drawing.Size(78, 23);
@@ -445,6 +446,7 @@
             // 
             // btnSaveParams
             // 
+            this.btnSaveParams.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnSaveParams.Location = new System.Drawing.Point(385, 0);
             this.btnSaveParams.Name = "btnSaveParams";
             this.btnSaveParams.Size = new System.Drawing.Size(78, 23);
