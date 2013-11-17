@@ -29,73 +29,75 @@
         private void InitializeComponent()
         {
             this.btnSearch = new System.Windows.Forms.Button();
-            this.mainMenuStrip = new System.Windows.Forms.MenuStrip();
+            this.menuStripMain = new System.Windows.Forms.MenuStrip();
             this.toolStripMenuItemHelp = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainSplitContainer = new System.Windows.Forms.SplitContainer();
             this.cometMainTab = new System.Windows.Forms.TabControl();
             this.inputFilesTabPage = new System.Windows.Forms.TabPage();
-            this.label1 = new System.Windows.Forms.Label();
-            this.btnRemFile = new System.Windows.Forms.Button();
+            this.panelProteinNucleotide = new System.Windows.Forms.Panel();
+            this.panelNucleotideReadingFrame = new System.Windows.Forms.Panel();
+            this.comboBoxReadingFrame = new System.Windows.Forms.ComboBox();
+            this.labelReadingFrame = new System.Windows.Forms.Label();
+            this.radioButtonProtein = new System.Windows.Forms.RadioButton();
+            this.radioButtonNucleotide = new System.Windows.Forms.RadioButton();
+            this.panelTargetDecoy = new System.Windows.Forms.Panel();
+            this.radioButtonTarget = new System.Windows.Forms.RadioButton();
+            this.radioButtonDecoyOne = new System.Windows.Forms.RadioButton();
+            this.radioButtonDecoyTwo = new System.Windows.Forms.RadioButton();
+            this.panelDecoyPrefix = new System.Windows.Forms.Panel();
+            this.textBoxDecoyPrefix = new System.Windows.Forms.TextBox();
+            this.labelDecoyPrefix = new System.Windows.Forms.Label();
+            this.protDbLabel = new System.Windows.Forms.Label();
+            this.btnRemInputFile = new System.Windows.Forms.Button();
             this.btnBrowseProteomeDbFile = new System.Windows.Forms.Button();
-            this.btnAddFile = new System.Windows.Forms.Button();
+            this.btnAddInputFile = new System.Windows.Forms.Button();
             this.proteomeDbFileCombo = new System.Windows.Forms.ComboBox();
             this.inputFilesLabel = new System.Windows.Forms.Label();
             this.inputFilesListBox = new System.Windows.Forms.ListBox();
             this.enzymeTabPage = new System.Windows.Forms.TabPage();
-            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
-            this.radioButton1 = new System.Windows.Forms.RadioButton();
-            this.radioButton2 = new System.Windows.Forms.RadioButton();
-            this.radioButton3 = new System.Windows.Forms.RadioButton();
-            this.panel1 = new System.Windows.Forms.Panel();
-            this.radioButton4 = new System.Windows.Forms.RadioButton();
-            this.radioButton5 = new System.Windows.Forms.RadioButton();
-            this.label2 = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.panel2 = new System.Windows.Forms.Panel();
-            this.label3 = new System.Windows.Forms.Label();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
-            this.panel3 = new System.Windows.Forms.Panel();
-            this.panel4 = new System.Windows.Forms.Panel();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.btnLoadParams = new System.Windows.Forms.Button();
+            this.btnSaveParams = new System.Windows.Forms.Button();
+            this.statusStripMain = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.mainMenuStrip.SuspendLayout();
+            this.menuStripMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).BeginInit();
             this.mainSplitContainer.Panel1.SuspendLayout();
             this.mainSplitContainer.Panel2.SuspendLayout();
             this.mainSplitContainer.SuspendLayout();
             this.cometMainTab.SuspendLayout();
             this.inputFilesTabPage.SuspendLayout();
-            this.statusStrip1.SuspendLayout();
-            this.panel1.SuspendLayout();
-            this.panel2.SuspendLayout();
-            this.panel3.SuspendLayout();
-            this.panel4.SuspendLayout();
+            this.panelProteinNucleotide.SuspendLayout();
+            this.panelNucleotideReadingFrame.SuspendLayout();
+            this.panelTargetDecoy.SuspendLayout();
+            this.panelDecoyPrefix.SuspendLayout();
+            this.statusStripMain.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnSearch
             // 
             this.btnSearch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSearch.Location = new System.Drawing.Point(472, 0);
+            this.btnSearch.Location = new System.Drawing.Point(469, 0);
             this.btnSearch.Name = "btnSearch";
-            this.btnSearch.Size = new System.Drawing.Size(75, 23);
-            this.btnSearch.TabIndex = 0;
+            this.btnSearch.Size = new System.Drawing.Size(78, 23);
+            this.btnSearch.TabIndex = 18;
             this.btnSearch.Text = "Search";
             this.btnSearch.UseVisualStyleBackColor = true;
             this.btnSearch.Click += new System.EventHandler(this.BtnTestClick);
             // 
-            // mainMenuStrip
+            // menuStripMain
             // 
-            this.mainMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.menuStripMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripMenuItemHelp});
-            this.mainMenuStrip.Location = new System.Drawing.Point(0, 0);
-            this.mainMenuStrip.Name = "mainMenuStrip";
-            this.mainMenuStrip.Size = new System.Drawing.Size(559, 24);
-            this.mainMenuStrip.TabIndex = 1;
-            this.mainMenuStrip.Text = "Main Menu";
+            this.menuStripMain.Location = new System.Drawing.Point(0, 0);
+            this.menuStripMain.Name = "menuStripMain";
+            this.menuStripMain.Size = new System.Drawing.Size(559, 24);
+            this.menuStripMain.TabIndex = 1;
+            this.menuStripMain.Text = "Main Menu";
             // 
             // toolStripMenuItemHelp
             // 
@@ -126,7 +128,9 @@
             // 
             // mainSplitContainer.Panel2
             // 
-            this.mainSplitContainer.Panel2.Controls.Add(this.statusStrip1);
+            this.mainSplitContainer.Panel2.Controls.Add(this.btnLoadParams);
+            this.mainSplitContainer.Panel2.Controls.Add(this.btnSaveParams);
+            this.mainSplitContainer.Panel2.Controls.Add(this.statusStripMain);
             this.mainSplitContainer.Panel2.Controls.Add(this.btnSearch);
             this.mainSplitContainer.Size = new System.Drawing.Size(559, 413);
             this.mainSplitContainer.SplitterDistance = 358;
@@ -151,12 +155,12 @@
             // 
             // inputFilesTabPage
             // 
-            this.inputFilesTabPage.Controls.Add(this.panel4);
-            this.inputFilesTabPage.Controls.Add(this.panel3);
-            this.inputFilesTabPage.Controls.Add(this.label1);
-            this.inputFilesTabPage.Controls.Add(this.btnRemFile);
+            this.inputFilesTabPage.Controls.Add(this.panelProteinNucleotide);
+            this.inputFilesTabPage.Controls.Add(this.panelTargetDecoy);
+            this.inputFilesTabPage.Controls.Add(this.protDbLabel);
+            this.inputFilesTabPage.Controls.Add(this.btnRemInputFile);
             this.inputFilesTabPage.Controls.Add(this.btnBrowseProteomeDbFile);
-            this.inputFilesTabPage.Controls.Add(this.btnAddFile);
+            this.inputFilesTabPage.Controls.Add(this.btnAddInputFile);
             this.inputFilesTabPage.Controls.Add(this.proteomeDbFileCombo);
             this.inputFilesTabPage.Controls.Add(this.inputFilesLabel);
             this.inputFilesTabPage.Controls.Add(this.inputFilesListBox);
@@ -168,25 +172,163 @@
             this.inputFilesTabPage.Text = "Input Files";
             this.inputFilesTabPage.UseVisualStyleBackColor = true;
             // 
-            // label1
+            // panelProteinNucleotide
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(7, 174);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(139, 13);
-            this.label1.TabIndex = 8;
-            this.label1.Text = "&Proteome Database (.fasta):";
+            this.panelProteinNucleotide.Controls.Add(this.panelNucleotideReadingFrame);
+            this.panelProteinNucleotide.Controls.Add(this.radioButtonProtein);
+            this.panelProteinNucleotide.Controls.Add(this.radioButtonNucleotide);
+            this.panelProteinNucleotide.Location = new System.Drawing.Point(7, 269);
+            this.panelProteinNucleotide.Name = "panelProteinNucleotide";
+            this.panelProteinNucleotide.Size = new System.Drawing.Size(427, 55);
+            this.panelProteinNucleotide.TabIndex = 11;
             // 
-            // btnRemFile
+            // panelNucleotideReadingFrame
             // 
-            this.btnRemFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnRemFile.Enabled = false;
-            this.btnRemFile.Location = new System.Drawing.Point(440, 56);
-            this.btnRemFile.Name = "btnRemFile";
-            this.btnRemFile.Size = new System.Drawing.Size(75, 23);
-            this.btnRemFile.TabIndex = 5;
-            this.btnRemFile.Text = "&Remove";
-            this.btnRemFile.UseVisualStyleBackColor = true;
+            this.panelNucleotideReadingFrame.Controls.Add(this.comboBoxReadingFrame);
+            this.panelNucleotideReadingFrame.Controls.Add(this.labelReadingFrame);
+            this.panelNucleotideReadingFrame.Location = new System.Drawing.Point(77, 22);
+            this.panelNucleotideReadingFrame.Name = "panelNucleotideReadingFrame";
+            this.panelNucleotideReadingFrame.Size = new System.Drawing.Size(195, 28);
+            this.panelNucleotideReadingFrame.TabIndex = 14;
+            // 
+            // comboBoxReadingFrame
+            // 
+            this.comboBoxReadingFrame.FormattingEnabled = true;
+            this.comboBoxReadingFrame.Items.AddRange(new object[] {
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9"});
+            this.comboBoxReadingFrame.Location = new System.Drawing.Point(88, 3);
+            this.comboBoxReadingFrame.Name = "comboBoxReadingFrame";
+            this.comboBoxReadingFrame.Size = new System.Drawing.Size(62, 21);
+            this.comboBoxReadingFrame.TabIndex = 15;
+            // 
+            // labelReadingFrame
+            // 
+            this.labelReadingFrame.AutoSize = true;
+            this.labelReadingFrame.Location = new System.Drawing.Point(4, 6);
+            this.labelReadingFrame.Name = "labelReadingFrame";
+            this.labelReadingFrame.Size = new System.Drawing.Size(82, 13);
+            this.labelReadingFrame.TabIndex = 0;
+            this.labelReadingFrame.Text = "Reading Frame:";
+            // 
+            // radioButtonProtein
+            // 
+            this.radioButtonProtein.AutoSize = true;
+            this.radioButtonProtein.Location = new System.Drawing.Point(3, 4);
+            this.radioButtonProtein.Name = "radioButtonProtein";
+            this.radioButtonProtein.Size = new System.Drawing.Size(58, 17);
+            this.radioButtonProtein.TabIndex = 12;
+            this.radioButtonProtein.TabStop = true;
+            this.radioButtonProtein.Text = "Protein";
+            this.radioButtonProtein.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonNucleotide
+            // 
+            this.radioButtonNucleotide.AutoSize = true;
+            this.radioButtonNucleotide.Location = new System.Drawing.Point(65, 4);
+            this.radioButtonNucleotide.Name = "radioButtonNucleotide";
+            this.radioButtonNucleotide.Size = new System.Drawing.Size(76, 17);
+            this.radioButtonNucleotide.TabIndex = 13;
+            this.radioButtonNucleotide.TabStop = true;
+            this.radioButtonNucleotide.Text = "Nucleotide";
+            this.radioButtonNucleotide.UseVisualStyleBackColor = true;
+            // 
+            // panelTargetDecoy
+            // 
+            this.panelTargetDecoy.Controls.Add(this.radioButtonTarget);
+            this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyOne);
+            this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyTwo);
+            this.panelTargetDecoy.Controls.Add(this.panelDecoyPrefix);
+            this.panelTargetDecoy.Location = new System.Drawing.Point(7, 217);
+            this.panelTargetDecoy.Name = "panelTargetDecoy";
+            this.panelTargetDecoy.Size = new System.Drawing.Size(427, 51);
+            this.panelTargetDecoy.TabIndex = 5;
+            // 
+            // radioButtonTarget
+            // 
+            this.radioButtonTarget.AutoSize = true;
+            this.radioButtonTarget.Location = new System.Drawing.Point(4, 3);
+            this.radioButtonTarget.Name = "radioButtonTarget";
+            this.radioButtonTarget.Size = new System.Drawing.Size(56, 17);
+            this.radioButtonTarget.TabIndex = 6;
+            this.radioButtonTarget.TabStop = true;
+            this.radioButtonTarget.Text = "Target";
+            this.radioButtonTarget.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonDecoyOne
+            // 
+            this.radioButtonDecoyOne.AutoSize = true;
+            this.radioButtonDecoyOne.Location = new System.Drawing.Point(66, 3);
+            this.radioButtonDecoyOne.Name = "radioButtonDecoyOne";
+            this.radioButtonDecoyOne.Size = new System.Drawing.Size(65, 17);
+            this.radioButtonDecoyOne.TabIndex = 7;
+            this.radioButtonDecoyOne.TabStop = true;
+            this.radioButtonDecoyOne.Text = "Decoy 1";
+            this.radioButtonDecoyOne.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonDecoyTwo
+            // 
+            this.radioButtonDecoyTwo.AutoSize = true;
+            this.radioButtonDecoyTwo.Location = new System.Drawing.Point(137, 3);
+            this.radioButtonDecoyTwo.Name = "radioButtonDecoyTwo";
+            this.radioButtonDecoyTwo.Size = new System.Drawing.Size(65, 17);
+            this.radioButtonDecoyTwo.TabIndex = 12;
+            this.radioButtonDecoyTwo.TabStop = true;
+            this.radioButtonDecoyTwo.Text = "Decoy 2";
+            this.radioButtonDecoyTwo.UseVisualStyleBackColor = true;
+            // 
+            // panelDecoyPrefix
+            // 
+            this.panelDecoyPrefix.Controls.Add(this.textBoxDecoyPrefix);
+            this.panelDecoyPrefix.Controls.Add(this.labelDecoyPrefix);
+            this.panelDecoyPrefix.Location = new System.Drawing.Point(77, 21);
+            this.panelDecoyPrefix.Name = "panelDecoyPrefix";
+            this.panelDecoyPrefix.Size = new System.Drawing.Size(195, 28);
+            this.panelDecoyPrefix.TabIndex = 9;
+            // 
+            // textBoxDecoyPrefix
+            // 
+            this.textBoxDecoyPrefix.Location = new System.Drawing.Point(76, 3);
+            this.textBoxDecoyPrefix.Name = "textBoxDecoyPrefix";
+            this.textBoxDecoyPrefix.Size = new System.Drawing.Size(74, 20);
+            this.textBoxDecoyPrefix.TabIndex = 10;
+            this.textBoxDecoyPrefix.Text = "DECOY_";
+            // 
+            // labelDecoyPrefix
+            // 
+            this.labelDecoyPrefix.AutoSize = true;
+            this.labelDecoyPrefix.Location = new System.Drawing.Point(4, 6);
+            this.labelDecoyPrefix.Name = "labelDecoyPrefix";
+            this.labelDecoyPrefix.Size = new System.Drawing.Size(70, 13);
+            this.labelDecoyPrefix.TabIndex = 0;
+            this.labelDecoyPrefix.Text = "Decoy Prefix:";
+            // 
+            // protDbLabel
+            // 
+            this.protDbLabel.AutoSize = true;
+            this.protDbLabel.Location = new System.Drawing.Point(7, 174);
+            this.protDbLabel.Name = "protDbLabel";
+            this.protDbLabel.Size = new System.Drawing.Size(139, 13);
+            this.protDbLabel.TabIndex = 8;
+            this.protDbLabel.Text = "&Proteome Database (.fasta):";
+            // 
+            // btnRemInputFile
+            // 
+            this.btnRemInputFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnRemInputFile.Enabled = false;
+            this.btnRemInputFile.Location = new System.Drawing.Point(440, 56);
+            this.btnRemInputFile.Name = "btnRemInputFile";
+            this.btnRemInputFile.Size = new System.Drawing.Size(75, 23);
+            this.btnRemInputFile.TabIndex = 2;
+            this.btnRemInputFile.Text = "&Remove";
+            this.btnRemInputFile.UseVisualStyleBackColor = true;
             // 
             // btnBrowseProteomeDbFile
             // 
@@ -195,19 +337,19 @@
             this.btnBrowseProteomeDbFile.Location = new System.Drawing.Point(440, 189);
             this.btnBrowseProteomeDbFile.Name = "btnBrowseProteomeDbFile";
             this.btnBrowseProteomeDbFile.Size = new System.Drawing.Size(75, 23);
-            this.btnBrowseProteomeDbFile.TabIndex = 9;
+            this.btnBrowseProteomeDbFile.TabIndex = 4;
             this.btnBrowseProteomeDbFile.Text = "&Browse";
             this.btnBrowseProteomeDbFile.UseVisualStyleBackColor = true;
             // 
-            // btnAddFile
+            // btnAddInputFile
             // 
-            this.btnAddFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnAddFile.Location = new System.Drawing.Point(440, 27);
-            this.btnAddFile.Name = "btnAddFile";
-            this.btnAddFile.Size = new System.Drawing.Size(75, 23);
-            this.btnAddFile.TabIndex = 4;
-            this.btnAddFile.Text = "&Add...";
-            this.btnAddFile.UseVisualStyleBackColor = true;
+            this.btnAddInputFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnAddInputFile.Location = new System.Drawing.Point(440, 27);
+            this.btnAddInputFile.Name = "btnAddInputFile";
+            this.btnAddInputFile.Size = new System.Drawing.Size(75, 23);
+            this.btnAddInputFile.TabIndex = 1;
+            this.btnAddInputFile.Text = "&Add...";
+            this.btnAddInputFile.UseVisualStyleBackColor = true;
             // 
             // proteomeDbFileCombo
             // 
@@ -221,7 +363,7 @@
             this.proteomeDbFileCombo.Location = new System.Drawing.Point(7, 190);
             this.proteomeDbFileCombo.Name = "proteomeDbFileCombo";
             this.proteomeDbFileCombo.Size = new System.Drawing.Size(427, 23);
-            this.proteomeDbFileCombo.TabIndex = 6;
+            this.proteomeDbFileCombo.TabIndex = 3;
             // 
             // inputFilesLabel
             // 
@@ -251,154 +393,6 @@
             this.enzymeTabPage.TabIndex = 1;
             this.enzymeTabPage.Text = "Enzyme";
             this.enzymeTabPage.UseVisualStyleBackColor = true;
-            // 
-            // statusStrip1
-            // 
-            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripStatusLabel1});
-            this.statusStrip1.Location = new System.Drawing.Point(0, 29);
-            this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(559, 22);
-            this.statusStrip1.TabIndex = 1;
-            this.statusStrip1.Text = "statusStrip1";
-            // 
-            // radioButton1
-            // 
-            this.radioButton1.AutoSize = true;
-            this.radioButton1.Location = new System.Drawing.Point(4, 3);
-            this.radioButton1.Name = "radioButton1";
-            this.radioButton1.Size = new System.Drawing.Size(56, 17);
-            this.radioButton1.TabIndex = 10;
-            this.radioButton1.TabStop = true;
-            this.radioButton1.Text = "Target";
-            this.radioButton1.UseVisualStyleBackColor = true;
-            // 
-            // radioButton2
-            // 
-            this.radioButton2.AutoSize = true;
-            this.radioButton2.Location = new System.Drawing.Point(66, 3);
-            this.radioButton2.Name = "radioButton2";
-            this.radioButton2.Size = new System.Drawing.Size(65, 17);
-            this.radioButton2.TabIndex = 11;
-            this.radioButton2.TabStop = true;
-            this.radioButton2.Text = "Decoy 1";
-            this.radioButton2.UseVisualStyleBackColor = true;
-            // 
-            // radioButton3
-            // 
-            this.radioButton3.AutoSize = true;
-            this.radioButton3.Location = new System.Drawing.Point(137, 3);
-            this.radioButton3.Name = "radioButton3";
-            this.radioButton3.Size = new System.Drawing.Size(65, 17);
-            this.radioButton3.TabIndex = 12;
-            this.radioButton3.TabStop = true;
-            this.radioButton3.Text = "Decoy 2";
-            this.radioButton3.UseVisualStyleBackColor = true;
-            // 
-            // panel1
-            // 
-            this.panel1.Controls.Add(this.textBox1);
-            this.panel1.Controls.Add(this.label2);
-            this.panel1.Location = new System.Drawing.Point(77, 21);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(195, 28);
-            this.panel1.TabIndex = 13;
-            // 
-            // radioButton4
-            // 
-            this.radioButton4.AutoSize = true;
-            this.radioButton4.Location = new System.Drawing.Point(3, 4);
-            this.radioButton4.Name = "radioButton4";
-            this.radioButton4.Size = new System.Drawing.Size(58, 17);
-            this.radioButton4.TabIndex = 14;
-            this.radioButton4.TabStop = true;
-            this.radioButton4.Text = "Protein";
-            this.radioButton4.UseVisualStyleBackColor = true;
-            // 
-            // radioButton5
-            // 
-            this.radioButton5.AutoSize = true;
-            this.radioButton5.Location = new System.Drawing.Point(65, 4);
-            this.radioButton5.Name = "radioButton5";
-            this.radioButton5.Size = new System.Drawing.Size(76, 17);
-            this.radioButton5.TabIndex = 15;
-            this.radioButton5.TabStop = true;
-            this.radioButton5.Text = "Nucleotide";
-            this.radioButton5.UseVisualStyleBackColor = true;
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(4, 6);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(70, 13);
-            this.label2.TabIndex = 0;
-            this.label2.Text = "Decoy Prefix:";
-            // 
-            // textBox1
-            // 
-            this.textBox1.Location = new System.Drawing.Point(76, 3);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(74, 20);
-            this.textBox1.TabIndex = 1;
-            this.textBox1.Text = "DECOY_";
-            // 
-            // panel2
-            // 
-            this.panel2.Controls.Add(this.comboBox1);
-            this.panel2.Controls.Add(this.label3);
-            this.panel2.Location = new System.Drawing.Point(77, 22);
-            this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(195, 28);
-            this.panel2.TabIndex = 16;
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(4, 6);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(82, 13);
-            this.label3.TabIndex = 0;
-            this.label3.Text = "Reading Frame:";
-            // 
-            // comboBox1
-            // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Items.AddRange(new object[] {
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9"});
-            this.comboBox1.Location = new System.Drawing.Point(88, 3);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(62, 21);
-            this.comboBox1.TabIndex = 1;
-            // 
-            // panel3
-            // 
-            this.panel3.Controls.Add(this.radioButton1);
-            this.panel3.Controls.Add(this.radioButton2);
-            this.panel3.Controls.Add(this.radioButton3);
-            this.panel3.Controls.Add(this.panel1);
-            this.panel3.Location = new System.Drawing.Point(7, 217);
-            this.panel3.Name = "panel3";
-            this.panel3.Size = new System.Drawing.Size(427, 51);
-            this.panel3.TabIndex = 17;
-            // 
-            // panel4
-            // 
-            this.panel4.Controls.Add(this.panel2);
-            this.panel4.Controls.Add(this.radioButton4);
-            this.panel4.Controls.Add(this.radioButton5);
-            this.panel4.Location = new System.Drawing.Point(7, 269);
-            this.panel4.Name = "panel4";
-            this.panel4.Size = new System.Drawing.Size(427, 55);
-            this.panel4.TabIndex = 18;
             // 
             // tabPage1
             // 
@@ -440,6 +434,34 @@
             this.tabPage4.Text = "Misc";
             this.tabPage4.UseVisualStyleBackColor = true;
             // 
+            // btnLoadParams
+            // 
+            this.btnLoadParams.Location = new System.Drawing.Point(301, 0);
+            this.btnLoadParams.Name = "btnLoadParams";
+            this.btnLoadParams.Size = new System.Drawing.Size(78, 23);
+            this.btnLoadParams.TabIndex = 16;
+            this.btnLoadParams.Text = "Load Params";
+            this.btnLoadParams.UseVisualStyleBackColor = true;
+            // 
+            // btnSaveParams
+            // 
+            this.btnSaveParams.Location = new System.Drawing.Point(385, 0);
+            this.btnSaveParams.Name = "btnSaveParams";
+            this.btnSaveParams.Size = new System.Drawing.Size(78, 23);
+            this.btnSaveParams.TabIndex = 17;
+            this.btnSaveParams.Text = "Save Params";
+            this.btnSaveParams.UseVisualStyleBackColor = true;
+            // 
+            // statusStripMain
+            // 
+            this.statusStripMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripStatusLabel1});
+            this.statusStripMain.Location = new System.Drawing.Point(0, 29);
+            this.statusStripMain.Name = "statusStripMain";
+            this.statusStripMain.Size = new System.Drawing.Size(559, 22);
+            this.statusStripMain.TabIndex = 19;
+            this.statusStripMain.Text = "statusStrip";
+            // 
             // toolStripStatusLabel1
             // 
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
@@ -452,13 +474,13 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(559, 437);
             this.Controls.Add(this.mainSplitContainer);
-            this.Controls.Add(this.mainMenuStrip);
-            this.MainMenuStrip = this.mainMenuStrip;
+            this.Controls.Add(this.menuStripMain);
+            this.MainMenuStrip = this.menuStripMain;
             this.Name = "CometMainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Comet";
-            this.mainMenuStrip.ResumeLayout(false);
-            this.mainMenuStrip.PerformLayout();
+            this.menuStripMain.ResumeLayout(false);
+            this.menuStripMain.PerformLayout();
             this.mainSplitContainer.Panel1.ResumeLayout(false);
             this.mainSplitContainer.Panel2.ResumeLayout(false);
             this.mainSplitContainer.Panel2.PerformLayout();
@@ -467,16 +489,16 @@
             this.cometMainTab.ResumeLayout(false);
             this.inputFilesTabPage.ResumeLayout(false);
             this.inputFilesTabPage.PerformLayout();
-            this.statusStrip1.ResumeLayout(false);
-            this.statusStrip1.PerformLayout();
-            this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
-            this.panel2.ResumeLayout(false);
-            this.panel2.PerformLayout();
-            this.panel3.ResumeLayout(false);
-            this.panel3.PerformLayout();
-            this.panel4.ResumeLayout(false);
-            this.panel4.PerformLayout();
+            this.panelProteinNucleotide.ResumeLayout(false);
+            this.panelProteinNucleotide.PerformLayout();
+            this.panelNucleotideReadingFrame.ResumeLayout(false);
+            this.panelNucleotideReadingFrame.PerformLayout();
+            this.panelTargetDecoy.ResumeLayout(false);
+            this.panelTargetDecoy.PerformLayout();
+            this.panelDecoyPrefix.ResumeLayout(false);
+            this.panelDecoyPrefix.PerformLayout();
+            this.statusStripMain.ResumeLayout(false);
+            this.statusStripMain.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -485,39 +507,41 @@
         #endregion
 
         private System.Windows.Forms.Button btnSearch;
-        private System.Windows.Forms.MenuStrip mainMenuStrip;
+        private System.Windows.Forms.MenuStrip menuStripMain;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemHelp;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.SplitContainer mainSplitContainer;
         private System.Windows.Forms.ListBox inputFilesListBox;
         private System.Windows.Forms.Label inputFilesLabel;
-        private System.Windows.Forms.Button btnRemFile;
-        private System.Windows.Forms.Button btnAddFile;
-        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Button btnRemInputFile;
+        private System.Windows.Forms.Button btnAddInputFile;
+        private System.Windows.Forms.Label protDbLabel;
         private System.Windows.Forms.ComboBox proteomeDbFileCombo;
         private System.Windows.Forms.Button btnBrowseProteomeDbFile;
         private System.Windows.Forms.TabControl cometMainTab;
         private System.Windows.Forms.TabPage inputFilesTabPage;
         private System.Windows.Forms.TabPage enzymeTabPage;
-        private System.Windows.Forms.StatusStrip statusStrip1;
-        private System.Windows.Forms.RadioButton radioButton3;
-        private System.Windows.Forms.RadioButton radioButton2;
-        private System.Windows.Forms.RadioButton radioButton1;
-        private System.Windows.Forms.Panel panel1;
-        private System.Windows.Forms.RadioButton radioButton4;
-        private System.Windows.Forms.RadioButton radioButton5;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.Panel panel2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.ComboBox comboBox1;
-        private System.Windows.Forms.Panel panel4;
-        private System.Windows.Forms.Panel panel3;
+        private System.Windows.Forms.StatusStrip statusStripMain;
+        private System.Windows.Forms.RadioButton radioButtonDecoyTwo;
+        private System.Windows.Forms.RadioButton radioButtonDecoyOne;
+        private System.Windows.Forms.RadioButton radioButtonTarget;
+        private System.Windows.Forms.Panel panelDecoyPrefix;
+        private System.Windows.Forms.RadioButton radioButtonProtein;
+        private System.Windows.Forms.RadioButton radioButtonNucleotide;
+        private System.Windows.Forms.Label labelDecoyPrefix;
+        private System.Windows.Forms.TextBox textBoxDecoyPrefix;
+        private System.Windows.Forms.Panel panelNucleotideReadingFrame;
+        private System.Windows.Forms.Label labelReadingFrame;
+        private System.Windows.Forms.ComboBox comboBoxReadingFrame;
+        private System.Windows.Forms.Panel panelProteinNucleotide;
+        private System.Windows.Forms.Panel panelTargetDecoy;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.TabPage tabPage2;
         private System.Windows.Forms.TabPage tabPage3;
         private System.Windows.Forms.TabPage tabPage4;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
+        private System.Windows.Forms.Button btnSaveParams;
+        private System.Windows.Forms.Button btnLoadParams;
     }
 }
 
