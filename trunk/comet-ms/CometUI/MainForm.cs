@@ -2,17 +2,29 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using CometWrapper;
+using System.Drawing;
 
 namespace CometUI
 {
     public partial class CometMainForm : Form
     {
+        public InputFilesControl InputFilesControl { get; private set; }
+        
         private readonly CometSearchManagerWrapper _searchMgr;
+
         public CometMainForm()
         {
             InitializeComponent();
 
             _searchMgr = new CometSearchManagerWrapper();
+
+            // Create and add wizard pages
+            InputFilesControl = new InputFilesControl()
+            {
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
+                Location = new Point(0, 0)
+            };
+            inputFilesTabPage.Controls.Add(InputFilesControl);
         }
 
         private void BtnTestClick(object sender, EventArgs e)

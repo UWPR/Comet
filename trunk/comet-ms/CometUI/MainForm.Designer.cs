@@ -35,26 +35,6 @@
             this.mainSplitContainer = new System.Windows.Forms.SplitContainer();
             this.cometMainTab = new System.Windows.Forms.TabControl();
             this.inputFilesTabPage = new System.Windows.Forms.TabPage();
-            this.panelProteinNucleotide = new System.Windows.Forms.Panel();
-            this.panelNucleotideReadingFrame = new System.Windows.Forms.Panel();
-            this.comboBoxReadingFrame = new System.Windows.Forms.ComboBox();
-            this.labelReadingFrame = new System.Windows.Forms.Label();
-            this.radioButtonProtein = new System.Windows.Forms.RadioButton();
-            this.radioButtonNucleotide = new System.Windows.Forms.RadioButton();
-            this.panelTargetDecoy = new System.Windows.Forms.Panel();
-            this.radioButtonTarget = new System.Windows.Forms.RadioButton();
-            this.radioButtonDecoyOne = new System.Windows.Forms.RadioButton();
-            this.radioButtonDecoyTwo = new System.Windows.Forms.RadioButton();
-            this.panelDecoyPrefix = new System.Windows.Forms.Panel();
-            this.textBoxDecoyPrefix = new System.Windows.Forms.TextBox();
-            this.labelDecoyPrefix = new System.Windows.Forms.Label();
-            this.protDbLabel = new System.Windows.Forms.Label();
-            this.btnRemInputFile = new System.Windows.Forms.Button();
-            this.btnBrowseProteomeDbFile = new System.Windows.Forms.Button();
-            this.btnAddInputFile = new System.Windows.Forms.Button();
-            this.proteomeDbFileCombo = new System.Windows.Forms.ComboBox();
-            this.inputFilesLabel = new System.Windows.Forms.Label();
-            this.inputFilesListBox = new System.Windows.Forms.ListBox();
             this.enzymeTabPage = new System.Windows.Forms.TabPage();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.tabPage2 = new System.Windows.Forms.TabPage();
@@ -70,11 +50,6 @@
             this.mainSplitContainer.Panel2.SuspendLayout();
             this.mainSplitContainer.SuspendLayout();
             this.cometMainTab.SuspendLayout();
-            this.inputFilesTabPage.SuspendLayout();
-            this.panelProteinNucleotide.SuspendLayout();
-            this.panelNucleotideReadingFrame.SuspendLayout();
-            this.panelTargetDecoy.SuspendLayout();
-            this.panelDecoyPrefix.SuspendLayout();
             this.statusStripMain.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -155,15 +130,6 @@
             // 
             // inputFilesTabPage
             // 
-            this.inputFilesTabPage.Controls.Add(this.panelProteinNucleotide);
-            this.inputFilesTabPage.Controls.Add(this.panelTargetDecoy);
-            this.inputFilesTabPage.Controls.Add(this.protDbLabel);
-            this.inputFilesTabPage.Controls.Add(this.btnRemInputFile);
-            this.inputFilesTabPage.Controls.Add(this.btnBrowseProteomeDbFile);
-            this.inputFilesTabPage.Controls.Add(this.btnAddInputFile);
-            this.inputFilesTabPage.Controls.Add(this.proteomeDbFileCombo);
-            this.inputFilesTabPage.Controls.Add(this.inputFilesLabel);
-            this.inputFilesTabPage.Controls.Add(this.inputFilesListBox);
             this.inputFilesTabPage.Location = new System.Drawing.Point(4, 22);
             this.inputFilesTabPage.Name = "inputFilesTabPage";
             this.inputFilesTabPage.Padding = new System.Windows.Forms.Padding(3);
@@ -171,218 +137,6 @@
             this.inputFilesTabPage.TabIndex = 0;
             this.inputFilesTabPage.Text = "Input Files";
             this.inputFilesTabPage.UseVisualStyleBackColor = true;
-            // 
-            // panelProteinNucleotide
-            // 
-            this.panelProteinNucleotide.Controls.Add(this.panelNucleotideReadingFrame);
-            this.panelProteinNucleotide.Controls.Add(this.radioButtonProtein);
-            this.panelProteinNucleotide.Controls.Add(this.radioButtonNucleotide);
-            this.panelProteinNucleotide.Location = new System.Drawing.Point(7, 269);
-            this.panelProteinNucleotide.Name = "panelProteinNucleotide";
-            this.panelProteinNucleotide.Size = new System.Drawing.Size(427, 55);
-            this.panelProteinNucleotide.TabIndex = 11;
-            // 
-            // panelNucleotideReadingFrame
-            // 
-            this.panelNucleotideReadingFrame.Controls.Add(this.comboBoxReadingFrame);
-            this.panelNucleotideReadingFrame.Controls.Add(this.labelReadingFrame);
-            this.panelNucleotideReadingFrame.Location = new System.Drawing.Point(77, 22);
-            this.panelNucleotideReadingFrame.Name = "panelNucleotideReadingFrame";
-            this.panelNucleotideReadingFrame.Size = new System.Drawing.Size(195, 28);
-            this.panelNucleotideReadingFrame.TabIndex = 14;
-            // 
-            // comboBoxReadingFrame
-            // 
-            this.comboBoxReadingFrame.FormattingEnabled = true;
-            this.comboBoxReadingFrame.Items.AddRange(new object[] {
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9"});
-            this.comboBoxReadingFrame.Location = new System.Drawing.Point(88, 3);
-            this.comboBoxReadingFrame.Name = "comboBoxReadingFrame";
-            this.comboBoxReadingFrame.Size = new System.Drawing.Size(62, 21);
-            this.comboBoxReadingFrame.TabIndex = 15;
-            // 
-            // labelReadingFrame
-            // 
-            this.labelReadingFrame.AutoSize = true;
-            this.labelReadingFrame.Location = new System.Drawing.Point(4, 6);
-            this.labelReadingFrame.Name = "labelReadingFrame";
-            this.labelReadingFrame.Size = new System.Drawing.Size(82, 13);
-            this.labelReadingFrame.TabIndex = 0;
-            this.labelReadingFrame.Text = "Reading Frame:";
-            // 
-            // radioButtonProtein
-            // 
-            this.radioButtonProtein.AutoSize = true;
-            this.radioButtonProtein.Location = new System.Drawing.Point(3, 4);
-            this.radioButtonProtein.Name = "radioButtonProtein";
-            this.radioButtonProtein.Size = new System.Drawing.Size(58, 17);
-            this.radioButtonProtein.TabIndex = 12;
-            this.radioButtonProtein.TabStop = true;
-            this.radioButtonProtein.Text = "Protein";
-            this.radioButtonProtein.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonNucleotide
-            // 
-            this.radioButtonNucleotide.AutoSize = true;
-            this.radioButtonNucleotide.Location = new System.Drawing.Point(65, 4);
-            this.radioButtonNucleotide.Name = "radioButtonNucleotide";
-            this.radioButtonNucleotide.Size = new System.Drawing.Size(76, 17);
-            this.radioButtonNucleotide.TabIndex = 13;
-            this.radioButtonNucleotide.TabStop = true;
-            this.radioButtonNucleotide.Text = "Nucleotide";
-            this.radioButtonNucleotide.UseVisualStyleBackColor = true;
-            // 
-            // panelTargetDecoy
-            // 
-            this.panelTargetDecoy.Controls.Add(this.radioButtonTarget);
-            this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyOne);
-            this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyTwo);
-            this.panelTargetDecoy.Controls.Add(this.panelDecoyPrefix);
-            this.panelTargetDecoy.Location = new System.Drawing.Point(7, 217);
-            this.panelTargetDecoy.Name = "panelTargetDecoy";
-            this.panelTargetDecoy.Size = new System.Drawing.Size(427, 51);
-            this.panelTargetDecoy.TabIndex = 5;
-            // 
-            // radioButtonTarget
-            // 
-            this.radioButtonTarget.AutoSize = true;
-            this.radioButtonTarget.Location = new System.Drawing.Point(4, 3);
-            this.radioButtonTarget.Name = "radioButtonTarget";
-            this.radioButtonTarget.Size = new System.Drawing.Size(56, 17);
-            this.radioButtonTarget.TabIndex = 6;
-            this.radioButtonTarget.TabStop = true;
-            this.radioButtonTarget.Text = "Target";
-            this.radioButtonTarget.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonDecoyOne
-            // 
-            this.radioButtonDecoyOne.AutoSize = true;
-            this.radioButtonDecoyOne.Location = new System.Drawing.Point(66, 3);
-            this.radioButtonDecoyOne.Name = "radioButtonDecoyOne";
-            this.radioButtonDecoyOne.Size = new System.Drawing.Size(65, 17);
-            this.radioButtonDecoyOne.TabIndex = 7;
-            this.radioButtonDecoyOne.TabStop = true;
-            this.radioButtonDecoyOne.Text = "Decoy 1";
-            this.radioButtonDecoyOne.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonDecoyTwo
-            // 
-            this.radioButtonDecoyTwo.AutoSize = true;
-            this.radioButtonDecoyTwo.Location = new System.Drawing.Point(137, 3);
-            this.radioButtonDecoyTwo.Name = "radioButtonDecoyTwo";
-            this.radioButtonDecoyTwo.Size = new System.Drawing.Size(65, 17);
-            this.radioButtonDecoyTwo.TabIndex = 12;
-            this.radioButtonDecoyTwo.TabStop = true;
-            this.radioButtonDecoyTwo.Text = "Decoy 2";
-            this.radioButtonDecoyTwo.UseVisualStyleBackColor = true;
-            // 
-            // panelDecoyPrefix
-            // 
-            this.panelDecoyPrefix.Controls.Add(this.textBoxDecoyPrefix);
-            this.panelDecoyPrefix.Controls.Add(this.labelDecoyPrefix);
-            this.panelDecoyPrefix.Location = new System.Drawing.Point(77, 21);
-            this.panelDecoyPrefix.Name = "panelDecoyPrefix";
-            this.panelDecoyPrefix.Size = new System.Drawing.Size(195, 28);
-            this.panelDecoyPrefix.TabIndex = 9;
-            // 
-            // textBoxDecoyPrefix
-            // 
-            this.textBoxDecoyPrefix.Location = new System.Drawing.Point(76, 3);
-            this.textBoxDecoyPrefix.Name = "textBoxDecoyPrefix";
-            this.textBoxDecoyPrefix.Size = new System.Drawing.Size(74, 20);
-            this.textBoxDecoyPrefix.TabIndex = 10;
-            this.textBoxDecoyPrefix.Text = "DECOY_";
-            // 
-            // labelDecoyPrefix
-            // 
-            this.labelDecoyPrefix.AutoSize = true;
-            this.labelDecoyPrefix.Location = new System.Drawing.Point(4, 6);
-            this.labelDecoyPrefix.Name = "labelDecoyPrefix";
-            this.labelDecoyPrefix.Size = new System.Drawing.Size(70, 13);
-            this.labelDecoyPrefix.TabIndex = 0;
-            this.labelDecoyPrefix.Text = "Decoy Prefix:";
-            // 
-            // protDbLabel
-            // 
-            this.protDbLabel.AutoSize = true;
-            this.protDbLabel.Location = new System.Drawing.Point(7, 174);
-            this.protDbLabel.Name = "protDbLabel";
-            this.protDbLabel.Size = new System.Drawing.Size(139, 13);
-            this.protDbLabel.TabIndex = 8;
-            this.protDbLabel.Text = "&Proteome Database (.fasta):";
-            // 
-            // btnRemInputFile
-            // 
-            this.btnRemInputFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnRemInputFile.Enabled = false;
-            this.btnRemInputFile.Location = new System.Drawing.Point(440, 56);
-            this.btnRemInputFile.Name = "btnRemInputFile";
-            this.btnRemInputFile.Size = new System.Drawing.Size(75, 23);
-            this.btnRemInputFile.TabIndex = 2;
-            this.btnRemInputFile.Text = "&Remove";
-            this.btnRemInputFile.UseVisualStyleBackColor = true;
-            // 
-            // btnBrowseProteomeDbFile
-            // 
-            this.btnBrowseProteomeDbFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowseProteomeDbFile.Enabled = false;
-            this.btnBrowseProteomeDbFile.Location = new System.Drawing.Point(440, 189);
-            this.btnBrowseProteomeDbFile.Name = "btnBrowseProteomeDbFile";
-            this.btnBrowseProteomeDbFile.Size = new System.Drawing.Size(75, 23);
-            this.btnBrowseProteomeDbFile.TabIndex = 4;
-            this.btnBrowseProteomeDbFile.Text = "&Browse";
-            this.btnBrowseProteomeDbFile.UseVisualStyleBackColor = true;
-            // 
-            // btnAddInputFile
-            // 
-            this.btnAddInputFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnAddInputFile.Location = new System.Drawing.Point(440, 27);
-            this.btnAddInputFile.Name = "btnAddInputFile";
-            this.btnAddInputFile.Size = new System.Drawing.Size(75, 23);
-            this.btnAddInputFile.TabIndex = 1;
-            this.btnAddInputFile.Text = "&Add...";
-            this.btnAddInputFile.UseVisualStyleBackColor = true;
-            // 
-            // proteomeDbFileCombo
-            // 
-            this.proteomeDbFileCombo.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.proteomeDbFileCombo.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest;
-            this.proteomeDbFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
-            this.proteomeDbFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
-            this.proteomeDbFileCombo.FormattingEnabled = true;
-            this.proteomeDbFileCombo.Location = new System.Drawing.Point(7, 190);
-            this.proteomeDbFileCombo.Name = "proteomeDbFileCombo";
-            this.proteomeDbFileCombo.Size = new System.Drawing.Size(427, 23);
-            this.proteomeDbFileCombo.TabIndex = 3;
-            // 
-            // inputFilesLabel
-            // 
-            this.inputFilesLabel.AutoSize = true;
-            this.inputFilesLabel.Location = new System.Drawing.Point(7, 11);
-            this.inputFilesLabel.Name = "inputFilesLabel";
-            this.inputFilesLabel.Size = new System.Drawing.Size(58, 13);
-            this.inputFilesLabel.TabIndex = 1;
-            this.inputFilesLabel.Text = "&Input Files:";
-            // 
-            // inputFilesListBox
-            // 
-            this.inputFilesListBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.inputFilesListBox.FormattingEnabled = true;
-            this.inputFilesListBox.Location = new System.Drawing.Point(7, 27);
-            this.inputFilesListBox.Name = "inputFilesListBox";
-            this.inputFilesListBox.Size = new System.Drawing.Size(427, 121);
-            this.inputFilesListBox.TabIndex = 0;
             // 
             // enzymeTabPage
             // 
@@ -489,16 +243,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).EndInit();
             this.mainSplitContainer.ResumeLayout(false);
             this.cometMainTab.ResumeLayout(false);
-            this.inputFilesTabPage.ResumeLayout(false);
-            this.inputFilesTabPage.PerformLayout();
-            this.panelProteinNucleotide.ResumeLayout(false);
-            this.panelProteinNucleotide.PerformLayout();
-            this.panelNucleotideReadingFrame.ResumeLayout(false);
-            this.panelNucleotideReadingFrame.PerformLayout();
-            this.panelTargetDecoy.ResumeLayout(false);
-            this.panelTargetDecoy.PerformLayout();
-            this.panelDecoyPrefix.ResumeLayout(false);
-            this.panelDecoyPrefix.PerformLayout();
             this.statusStripMain.ResumeLayout(false);
             this.statusStripMain.PerformLayout();
             this.ResumeLayout(false);
@@ -513,30 +257,10 @@
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemHelp;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.SplitContainer mainSplitContainer;
-        private System.Windows.Forms.ListBox inputFilesListBox;
-        private System.Windows.Forms.Label inputFilesLabel;
-        private System.Windows.Forms.Button btnRemInputFile;
-        private System.Windows.Forms.Button btnAddInputFile;
-        private System.Windows.Forms.Label protDbLabel;
-        private System.Windows.Forms.ComboBox proteomeDbFileCombo;
-        private System.Windows.Forms.Button btnBrowseProteomeDbFile;
         private System.Windows.Forms.TabControl cometMainTab;
         private System.Windows.Forms.TabPage inputFilesTabPage;
         private System.Windows.Forms.TabPage enzymeTabPage;
         private System.Windows.Forms.StatusStrip statusStripMain;
-        private System.Windows.Forms.RadioButton radioButtonDecoyTwo;
-        private System.Windows.Forms.RadioButton radioButtonDecoyOne;
-        private System.Windows.Forms.RadioButton radioButtonTarget;
-        private System.Windows.Forms.Panel panelDecoyPrefix;
-        private System.Windows.Forms.RadioButton radioButtonProtein;
-        private System.Windows.Forms.RadioButton radioButtonNucleotide;
-        private System.Windows.Forms.Label labelDecoyPrefix;
-        private System.Windows.Forms.TextBox textBoxDecoyPrefix;
-        private System.Windows.Forms.Panel panelNucleotideReadingFrame;
-        private System.Windows.Forms.Label labelReadingFrame;
-        private System.Windows.Forms.ComboBox comboBoxReadingFrame;
-        private System.Windows.Forms.Panel panelProteinNucleotide;
-        private System.Windows.Forms.Panel panelTargetDecoy;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.TabPage tabPage2;
         private System.Windows.Forms.TabPage tabPage3;
