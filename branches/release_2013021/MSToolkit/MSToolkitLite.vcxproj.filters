@@ -45,19 +45,10 @@
     <ClCompile Include="src\mzParser\Czran.cpp">
       <Filter>Source Files\mzParser</Filter>
     </ClCompile>
-    <ClCompile Include="src\mzParser\mz5handler.cpp">
-      <Filter>Source Files\mzParser</Filter>
-    </ClCompile>
     <ClCompile Include="src\mzParser\mzp_base64.cpp">
       <Filter>Source Files\mzParser</Filter>
     </ClCompile>
     <ClCompile Include="src\mzParser\mzParser.cpp">
-      <Filter>Source Files\mzParser</Filter>
-    </ClCompile>
-    <ClCompile Include="src\mzParser\mzpMz5Config.cpp">
-      <Filter>Source Files\mzParser</Filter>
-    </ClCompile>
-    <ClCompile Include="src\mzParser\mzpMz5Structs.cpp">
       <Filter>Source Files\mzParser</Filter>
     </ClCompile>
     <ClCompile Include="src\mzParser\PWIZface.cpp">
@@ -189,9 +180,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Spectrum.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\sqlite3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\trees.h">
