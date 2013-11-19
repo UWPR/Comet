@@ -78,15 +78,14 @@ void CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-   fprintf(fpout, " <?xml-stylesheet type=\"text/xsl\" href=\"http://localhost/tpp/schema/pepXML_std.xsl\"?>\n");
    
    fprintf(fpout, " <msms_pipeline_analysis date=\"%s\" ", szDate);
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v117.xsd\" ");
    fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", resolvedPathBaseName);
-   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", resolvedPathBaseName);
 
+   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", resolvedPathBaseName);
    fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
    fprintf(fpout, "msModel=\"%s\" ", szModel);
 
