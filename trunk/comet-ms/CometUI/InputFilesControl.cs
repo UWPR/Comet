@@ -15,6 +15,9 @@ namespace CometUI
             InitializeComponent();
 
             Parent = parent;
+
+            // This needs to come from the default settings eventually
+            comboBoxReadingFrame.SelectedIndex = 0;
         }
 
         private string[] _inputFiles = new string[0];
@@ -213,6 +216,21 @@ namespace CometUI
             }
 
             return null;
+        }
+
+        private void RadioButtonDecoyOneCheckedChanged(object sender, EventArgs e)
+        {
+            panelDecoyPrefix.Enabled = radioButtonDecoyOne.Checked;
+        }
+
+        private void RadioButtonDecoyTwoCheckedChanged(object sender, EventArgs e)
+        {
+            panelDecoyPrefix.Enabled = radioButtonDecoyTwo.Checked;
+        }
+
+        private void RadioButtonNucleotideCheckedChanged(object sender, EventArgs e)
+        {
+            panelNucleotideReadingFrame.Enabled = radioButtonNucleotide.Checked;
         }
     }
 }

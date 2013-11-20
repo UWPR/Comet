@@ -58,7 +58,8 @@
             // 
             this.panelNucleotideReadingFrame.Controls.Add(this.comboBoxReadingFrame);
             this.panelNucleotideReadingFrame.Controls.Add(this.labelReadingFrame);
-            this.panelNucleotideReadingFrame.Location = new System.Drawing.Point(77, 22);
+            this.panelNucleotideReadingFrame.Enabled = false;
+            this.panelNucleotideReadingFrame.Location = new System.Drawing.Point(77, 23);
             this.panelNucleotideReadingFrame.Name = "panelNucleotideReadingFrame";
             this.panelNucleotideReadingFrame.Size = new System.Drawing.Size(195, 28);
             this.panelNucleotideReadingFrame.TabIndex = 14;
@@ -119,6 +120,7 @@
             // radioButtonProtein
             // 
             this.radioButtonProtein.AutoSize = true;
+            this.radioButtonProtein.Checked = true;
             this.radioButtonProtein.Location = new System.Drawing.Point(3, 4);
             this.radioButtonProtein.Name = "radioButtonProtein";
             this.radioButtonProtein.Size = new System.Drawing.Size(58, 17);
@@ -137,10 +139,12 @@
             this.radioButtonNucleotide.TabStop = true;
             this.radioButtonNucleotide.Text = "Nucleotide";
             this.radioButtonNucleotide.UseVisualStyleBackColor = true;
+            this.radioButtonNucleotide.CheckedChanged += new System.EventHandler(this.RadioButtonNucleotideCheckedChanged);
             // 
             // radioButtonTarget
             // 
             this.radioButtonTarget.AutoSize = true;
+            this.radioButtonTarget.Checked = true;
             this.radioButtonTarget.Location = new System.Drawing.Point(4, 3);
             this.radioButtonTarget.Name = "radioButtonTarget";
             this.radioButtonTarget.Size = new System.Drawing.Size(56, 17);
@@ -156,16 +160,17 @@
             this.panelProteinNucleotide.Controls.Add(this.panelNucleotideReadingFrame);
             this.panelProteinNucleotide.Controls.Add(this.radioButtonProtein);
             this.panelProteinNucleotide.Controls.Add(this.radioButtonNucleotide);
-            this.panelProteinNucleotide.Location = new System.Drawing.Point(9, 267);
+            this.panelProteinNucleotide.Location = new System.Drawing.Point(9, 266);
             this.panelProteinNucleotide.Name = "panelProteinNucleotide";
-            this.panelProteinNucleotide.Size = new System.Drawing.Size(427, 55);
+            this.panelProteinNucleotide.Size = new System.Drawing.Size(427, 53);
             this.panelProteinNucleotide.TabIndex = 20;
             // 
             // panelDecoyPrefix
             // 
             this.panelDecoyPrefix.Controls.Add(this.textBoxDecoyPrefix);
             this.panelDecoyPrefix.Controls.Add(this.labelDecoyPrefix);
-            this.panelDecoyPrefix.Location = new System.Drawing.Point(77, 21);
+            this.panelDecoyPrefix.Enabled = false;
+            this.panelDecoyPrefix.Location = new System.Drawing.Point(77, 22);
             this.panelDecoyPrefix.Name = "panelDecoyPrefix";
             this.panelDecoyPrefix.Size = new System.Drawing.Size(195, 28);
             this.panelDecoyPrefix.TabIndex = 9;
@@ -178,9 +183,9 @@
             this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyOne);
             this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyTwo);
             this.panelTargetDecoy.Controls.Add(this.panelDecoyPrefix);
-            this.panelTargetDecoy.Location = new System.Drawing.Point(9, 215);
+            this.panelTargetDecoy.Location = new System.Drawing.Point(9, 214);
             this.panelTargetDecoy.Name = "panelTargetDecoy";
-            this.panelTargetDecoy.Size = new System.Drawing.Size(427, 51);
+            this.panelTargetDecoy.Size = new System.Drawing.Size(427, 52);
             this.panelTargetDecoy.TabIndex = 18;
             // 
             // radioButtonDecoyOne
@@ -190,9 +195,9 @@
             this.radioButtonDecoyOne.Name = "radioButtonDecoyOne";
             this.radioButtonDecoyOne.Size = new System.Drawing.Size(65, 17);
             this.radioButtonDecoyOne.TabIndex = 7;
-            this.radioButtonDecoyOne.TabStop = true;
             this.radioButtonDecoyOne.Text = "Decoy 1";
             this.radioButtonDecoyOne.UseVisualStyleBackColor = true;
+            this.radioButtonDecoyOne.CheckedChanged += new System.EventHandler(this.RadioButtonDecoyOneCheckedChanged);
             // 
             // radioButtonDecoyTwo
             // 
@@ -204,6 +209,7 @@
             this.radioButtonDecoyTwo.TabStop = true;
             this.radioButtonDecoyTwo.Text = "Decoy 2";
             this.radioButtonDecoyTwo.UseVisualStyleBackColor = true;
+            this.radioButtonDecoyTwo.CheckedChanged += new System.EventHandler(this.RadioButtonDecoyTwoCheckedChanged);
             // 
             // protDbLabel
             // 
