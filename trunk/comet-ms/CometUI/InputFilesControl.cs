@@ -10,8 +10,6 @@ namespace CometUI
     {
         private new Form  Parent { get; set; }
 
-        private string[] _inputFiles = new string[0];
-
         public InputFilesControl(Form parent)
         {
             InitializeComponent();
@@ -19,7 +17,8 @@ namespace CometUI
             Parent = parent;
         }
 
-        private string[] InputFiles
+        private string[] _inputFiles = new string[0];
+        public string[] InputFiles
         {
             get { return _inputFiles; }
 
@@ -55,19 +54,24 @@ namespace CometUI
             }
         }
 
-        private static bool IsValidInputFile(string fileName)
+        public string DatabaseFile 
         {
-            var extension = Path.GetExtension(fileName);
-            if (extension != null)
-            {
-                string fileExt = extension.ToLower();
-                return File.Exists(fileName) &&
-                       (fileExt == ".mzxml" || fileExt == ".mzml" || fileExt == ".ms2" || fileExt == ".cms2");
-            }
-            return false;
+            get { return proteomeDbFileCombo.Text; }
+
+            set { proteomeDbFileCombo.Text = value; }
         }
 
-        public static string[] ShowAddFile(Form parent)
+        private void BtnAddInputFileClick(object sender, EventArgs e)
+        {
+            IEnumerable<string> addFiles = ShowAddInputFile();
+            if (addFiles != null)
+            {
+                string[] addValidFiles = AddInputFiles(Parent, InputFiles, addFiles);
+                AddInputFiles(addValidFiles);
+            }
+        }
+
+        private static IEnumerable<string> ShowAddInputFile()
         {
             String filter = "Search Input Files (*.mzXML, *.mzML, *.ms2, *.cms2)|*.mzXML;*.mzML;*.ms2;*.cms2|All Files (*.*)|*.*";
             OpenFileDialog fdlg = new OpenFileDialog
@@ -86,16 +90,6 @@ namespace CometUI
             }
 
             return null;
-        }
-
-        private void BtnAddInputFileClick(object sender, EventArgs e)
-        {
-            string[] addFiles = ShowAddFile(Parent);
-            if (addFiles != null)
-            {
-                string[] addValidFiles = AddInputFiles(Parent, InputFiles, addFiles);
-                AddInputFiles(addValidFiles);
-            }
         }
 
         private void AddInputFiles(IEnumerable<string> inputFiles)
@@ -147,6 +141,18 @@ namespace CometUI
             return filesNew.ToArray();
         }
 
+        private static bool IsValidInputFile(string fileName)
+        {
+            var extension = Path.GetExtension(fileName);
+            if (extension != null)
+            {
+                string fileExt = extension.ToLower();
+                return File.Exists(fileName) &&
+                       (fileExt == ".mzxml" || fileExt == ".mzml" || fileExt == ".ms2" || fileExt == ".cms2");
+            }
+            return false;
+        }
+
         private void BtnRemInputFileClick(object sender, EventArgs e)
         {
             RemoveFiles();
@@ -179,5 +185,34 @@ namespace CometUI
             btnRemInputFile.Enabled = checkedItemsCount > 0;
         }
 
+        private void BtnBrowseProteomeDbFileClick(object sender, EventArgs e)
+        {
+            string databaseFile = ShowOpenDatabaseFile();
+            if (null != databaseFile)
+            {
+                DatabaseFile = databaseFile;
+            }
+        }
+
+        private static string ShowOpenDatabaseFile()
+        {
+            String filter = "All Files (*.*)|*.*";
+            OpenFileDialog fdlg = new OpenFileDialog
+            {
+                Title = "Open Proteome Database File",
+                InitialDirectory = @".",
+                Filter = filter,
+                FilterIndex = 1,
+                Multiselect = false,
+                RestoreDirectory = true
+            };
+
+            if (fdlg.ShowDialog() == DialogResult.OK)
+            {
+                return fdlg.FileName;
+            }
+
+            return null;
+        }
     }
 }

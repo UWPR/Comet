@@ -241,13 +241,13 @@
             // btnBrowseProteomeDbFile
             // 
             this.btnBrowseProteomeDbFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowseProteomeDbFile.Enabled = false;
             this.btnBrowseProteomeDbFile.Location = new System.Drawing.Point(442, 187);
             this.btnBrowseProteomeDbFile.Name = "btnBrowseProteomeDbFile";
             this.btnBrowseProteomeDbFile.Size = new System.Drawing.Size(75, 23);
             this.btnBrowseProteomeDbFile.TabIndex = 17;
             this.btnBrowseProteomeDbFile.Text = "&Browse";
             this.btnBrowseProteomeDbFile.UseVisualStyleBackColor = true;
+            this.btnBrowseProteomeDbFile.Click += new System.EventHandler(this.BtnBrowseProteomeDbFileClick);
             // 
             // proteomeDbFileCombo
             // 
