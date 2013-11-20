@@ -232,6 +232,7 @@
             this.Controls.Add(this.mainSplitContainer);
             this.Controls.Add(this.menuStripMain);
             this.MainMenuStrip = this.menuStripMain;
+            this.MinimumSize = new System.Drawing.Size(575, 475);
             this.Name = "CometMainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Comet";

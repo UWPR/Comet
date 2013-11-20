@@ -19,7 +19,7 @@ namespace CometUI
             _searchMgr = new CometSearchManagerWrapper();
 
             // Create and add wizard pages
-            InputFilesControl = new InputFilesControl()
+            InputFilesControl = new InputFilesControl(this)
             {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
                 Location = new Point(0, 0)

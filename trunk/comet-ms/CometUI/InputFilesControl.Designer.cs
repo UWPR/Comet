@@ -47,7 +47,7 @@
             this.btnRemInputFile = new System.Windows.Forms.Button();
             this.btnBrowseProteomeDbFile = new System.Windows.Forms.Button();
             this.proteomeDbFileCombo = new System.Windows.Forms.ComboBox();
-            this.inputFilesListBox = new System.Windows.Forms.ListBox();
+            this.inputFilesList = new System.Windows.Forms.CheckedListBox();
             this.panelNucleotideReadingFrame.SuspendLayout();
             this.panelProteinNucleotide.SuspendLayout();
             this.panelDecoyPrefix.SuspendLayout();
@@ -151,6 +151,8 @@
             // 
             // panelProteinNucleotide
             // 
+            this.panelProteinNucleotide.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.panelProteinNucleotide.Controls.Add(this.panelNucleotideReadingFrame);
             this.panelProteinNucleotide.Controls.Add(this.radioButtonProtein);
             this.panelProteinNucleotide.Controls.Add(this.radioButtonNucleotide);
@@ -170,6 +172,8 @@
             // 
             // panelTargetDecoy
             // 
+            this.panelTargetDecoy.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.panelTargetDecoy.Controls.Add(this.radioButtonTarget);
             this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyOne);
             this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyTwo);
@@ -203,6 +207,7 @@
             // 
             // protDbLabel
             // 
+            this.protDbLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.protDbLabel.AutoSize = true;
             this.protDbLabel.Location = new System.Drawing.Point(9, 172);
             this.protDbLabel.Name = "protDbLabel";
@@ -219,6 +224,7 @@
             this.btnAddInputFile.TabIndex = 13;
             this.btnAddInputFile.Text = "&Add...";
             this.btnAddInputFile.UseVisualStyleBackColor = true;
+            this.btnAddInputFile.Click += new System.EventHandler(this.BtnAddInputFileClick);
             // 
             // btnRemInputFile
             // 
@@ -230,10 +236,11 @@
             this.btnRemInputFile.TabIndex = 15;
             this.btnRemInputFile.Text = "&Remove";
             this.btnRemInputFile.UseVisualStyleBackColor = true;
+            this.btnRemInputFile.Click += new System.EventHandler(this.BtnRemInputFileClick);
             // 
             // btnBrowseProteomeDbFile
             // 
-            this.btnBrowseProteomeDbFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnBrowseProteomeDbFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnBrowseProteomeDbFile.Enabled = false;
             this.btnBrowseProteomeDbFile.Location = new System.Drawing.Point(442, 187);
             this.btnBrowseProteomeDbFile.Name = "btnBrowseProteomeDbFile";
@@ -244,8 +251,7 @@
             // 
             // proteomeDbFileCombo
             // 
-            this.proteomeDbFileCombo.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.proteomeDbFileCombo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.proteomeDbFileCombo.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest;
             this.proteomeDbFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
@@ -256,21 +262,26 @@
             this.proteomeDbFileCombo.Size = new System.Drawing.Size(427, 23);
             this.proteomeDbFileCombo.TabIndex = 16;
             // 
-            // inputFilesListBox
+            // inputFilesList
             // 
-            this.inputFilesListBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.inputFilesList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.inputFilesListBox.FormattingEnabled = true;
-            this.inputFilesListBox.Location = new System.Drawing.Point(9, 25);
-            this.inputFilesListBox.Name = "inputFilesListBox";
-            this.inputFilesListBox.Size = new System.Drawing.Size(427, 121);
-            this.inputFilesListBox.TabIndex = 12;
+            this.inputFilesList.CheckOnClick = true;
+            this.inputFilesList.FormattingEnabled = true;
+            this.inputFilesList.HorizontalScrollbar = true;
+            this.inputFilesList.Location = new System.Drawing.Point(9, 25);
+            this.inputFilesList.Name = "inputFilesList";
+            this.inputFilesList.Size = new System.Drawing.Size(427, 124);
+            this.inputFilesList.TabIndex = 12;
+            this.inputFilesList.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.InputFilesListItemCheck);
             // 
             // InputFilesControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.Transparent;
+            this.Controls.Add(this.inputFilesList);
             this.Controls.Add(this.inputFilesLabel);
             this.Controls.Add(this.panelProteinNucleotide);
             this.Controls.Add(this.panelTargetDecoy);
@@ -279,7 +290,6 @@
             this.Controls.Add(this.btnRemInputFile);
             this.Controls.Add(this.btnBrowseProteomeDbFile);
             this.Controls.Add(this.proteomeDbFileCombo);
-            this.Controls.Add(this.inputFilesListBox);
             this.Name = "InputFilesControl";
             this.Size = new System.Drawing.Size(527, 330);
             this.panelNucleotideReadingFrame.ResumeLayout(false);
@@ -316,6 +326,6 @@
         private System.Windows.Forms.Button btnRemInputFile;
         private System.Windows.Forms.Button btnBrowseProteomeDbFile;
         private System.Windows.Forms.ComboBox proteomeDbFileCombo;
-        private System.Windows.Forms.ListBox inputFilesListBox;
+        private System.Windows.Forms.CheckedListBox inputFilesList;
     }
 }
