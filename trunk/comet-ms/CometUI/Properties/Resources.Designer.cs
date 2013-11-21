@@ -63,9 +63,36 @@ namespace CometUI.Properties {
         /// <summary>
         ///   Looks up a localized string similar to Error.
         /// </summary>
+        internal static string CometUI_Title_Error {
+            get {
+                return ResourceManager.GetString("CometUI_Title_Error", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error.
+        /// </summary>
         internal static string InputFilesControl_AddInputFiles_Error {
             get {
                 return ResourceManager.GetString("InputFilesControl_AddInputFiles_Error", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open Input File.
+        /// </summary>
+        internal static string InputFilesControl_ShowAddInputFile_Open_Input_File {
+            get {
+                return ResourceManager.GetString("InputFilesControl_ShowAddInputFile_Open_Input_File", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open Proteome Database File.
+        /// </summary>
+        internal static string InputFilesControl_ShowOpenDatabaseFile_Open_Proteome_Database_File {
+            get {
+                return ResourceManager.GetString("InputFilesControl_ShowOpenDatabaseFile_Open_Proteome_Database_File", resourceCulture);
             }
         }
     }

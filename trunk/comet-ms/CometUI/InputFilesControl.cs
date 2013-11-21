@@ -1,13 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using System.IO;
+using CometUI.Properties;
 
 namespace CometUI
 {
     public partial class InputFilesControl : UserControl
     {
+        private enum SearchType
+        {
+            SearchTypeTarget = 0,
+            SearchTypeDecoyOne,
+            SearchTypeDecoyTwo
+            
+        }
         private new Form  Parent { get; set; }
 
         public InputFilesControl(Form parent)
@@ -16,8 +25,35 @@ namespace CometUI
 
             Parent = parent;
 
-            // This needs to come from the default settings eventually
-            comboBoxReadingFrame.SelectedIndex = 0;
+            InitializeFromDefaultSettings();
+        }
+
+        private void InitializeFromDefaultSettings()
+        {
+            comboBoxReadingFrame.Text = Settings.Default.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
+            if (Settings.Default.IsProteinDB)
+            {
+                radioButtonProtein.Checked = true;
+            }
+            else
+            {
+                radioButtonNucleotide.Checked = true;
+            }
+
+            switch ((SearchType)Settings.Default.SearchType)
+            {
+                case SearchType.SearchTypeDecoyOne:
+                    radioButtonDecoyOne.Checked = true;
+                    break;
+                case SearchType.SearchTypeDecoyTwo:
+                    radioButtonDecoyTwo.Checked = true;
+                    break;
+                default:
+                    radioButtonTarget.Checked = true;
+                    break;
+            }
+
+            textBoxDecoyPrefix.Text = Settings.Default.DecoyPrefix;
         }
 
         private string[] _inputFiles = new string[0];
@@ -76,10 +112,10 @@ namespace CometUI
 
         private static IEnumerable<string> ShowAddInputFile()
         {
-            String filter = "Search Input Files (*.mzXML, *.mzML, *.ms2, *.cms2)|*.mzXML;*.mzML;*.ms2;*.cms2|All Files (*.*)|*.*";
-            OpenFileDialog fdlg = new OpenFileDialog
+            const string filter = "Search Input Files (*.mzXML, *.mzML, *.ms2, *.cms2)|*.mzXML;*.mzML;*.ms2;*.cms2|All Files (*.*)|*.*";
+            var fdlg = new OpenFileDialog
             {
-                Title = "Open Input File",
+                Title = Resources.InputFilesControl_ShowAddInputFile_Open_Input_File,
                 InitialDirectory = @".",
                 Filter = filter,
                 FilterIndex = 1,
@@ -138,7 +174,7 @@ namespace CometUI
                                                   filesError[filesError.Count - 1]);
                 }
             
-                MessageBox.Show(errorMessage, "Error", MessageBoxButtons.OKCancel);
+                MessageBox.Show(errorMessage, Resources.CometUI_Title_Error, MessageBoxButtons.OKCancel);
             }
 
             return filesNew.ToArray();
@@ -199,10 +235,10 @@ namespace CometUI
 
         private static string ShowOpenDatabaseFile()
         {
-            String filter = "All Files (*.*)|*.*";
-            OpenFileDialog fdlg = new OpenFileDialog
+            const string filter = "All Files (*.*)|*.*";
+            var fdlg = new OpenFileDialog
             {
-                Title = "Open Proteome Database File",
+                Title = Resources.InputFilesControl_ShowOpenDatabaseFile_Open_Proteome_Database_File,
                 InitialDirectory = @".",
                 Filter = filter,
                 FilterIndex = 1,

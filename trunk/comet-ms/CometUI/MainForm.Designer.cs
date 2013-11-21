@@ -30,6 +30,9 @@
         {
             this.btnSearch = new System.Windows.Forms.Button();
             this.menuStripMain = new System.Windows.Forms.MenuStrip();
+            this.toolStripMenuItemSettings = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveAsDefaultToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.exportToFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItemHelp = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainSplitContainer = new System.Windows.Forms.SplitContainer();
@@ -40,10 +43,9 @@
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.tabPage4 = new System.Windows.Forms.TabPage();
-            this.btnLoadParams = new System.Windows.Forms.Button();
-            this.btnSaveParams = new System.Windows.Forms.Button();
             this.statusStripMain = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.importFromFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStripMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).BeginInit();
             this.mainSplitContainer.Panel1.SuspendLayout();
@@ -62,17 +64,40 @@
             this.btnSearch.TabIndex = 18;
             this.btnSearch.Text = "Search";
             this.btnSearch.UseVisualStyleBackColor = true;
-            this.btnSearch.Click += new System.EventHandler(this.BtnTestClick);
+            this.btnSearch.Click += new System.EventHandler(this.BtnSearchClick);
             // 
             // menuStripMain
             // 
             this.menuStripMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripMenuItemSettings,
             this.toolStripMenuItemHelp});
             this.menuStripMain.Location = new System.Drawing.Point(0, 0);
             this.menuStripMain.Name = "menuStripMain";
             this.menuStripMain.Size = new System.Drawing.Size(559, 24);
             this.menuStripMain.TabIndex = 1;
             this.menuStripMain.Text = "Main Menu";
+            // 
+            // toolStripMenuItemSettings
+            // 
+            this.toolStripMenuItemSettings.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.saveAsDefaultToolStripMenuItem,
+            this.importFromFileToolStripMenuItem,
+            this.exportToFileToolStripMenuItem});
+            this.toolStripMenuItemSettings.Name = "toolStripMenuItemSettings";
+            this.toolStripMenuItemSettings.Size = new System.Drawing.Size(61, 20);
+            this.toolStripMenuItemSettings.Text = "&Settings";
+            // 
+            // saveAsDefaultToolStripMenuItem
+            // 
+            this.saveAsDefaultToolStripMenuItem.Name = "saveAsDefaultToolStripMenuItem";
+            this.saveAsDefaultToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
+            this.saveAsDefaultToolStripMenuItem.Text = "&Save as Default...";
+            // 
+            // exportToFileToolStripMenuItem
+            // 
+            this.exportToFileToolStripMenuItem.Name = "exportToFileToolStripMenuItem";
+            this.exportToFileToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
+            this.exportToFileToolStripMenuItem.Text = "&Export...";
             // 
             // toolStripMenuItemHelp
             // 
@@ -103,8 +128,6 @@
             // 
             // mainSplitContainer.Panel2
             // 
-            this.mainSplitContainer.Panel2.Controls.Add(this.btnLoadParams);
-            this.mainSplitContainer.Panel2.Controls.Add(this.btnSaveParams);
             this.mainSplitContainer.Panel2.Controls.Add(this.statusStripMain);
             this.mainSplitContainer.Panel2.Controls.Add(this.btnSearch);
             this.mainSplitContainer.Size = new System.Drawing.Size(559, 413);
@@ -188,26 +211,6 @@
             this.tabPage4.Text = "Misc";
             this.tabPage4.UseVisualStyleBackColor = true;
             // 
-            // btnLoadParams
-            // 
-            this.btnLoadParams.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnLoadParams.Location = new System.Drawing.Point(301, 0);
-            this.btnLoadParams.Name = "btnLoadParams";
-            this.btnLoadParams.Size = new System.Drawing.Size(78, 23);
-            this.btnLoadParams.TabIndex = 16;
-            this.btnLoadParams.Text = "Load Params";
-            this.btnLoadParams.UseVisualStyleBackColor = true;
-            // 
-            // btnSaveParams
-            // 
-            this.btnSaveParams.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSaveParams.Location = new System.Drawing.Point(385, 0);
-            this.btnSaveParams.Name = "btnSaveParams";
-            this.btnSaveParams.Size = new System.Drawing.Size(78, 23);
-            this.btnSaveParams.TabIndex = 17;
-            this.btnSaveParams.Text = "Save Params";
-            this.btnSaveParams.UseVisualStyleBackColor = true;
-            // 
             // statusStripMain
             // 
             this.statusStripMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -223,6 +226,12 @@
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
             this.toolStripStatusLabel1.Size = new System.Drawing.Size(218, 17);
             this.toolStripStatusLabel1.Text = "This is where search status will show up.";
+            // 
+            // importFromFileToolStripMenuItem
+            // 
+            this.importFromFileToolStripMenuItem.Name = "importFromFileToolStripMenuItem";
+            this.importFromFileToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
+            this.importFromFileToolStripMenuItem.Text = "&Import...";
             // 
             // CometMainForm
             // 
@@ -267,8 +276,10 @@
         private System.Windows.Forms.TabPage tabPage3;
         private System.Windows.Forms.TabPage tabPage4;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
-        private System.Windows.Forms.Button btnSaveParams;
-        private System.Windows.Forms.Button btnLoadParams;
+        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemSettings;
+        private System.Windows.Forms.ToolStripMenuItem saveAsDefaultToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem exportToFileToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem importFromFileToolStripMenuItem;
     }
 }
 

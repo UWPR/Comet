@@ -18,7 +18,7 @@ namespace CometUI
 
             _searchMgr = new CometSearchManagerWrapper();
 
-            // Create and add wizard pages
+            // Create and add tab pages
             InputFilesControl = new InputFilesControl(this)
             {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
@@ -27,7 +27,7 @@ namespace CometUI
             inputFilesTabPage.Controls.Add(InputFilesControl);
         }
 
-        private void BtnTestClick(object sender, EventArgs e)
+        private void BtnSearchClick(object sender, EventArgs e)
         {
             if (!_searchMgr.DoSearch())
             {

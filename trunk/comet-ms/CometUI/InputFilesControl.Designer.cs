@@ -115,7 +115,6 @@
             this.textBoxDecoyPrefix.Name = "textBoxDecoyPrefix";
             this.textBoxDecoyPrefix.Size = new System.Drawing.Size(74, 20);
             this.textBoxDecoyPrefix.TabIndex = 10;
-            this.textBoxDecoyPrefix.Text = "DECOY_";
             // 
             // radioButtonProtein
             // 

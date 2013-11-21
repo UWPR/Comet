@@ -117,4 +117,13 @@
   <data name="InputFilesControl_AddInputFiles_Error">
     <value xml:space="preserve">Error</value>
   </data>
+  <data name="InputFilesControl_ShowAddInputFile_Open_Input_File">
+    <value xml:space="preserve">Open Input File</value>
+  </data>
+  <data name="CometUI_Title_Error">
+    <value xml:space="preserve">Error</value>
+  </data>
+  <data name="InputFilesControl_ShowOpenDatabaseFile_Open_Proteome_Database_File">
+    <value xml:space="preserve">Open Proteome Database File</value>
+  </data>
 </root>
