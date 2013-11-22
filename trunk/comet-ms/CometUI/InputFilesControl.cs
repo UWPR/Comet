@@ -48,6 +48,9 @@ namespace CometUI
                 case SearchType.SearchTypeDecoyTwo:
                     radioButtonDecoyTwo.Checked = true;
                     break;
+                    case SearchType.SearchTypeTarget:
+                    radioButtonTarget.Checked = true;
+                    break;
                 default:
                     radioButtonTarget.Checked = true;
                     break;
