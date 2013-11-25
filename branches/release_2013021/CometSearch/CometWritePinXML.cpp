@@ -130,7 +130,7 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
    int  i,
         iDoXcorrCount,
         iMinLength;
-   double dMZ,
+   double dMZcalc,
           dMZexp;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
@@ -148,15 +148,15 @@ void CometWritePinXML::PrintResults(int iWhichQuery,
       iDoXcorrCount = pQuery->iDoXcorrCount;
    }
 
-   dMZ = (pQuery->_pepMassInfo.dExpPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
+   dMZexp = (pQuery->_pepMassInfo.dExpPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
       / pQuery->_spectrumInfoInternal.iChargeState ;
 
-   dMZexp = (pOutput[0].dPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
+   dMZcalc = (pOutput[0].dPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
       / pQuery->_spectrumInfoInternal.iChargeState;
 
-   fprintf(fpout, " <peptideSpectrumMatch calculatedMassToCharge=\"%0.6f\" ", dMZexp);
+   fprintf(fpout, " <peptideSpectrumMatch calculatedMassToCharge=\"%0.6f\" ", dMZcalc);
    fprintf(fpout, "chargeState=\"%d\" ", pQuery->_spectrumInfoInternal.iChargeState);
-   fprintf(fpout, "experimentalMassToCharge=\"%0.6f\" ", dMZ);
+   fprintf(fpout, "experimentalMassToCharge=\"%0.6f\" ", dMZexp);
    fprintf(fpout, "id=\"%s_%d_%d_1\" ",
          g_staticParams.inputFile.szBaseName,
          pQuery->_spectrumInfoInternal.iScanNumber,
@@ -283,7 +283,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "   <feature>%0.6f</feature>\n", -20.0);
 
-   double dMassDiff = pOutput[0].dPepMass - pQuery->_pepMassInfo.dExpPepMass;
+   double dMassDiff = (pQuery->_pepMassInfo.dExpPepMass - pOutput[0].dPepMass) / pOutput[0].dPepMass ;
    fprintf(fpout, "   <feature>%0.6f</feature>\n", dMassDiff); // dM  is mass diff
    fprintf(fpout, "   <feature>%0.6f</feature>\n", abs(dMassDiff)); // absdM
 
