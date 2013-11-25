@@ -264,9 +264,9 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "   <feature>%0.6f</feature>\n", pOutput[iWhichResult].fScoreSp); // Sp
 
    if (pOutput[iWhichResult].iTotalIons > 0)
-      fprintf(fpout, "   <feature>%0.4f</feature>\n", (double)pOutput[iWhichResult].iMatchedIons / pOutput[iWhichResult].iTotalIons); // IonFrac
+      fprintf(fpout, "   <feature>%0.6f</feature>\n", (double)pOutput[iWhichResult].iMatchedIons / pOutput[iWhichResult].iTotalIons); // IonFrac
    else
-      fprintf(fpout, "   <feature>%0.4f</feature>\n", 0.0);
+      fprintf(fpout, "   <feature>%0.6f</feature>\n", 0.0);
 
    fprintf(fpout, "   <feature>%0.6f</feature>\n", pQuery->_pepMassInfo.dExpPepMass); // Mass is observed MH+
    fprintf(fpout, "   <feature>%d</feature>\n", pOutput[iWhichResult].iLenPeptide); // PepLen

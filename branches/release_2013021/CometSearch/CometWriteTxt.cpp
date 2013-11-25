@@ -110,7 +110,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       double spectrum_neutral_mass = pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS;
       double spectrum_mz = (spectrum_neutral_mass + charge*PROTON_MASS) / (double)charge;
 
-      sprintf(szBuf, "%d\t%d\t%0.4f\t%0.4f\t%lu\t",
+      sprintf(szBuf, "%d\t%d\t%0.6f\t%0.6f\t%lu\t",
             pQuery->_spectrumInfoInternal.iScanNumber, 
             pQuery->_spectrumInfoInternal.iChargeState,
             spectrum_mz,
@@ -141,7 +141,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   sprintf(szBuf, "%d\t%d\t%0.4f\t",
+   sprintf(szBuf, "%d\t%d\t%0.6f\t",
          pQuery->_spectrumInfoInternal.iScanNumber, 
          pQuery->_spectrumInfoInternal.iChargeState, 
          pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
@@ -171,7 +171,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
    int  i;
    char szBuf[SIZE_BUF];
 
-   sprintf(szBuf, "%0.4f\t%0.2E\t%0.4f\t%d\t%0.4f\t%0.1f\t%d\t%d\t%d\t",
+   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%d\t%0.4f\t%0.1f\t%d\t%d\t%d\t",
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
@@ -228,7 +228,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
    int  i;
    char szBuf[SIZE_BUF];
 
-   sprintf(szBuf, "%0.4f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
+   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,

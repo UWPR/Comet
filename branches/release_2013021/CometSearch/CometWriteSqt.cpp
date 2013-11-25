@@ -244,7 +244,7 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
    int  i;
    char szBuf[SIZE_BUF];
 
-   sprintf(szBuf, "M\t%d\t%d\t%0.4f\t%0.4f\t%0.4f\t",
+   sprintf(szBuf, "M\t%d\t%d\t%0.6f\t%0.4f\t%0.4f\t",
          iRankXcorr,
          pOutput[iWhichResult].iRankSp,
          pOutput[iWhichResult].dPepMass,
