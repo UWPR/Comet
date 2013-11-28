@@ -82,5 +82,17 @@ namespace CometUI.Properties {
                 this["DecoyPrefix"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Fully-digested")]
+        public string EnzymeTermini {
+            get {
+                return ((string)(this["EnzymeTermini"]));
+            }
+            set {
+                this["EnzymeTermini"] = value;
+            }
+        }
     }
 }

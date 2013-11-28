@@ -17,5 +17,8 @@
     <Setting Name="DecoyPrefix" Type="System.String" Scope="User">
       <Value Profile="(Default)">DECOY_</Value>
     </Setting>
+    <Setting Name="EnzymeTermini" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Fully-digested</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

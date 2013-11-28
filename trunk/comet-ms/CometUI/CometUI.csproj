@@ -84,6 +84,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EnzymeSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="EnzymeSettingsControl.Designer.cs">
+      <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="InputFilesControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -98,6 +104,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="EnzymeSettingsControl.resx">
+      <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="InputFilesControl.resx">
       <DependentUpon>InputFilesControl.cs</DependentUpon>
     </EmbeddedResource>
