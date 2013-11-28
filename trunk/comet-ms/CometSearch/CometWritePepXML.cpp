@@ -99,7 +99,8 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - in WriteXMLHeader missing last period in file name: %s", g_staticParams.inputFile.szFileName);
                   
-      g_cometStatus.SetError(true, string(szErrorMsg));
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);
       
       logerr("%s\n", szErrorMsg);
 

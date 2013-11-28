@@ -60,7 +60,8 @@ bool CometSearch::RunSearch(int minNumThreads,
       szErrorMsg[0] = '\0';
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".", g_staticParams.databaseInfo.szDatabase); 
                   
-      g_cometStatus.SetError(true, string(szErrorMsg));      
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);      
       
       logerr("%s\n\n", szErrorMsg);
       
@@ -276,7 +277,8 @@ bool CometSearch::DoSearch(sDBEntry dbe)
             szErrorMsg[0] = '\0';
             sprintf(szErrorMsg, " Error - malloc(szTemp[%d])", seqSize);
                   
-            g_cometStatus.SetError(true, string(szErrorMsg));      
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetError(true, strErrorMsg);      
       
             logerr("%s\n\n", szErrorMsg);
       
@@ -457,7 +459,8 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                         szErrorMsg[0] = '\0';
                         sprintf(szErrorMsg, " Error - malloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
                   
-                        g_cometStatus.SetError(true, string(szErrorMsg));      
+                        string strErrorMsg(szErrorMsg);
+                        g_cometStatus.SetError(true, strErrorMsg);      
       
                         logerr("%s\n\n", szErrorMsg);
       
@@ -896,7 +899,8 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          szErrorMsg[0] = '\0';
          sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!", g_staticParams.tolerances.iIsotopeError);
                   
-         g_cometStatus.SetError(true, string(szErrorMsg));      
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetError(true, strErrorMsg);      
       
          logerr("%s\n\n", szErrorMsg);
       
@@ -937,7 +941,8 @@ bool CometSearch::TranslateNA2AA(int *frame,
  Either add more memory or edit the database and divide\n\
  the sequence into multiple, overlapping, smaller entries.", ii); 
                   
-               g_cometStatus.SetError(true, string(szErrorMsg));
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetError(true, strErrorMsg);
             
                logerr("%s\n\n", szErrorMsg);
 
@@ -974,7 +979,8 @@ bool CometSearch::TranslateNA2AA(int *frame,
  Either add more memory or edit the database and divide\n\
  the sequence into multiple, overlapping, smaller entries.", ii); 
                   
-               g_cometStatus.SetError(true, string(szErrorMsg));
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetError(true, strErrorMsg);
             
                logerr("%s\n\n", szErrorMsg);
 
@@ -2435,7 +2441,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - malloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
                   
-               g_cometStatus.SetError(true, string(szErrorMsg));
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetError(true, strErrorMsg);
             
                logerr("%s\n\n", szErrorMsg);
 

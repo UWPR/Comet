@@ -130,7 +130,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
             szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
                   
-            g_cometStatus.SetError(true, string(szErrorMsg));
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetError(true, strErrorMsg);
             
             logerr("\n Comet version \"%s\"\n\n", comet_version);
             logerr("%s\n\n", szErrorMsg);
@@ -153,7 +154,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
                szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
                   
-               g_cometStatus.SetError(true, string(szErrorMsg));
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetError(true, strErrorMsg);
             
                logerr("\n Comet version \"%s\"\n\n", comet_version);
                logerr("%s\n\n", szErrorMsg);
@@ -168,7 +170,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
          szErrorMsg[0] = '\0';
          sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
                   
-         g_cometStatus.SetError(true, string(szErrorMsg));
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetError(true, strErrorMsg);
             
          logerr("\n Comet version \"%s\"\n\n", comet_version);
          logerr("%s\n\n", szErrorMsg);
@@ -185,7 +188,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
             szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
                   
-            g_cometStatus.SetError(true, string(szErrorMsg));
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetError(true, strErrorMsg);
             
             logerr("\n Comet version \"%s\"\n\n", comet_version);
             logerr("%s\n\n", szErrorMsg);
@@ -425,7 +429,8 @@ static bool ValidateSequenceDatabaseFile()
       szErrorMsg[0] = '\0';
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.", g_staticParams.databaseInfo.szDatabase);
       
-      g_cometStatus.SetError(true, string(szErrorMsg));
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);
 
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       logerr("%s\n\n", szErrorMsg);
@@ -447,7 +452,8 @@ static bool ValidateScanRange()
           g_staticParams.options.scanRange.iStart,
           g_staticParams.options.scanRange.iEnd);
       
-      g_cometStatus.SetError(true, string(szErrorMsg));
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);
 
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       logerr("%s\n\n", szErrorMsg);
@@ -1102,8 +1108,9 @@ bool CometSearchManager::InitializeStaticParams()
       szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - bin offset %f must between 0.0 and 1.0\n\n",
           g_staticParams.tolerances.dFragmentBinStartOffset);
-                  
-      g_cometStatus.SetError(true, string(szErrorMsg));
+           
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);
              
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       logerr("%s\n\n", szErrorMsg);
@@ -1117,7 +1124,8 @@ bool CometSearchManager::InitializeStaticParams()
       szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 1\" or \"decoy_search = 2\" ");
                   
-      g_cometStatus.SetError(true, string(szErrorMsg));
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);
              
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       logerr("%s\n\n", szErrorMsg);
@@ -1435,8 +1443,9 @@ bool CometSearchManager::DoSearch()
             char szErrorMsg[256];
             szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputSQT);
-                  
-            g_cometStatus.SetError(true, string(szErrorMsg));
+              
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetError(true, strErrorMsg);
             
             logerr("%s\n\n", szErrorMsg);
             
@@ -1458,7 +1467,8 @@ bool CometSearchManager::DoSearch()
                szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoySQT);
                  
-               g_cometStatus.SetError(true, string(szErrorMsg));
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetError(true, strErrorMsg);
             
                logerr("%s\n\n", szErrorMsg);
                
@@ -1494,7 +1504,8 @@ bool CometSearchManager::DoSearch()
             szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputTxt);
                   
-            g_cometStatus.SetError(true, string(szErrorMsg));
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetError(true, strErrorMsg);
             
             logerr("%s\n\n", szErrorMsg);
 
@@ -1516,7 +1527,8 @@ bool CometSearchManager::DoSearch()
                szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyTxt);
                  
-               g_cometStatus.SetError(true, string(szErrorMsg));
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetError(true, strErrorMsg);
             
                logerr("%s\n\n", szErrorMsg);
                bSucceeded = false;
@@ -1551,7 +1563,8 @@ bool CometSearchManager::DoSearch()
             szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPepXML);
                   
-            g_cometStatus.SetError(true, string(szErrorMsg));
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetError(true, strErrorMsg);
             
             logerr("%s\n\n", szErrorMsg);
 
@@ -1576,7 +1589,8 @@ bool CometSearchManager::DoSearch()
                szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyPepXML);
                   
-               g_cometStatus.SetError(true, string(szErrorMsg));
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetError(true, strErrorMsg);
             
                logerr("%s\n\n", szErrorMsg);
 
@@ -1603,7 +1617,8 @@ bool CometSearchManager::DoSearch()
             szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPinXML);
                   
-            g_cometStatus.SetError(true, string(szErrorMsg));
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetError(true, strErrorMsg);
             
             logerr("%s\n\n", szErrorMsg);
             

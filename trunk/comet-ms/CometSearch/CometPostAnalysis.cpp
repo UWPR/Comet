@@ -106,7 +106,6 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
       }
    }
 
-exit:
    delete pThreadData;
    pThreadData = NULL;
 }
@@ -709,7 +708,8 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                            pQuery->_spectrumInfoInternal.iScanNumber,
                            ctCharge);
                   
-                     g_cometStatus.SetError(true, string(szErrorMsg));      
+                     string strErrorMsg(szErrorMsg);
+                     g_cometStatus.SetError(true, strErrorMsg);      
       
                      logerr("\n Comet version \"%s\"\n\n", comet_version);
                      logerr("%s\n\n", szErrorMsg);
@@ -736,7 +736,8 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                            pQuery->_spectrumInfoInternal.iScanNumber,
                            ctCharge);
                   
-                     g_cometStatus.SetError(true, string(szErrorMsg));      
+                     string strErrorMsg(szErrorMsg);
+                     g_cometStatus.SetError(true, strErrorMsg);      
       
                      logerr("\n Comet version \"%s\"\n\n", comet_version);
                      logerr("%s\n\n", szErrorMsg);
