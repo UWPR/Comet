@@ -19,7 +19,6 @@
 #include "CometMassSpecUtils.h"
 #include "CometWriteTxt.h"
 
-bool CometWriteTxt::_bWroteHeader = false;
 
 CometWriteTxt::CometWriteTxt()
 {
@@ -35,15 +34,6 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
                              FILE *fpoutd)
 {
    int i;
-
-   if (!_bWroteHeader)
-   {
-      _bWroteHeader = true;
-      PrintTxtHeader(fpout);
-
-      if (g_staticParams.options.iDecoySearch == 2)
-         PrintTxtHeader(fpoutd);
-   }
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
@@ -103,6 +93,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
 #endif
 }
 
+
 #ifdef CRUX
 void CometWriteTxt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
@@ -119,7 +110,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       double spectrum_neutral_mass = pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS;
       double spectrum_mz = (spectrum_neutral_mass + charge*PROTON_MASS) / (double)charge;
 
-      sprintf(szBuf, "%d\t%d\t%0.4f\t%0.4f\t%lu\t",
+      sprintf(szBuf, "%d\t%d\t%0.6f\t%0.6f\t%lu\t",
             pQuery->_spectrumInfoInternal.iScanNumber, 
             pQuery->_spectrumInfoInternal.iChargeState,
             spectrum_mz,
@@ -150,7 +141,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   sprintf(szBuf, "%d\t%d\t%0.4f\t",
+   sprintf(szBuf, "%d\t%d\t%0.6f\t",
          pQuery->_spectrumInfoInternal.iScanNumber, 
          pQuery->_spectrumInfoInternal.iChargeState, 
          pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
@@ -171,6 +162,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 }
 #endif
 
+
 #ifdef CRUX
 void CometWriteTxt::PrintTxtLine( int iWhichResult,
                                  Results *pOutput,
@@ -179,7 +171,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
    int  i;
    char szBuf[SIZE_BUF];
 
-   sprintf(szBuf, "%0.4f\t%0.2E\t%0.4f\t%d\t%0.4f\t%0.1f\t%d\t%d\t%d\t",
+   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%d\t%0.4f\t%0.1f\t%d\t%d\t%d\t",
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
@@ -227,6 +219,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
    fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
    fprintf(fpout, "\n");
 }
+
 #else
 void CometWriteTxt::PrintTxtLine( int iWhichResult,
                                  Results *pOutput,
@@ -235,7 +228,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
    int  i;
    char szBuf[SIZE_BUF];
 
-   sprintf(szBuf, "%0.4f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
+   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,

@@ -143,9 +143,8 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
    int  i,
         iDoXcorrCount,
         iMinLength;
-   double dMZ,
-          dMZexp,
-          dMZdiff;
+   double dMZcalc,
+          dMZexp;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
@@ -162,32 +161,15 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
       iDoXcorrCount = pQuery->iDoXcorrCount;
    }
 
-   dMZ = (pQuery->_pepMassInfo.dExpPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
+   dMZexp = (pQuery->_pepMassInfo.dExpPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
       / pQuery->_spectrumInfoInternal.iChargeState ;
 
-   dMZexp = (pOutput[0].dPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
+   dMZcalc = (pOutput[0].dPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
       / pQuery->_spectrumInfoInternal.iChargeState;
 
-   if (dMZ > 0.0)
-   {  
-      dMZdiff = (dMZ - dMZexp) / dMZ;
-   }
-   else
-   {
-      char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
-      sprintf(szErrorMsg,  " Error, dMZ=0. scan %d",  pQuery->_spectrumInfoInternal.iScanNumber);
-                  
-      g_cometStatus.SetError(true, string(szErrorMsg));
-
-      logerr("%s\n", szErrorMsg);
-      
-      return false;
-   }
-
-   fprintf(fpout, " <peptideSpectrumMatch calculatedMassToCharge=\"%0.6f\" ", dMZexp);
+   fprintf(fpout, " <peptideSpectrumMatch calculatedMassToCharge=\"%0.6f\" ", dMZcalc);
    fprintf(fpout, "chargeState=\"%d\" ", pQuery->_spectrumInfoInternal.iChargeState);
-   fprintf(fpout, "experimentalMassToCharge=\"%0.6f\" ", dMZ);
+   fprintf(fpout, "experimentalMassToCharge=\"%0.6f\" ", dMZexp);
    fprintf(fpout, "id=\"%s_%d_%d_1\" ",
          g_staticParams.inputFile.szBaseName,
          pQuery->_spectrumInfoInternal.iScanNumber,
@@ -255,7 +237,7 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
    if (bNoDeltaCnYet)
       dDeltaCn = 1.0;
 
-   PrintPinXMLSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn, dMZ, dMZdiff);
+   PrintPinXMLSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn);
 
    fprintf(fpout, " </peptideSpectrumMatch>\n");
 
@@ -269,9 +251,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
                                             Results *pOutput,
                                             FILE *fpout,
                                             double dDeltaCn,
-                                            double dLastDeltaCn,
-                                            double dMZ,
-                                            double dMZdiff)
+                                            double dLastDeltaCn)
 {
    int iNterm;
    int iCterm;
@@ -304,7 +284,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "   <feature>%0.4f</feature>\n", 0.0);
 
-   fprintf(fpout, "   <feature>%0.6f</feature>\n",dMZ); // Mass is m/z
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", pQuery->_pepMassInfo.dExpPepMass); // Mass is observed MH+
    fprintf(fpout, "   <feature>%d</feature>\n", pOutput[iWhichResult].iLenPeptide); // PepLen
 
    for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
@@ -319,19 +299,21 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "   <feature>%0.6f</feature>\n", -20.0);
 
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", dMZdiff); // dM  is m/z diff
-   fprintf(fpout, "   <feature>%0.6f</feature>\n", abs(dMZdiff)); // absdM
+   double dMassDiff = (pQuery->_pepMassInfo.dExpPepMass - pOutput[0].dPepMass) / pOutput[0].dPepMass;
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", dMassDiff); // dM is normalized mass diff
+   fprintf(fpout, "   <feature>%0.6f</feature>\n", abs(dMassDiff)); // absdM
+
    fprintf(fpout, "  </features>\n");
    fprintf(fpout, "  <peptide>\n");
    fprintf(fpout, "   <peptideSequence>%s</peptideSequence>\n", pOutput[iWhichResult].szPeptide);
 
-
+   // terminal static mods
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
          || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
             && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", 0);
-      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 10); // some random number for N-term mod
+      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 10); // some random number for N-term static mod
       fprintf(fpout, "   </modification>\n");
    }
 
@@ -340,7 +322,24 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
             && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
    {
       fprintf(fpout, "   <modification location=\"%d\">\n", pOutput[iWhichResult].iLenPeptide + 1);
-      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 11); // some random number for C-term mod
+      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 11); // some random number for C-term static mod
+      fprintf(fpout, "   </modification>\n");
+   }
+
+   // terminal variable mods
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0)
+         && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] != 0))  // nterm
+   {
+      fprintf(fpout, "   <modification location=\"%d\">\n", 0);
+      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 12); // some random number for N-term variable mod
+      fprintf(fpout, "   </modification>\n");
+   }
+
+   if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0)
+         && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide + 1] != 0))  // cterm
+   {
+      fprintf(fpout, "   <modification location=\"%d\">\n", pOutput[iWhichResult].iLenPeptide + 1);
+      fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 13); // some random number for N-term variable mod
       fprintf(fpout, "   </modification>\n");
    }
 

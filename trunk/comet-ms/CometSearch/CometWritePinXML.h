@@ -37,10 +37,8 @@ private:
                                     bool bDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
-                                    double dDeltaCn,
-                                    double dLastDeltaCn,
-                                    double dMZ,
-                                    double dMZdiff);
+									double dDeltaCn,
+									double dLastDeltaCn);
    static void CalcNTTNMC(Results *pOutput,
                           int iWhichQuery,
                           int *iNterm,

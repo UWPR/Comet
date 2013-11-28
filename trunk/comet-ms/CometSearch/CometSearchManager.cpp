@@ -1140,6 +1140,8 @@ bool CometSearchManager::InitializeStaticParams()
       + PROTON_MASS
       + g_staticParams.staticModifications.dAddCterminusPeptide
       + g_staticParams.staticModifications.dAddNterminusPeptide;
+
+   return true;
 }
 
 void CometSearchManager::AddInputFiles(vector<InputFileInfo*> &pvInputFiles)
@@ -1441,6 +1443,8 @@ bool CometSearchManager::DoSearch()
             bSucceeded = false;
          }
 
+         CometWriteSqt::PrintSqtHeader(fpout_sqt, *this);
+
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
@@ -1460,6 +1464,8 @@ bool CometSearchManager::DoSearch()
                
                bSucceeded = false;
             }
+
+            CometWriteSqt::PrintSqtHeader(fpoutd_sqt, *this);
          }
       }
 
@@ -1495,6 +1501,8 @@ bool CometSearchManager::DoSearch()
             bSucceeded = false;
          }
 
+         CometWriteTxt::PrintTxtHeader(fpout_txt);
+
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
@@ -1513,6 +1521,8 @@ bool CometSearchManager::DoSearch()
                logerr("%s\n\n", szErrorMsg);
                bSucceeded = false;
             }
+
+            CometWriteTxt::PrintTxtHeader(fpoutd_txt);
          }
       }
 
@@ -1707,7 +1717,7 @@ bool CometSearchManager::DoSearch()
 
             //// Write SQT last as I destroy the g_staticParams.szMod string during that process
             if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
-               CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, *this);
+               CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt);
 
    cleanup_results:
             // Deleting each Query object in the vector calls its destructor, which 

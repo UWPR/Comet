@@ -69,34 +69,31 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // Get msModel + msManufacturer from mzXML. Easy way to get from mzML too?
    ReadInstrument(szManufacturer, szModel);
 
-   char *pStr;   // base name w/o path
-   char *pStr2;  // file extension
+   char resolvedPathBaseName[SIZE_FILE];
 
 #ifdef _WIN32
-   if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL)
+   _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, SIZE_FILE);
 #else
-   if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
+   realpath(g_staticParams.inputFile.szBaseName, resolvedPathBaseName);
 #endif
-      pStr = g_staticParams.inputFile.szBaseName;
-   else
-      pStr++;  // skip separation character
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-   fprintf(fpout, " <?xml-stylesheet type=\"text/xsl\" href=\"http://localhost/tpp/schema/pepXML_std.xsl\"?>\n");
    
    fprintf(fpout, " <msms_pipeline_analysis date=\"%s\" ", szDate);
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v117.xsd\" ");
-   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", pStr);
-   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", g_staticParams.inputFile.szBaseName);
+   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", resolvedPathBaseName);
 
+   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", resolvedPathBaseName);
    fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
    fprintf(fpout, "msModel=\"%s\" ", szModel);
 
    // Grab file extension from file name
-   if ( (pStr2 = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
+   char *pStr;
+
+   if ( (pStr = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
    {
       char szErrorMsg[256];
       szErrorMsg[0] = '\0';
@@ -108,9 +105,9 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
       return false;
    }
-   pStr2++;
-   fprintf(fpout, "raw_data=\"%s\" ", pStr2);
-   fprintf(fpout, "raw_data_type=\"%s\">\n", pStr2);
+
+   fprintf(fpout, "raw_data_type=\"%s\" ", "raw");
+   fprintf(fpout, "raw_data=\"%s\">\n", pStr);
 
    fprintf(fpout, " <sample_enzyme name=\"%s\">\n",
          (g_staticParams.options.bNoEnzymeSelected?"nonspecific":g_staticParams.enzymeInformation.szSearchEnzymeName));
@@ -120,7 +117,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
          g_staticParams.enzymeInformation.iSearchEnzymeOffSet?'C':'N');
    fprintf(fpout, " </sample_enzyme>\n");
 
-   fprintf(fpout, " <search_summary base_name=\"%s\"", g_staticParams.inputFile.szBaseName);
+   fprintf(fpout, " <search_summary base_name=\"%s\"", resolvedPathBaseName);
    fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s\"", comet_version);
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");
@@ -153,7 +150,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    {
       if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0))
       {
-         sprintf(szVariableCterm, "  <terminal_modification terminus=\"C\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" protein_terminus=\"",
+         sprintf(szVariableCterm, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"",
                g_staticParams.variableModParameters.dVarModMassC,
                g_staticParams.variableModParameters.dVarModMassC + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
          bPrintVariableC = 1;
@@ -167,7 +164,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    {
       if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0))
       {
-         sprintf(szVariableNterm, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" protein_terminus=\"",
+         sprintf(szVariableNterm, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"",
                g_staticParams.variableModParameters.dVarModMassN,
                g_staticParams.variableModParameters.dVarModMassN + g_staticParams.precalcMasses.dNtermProton - PROTON_MASS
                + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
@@ -200,7 +197,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    {
       if (!isEqual(dMass, 0.0))
       {
-         fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"N\"/>\n",
+         fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"N\"/>\n",
                dMass, g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
        }
    }
@@ -210,7 +207,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    {
       if (!isEqual(dMass, 0.0))
       {
-         fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"N\"/>\n",
+         fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"N\"/>\n",
                dMass, g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
       }
    }
@@ -220,7 +217,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    {
       if (!isEqual(dMass, 0.0))
       {
-         fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
+         fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
                dMass, dMass + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
       }
    }
@@ -230,7 +227,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    {
       if (!isEqual(dMass, 0.0))
       {
-         fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
+         fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
                dMass, dMass + g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']); //FIX??
       }
    }
@@ -312,7 +309,7 @@ void CometWritePepXML::WriteVariableModN(FILE *fpout,
          int iLen = (int)strlen(varModsParam.szVarModChar);
          for (int i=0; i<iLen; i++)
          {
-            fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"Y\" %ssymbol=\"%c\"/>\n",
+            fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" %ssymbol=\"%c\"/>\n",
                   varModsParam.szVarModChar[i],
                   varModsParam.dVarModMass,
                   g_staticParams.massUtility.pdAAMassParent[(int)varModsParam.szVarModChar[i]] + varModsParam.dVarModMass,
@@ -332,7 +329,7 @@ void CometWritePepXML::WriteAddAminoAcid(FILE *fpout,
    {
       if (!isEqual(dMass, 0.0))
       {
-         fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.4f\" mass=\"%0.4f\" variable=\"N\"/>\n",
+         fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\"/>\n",
                paramName[4], dMass, g_staticParams.massUtility.pdAAMassParent[(int)paramName[4]]);
       }
    }
@@ -374,7 +371,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, " start_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
    fprintf(fpout, " end_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
-   fprintf(fpout, " precursor_neutral_mass=\"%0.4f\"", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
+   fprintf(fpout, " precursor_neutral_mass=\"%0.6f\"", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
    fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, " index=\"%d\"", iWhichQuery+1);
 
@@ -498,8 +495,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    fprintf(fpout, " num_tot_proteins=\"%d\"", pOutput[iWhichResult].iDuplicateCount+1);
    fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
    fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
-   fprintf(fpout, " calc_neutral_pep_mass=\"%0.4f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);
-   fprintf(fpout, " massdiff=\"%0.4f\"", pQuery->_pepMassInfo.dExpPepMass - pOutput[iWhichResult].dPepMass);
+   fprintf(fpout, " calc_neutral_pep_mass=\"%0.6f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);
+   fprintf(fpout, " massdiff=\"%0.6f\"", pQuery->_pepMassInfo.dExpPepMass - pOutput[iWhichResult].dPepMass);
 
    CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
 
@@ -532,6 +529,11 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
             break;
          }
       }
+
+      // check n- and c-terminal variable mods
+      i=pOutput[iWhichResult].iLenPeptide;
+      if (pOutput[iWhichResult].pcVarModSites[i] != 0  || pOutput[iWhichResult].pcVarModSites[i+1] != 0)
+         bModified = 1;
    }
 
    if (bModified)
@@ -583,7 +585,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
             dMass += g_staticParams.staticModifications.dAddNterminusProtein;
 
-         fprintf(fpout, " mod_nterm_mass=\"%0.4f\"", dMass);
+         fprintf(fpout, " mod_nterm_mass=\"%0.6f\"", dMass);
       }
 
       if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1
@@ -600,7 +602,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
             dMass += g_staticParams.staticModifications.dAddCterminusProtein;
 
-         fprintf(fpout, " mod_cterm_mass=\"%0.4f\"", dMass);
+         fprintf(fpout, " mod_cterm_mass=\"%0.6f\"", dMass);
       }
       fprintf(fpout, ">\n");
 
@@ -614,7 +616,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
             if (pOutput[iWhichResult].pcVarModSites[i] > 0)
                dMass += g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass;
 
-            fprintf(fpout, "     <mod_aminoacid_mass position=\"%d\" mass=\"%0.4f\"/>\n", i+1, dMass);
+            fprintf(fpout, "     <mod_aminoacid_mass position=\"%d\" mass=\"%0.6f\"/>\n", i+1, dMass);
          }
       }
 
