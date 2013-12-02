@@ -127,7 +127,14 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       for (int i=0; i<=min((unsigned long)4, pQuery->_uliNumMatchedPeptides); i++)
       {
          fprintf(fpout, "%s", szBuf);      
-         PrintTxtLine(i, pOutput, fpout);  // print top hit only right now
+   
+         if (pOutput[i].fXcorr > 0.0)
+            PrintTxtLine(i, pOutput, fpout);  // print top hit only right now
+         else
+         {
+            fprintf(fpout, "\n");
+            break;
+         }
       }
    }
 }
