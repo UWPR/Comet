@@ -465,6 +465,10 @@ struct StaticParams
          staticModifications.pdStaticMods[i] = 0.0;
       }
 
+#ifdef CRUX
+      staticModifications.pdStaticMods[(int)'C'] = 57.021464;
+#endif
+
       enzymeInformation.iAllowedMissedCleavage = 2;
 
       for (i=0; i<VMODS; i++)
@@ -492,10 +496,10 @@ struct StaticParams
       ionInformation.bUseNeutralLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
       ionInformation.iIonVal[ION_SERIES_A] = 0;
-      ionInformation.iIonVal[ION_SERIES_B] = 0;
+      ionInformation.iIonVal[ION_SERIES_B] = 1;
       ionInformation.iIonVal[ION_SERIES_C] = 0;
       ionInformation.iIonVal[ION_SERIES_X] = 0;
-      ionInformation.iIonVal[ION_SERIES_Y] = 0;
+      ionInformation.iIonVal[ION_SERIES_Y] = 1;
       ionInformation.iIonVal[ION_SERIES_Z] = 0;
 
       options.iNumPeptideOutputLines = 10;
