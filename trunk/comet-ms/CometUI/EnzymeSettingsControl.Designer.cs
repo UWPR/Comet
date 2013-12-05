@@ -36,13 +36,12 @@
             this.enzypeTerminiLabel = new System.Windows.Forms.Label();
             this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // searchEnzymeLabel
             // 
             this.searchEnzymeLabel.AutoSize = true;
-            this.searchEnzymeLabel.Location = new System.Drawing.Point(10, 38);
+            this.searchEnzymeLabel.Location = new System.Drawing.Point(10, 25);
             this.searchEnzymeLabel.Name = "searchEnzymeLabel";
             this.searchEnzymeLabel.Size = new System.Drawing.Size(84, 13);
             this.searchEnzymeLabel.TabIndex = 0;
@@ -50,24 +49,26 @@
             // 
             // searchEnzymeCombo
             // 
+            this.searchEnzymeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.searchEnzymeCombo.FormattingEnabled = true;
-            this.searchEnzymeCombo.Location = new System.Drawing.Point(100, 35);
+            this.searchEnzymeCombo.Location = new System.Drawing.Point(13, 41);
             this.searchEnzymeCombo.Name = "searchEnzymeCombo";
-            this.searchEnzymeCombo.Size = new System.Drawing.Size(121, 21);
+            this.searchEnzymeCombo.Size = new System.Drawing.Size(133, 21);
             this.searchEnzymeCombo.TabIndex = 1;
             // 
             // sampleEnzymeCombo
             // 
+            this.sampleEnzymeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.sampleEnzymeCombo.FormattingEnabled = true;
-            this.sampleEnzymeCombo.Location = new System.Drawing.Point(100, 75);
+            this.sampleEnzymeCombo.Location = new System.Drawing.Point(13, 106);
             this.sampleEnzymeCombo.Name = "sampleEnzymeCombo";
-            this.sampleEnzymeCombo.Size = new System.Drawing.Size(121, 21);
+            this.sampleEnzymeCombo.Size = new System.Drawing.Size(133, 21);
             this.sampleEnzymeCombo.TabIndex = 3;
             // 
             // sampleEnzymeLabel
             // 
             this.sampleEnzymeLabel.AutoSize = true;
-            this.sampleEnzymeLabel.Location = new System.Drawing.Point(10, 78);
+            this.sampleEnzymeLabel.Location = new System.Drawing.Point(10, 90);
             this.sampleEnzymeLabel.Name = "sampleEnzymeLabel";
             this.sampleEnzymeLabel.Size = new System.Drawing.Size(85, 13);
             this.sampleEnzymeLabel.TabIndex = 2;
@@ -75,16 +76,17 @@
             // 
             // enzymeTerminiCombo
             // 
+            this.enzymeTerminiCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.enzymeTerminiCombo.FormattingEnabled = true;
-            this.enzymeTerminiCombo.Location = new System.Drawing.Point(100, 115);
+            this.enzymeTerminiCombo.Location = new System.Drawing.Point(13, 236);
             this.enzymeTerminiCombo.Name = "enzymeTerminiCombo";
-            this.enzymeTerminiCombo.Size = new System.Drawing.Size(121, 21);
+            this.enzymeTerminiCombo.Size = new System.Drawing.Size(133, 21);
             this.enzymeTerminiCombo.TabIndex = 5;
             // 
             // enzypeTerminiLabel
             // 
             this.enzypeTerminiLabel.AutoSize = true;
-            this.enzypeTerminiLabel.Location = new System.Drawing.Point(10, 118);
+            this.enzypeTerminiLabel.Location = new System.Drawing.Point(11, 220);
             this.enzypeTerminiLabel.Name = "enzypeTerminiLabel";
             this.enzypeTerminiLabel.Size = new System.Drawing.Size(84, 13);
             this.enzypeTerminiLabel.TabIndex = 4;
@@ -92,36 +94,33 @@
             // 
             // comboBox1
             // 
+            this.comboBox1.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(100, 155);
+            this.comboBox1.Items.AddRange(new object[] {
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"});
+            this.comboBox1.Location = new System.Drawing.Point(13, 171);
             this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(121, 21);
+            this.comboBox1.Size = new System.Drawing.Size(133, 21);
             this.comboBox1.TabIndex = 7;
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(10, 152);
+            this.label1.Location = new System.Drawing.Point(10, 155);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(80, 13);
+            this.label1.Size = new System.Drawing.Size(136, 13);
             this.label1.TabIndex = 6;
-            this.label1.Text = "Allowed Missed";
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(10, 165);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(60, 13);
-            this.label2.TabIndex = 8;
-            this.label2.Text = "Cleavages:";
+            this.label1.Text = "Allowed Missed Cleavages:";
             // 
             // EnzymeSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.Transparent;
-            this.Controls.Add(this.label2);
             this.Controls.Add(this.comboBox1);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.enzymeTerminiCombo);
@@ -147,7 +146,6 @@
         private System.Windows.Forms.Label enzypeTerminiLabel;
         private System.Windows.Forms.ComboBox comboBox1;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
 
     }
 }

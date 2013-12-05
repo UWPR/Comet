@@ -66,6 +66,8 @@
             // 
             // comboBoxReadingFrame
             // 
+            this.comboBoxReadingFrame.BackColor = System.Drawing.SystemColors.Window;
+            this.comboBoxReadingFrame.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxReadingFrame.FormattingEnabled = true;
             this.comboBoxReadingFrame.Items.AddRange(new object[] {
             "1",
