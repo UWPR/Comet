@@ -35,7 +35,11 @@ namespace CometUI
 
         private void InitializeFromDefaultSettings()
         {
-            enzymeTerminiCombo.SelectedText = Settings.Default.EnzymeTermini;
+            int enzymeTerminiDefaultIndex = enzymeTerminiCombo.FindString(Settings.Default.EnzymeTermini);
+            enzymeTerminiCombo.SelectedIndex = enzymeTerminiDefaultIndex;
+
+            // For this particular combo, index == value of allowed missed cleavages
+            missedCleavagesCombo.SelectedIndex = Settings.Default.AllowedMissedCleavages;
         }
     }
 }

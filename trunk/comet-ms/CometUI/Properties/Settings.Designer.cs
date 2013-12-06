@@ -94,5 +94,17 @@ namespace CometUI.Properties {
                 this["EnzymeTermini"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int AllowedMissedCleavages {
+            get {
+                return ((int)(this["AllowedMissedCleavages"]));
+            }
+            set {
+                this["AllowedMissedCleavages"] = value;
+            }
+        }
     }
 }

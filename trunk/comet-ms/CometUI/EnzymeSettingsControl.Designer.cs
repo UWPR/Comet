@@ -34,7 +34,7 @@
             this.sampleEnzymeLabel = new System.Windows.Forms.Label();
             this.enzymeTerminiCombo = new System.Windows.Forms.ComboBox();
             this.enzypeTerminiLabel = new System.Windows.Forms.Label();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.missedCleavagesCombo = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
@@ -92,21 +92,21 @@
             this.enzypeTerminiLabel.TabIndex = 4;
             this.enzypeTerminiLabel.Text = "Enzyme Termini:";
             // 
-            // comboBox1
+            // missedCleavagesCombo
             // 
-            this.comboBox1.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Items.AddRange(new object[] {
+            this.missedCleavagesCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.missedCleavagesCombo.FormattingEnabled = true;
+            this.missedCleavagesCombo.Items.AddRange(new object[] {
             "0",
             "1",
             "2",
             "3",
             "4",
             "5"});
-            this.comboBox1.Location = new System.Drawing.Point(13, 171);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(133, 21);
-            this.comboBox1.TabIndex = 7;
+            this.missedCleavagesCombo.Location = new System.Drawing.Point(13, 171);
+            this.missedCleavagesCombo.Name = "missedCleavagesCombo";
+            this.missedCleavagesCombo.Size = new System.Drawing.Size(133, 21);
+            this.missedCleavagesCombo.TabIndex = 7;
             // 
             // label1
             // 
@@ -122,7 +122,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.Transparent;
-            this.Controls.Add(this.comboBox1);
+            this.Controls.Add(this.missedCleavagesCombo);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.enzymeTerminiCombo);
             this.Controls.Add(this.enzypeTerminiLabel);
@@ -145,7 +145,7 @@
         private System.Windows.Forms.Label sampleEnzymeLabel;
         private System.Windows.Forms.ComboBox enzymeTerminiCombo;
         private System.Windows.Forms.Label enzypeTerminiLabel;
-        private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.ComboBox missedCleavagesCombo;
         private System.Windows.Forms.Label label1;
 
     }
