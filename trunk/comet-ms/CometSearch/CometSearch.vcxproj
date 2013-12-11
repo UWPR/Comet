@@ -115,7 +115,7 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\pthreads-w32\include;..\MSToolkit\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

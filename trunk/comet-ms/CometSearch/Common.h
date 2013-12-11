@@ -17,9 +17,6 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-
-#include <pthread.h>
-
 #include <cmath>
 #include <string>
 #include <ctime>
@@ -32,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <pthread.h>
 #endif
 
 using namespace std;
