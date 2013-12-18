@@ -511,7 +511,7 @@ struct StaticParams
       options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 0;
       options.iRemovePrecursor = 0;
-      options.dRemovePrecursorTol = 2.0;  
+      options.dRemovePrecursorTol = 1.5;  
 
       options.bOutputSqtStream = 0;
       options.bOutputSqtFile = 0;
