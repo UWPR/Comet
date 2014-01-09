@@ -10,6 +10,9 @@ namespace CometUI
 {
     public partial class EnzymeSettingsControl : UserControl
     {
+        private int SearchEnzymeComboEditListIndex { get; set; }
+        private int SampleEnzymeComboEditListIndex { get; set; }
+
         private new Form  Parent { get; set; }
         private readonly Dictionary<string, int> _enzymeTermini = new Dictionary<string, int>();
 
@@ -31,6 +34,12 @@ namespace CometUI
             }
 
             InitializeFromDefaultSettings();
+
+            searchEnzymeCombo.Items.Add("<Edit List...>");
+            SearchEnzymeComboEditListIndex = searchEnzymeCombo.Items.Count - 1;
+
+            sampleEnzymeCombo.Items.Add("<Edit List...>");
+            SampleEnzymeComboEditListIndex = sampleEnzymeCombo.Items.Count - 1;
         }
 
         private void InitializeFromDefaultSettings()
@@ -39,7 +48,7 @@ namespace CometUI
             enzymeTerminiCombo.SelectedIndex = enzymeTerminiDefaultIndex;
 
             // For this particular combo, index == value of allowed missed cleavages
-            missedCleavagesCombo.SelectedIndex = Settings.Default.AllowedMissedCleavages;
+            missedCleavagesCombo.SelectedIndex = Settings.Default.AllowedMissedCleavages;            
         }
     }
 }
