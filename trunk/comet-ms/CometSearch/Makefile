@@ -3,7 +3,7 @@ GCC = gcc
 MSTOOLKIT = ../MSToolkit
 CXXFLAGS = -O3 -Wall -Wextra -static -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTOOLKIT)/include
 
-COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o CometWritePinXML.o CometWriteTxt.o CometSearchManager.o
+COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o CometWritePinXML.o CometWriteTxt.o CometSearchManager.o CometMemMgr.o
 
 all:  $(COMETSEARCH)
 	ar rcs libcometsearch.a $(COMETSEARCH)
@@ -35,3 +35,5 @@ CometSearchManager.o:      CometSearchManager.cpp Common.h CometData.h CometData
 	${CXX} ${CXXFLAGS} CometSearchManager.cpp -c
 CometInterfaces.o:      CometInterfaces.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePinXML.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometInterfaces.cpp -c
+CometMemMgr.o:      CometMemMgr.cpp Common.h CometStatus.h CometMemMgr.h
+	${CXX} ${CXXFLAGS} CometMemMgr.cpp -c

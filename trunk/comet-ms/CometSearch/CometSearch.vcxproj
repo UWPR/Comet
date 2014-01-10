@@ -128,6 +128,7 @@
     <ClInclude Include="CometDataInternal.h" />
     <ClInclude Include="CometInterfaces.h" />
     <ClInclude Include="CometMassSpecUtils.h" />
+    <ClInclude Include="CometMemMgr.h" />
     <ClInclude Include="CometPostAnalysis.h" />
     <ClInclude Include="CometPreprocess.h" />
     <ClInclude Include="CometSearch.h" />
@@ -146,6 +147,7 @@
   <ItemGroup>
     <ClCompile Include="CometInterfaces.cpp" />
     <ClCompile Include="CometMassSpecUtils.cpp" />
+    <ClCompile Include="CometMemMgr.cpp" />
     <ClCompile Include="CometPostAnalysis.cpp" />
     <ClCompile Include="CometPreprocess.cpp" />
     <ClCompile Include="CometSearch.cpp" />

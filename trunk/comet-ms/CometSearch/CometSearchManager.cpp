@@ -29,6 +29,7 @@
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
+#include "CometMemMgr.h"
 
 #ifdef _WIN32
 #define STRCMP_IGNORE_CASE(a,b) strcmpi(a,b)
@@ -223,11 +224,10 @@ static bool AllocateResultsMem()
    {
       Query* pQuery = g_pvQuery.at(i);
 
-      pQuery->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
-
+      pQuery->_pResults = (struct Results *) g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
       if (pQuery->_pResults == NULL)
       {
-         string strError = " Error malloc(_pResults[])";
+         string strError = " Error - CometMemMgr::CometMemAlloc(_pResults[])";
          string strFormatError = strError + "\n\n";
          logerr(strFormatError.c_str());
 
@@ -246,11 +246,11 @@ static bool AllocateResultsMem()
 
       if (g_staticParams.options.iDecoySearch==2)
       {
-         pQuery->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+         pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
 
          if (pQuery->_pDecoys == NULL)
          {
-            string strError = " Error malloc(_pDecoys[])";
+            string strError = " Error CometMemMgr::CometMemAlloc(_pDecoys[])";
             string strFormatError = strError + "\n\n";
             logerr(strFormatError.c_str());
 
@@ -1374,6 +1374,11 @@ bool CometSearchManager::DoSearch()
    {
       return false;
    }
+
+   if (!g_cometMemMgr.CometMemInit())
+   {
+      return false;
+   }
    
    bool bSucceeded = true;
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
@@ -1647,8 +1652,18 @@ bool CometSearchManager::DoSearch()
          // We need to reset some of the static variables in-between input files 
          CometPreprocess::Reset();
 
+         int iBatchNum = 0;
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
          {
+
+            iBatchNum++;
+
+#ifdef CPU_USAGE_DEBUG_COMMON
+            time(&tStartTime);
+            strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
+            logout(" Batch %d load and preprocess spectra START:  %s\n", iBatchNum, g_staticParams.szDate);
+#endif
+
             // Load and preprocess all the spectra.
             if (!g_staticParams.options.bOutputSqtStream)
                logout(" - Load and process input spectra\n");
@@ -1657,6 +1672,12 @@ bool CometSearchManager::DoSearch()
                 iFirstScan, iLastScan, iAnalysisType,
                 g_staticParams.options.iNumThreads,  // min # threads
                 g_staticParams.options.iNumThreads); // max # threads
+
+#ifdef CPU_USAGE_DEBUG_COMMON
+            time(&tStartTime);
+            strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
+            logout(" Batch %d load and preprocess spectra END:  %s\n", iBatchNum, g_staticParams.szDate);
+#endif
 
             if (!bSucceeded)
             {
@@ -1668,11 +1689,23 @@ bool CometSearchManager::DoSearch()
             else
                iTotalSpectraSearched += g_pvQuery.size();
 
+#ifdef CPU_USAGE_DEBUG_COMMON
+            time(&tStartTime);
+            strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));            
+            logout(" Batch %d allocate memory for results START:  %s\n", iBatchNum, g_staticParams.szDate);
+#endif
             // Allocate memory to store results for each query spectrum.
             if (!g_staticParams.options.bOutputSqtStream)
                logout(" - Allocate memory to store results\n");
 
             bSucceeded = AllocateResultsMem();
+
+#ifdef CPU_USAGE_DEBUG_COMMON
+            time(&tStartTime);
+            strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
+            logout(" Batch %d allocate memory for results END:  %s\n", iBatchNum, g_staticParams.szDate);
+#endif
+
             if (!bSucceeded)
             {
                goto cleanup_results;
@@ -1687,6 +1720,12 @@ bool CometSearchManager::DoSearch()
             g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
             g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
+#ifdef CPU_USAGE_DEBUG_COMMON
+            time(&tStartTime);
+            strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));            
+            logout(" Batch %d search START:  %s\n", iBatchNum, g_staticParams.szDate);
+#endif
+
             // Now that spectra are loaded to memory and sorted, do search.
             bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
             if (!bSucceeded)
@@ -1694,12 +1733,26 @@ bool CometSearchManager::DoSearch()
                goto cleanup_results;
             }
 
+#ifdef CPU_USAGE_DEBUG_COMMON
+            time(&tStartTime);
+            strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
+            logout(" Batch %d search END:  %s\n", iBatchNum, g_staticParams.szDate);
+
+            logout(" Batch %d post analysis START:  %s\n", iBatchNum, g_staticParams.szDate);
+#endif
+
             // Sort each entry by xcorr, calculate E-values, etc.
             bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
             if (!bSucceeded)
             {
                goto cleanup_results;
             }
+
+#ifdef CPU_USAGE_DEBUG_COMMON
+            time(&tStartTime);
+            strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
+            logout(" Batch %d post analysis END:  %s\n", iBatchNum, g_staticParams.szDate);
+#endif
 
             CalcRunTime(tStartTime);
 
