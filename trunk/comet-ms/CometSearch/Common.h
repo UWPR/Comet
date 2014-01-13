@@ -80,6 +80,4 @@ inline int print_out(const char *format, ...)
 typedef unsigned long DWORD;
 #endif
 
-#undef CPU_USAGE_DEBUG_COMMON
-
 #endif // _COMMON_H_
