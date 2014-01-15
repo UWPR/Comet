@@ -65,16 +65,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    ThreadPool<PreprocessThreadData *> preprocessThreadPool(PreprocessThreadProc,
          minNumThreads, maxNumThreads);
 
-   // Quick check to make sure first scan isn't greater than last scan in file
-/*
-   if (g_staticParams.inputFile.iInputType == InputType_MZXML
-         && iFirstScan > mstReader.getLastScan() )
-   {
-      _bDoneProcessingAllSpectra = true;
-   }
-   else
-*/
-
    // Load all input spectra.
    while(true)
    {
@@ -114,21 +104,21 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          // Clear out m/z range if clear_mz_range parameter is specified
          // Accomplish this by setting corresponding intensity to 0
          if (g_staticParams.options.clearMzRange.dEnd > 0.0
-             && g_staticParams.options.clearMzRange.dStart <= g_staticParams.options.clearMzRange.dEnd)
+               && g_staticParams.options.clearMzRange.dStart <= g_staticParams.options.clearMzRange.dEnd)
          {
             int i=0;
 
             while (true)
             {
                 if (i >= mstSpectrum.size() || mstSpectrum.at(i).mz > g_staticParams.options.clearMzRange.dEnd)
-                  break;
+                   break;
 
                 if (mstSpectrum.at(i).mz >= g_staticParams.options.clearMzRange.dStart
-                    && mstSpectrum.at(i).mz <= g_staticParams.options.clearMzRange.dEnd)
-               {
-                  mstSpectrum.at(i).intensity = 0.0;
-                  iNumClearedPeaks++;
-               }
+                      && mstSpectrum.at(i).mz <= g_staticParams.options.clearMzRange.dEnd)
+                {
+                   mstSpectrum.at(i).intensity = 0.0;
+                   iNumClearedPeaks++;
+                }
 
                i++;
             }
@@ -159,6 +149,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
                PreprocessThreadData *pPreprocessThreadData =
                   new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
+
                preprocessThreadPool.Launch(pPreprocessThreadData);
             }
          }
@@ -221,7 +212,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
 bool CometPreprocess::DoneProcessingAllSpectra()
 {
-    return _bDoneProcessingAllSpectra;
+   return _bDoneProcessingAllSpectra;
 }
 
 
@@ -293,21 +284,21 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
-       pScoring->dwFastXcorrDataNLSize = pScoring->_spectrumInfoInternal.iArraySize * sizeof(float);
-       pScoring->pfFastXcorrDataNL = (float *)g_cometMemMgr.CometMemAlloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
-       if (NULL == pScoring->pfFastXcorrDataNL)
-       {
-          char szErrorMsg[256];
-          szErrorMsg[0] = '\0';
-          sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc(pfFastXcorrDataNL[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
-      
-          string strErrorMsg(szErrorMsg);
-          g_cometStatus.SetError(true, strErrorMsg);      
-       
-          return false;
-       }
+      pScoring->dwFastXcorrDataNLSize = pScoring->_spectrumInfoInternal.iArraySize * sizeof(float);
+      pScoring->pfFastXcorrDataNL = (float *)g_cometMemMgr.CometMemAlloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+      if (NULL == pScoring->pfFastXcorrDataNL)
+      {
+         char szErrorMsg[256];
+         szErrorMsg[0] = '\0';
+         sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc(pfFastXcorrDataNL[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
 
-       g_cometMemMgr.CometMemVirtualLock(pScoring->pfFastXcorrDataNL, pScoring->dwFastXcorrDataNLSize);
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetError(true, strErrorMsg);      
+
+         return false;
+      }
+
+      g_cometMemMgr.CometMemVirtualLock(pScoring->pfFastXcorrDataNL, pScoring->dwFastXcorrDataNLSize);
    }
 
    // Create data for correlation analysis.
@@ -382,7 +373,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    if (!g_cometMemMgr.CometMemFree(pPre.pdCorrelationData))
    {
-       return false;
+      return false;
    }
 
    if (!g_cometMemMgr.CometMemFree(pdTmpFastXcorrData))
@@ -451,8 +442,10 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       
             return false;
          }
+
          pScoring->pSparseFastXcorrDataNL[0].bin=0;
          pScoring->pSparseFastXcorrDataNL[0].fIntensity=0;
+
          j=1;
          for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
          {
@@ -501,7 +494,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    if (!g_cometMemMgr.CometMemFree(pdTempRawData))
    {
-       return false;
+      return false;
    }
 
    if (g_staticParams.options.bSparseMatrix)
@@ -666,10 +659,10 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
       return true;
    }
 
-   if ((g_staticParams.options.iSpectrumBatchSize != 0) &&
-       (iNumSpectraLoaded >= g_staticParams.options.iSpectrumBatchSize))
+   if ((g_staticParams.options.iSpectrumBatchSize != 0)
+         && (iNumSpectraLoaded >= g_staticParams.options.iSpectrumBatchSize))
    {
-       return true;
+      return true;
    }
 
    return false;
@@ -1026,9 +1019,9 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
         iWindowSize,
         iNumWindows=10;
    double dMaxWindowInten,
-        dMaxOverallInten,
-        dTmp1,
-        dTmp2;
+          dMaxOverallInten,
+          dTmp1,
+          dTmp2;
 
    dMaxOverallInten = 0.0;
 
@@ -1114,7 +1107,7 @@ bool CometPreprocess::Smooth(double *data,
 
    if (!g_cometMemMgr.CometMemFree(pdSmoothedSpectrum))
    {
-       return false;
+      return false;
    }
 
    return true;
@@ -1130,8 +1123,8 @@ bool CometPreprocess::PeakExtract(double *data,
         iStartIndex,
         iEndIndex;
    double dStdDev,
-        dAvgInten,
-        *pdPeakExtracted;
+          dAvgInten,
+          *pdPeakExtracted;
 
    pdPeakExtracted = (double *)g_cometMemMgr.CometMemAlloc((size_t)iArraySize, (size_t)sizeof(double));
    if (pdPeakExtracted == NULL)
@@ -1213,7 +1206,7 @@ bool CometPreprocess::PeakExtract(double *data,
    memcpy(data, pdPeakExtracted, iArraySize*sizeof(double));
    if (!g_cometMemMgr.CometMemFree(pdPeakExtracted))
    {
-       return false;
+      return false;
    }
 
    return true;

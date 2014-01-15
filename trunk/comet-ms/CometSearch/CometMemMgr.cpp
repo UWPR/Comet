@@ -33,52 +33,52 @@ bool CometMemMgr::CometMemInit()
 {
    HANDLE hProcess;
    if (0 == DuplicateHandle(GetCurrentProcess(), 
-                   GetCurrentProcess(), 
-                   GetCurrentProcess(),
-                    &hProcess, 
-                    0,
-                    TRUE,
-                    DUPLICATE_SAME_ACCESS))
+                            GetCurrentProcess(), 
+                            GetCurrentProcess(),
+                            &hProcess, 
+                            0,
+                            TRUE,
+                            DUPLICATE_SAME_ACCESS))
    {
-       char szErrorMsg[256];
-       szErrorMsg[0] = '\0';
-       sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemInit::DuplicateHandle failed with error = 0x%lx.", GetLastError());
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemInit::DuplicateHandle failed with error = 0x%lx.", GetLastError());
 
-       string strErrorMsg(szErrorMsg);
-       g_cometStatus.SetError(true, strErrorMsg);      
-      
-       logerr("%s\n\n", szErrorMsg);
-      
-       return false;
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);      
+
+      logerr("%s\n\n", szErrorMsg);
+
+      return false;
    }
 
    MEMORYSTATUSEX statex;
    statex.dwLength = sizeof(statex);
    if (0 == GlobalMemoryStatusEx (&statex))
    {
-       char szErrorMsg[256];
-       szErrorMsg[0] = '\0';
-       sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemInit::GlobalMemoryStatusEx failed with error = 0x%lx.", GetLastError());
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemInit::GlobalMemoryStatusEx failed with error = 0x%lx.", GetLastError());
 
-       string strErrorMsg(szErrorMsg);
-       g_cometStatus.SetError(true, strErrorMsg);      
-      
-       logerr("%s\n\n", szErrorMsg);
-       return false;
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);      
+
+      logerr("%s\n\n", szErrorMsg);
+      return false;
    }
   
    if (0 == SetProcessWorkingSetSize(hProcess, statex.ullAvailPhys, statex.ullAvailPhys)) 
    {
-       char szErrorMsg[256];
-       szErrorMsg[0] = '\0';
-       sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemInit::SetProcessWorkingSetSize failed with error = 0x%lx.", GetLastError());
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemInit::SetProcessWorkingSetSize failed with error = 0x%lx.", GetLastError());
 
-       string strErrorMsg(szErrorMsg);
-       g_cometStatus.SetError(true, strErrorMsg);      
-      
-       logerr("%s\n\n", szErrorMsg);
-       
-       return false;
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);      
+
+      logerr("%s\n\n", szErrorMsg);
+
+      return false;
    }
 
    return true;
@@ -86,46 +86,46 @@ bool CometMemMgr::CometMemInit()
 
 void* CometMemMgr::CometMemAlloc(size_t size)
 {
-    return VirtualAlloc(NULL, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+   return VirtualAlloc(NULL, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
 void* CometMemMgr::CometMemAlloc(size_t num, size_t size)
 {
-    return VirtualAlloc(NULL, num*size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+   return VirtualAlloc(NULL, num*size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
 bool CometMemMgr::CometMemFree(void* pvAddress)
 {
-    if (0 == VirtualFree(pvAddress, 0, MEM_RELEASE))
-    {
-        char szErrorMsg[256];
-        szErrorMsg[0] = '\0';
-        sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemFree::VirtualFree failed with error = 0x%lx.", GetLastError());
+   if (0 == VirtualFree(pvAddress, 0, MEM_RELEASE))
+   {
+      char szErrorMsg[256];
+      szErrorMsg[0] = '\0';
+      sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemFree::VirtualFree failed with error = 0x%lx.", GetLastError());
 
-        string strErrorMsg(szErrorMsg);
-        g_cometStatus.SetError(true, strErrorMsg);      
-      
-        logerr("%s\n\n", szErrorMsg);
-       
-        return false;
-    }
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);      
 
-    return true;
+      logerr("%s\n\n", szErrorMsg);
+
+      return false;
+   }
+
+   return true;
 }
 
 bool CometMemMgr::CometMemVirtualLock(void* pvAddress, size_t size)
 {
-    return VirtualLock(pvAddress, size);
+   return VirtualLock(pvAddress, size);
 }
 
 bool CometMemMgr::CometMemVirtualUnlock(void* pvAddress, size_t size)
 {
-    return VirtualUnlock(pvAddress, size);
+   return VirtualUnlock(pvAddress, size);
 }
 
 DWORD CometMemMgr::CometMemGetLastError()
 {
-    return GetLastError();
+   return GetLastError();
 }
 
 #else
@@ -140,38 +140,38 @@ CometMemMgr::~CometMemMgr()
 
 bool CometMemMgr::CometMemInit()
 {
-    return true;
+   return true;
 }
 
 void* CometMemMgr::CometMemAlloc(size_t size)
 {
-    return malloc(size);
+   return malloc(size);
 }
 
 void* CometMemMgr::CometMemAlloc(size_t num, size_t size)
 {
-    return calloc(num, size);
+   return calloc(num, size);
 }
 
 bool CometMemMgr::CometMemFree(void* pvAddress)
 {
-    free(pvAddress);
-    return true;
+   free(pvAddress);
+   return true;
 }
 
 bool CometMemMgr::CometMemVirtualLock(void* pvAddress, size_t size)
 {
-    return true;
+   return true;
 }
 
 bool CometMemMgr::CometMemVirtualUnlock(void* pvAddress, size_t size)
 {
-    return true;
+   return true;
 }
 
 DWORD CometMemMgr::CometMemGetLastError()
 {
-    return 0;
+   return 0;
 }
 
 #endif // _WIN32

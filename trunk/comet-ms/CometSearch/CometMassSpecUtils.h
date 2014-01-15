@@ -25,14 +25,14 @@
 class CometMassSpecUtils
 {
 public:
-  static double GetFragmentIonMass(int iWhichIonSeries,
-                                   int i,
-                                   int ctCharge,
-                                   double *pdAAforward,
-                                   double *pdAAreverse);
-  static void AssignMass(double *pdAAMass,
-                         int bMonoMasses,
-                         double *dOH2);
+   static double GetFragmentIonMass(int iWhichIonSeries,
+                                    int i,
+                                    int ctCharge,
+                                    double *pdAAforward,
+                                    double *pdAAreverse);
+   static void AssignMass(double *pdAAMass,
+                          int bMonoMasses,
+                          double *dOH2);
 };
 
 #endif // _COMETMASSSPECUTILS_H_

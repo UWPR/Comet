@@ -33,7 +33,7 @@ class CometSearchManager;
 #define NUM_STORED                  100      // number of internal search results to store
 #define NUM_ION_SERIES              9
 
-#define WIDTH_REFERENCE             40       // size of the protein accession field to store
+#define WIDTH_REFERENCE             256      // size of the protein accession field to store
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
@@ -367,7 +367,6 @@ struct ToleranceParams
 
       return *this;
    }
-
 };
 
 struct PeaksInfo

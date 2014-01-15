@@ -85,11 +85,11 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    sprintf(szMassLine, "(M+H)+ mass = %0.6f ~ %0.6f (+%d), fragment tol = %0.4f, binoffset = %0.3f",
-            pQuery->_pepMassInfo.dExpPepMass,
-            pQuery->_pepMassInfo.dPeptideMassTolerance,
-            pQuery->_spectrumInfoInternal.iChargeState,
-            g_staticParams.tolerances.dFragmentBinSize,
-            g_staticParams.tolerances.dFragmentBinStartOffset); 
+         pQuery->_pepMassInfo.dExpPepMass,
+         pQuery->_pepMassInfo.dPeptideMassTolerance,
+         pQuery->_spectrumInfoInternal.iChargeState,
+         g_staticParams.tolerances.dFragmentBinSize,
+         g_staticParams.tolerances.dFragmentBinStartOffset); 
 
    if (g_staticParams.massUtility.bMonoMassesParent)
       sprintf(szMassLine + strlen(szMassLine), ", MONO");
@@ -306,9 +306,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
       if (bDecoySearch)
       {
-         fprintf(fpout, "a=%f b=%f\n",
-               pQuery->fDecoyPar[1],
-               pQuery->fDecoyPar[0]);
+         fprintf(fpout, "a=%f b=%f\n", pQuery->fDecoyPar[1], pQuery->fDecoyPar[0]);
 
          // iDecoyCorrelationHistogram is already cummulative here.
          for (i=0; i<=pQuery->siMaxDecoyXcorr; i++)
@@ -367,7 +365,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 }
 
 
-void CometWriteOut::PrintOutputLine( int iRankXcorr,
+void CometWriteOut::PrintOutputLine(int iRankXcorr,
                                     int iLenMaxDuplicates,
                                     int iMaxWidthReference,
                                     int iWhichResult,
@@ -630,7 +628,7 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 
 
 float CometWriteOut::FindSpScore(Query *pQuery,
-      int bin)
+                                 int bin)
 {
    int lower;
    int mid;
@@ -641,12 +639,12 @@ float CometWriteOut::FindSpScore(Query *pQuery,
    lower=0;
    upper=sz;
 
-   while(pQuery->pSparseSpScoreData[mid].bin!=bin)
+   while (pQuery->pSparseSpScoreData[mid].bin!=bin)
    {
-      if(lower>=upper) 
+      if (lower>=upper) 
          return 0.0f;
 
-      if(bin<pQuery->pSparseSpScoreData[mid].bin)
+      if (bin<pQuery->pSparseSpScoreData[mid].bin)
       {
          upper=mid-1;
          mid=(lower+upper)/2;
@@ -657,7 +655,7 @@ float CometWriteOut::FindSpScore(Query *pQuery,
          mid=(lower+upper)/2;
       }
 
-      if(mid==sz) 
+      if (mid==sz) 
          return 0.0f;
    }
    return pQuery->pSparseSpScoreData[mid].fIntensity;

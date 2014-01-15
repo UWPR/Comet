@@ -134,9 +134,12 @@ void Threading::DestroyMutex(Mutex& mutex)
 
 void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
 {
-   _beginthreadex (NULL, 0,
+   _beginthreadex (NULL,
+         0,
          (unsigned int(__stdcall*) ( void*)) pFunction, 
-         (void*) arg, 0, pThreadId);
+         (void*) arg,
+         0,
+         pThreadId);
 }
 
 void Threading::ThreadSleep(unsigned long dwMilliseconds)

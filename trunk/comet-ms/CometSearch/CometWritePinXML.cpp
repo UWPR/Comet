@@ -180,7 +180,6 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
    else
       fprintf(fpout, "isDecoy=\"false\">\n");
 
-
    if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
       iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
 

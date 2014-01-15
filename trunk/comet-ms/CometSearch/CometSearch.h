@@ -85,14 +85,14 @@ private:
    void SubtractVarMods(int *piVarModCounts,
                         int character);
    void CountVarMods(int *piVarModCounts,
-                   int character);
+                     int character);
    void CountBinaryModN(int *piVarModCounts,
                          int iStartPos);
    void CountBinaryModC(int *piVarModCounts,
                          int iEndPos);
    int  TotalVarModCount(int varModCounts[],
-                       int iCVarModCount,
-                       int iNVarModCount);
+                         int iCVarModCount,
+                         int iNVarModCount);
    int WithinMassTolerance(double dCalcPepMass,
                            char *szProteinSeq,
                            int iStartPos,
@@ -138,22 +138,22 @@ private:
                      bool bStoreSeparateDecoy,
                      char *pcVarModSites);
    void StoreDecoyPeptide(int iWhichQuery,
-                     int iStartPos,
-                     int iEndPos,
-                     bool bFoundVariableMod,
-                     int iMatchedFragmentIonCt,
-                     char *szProteinSeq,
-                     double dCalcPepMass,
-                     double dScoreSp,
-                     char *szProteinName);
+                          int iStartPos,
+                          int iEndPos,
+                          bool bFoundVariableMod,
+                          int iMatchedFragmentIonCt,
+                          char *szProteinSeq,
+                          double dCalcPepMass,
+                          double dScoreSp,
+                          char *szProteinName);
    bool VarModSearch(char *szProteinSeq,
-                   char *szProteinName,
-                   int varModCounts[],
-                   int iStartPos,
-                   int iEndPos);
+                     char *szProteinName,
+                     int varModCounts[],
+                     int iStartPos,
+                     int iEndPos);
    double TotalVarModMass(int *pVarModCounts,
-                         int iCVarModCount,
-                         int iNVarModCount);
+                          int iCVarModCount,
+                          int iNVarModCount);
    bool Permute1(char *szProteinSeq, 
                  int iWhichQuery);
    bool Permute2(char *szProteinSeq,
@@ -169,7 +169,7 @@ private:
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool CalcVarModIons(char *szProteinSeq,
-                    int iWhichQuery);
+                       int iWhichQuery);
    void ResetIndexTable();
    void FullDBSearch();
    bool SearchForPeptides(char *szProteinSeq,
@@ -188,7 +188,7 @@ private:
    void CalculateEvalue(struct Results *_pResults,
                         bool bDecoy);
    void GenerateXcorrDecoys(struct Results *_pResults,
-                        bool bDecoy);
+                            bool bDecoy);
 
     // Displaying results
    void PrintResults(struct Results *_pResults,
@@ -200,7 +200,8 @@ private:
                         int iWhichResult,
                         bool bDecoySearch,
                         FILE *fpOut);
-   void PrintIons(int iTmpCharge, FILE *fpOut);
+   void PrintIons(int iTmpCharge,
+                  FILE *fpOut);
 
    // Cleaning up
    void CleanUp();
@@ -208,9 +209,9 @@ private:
 private:
    struct VarModStat
    {
-       int     iTotVarModCt;
-       int     iMatchVarModCt;
-       int     iVarModSites[MAX_PEPTIDE_LEN];
+       int iTotVarModCt;
+       int iMatchVarModCt;
+       int iVarModSites[MAX_PEPTIDE_LEN];
    };
     
    struct VarModInfo

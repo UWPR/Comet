@@ -42,7 +42,7 @@ bool ValidateInputMsMsFile(char *pszInputFileName);
 int main(int argc, char *argv[])
 {
    if (argc < 2) 
-       Usage(0, argv[0]);
+      Usage(0, argv[0]);
 
    vector<InputFileInfo*> pvInputFiles;
    ICometSearchManager* pCometSearchMgr = GetCometSearchManager();
@@ -123,13 +123,13 @@ void SetOptions(char *arg,
             logerr("Missing text for parameter option -F<num>.  Ignored.\n");
          else
          {
-             char szParamStringVal[512];
-             IntRange iScanRange;
-             pSearchMgr->GetParamValue("scan_range", iScanRange);
-             iScanRange.iStart = atoi(szTmp);
-             szParamStringVal[0] = '\0';
-             sprintf(szParamStringVal, "%d %d", iScanRange.iStart, iScanRange.iEnd);
-             pSearchMgr->SetParam("scan_range", szParamStringVal, iScanRange);
+            char szParamStringVal[512];
+            IntRange iScanRange;
+            pSearchMgr->GetParamValue("scan_range", iScanRange);
+            iScanRange.iStart = atoi(szTmp);
+            szParamStringVal[0] = '\0';
+            sprintf(szParamStringVal, "%d %d", iScanRange.iStart, iScanRange.iEnd);
+            pSearchMgr->SetParam("scan_range", szParamStringVal, iScanRange);
          }
          break;
       case 'L':
@@ -137,13 +137,13 @@ void SetOptions(char *arg,
             logerr("Missing text for parameter option -L<num>.  Ignored.\n");
          else
          {
-             char szParamStringVal[512];
-             IntRange iScanRange;
-             pSearchMgr->GetParamValue("scan_range", iScanRange);
-             iScanRange.iEnd = atoi(szTmp);
-             szParamStringVal[0] = '\0';
-             sprintf(szParamStringVal, "%d %d", iScanRange.iStart, iScanRange.iEnd);
-             pSearchMgr->SetParam("scan_range", szParamStringVal, iScanRange);
+            char szParamStringVal[512];
+            IntRange iScanRange;
+            pSearchMgr->GetParamValue("scan_range", iScanRange);
+            iScanRange.iEnd = atoi(szTmp);
+            szParamStringVal[0] = '\0';
+            sprintf(szParamStringVal, "%d %d", iScanRange.iStart, iScanRange.iEnd);
+            pSearchMgr->SetParam("scan_range", szParamStringVal, iScanRange);
          }
          break;
       case 'B':
@@ -957,6 +957,7 @@ void LoadParameters(char *pszParamsFile,
             char szActivationMethod[24];
             szActivationMethod[0] = '\0';
             sscanf(szParamVal, "%24s", szActivationMethod);
+            szActivationMethod[23] = '\0';
             pSearchMgr->SetParam("activation_method", szActivationMethod, szActivationMethod);
          }
          else if (!strcmp(szParamName, "minimum_intensity"))
@@ -1064,23 +1065,23 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
    int iCmdLen = strlen(cmd);
    for (i=0; i < iCmdLen; i++)
    {
-       if (cmd[i] == ':')
-       {
-           if ((i + 1) < iCmdLen)
-           {
-               if (cmd[i+1] != '\\' && cmd[i+1] != '/')
-               {
-                   break;
-               }
-           }
-       }
+      if (cmd[i] == ':')
+      {
+         if ((i + 1) < iCmdLen)
+         {
+            if (cmd[i+1] != '\\' && cmd[i+1] != '/')
+            {
+               break;
+            }
+         }
+      }
    }
 
    strncpy(pInputFile->szFileName, cmd, i);
    pInputFile->szFileName[i] = '\0';
    if (!ValidateInputMsMsFile(pInputFile->szFileName))
    {
-       return false;
+      return false;
    }
 
    // Get additional filters.
@@ -1203,15 +1204,15 @@ void ProcessCmdLine(int argc,
       }
       else if (arg != NULL)
       {
-          InputFileInfo *pInputFileInfo = new InputFileInfo();
-          if (!ParseCmdLine(arg, pInputFileInfo, pSearchMgr))
-          {
-              logerr("\n Comet version %s\n\n", comet_version);
-              logerr(" Error - input file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
-              pvInputFiles.clear();
-              exit(1);
-          }
-          pvInputFiles.push_back(pInputFileInfo);
+         InputFileInfo *pInputFileInfo = new InputFileInfo();
+         if (!ParseCmdLine(arg, pInputFileInfo, pSearchMgr))
+         {
+            logerr("\n Comet version %s\n\n", comet_version);
+            logerr(" Error - input file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
+            pvInputFiles.clear();
+            exit(1);
+         }
+         pvInputFiles.push_back(pInputFileInfo);
       }
       else
       {

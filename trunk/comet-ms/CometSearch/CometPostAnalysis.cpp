@@ -143,7 +143,6 @@ void CometPostAnalysis::AnalyzeSP(int i)
    // Repeast for decoy search.
    if (g_staticParams.options.iDecoySearch == 2)
    {
-
       CalculateSP(pQuery->_pDecoys,
                   i,
                   iSize);
@@ -174,7 +173,6 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
    IonSeriesStruct ionSeries[9];
-
 
    for (i=0; i<iSize; i++)
    {
@@ -720,7 +718,8 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
                      dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
-					 if (iFragmentIonMass > 0)
+
+                     if (iFragmentIonMass > 0)
                         dFastXcorr += 0.5 * pQuery->pfFastXcorrData[iFragmentIonMass-1];
                   }
                   else

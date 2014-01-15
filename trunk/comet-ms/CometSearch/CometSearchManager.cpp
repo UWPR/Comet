@@ -224,7 +224,7 @@ static bool AllocateResultsMem()
    {
       Query* pQuery = g_pvQuery.at(i);
 
-      pQuery->_pResults = (struct Results *) g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+      pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
       if (pQuery->_pResults == NULL)
       {
          string strError = " Error - CometMemMgr::CometMemAlloc(_pResults[])";
@@ -449,8 +449,8 @@ static bool ValidateScanRange()
       char szErrorMsg[256];
       szErrorMsg[0] = '\0';
       sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.", 
-          g_staticParams.options.scanRange.iStart,
-          g_staticParams.options.scanRange.iEnd);
+            g_staticParams.options.scanRange.iStart,
+            g_staticParams.options.scanRange.iEnd);
       
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
@@ -526,8 +526,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("clip_nterm_methionine", g_staticParams.options.bClipNtermMet);
 
    GetParamValue("theoretical_fragment_ions", g_staticParams.ionInformation.iTheoreticalFragmentIons);
-   if ((g_staticParams.ionInformation.iTheoreticalFragmentIons < 0) || 
-       (g_staticParams.ionInformation.iTheoreticalFragmentIons > 1))
+   if ((g_staticParams.ionInformation.iTheoreticalFragmentIons < 0)
+         || (g_staticParams.ionInformation.iTheoreticalFragmentIons > 1))
    {
       g_staticParams.ionInformation.iTheoreticalFragmentIons = 0;
    }
@@ -941,7 +941,7 @@ bool CometSearchManager::InitializeStaticParams()
       g_staticParams.options.iNumThreads = sysconf( _SC_NPROCESSORS_ONLN );
 #endif
       if (g_staticParams.options.iNumThreads < 1 || g_staticParams.options.iNumThreads > MAX_THREADS)
-          g_staticParams.options.iNumThreads = 2;  // Default to 2 threads.
+         g_staticParams.options.iNumThreads = 2;  // Default to 2 threads.
    }
 
    // Set masses to either average or monoisotopic.
@@ -974,8 +974,8 @@ bool CometSearchManager::InitializeStaticParams()
             - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    GetParamValue("[COMET_ENZYME_INFO]", g_staticParams.enzymeInformation);
-   if (!strncmp(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, "-", 1) && 
-       !strncmp(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, "-", 1))
+   if (!strncmp(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, "-", 1)
+         && !strncmp(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, "-", 1))
    {
       g_staticParams.options.bNoEnzymeSelected = 1;
    }
@@ -1002,8 +1002,8 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.szMod[0] = '\0';
    for (int i=0; i<VMODS; i++)
    {
-      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0) &&
-          (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
          sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(%s%c %+0.6f) ", 
                g_staticParams.variableModParameters.varModList[i].szVarModChar,
@@ -1107,7 +1107,7 @@ bool CometSearchManager::InitializeStaticParams()
       char szErrorMsg[256];
       szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - bin offset %f must between 0.0 and 1.0\n\n",
-          g_staticParams.tolerances.dFragmentBinStartOffset);
+            g_staticParams.tolerances.dFragmentBinStartOffset);
            
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
@@ -1655,7 +1655,6 @@ bool CometSearchManager::DoSearch()
          int iBatchNum = 0;
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
          {
-
             iBatchNum++;
 
             // Load and preprocess all the spectra.

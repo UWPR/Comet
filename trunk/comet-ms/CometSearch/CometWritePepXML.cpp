@@ -56,7 +56,7 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
 }
 
 bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
-    CometSearchManager &searchMgr)
+                                         CometSearchManager &searchMgr)
 {
    time_t tTime;
    char szDate[48];
@@ -128,12 +128,12 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, " type=\"%s\"/>\n", g_staticParams.options.iWhichReadingFrame==0?"AA":"NA");
 
    fprintf(fpout, "  <enzymatic_search_constraint enzyme=\"%s\" max_num_internal_cleavages=\"%d\" min_number_termini=\"%d\"/>\n",
-        (g_staticParams.options.bNoEnzymeSelected?"nonspecific":g_staticParams.enzymeInformation.szSearchEnzymeName),
-        g_staticParams.enzymeInformation.iAllowedMissedCleavage,
-        (g_staticParams.options.iEnzymeTermini==ENZYME_DOUBLE_TERMINI)?2:
-        ((g_staticParams.options.iEnzymeTermini == ENZYME_SINGLE_TERMINI)
-         || (g_staticParams.options.iEnzymeTermini == ENZYME_N_TERMINI)
-         || (g_staticParams.options.iEnzymeTermini == ENZYME_C_TERMINI))?1:0);
+         (g_staticParams.options.bNoEnzymeSelected?"nonspecific":g_staticParams.enzymeInformation.szSearchEnzymeName),
+         g_staticParams.enzymeInformation.iAllowedMissedCleavage,
+         (g_staticParams.options.iEnzymeTermini==ENZYME_DOUBLE_TERMINI)?2:
+         ((g_staticParams.options.iEnzymeTermini == ENZYME_SINGLE_TERMINI)
+          || (g_staticParams.options.iEnzymeTermini == ENZYME_N_TERMINI)
+          || (g_staticParams.options.iEnzymeTermini == ENZYME_C_TERMINI))?1:0);
 
    // Write out properly encoded mods
    
@@ -200,7 +200,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       {
          fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"N\"/>\n",
                dMass, g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
-       }
+      }
    }
 
    dMass = 0.0;

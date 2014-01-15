@@ -23,22 +23,22 @@ CometSearchManager *g_pCometSearchManager = NULL;
 
 ICometSearchManager *CometInterfaces::GetCometSearchManager()
 {
-    if (NULL == g_pCometSearchManager)
-    {
-        g_pCometSearchManager = new CometSearchManager();
-    }
+   if (NULL == g_pCometSearchManager)
+   {
+      g_pCometSearchManager = new CometSearchManager();
+   }
 
-    ICometSearchManager *pCometSearchMgr = static_cast<ICometSearchManager*>(g_pCometSearchManager);
-    return pCometSearchMgr;
+   ICometSearchManager *pCometSearchMgr = static_cast<ICometSearchManager*>(g_pCometSearchManager);
+   return pCometSearchMgr;
 }
 
 void CometInterfaces::ReleaseCometSearchManager()
 {
-    if (NULL != g_pCometSearchManager)
-    {
-        delete g_pCometSearchManager;
-        g_pCometSearchManager = NULL;
-    }
+   if (NULL != g_pCometSearchManager)
+   {
+      delete g_pCometSearchManager;
+      g_pCometSearchManager = NULL;
+   }
 }
 
 

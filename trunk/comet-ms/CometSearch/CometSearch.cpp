@@ -612,7 +612,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
 
                      if (!g_cometMemMgr.CometMemFree(pbDuplFragment))
                      {
-                         return false;
+                        return false;
                      }
                   }
 
@@ -1322,14 +1322,14 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons 
-               = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1) 
-                   * g_staticParams.ionInformation.iNumIonSeriesUsed;
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
+            = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1)
+               * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {
-          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
-               = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
+            = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
@@ -1394,13 +1394,13 @@ void CometSearch::StorePeptide(int iWhichQuery,
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
          pQuery->_pResults[siLowestSpScoreIndex].iTotalIons 
-               = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1) 
-                   * g_staticParams.ionInformation.iNumIonSeriesUsed;
+            = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1)
+               * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {
-          pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
-               = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
+         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
+            = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
 
       if (dXcorr < 0.0)
@@ -2077,10 +2077,10 @@ bool CometSearch::Permute4(char *szProteinSeq,
    }
    else
    {
-       if (!Permute5(szProteinSeq, iWhichQuery))
-       {
-          return false;
-       }
+      if (!Permute5(szProteinSeq, iWhichQuery))
+      {
+         return false;
+      }
    }
 
    return true;
@@ -2377,7 +2377,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             double dBion = g_staticParams.precalcMasses.dNtermProton;
             double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
-
             if (_varModInfo.iStartPos == 0)
                dBion += g_staticParams.staticModifications.dAddNterminusProtein;
             if (_varModInfo.iEndPos == _proteinInfo.iProteinSeqLength-1)
@@ -2459,6 +2458,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
             {
                iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                {
                   for (ctLen=0; ctLen<iLenMinus1; ctLen++)

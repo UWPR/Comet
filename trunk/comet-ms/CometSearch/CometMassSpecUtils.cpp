@@ -56,9 +56,9 @@ double CometMassSpecUtils::GetFragmentIonMass(int iWhichIonSeries,
       case ION_SERIES_Z:
          dFragmentIonMass = pdAAreverse[i] - g_staticParams.massUtility.dNH2;
          break;
-    }
+   }
 
-    return (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
+   return (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
 }
 
 

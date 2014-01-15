@@ -20,47 +20,51 @@
 
 struct PostAnalysisThreadData
 {
-    int iQueryIndex;
+   int iQueryIndex;
 
-    PostAnalysisThreadData()
-    {
+   PostAnalysisThreadData()
+   {
       iQueryIndex = -1;
-    }
+   }
 
-    PostAnalysisThreadData(int iQueryIndex_in)
-    {
+   PostAnalysisThreadData(int iQueryIndex_in)
+   {
       iQueryIndex = iQueryIndex_in;
-    }
+   }
 };
 
 class CometPostAnalysis
 {
 public:
-  CometPostAnalysis();
-  ~CometPostAnalysis();
-  static bool PostAnalysis(int minNumThreads, int maxNumThreads);
-  static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData);
+   CometPostAnalysis();
+   ~CometPostAnalysis();
+   static bool PostAnalysis(int minNumThreads, int maxNumThreads);
+   static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData);
 
 private:
-  static void AnalyzeSP(int i);
-  static void CalculateSP(Results *pOutput,
-                          int iWhichQuery,
-                          int iSize);
-  static int SPQSortFn(const void *a, const void *b);
-  static int XcorrQSortFn(const void *a, const void *b);
-  static bool CalculateEValue(int iWhichQuery, bool bDecoy);
-  static bool GenerateXcorrDecoys(int iWhichQuery, bool bDecoy);
-  static void LinearRegression(int *pHistogram,
-                               double *dSlope,
-                               double *dIntercept,
-                               int *iMaxCorr,
-                               int *iStartCorr,
-                               int *iNextCorr);
-  static float FindSpScore(Query *pQuery,
-                           int bin);
-  static int FindFastXcorrIndex(Query *pQuery,
-                                int bin,
-                                int low);
+   static void AnalyzeSP(int i);
+   static void CalculateSP(Results *pOutput,
+                           int iWhichQuery,
+                           int iSize);
+   static int SPQSortFn(const void *a,
+                        const void *b);
+   static int XcorrQSortFn(const void *a,
+                           const void *b);
+   static bool CalculateEValue(int iWhichQuery,
+                               bool bDecoy);
+   static bool GenerateXcorrDecoys(int iWhichQuery,
+                                   bool bDecoy);
+   static void LinearRegression(int *pHistogram,
+                                double *dSlope,
+                                double *dIntercept,
+                                int *iMaxCorr,
+                                int *iStartCorr,
+                                int *iNextCorr);
+   static float FindSpScore(Query *pQuery,
+                            int bin);
+   static int FindFastXcorrIndex(Query *pQuery,
+                                 int bin,
+                                 int low);
 };
 
 

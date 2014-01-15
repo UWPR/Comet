@@ -56,18 +56,18 @@ using namespace MSToolkit;
 #ifdef CRUX
 inline int print_out(const char *format, ...)
 {
-  char sbuf[1000];
-  va_list arg;
-  int done;
+   char sbuf[1000];
+   va_list arg;
+   int done;
 
-  va_start (arg, format);
+   va_start (arg, format);
 
-  done = vsprintf (sbuf, format, arg);
-  va_end (arg);
+   done = vsprintf (sbuf, format, arg);
+   va_end (arg);
 
-  cerr << sbuf;
+   cerr << sbuf;
 
-  return done;
+   return done;
 }
 #define logout(...) print_out(__VA_ARGS__)
 #define logerr(...) print_out(__VA_ARGS__)

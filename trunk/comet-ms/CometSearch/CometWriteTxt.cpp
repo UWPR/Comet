@@ -221,7 +221,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
 }
 
 #else
-void CometWriteTxt::PrintTxtLine( int iWhichResult,
+void CometWriteTxt::PrintTxtLine(int iWhichResult,
                                  Results *pOutput,
                                  FILE *fpout)
 {

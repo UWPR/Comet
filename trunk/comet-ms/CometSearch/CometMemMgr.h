@@ -22,16 +22,16 @@
 class CometMemMgr
 {
 public:
-    CometMemMgr();
-    ~CometMemMgr();
+   CometMemMgr();
+   ~CometMemMgr();
 
-    bool CometMemInit();
-    void* CometMemAlloc(size_t size);
-    void* CometMemAlloc(size_t num, size_t size);
-    bool CometMemFree(void* pvAddress);
-    bool CometMemVirtualLock(void* pvAddress, size_t size);
-    bool CometMemVirtualUnlock(void* pvAddress, size_t size);
-    DWORD CometMemGetLastError();
+   bool CometMemInit();
+   void* CometMemAlloc(size_t size);
+   void* CometMemAlloc(size_t num, size_t size);
+   bool CometMemFree(void* pvAddress);
+   bool CometMemVirtualLock(void* pvAddress, size_t size);
+   bool CometMemVirtualUnlock(void* pvAddress, size_t size);
+   DWORD CometMemGetLastError();
 };
 
 extern CometMemMgr g_cometMemMgr;

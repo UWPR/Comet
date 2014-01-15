@@ -32,12 +32,9 @@ private:
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
                             FILE *fpOut);
-   static void PrintTxtLine( int iRankXcorr,
+   static void PrintTxtLine(int iRankXcorr,
                             Results *pOutput,
                             FILE *fpOut);
-
-   // Private member variables
-//   static bool _bWroteHeader;
 };
 
 #endif

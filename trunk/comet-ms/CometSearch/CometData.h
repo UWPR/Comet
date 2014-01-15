@@ -101,10 +101,10 @@ struct VarMods
 
    VarMods()
    {
-       bBinaryMod = 0;
-       iMaxNumVarModAAPerMod = 0;
-       dVarModMass = 0.0;
-       szVarModChar[0] = '\0';
+      bBinaryMod = 0;
+      iMaxNumVarModAAPerMod = 0;
+      dVarModMass = 0.0;
+      szVarModChar[0] = '\0';
    }
 
    VarMods(const VarMods& a)
@@ -142,17 +142,17 @@ struct EnzymeInfo
 
    EnzymeInfo()
    {
-       iAllowedMissedCleavage = 0;
-       iSearchEnzymeOffSet = 0;
-       iSampleEnzymeOffSet = 0;
+      iAllowedMissedCleavage = 0;
+      iSearchEnzymeOffSet = 0;
+      iSampleEnzymeOffSet = 0;
 
-       szSearchEnzymeName[0] = '\0';
-       szSearchEnzymeBreakAA[0] = '\0';
-       szSearchEnzymeNoBreakAA[0] = '\0';
+      szSearchEnzymeName[0] = '\0';
+      szSearchEnzymeBreakAA[0] = '\0';
+      szSearchEnzymeNoBreakAA[0] = '\0';
 
-       szSampleEnzymeName[0] = '\0';
-       szSampleEnzymeBreakAA[0] = '\0';
-       szSampleEnzymeNoBreakAA[0] = '\0';
+      szSampleEnzymeName[0] = '\0';
+      szSampleEnzymeBreakAA[0] = '\0';
+      szSampleEnzymeNoBreakAA[0] = '\0';
    }
 
    EnzymeInfo(const EnzymeInfo& a)

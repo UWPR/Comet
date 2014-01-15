@@ -25,22 +25,19 @@ public:
    ~CometWriteSqt();
 
    static void WriteSqt(FILE *fpout,
-                    FILE *fpoutd);
+                        FILE *fpoutd);
 
    static void PrintSqtHeader(FILE *fpout,
-                           CometSearchManager &searchMgr);
+                              CometSearchManager &searchMgr);
 
 private:
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
                             FILE *fpOut);
-   static void PrintSqtLine( int iRankXcorr,
+   static void PrintSqtLine(int iRankXcorr,
                             int iWhichResult,
                             Results *pOutput,
                             FILE *fpOut);
-
-   // Private member variables
-//   static bool _bWroteHeader;
 };
 
 #endif

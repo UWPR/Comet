@@ -25,13 +25,12 @@ public:
    ~CometWriteOut();
    static bool WriteOut(void);
 
-
 private:
    static float FindSpScore(Query *pQuery,
                             int bin);
    static bool PrintResults(int iWhichQuery,
                             bool bDecoySearch);
-   static void PrintOutputLine( int iRankXcorr,
+   static void PrintOutputLine(int iRankXcorr,
                                int iLenMaxDuplicates,
                                int iMaxWidthReference,
                                int iWhichResult,

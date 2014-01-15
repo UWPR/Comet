@@ -25,13 +25,15 @@ public:
    ~CometWritePepXML();
 
    static bool WritePepXMLHeader(FILE *fpout,
-       CometSearchManager &searchMgr);
+                                 CometSearchManager &searchMgr);
 
    static void WriteVariableModN(FILE *fpout,
-    CometSearchManager &searchMgr, string varModName);
+                                 CometSearchManager &searchMgr,
+                                 string varModName);
 
    static void WriteAddAminoAcid(FILE *fpout,
-    CometSearchManager &searchMgr, string varModName);
+                                 CometSearchManager &searchMgr,
+                                 string varModName);
 
    static void WritePepXML(FILE *fpout,
                            FILE *fpoutd);
@@ -43,6 +45,7 @@ private:
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
                             FILE *fpOut);
+
    static void PrintPepXMLSearchHit(int iWhichQuery,
                                     int iWhichResult,
                                     bool bDecoy,
@@ -50,8 +53,10 @@ private:
                                     FILE *fpOut,
                                     double dDeltaCn,
                                     double dDeltaCnStar);
+
    static void ReadInstrument(char *szManufacturer,
                               char *szModel);
+
    static void GetVal(char *szElement,
                       char *szAttribute,
                       char *szAttributeVal);
