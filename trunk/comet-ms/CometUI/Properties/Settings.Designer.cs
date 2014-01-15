@@ -106,5 +106,54 @@ namespace CometUI.Properties {
                 this["AllowedMissedCleavages"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute(@"<?xml version=""1.0"" encoding=""utf-16""?>
+<ArrayOfString xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
+  <string>0,No_enzyme,0,-,-</string>
+  <string>1,Trypsin,1,KR,P</string>
+  <string>2,Trypsin/P,1,KR,-</string>
+  <string>3,Lys_C,1,K,P</string>
+  <string>4,Lys_N,0,K,-</string>
+  <string>5,Arg_C,1,R,P</string>
+  <string>6,Asp_N,0,D,-</string>
+  <string>7,CNBr,1,M,-</string>
+  <string>8,Glu_C,1,DE,P</string>
+  <string>9,PepsinA,1,FL,P</string>
+  <string>10,Chymotrypsin,1,FWYL,P</string>
+</ArrayOfString>")]
+        public global::System.Collections.Specialized.StringCollection EnzymeInfo {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["EnzymeInfo"]));
+            }
+            set {
+                this["EnzymeInfo"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int SearchEnzymeNumber {
+            get {
+                return ((int)(this["SearchEnzymeNumber"]));
+            }
+            set {
+                this["SearchEnzymeNumber"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int SampleEnzymeNumber {
+            get {
+                return ((int)(this["SampleEnzymeNumber"]));
+            }
+            set {
+                this["SampleEnzymeNumber"] = value;
+            }
+        }
     }
 }

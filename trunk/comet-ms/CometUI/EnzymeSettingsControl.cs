@@ -10,6 +10,7 @@ namespace CometUI
 {
     public partial class EnzymeSettingsControl : UserControl
     {
+        public List<String[]> EnzymeInfo { get; set; } 
         private int SearchEnzymeComboEditListIndex { get; set; }
         private int SampleEnzymeComboEditListIndex { get; set; }
 
@@ -34,12 +35,6 @@ namespace CometUI
             }
 
             InitializeFromDefaultSettings();
-
-            searchEnzymeCombo.Items.Add("<Edit List...>");
-            SearchEnzymeComboEditListIndex = searchEnzymeCombo.Items.Count - 1;
-
-            sampleEnzymeCombo.Items.Add("<Edit List...>");
-            SampleEnzymeComboEditListIndex = sampleEnzymeCombo.Items.Count - 1;
         }
 
         private void InitializeFromDefaultSettings()
@@ -49,6 +44,50 @@ namespace CometUI
 
             // For this particular combo, index == value of allowed missed cleavages
             missedCleavagesCombo.SelectedIndex = Settings.Default.AllowedMissedCleavages;            
+        
+            EnzymeInfo = new List<string[]>();
+            foreach (var item in Settings.Default.EnzymeInfo)
+            {
+                string[] row = item.Split(',');
+                EnzymeInfo.Add(row);
+                sampleEnzymeCombo.Items.Add(row[1]);
+                searchEnzymeCombo.Items.Add(row[1]);
+            }
+
+            // Add the "Edit List" item at the end of the lists
+            searchEnzymeCombo.Items.Add("<Edit List...>");
+            SearchEnzymeComboEditListIndex = searchEnzymeCombo.Items.Count - 1;
+            sampleEnzymeCombo.Items.Add("<Edit List...>");
+            SampleEnzymeComboEditListIndex = sampleEnzymeCombo.Items.Count - 1;
+
+            sampleEnzymeCombo.SelectedIndex = Settings.Default.SampleEnzymeNumber;
+            searchEnzymeCombo.SelectedIndex = Settings.Default.SearchEnzymeNumber;
+        }
+
+        private void SearchEnzymeComboSelectedIndexChanged(object sender, EventArgs e)
+        {
+            var srchEnzymeCombo = (ComboBox) sender;
+            if (SearchEnzymeComboEditListIndex == srchEnzymeCombo.SelectedIndex)
+            {
+                var dlgEnzymeInfo = new EnzymeInfoDlg(this);
+                if (DialogResult.OK == dlgEnzymeInfo.ShowDialog())
+                {
+
+                }
+            }
+        }
+
+        private void SampleEnzymeComboSelectedIndexChanged(object sender, EventArgs e)
+        {
+            var smplEnzymeCombo = (ComboBox)sender;
+            if (SampleEnzymeComboEditListIndex == smplEnzymeCombo.SelectedIndex)
+            {
+                var dlgEnzymeInfo = new EnzymeInfoDlg(this);
+                if (DialogResult.OK == dlgEnzymeInfo.ShowDialog())
+                {
+
+                }
+            }
         }
     }
 }

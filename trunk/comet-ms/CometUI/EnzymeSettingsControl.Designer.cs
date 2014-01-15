@@ -55,6 +55,7 @@
             this.searchEnzymeCombo.Name = "searchEnzymeCombo";
             this.searchEnzymeCombo.Size = new System.Drawing.Size(133, 21);
             this.searchEnzymeCombo.TabIndex = 1;
+            this.searchEnzymeCombo.SelectedIndexChanged += new System.EventHandler(this.SearchEnzymeComboSelectedIndexChanged);
             // 
             // sampleEnzymeCombo
             // 
@@ -64,6 +65,7 @@
             this.sampleEnzymeCombo.Name = "sampleEnzymeCombo";
             this.sampleEnzymeCombo.Size = new System.Drawing.Size(133, 21);
             this.sampleEnzymeCombo.TabIndex = 3;
+            this.sampleEnzymeCombo.SelectedIndexChanged += new System.EventHandler(this.SampleEnzymeComboSelectedIndexChanged);
             // 
             // sampleEnzymeLabel
             // 
