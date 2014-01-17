@@ -1397,6 +1397,7 @@ bool CometSearchManager::DoSearch()
       {
          logout(" Comet version \"%s\"\n\n", comet_version);
          logout(" Search start:  %s\n", g_staticParams.szDate);
+         fflush(stdout);
       }
 
       int iFirstScan = g_staticParams.inputFile.iFirstScan;             // First scan to search specified by user.
@@ -1659,7 +1660,10 @@ bool CometSearchManager::DoSearch()
 
             // Load and preprocess all the spectra.
             if (!g_staticParams.options.bOutputSqtStream)
+            {
                logout(" - Load and process input spectra\n");
+               fflush(stdout);
+            }
 
             bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
@@ -1678,7 +1682,10 @@ bool CometSearchManager::DoSearch()
 
             // Allocate memory to store results for each query spectrum.
             if (!g_staticParams.options.bOutputSqtStream)
+            {
                logout(" - Allocate memory to store results\n");
+               fflush(stdout);
+            }
 
             bSucceeded = AllocateResultsMem();
             if (!bSucceeded)
