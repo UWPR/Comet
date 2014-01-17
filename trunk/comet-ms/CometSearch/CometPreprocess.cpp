@@ -277,7 +277,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       return false;
    }
 
-   g_cometMemMgr.CometMemVirtualLock(pScoring->pfFastXcorrData, pScoring->dwFastXcorrDataSize);
+   if (!g_staticParams.options.bSparseMatrix)  // only lock if using sparse matrix
+      g_cometMemMgr.CometMemVirtualLock(pScoring->pfFastXcorrData, pScoring->dwFastXcorrDataSize);
 
    if (g_staticParams.ionInformation.bUseNeutralLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
@@ -298,7 +299,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          return false;
       }
 
-      g_cometMemMgr.CometMemVirtualLock(pScoring->pfFastXcorrDataNL, pScoring->dwFastXcorrDataNLSize);
+      if (!g_staticParams.options.bSparseMatrix)  // only lock if using sparse matrix
+         g_cometMemMgr.CometMemVirtualLock(pScoring->pfFastXcorrDataNL, pScoring->dwFastXcorrDataNLSize);
    }
 
    // Create data for correlation analysis.
@@ -389,7 +391,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->iFastXcorrDataNL++;
 
       //MH: Fill sparse matrix
-      pScoring->dwSparseFastXcorrDataSize = (size_t)pScoring->iFastXcorrData * (size_t)sizeof(SparseMatrix);
+      pScoring->dwSparseFastXcorrDataSize = (size_t)pScoring->iFastXcorrData * sizeof(SparseMatrix);
       pScoring->pSparseFastXcorrData = (SparseMatrix *)g_cometMemMgr.CometMemAlloc((size_t)pScoring->iFastXcorrData, (size_t)sizeof(SparseMatrix));
       if (pScoring->pSparseFastXcorrData == NULL)
       {
@@ -404,8 +406,12 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       
          return false;
       }
+
+      g_cometMemMgr.CometMemVirtualLock(pScoring->pSparseFastXcorrData, pScoring->dwSparseFastXcorrDataSize);
+
       pScoring->pSparseFastXcorrData[0].bin=0;
       pScoring->pSparseFastXcorrData[0].fIntensity=0;
+
       j=1;
       for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
       {
@@ -419,7 +425,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->pSparseFastXcorrData[j].bin=i;
       pScoring->pSparseFastXcorrData[j].fIntensity=0;
 
-      g_cometMemMgr.CometMemVirtualUnlock(pScoring->pfFastXcorrData, pScoring->dwFastXcorrDataSize);
       if (!g_cometMemMgr.CometMemFree(pScoring->pfFastXcorrData))
       {
          return false;
@@ -431,7 +436,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         pScoring->dwSparseFastXcorrDataNLSize = (size_t)pScoring->iFastXcorrDataNL * (size_t)sizeof(SparseMatrix);
+         pScoring->dwSparseFastXcorrDataNLSize = (size_t)pScoring->iFastXcorrDataNL * sizeof(SparseMatrix);
          pScoring->pSparseFastXcorrDataNL = (SparseMatrix *)g_cometMemMgr.CometMemAlloc((size_t)pScoring->iFastXcorrDataNL, (size_t)sizeof(SparseMatrix));
          if (pScoring->pSparseFastXcorrDataNL == NULL)
          {
@@ -446,6 +451,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       
             return false;
          }
+
+         g_cometMemMgr.CometMemVirtualLock(pScoring->pSparseFastXcorrDataNL, pScoring->dwSparseFastXcorrDataNLSize);
 
          pScoring->pSparseFastXcorrDataNL[0].bin=0;
          pScoring->pSparseFastXcorrDataNL[0].fIntensity=0;
@@ -464,7 +471,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          pScoring->pSparseFastXcorrDataNL[j].bin=i;
          pScoring->pSparseFastXcorrDataNL[j].fIntensity=0;
 
-         g_cometMemMgr.CometMemVirtualUnlock(pScoring->pfFastXcorrDataNL, pScoring->dwFastXcorrDataNLSize);
          if (!g_cometMemMgr.CometMemFree(pScoring->pfFastXcorrDataNL))
          {
             return false;
@@ -510,7 +516,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       // MH: Fill sparse matrix for SpScore - Note that we allocate max number of sp ions,
       // but will use less than this amount.
 
-      pScoring->dwSparseSpScoreDataSize = (size_t)NUM_SP_IONS * (size_t)sizeof(SparseMatrix);
+      pScoring->dwSparseSpScoreDataSize = (size_t)NUM_SP_IONS * sizeof(SparseMatrix);
       pScoring->pSparseSpScoreData = (SparseMatrix *)g_cometMemMgr.CometMemAlloc((size_t)NUM_SP_IONS, (size_t)sizeof(SparseMatrix));
       if (pScoring->pSparseSpScoreData == NULL)
       {
@@ -525,10 +531,13 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       
          return false;
       }
+
+      g_cometMemMgr.CometMemVirtualLock(pScoring->pSparseSpScoreData, pScoring->dwSparseSpScoreDataSize);
+
       pScoring->iSpScoreData=0;
       for (i=0; i<NUM_SP_IONS; i++)
       {
-         if((float)pTempSpData[i].dIntensity > FLOAT_ZERO)
+         if ((float)pTempSpData[i].dIntensity > FLOAT_ZERO)
          {
             pScoring->pSparseSpScoreData[pScoring->iSpScoreData].bin = (int)(pTempSpData[i].dIon+0.5);
             pScoring->pSparseSpScoreData[pScoring->iSpScoreData].fIntensity = (float) pTempSpData[i].dIntensity;
@@ -538,7 +547,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    else
    {
-      pScoring->pfSpScoreData = (float *)g_cometMemMgr.CometMemAlloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float ));
+      pScoring->dwSpScoreDataSize = (size_t)pScoring->_spectrumInfoInternal.iArraySize * sizeof(float);
+      pScoring->pfSpScoreData = (float *)g_cometMemMgr.CometMemAlloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
       if (pScoring->pfSpScoreData == NULL)
       {
          char szErrorMsg[256];

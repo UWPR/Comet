@@ -33,7 +33,7 @@ class CometSearchManager;
 #define NUM_STORED                  100      // number of internal search results to store
 #define NUM_ION_SERIES              9
 
-#define WIDTH_REFERENCE             256      // size of the protein accession field to store
+#define WIDTH_REFERENCE             512      // size of the protein accession field to store
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
@@ -75,7 +75,7 @@ struct Options             // output parameters
    int iWhichReadingFrame;
    int iEnzymeTermini;
    int iNumStored;               // # of search results to store for xcorr analysis
-   int iSpectrumBatchSize;		   // # of spectra to search at a time within the scan range
+   int iSpectrumBatchSize;       // # of spectra to search at a time within the scan range
    int iStartCharge;
    int iEndCharge;
    int iMaxFragmentCharge;
@@ -501,7 +501,7 @@ struct StaticParams
       options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 0;
       options.iRemovePrecursor = 0;
-      options.dRemovePrecursorTol = 2.0;  
+      options.dRemovePrecursorTol = 1.5;  
 
       options.bOutputSqtStream = 0;
       options.bOutputSqtFile = 0;
@@ -707,22 +707,29 @@ struct Query
    {
       if (g_staticParams.options.bSparseMatrix)
       {
+         g_cometMemMgr.CometMemVirtualUnlock(pSparseSpScoreData, dwSparseSpScoreDataSize);
          g_cometMemMgr.CometMemFree(pSparseSpScoreData);
+
+         g_cometMemMgr.CometMemVirtualUnlock(pSparseFastXcorrData, dwSparseFastXcorrDataSize);
          g_cometMemMgr.CometMemFree(pSparseFastXcorrData);
+
          if (g_staticParams.ionInformation.bUseNeutralLoss
                && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
+            g_cometMemMgr.CometMemVirtualUnlock(pSparseFastXcorrDataNL, dwSparseFastXcorrDataNLSize);
             g_cometMemMgr.CometMemFree(pSparseFastXcorrDataNL);
          }
       }
       else
       {
-         g_cometMemMgr.CometMemVirtualUnlock(pfSpScoreData, dwSpScoreDataSize);
+         if (!g_staticParams.options.bSparseMatrix)
+            g_cometMemMgr.CometMemVirtualUnlock(pfSpScoreData, dwSpScoreDataSize);
          g_cometMemMgr.CometMemFree(pfSpScoreData);
 
-         g_cometMemMgr.CometMemVirtualUnlock(pfFastXcorrData, dwFastXcorrDataSize);
+         if (!g_staticParams.options.bSparseMatrix)
+            g_cometMemMgr.CometMemVirtualUnlock(pfFastXcorrData, dwFastXcorrDataSize);
          g_cometMemMgr.CometMemFree(pfFastXcorrData);
 
          if (g_staticParams.ionInformation.bUseNeutralLoss
@@ -730,7 +737,8 @@ struct Query
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
-            g_cometMemMgr.CometMemVirtualUnlock(pfFastXcorrDataNL, dwFastXcorrDataNLSize);
+            if (!g_staticParams.options.bSparseMatrix)
+               g_cometMemMgr.CometMemVirtualUnlock(pfFastXcorrDataNL, dwFastXcorrDataNLSize);
             g_cometMemMgr.CometMemFree(pfFastXcorrDataNL);
          }
       }
