@@ -419,7 +419,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->pSparseFastXcorrData[j].bin=i;
       pScoring->pSparseFastXcorrData[j].fIntensity=0;
 
-      free(pScoring->pfFastXcorrData);
+      g_cometMemMgr.CometMemVirtualUnlock(pScoring->pfFastXcorrData, pScoring->dwFastXcorrDataSize);
+      if (!g_cometMemMgr.CometMemFree(pScoring->pfFastXcorrData))
+      {
+         return false;
+      }
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
       if (g_staticParams.ionInformation.bUseNeutralLoss
@@ -460,7 +464,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          pScoring->pSparseFastXcorrDataNL[j].bin=i;
          pScoring->pSparseFastXcorrDataNL[j].fIntensity=0;
 
-         free(pScoring->pfFastXcorrDataNL);
+         g_cometMemMgr.CometMemVirtualUnlock(pScoring->pfFastXcorrDataNL, pScoring->dwFastXcorrDataNLSize);
+         if (!g_cometMemMgr.CometMemFree(pScoring->pfFastXcorrDataNL))
+         {
+            return false;
+         }
       }
    }
 
