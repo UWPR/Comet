@@ -277,7 +277,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       return false;
    }
 
-   if (!g_staticParams.options.bSparseMatrix)  // only lock if using sparse matrix
+   if (!g_staticParams.options.bSparseMatrix)  // only lock if not using sparse matrix
       g_cometMemMgr.CometMemVirtualLock(pScoring->pfFastXcorrData, pScoring->dwFastXcorrDataSize);
 
    if (g_staticParams.ionInformation.bUseNeutralLoss
@@ -299,7 +299,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          return false;
       }
 
-      if (!g_staticParams.options.bSparseMatrix)  // only lock if using sparse matrix
+      if (!g_staticParams.options.bSparseMatrix)  // only lock if not using sparse matrix
          g_cometMemMgr.CometMemVirtualLock(pScoring->pfFastXcorrDataNL, pScoring->dwFastXcorrDataNLSize);
    }
 
