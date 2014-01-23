@@ -72,15 +72,5 @@ namespace CometUI
         {
             EnzymeInfoChanged = true;
         }
-
-        private void EnzymeInfoDataGridViewRowsAdded(object sender, DataGridViewRowsAddedEventArgs e)
-        {
-            EnzymeInfoChanged = true;
-        }
-
-        private void EnzymeInfoDataGridViewRowsRemoved(object sender, DataGridViewRowsRemovedEventArgs e)
-        {
-            EnzymeInfoChanged = true;
-        }
     }
 }

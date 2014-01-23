@@ -69,8 +69,13 @@ namespace CometUI
 
             foreach (var row in EnzymeInfo)
             {
-                sampleEnzymeCombo.Items.Add(row);
-                searchEnzymeCombo.Items.Add(row);
+                string[] cells = row.Split(',');
+
+                String sampleEnzymeItem = cells[1] + " (" + cells[3] + "/" + cells[4] + ")";
+                sampleEnzymeCombo.Items.Add(sampleEnzymeItem);
+
+                String searchEnzymeItem = cells[1] + " (" + cells[3] + "/" + cells[4] + ")";
+                searchEnzymeCombo.Items.Add(searchEnzymeItem);
             }
 
             // Add the "Edit List" item at the end of the lists
@@ -86,12 +91,10 @@ namespace CometUI
             if (SearchEnzymeComboEditListIndex == srchEnzymeCombo.SelectedIndex)
             {
                 var dlgEnzymeInfo = new EnzymeInfoDlg(this);
-                if (DialogResult.OK == dlgEnzymeInfo.ShowDialog())
+                if ((DialogResult.OK == dlgEnzymeInfo.ShowDialog()) &&
+                    dlgEnzymeInfo.EnzymeInfoChanged)
                 {
-                    if (dlgEnzymeInfo.EnzymeInfoChanged)
-                    {
-                        UpdateEnzymeInfo();
-                    }
+                    UpdateEnzymeInfo();
                 }
                 else
                 {
