@@ -64,7 +64,7 @@
             this.sampleEnzymeCombo.Location = new System.Drawing.Point(13, 106);
             this.sampleEnzymeCombo.Name = "sampleEnzymeCombo";
             this.sampleEnzymeCombo.Size = new System.Drawing.Size(133, 21);
-            this.sampleEnzymeCombo.TabIndex = 3;
+            this.sampleEnzymeCombo.TabIndex = 2;
             this.sampleEnzymeCombo.SelectedIndexChanged += new System.EventHandler(this.SampleEnzymeComboSelectedIndexChanged);
             // 
             // sampleEnzymeLabel
@@ -83,7 +83,7 @@
             this.enzymeTerminiCombo.Location = new System.Drawing.Point(13, 236);
             this.enzymeTerminiCombo.Name = "enzymeTerminiCombo";
             this.enzymeTerminiCombo.Size = new System.Drawing.Size(133, 21);
-            this.enzymeTerminiCombo.TabIndex = 5;
+            this.enzymeTerminiCombo.TabIndex = 4;
             // 
             // enzypeTerminiLabel
             // 
@@ -108,7 +108,7 @@
             this.missedCleavagesCombo.Location = new System.Drawing.Point(13, 171);
             this.missedCleavagesCombo.Name = "missedCleavagesCombo";
             this.missedCleavagesCombo.Size = new System.Drawing.Size(133, 21);
-            this.missedCleavagesCombo.TabIndex = 7;
+            this.missedCleavagesCombo.TabIndex = 3;
             // 
             // label1
             // 

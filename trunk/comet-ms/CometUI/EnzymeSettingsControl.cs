@@ -82,9 +82,6 @@ namespace CometUI
 
         private void SearchEnzymeComboSelectedIndexChanged(object sender, EventArgs e)
         {
-            // Todo: Ask Jimmy what to do once the user OK's or Cancel's out of the EnzymeInfoDlg
-            // Do we set the combobox selection back to what it was?  Do we require users select 
-            // an item from the data grid list?
             var srchEnzymeCombo = (ComboBox) sender;
             if (SearchEnzymeComboEditListIndex == srchEnzymeCombo.SelectedIndex)
             {
