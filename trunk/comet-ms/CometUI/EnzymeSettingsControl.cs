@@ -1,18 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Windows.Forms;
-using System.IO;
 using CometUI.Properties;
+using System.Collections.Specialized;
 
 namespace CometUI
 {
     public partial class EnzymeSettingsControl : UserControl
     {
-        public List<String[]> EnzymeInfo { get; set; } 
+        public StringCollection EnzymeInfo { get; set; } 
+
         private int SearchEnzymeComboEditListIndex { get; set; }
         private int SampleEnzymeComboEditListIndex { get; set; }
+        private int SearchEnzymeCurrentSelectedIndex { get; set; }
+        private int SampleEnzymeCurrentSelectedIndex { get; set; }
 
         private new Form  Parent { get; set; }
         private readonly Dictionary<string, int> _enzymeTermini = new Dictionary<string, int>();
@@ -43,15 +44,33 @@ namespace CometUI
             enzymeTerminiCombo.SelectedIndex = enzymeTerminiDefaultIndex;
 
             // For this particular combo, index == value of allowed missed cleavages
-            missedCleavagesCombo.SelectedIndex = Settings.Default.AllowedMissedCleavages;            
-        
-            EnzymeInfo = new List<string[]>();
+            missedCleavagesCombo.SelectedIndex = Settings.Default.AllowedMissedCleavages;
+
+
+            EnzymeInfo = new StringCollection();
             foreach (var item in Settings.Default.EnzymeInfo)
             {
-                string[] row = item.Split(',');
-                EnzymeInfo.Add(row);
-                sampleEnzymeCombo.Items.Add(row[1]);
-                searchEnzymeCombo.Items.Add(row[1]);
+                EnzymeInfo.Add(item);
+            }
+
+            UpdateEnzymeInfo();
+
+            SearchEnzymeCurrentSelectedIndex = Settings.Default.SearchEnzymeNumber;
+            SampleEnzymeCurrentSelectedIndex = Settings.Default.SampleEnzymeNumber;
+
+            searchEnzymeCombo.SelectedIndex = SearchEnzymeCurrentSelectedIndex;
+            sampleEnzymeCombo.SelectedIndex = SampleEnzymeCurrentSelectedIndex;
+        }
+
+        private void UpdateEnzymeInfo()
+        {
+            sampleEnzymeCombo.Items.Clear();
+            searchEnzymeCombo.Items.Clear();
+
+            foreach (var row in EnzymeInfo)
+            {
+                sampleEnzymeCombo.Items.Add(row);
+                searchEnzymeCombo.Items.Add(row);
             }
 
             // Add the "Edit List" item at the end of the lists
@@ -59,9 +78,6 @@ namespace CometUI
             SearchEnzymeComboEditListIndex = searchEnzymeCombo.Items.Count - 1;
             sampleEnzymeCombo.Items.Add("<Edit List...>");
             SampleEnzymeComboEditListIndex = sampleEnzymeCombo.Items.Count - 1;
-
-            sampleEnzymeCombo.SelectedIndex = Settings.Default.SampleEnzymeNumber;
-            searchEnzymeCombo.SelectedIndex = Settings.Default.SearchEnzymeNumber;
         }
 
         private void SearchEnzymeComboSelectedIndexChanged(object sender, EventArgs e)
@@ -75,8 +91,19 @@ namespace CometUI
                 var dlgEnzymeInfo = new EnzymeInfoDlg(this);
                 if (DialogResult.OK == dlgEnzymeInfo.ShowDialog())
                 {
-
+                    if (dlgEnzymeInfo.EnzymeInfoChanged)
+                    {
+                        UpdateEnzymeInfo();
+                    }
                 }
+                else
+                {
+                    srchEnzymeCombo.SelectedIndex = SearchEnzymeCurrentSelectedIndex;
+                }
+            }
+            else
+            {
+                SearchEnzymeCurrentSelectedIndex = srchEnzymeCombo.SelectedIndex;
             }
         }
 
@@ -88,8 +115,19 @@ namespace CometUI
                 var dlgEnzymeInfo = new EnzymeInfoDlg(this);
                 if (DialogResult.OK == dlgEnzymeInfo.ShowDialog())
                 {
-
+                    if (dlgEnzymeInfo.EnzymeInfoChanged)
+                    {
+                        UpdateEnzymeInfo();
+                    }
                 }
+                else
+                {
+                    smplEnzymeCombo.SelectedIndex = SampleEnzymeCurrentSelectedIndex;
+                }
+            }
+            else
+            {
+                SampleEnzymeCurrentSelectedIndex = smplEnzymeCombo.SelectedIndex;
             }
         }
     }

@@ -1,10 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
+using System.Collections.Specialized;
 using System.Windows.Forms;
 
 namespace CometUI
@@ -12,70 +7,80 @@ namespace CometUI
     public partial class EnzymeInfoDlg : Form
     {
         public string SelectedEnzymeName { get; set; }
+        public bool EnzymeInfoChanged { get; private set; }
 
         private EnzymeSettingsControl EnzymeSettingsDlg { get; set; }
-
+    
         public EnzymeInfoDlg(EnzymeSettingsControl enzymeSettings)
         {
             InitializeComponent();
 
             EnzymeSettingsDlg = enzymeSettings;
 
-            //List<string[]> enzymeInfoList = new List<string[]>();
+            EnzymeInfoChanged = false;
 
-            //string[] row0 = { "0", "No_enzyme", "0", "-", "-" };
-            //enzymeInfoList.Add(row0);
-
-            //string[] row1 = { "1", "Trypsin", "1", "KR", "P" };
-            //enzymeInfoList.Add(row1);
-
-            //string[] row2 = { "2", "Trypsin/P", "1", "KR", "-" };
-            //enzymeInfoList.Add(row2);
-
-            //string[] row3 = { "3", "Lys_C", "1", "K", "P" };
-            //enzymeInfoList.Add(row3);
-
-            //string[] row4 = { "4", "Lys_N", "0", "K", "-" };
-            //enzymeInfoList.Add(row4);
-
-            //string[] row5 = { "5", "Arg_C", "1", "R", "P" };
-            //enzymeInfoList.Add(row5);
-
-            //string[] row6 = { "6", "Asp_N", "0", "D", "-" };
-            //enzymeInfoList.Add(row6);
-
-            //string[] row7 = { "7", "CNBr", "1", "M", "-" };
-            //enzymeInfoList.Add(row7);
-
-            //string[] row8 = { "8", "Glu_C", "1", "DE", "P" };
-            //enzymeInfoList.Add(row8);
-
-            //string[] row9 = { "9", "PepsinA", "1", "FL", "P" };
-            //enzymeInfoList.Add(row9);
-
-            //string[] row10 = { "10", "Chymotrypsin", "1", "FWYL", "P" };
-            //enzymeInfoList.Add(row10);
-
-            foreach (string[] row in EnzymeSettingsDlg.EnzymeInfo)
+            foreach (var row in EnzymeSettingsDlg.EnzymeInfo)
             {
-                enzymeInfoDataGridView.Rows.Add(row);
+                string[] cells = row.Split(',');
+                enzymeInfoDataGridView.Rows.Add(cells);
             }
-
         }
 
         private void EnzymeInfoOkButtonClick(object sender, EventArgs e)
         {
+            if (EnzymeInfoChanged)
+            {
+                var newEnzymeInfo = new StringCollection();
+                foreach (DataGridViewRow row in enzymeInfoDataGridView.Rows)
+                {
+                    int numColumns = enzymeInfoDataGridView.ColumnCount;
+                    string newEnzymeInfoItem = String.Empty;
+                    bool isValidRow = true;
+                    for (int i = 0; i < numColumns; i++)
+                    {
+                        if ((string) row.Cells[i].Value == null)
+                        {
+                            isValidRow = false;
+                            break;
+                        }
+                        newEnzymeInfoItem += row.Cells[i].Value;
+                        if (i != numColumns - 1)
+                        {
+                            newEnzymeInfoItem += ",";
+                        }
+                    }
+
+                    if (isValidRow)
+                    {
+                        newEnzymeInfo.Add(newEnzymeInfoItem);
+                    }
+                }
+
+                EnzymeSettingsDlg.EnzymeInfo = newEnzymeInfo;
+            }
+
             DialogResult = DialogResult.OK;
         }
 
         private void EnzymeInfoCancelButtonClick(object sender, EventArgs e)
         {
+            EnzymeInfoChanged = false;
             DialogResult = DialogResult.Cancel;
         }
 
-        private void EnzymeInfoDataGridViewSelectionChanged(object sender, EventArgs e)
+        private void EnzymeInfoDataGridViewCellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
+            EnzymeInfoChanged = true;
+        }
 
+        private void EnzymeInfoDataGridViewRowsAdded(object sender, DataGridViewRowsAddedEventArgs e)
+        {
+            EnzymeInfoChanged = true;
+        }
+
+        private void EnzymeInfoDataGridViewRowsRemoved(object sender, DataGridViewRowsRemovedEventArgs e)
+        {
+            EnzymeInfoChanged = true;
         }
     }
 }

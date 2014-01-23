@@ -59,7 +59,9 @@
             this.enzymeInfoDataGridView.Name = "enzymeInfoDataGridView";
             this.enzymeInfoDataGridView.Size = new System.Drawing.Size(417, 237);
             this.enzymeInfoDataGridView.TabIndex = 0;
-            this.enzymeInfoDataGridView.SelectionChanged += new System.EventHandler(this.EnzymeInfoDataGridViewSelectionChanged);
+            this.enzymeInfoDataGridView.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.EnzymeInfoDataGridViewCellValueChanged);
+            this.enzymeInfoDataGridView.RowsAdded += new System.Windows.Forms.DataGridViewRowsAddedEventHandler(this.EnzymeInfoDataGridViewRowsAdded);
+            this.enzymeInfoDataGridView.RowsRemoved += new System.Windows.Forms.DataGridViewRowsRemovedEventHandler(this.EnzymeInfoDataGridViewRowsRemoved);
             // 
             // EnzymeNumber
             // 
