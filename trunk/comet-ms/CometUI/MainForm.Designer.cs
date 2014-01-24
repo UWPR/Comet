@@ -32,6 +32,7 @@
             this.menuStripMain = new System.Windows.Forms.MenuStrip();
             this.toolStripMenuItemSettings = new System.Windows.Forms.ToolStripMenuItem();
             this.saveAsDefaultToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.importFromFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exportToFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItemHelp = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -39,13 +40,12 @@
             this.cometMainTab = new System.Windows.Forms.TabControl();
             this.inputFilesTabPage = new System.Windows.Forms.TabPage();
             this.enzymeTabPage = new System.Windows.Forms.TabPage();
-            this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.massesTabPage = new System.Windows.Forms.TabPage();
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.tabPage4 = new System.Windows.Forms.TabPage();
             this.statusStripMain = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.importFromFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStripMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).BeginInit();
             this.mainSplitContainer.Panel1.SuspendLayout();
@@ -92,6 +92,12 @@
             this.saveAsDefaultToolStripMenuItem.Name = "saveAsDefaultToolStripMenuItem";
             this.saveAsDefaultToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
             this.saveAsDefaultToolStripMenuItem.Text = "&Save as Default...";
+            // 
+            // importFromFileToolStripMenuItem
+            // 
+            this.importFromFileToolStripMenuItem.Name = "importFromFileToolStripMenuItem";
+            this.importFromFileToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
+            this.importFromFileToolStripMenuItem.Text = "&Import...";
             // 
             // exportToFileToolStripMenuItem
             // 
@@ -141,7 +147,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.cometMainTab.Controls.Add(this.inputFilesTabPage);
             this.cometMainTab.Controls.Add(this.enzymeTabPage);
-            this.cometMainTab.Controls.Add(this.tabPage1);
+            this.cometMainTab.Controls.Add(this.massesTabPage);
             this.cometMainTab.Controls.Add(this.tabPage2);
             this.cometMainTab.Controls.Add(this.tabPage3);
             this.cometMainTab.Controls.Add(this.tabPage4);
@@ -171,15 +177,15 @@
             this.enzymeTabPage.Text = "Enzyme";
             this.enzymeTabPage.UseVisualStyleBackColor = true;
             // 
-            // tabPage1
+            // massesTabPage
             // 
-            this.tabPage1.Location = new System.Drawing.Point(4, 22);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(527, 330);
-            this.tabPage1.TabIndex = 2;
-            this.tabPage1.Text = "Masses";
-            this.tabPage1.UseVisualStyleBackColor = true;
+            this.massesTabPage.Location = new System.Drawing.Point(4, 22);
+            this.massesTabPage.Name = "massesTabPage";
+            this.massesTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.massesTabPage.Size = new System.Drawing.Size(527, 330);
+            this.massesTabPage.TabIndex = 2;
+            this.massesTabPage.Text = "Masses";
+            this.massesTabPage.UseVisualStyleBackColor = true;
             // 
             // tabPage2
             // 
@@ -227,12 +233,6 @@
             this.toolStripStatusLabel1.Size = new System.Drawing.Size(218, 17);
             this.toolStripStatusLabel1.Text = "This is where search status will show up.";
             // 
-            // importFromFileToolStripMenuItem
-            // 
-            this.importFromFileToolStripMenuItem.Name = "importFromFileToolStripMenuItem";
-            this.importFromFileToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
-            this.importFromFileToolStripMenuItem.Text = "&Import...";
-            // 
             // CometMainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -271,7 +271,7 @@
         private System.Windows.Forms.TabPage inputFilesTabPage;
         private System.Windows.Forms.TabPage enzymeTabPage;
         private System.Windows.Forms.StatusStrip statusStripMain;
-        private System.Windows.Forms.TabPage tabPage1;
+        private System.Windows.Forms.TabPage massesTabPage;
         private System.Windows.Forms.TabPage tabPage2;
         private System.Windows.Forms.TabPage tabPage3;
         private System.Windows.Forms.TabPage tabPage4;

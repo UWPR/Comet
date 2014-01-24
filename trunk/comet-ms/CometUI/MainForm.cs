@@ -10,6 +10,7 @@ namespace CometUI
     {
         private InputFilesControl InputFilesControl { get; set; }
         private EnzymeSettingsControl EnzymeSettingsControl { get; set; }
+        private MassSettingsControl MassSettingsControl { get; set; }
         
         private readonly CometSearchManagerWrapper _searchMgr;
 
@@ -27,14 +28,22 @@ namespace CometUI
             };
             inputFilesTabPage.Controls.Add(InputFilesControl);
 
+            // Create and add Enzyme tab page
             EnzymeSettingsControl = new EnzymeSettingsControl(this)
             {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
                 Location = new Point(0, 0)
             };
-
-            // Create and add Enzyme tab page
             enzymeTabPage.Controls.Add(EnzymeSettingsControl);
+
+            // Create and add Mass tab page
+            MassSettingsControl = new MassSettingsControl(this)
+            {
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
+                Location = new Point(0, 0)
+            };
+            massesTabPage.Controls.Add(MassSettingsControl);
+            
         }
 
         private void BtnSearchClick(object sender, EventArgs e)
