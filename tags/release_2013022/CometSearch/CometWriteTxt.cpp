@@ -127,7 +127,14 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       for (int i=0; i<=min((unsigned long)4, pQuery->_uliNumMatchedPeptides); i++)
       {
          fprintf(fpout, "%s", szBuf);      
-         PrintTxtLine(i, pOutput, fpout);  // print top hit only right now
+
+         if (pOutput[i].fXcorr > 0.0)
+            PrintTxtLine(i, pOutput, fpout);  // print top hit only right now
+         else
+         {
+            fprintf(fpout, "\n");
+            break;
+         }
       }
    }
 }
@@ -228,7 +235,7 @@ void CometWriteTxt::PrintTxtLine(int iWhichResult,
    int  i;
    char szBuf[SIZE_BUF];
 
-   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
+   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d",
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
