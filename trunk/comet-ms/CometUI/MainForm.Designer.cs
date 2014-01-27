@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CometMainForm));
             this.btnSearch = new System.Windows.Forms.Button();
             this.menuStripMain = new System.Windows.Forms.MenuStrip();
             this.toolStripMenuItemSettings = new System.Windows.Forms.ToolStripMenuItem();
@@ -240,6 +241,7 @@
             this.ClientSize = new System.Drawing.Size(559, 437);
             this.Controls.Add(this.mainSplitContainer);
             this.Controls.Add(this.menuStripMain);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStripMain;
             this.MinimumSize = new System.Drawing.Size(575, 475);
             this.Name = "CometMainForm";
