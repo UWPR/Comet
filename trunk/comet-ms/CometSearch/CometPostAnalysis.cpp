@@ -397,7 +397,10 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
       {
          double dExpect;
 
-         dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
+         if (bDecoy)
+            dExpect = pow(10.0, dSlope * pQuery->_pDecoys[i].fXcorr + dIntercept);
+         else
+            dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
 
          if (dExpect > 999.0)
             dExpect = 999.0;
