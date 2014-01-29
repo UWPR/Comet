@@ -155,5 +155,41 @@ namespace CometUI.Properties {
                 this["SampleEnzymeNumber"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("3")]
+        public double PrecursorMassTolerance {
+            get {
+                return ((double)(this["PrecursorMassTolerance"]));
+            }
+            set {
+                this["PrecursorMassTolerance"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("amu")]
+        public string PrecursorMassUnit {
+            get {
+                return ((string)(this["PrecursorMassUnit"]));
+            }
+            set {
+                this["PrecursorMassUnit"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("MH+")]
+        public string PrecursorToleranceType {
+            get {
+                return ((string)(this["PrecursorToleranceType"]));
+            }
+            set {
+                this["PrecursorToleranceType"] = value;
+            }
+        }
     }
 }

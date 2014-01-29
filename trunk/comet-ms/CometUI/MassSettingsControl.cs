@@ -6,6 +6,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using CometUI.Properties;
 
 namespace CometUI
 {
@@ -22,6 +23,8 @@ namespace CometUI
 
         private void InitializeFromDefaultSettings()
         {
+            precursorMassUnitCombo.SelectedIndex = precursorMassUnitCombo.FindStringExact(Settings.Default.PrecursorMassUnit);
+            precursorTolTypeCombo.SelectedIndex = precursorTolTypeCombo.FindStringExact(Settings.Default.PrecursorToleranceType);
         }
     }
 }

@@ -45,5 +45,14 @@
     <Setting Name="SampleEnzymeNumber" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
+    <Setting Name="PrecursorMassTolerance" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">3</Value>
+    </Setting>
+    <Setting Name="PrecursorMassUnit" Type="System.String" Scope="User">
+      <Value Profile="(Default)">amu</Value>
+    </Setting>
+    <Setting Name="PrecursorToleranceType" Type="System.String" Scope="User">
+      <Value Profile="(Default)">MH+</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
