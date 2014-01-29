@@ -29,33 +29,33 @@
         private void InitializeComponent()
         {
             this.fragmentGroupBox = new System.Windows.Forms.GroupBox();
-            this.textBoxDecoyPrefix = new System.Windows.Forms.TextBox();
+            this.fragmentMassTypeCombo = new System.Windows.Forms.ComboBox();
+            this.label9 = new System.Windows.Forms.Label();
+            this.label8 = new System.Windows.Forms.Label();
+            this.fragmentOffsetTextBox = new System.Windows.Forms.TextBox();
+            this.label7 = new System.Windows.Forms.Label();
+            this.fragmentBinSizeTextBox = new System.Windows.Forms.TextBox();
+            this.precursorMassTolTextBox = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.precursorGroupBox = new System.Windows.Forms.GroupBox();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.label4 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
-            this.precursorMassUnitCombo = new System.Windows.Forms.ComboBox();
-            this.precursorTolTypeCombo = new System.Windows.Forms.ComboBox();
-            this.label3 = new System.Windows.Forms.Label();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.precursorIsotopeErrorCombo = new System.Windows.Forms.ComboBox();
-            this.label7 = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.label8 = new System.Windows.Forms.Label();
-            this.textBox2 = new System.Windows.Forms.TextBox();
-            this.comboBox2 = new System.Windows.Forms.ComboBox();
-            this.label9 = new System.Windows.Forms.Label();
-            this.checkBox1 = new System.Windows.Forms.CheckBox();
-            this.checkBox2 = new System.Windows.Forms.CheckBox();
-            this.checkBox3 = new System.Windows.Forms.CheckBox();
-            this.checkBox4 = new System.Windows.Forms.CheckBox();
-            this.checkBox5 = new System.Windows.Forms.CheckBox();
-            this.checkBox6 = new System.Windows.Forms.CheckBox();
-            this.checkBox7 = new System.Windows.Forms.CheckBox();
-            this.checkBox8 = new System.Windows.Forms.CheckBox();
+            this.precursorMassTypeCombo = new System.Windows.Forms.ComboBox();
+            this.label3 = new System.Windows.Forms.Label();
+            this.precursorTolTypeCombo = new System.Windows.Forms.ComboBox();
+            this.precursorMassUnitCombo = new System.Windows.Forms.ComboBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.label5 = new System.Windows.Forms.Label();
+            this.label4 = new System.Windows.Forms.Label();
+            this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.useNLCheckBox = new System.Windows.Forms.CheckBox();
+            this.flankCheckBox = new System.Windows.Forms.CheckBox();
+            this.zIonCheckBox = new System.Windows.Forms.CheckBox();
+            this.yIonCheckBox = new System.Windows.Forms.CheckBox();
+            this.bIonCheckBox = new System.Windows.Forms.CheckBox();
+            this.xIonCheckBox = new System.Windows.Forms.CheckBox();
+            this.cIonCheckBox = new System.Windows.Forms.CheckBox();
+            this.aIonCheckBox = new System.Windows.Forms.CheckBox();
             this.fragmentGroupBox.SuspendLayout();
             this.precursorGroupBox.SuspendLayout();
             this.groupBox1.SuspendLayout();
@@ -63,12 +63,12 @@
             // 
             // fragmentGroupBox
             // 
-            this.fragmentGroupBox.Controls.Add(this.comboBox2);
+            this.fragmentGroupBox.Controls.Add(this.fragmentMassTypeCombo);
             this.fragmentGroupBox.Controls.Add(this.label9);
             this.fragmentGroupBox.Controls.Add(this.label8);
-            this.fragmentGroupBox.Controls.Add(this.textBox2);
+            this.fragmentGroupBox.Controls.Add(this.fragmentOffsetTextBox);
             this.fragmentGroupBox.Controls.Add(this.label7);
-            this.fragmentGroupBox.Controls.Add(this.textBox1);
+            this.fragmentGroupBox.Controls.Add(this.fragmentBinSizeTextBox);
             this.fragmentGroupBox.Location = new System.Drawing.Point(272, 17);
             this.fragmentGroupBox.Name = "fragmentGroupBox";
             this.fragmentGroupBox.Size = new System.Drawing.Size(225, 144);
@@ -76,13 +76,65 @@
             this.fragmentGroupBox.TabStop = false;
             this.fragmentGroupBox.Text = "Fragment";
             // 
-            // textBoxDecoyPrefix
+            // fragmentMassTypeCombo
             // 
-            this.textBoxDecoyPrefix.Location = new System.Drawing.Point(27, 46);
-            this.textBoxDecoyPrefix.Name = "textBoxDecoyPrefix";
-            this.textBoxDecoyPrefix.Size = new System.Drawing.Size(56, 20);
-            this.textBoxDecoyPrefix.TabIndex = 12;
-            this.textBoxDecoyPrefix.Text = "3.00";
+            this.fragmentMassTypeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.fragmentMassTypeCombo.FormattingEnabled = true;
+            this.fragmentMassTypeCombo.Items.AddRange(new object[] {
+            "avg",
+            "mono"});
+            this.fragmentMassTypeCombo.Location = new System.Drawing.Point(18, 104);
+            this.fragmentMassTypeCombo.Name = "fragmentMassTypeCombo";
+            this.fragmentMassTypeCombo.Size = new System.Drawing.Size(67, 21);
+            this.fragmentMassTypeCombo.TabIndex = 8;
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Location = new System.Drawing.Point(15, 88);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(62, 13);
+            this.label9.TabIndex = 32;
+            this.label9.Text = "Mass Type:";
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(124, 30);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(38, 13);
+            this.label8.TabIndex = 27;
+            this.label8.Text = "Offset:";
+            // 
+            // fragmentOffsetTextBox
+            // 
+            this.fragmentOffsetTextBox.Location = new System.Drawing.Point(127, 45);
+            this.fragmentOffsetTextBox.Name = "fragmentOffsetTextBox";
+            this.fragmentOffsetTextBox.Size = new System.Drawing.Size(67, 20);
+            this.fragmentOffsetTextBox.TabIndex = 7;
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(15, 30);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(48, 13);
+            this.label7.TabIndex = 25;
+            this.label7.Text = "Bin Size:";
+            // 
+            // fragmentBinSizeTextBox
+            // 
+            this.fragmentBinSizeTextBox.Location = new System.Drawing.Point(18, 45);
+            this.fragmentBinSizeTextBox.Name = "fragmentBinSizeTextBox";
+            this.fragmentBinSizeTextBox.Size = new System.Drawing.Size(67, 20);
+            this.fragmentBinSizeTextBox.TabIndex = 6;
+            // 
+            // precursorMassTolTextBox
+            // 
+            this.precursorMassTolTextBox.Location = new System.Drawing.Point(27, 46);
+            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
+            this.precursorMassTolTextBox.Size = new System.Drawing.Size(56, 20);
+            this.precursorMassTolTextBox.TabIndex = 1;
             // 
             // label1
             // 
@@ -107,7 +159,7 @@
             // precursorGroupBox
             // 
             this.precursorGroupBox.Controls.Add(this.precursorIsotopeErrorCombo);
-            this.precursorGroupBox.Controls.Add(this.comboBox1);
+            this.precursorGroupBox.Controls.Add(this.precursorMassTypeCombo);
             this.precursorGroupBox.Controls.Add(this.label3);
             this.precursorGroupBox.Controls.Add(this.precursorTolTypeCombo);
             this.precursorGroupBox.Controls.Add(this.precursorMassUnitCombo);
@@ -116,57 +168,58 @@
             this.precursorGroupBox.Controls.Add(this.label4);
             this.precursorGroupBox.Controls.Add(this.label2);
             this.precursorGroupBox.Controls.Add(this.label1);
-            this.precursorGroupBox.Controls.Add(this.textBoxDecoyPrefix);
+            this.precursorGroupBox.Controls.Add(this.precursorMassTolTextBox);
             this.precursorGroupBox.Location = new System.Drawing.Point(26, 17);
             this.precursorGroupBox.Name = "precursorGroupBox";
-            this.precursorGroupBox.Size = new System.Drawing.Size(225, 259);
+            this.precursorGroupBox.Size = new System.Drawing.Size(225, 254);
             this.precursorGroupBox.TabIndex = 0;
             this.precursorGroupBox.TabStop = false;
             this.precursorGroupBox.Text = "Precursor";
             // 
-            // groupBox1
+            // precursorIsotopeErrorCombo
             // 
-            this.groupBox1.Controls.Add(this.checkBox8);
-            this.groupBox1.Controls.Add(this.checkBox7);
-            this.groupBox1.Controls.Add(this.checkBox6);
-            this.groupBox1.Controls.Add(this.checkBox5);
-            this.groupBox1.Controls.Add(this.checkBox4);
-            this.groupBox1.Controls.Add(this.checkBox3);
-            this.groupBox1.Controls.Add(this.checkBox2);
-            this.groupBox1.Controls.Add(this.checkBox1);
-            this.groupBox1.Location = new System.Drawing.Point(272, 178);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(225, 98);
-            this.groupBox1.TabIndex = 2;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Ions";
+            this.precursorIsotopeErrorCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.precursorIsotopeErrorCombo.FormattingEnabled = true;
+            this.precursorIsotopeErrorCombo.Items.AddRange(new object[] {
+            "no C13",
+            "C13 offsets"});
+            this.precursorIsotopeErrorCombo.Location = new System.Drawing.Point(16, 162);
+            this.precursorIsotopeErrorCombo.Name = "precursorIsotopeErrorCombo";
+            this.precursorIsotopeErrorCombo.Size = new System.Drawing.Size(67, 21);
+            this.precursorIsotopeErrorCombo.TabIndex = 5;
             // 
-            // label4
+            // precursorMassTypeCombo
             // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(120, 88);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(52, 13);
-            this.label4.TabIndex = 25;
-            this.label4.Text = "Tol Type:";
+            this.precursorMassTypeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.precursorMassTypeCombo.FormattingEnabled = true;
+            this.precursorMassTypeCombo.Items.AddRange(new object[] {
+            "avg",
+            "mono"});
+            this.precursorMassTypeCombo.Location = new System.Drawing.Point(16, 104);
+            this.precursorMassTypeCombo.Name = "precursorMassTypeCombo";
+            this.precursorMassTypeCombo.Size = new System.Drawing.Size(67, 21);
+            this.precursorMassTypeCombo.TabIndex = 3;
             // 
-            // label5
+            // label3
             // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(13, 88);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(62, 13);
-            this.label5.TabIndex = 26;
-            this.label5.Text = "Mass Type:";
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(120, 30);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(57, 13);
+            this.label3.TabIndex = 30;
+            this.label3.Text = "Mass Unit:";
             // 
-            // label6
+            // precursorTolTypeCombo
             // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(13, 146);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(70, 13);
-            this.label6.TabIndex = 27;
-            this.label6.Text = "Isotope Error:";
+            this.precursorTolTypeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.precursorTolTypeCombo.FormattingEnabled = true;
+            this.precursorTolTypeCombo.Items.AddRange(new object[] {
+            "MH+",
+            "M/Z"});
+            this.precursorTolTypeCombo.Location = new System.Drawing.Point(123, 104);
+            this.precursorTolTypeCombo.Name = "precursorTolTypeCombo";
+            this.precursorTolTypeCombo.Size = new System.Drawing.Size(67, 21);
+            this.precursorTolTypeCombo.TabIndex = 4;
             // 
             // precursorMassUnitCombo
             // 
@@ -179,187 +232,131 @@
             this.precursorMassUnitCombo.Location = new System.Drawing.Point(123, 45);
             this.precursorMassUnitCombo.Name = "precursorMassUnitCombo";
             this.precursorMassUnitCombo.Size = new System.Drawing.Size(67, 21);
-            this.precursorMassUnitCombo.TabIndex = 28;
+            this.precursorMassUnitCombo.TabIndex = 2;
             // 
-            // precursorTolTypeCombo
+            // label6
             // 
-            this.precursorTolTypeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.precursorTolTypeCombo.FormattingEnabled = true;
-            this.precursorTolTypeCombo.Items.AddRange(new object[] {
-            "MH+",
-            "M/Z"});
-            this.precursorTolTypeCombo.Location = new System.Drawing.Point(123, 104);
-            this.precursorTolTypeCombo.Name = "precursorTolTypeCombo";
-            this.precursorTolTypeCombo.Size = new System.Drawing.Size(67, 21);
-            this.precursorTolTypeCombo.TabIndex = 29;
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(13, 146);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(70, 13);
+            this.label6.TabIndex = 27;
+            this.label6.Text = "Isotope Error:";
             // 
-            // label3
+            // label5
             // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(120, 30);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(57, 13);
-            this.label3.TabIndex = 30;
-            this.label3.Text = "Mass Unit:";
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(13, 88);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(62, 13);
+            this.label5.TabIndex = 26;
+            this.label5.Text = "Mass Type:";
             // 
-            // comboBox1
+            // label4
             // 
-            this.comboBox1.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Items.AddRange(new object[] {
-            "MH+",
-            "M/Z"});
-            this.comboBox1.Location = new System.Drawing.Point(16, 104);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(67, 21);
-            this.comboBox1.TabIndex = 31;
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(120, 88);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(52, 13);
+            this.label4.TabIndex = 25;
+            this.label4.Text = "Tol Type:";
             // 
-            // precursorIsotopeErrorCombo
+            // groupBox1
             // 
-            this.precursorIsotopeErrorCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.precursorIsotopeErrorCombo.FormattingEnabled = true;
-            this.precursorIsotopeErrorCombo.Items.AddRange(new object[] {
-            "no C13",
-            "C13 offsets"});
-            this.precursorIsotopeErrorCombo.Location = new System.Drawing.Point(16, 162);
-            this.precursorIsotopeErrorCombo.Name = "precursorIsotopeErrorCombo";
-            this.precursorIsotopeErrorCombo.Size = new System.Drawing.Size(67, 21);
-            this.precursorIsotopeErrorCombo.TabIndex = 32;
+            this.groupBox1.Controls.Add(this.useNLCheckBox);
+            this.groupBox1.Controls.Add(this.flankCheckBox);
+            this.groupBox1.Controls.Add(this.zIonCheckBox);
+            this.groupBox1.Controls.Add(this.yIonCheckBox);
+            this.groupBox1.Controls.Add(this.bIonCheckBox);
+            this.groupBox1.Controls.Add(this.xIonCheckBox);
+            this.groupBox1.Controls.Add(this.cIonCheckBox);
+            this.groupBox1.Controls.Add(this.aIonCheckBox);
+            this.groupBox1.Location = new System.Drawing.Point(272, 173);
+            this.groupBox1.Name = "groupBox1";
+            this.groupBox1.Size = new System.Drawing.Size(225, 98);
+            this.groupBox1.TabIndex = 2;
+            this.groupBox1.TabStop = false;
+            this.groupBox1.Text = "Ions";
             // 
-            // label7
+            // useNLCheckBox
             // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(15, 30);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(48, 13);
-            this.label7.TabIndex = 25;
-            this.label7.Text = "Bin Size:";
+            this.useNLCheckBox.AutoSize = true;
+            this.useNLCheckBox.Location = new System.Drawing.Point(120, 40);
+            this.useNLCheckBox.Name = "useNLCheckBox";
+            this.useNLCheckBox.Size = new System.Drawing.Size(62, 17);
+            this.useNLCheckBox.TabIndex = 16;
+            this.useNLCheckBox.Text = "Use NL";
+            this.useNLCheckBox.UseVisualStyleBackColor = true;
             // 
-            // textBox1
+            // flankCheckBox
             // 
-            this.textBox1.Location = new System.Drawing.Point(18, 45);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(67, 20);
-            this.textBox1.TabIndex = 24;
-            this.textBox1.Text = "3.00";
+            this.flankCheckBox.AutoSize = true;
+            this.flankCheckBox.Location = new System.Drawing.Point(120, 20);
+            this.flankCheckBox.Name = "flankCheckBox";
+            this.flankCheckBox.Size = new System.Drawing.Size(52, 17);
+            this.flankCheckBox.TabIndex = 15;
+            this.flankCheckBox.Text = "Flank";
+            this.flankCheckBox.UseVisualStyleBackColor = true;
             // 
-            // label8
+            // zIonCheckBox
             // 
-            this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(124, 30);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(48, 13);
-            this.label8.TabIndex = 27;
-            this.label8.Text = "Bin Size:";
+            this.zIonCheckBox.AutoSize = true;
+            this.zIonCheckBox.Location = new System.Drawing.Point(70, 60);
+            this.zIonCheckBox.Name = "zIonCheckBox";
+            this.zIonCheckBox.Size = new System.Drawing.Size(31, 17);
+            this.zIonCheckBox.TabIndex = 14;
+            this.zIonCheckBox.Text = "z";
+            this.zIonCheckBox.UseVisualStyleBackColor = true;
             // 
-            // textBox2
+            // yIonCheckBox
             // 
-            this.textBox2.Location = new System.Drawing.Point(127, 45);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(67, 20);
-            this.textBox2.TabIndex = 26;
-            this.textBox2.Text = "3.00";
+            this.yIonCheckBox.AutoSize = true;
+            this.yIonCheckBox.Location = new System.Drawing.Point(70, 40);
+            this.yIonCheckBox.Name = "yIonCheckBox";
+            this.yIonCheckBox.Size = new System.Drawing.Size(31, 17);
+            this.yIonCheckBox.TabIndex = 13;
+            this.yIonCheckBox.Text = "y";
+            this.yIonCheckBox.UseVisualStyleBackColor = true;
             // 
-            // comboBox2
+            // bIonCheckBox
             // 
-            this.comboBox2.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox2.FormattingEnabled = true;
-            this.comboBox2.Items.AddRange(new object[] {
-            "MH+",
-            "M/Z"});
-            this.comboBox2.Location = new System.Drawing.Point(18, 104);
-            this.comboBox2.Name = "comboBox2";
-            this.comboBox2.Size = new System.Drawing.Size(67, 21);
-            this.comboBox2.TabIndex = 33;
+            this.bIonCheckBox.AutoSize = true;
+            this.bIonCheckBox.Location = new System.Drawing.Point(20, 40);
+            this.bIonCheckBox.Name = "bIonCheckBox";
+            this.bIonCheckBox.Size = new System.Drawing.Size(32, 17);
+            this.bIonCheckBox.TabIndex = 10;
+            this.bIonCheckBox.Text = "b";
+            this.bIonCheckBox.UseVisualStyleBackColor = true;
             // 
-            // label9
+            // xIonCheckBox
             // 
-            this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(15, 88);
-            this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(62, 13);
-            this.label9.TabIndex = 32;
-            this.label9.Text = "Mass Type:";
+            this.xIonCheckBox.AutoSize = true;
+            this.xIonCheckBox.Location = new System.Drawing.Point(70, 20);
+            this.xIonCheckBox.Name = "xIonCheckBox";
+            this.xIonCheckBox.Size = new System.Drawing.Size(31, 17);
+            this.xIonCheckBox.TabIndex = 12;
+            this.xIonCheckBox.Text = "x";
+            this.xIonCheckBox.UseVisualStyleBackColor = true;
             // 
-            // checkBox1
+            // cIonCheckBox
             // 
-            this.checkBox1.AutoSize = true;
-            this.checkBox1.Location = new System.Drawing.Point(20, 20);
-            this.checkBox1.Name = "checkBox1";
-            this.checkBox1.Size = new System.Drawing.Size(32, 17);
-            this.checkBox1.TabIndex = 0;
-            this.checkBox1.Text = "a";
-            this.checkBox1.UseVisualStyleBackColor = true;
+            this.cIonCheckBox.AutoSize = true;
+            this.cIonCheckBox.Location = new System.Drawing.Point(20, 60);
+            this.cIonCheckBox.Name = "cIonCheckBox";
+            this.cIonCheckBox.Size = new System.Drawing.Size(32, 17);
+            this.cIonCheckBox.TabIndex = 11;
+            this.cIonCheckBox.Text = "c";
+            this.cIonCheckBox.UseVisualStyleBackColor = true;
             // 
-            // checkBox2
+            // aIonCheckBox
             // 
-            this.checkBox2.AutoSize = true;
-            this.checkBox2.Location = new System.Drawing.Point(20, 60);
-            this.checkBox2.Name = "checkBox2";
-            this.checkBox2.Size = new System.Drawing.Size(32, 17);
-            this.checkBox2.TabIndex = 1;
-            this.checkBox2.Text = "c";
-            this.checkBox2.UseVisualStyleBackColor = true;
-            // 
-            // checkBox3
-            // 
-            this.checkBox3.AutoSize = true;
-            this.checkBox3.Location = new System.Drawing.Point(70, 20);
-            this.checkBox3.Name = "checkBox3";
-            this.checkBox3.Size = new System.Drawing.Size(31, 17);
-            this.checkBox3.TabIndex = 2;
-            this.checkBox3.Text = "x";
-            this.checkBox3.UseVisualStyleBackColor = true;
-            // 
-            // checkBox4
-            // 
-            this.checkBox4.AutoSize = true;
-            this.checkBox4.Location = new System.Drawing.Point(20, 40);
-            this.checkBox4.Name = "checkBox4";
-            this.checkBox4.Size = new System.Drawing.Size(32, 17);
-            this.checkBox4.TabIndex = 3;
-            this.checkBox4.Text = "b";
-            this.checkBox4.UseVisualStyleBackColor = true;
-            // 
-            // checkBox5
-            // 
-            this.checkBox5.AutoSize = true;
-            this.checkBox5.Location = new System.Drawing.Point(70, 40);
-            this.checkBox5.Name = "checkBox5";
-            this.checkBox5.Size = new System.Drawing.Size(31, 17);
-            this.checkBox5.TabIndex = 4;
-            this.checkBox5.Text = "y";
-            this.checkBox5.UseVisualStyleBackColor = true;
-            // 
-            // checkBox6
-            // 
-            this.checkBox6.AutoSize = true;
-            this.checkBox6.Location = new System.Drawing.Point(70, 60);
-            this.checkBox6.Name = "checkBox6";
-            this.checkBox6.Size = new System.Drawing.Size(31, 17);
-            this.checkBox6.TabIndex = 5;
-            this.checkBox6.Text = "z";
-            this.checkBox6.UseVisualStyleBackColor = true;
-            // 
-            // checkBox7
-            // 
-            this.checkBox7.AutoSize = true;
-            this.checkBox7.Location = new System.Drawing.Point(120, 20);
-            this.checkBox7.Name = "checkBox7";
-            this.checkBox7.Size = new System.Drawing.Size(52, 17);
-            this.checkBox7.TabIndex = 6;
-            this.checkBox7.Text = "Flank";
-            this.checkBox7.UseVisualStyleBackColor = true;
-            // 
-            // checkBox8
-            // 
-            this.checkBox8.AutoSize = true;
-            this.checkBox8.Location = new System.Drawing.Point(120, 40);
-            this.checkBox8.Name = "checkBox8";
-            this.checkBox8.Size = new System.Drawing.Size(62, 17);
-            this.checkBox8.TabIndex = 7;
-            this.checkBox8.Text = "Use NL";
-            this.checkBox8.UseVisualStyleBackColor = true;
+            this.aIonCheckBox.AutoSize = true;
+            this.aIonCheckBox.Location = new System.Drawing.Point(20, 20);
+            this.aIonCheckBox.Name = "aIonCheckBox";
+            this.aIonCheckBox.Size = new System.Drawing.Size(32, 17);
+            this.aIonCheckBox.TabIndex = 9;
+            this.aIonCheckBox.Text = "a";
+            this.aIonCheckBox.UseVisualStyleBackColor = true;
             // 
             // MassSettingsControl
             // 
@@ -383,7 +380,7 @@
         #endregion
 
         private System.Windows.Forms.GroupBox fragmentGroupBox;
-        private System.Windows.Forms.TextBox textBoxDecoyPrefix;
+        private System.Windows.Forms.TextBox precursorMassTolTextBox;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.GroupBox precursorGroupBox;
@@ -394,22 +391,22 @@
         private System.Windows.Forms.ComboBox precursorMassUnitCombo;
         private System.Windows.Forms.ComboBox precursorTolTypeCombo;
         private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.ComboBox precursorMassTypeCombo;
         private System.Windows.Forms.ComboBox precursorIsotopeErrorCombo;
         private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox fragmentBinSizeTextBox;
         private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.TextBox textBox2;
-        private System.Windows.Forms.ComboBox comboBox2;
+        private System.Windows.Forms.TextBox fragmentOffsetTextBox;
+        private System.Windows.Forms.ComboBox fragmentMassTypeCombo;
         private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.CheckBox checkBox3;
-        private System.Windows.Forms.CheckBox checkBox2;
-        private System.Windows.Forms.CheckBox checkBox1;
-        private System.Windows.Forms.CheckBox checkBox6;
-        private System.Windows.Forms.CheckBox checkBox5;
-        private System.Windows.Forms.CheckBox checkBox4;
-        private System.Windows.Forms.CheckBox checkBox8;
-        private System.Windows.Forms.CheckBox checkBox7;
+        private System.Windows.Forms.CheckBox xIonCheckBox;
+        private System.Windows.Forms.CheckBox cIonCheckBox;
+        private System.Windows.Forms.CheckBox aIonCheckBox;
+        private System.Windows.Forms.CheckBox zIonCheckBox;
+        private System.Windows.Forms.CheckBox yIonCheckBox;
+        private System.Windows.Forms.CheckBox bIonCheckBox;
+        private System.Windows.Forms.CheckBox useNLCheckBox;
+        private System.Windows.Forms.CheckBox flankCheckBox;
 
     }
 }
