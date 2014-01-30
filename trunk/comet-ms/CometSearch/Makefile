@@ -1,7 +1,7 @@
 CXX = g++
 GCC = gcc
 MSTOOLKIT = ../MSToolkit
-override CXXFLAGS = -O3 -Wall -Wextra -static -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTOOLKIT)/include
+override CXXFLAGS += -O3 -Wall -Wextra -static -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTOOLKIT)/include
 
 COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o CometWritePinXML.o CometWriteTxt.o CometSearchManager.o CometMemMgr.o
 

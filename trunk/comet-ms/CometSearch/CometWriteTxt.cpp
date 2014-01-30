@@ -55,19 +55,19 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "charge\t");
    fprintf(fpout, "spectrum precursor m/z\t");
    fprintf(fpout, "spectrum neutral mass\t");
-   fprintf(fpout, "matches/spectrum\t");
    fprintf(fpout, "peptide mass\t");
-   fprintf(fpout, "e-value\t");
-   fprintf(fpout, "xcorr score\t");
-   fprintf(fpout, "xcorr rank\t");
    fprintf(fpout, "delta_cn\t");
    fprintf(fpout, "sp score\t");
    fprintf(fpout, "sp rank\t");
+   fprintf(fpout, "xcorr score\t");
+   fprintf(fpout, "xcorr rank\t");
    fprintf(fpout, "b/y ions matched\t");
    fprintf(fpout, "b/y ions total\t");
+   fprintf(fpout, "total matches/spectrum\t");
    fprintf(fpout, "sequence\t");
+   fprintf(fpout, "protein id\t");
    fprintf(fpout, "flanking aa\t");
-   fprintf(fpout, "protein id\n");
+   fprintf(fpout, "e-value\n");
 #else
    fprintf(fpout, "CometVersion %s\t", comet_version);
    fprintf(fpout, "%s\t", g_staticParams.inputFile.szBaseName);
@@ -93,7 +93,6 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
 #endif
 }
 
-
 #ifdef CRUX
 void CometWriteTxt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
@@ -110,31 +109,92 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       double spectrum_neutral_mass = pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS;
       double spectrum_mz = (spectrum_neutral_mass + charge*PROTON_MASS) / (double)charge;
 
-      sprintf(szBuf, "%d\t%d\t%0.6f\t%0.6f\t%lu\t",
+      sprintf(szBuf, "%d\t%d\t%0.6f\t%0.6f\t",
             pQuery->_spectrumInfoInternal.iScanNumber, 
             pQuery->_spectrumInfoInternal.iChargeState,
             spectrum_mz,
-            spectrum_neutral_mass,
-            pQuery->_uliNumMatchedPeptides);
+            spectrum_neutral_mass);
 
       Results *pOutput;
-
-      if (bDecoy)
+      unsigned long num_matches;
+      if (bDecoy) {
          pOutput = pQuery->_pDecoys;
-      else
+         num_matches = pQuery->_uliNumMatchedDecoyPeptides;
+      }
+      else {
          pOutput = pQuery->_pResults;
-
-      for (int i=0; i<=min((unsigned long)4, pQuery->_uliNumMatchedPeptides); i++)
+         num_matches = pQuery->_uliNumMatchedPeptides;
+      }
+      
+      for (size_t iWhichResult=0; iWhichResult<min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches); iWhichResult++)
       {
-         fprintf(fpout, "%s", szBuf);      
-
-         if (pOutput[i].fXcorr > 0.0)
-            PrintTxtLine(i, pOutput, fpout);  // print top hit only right now
-         else
-         {
-            fprintf(fpout, "\n");
-            break;
+        if (pOutput[iWhichResult].fXcorr <= 0) {
+          continue;
          }
+         fprintf(fpout, "%s", szBuf);
+
+         double delta_cn;
+         if (pOutput[0].fXcorr <=0) {
+            delta_cn = 0;
+         } else {
+            delta_cn = 1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;   // pOutput[0].fXcorr is >0 to enter this fn 
+         }
+
+         fprintf(fpout,
+                 "%0.4f\t"
+                 "%0.4f\t"
+                 "%0.4f\t"
+                 "%d\t"
+                 "%0.4f\t"
+                 "%lu\t"
+                 "%d\t"
+                 "%d\t"
+                 "%lu\t",
+            pOutput[iWhichResult].dPepMass - PROTON_MASS,
+	    delta_cn,
+            pOutput[iWhichResult].fScoreSp,
+            pOutput[iWhichResult].iRankSp,
+            pOutput[iWhichResult].fXcorr,
+            iWhichResult + 1,                  // assuming want index starting at 1
+            pOutput[iWhichResult].iMatchedIons, 
+            pOutput[iWhichResult].iTotalIons,
+            num_matches);
+         char szBuf2[SIZE_BUF];
+         szBuf2[0] = '\0';
+            
+         //Print out peptide and give mass for variable mods.
+         if (g_staticParams.variableModParameters.bVarModSearch
+               && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+         {
+             sprintf(szBuf2, "[%0.4f]",  g_staticParams.variableModParameters.dVarModMassN);
+             //sprintf(szBuf+strlen(szBuf), "]");
+
+         }
+
+         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+         {
+            sprintf(szBuf2+strlen(szBuf2), "%c", pOutput[iWhichResult].szPeptide[i]);
+
+            if (pOutput[iWhichResult].pcVarModSites[i] > 0) {
+              sprintf(szBuf2+strlen(szBuf2), "[%0.4f]",
+                 g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
+            }
+         }
+
+         if (g_staticParams.variableModParameters.bVarModSearch
+            && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
+         {
+            sprintf(szBuf2+strlen(szBuf2), "[0.4%f]", g_staticParams.variableModParameters.dVarModMassC);
+            //sprintf(szBuf2+strlen(szBuf2), "[");
+         }
+
+         fprintf(fpout, "%s\t", szBuf2);
+         // Print protein reference/accession.
+         fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
+         // Cleavage type
+         fprintf(fpout, "%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
+         // e-value
+         fprintf(fpout, "%0.2E\n", pOutput[iWhichResult].dExpect);
       }
 
    }
@@ -170,8 +230,13 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 }
 #endif
 
-
 #ifdef CRUX
+void CometWriteTxt::PrintTxtLine( int iWhichResult,
+                                 Results *pOutput,
+                                 FILE *fpout)
+{
+}
+#else
 void CometWriteTxt::PrintTxtLine( int iWhichResult,
                                  Results *pOutput,
                                  FILE *fpout)
@@ -179,64 +244,7 @@ void CometWriteTxt::PrintTxtLine( int iWhichResult,
    int  i;
    char szBuf[SIZE_BUF];
 
-   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%d\t%0.4f\t%0.1f\t%d\t%d\t%d\t",
-         pOutput[iWhichResult].dPepMass - PROTON_MASS,
-         pOutput[iWhichResult].dExpect,
-         pOutput[iWhichResult].fXcorr,
-         iWhichResult + 1,                  // assuming want index starting at 1
-         1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr,   // pOutput[0].fXcorr is >0 to enter this fn
-         pOutput[iWhichResult].fScoreSp,
-         pOutput[iWhichResult].iRankSp,
-         pOutput[iWhichResult].iMatchedIons, 
-         pOutput[iWhichResult].iTotalIons);
-
-   fprintf(fpout, "%s", szBuf);
-   
-   szBuf[0] = '\0';
-   
-   //Print out peptide and give mass for variable mods.
-   if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
-   {
-      sprintf(szBuf, "[%0.4f]",  g_staticParams.variableModParameters.dVarModMassN);
-   }
-
-   for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
-   {
-      sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
-
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
-      {
-         sprintf(szBuf+strlen(szBuf), "[%0.4f]",
-            g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
-      }
-   }
-   
-   if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
-   {
-      sprintf(szBuf+strlen(szBuf), "[0.4%f]", g_staticParams.variableModParameters.dVarModMassC);
-   }
-
-   fprintf(fpout, "%s\t", szBuf);
-
-   fprintf(fpout, "%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
-
-   // Print protein reference/accession.
-   fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
-   fprintf(fpout, "\n");
-}
-
-#else
-void CometWriteTxt::PrintTxtLine(int iWhichResult,
-                                 Results *pOutput,
-                                 FILE *fpout)
-{
-   int  i;
-   char szBuf[SIZE_BUF];
-
-   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d",
+   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
