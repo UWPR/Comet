@@ -158,7 +158,7 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("3")]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
         public double PrecursorMassTolerance {
             get {
                 return ((double)(this["PrecursorMassTolerance"]));
@@ -189,6 +189,162 @@ namespace CometUI.Properties {
             }
             set {
                 this["PrecursorToleranceType"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("mono")]
+        public string PrecursorMassType {
+            get {
+                return ((string)(this["PrecursorMassType"]));
+            }
+            set {
+                this["PrecursorMassType"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("no C13")]
+        public string PrecursorIsotopeError {
+            get {
+                return ((string)(this["PrecursorIsotopeError"]));
+            }
+            set {
+                this["PrecursorIsotopeError"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1.0005")]
+        public double FragmentBinSize {
+            get {
+                return ((double)(this["FragmentBinSize"]));
+            }
+            set {
+                this["FragmentBinSize"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.04")]
+        public double FragmentBinOffset {
+            get {
+                return ((double)(this["FragmentBinOffset"]));
+            }
+            set {
+                this["FragmentBinOffset"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("mono")]
+        public string FragmentMassType {
+            get {
+                return ((string)(this["FragmentMassType"]));
+            }
+            set {
+                this["FragmentMassType"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseAIons {
+            get {
+                return ((bool)(this["UseAIons"]));
+            }
+            set {
+                this["UseAIons"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool UseBIons {
+            get {
+                return ((bool)(this["UseBIons"]));
+            }
+            set {
+                this["UseBIons"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseCIons {
+            get {
+                return ((bool)(this["UseCIons"]));
+            }
+            set {
+                this["UseCIons"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseXIons {
+            get {
+                return ((bool)(this["UseXIons"]));
+            }
+            set {
+                this["UseXIons"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool UseYIons {
+            get {
+                return ((bool)(this["UseYIons"]));
+            }
+            set {
+                this["UseYIons"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseZIons {
+            get {
+                return ((bool)(this["UseZIons"]));
+            }
+            set {
+                this["UseZIons"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool UseNLIons {
+            get {
+                return ((bool)(this["UseNLIons"]));
+            }
+            set {
+                this["UseNLIons"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TheoreticalFragmentIons {
+            get {
+                return ((bool)(this["TheoreticalFragmentIons"]));
+            }
+            set {
+                this["TheoreticalFragmentIons"] = value;
             }
         }
     }

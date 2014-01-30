@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
+﻿using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
 
@@ -23,8 +17,29 @@ namespace CometUI
 
         private void InitializeFromDefaultSettings()
         {
+            // Set up defaults for the precursor mass settings
+            precursorMassTolTextBox.Text = Settings.Default.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
             precursorMassUnitCombo.SelectedIndex = precursorMassUnitCombo.FindStringExact(Settings.Default.PrecursorMassUnit);
             precursorTolTypeCombo.SelectedIndex = precursorTolTypeCombo.FindStringExact(Settings.Default.PrecursorToleranceType);
+            precursorMassTypeCombo.SelectedIndex =
+                precursorMassTypeCombo.FindStringExact(Settings.Default.PrecursorMassType);
+            precursorIsotopeErrorCombo.SelectedIndex = precursorIsotopeErrorCombo.FindStringExact(Settings.Default.PrecursorIsotopeError);
+
+            // Set up defaults for fragment settings
+            fragmentBinSizeTextBox.Text = Settings.Default.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
+            fragmentOffsetTextBox.Text = Settings.Default.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
+            fragmentMassTypeCombo.SelectedIndex =
+                fragmentMassTypeCombo.FindStringExact(Settings.Default.FragmentMassType);
+        
+            // Set up defaults for ion settings
+            aIonCheckBox.Checked = Settings.Default.UseAIons;
+            bIonCheckBox.Checked = Settings.Default.UseBIons;
+            cIonCheckBox.Checked = Settings.Default.UseCIons;
+            xIonCheckBox.Checked = Settings.Default.UseXIons;
+            yIonCheckBox.Checked = Settings.Default.UseYIons;
+            zIonCheckBox.Checked = Settings.Default.UseZIons;
+            useNLCheckBox.Checked = Settings.Default.UseNLIons;
+            flankCheckBox.Checked = Settings.Default.TheoreticalFragmentIons;
         }
     }
 }

@@ -46,13 +46,52 @@
       <Value Profile="(Default)">1</Value>
     </Setting>
     <Setting Name="PrecursorMassTolerance" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">3</Value>
+      <Value Profile="(Default)">1</Value>
     </Setting>
     <Setting Name="PrecursorMassUnit" Type="System.String" Scope="User">
       <Value Profile="(Default)">amu</Value>
     </Setting>
     <Setting Name="PrecursorToleranceType" Type="System.String" Scope="User">
       <Value Profile="(Default)">MH+</Value>
+    </Setting>
+    <Setting Name="PrecursorMassType" Type="System.String" Scope="User">
+      <Value Profile="(Default)">mono</Value>
+    </Setting>
+    <Setting Name="PrecursorIsotopeError" Type="System.String" Scope="User">
+      <Value Profile="(Default)">no C13</Value>
+    </Setting>
+    <Setting Name="FragmentBinSize" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1.0005</Value>
+    </Setting>
+    <Setting Name="FragmentBinOffset" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0.04</Value>
+    </Setting>
+    <Setting Name="FragmentMassType" Type="System.String" Scope="User">
+      <Value Profile="(Default)">mono</Value>
+    </Setting>
+    <Setting Name="UseAIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UseBIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="UseCIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UseXIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UseYIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="UseZIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UseNLIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="TheoreticalFragmentIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>
 </SettingsFile>
