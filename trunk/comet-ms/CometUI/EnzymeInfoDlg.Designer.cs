@@ -85,7 +85,7 @@
             dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
             this.enzymeInfoDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
-            this.enzymeInfoDataGridView.Size = new System.Drawing.Size(417, 237);
+            this.enzymeInfoDataGridView.Size = new System.Drawing.Size(420, 301);
             this.enzymeInfoDataGridView.TabIndex = 0;
             this.enzymeInfoDataGridView.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.EnzymeInfoDataGridViewCellValueChanged);
             // 
@@ -138,14 +138,14 @@
             // 
             this.enzymeInfoMainSplitContainer.Panel2.Controls.Add(this.enzymeInfoOKButton);
             this.enzymeInfoMainSplitContainer.Panel2.Controls.Add(this.enzymeInfoCancelButton);
-            this.enzymeInfoMainSplitContainer.Size = new System.Drawing.Size(417, 276);
-            this.enzymeInfoMainSplitContainer.SplitterDistance = 237;
+            this.enzymeInfoMainSplitContainer.Size = new System.Drawing.Size(420, 340);
+            this.enzymeInfoMainSplitContainer.SplitterDistance = 301;
             this.enzymeInfoMainSplitContainer.TabIndex = 1;
             // 
             // enzymeInfoOKButton
             // 
             this.enzymeInfoOKButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.enzymeInfoOKButton.Location = new System.Drawing.Point(249, 3);
+            this.enzymeInfoOKButton.Location = new System.Drawing.Point(252, 3);
             this.enzymeInfoOKButton.Name = "enzymeInfoOKButton";
             this.enzymeInfoOKButton.Size = new System.Drawing.Size(75, 23);
             this.enzymeInfoOKButton.TabIndex = 1;
@@ -156,7 +156,7 @@
             // enzymeInfoCancelButton
             // 
             this.enzymeInfoCancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.enzymeInfoCancelButton.Location = new System.Drawing.Point(330, 3);
+            this.enzymeInfoCancelButton.Location = new System.Drawing.Point(333, 3);
             this.enzymeInfoCancelButton.Name = "enzymeInfoCancelButton";
             this.enzymeInfoCancelButton.Size = new System.Drawing.Size(75, 23);
             this.enzymeInfoCancelButton.TabIndex = 2;
@@ -168,7 +168,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(417, 276);
+            this.ClientSize = new System.Drawing.Size(420, 340);
             this.Controls.Add(this.enzymeInfoMainSplitContainer);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
