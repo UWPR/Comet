@@ -8,7 +8,7 @@ namespace CometUI
 {
     public partial class CometMainForm : Form
     {
-        private InputFilesControl InputFilesControl { get; set; }
+        private IOSettingsControl InputFilesControl { get; set; }
         private EnzymeSettingsControl EnzymeSettingsControl { get; set; }
         private MassSettingsControl MassSettingsControl { get; set; }
         
@@ -21,7 +21,7 @@ namespace CometUI
             _searchMgr = new CometSearchManagerWrapper();
 
             // Create and add Input Files tab page
-            InputFilesControl = new InputFilesControl(this)
+            InputFilesControl = new IOSettingsControl(this)
             {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
                 Location = new Point(0, 0)
@@ -43,7 +43,6 @@ namespace CometUI
                 Location = new Point(0, 0)
             };
             massesTabPage.Controls.Add(MassSettingsControl);
-            
         }
 
         private void BtnSearchClick(object sender, EventArgs e)

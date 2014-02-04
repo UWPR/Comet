@@ -96,11 +96,11 @@
     <Compile Include="EnzymeSettingsControl.Designer.cs">
       <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="InputFilesControl.cs">
+    <Compile Include="IOSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="InputFilesControl.Designer.cs">
-      <DependentUpon>InputFilesControl.cs</DependentUpon>
+    <Compile Include="IOSettingsControl.Designer.cs">
+      <DependentUpon>IOSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
@@ -122,8 +122,8 @@
     <EmbeddedResource Include="EnzymeSettingsControl.resx">
       <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="InputFilesControl.resx">
-      <DependentUpon>InputFilesControl.cs</DependentUpon>
+    <EmbeddedResource Include="IOSettingsControl.resx">
+      <DependentUpon>IOSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>

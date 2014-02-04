@@ -43,7 +43,6 @@
             this.enzymeTabPage = new System.Windows.Forms.TabPage();
             this.massesTabPage = new System.Windows.Forms.TabPage();
             this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.tabPage3 = new System.Windows.Forms.TabPage();
             this.tabPage4 = new System.Windows.Forms.TabPage();
             this.statusStripMain = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
@@ -137,8 +136,8 @@
             // 
             this.mainSplitContainer.Panel2.Controls.Add(this.statusStripMain);
             this.mainSplitContainer.Panel2.Controls.Add(this.btnSearch);
-            this.mainSplitContainer.Size = new System.Drawing.Size(559, 413);
-            this.mainSplitContainer.SplitterDistance = 358;
+            this.mainSplitContainer.Size = new System.Drawing.Size(559, 588);
+            this.mainSplitContainer.SplitterDistance = 533;
             this.mainSplitContainer.TabIndex = 2;
             // 
             // cometMainTab
@@ -150,12 +149,11 @@
             this.cometMainTab.Controls.Add(this.enzymeTabPage);
             this.cometMainTab.Controls.Add(this.massesTabPage);
             this.cometMainTab.Controls.Add(this.tabPage2);
-            this.cometMainTab.Controls.Add(this.tabPage3);
             this.cometMainTab.Controls.Add(this.tabPage4);
             this.cometMainTab.Location = new System.Drawing.Point(12, 0);
             this.cometMainTab.Name = "cometMainTab";
             this.cometMainTab.SelectedIndex = 0;
-            this.cometMainTab.Size = new System.Drawing.Size(535, 356);
+            this.cometMainTab.Size = new System.Drawing.Size(535, 531);
             this.cometMainTab.TabIndex = 10;
             // 
             // inputFilesTabPage
@@ -163,9 +161,9 @@
             this.inputFilesTabPage.Location = new System.Drawing.Point(4, 22);
             this.inputFilesTabPage.Name = "inputFilesTabPage";
             this.inputFilesTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.inputFilesTabPage.Size = new System.Drawing.Size(527, 330);
+            this.inputFilesTabPage.Size = new System.Drawing.Size(527, 505);
             this.inputFilesTabPage.TabIndex = 0;
-            this.inputFilesTabPage.Text = "Input Files";
+            this.inputFilesTabPage.Text = "Input/Output";
             this.inputFilesTabPage.UseVisualStyleBackColor = true;
             // 
             // enzymeTabPage
@@ -173,7 +171,7 @@
             this.enzymeTabPage.Location = new System.Drawing.Point(4, 22);
             this.enzymeTabPage.Name = "enzymeTabPage";
             this.enzymeTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.enzymeTabPage.Size = new System.Drawing.Size(527, 330);
+            this.enzymeTabPage.Size = new System.Drawing.Size(527, 505);
             this.enzymeTabPage.TabIndex = 1;
             this.enzymeTabPage.Text = "Enzyme";
             this.enzymeTabPage.UseVisualStyleBackColor = true;
@@ -198,22 +196,12 @@
             this.tabPage2.Text = "Mods";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
-            // tabPage3
-            // 
-            this.tabPage3.Location = new System.Drawing.Point(4, 22);
-            this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage3.Size = new System.Drawing.Size(527, 330);
-            this.tabPage3.TabIndex = 4;
-            this.tabPage3.Text = "Output";
-            this.tabPage3.UseVisualStyleBackColor = true;
-            // 
             // tabPage4
             // 
             this.tabPage4.Location = new System.Drawing.Point(4, 22);
             this.tabPage4.Name = "tabPage4";
             this.tabPage4.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage4.Size = new System.Drawing.Size(527, 330);
+            this.tabPage4.Size = new System.Drawing.Size(527, 505);
             this.tabPage4.TabIndex = 5;
             this.tabPage4.Text = "Misc";
             this.tabPage4.UseVisualStyleBackColor = true;
@@ -238,7 +226,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(559, 437);
+            this.ClientSize = new System.Drawing.Size(559, 612);
             this.Controls.Add(this.mainSplitContainer);
             this.Controls.Add(this.menuStripMain);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -275,7 +263,6 @@
         private System.Windows.Forms.StatusStrip statusStripMain;
         private System.Windows.Forms.TabPage massesTabPage;
         private System.Windows.Forms.TabPage tabPage2;
-        private System.Windows.Forms.TabPage tabPage3;
         private System.Windows.Forms.TabPage tabPage4;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemSettings;

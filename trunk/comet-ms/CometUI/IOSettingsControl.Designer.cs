@@ -1,6 +1,6 @@
 ﻿namespace CometUI
 {
-    partial class InputFilesControl
+    partial class IOSettingsControl
     {
         /// <summary> 
         /// Required designer variable.
@@ -48,10 +48,16 @@
             this.btnBrowseProteomeDbFile = new System.Windows.Forms.Button();
             this.proteomeDbFileCombo = new System.Windows.Forms.ComboBox();
             this.inputFilesList = new System.Windows.Forms.CheckedListBox();
+            this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.outputFormatsList = new System.Windows.Forms.CheckedListBox();
+            this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.panelNucleotideReadingFrame.SuspendLayout();
             this.panelProteinNucleotide.SuspendLayout();
             this.panelDecoyPrefix.SuspendLayout();
             this.panelTargetDecoy.SuspendLayout();
+            this.groupBox1.SuspendLayout();
+            this.groupBox2.SuspendLayout();
             this.SuspendLayout();
             // 
             // panelNucleotideReadingFrame
@@ -96,7 +102,7 @@
             // inputFilesLabel
             // 
             this.inputFilesLabel.AutoSize = true;
-            this.inputFilesLabel.Location = new System.Drawing.Point(9, 9);
+            this.inputFilesLabel.Location = new System.Drawing.Point(15, 23);
             this.inputFilesLabel.Name = "inputFilesLabel";
             this.inputFilesLabel.Size = new System.Drawing.Size(58, 13);
             this.inputFilesLabel.TabIndex = 14;
@@ -161,9 +167,9 @@
             this.panelProteinNucleotide.Controls.Add(this.panelNucleotideReadingFrame);
             this.panelProteinNucleotide.Controls.Add(this.radioButtonProtein);
             this.panelProteinNucleotide.Controls.Add(this.radioButtonNucleotide);
-            this.panelProteinNucleotide.Location = new System.Drawing.Point(9, 266);
+            this.panelProteinNucleotide.Location = new System.Drawing.Point(15, 257);
             this.panelProteinNucleotide.Name = "panelProteinNucleotide";
-            this.panelProteinNucleotide.Size = new System.Drawing.Size(427, 53);
+            this.panelProteinNucleotide.Size = new System.Drawing.Size(371, 53);
             this.panelProteinNucleotide.TabIndex = 20;
             // 
             // panelDecoyPrefix
@@ -184,9 +190,9 @@
             this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyOne);
             this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyTwo);
             this.panelTargetDecoy.Controls.Add(this.panelDecoyPrefix);
-            this.panelTargetDecoy.Location = new System.Drawing.Point(9, 214);
+            this.panelTargetDecoy.Location = new System.Drawing.Point(15, 205);
             this.panelTargetDecoy.Name = "panelTargetDecoy";
-            this.panelTargetDecoy.Size = new System.Drawing.Size(427, 52);
+            this.panelTargetDecoy.Size = new System.Drawing.Size(371, 52);
             this.panelTargetDecoy.TabIndex = 18;
             // 
             // radioButtonDecoyOne
@@ -216,7 +222,7 @@
             // 
             this.protDbLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.protDbLabel.AutoSize = true;
-            this.protDbLabel.Location = new System.Drawing.Point(9, 172);
+            this.protDbLabel.Location = new System.Drawing.Point(12, 145);
             this.protDbLabel.Name = "protDbLabel";
             this.protDbLabel.Size = new System.Drawing.Size(139, 13);
             this.protDbLabel.TabIndex = 19;
@@ -225,7 +231,7 @@
             // btnAddInputFile
             // 
             this.btnAddInputFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnAddInputFile.Location = new System.Drawing.Point(442, 25);
+            this.btnAddInputFile.Location = new System.Drawing.Point(389, 39);
             this.btnAddInputFile.Name = "btnAddInputFile";
             this.btnAddInputFile.Size = new System.Drawing.Size(75, 23);
             this.btnAddInputFile.TabIndex = 13;
@@ -237,7 +243,7 @@
             // 
             this.btnRemInputFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnRemInputFile.Enabled = false;
-            this.btnRemInputFile.Location = new System.Drawing.Point(442, 54);
+            this.btnRemInputFile.Location = new System.Drawing.Point(389, 68);
             this.btnRemInputFile.Name = "btnRemInputFile";
             this.btnRemInputFile.Size = new System.Drawing.Size(75, 23);
             this.btnRemInputFile.TabIndex = 15;
@@ -248,7 +254,7 @@
             // btnBrowseProteomeDbFile
             // 
             this.btnBrowseProteomeDbFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowseProteomeDbFile.Location = new System.Drawing.Point(442, 187);
+            this.btnBrowseProteomeDbFile.Location = new System.Drawing.Point(389, 161);
             this.btnBrowseProteomeDbFile.Name = "btnBrowseProteomeDbFile";
             this.btnBrowseProteomeDbFile.Size = new System.Drawing.Size(75, 23);
             this.btnBrowseProteomeDbFile.TabIndex = 17;
@@ -264,9 +270,9 @@
             this.proteomeDbFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
             this.proteomeDbFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
             this.proteomeDbFileCombo.FormattingEnabled = true;
-            this.proteomeDbFileCombo.Location = new System.Drawing.Point(9, 188);
+            this.proteomeDbFileCombo.Location = new System.Drawing.Point(15, 161);
             this.proteomeDbFileCombo.Name = "proteomeDbFileCombo";
-            this.proteomeDbFileCombo.Size = new System.Drawing.Size(427, 23);
+            this.proteomeDbFileCombo.Size = new System.Drawing.Size(368, 23);
             this.proteomeDbFileCombo.TabIndex = 16;
             // 
             // inputFilesList
@@ -277,28 +283,80 @@
             this.inputFilesList.CheckOnClick = true;
             this.inputFilesList.FormattingEnabled = true;
             this.inputFilesList.HorizontalScrollbar = true;
-            this.inputFilesList.Location = new System.Drawing.Point(9, 25);
+            this.inputFilesList.Location = new System.Drawing.Point(15, 39);
             this.inputFilesList.Name = "inputFilesList";
-            this.inputFilesList.Size = new System.Drawing.Size(427, 124);
+            this.inputFilesList.Size = new System.Drawing.Size(368, 94);
             this.inputFilesList.TabIndex = 12;
             this.inputFilesList.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.InputFilesListItemCheck);
             // 
-            // InputFilesControl
+            // groupBox1
+            // 
+            this.groupBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+            this.groupBox1.Controls.Add(this.inputFilesLabel);
+            this.groupBox1.Controls.Add(this.btnBrowseProteomeDbFile);
+            this.groupBox1.Controls.Add(this.panelProteinNucleotide);
+            this.groupBox1.Controls.Add(this.inputFilesList);
+            this.groupBox1.Controls.Add(this.panelTargetDecoy);
+            this.groupBox1.Controls.Add(this.btnAddInputFile);
+            this.groupBox1.Controls.Add(this.protDbLabel);
+            this.groupBox1.Controls.Add(this.btnRemInputFile);
+            this.groupBox1.Controls.Add(this.proteomeDbFileCombo);
+            this.groupBox1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.groupBox1.Location = new System.Drawing.Point(24, 13);
+            this.groupBox1.Name = "groupBox1";
+            this.groupBox1.Size = new System.Drawing.Size(479, 325);
+            this.groupBox1.TabIndex = 21;
+            this.groupBox1.TabStop = false;
+            this.groupBox1.Text = "Input";
+            // 
+            // groupBox2
+            // 
+            this.groupBox2.Controls.Add(this.checkBox1);
+            this.groupBox2.Controls.Add(this.outputFormatsList);
+            this.groupBox2.Location = new System.Drawing.Point(24, 353);
+            this.groupBox2.Name = "groupBox2";
+            this.groupBox2.Size = new System.Drawing.Size(479, 134);
+            this.groupBox2.TabIndex = 22;
+            this.groupBox2.TabStop = false;
+            this.groupBox2.Text = "Output Formats";
+            // 
+            // outputFormatsList
+            // 
+            this.outputFormatsList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.outputFormatsList.CheckOnClick = true;
+            this.outputFormatsList.FormattingEnabled = true;
+            this.outputFormatsList.HorizontalScrollbar = true;
+            this.outputFormatsList.Items.AddRange(new object[] {
+            "pepXML",
+            "pinXML",
+            "SQT",
+            "out files"});
+            this.outputFormatsList.Location = new System.Drawing.Point(15, 29);
+            this.outputFormatsList.Name = "outputFormatsList";
+            this.outputFormatsList.Size = new System.Drawing.Size(263, 64);
+            this.outputFormatsList.TabIndex = 16;
+            // 
+            // checkBox1
+            // 
+            this.checkBox1.AutoSize = true;
+            this.checkBox1.Location = new System.Drawing.Point(15, 99);
+            this.checkBox1.Name = "checkBox1";
+            this.checkBox1.Size = new System.Drawing.Size(263, 17);
+            this.checkBox1.TabIndex = 18;
+            this.checkBox1.Text = "Print expect score in place of SP where applicable";
+            this.checkBox1.UseVisualStyleBackColor = true;
+            // 
+            // IOSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.Transparent;
-            this.Controls.Add(this.inputFilesList);
-            this.Controls.Add(this.inputFilesLabel);
-            this.Controls.Add(this.panelProteinNucleotide);
-            this.Controls.Add(this.panelTargetDecoy);
-            this.Controls.Add(this.protDbLabel);
-            this.Controls.Add(this.btnAddInputFile);
-            this.Controls.Add(this.btnRemInputFile);
-            this.Controls.Add(this.btnBrowseProteomeDbFile);
-            this.Controls.Add(this.proteomeDbFileCombo);
-            this.Name = "InputFilesControl";
-            this.Size = new System.Drawing.Size(527, 330);
+            this.Controls.Add(this.groupBox2);
+            this.Controls.Add(this.groupBox1);
+            this.Name = "IOSettingsControl";
+            this.Size = new System.Drawing.Size(527, 510);
             this.panelNucleotideReadingFrame.ResumeLayout(false);
             this.panelNucleotideReadingFrame.PerformLayout();
             this.panelProteinNucleotide.ResumeLayout(false);
@@ -307,8 +365,11 @@
             this.panelDecoyPrefix.PerformLayout();
             this.panelTargetDecoy.ResumeLayout(false);
             this.panelTargetDecoy.PerformLayout();
+            this.groupBox1.ResumeLayout(false);
+            this.groupBox1.PerformLayout();
+            this.groupBox2.ResumeLayout(false);
+            this.groupBox2.PerformLayout();
             this.ResumeLayout(false);
-            this.PerformLayout();
 
         }
 
@@ -334,5 +395,9 @@
         private System.Windows.Forms.Button btnBrowseProteomeDbFile;
         private System.Windows.Forms.ComboBox proteomeDbFileCombo;
         private System.Windows.Forms.CheckedListBox inputFilesList;
+        private System.Windows.Forms.GroupBox groupBox1;
+        private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.CheckedListBox outputFormatsList;
+        private System.Windows.Forms.CheckBox checkBox1;
     }
 }
