@@ -271,5 +271,15 @@ namespace CometUI
         {
             panelNucleotideReadingFrame.Enabled = radioButtonNucleotide.Checked;
         }
+
+        private void SqtCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            sqtScoreCombo.Enabled = sqtCheckBox.Checked;
+        }
+
+        private void OutFileCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            outFileScoreCombo.Enabled = outFileCheckBox.Checked;
+        }
     }
 }
