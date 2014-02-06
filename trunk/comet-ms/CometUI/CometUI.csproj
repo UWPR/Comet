@@ -96,11 +96,11 @@
     <Compile Include="EnzymeSettingsControl.Designer.cs">
       <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="IOSettingsControl.cs">
+    <Compile Include="InputSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="IOSettingsControl.Designer.cs">
-      <DependentUpon>IOSettingsControl.cs</DependentUpon>
+    <Compile Include="InputSettingsControl.Designer.cs">
+      <DependentUpon>InputSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
@@ -114,6 +114,12 @@
     <Compile Include="MassSettingsControl.Designer.cs">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="OutputSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="OutputSettingsControl.Designer.cs">
+      <DependentUpon>OutputSettingsControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="EnzymeInfoDlg.resx">
@@ -122,14 +128,17 @@
     <EmbeddedResource Include="EnzymeSettingsControl.resx">
       <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="IOSettingsControl.resx">
-      <DependentUpon>IOSettingsControl.cs</DependentUpon>
+    <EmbeddedResource Include="InputSettingsControl.resx">
+      <DependentUpon>InputSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MassSettingsControl.resx">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="OutputSettingsControl.resx">
+      <DependentUpon>OutputSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

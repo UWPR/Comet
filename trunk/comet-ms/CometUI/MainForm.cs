@@ -8,7 +8,8 @@ namespace CometUI
 {
     public partial class CometMainForm : Form
     {
-        private IOSettingsControl InputFilesControl { get; set; }
+        private InputSettingsControl InputFilesControl { get; set; }
+        private OutputSettingsControl OutputSettingsControl { get; set; }
         private EnzymeSettingsControl EnzymeSettingsControl { get; set; }
         private MassSettingsControl MassSettingsControl { get; set; }
         
@@ -21,12 +22,20 @@ namespace CometUI
             _searchMgr = new CometSearchManagerWrapper();
 
             // Create and add Input Files tab page
-            InputFilesControl = new IOSettingsControl(this)
+            InputFilesControl = new InputSettingsControl(this)
             {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
                 Location = new Point(0, 0)
             };
             inputFilesTabPage.Controls.Add(InputFilesControl);
+
+            // Create and add Input Files tab page
+            OutputSettingsControl = new OutputSettingsControl(this)
+            {
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
+                Location = new Point(0, 0)
+            };
+            outputTabPage.Controls.Add(OutputSettingsControl);
 
             // Create and add Enzyme tab page
             EnzymeSettingsControl = new EnzymeSettingsControl(this)

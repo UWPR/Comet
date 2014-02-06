@@ -8,7 +8,7 @@ using CometUI.Properties;
 
 namespace CometUI
 {
-    public partial class IOSettingsControl : UserControl
+    public partial class InputSettingsControl : UserControl
     {
         private enum SearchType
         {
@@ -19,7 +19,7 @@ namespace CometUI
         }
         private new Form  Parent { get; set; }
 
-        public IOSettingsControl(Form parent)
+        public InputSettingsControl(Form parent)
         {
             InitializeComponent();
 

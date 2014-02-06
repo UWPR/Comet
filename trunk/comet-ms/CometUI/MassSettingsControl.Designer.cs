@@ -366,7 +366,7 @@
             this.Controls.Add(this.fragmentGroupBox);
             this.Controls.Add(this.precursorGroupBox);
             this.Name = "MassSettingsControl";
-            this.Size = new System.Drawing.Size(527, 510);
+            this.Size = new System.Drawing.Size(527, 425);
             this.fragmentGroupBox.ResumeLayout(false);
             this.fragmentGroupBox.PerformLayout();
             this.precursorGroupBox.ResumeLayout(false);

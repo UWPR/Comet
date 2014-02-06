@@ -41,7 +41,7 @@
             // searchEnzymeLabel
             // 
             this.searchEnzymeLabel.AutoSize = true;
-            this.searchEnzymeLabel.Location = new System.Drawing.Point(10, 25);
+            this.searchEnzymeLabel.Location = new System.Drawing.Point(22, 25);
             this.searchEnzymeLabel.Name = "searchEnzymeLabel";
             this.searchEnzymeLabel.Size = new System.Drawing.Size(84, 13);
             this.searchEnzymeLabel.TabIndex = 0;
@@ -51,7 +51,7 @@
             // 
             this.searchEnzymeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.searchEnzymeCombo.FormattingEnabled = true;
-            this.searchEnzymeCombo.Location = new System.Drawing.Point(13, 41);
+            this.searchEnzymeCombo.Location = new System.Drawing.Point(25, 41);
             this.searchEnzymeCombo.Name = "searchEnzymeCombo";
             this.searchEnzymeCombo.Size = new System.Drawing.Size(133, 21);
             this.searchEnzymeCombo.TabIndex = 1;
@@ -61,7 +61,7 @@
             // 
             this.sampleEnzymeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.sampleEnzymeCombo.FormattingEnabled = true;
-            this.sampleEnzymeCombo.Location = new System.Drawing.Point(13, 106);
+            this.sampleEnzymeCombo.Location = new System.Drawing.Point(25, 106);
             this.sampleEnzymeCombo.Name = "sampleEnzymeCombo";
             this.sampleEnzymeCombo.Size = new System.Drawing.Size(133, 21);
             this.sampleEnzymeCombo.TabIndex = 2;
@@ -70,7 +70,7 @@
             // sampleEnzymeLabel
             // 
             this.sampleEnzymeLabel.AutoSize = true;
-            this.sampleEnzymeLabel.Location = new System.Drawing.Point(10, 90);
+            this.sampleEnzymeLabel.Location = new System.Drawing.Point(22, 90);
             this.sampleEnzymeLabel.Name = "sampleEnzymeLabel";
             this.sampleEnzymeLabel.Size = new System.Drawing.Size(85, 13);
             this.sampleEnzymeLabel.TabIndex = 2;
@@ -80,7 +80,7 @@
             // 
             this.enzymeTerminiCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.enzymeTerminiCombo.FormattingEnabled = true;
-            this.enzymeTerminiCombo.Location = new System.Drawing.Point(13, 236);
+            this.enzymeTerminiCombo.Location = new System.Drawing.Point(25, 236);
             this.enzymeTerminiCombo.Name = "enzymeTerminiCombo";
             this.enzymeTerminiCombo.Size = new System.Drawing.Size(133, 21);
             this.enzymeTerminiCombo.TabIndex = 4;
@@ -88,7 +88,7 @@
             // enzypeTerminiLabel
             // 
             this.enzypeTerminiLabel.AutoSize = true;
-            this.enzypeTerminiLabel.Location = new System.Drawing.Point(11, 220);
+            this.enzypeTerminiLabel.Location = new System.Drawing.Point(23, 220);
             this.enzypeTerminiLabel.Name = "enzypeTerminiLabel";
             this.enzypeTerminiLabel.Size = new System.Drawing.Size(84, 13);
             this.enzypeTerminiLabel.TabIndex = 4;
@@ -105,7 +105,7 @@
             "3",
             "4",
             "5"});
-            this.missedCleavagesCombo.Location = new System.Drawing.Point(13, 171);
+            this.missedCleavagesCombo.Location = new System.Drawing.Point(25, 171);
             this.missedCleavagesCombo.Name = "missedCleavagesCombo";
             this.missedCleavagesCombo.Size = new System.Drawing.Size(133, 21);
             this.missedCleavagesCombo.TabIndex = 3;
@@ -113,7 +113,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(10, 155);
+            this.label1.Location = new System.Drawing.Point(22, 155);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(136, 13);
             this.label1.TabIndex = 6;
@@ -133,7 +133,7 @@
             this.Controls.Add(this.searchEnzymeCombo);
             this.Controls.Add(this.searchEnzymeLabel);
             this.Name = "EnzymeSettingsControl";
-            this.Size = new System.Drawing.Size(527, 510);
+            this.Size = new System.Drawing.Size(527, 425);
             this.ResumeLayout(false);
             this.PerformLayout();
 

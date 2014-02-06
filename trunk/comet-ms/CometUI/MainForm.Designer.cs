@@ -40,6 +40,7 @@
             this.mainSplitContainer = new System.Windows.Forms.SplitContainer();
             this.cometMainTab = new System.Windows.Forms.TabControl();
             this.inputFilesTabPage = new System.Windows.Forms.TabPage();
+            this.outputTabPage = new System.Windows.Forms.TabPage();
             this.enzymeTabPage = new System.Windows.Forms.TabPage();
             this.massesTabPage = new System.Windows.Forms.TabPage();
             this.tabPage2 = new System.Windows.Forms.TabPage();
@@ -136,8 +137,8 @@
             // 
             this.mainSplitContainer.Panel2.Controls.Add(this.statusStripMain);
             this.mainSplitContainer.Panel2.Controls.Add(this.btnSearch);
-            this.mainSplitContainer.Size = new System.Drawing.Size(559, 588);
-            this.mainSplitContainer.SplitterDistance = 533;
+            this.mainSplitContainer.Size = new System.Drawing.Size(559, 438);
+            this.mainSplitContainer.SplitterDistance = 383;
             this.mainSplitContainer.TabIndex = 2;
             // 
             // cometMainTab
@@ -146,6 +147,7 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.cometMainTab.Controls.Add(this.inputFilesTabPage);
+            this.cometMainTab.Controls.Add(this.outputTabPage);
             this.cometMainTab.Controls.Add(this.enzymeTabPage);
             this.cometMainTab.Controls.Add(this.massesTabPage);
             this.cometMainTab.Controls.Add(this.tabPage2);
@@ -153,7 +155,7 @@
             this.cometMainTab.Location = new System.Drawing.Point(12, 0);
             this.cometMainTab.Name = "cometMainTab";
             this.cometMainTab.SelectedIndex = 0;
-            this.cometMainTab.Size = new System.Drawing.Size(535, 531);
+            this.cometMainTab.Size = new System.Drawing.Size(535, 381);
             this.cometMainTab.TabIndex = 10;
             // 
             // inputFilesTabPage
@@ -161,10 +163,19 @@
             this.inputFilesTabPage.Location = new System.Drawing.Point(4, 22);
             this.inputFilesTabPage.Name = "inputFilesTabPage";
             this.inputFilesTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.inputFilesTabPage.Size = new System.Drawing.Size(527, 505);
+            this.inputFilesTabPage.Size = new System.Drawing.Size(527, 355);
             this.inputFilesTabPage.TabIndex = 0;
             this.inputFilesTabPage.Text = "Input/Output";
             this.inputFilesTabPage.UseVisualStyleBackColor = true;
+            // 
+            // outputTabPage
+            // 
+            this.outputTabPage.Location = new System.Drawing.Point(4, 22);
+            this.outputTabPage.Name = "outputTabPage";
+            this.outputTabPage.Size = new System.Drawing.Size(527, 330);
+            this.outputTabPage.TabIndex = 6;
+            this.outputTabPage.Text = "Output";
+            this.outputTabPage.UseVisualStyleBackColor = true;
             // 
             // enzymeTabPage
             // 
@@ -181,7 +192,7 @@
             this.massesTabPage.Location = new System.Drawing.Point(4, 22);
             this.massesTabPage.Name = "massesTabPage";
             this.massesTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.massesTabPage.Size = new System.Drawing.Size(527, 330);
+            this.massesTabPage.Size = new System.Drawing.Size(527, 505);
             this.massesTabPage.TabIndex = 2;
             this.massesTabPage.Text = "Masses";
             this.massesTabPage.UseVisualStyleBackColor = true;
@@ -191,7 +202,7 @@
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(527, 330);
+            this.tabPage2.Size = new System.Drawing.Size(527, 505);
             this.tabPage2.TabIndex = 3;
             this.tabPage2.Text = "Mods";
             this.tabPage2.UseVisualStyleBackColor = true;
@@ -226,12 +237,12 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(559, 612);
+            this.ClientSize = new System.Drawing.Size(559, 462);
             this.Controls.Add(this.mainSplitContainer);
             this.Controls.Add(this.menuStripMain);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStripMain;
-            this.MinimumSize = new System.Drawing.Size(575, 475);
+            this.MinimumSize = new System.Drawing.Size(575, 500);
             this.Name = "CometMainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Comet";
@@ -269,6 +280,7 @@
         private System.Windows.Forms.ToolStripMenuItem saveAsDefaultToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportToFileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem importFromFileToolStripMenuItem;
+        private System.Windows.Forms.TabPage outputTabPage;
     }
 }
 
