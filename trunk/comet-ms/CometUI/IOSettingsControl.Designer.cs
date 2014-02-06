@@ -50,12 +50,8 @@
             this.inputFilesList = new System.Windows.Forms.CheckedListBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.outFileScoreCombo = new System.Windows.Forms.ComboBox();
-            this.sqtScoreCombo = new System.Windows.Forms.ComboBox();
-            this.outFileCheckBox = new System.Windows.Forms.CheckBox();
-            this.sqtCheckBox = new System.Windows.Forms.CheckBox();
-            this.pinXMLCheckBox = new System.Windows.Forms.CheckBox();
-            this.pepXMLCheckBox = new System.Windows.Forms.CheckBox();
+            this.outputFormatsList = new System.Windows.Forms.CheckedListBox();
+            this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.panelNucleotideReadingFrame.SuspendLayout();
             this.panelProteinNucleotide.SuspendLayout();
             this.panelDecoyPrefix.SuspendLayout();
@@ -315,12 +311,8 @@
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.outFileScoreCombo);
-            this.groupBox2.Controls.Add(this.sqtScoreCombo);
-            this.groupBox2.Controls.Add(this.outFileCheckBox);
-            this.groupBox2.Controls.Add(this.sqtCheckBox);
-            this.groupBox2.Controls.Add(this.pinXMLCheckBox);
-            this.groupBox2.Controls.Add(this.pepXMLCheckBox);
+            this.groupBox2.Controls.Add(this.checkBox1);
+            this.groupBox2.Controls.Add(this.outputFormatsList);
             this.groupBox2.Location = new System.Drawing.Point(24, 353);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(479, 134);
@@ -328,75 +320,33 @@
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Output Formats";
             // 
-            // outFileScoreCombo
+            // outputFormatsList
             // 
-            this.outFileScoreCombo.BackColor = System.Drawing.SystemColors.Window;
-            this.outFileScoreCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.outFileScoreCombo.Enabled = false;
-            this.outFileScoreCombo.FormattingEnabled = true;
-            this.outFileScoreCombo.Items.AddRange(new object[] {
-            "SP Score",
-            "Expect Score"});
-            this.outFileScoreCombo.Location = new System.Drawing.Point(89, 103);
-            this.outFileScoreCombo.Name = "outFileScoreCombo";
-            this.outFileScoreCombo.Size = new System.Drawing.Size(98, 21);
-            this.outFileScoreCombo.TabIndex = 28;
+            this.outputFormatsList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.outputFormatsList.CheckOnClick = true;
+            this.outputFormatsList.FormattingEnabled = true;
+            this.outputFormatsList.HorizontalScrollbar = true;
+            this.outputFormatsList.Items.AddRange(new object[] {
+            "pepXML",
+            "pinXML",
+            "SQT",
+            "out files"});
+            this.outputFormatsList.Location = new System.Drawing.Point(15, 30);
+            this.outputFormatsList.Name = "outputFormatsList";
+            this.outputFormatsList.Size = new System.Drawing.Size(163, 64);
+            this.outputFormatsList.TabIndex = 29;
             // 
-            // sqtScoreCombo
+            // checkBox1
             // 
-            this.sqtScoreCombo.BackColor = System.Drawing.SystemColors.Window;
-            this.sqtScoreCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.sqtScoreCombo.Enabled = false;
-            this.sqtScoreCombo.FormattingEnabled = true;
-            this.sqtScoreCombo.Items.AddRange(new object[] {
-            "SP Score",
-            "Expect Score"});
-            this.sqtScoreCombo.Location = new System.Drawing.Point(89, 76);
-            this.sqtScoreCombo.Name = "sqtScoreCombo";
-            this.sqtScoreCombo.Size = new System.Drawing.Size(98, 21);
-            this.sqtScoreCombo.TabIndex = 27;
-            // 
-            // outFileCheckBox
-            // 
-            this.outFileCheckBox.AutoSize = true;
-            this.outFileCheckBox.Location = new System.Drawing.Point(15, 105);
-            this.outFileCheckBox.Name = "outFileCheckBox";
-            this.outFileCheckBox.Size = new System.Drawing.Size(62, 17);
-            this.outFileCheckBox.TabIndex = 26;
-            this.outFileCheckBox.Text = "out files";
-            this.outFileCheckBox.UseVisualStyleBackColor = true;
-            this.outFileCheckBox.CheckedChanged += new System.EventHandler(this.OutFileCheckBoxCheckedChanged);
-            // 
-            // sqtCheckBox
-            // 
-            this.sqtCheckBox.AutoSize = true;
-            this.sqtCheckBox.Location = new System.Drawing.Point(15, 78);
-            this.sqtCheckBox.Name = "sqtCheckBox";
-            this.sqtCheckBox.Size = new System.Drawing.Size(48, 17);
-            this.sqtCheckBox.TabIndex = 25;
-            this.sqtCheckBox.Text = "SQT";
-            this.sqtCheckBox.UseVisualStyleBackColor = true;
-            this.sqtCheckBox.CheckedChanged += new System.EventHandler(this.SqtCheckBoxCheckedChanged);
-            // 
-            // pinXMLCheckBox
-            // 
-            this.pinXMLCheckBox.AutoSize = true;
-            this.pinXMLCheckBox.Location = new System.Drawing.Point(15, 51);
-            this.pinXMLCheckBox.Name = "pinXMLCheckBox";
-            this.pinXMLCheckBox.Size = new System.Drawing.Size(62, 17);
-            this.pinXMLCheckBox.TabIndex = 22;
-            this.pinXMLCheckBox.Text = "pinXML";
-            this.pinXMLCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // pepXMLCheckBox
-            // 
-            this.pepXMLCheckBox.AutoSize = true;
-            this.pepXMLCheckBox.Location = new System.Drawing.Point(15, 24);
-            this.pepXMLCheckBox.Name = "pepXMLCheckBox";
-            this.pepXMLCheckBox.Size = new System.Drawing.Size(66, 17);
-            this.pepXMLCheckBox.TabIndex = 19;
-            this.pepXMLCheckBox.Text = "pepXML";
-            this.pepXMLCheckBox.UseVisualStyleBackColor = true;
+            this.checkBox1.AutoSize = true;
+            this.checkBox1.Location = new System.Drawing.Point(15, 100);
+            this.checkBox1.Name = "checkBox1";
+            this.checkBox1.Size = new System.Drawing.Size(263, 17);
+            this.checkBox1.TabIndex = 30;
+            this.checkBox1.Text = "Print expect score in place of SP where applicable";
+            this.checkBox1.UseVisualStyleBackColor = true;
             // 
             // IOSettingsControl
             // 
@@ -447,11 +397,7 @@
         private System.Windows.Forms.CheckedListBox inputFilesList;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.CheckBox pepXMLCheckBox;
-        private System.Windows.Forms.CheckBox sqtCheckBox;
-        private System.Windows.Forms.CheckBox pinXMLCheckBox;
-        private System.Windows.Forms.CheckBox outFileCheckBox;
-        private System.Windows.Forms.ComboBox outFileScoreCombo;
-        private System.Windows.Forms.ComboBox sqtScoreCombo;
+        private System.Windows.Forms.CheckedListBox outputFormatsList;
+        private System.Windows.Forms.CheckBox checkBox1;
     }
 }

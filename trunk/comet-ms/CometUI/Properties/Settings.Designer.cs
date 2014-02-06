@@ -347,5 +347,65 @@ namespace CometUI.Properties {
                 this["TheoreticalFragmentIons"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool OutputFormatPepXML {
+            get {
+                return ((bool)(this["OutputFormatPepXML"]));
+            }
+            set {
+                this["OutputFormatPepXML"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool OutputFormatPinXML {
+            get {
+                return ((bool)(this["OutputFormatPinXML"]));
+            }
+            set {
+                this["OutputFormatPinXML"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool OutputFormatOutFiles {
+            get {
+                return ((bool)(this["OutputFormatOutFiles"]));
+            }
+            set {
+                this["OutputFormatOutFiles"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool OutputFormatSqtFile {
+            get {
+                return ((bool)(this["OutputFormatSqtFile"]));
+            }
+            set {
+                this["OutputFormatSqtFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool PrintExpectScoreInPlaceOfSP {
+            get {
+                return ((bool)(this["PrintExpectScoreInPlaceOfSP"]));
+            }
+            set {
+                this["PrintExpectScoreInPlaceOfSP"] = value;
+            }
+        }
     }
 }
