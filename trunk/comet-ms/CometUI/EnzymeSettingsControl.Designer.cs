@@ -34,8 +34,8 @@
             this.sampleEnzymeLabel = new System.Windows.Forms.Label();
             this.enzymeTerminiCombo = new System.Windows.Forms.ComboBox();
             this.enzypeTerminiLabel = new System.Windows.Forms.Label();
-            this.missedCleavagesCombo = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
+            this.missedCleavagesCombo = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // searchEnzymeLabel
@@ -94,6 +94,15 @@
             this.enzypeTerminiLabel.TabIndex = 4;
             this.enzypeTerminiLabel.Text = "Enzyme Termini:";
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(22, 155);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(136, 13);
+            this.label1.TabIndex = 6;
+            this.label1.Text = "Allowed Missed Cleavages:";
+            // 
             // missedCleavagesCombo
             // 
             this.missedCleavagesCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
@@ -104,20 +113,16 @@
             "2",
             "3",
             "4",
-            "5"});
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10"});
             this.missedCleavagesCombo.Location = new System.Drawing.Point(25, 171);
             this.missedCleavagesCombo.Name = "missedCleavagesCombo";
             this.missedCleavagesCombo.Size = new System.Drawing.Size(133, 21);
             this.missedCleavagesCombo.TabIndex = 3;
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(22, 155);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(136, 13);
-            this.label1.TabIndex = 6;
-            this.label1.Text = "Allowed Missed Cleavages:";
             // 
             // EnzymeSettingsControl
             // 
@@ -147,8 +152,8 @@
         private System.Windows.Forms.Label sampleEnzymeLabel;
         private System.Windows.Forms.ComboBox enzymeTerminiCombo;
         private System.Windows.Forms.Label enzypeTerminiLabel;
-        private System.Windows.Forms.ComboBox missedCleavagesCombo;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.ComboBox missedCleavagesCombo;
 
     }
 }

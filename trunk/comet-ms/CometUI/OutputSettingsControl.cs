@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using CometUI.Properties;
 
 namespace CometUI
 {
@@ -24,6 +26,7 @@ namespace CometUI
 
         private void InitializeFromDefaultSettings()
         {
+            numOutputLinesSpinner.Text = Settings.Default.NumOutputLines.ToString(CultureInfo.InvariantCulture);
         }
     }
 }

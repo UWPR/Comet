@@ -407,5 +407,17 @@ namespace CometUI.Properties {
                 this["PrintExpectScoreInPlaceOfSP"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5")]
+        public int NumOutputLines {
+            get {
+                return ((int)(this["NumOutputLines"]));
+            }
+            set {
+                this["NumOutputLines"] = value;
+            }
+        }
     }
 }

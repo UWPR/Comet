@@ -35,7 +35,6 @@
             this.fragmentOffsetTextBox = new System.Windows.Forms.TextBox();
             this.label7 = new System.Windows.Forms.Label();
             this.fragmentBinSizeTextBox = new System.Windows.Forms.TextBox();
-            this.precursorMassTolTextBox = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.precursorGroupBox = new System.Windows.Forms.GroupBox();
@@ -56,9 +55,11 @@
             this.xIonCheckBox = new System.Windows.Forms.CheckBox();
             this.cIonCheckBox = new System.Windows.Forms.CheckBox();
             this.aIonCheckBox = new System.Windows.Forms.CheckBox();
+            this.precursorMassTolTextBox = new System.Windows.Forms.NumericUpDown();
             this.fragmentGroupBox.SuspendLayout();
             this.precursorGroupBox.SuspendLayout();
             this.groupBox1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.precursorMassTolTextBox)).BeginInit();
             this.SuspendLayout();
             // 
             // fragmentGroupBox
@@ -129,19 +130,12 @@
             this.fragmentBinSizeTextBox.Size = new System.Drawing.Size(67, 20);
             this.fragmentBinSizeTextBox.TabIndex = 6;
             // 
-            // precursorMassTolTextBox
-            // 
-            this.precursorMassTolTextBox.Location = new System.Drawing.Point(27, 46);
-            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
-            this.precursorMassTolTextBox.Size = new System.Drawing.Size(56, 20);
-            this.precursorMassTolTextBox.TabIndex = 1;
-            // 
             // label1
             // 
             this.label1.AutoSize = true;
             this.label1.BackColor = System.Drawing.Color.Transparent;
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(13, 49);
+            this.label1.Location = new System.Drawing.Point(13, 46);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(13, 13);
             this.label1.TabIndex = 22;
@@ -158,6 +152,7 @@
             // 
             // precursorGroupBox
             // 
+            this.precursorGroupBox.Controls.Add(this.precursorMassTolTextBox);
             this.precursorGroupBox.Controls.Add(this.precursorIsotopeErrorCombo);
             this.precursorGroupBox.Controls.Add(this.precursorMassTypeCombo);
             this.precursorGroupBox.Controls.Add(this.label3);
@@ -168,7 +163,6 @@
             this.precursorGroupBox.Controls.Add(this.label4);
             this.precursorGroupBox.Controls.Add(this.label2);
             this.precursorGroupBox.Controls.Add(this.label1);
-            this.precursorGroupBox.Controls.Add(this.precursorMassTolTextBox);
             this.precursorGroupBox.Location = new System.Drawing.Point(26, 17);
             this.precursorGroupBox.Name = "precursorGroupBox";
             this.precursorGroupBox.Size = new System.Drawing.Size(225, 254);
@@ -358,6 +352,14 @@
             this.aIonCheckBox.Text = "a";
             this.aIonCheckBox.UseVisualStyleBackColor = true;
             // 
+            // precursorMassTolTextBox
+            // 
+            this.precursorMassTolTextBox.DecimalPlaces = 2;
+            this.precursorMassTolTextBox.Location = new System.Drawing.Point(27, 45);
+            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
+            this.precursorMassTolTextBox.Size = new System.Drawing.Size(56, 20);
+            this.precursorMassTolTextBox.TabIndex = 31;
+            // 
             // MassSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -373,6 +375,7 @@
             this.precursorGroupBox.PerformLayout();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.precursorMassTolTextBox)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -380,7 +383,6 @@
         #endregion
 
         private System.Windows.Forms.GroupBox fragmentGroupBox;
-        private System.Windows.Forms.TextBox precursorMassTolTextBox;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.GroupBox precursorGroupBox;
@@ -407,6 +409,7 @@
         private System.Windows.Forms.CheckBox bIonCheckBox;
         private System.Windows.Forms.CheckBox useNLCheckBox;
         private System.Windows.Forms.CheckBox flankCheckBox;
+        private System.Windows.Forms.NumericUpDown precursorMassTolTextBox;
 
     }
 }
