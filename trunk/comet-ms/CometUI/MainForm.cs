@@ -12,6 +12,7 @@ namespace CometUI
         private OutputSettingsControl OutputSettingsControl { get; set; }
         private EnzymeSettingsControl EnzymeSettingsControl { get; set; }
         private MassSettingsControl MassSettingsControl { get; set; }
+        private ModSettingsControl ModSettingsControl { get; set; }
         
         private readonly CometSearchManagerWrapper _searchMgr;
 
@@ -52,6 +53,14 @@ namespace CometUI
                 Location = new Point(0, 0)
             };
             massesTabPage.Controls.Add(MassSettingsControl);
+                
+            // Create and add Mods tab page
+            ModSettingsControl = new ModSettingsControl(this)
+            {
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
+                Location = new Point(0, 0)
+            };
+            modsTabPage.Controls.Add(ModSettingsControl); ;
         }
 
         private void BtnSearchClick(object sender, EventArgs e)

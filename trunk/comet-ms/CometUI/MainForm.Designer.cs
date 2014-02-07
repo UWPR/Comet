@@ -43,7 +43,7 @@
             this.outputTabPage = new System.Windows.Forms.TabPage();
             this.enzymeTabPage = new System.Windows.Forms.TabPage();
             this.massesTabPage = new System.Windows.Forms.TabPage();
-            this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.modsTabPage = new System.Windows.Forms.TabPage();
             this.tabPage4 = new System.Windows.Forms.TabPage();
             this.statusStripMain = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
@@ -150,7 +150,7 @@
             this.cometMainTab.Controls.Add(this.outputTabPage);
             this.cometMainTab.Controls.Add(this.enzymeTabPage);
             this.cometMainTab.Controls.Add(this.massesTabPage);
-            this.cometMainTab.Controls.Add(this.tabPage2);
+            this.cometMainTab.Controls.Add(this.modsTabPage);
             this.cometMainTab.Controls.Add(this.tabPage4);
             this.cometMainTab.Location = new System.Drawing.Point(12, 0);
             this.cometMainTab.Name = "cometMainTab";
@@ -192,20 +192,20 @@
             this.massesTabPage.Location = new System.Drawing.Point(4, 22);
             this.massesTabPage.Name = "massesTabPage";
             this.massesTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.massesTabPage.Size = new System.Drawing.Size(527, 505);
+            this.massesTabPage.Size = new System.Drawing.Size(527, 355);
             this.massesTabPage.TabIndex = 2;
             this.massesTabPage.Text = "Masses";
             this.massesTabPage.UseVisualStyleBackColor = true;
             // 
-            // tabPage2
+            // modsTabPage
             // 
-            this.tabPage2.Location = new System.Drawing.Point(4, 22);
-            this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(527, 505);
-            this.tabPage2.TabIndex = 3;
-            this.tabPage2.Text = "Mods";
-            this.tabPage2.UseVisualStyleBackColor = true;
+            this.modsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.modsTabPage.Name = "modsTabPage";
+            this.modsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.modsTabPage.Size = new System.Drawing.Size(527, 355);
+            this.modsTabPage.TabIndex = 3;
+            this.modsTabPage.Text = "Mods";
+            this.modsTabPage.UseVisualStyleBackColor = true;
             // 
             // tabPage4
             // 
@@ -273,7 +273,7 @@
         private System.Windows.Forms.TabPage enzymeTabPage;
         private System.Windows.Forms.StatusStrip statusStripMain;
         private System.Windows.Forms.TabPage massesTabPage;
-        private System.Windows.Forms.TabPage tabPage2;
+        private System.Windows.Forms.TabPage modsTabPage;
         private System.Windows.Forms.TabPage tabPage4;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemSettings;

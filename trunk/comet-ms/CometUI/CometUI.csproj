@@ -114,6 +114,12 @@
     <Compile Include="MassSettingsControl.Designer.cs">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="ModSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ModSettingsControl.Designer.cs">
+      <DependentUpon>ModSettingsControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="OutputSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -136,6 +142,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="MassSettingsControl.resx">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ModSettingsControl.resx">
+      <DependentUpon>ModSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="OutputSettingsControl.resx">
       <DependentUpon>OutputSettingsControl.cs</DependentUpon>
