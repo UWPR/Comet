@@ -419,5 +419,29 @@ namespace CometUI.Properties {
                 this["NumOutputLines"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool OutputFormatTextFile {
+            get {
+                return ((bool)(this["OutputFormatTextFile"]));
+            }
+            set {
+                this["OutputFormatTextFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool OutputFormatShowFragmentIons {
+            get {
+                return ((bool)(this["OutputFormatShowFragmentIons"]));
+            }
+            set {
+                this["OutputFormatShowFragmentIons"] = value;
+            }
+        }
     }
 }
