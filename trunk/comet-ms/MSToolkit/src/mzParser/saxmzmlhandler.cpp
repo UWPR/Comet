@@ -41,15 +41,19 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs){
 	m_bInintenArrayBinary = false;
 	m_bInRefGroup = false;
 	m_bNetworkData = false; //always little-endian for mzML
+  m_bNumpressLinear = false;
+  m_bNumpressPic = false;
+  m_bNumpressSlof = false;
 	m_bLowPrecision = false;
 	m_bInSpectrumList=false;
 	m_bInChromatogramList=false;
 	m_bInIndexedMzML=false;
 	m_bInIndexList=false;
-	m_bCompressedData=false;
 	m_bHeaderOnly=false;
 	m_bSpectrumIndex=false;
 	m_bNoIndex=true;
+  m_bZlib=false;
+  m_iDataType=0;
 	spec=bs;
 	indexOffset=-1;
 	m_scanPRECCount = 0;
@@ -64,15 +68,19 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs, BasicChromatogram* cs){
 	m_bInintenArrayBinary = false;
 	m_bInRefGroup = false;
 	m_bNetworkData = false; //always little-endian for mzML
+  m_bNumpressLinear = false;
+  m_bNumpressPic = false;
+  m_bNumpressSlof = false;
 	m_bLowPrecision = false;
 	m_bInSpectrumList=false;
 	m_bInChromatogramList=false;
 	m_bInIndexedMzML=false;
 	m_bInIndexList=false;
-	m_bCompressedData=false;
 	m_bHeaderOnly=false;
 	m_bSpectrumIndex=false;
 	m_bNoIndex=true;
+  m_bZlib=false;
+  m_iDataType=0;
 	spec=bs;
 	chromat=cs;
 	indexOffset=-1;
@@ -89,8 +97,9 @@ mzpSAXMzmlHandler::~mzpSAXMzmlHandler(){
 void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
 
 	if (isElement("binaryDataArray",el)){
+    m_bNumpressLinear=false;
 		string s=getAttrValue("encodedLength", attr);
-		m_compressLen=atoi(&s[0]);
+		m_encodedLen=atoi(&s[0]);
 
 	} else if (isElement("binaryDataArrayList",el)) {
 		if(m_bHeaderOnly) stopParser();
@@ -225,9 +234,16 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
 
 	if(isElement("binary", el))	{
 		processData();
-		m_bInintenArrayBinary = false;
-		m_bInmzArrayBinary = false;
 		m_strData.clear();
+
+  } else if(isElement("binaryDataArray", el))	{
+    m_bZlib=false;
+    m_bInintenArrayBinary = false;
+		m_bInmzArrayBinary = false;
+    m_bNumpressLinear=false;
+    m_bNumpressSlof=false;
+    m_bNumpressPic=false;
+    m_iDataType=0;
 
 	} else if(isElement("chromatogram",el)) {
 		pushChromatogram();
@@ -278,9 +294,11 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 {
 	if(!strcmp(name, "32-bit float") || !strcmp(accession,"MS:1000521"))	{
 		m_bLowPrecision = true;
+    m_iDataType=1;
 
 	} else if(!strcmp(name, "64-bit float") || !strcmp(accession,"MS:1000523"))	{
 		m_bLowPrecision = false;
+    m_iDataType=2;
 
 	} else if(!strcmp(name, "base peak intensity") || !strcmp(accession,"MS:1000505"))	{
 		spec->setBasePeakIntensity(atof(value));
@@ -312,9 +330,9 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 		spec->setCompensationVoltage(atof(value));
 		
 	} else if(!strcmp(name, "filter string") || !strcmp(accession,"MS:1000512"))	{
-    char str[128];
-    strncpy(str,value,127);
-    str[127]='\0';
+		char str[128];
+		strncpy(str,value,127);
+		str[127]='\0';
 		spec->setFilterLine(str);
 
 	} else if(!strcmp(name, "highest observed m/z") || !strcmp(accession,"MS:1000527"))	{
@@ -338,6 +356,15 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 
 	} else if( !strcmp(name, "ms level") || !strcmp(accession,"MS:1000511") ){
 		spec->setMSLevel(atoi(value));
+
+	} else if( !strcmp(name, "MS-Numpress linear prediction compression") || !strcmp(accession,"MS:1002312") ){
+    m_bNumpressLinear = true;
+
+  } else if( !strcmp(name, "MS-Numpress positive integer compression") || !strcmp(accession,"MS:1002313") ){
+    m_bNumpressPic = true;
+
+  } else if( !strcmp(name, "MS-Numpress short logged float compression") || !strcmp(accession,"MS:1002314") ){
+    m_bNumpressSlof = true;
 
 	} else if(!strcmp(name, "m/z array") || !strcmp(accession,"MS:1000514"))	{
 		m_bInmzArrayBinary = true;
@@ -390,24 +417,26 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 		m_instrument.manufacturer="Thermo Scientific";
 
 	} else if(!strcmp(name, "zlib compression") || !strcmp(accession,"MS:1000574"))	{
-		m_bCompressedData=true;
+		m_bZlib=true;
 	}
 }
 
 void mzpSAXMzmlHandler::processData()
 {
 	if(m_bInmzArrayBinary) {
-		if(m_bLowPrecision && !m_bCompressedData) decode32(vdM);
-		else if(m_bLowPrecision && m_bCompressedData) decompress32(vdM);
-		else if(!m_bLowPrecision && !m_bCompressedData) decode64(vdM);
-		else decompress64(vdM);
+    decode(vdM);
+		//if(m_bLowPrecision && !m_bCompressedData) decode32(vdM);
+		//else if(m_bLowPrecision && m_bCompressedData) decompress32(vdM);
+		//else if(!m_bLowPrecision && !m_bCompressedData) decode64(vdM);
+		//else decompress64(vdM);
 	} else if(m_bInintenArrayBinary) {
-		if(m_bLowPrecision && !m_bCompressedData) decode32(vdI);
-		else if(m_bLowPrecision && m_bCompressedData) decompress32(vdI);
-		else if(!m_bLowPrecision && !m_bCompressedData) decode64(vdI);
-		else decompress64(vdI);
+    decode(vdI);
+		//if(m_bLowPrecision && !m_bCompressedData) decode32(vdI);
+		//else if(m_bLowPrecision && m_bCompressedData) decompress32(vdI);
+		//else if(!m_bLowPrecision && !m_bCompressedData) decode64(vdI);
+		//else decompress64(vdI);
 	}
-	m_bCompressedData=false;
+	//m_bCompressedData=false;
 }
 
 bool mzpSAXMzmlHandler::readChromatogram(int num){
@@ -540,160 +569,118 @@ void mzpSAXMzmlHandler::pushSpectrum(){
 	
 }
 
-void mzpSAXMzmlHandler::decompress32(vector<double>& d){
+void mzpSAXMzmlHandler::decode(vector<double>& d){
 
-	d.clear();
+  //If there is no data, back out now
+  d.clear();
 	if(m_peaksCount < 1) return;
-	
-	union udata {
-		float f;
-		uint32_t i;
-	} uData;
 
-	uLong uncomprLen;
-	uint32_t* data;
-	int length;
-	const char* pData = m_strData.data();
-	size_t stringSize = m_strData.size();
-	
-	//Decode base64
-	char* pDecoded = (char*) new char[m_compressLen];
-	memset(pDecoded, 0, m_compressLen);
-	length = b64_decode_mio( (char*) pDecoded , (char*) pData, stringSize );
-	pData=NULL;
+  //For byte order correction
+	union udata32 {
+		float d;
+		uint32_t i;  
+	} uData32; 
 
-	//zLib decompression
-	data = new uint32_t[m_peaksCount*2];
-	uncomprLen = m_peaksCount * 2 * sizeof(uint32_t);
-	uncompress((Bytef*)data, &uncomprLen, (const Bytef*)pDecoded, length);
-	delete [] pDecoded;
+  union udata64 {
+	  double d;
+		uint64_t i;  
+	} uData64; 
 
-	//write data to arrays
-	for(int i=0;i<m_peaksCount;i++){
-		uData.i = dtohl(data[i], m_bNetworkData);
-		d.push_back((double)uData.f);
-	}
-	delete [] data;
-}
-
-void mzpSAXMzmlHandler::decompress64(vector<double>& d){
-
-	d.clear();
-	if(m_peaksCount < 1) return;
-	
-	union udata {
-		double d;
-		uint64_t i;
-	} uData;
-
-	uLong uncomprLen;
-	uint64_t* data;
-	int length;
-	const char* pData = m_strData.data();
-	size_t stringSize = m_strData.size();
-	
-	//Decode base64
-	char* pDecoded = (char*) new char[m_compressLen];
-	memset(pDecoded, 0, m_compressLen);
-	length = b64_decode_mio( (char*) pDecoded , (char*) pData, stringSize );
-	pData=NULL;
-
-	//zLib decompression
-	data = new uint64_t[m_peaksCount*2];
-	uncomprLen = m_peaksCount * 2 * sizeof(uint64_t);
-	uncompress((Bytef*)data, &uncomprLen, (const Bytef*)pDecoded, length);
-	delete [] pDecoded;
-
-	//write data to arrays
-	for(int i=0;i<m_peaksCount;i++){
-		uData.i = dtohl(data[i], m_bNetworkData);
-		d.push_back(uData.d);
-	}
-	delete [] data;
-
-}
-
-void mzpSAXMzmlHandler::decode32(vector<double>& d){
-// This code block was revised so that it packs floats correctly
-// on both 64 and 32 bit machines, by making use of the uint32_t
-// data type. -S. Wiley
-	const char* pData = m_strData.data();
-	size_t stringSize = m_strData.size();
-	
-	size_t size = m_peaksCount * sizeof(uint32_t);
-	char* pDecoded = (char *) new char[size];
-	memset(pDecoded, 0, size);
-
-	if(m_peaksCount > 0) {
-		// Base64 decoding
-		// By comparing the size of the unpacked data and the expected size
-		// an additional check of the data file integrity can be performed
-		int length = b64_decode_mio( (char*) pDecoded , (char*) pData, stringSize );
-		if(length != size) {
-			cout << " decoded size " << length << " and required size " << (unsigned long)size << " dont match:\n";
-			cout << " Cause: possible corrupted file.\n";
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	// And byte order correction
-	union udata {
-		float fData;
-		uint32_t iData;  
-	} uData; 
-
-	int n = 0;
-	uint32_t* pDecodedInts = (uint32_t*)pDecoded; // cast to uint_32 for reading int sized chunks
-	d.clear();
-	for(int i = 0; i < m_peaksCount; i++) {
-		uData.iData = dtohl(pDecodedInts[n++], m_bNetworkData);
-		d.push_back((double)uData.fData);
-	}
-
-	// Free allocated memory
-	delete[] pDecoded;
-}
-
-void mzpSAXMzmlHandler::decode64(vector<double>& d){
-
-// This code block was revised so that it packs floats correctly
-// on both 64 and 32 bit machines, by making use of the uint32_t
-// data type. -S. Wiley
 	const char* pData = m_strData.data();
 	size_t stringSize = m_strData.size();
 
-	size_t size = m_peaksCount * sizeof(uint64_t);
-	char* pDecoded = (char *) new char[size];
-	memset(pDecoded, 0, size);
+  char* decoded = new char[m_encodedLen];  //array for decoded base64 string
+  int decodeLen;
+  Bytef* unzipped;
+  uLong unzippedLen;
 
-	if(m_peaksCount > 0) {
-		// Base64 decoding
-		// By comparing the size of the unpacked data and the expected size
-		// an additional check of the data file integrity can be performed
-		int length = b64_decode_mio( (char*) pDecoded , (char*) pData, stringSize );
-		if(length != size) {
-			cout << " decoded size " << length << " and required size " << (unsigned long)size << " dont match:\n";
-			cout << " Cause: possible corrupted file.\n";
-			exit(EXIT_FAILURE);
-		}
+  int i;
+
+  //Base64 decoding
+  decodeLen = b64_decode_mio(decoded,(char*)pData,stringSize);
+
+  //zlib decompression
+  if(m_bZlib) {
+
+    if(m_iDataType==1) {
+      unzippedLen = m_peaksCount*sizeof(uint32_t);
+    } else if(m_iDataType==2) {
+      unzippedLen = m_peaksCount*sizeof(uint64_t);
+    } else {
+      if(!m_bNumpressLinear && !m_bNumpressSlof && !m_bNumpressPic){
+        cout << "Unknown data format to unzip. Stopping file read." << endl;
+        exit(EXIT_FAILURE);
+      }
+	  //don't know the unzipped size of numpressed data, so assume it to be no larger than unpressed 64-bit data
+	  unzippedLen = m_peaksCount*sizeof(uint64_t);
+    }
+
+    unzipped = new Bytef[unzippedLen];
+	  uncompress((Bytef*)unzipped, &unzippedLen, (const Bytef*)decoded, (uLong)decodeLen);
+	  delete [] decoded;
+
+  }
+
+  //Numpress decompression
+  if(m_bNumpressLinear || m_bNumpressSlof || m_bNumpressPic){
+    double* unpressed=new double[m_peaksCount];
+  
+	try{
+      if(m_bNumpressLinear){
+        if(m_bZlib) ms::numpress::MSNumpress::decodeLinear((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
+        else ms::numpress::MSNumpress::decodeLinear((unsigned char*)decoded,decodeLen,unpressed);
+      } else if(m_bNumpressSlof){
+        if(m_bZlib) ms::numpress::MSNumpress::decodeSlof((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
+        else ms::numpress::MSNumpress::decodeSlof((unsigned char*)decoded,decodeLen,unpressed);
+      } else if(m_bNumpressPic){
+        if(m_bZlib) ms::numpress::MSNumpress::decodePic((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
+        else ms::numpress::MSNumpress::decodePic((unsigned char*)decoded,decodeLen,unpressed);
+      }
+	} catch (const char* ch){
+	  cout << "Exception: " << ch << endl;
+	  exit(EXIT_FAILURE);
 	}
 
-	// And byte order correction
-	union udata {
-		double fData;
-		uint64_t iData;  
-	} uData; 
+    if(m_bZlib) delete [] unzipped;
+    else delete [] decoded;
+    for(i=0;i<m_peaksCount;i++) d.push_back(unpressed[i]);
+    delete [] unpressed;
+    return;
+  }
 
-	d.clear();
-	int n = 0;
-	uint64_t* pDecodedInts = (uint64_t*)pDecoded; // cast to uint_64 for reading int sized chunks
-	for(int i = 0; i < m_peaksCount; i++) {
-		uData.iData = dtohl(pDecodedInts[n++], m_bNetworkData);
-		d.push_back(uData.fData);
-	}
+  //Byte order correction
+  if(m_bZlib){
+    if(m_iDataType==1){
+      uint32_t* unzipped32 = (uint32_t*)unzipped;
+      for(i=0;i<m_peaksCount;i++){
+		    uData32.i = dtohl(unzipped32[i], m_bNetworkData);
+		    d.push_back(uData32.d);
+	    }
+    } else if(m_iDataType==2) {
+      uint64_t* unzipped64 = (uint64_t*)unzipped;
+      for(i=0;i<m_peaksCount;i++){
+		    uData64.i = dtohl(unzipped64[i], m_bNetworkData);
+		    d.push_back(uData64.d);
+	    }
+    }
+    delete [] unzipped;
+  } else {
+    if(m_iDataType==1){
+      uint32_t* decoded32 = (uint32_t*)decoded;
+      for(i=0;i<m_peaksCount;i++){
+		    uData32.i = dtohl(decoded32[i], m_bNetworkData);
+		    d.push_back(uData32.d);
+	    }
+    } else if(m_iDataType==2) {
+      uint64_t* decoded64 = (uint64_t*)decoded;
+      for(i=0;i<m_peaksCount;i++){
+		    uData64.i = dtohl(decoded64[i], m_bNetworkData);
+		    d.push_back(uData64.d);
+	    }
+    }
+    delete [] decoded;
+  }
 
-	// Free allocated memory
-	delete[] pDecoded;
 }
 
 unsigned long mzpSAXMzmlHandler::dtohl(uint32_t l, bool bNet) {

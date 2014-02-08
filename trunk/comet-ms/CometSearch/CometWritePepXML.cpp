@@ -370,6 +370,10 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iChargeState);
+
+   if (pQuery->_spectrumInfoInternal.szNativeID[0]!='\0')
+      fprintf(fpout, " spectrumNativeID=\"%s\"", pQuery->_spectrumInfoInternal.szNativeID);
+
    fprintf(fpout, " start_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
    fprintf(fpout, " end_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
    fprintf(fpout, " precursor_neutral_mass=\"%0.6f\"", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);

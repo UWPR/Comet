@@ -114,7 +114,7 @@ int RAWReader::calcChargeState(double precursormz, double highmass, VARIANT* var
   return 0;
 }
 
-MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<double>& MZs, bool& bCentroid) {
+MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<double>& MZs, bool& bCentroid, double& cv) {
 
   BSTR Filter = NULL;
 	char cStr[256];
@@ -127,6 +127,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 
   //Initialize raw values to default
 	MZs.clear();
+  cv=0;
 
   m_Raw->GetFilterForScanNum(scan, &Filter);
 	sl = SysStringLen(Filter)+1;
@@ -142,6 +143,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 		if(strcmp(tok,"c")==0){
       bCentroid=true;
 		} else if(strlen(tok)>2 && tok[0]=='c' && tok[1]=='v'){
+      cv=atof(tok+3);
 		} else if(strcmp(tok,"d")==0){
 		} else if(strcmp(tok,"ESI")==0){
 		} else if(strcmp(tok,"FTMS")==0){
@@ -217,7 +219,7 @@ bool RAWReader::initRaw(){
 			if(FAILED(m_Raw3.CreateInstance("MSFileReader.XRawfile.1"))){
 				if(FAILED(m_Raw2.CreateInstance("MSFileReader.XRawfile.1"))){
 					if(FAILED(m_Raw.CreateInstance("MSFileReader.XRawfile.1"))){
-//						cout << "Cannot load Thermo MSFileReader. Cannot read .RAW files." << endl;
+						cout << "Cannot load Thermo MSFileReader. Cannot read .RAW files." << endl;
 					} else {
 						raw=1;
 					}
@@ -287,6 +289,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	//Additional members for Scan Information
   bool bCentroid;
 
+  double cv;    //Compensation Voltage
   double BPI;   //Base peak intensity
 	double BPM;   //Base peak mass
 	double td;    //temp double value
@@ -354,7 +357,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   //if the filter was set, make sure we pass the filter
   while(true){
 
-	  MSn = evaluateFilter(rawCurSpec, curFilter, MZs, bCentroid);
+	  MSn = evaluateFilter(rawCurSpec, curFilter, MZs, bCentroid,cv);
 
     //check for spectrum filter (string)
     if(strlen(rawUserFilter)>0){
@@ -444,7 +447,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     lowerBound=0;
     upperBound=0;
     for(i=rawCurSpec-1;i>0;i--){
-      evaluateFilter(i, chFilter, MZs, bCentroid);
+      evaluateFilter(i, chFilter, MZs, bCentroid,cv);
       if(strcmp(curFilter,chFilter)==0){
         widthCount++;
         if(widthCount==rawAvgWidth) {
@@ -457,7 +460,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
     widthCount=0;
     for(i=rawCurSpec+1;i<rawTotSpec;i++){
-      evaluateFilter(i, chFilter, MZs, bCentroid);
+      evaluateFilter(i, chFilter, MZs, bCentroid,cv);
       if(strcmp(curFilter,chFilter)==0){
         widthCount++;
         if(widthCount==rawAvgWidth) {
@@ -491,7 +494,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 		if(Charge.iVal>0){
 			if(MonoMZ.dblVal>0.01) {
 				pm1 = MonoMZ.dblVal * Charge.iVal - ((Charge.iVal-1)*1.007276466);
-				s.setMZ(MonoMZ.dblVal);
+				s.setMZ(MZs[0],MonoMZ.dblVal);
 			}	else {
 				pm1 = MZs[0] * Charge.iVal - ((Charge.iVal-1)*1.007276466);
 				s.setMZ(MZs[0]);
@@ -521,8 +524,8 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
 	if(MSn==MSX){
 		for(i=0;i<(int)MZs.size();i++){
-			if(i==0) s.setMZ(MZs[i]);
-			else s.addMZ(MZs[i]);
+			if(i==0) s.setMZ(MZs[i],0);
+			else s.addMZ(MZs[i],0);
 		}
 		s.setCharge(0);
 	}
@@ -537,6 +540,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	s.setFileType(MSn);
   s.setBPI((float)BPI);
   s.setBPM(BPM);
+  s.setCompensationVoltage(cv);
   s.setConversionA(ConversionA.dblVal);
   s.setConversionB(ConversionB.dblVal);
 	s.setConversionC(ConversionC.dblVal);

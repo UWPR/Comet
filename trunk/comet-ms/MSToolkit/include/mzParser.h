@@ -31,12 +31,15 @@
 #include <string.h>
 #include "expat.h"
 #include "zlib.h"
+#include "MSNumpress.hpp"
+
 #ifdef MZP_MZ5
 #include "hdf5.h"
 #include "H5Cpp.h"
 #endif
 
 using namespace std;
+
 #ifdef MZP_MZ5
 using namespace H5;
 #endif
@@ -47,12 +50,10 @@ using namespace H5;
 
 //#define OSX				// to compile with cc on Macintosh OSX
 //#define OSX_TIGER // use with OSX if OSX Tiger is being used
-//#define __LINUX__				// to compile with gcc (or g++) on LINUX
-//#define _MSC_VER	// to compile with Microsoft Studio
 //#define OSX_INTEL // compile with cc on Macintosh OSX on Intel-style processors
 //#define GCC				// to compile with gcc (or g++) on LINUX
-#define __LINUX__    // Comet project currently only cares about Linux/Windows
-#ifdef _MSC_VER
+#define __LINUX__				// to compile with gcc (or g++) on LINUX
+#ifdef _MSC_VER	// to compile with Microsoft Studio
 #undef __LINUX__
 #endif
 
@@ -223,7 +224,7 @@ public:
 	bool					getCentroid();
 	double				getCollisionEnergy();
 	double				getCompensationVoltage();
-	int					getFilterLine(char* str);
+	int					  getFilterLine(char* str);
 	double				getHighMZ();
 	int						getIDString(char* str);
 	double				getLowMZ();
@@ -249,7 +250,7 @@ protected:
 	bool						centroid;
 	double					collisionEnergy;
 	double					compensationVoltage;	//FAIMS compensation voltage
-	char					filterLine[128];
+	char					  filterLine[128];
 	double					highMZ;
 	char						idString[128];
 	double					lowMZ;
@@ -455,10 +456,11 @@ private:
 	void	stopParser();
 
 	//  mzpSAXMzmlHandler Base64 conversion functions
-	void decode32(vector<double>& d);
-	void decode64(vector<double>& d);
-	void decompress32(vector<double>& d);
-	void decompress64(vector<double>& d);
+  void decode(vector<double>& d);
+	//void decode32(vector<double>& d);
+	//void decode64(vector<double>& d);
+	//void decompress32(vector<double>& d);
+	//void decompress64(vector<double>& d);
 	unsigned long dtohl(uint32_t l, bool bNet);
 	uint64_t dtohl(uint64_t l, bool bNet);
 
@@ -473,12 +475,16 @@ private:
 
 	//  mzpSAXMzmlHandler procedural flags.
 	bool m_bChromatogramIndex;
-	bool m_bCompressedData;
 	bool m_bHeaderOnly;
 	bool m_bLowPrecision;
 	bool m_bNetworkData;	// i.e. big endian
+  bool m_bNumpressLinear;
+  bool m_bNumpressPic;
+  bool m_bNumpressSlof;
 	bool m_bNoIndex;
 	bool m_bSpectrumIndex;
+  bool m_bZlib;
+  int  m_iDataType;   //0=unspecified, 1=32-bit float, 2=64-bit float
 	
 	//  mzpSAXMzmlHandler index data members.
 	vector<cindex>		m_vIndex;
@@ -493,7 +499,7 @@ private:
 	//  mzpSAXMzmlHandler data members.
 	BasicChromatogram*			chromat;
 	string									m_ccurrentRefGroupName;
-	uLong										m_compressLen;					// For compressed data
+	long										m_encodedLen;					  // For compressed data
 	instrumentInfo					m_instrument;
 	int											m_peaksCount;						// Count of peaks in spectrum
 	vector<cvParam>					m_refGroupCvParams;
@@ -1165,8 +1171,8 @@ typedef struct RAMPFILE{
 	mzpSAXMzmlHandler* mzML;
 	mzpSAXMzxmlHandler* mzXML;
   #ifdef MZP_MZ5
-	  mzpMz5Config* mz5Config;
-	  mzpMz5Handler* mz5;
+	mzpMz5Config* mz5Config;
+	mzpMz5Handler* mz5;
   #endif
 	int fileType;
 	int bIsMzData;
@@ -1193,7 +1199,7 @@ typedef struct RAMPFILE{
 		if(mz5Config!=NULL) delete mz5Config;
     mz5=NULL;
 		mz5Config=NULL;
-    #endif	
+    #endif
 	}
 } RAMPFILE;
 
@@ -1331,13 +1337,13 @@ public:
 
 	vector<cindex>*			vChromatIndex;
   #ifdef MZP_MZ5
-	  vector<cMz5Index>*	vMz5Index;
+	vector<cMz5Index>*	vMz5Index;
   #endif
 
 private:
 	mzpSAXMzmlHandler*	mzML;
   #ifdef MZP_MZ5
-    mzpMz5Handler*			mz5;
+	mzpMz5Handler*			mz5;
   #endif
 	ChromatogramPtr			chromat;
 };
@@ -1356,7 +1362,7 @@ public:
 private:
 	mzpSAXMzmlHandler*	mzML;
   #ifdef MZP_MZ5
-	  mzpMz5Handler*			mz5;
+	mzpMz5Handler*			mz5;
   #endif
 	BasicChromatogram*	bc;
 };
@@ -1373,8 +1379,8 @@ private:
 	BasicChromatogram*	bc;
 	mzpSAXMzmlHandler*	mzML;
   #ifdef MZP_MZ5
-	  mzpMz5Config*				mz5Config;
-	  mzpMz5Handler*			mz5;
+	mzpMz5Config*				mz5Config;
+	mzpMz5Handler*			mz5;
   #endif
 };
 
@@ -1401,8 +1407,8 @@ protected:
 	mzpSAXMzmlHandler*		mzML;
 	mzpSAXMzxmlHandler*		mzXML;
   #ifdef MZP_MZ5
-    mzpMz5Handler*			mz5;
-	  mzpMz5Config*				mz5Config;
+	mzpMz5Handler*				mz5;
+	mzpMz5Config*					mz5Config;
   #endif
 
 private:

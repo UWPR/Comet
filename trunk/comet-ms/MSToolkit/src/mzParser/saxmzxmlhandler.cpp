@@ -149,7 +149,7 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
 			spec->setMSLevel(atoi(getAttrValue("msLevel", attr)));
 			spec->setBasePeakIntensity(atof(getAttrValue("basePeakIntensity", attr)));
 			spec->setBasePeakMZ(atof(getAttrValue("basePeakMz", attr)));
-			spec->setCentroid((bool)atoi(getAttrValue("centroided",attr)));
+			spec->setCentroid((bool)getAttrValue("centroided",attr));
 			spec->setCollisionEnergy(atof(getAttrValue("collisionEnergy", attr)));
 			spec->setCompensationVoltage(atof(getAttrValue("CompensationVoltage", attr)));
 			s=getAttrValue("filterLine", attr);
