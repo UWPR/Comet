@@ -43,10 +43,11 @@
             this.outputTabPage = new System.Windows.Forms.TabPage();
             this.enzymeTabPage = new System.Windows.Forms.TabPage();
             this.massesTabPage = new System.Windows.Forms.TabPage();
-            this.modsTabPage = new System.Windows.Forms.TabPage();
+            this.varModsTabPage = new System.Windows.Forms.TabPage();
             this.tabPage4 = new System.Windows.Forms.TabPage();
             this.statusStripMain = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.staticModsTabPage = new System.Windows.Forms.TabPage();
             this.menuStripMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).BeginInit();
             this.mainSplitContainer.Panel1.SuspendLayout();
@@ -150,7 +151,8 @@
             this.cometMainTab.Controls.Add(this.outputTabPage);
             this.cometMainTab.Controls.Add(this.enzymeTabPage);
             this.cometMainTab.Controls.Add(this.massesTabPage);
-            this.cometMainTab.Controls.Add(this.modsTabPage);
+            this.cometMainTab.Controls.Add(this.varModsTabPage);
+            this.cometMainTab.Controls.Add(this.staticModsTabPage);
             this.cometMainTab.Controls.Add(this.tabPage4);
             this.cometMainTab.Location = new System.Drawing.Point(12, 0);
             this.cometMainTab.Name = "cometMainTab";
@@ -165,14 +167,14 @@
             this.inputFilesTabPage.Padding = new System.Windows.Forms.Padding(3);
             this.inputFilesTabPage.Size = new System.Drawing.Size(527, 355);
             this.inputFilesTabPage.TabIndex = 0;
-            this.inputFilesTabPage.Text = "Input/Output";
+            this.inputFilesTabPage.Text = "Input";
             this.inputFilesTabPage.UseVisualStyleBackColor = true;
             // 
             // outputTabPage
             // 
             this.outputTabPage.Location = new System.Drawing.Point(4, 22);
             this.outputTabPage.Name = "outputTabPage";
-            this.outputTabPage.Size = new System.Drawing.Size(527, 330);
+            this.outputTabPage.Size = new System.Drawing.Size(527, 355);
             this.outputTabPage.TabIndex = 6;
             this.outputTabPage.Text = "Output";
             this.outputTabPage.UseVisualStyleBackColor = true;
@@ -182,7 +184,7 @@
             this.enzymeTabPage.Location = new System.Drawing.Point(4, 22);
             this.enzymeTabPage.Name = "enzymeTabPage";
             this.enzymeTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.enzymeTabPage.Size = new System.Drawing.Size(527, 505);
+            this.enzymeTabPage.Size = new System.Drawing.Size(527, 355);
             this.enzymeTabPage.TabIndex = 1;
             this.enzymeTabPage.Text = "Enzyme";
             this.enzymeTabPage.UseVisualStyleBackColor = true;
@@ -197,22 +199,22 @@
             this.massesTabPage.Text = "Masses";
             this.massesTabPage.UseVisualStyleBackColor = true;
             // 
-            // modsTabPage
+            // varModsTabPage
             // 
-            this.modsTabPage.Location = new System.Drawing.Point(4, 22);
-            this.modsTabPage.Name = "modsTabPage";
-            this.modsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.modsTabPage.Size = new System.Drawing.Size(527, 355);
-            this.modsTabPage.TabIndex = 3;
-            this.modsTabPage.Text = "Mods";
-            this.modsTabPage.UseVisualStyleBackColor = true;
+            this.varModsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.varModsTabPage.Name = "varModsTabPage";
+            this.varModsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.varModsTabPage.Size = new System.Drawing.Size(527, 355);
+            this.varModsTabPage.TabIndex = 3;
+            this.varModsTabPage.Text = "Var Mods";
+            this.varModsTabPage.UseVisualStyleBackColor = true;
             // 
             // tabPage4
             // 
             this.tabPage4.Location = new System.Drawing.Point(4, 22);
             this.tabPage4.Name = "tabPage4";
             this.tabPage4.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage4.Size = new System.Drawing.Size(527, 505);
+            this.tabPage4.Size = new System.Drawing.Size(527, 355);
             this.tabPage4.TabIndex = 5;
             this.tabPage4.Text = "Misc";
             this.tabPage4.UseVisualStyleBackColor = true;
@@ -232,6 +234,16 @@
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
             this.toolStripStatusLabel1.Size = new System.Drawing.Size(218, 17);
             this.toolStripStatusLabel1.Text = "This is where search status will show up.";
+            // 
+            // staticModsTabPage
+            // 
+            this.staticModsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.staticModsTabPage.Name = "staticModsTabPage";
+            this.staticModsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.staticModsTabPage.Size = new System.Drawing.Size(527, 355);
+            this.staticModsTabPage.TabIndex = 7;
+            this.staticModsTabPage.Text = "Static Mods";
+            this.staticModsTabPage.UseVisualStyleBackColor = true;
             // 
             // CometMainForm
             // 
@@ -273,7 +285,7 @@
         private System.Windows.Forms.TabPage enzymeTabPage;
         private System.Windows.Forms.StatusStrip statusStripMain;
         private System.Windows.Forms.TabPage massesTabPage;
-        private System.Windows.Forms.TabPage modsTabPage;
+        private System.Windows.Forms.TabPage varModsTabPage;
         private System.Windows.Forms.TabPage tabPage4;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemSettings;
@@ -281,6 +293,7 @@
         private System.Windows.Forms.ToolStripMenuItem exportToFileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem importFromFileToolStripMenuItem;
         private System.Windows.Forms.TabPage outputTabPage;
+        private System.Windows.Forms.TabPage staticModsTabPage;
     }
 }
 

@@ -9,11 +9,11 @@ using System.Windows.Forms;
 
 namespace CometUI
 {
-    public partial class ModSettingsControl : UserControl
+    public partial class VarModSettingsControl : UserControl
     {
         private new Form Parent { get; set; }
 
-        public ModSettingsControl(Form parent)
+        public VarModSettingsControl(Form parent)
         {
             InitializeComponent();
 
