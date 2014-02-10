@@ -117,5 +117,16 @@
     <Setting Name="OutputFormatShowFragmentIons" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="VariableMods" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;string&gt;M,15.9949,0,3&lt;/string&gt;
+  &lt;string&gt;X,0.0,0,3&lt;/string&gt;
+  &lt;string&gt;X,0.0,0,3&lt;/string&gt;
+  &lt;string&gt;X,0.0,0,3&lt;/string&gt;
+  &lt;string&gt;X,0.0,0,3&lt;/string&gt;
+  &lt;string&gt;X,0.0,0,3 &lt;/string&gt;
+&lt;/ArrayOfString&gt;</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

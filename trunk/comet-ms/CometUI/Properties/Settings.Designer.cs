@@ -443,5 +443,25 @@ namespace CometUI.Properties {
                 this["OutputFormatShowFragmentIons"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute(@"<?xml version=""1.0"" encoding=""utf-16""?>
+<ArrayOfString xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
+  <string>M,15.9949,0,3</string>
+  <string>X,0.0,0,3</string>
+  <string>X,0.0,0,3</string>
+  <string>X,0.0,0,3</string>
+  <string>X,0.0,0,3</string>
+  <string>X,0.0,0,3 </string>
+</ArrayOfString>")]
+        public global::System.Collections.Specialized.StringCollection VariableMods {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["VariableMods"]));
+            }
+            set {
+                this["VariableMods"] = value;
+            }
+        }
     }
 }
