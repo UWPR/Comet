@@ -35,7 +35,7 @@
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.varibleNTerminusDisttextBox2 = new System.Windows.Forms.TextBox();
+            this.variableNTerminusDistTextBox = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.variableCTerminusDistTextBox = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
@@ -114,12 +114,12 @@
             this.label4.TabIndex = 12;
             this.label4.Text = "Distance:";
             // 
-            // varibleNTerminusDisttextBox2
+            // variableNTerminusDistTextBox
             // 
-            this.varibleNTerminusDisttextBox2.Location = new System.Drawing.Point(255, 212);
-            this.varibleNTerminusDisttextBox2.Name = "varibleNTerminusDisttextBox2";
-            this.varibleNTerminusDisttextBox2.Size = new System.Drawing.Size(84, 20);
-            this.varibleNTerminusDisttextBox2.TabIndex = 11;
+            this.variableNTerminusDistTextBox.Location = new System.Drawing.Point(255, 212);
+            this.variableNTerminusDistTextBox.Name = "variableNTerminusDistTextBox";
+            this.variableNTerminusDistTextBox.Size = new System.Drawing.Size(84, 20);
+            this.variableNTerminusDistTextBox.TabIndex = 11;
             // 
             // label5
             // 
@@ -199,7 +199,7 @@
             this.Controls.Add(this.label5);
             this.Controls.Add(this.variableCTerminusDistTextBox);
             this.Controls.Add(this.label4);
-            this.Controls.Add(this.varibleNTerminusDisttextBox2);
+            this.Controls.Add(this.variableNTerminusDistTextBox);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.variableCTerminusTextBox);
@@ -223,7 +223,7 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox varibleNTerminusDisttextBox2;
+        private System.Windows.Forms.TextBox variableNTerminusDistTextBox;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.TextBox variableCTerminusDistTextBox;
         private System.Windows.Forms.Label label6;

@@ -487,5 +487,41 @@ namespace CometUI.Properties {
                 this["VariableNTerminus"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int VariableCTermDistance {
+            get {
+                return ((int)(this["VariableCTermDistance"]));
+            }
+            set {
+                this["VariableCTermDistance"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int VariableNTermDistance {
+            get {
+                return ((int)(this["VariableNTermDistance"]));
+            }
+            set {
+                this["VariableNTermDistance"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5")]
+        public int MaxVarModsInPeptide {
+            get {
+                return ((int)(this["MaxVarModsInPeptide"]));
+            }
+            set {
+                this["MaxVarModsInPeptide"] = value;
+            }
+        }
     }
 }

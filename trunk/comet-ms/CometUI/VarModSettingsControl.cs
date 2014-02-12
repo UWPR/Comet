@@ -1,4 +1,5 @@
 ﻿using System.Collections.Specialized;
+using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
 
@@ -31,6 +32,13 @@ namespace CometUI
             {
                 VarMods.Add(item);
             }
+
+            variableNTerminusTextBox.Text = Settings.Default.VariableNTerminus.ToString(CultureInfo.InvariantCulture);
+            variableCTerminusTextBox.Text = Settings.Default.VariableCTerminus.ToString(CultureInfo.InvariantCulture);
+            variableNTerminusDistTextBox.Text = Settings.Default.VariableNTermDistance.ToString(CultureInfo.InvariantCulture);
+            variableCTerminusDistTextBox.Text = Settings.Default.VariableCTermDistance.ToString(CultureInfo.InvariantCulture);
+
+            maxModsInPeptideCombo.SelectedIndex = Settings.Default.MaxVarModsInPeptide;
         }
 
     }
