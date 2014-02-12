@@ -463,5 +463,29 @@ namespace CometUI.Properties {
                 this["VariableMods"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double VariableCTerminus {
+            get {
+                return ((double)(this["VariableCTerminus"]));
+            }
+            set {
+                this["VariableCTerminus"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double VariableNTerminus {
+            get {
+                return ((double)(this["VariableNTerminus"]));
+            }
+            set {
+                this["VariableNTerminus"] = value;
+            }
+        }
     }
 }
