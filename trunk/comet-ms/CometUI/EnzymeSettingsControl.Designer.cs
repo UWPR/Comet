@@ -138,7 +138,7 @@
             this.Controls.Add(this.searchEnzymeCombo);
             this.Controls.Add(this.searchEnzymeLabel);
             this.Name = "EnzymeSettingsControl";
-            this.Size = new System.Drawing.Size(527, 425);
+            this.Size = new System.Drawing.Size(527, 450);
             this.ResumeLayout(false);
             this.PerformLayout();
 

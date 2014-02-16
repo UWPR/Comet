@@ -66,7 +66,7 @@
             // btnBrowseProteomeDbFile
             // 
             this.btnBrowseProteomeDbFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowseProteomeDbFile.Location = new System.Drawing.Point(428, 186);
+            this.btnBrowseProteomeDbFile.Location = new System.Drawing.Point(428, 242);
             this.btnBrowseProteomeDbFile.Name = "btnBrowseProteomeDbFile";
             this.btnBrowseProteomeDbFile.Size = new System.Drawing.Size(75, 23);
             this.btnBrowseProteomeDbFile.TabIndex = 36;
@@ -81,7 +81,7 @@
             this.panelProteinNucleotide.Controls.Add(this.panelNucleotideReadingFrame);
             this.panelProteinNucleotide.Controls.Add(this.radioButtonProtein);
             this.panelProteinNucleotide.Controls.Add(this.radioButtonNucleotide);
-            this.panelProteinNucleotide.Location = new System.Drawing.Point(21, 282);
+            this.panelProteinNucleotide.Location = new System.Drawing.Point(21, 338);
             this.panelProteinNucleotide.Name = "panelProteinNucleotide";
             this.panelProteinNucleotide.Size = new System.Drawing.Size(401, 53);
             this.panelProteinNucleotide.TabIndex = 39;
@@ -159,7 +159,7 @@
             this.inputFilesList.HorizontalScrollbar = true;
             this.inputFilesList.Location = new System.Drawing.Point(21, 34);
             this.inputFilesList.Name = "inputFilesList";
-            this.inputFilesList.Size = new System.Drawing.Size(401, 109);
+            this.inputFilesList.Size = new System.Drawing.Size(401, 154);
             this.inputFilesList.TabIndex = 31;
             this.inputFilesList.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.InputFilesListItemCheck);
             // 
@@ -171,7 +171,7 @@
             this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyOne);
             this.panelTargetDecoy.Controls.Add(this.radioButtonDecoyTwo);
             this.panelTargetDecoy.Controls.Add(this.panelDecoyPrefix);
-            this.panelTargetDecoy.Location = new System.Drawing.Point(21, 230);
+            this.panelTargetDecoy.Location = new System.Drawing.Point(21, 286);
             this.panelTargetDecoy.Name = "panelTargetDecoy";
             this.panelTargetDecoy.Size = new System.Drawing.Size(401, 52);
             this.panelTargetDecoy.TabIndex = 37;
@@ -252,7 +252,7 @@
             // 
             this.protDbLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.protDbLabel.AutoSize = true;
-            this.protDbLabel.Location = new System.Drawing.Point(18, 170);
+            this.protDbLabel.Location = new System.Drawing.Point(18, 226);
             this.protDbLabel.Name = "protDbLabel";
             this.protDbLabel.Size = new System.Drawing.Size(139, 13);
             this.protDbLabel.TabIndex = 38;
@@ -278,7 +278,7 @@
             this.proteomeDbFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
             this.proteomeDbFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
             this.proteomeDbFileCombo.FormattingEnabled = true;
-            this.proteomeDbFileCombo.Location = new System.Drawing.Point(21, 186);
+            this.proteomeDbFileCombo.Location = new System.Drawing.Point(21, 242);
             this.proteomeDbFileCombo.Name = "proteomeDbFileCombo";
             this.proteomeDbFileCombo.Size = new System.Drawing.Size(401, 23);
             this.proteomeDbFileCombo.TabIndex = 35;
@@ -298,7 +298,7 @@
             this.Controls.Add(this.protDbLabel);
             this.Controls.Add(this.btnAddInputFile);
             this.Name = "InputSettingsControl";
-            this.Size = new System.Drawing.Size(527, 425);
+            this.Size = new System.Drawing.Size(527, 450);
             this.panelProteinNucleotide.ResumeLayout(false);
             this.panelProteinNucleotide.PerformLayout();
             this.panelNucleotideReadingFrame.ResumeLayout(false);

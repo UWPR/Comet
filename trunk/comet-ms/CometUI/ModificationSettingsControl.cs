@@ -1,16 +1,19 @@
-﻿using System.Collections.Specialized;
+﻿using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
 
 namespace CometUI
 {
-    public partial class VarModSettingsControl : UserControl
+    public partial class ModificationSettingsControl : UserControl
     {
         public StringCollection VarMods { get; set; }
         private new Form Parent { get; set; }
 
-        public VarModSettingsControl(Form parent)
+        private readonly Dictionary<string, double> _staticMods = new Dictionary<string, double>();
+
+        public ModificationSettingsControl(Form parent)
         {
             InitializeComponent();
 
@@ -38,7 +41,7 @@ namespace CometUI
             variableNTerminusDistTextBox.Text = Settings.Default.VariableNTermDistance.ToString(CultureInfo.InvariantCulture);
             variableCTerminusDistTextBox.Text = Settings.Default.VariableCTermDistance.ToString(CultureInfo.InvariantCulture);
 
-            maxModsInPeptideCombo.SelectedIndex = Settings.Default.MaxVarModsInPeptide;
+            maxModsInPeptideTextBox.Text = Settings.Default.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);
         }
 
     }

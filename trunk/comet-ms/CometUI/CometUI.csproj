@@ -84,6 +84,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EditStaticMod.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EditStaticMod.Designer.cs">
+      <DependentUpon>EditStaticMod.cs</DependentUpon>
+    </Compile>
     <Compile Include="EnzymeInfoDlg.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -114,11 +120,11 @@
     <Compile Include="MassSettingsControl.Designer.cs">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="VarModSettingsControl.cs">
+    <Compile Include="ModificationSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="VarModSettingsControl.Designer.cs">
-      <DependentUpon>VarModSettingsControl.cs</DependentUpon>
+    <Compile Include="ModificationSettingsControl.Designer.cs">
+      <DependentUpon>ModificationSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="OutputSettingsControl.cs">
       <SubType>UserControl</SubType>
@@ -143,8 +149,8 @@
     <EmbeddedResource Include="MassSettingsControl.resx">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="VarModSettingsControl.resx">
-      <DependentUpon>VarModSettingsControl.cs</DependentUpon>
+    <EmbeddedResource Include="ModificationSettingsControl.resx">
+      <DependentUpon>ModificationSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="OutputSettingsControl.resx">
       <DependentUpon>OutputSettingsControl.cs</DependentUpon>

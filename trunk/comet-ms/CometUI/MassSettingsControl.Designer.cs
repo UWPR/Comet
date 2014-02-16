@@ -38,6 +38,7 @@
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.precursorGroupBox = new System.Windows.Forms.GroupBox();
+            this.precursorMassTolTextBox = new System.Windows.Forms.NumericUpDown();
             this.precursorIsotopeErrorCombo = new System.Windows.Forms.ComboBox();
             this.precursorMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label3 = new System.Windows.Forms.Label();
@@ -55,11 +56,10 @@
             this.xIonCheckBox = new System.Windows.Forms.CheckBox();
             this.cIonCheckBox = new System.Windows.Forms.CheckBox();
             this.aIonCheckBox = new System.Windows.Forms.CheckBox();
-            this.precursorMassTolTextBox = new System.Windows.Forms.NumericUpDown();
             this.fragmentGroupBox.SuspendLayout();
             this.precursorGroupBox.SuspendLayout();
-            this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.precursorMassTolTextBox)).BeginInit();
+            this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
             // fragmentGroupBox
@@ -169,6 +169,14 @@
             this.precursorGroupBox.TabIndex = 0;
             this.precursorGroupBox.TabStop = false;
             this.precursorGroupBox.Text = "Precursor";
+            // 
+            // precursorMassTolTextBox
+            // 
+            this.precursorMassTolTextBox.DecimalPlaces = 2;
+            this.precursorMassTolTextBox.Location = new System.Drawing.Point(27, 45);
+            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
+            this.precursorMassTolTextBox.Size = new System.Drawing.Size(56, 20);
+            this.precursorMassTolTextBox.TabIndex = 31;
             // 
             // precursorIsotopeErrorCombo
             // 
@@ -352,14 +360,6 @@
             this.aIonCheckBox.Text = "a";
             this.aIonCheckBox.UseVisualStyleBackColor = true;
             // 
-            // precursorMassTolTextBox
-            // 
-            this.precursorMassTolTextBox.DecimalPlaces = 2;
-            this.precursorMassTolTextBox.Location = new System.Drawing.Point(27, 45);
-            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
-            this.precursorMassTolTextBox.Size = new System.Drawing.Size(56, 20);
-            this.precursorMassTolTextBox.TabIndex = 31;
-            // 
             // MassSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -368,14 +368,14 @@
             this.Controls.Add(this.fragmentGroupBox);
             this.Controls.Add(this.precursorGroupBox);
             this.Name = "MassSettingsControl";
-            this.Size = new System.Drawing.Size(527, 425);
+            this.Size = new System.Drawing.Size(527, 450);
             this.fragmentGroupBox.ResumeLayout(false);
             this.fragmentGroupBox.PerformLayout();
             this.precursorGroupBox.ResumeLayout(false);
             this.precursorGroupBox.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.precursorMassTolTextBox)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.precursorMassTolTextBox)).EndInit();
             this.ResumeLayout(false);
 
         }
