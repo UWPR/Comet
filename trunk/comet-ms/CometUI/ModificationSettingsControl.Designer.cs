@@ -29,6 +29,10 @@
         private void InitializeComponent()
         {
             this.varModsDataGridView = new System.Windows.Forms.DataGridView();
+            this.varModsResidueCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.varModsMassCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.varModsBinaryModCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.varModsMaxModsPerPeptide = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.variableNTerminusTextBox = new System.Windows.Forms.TextBox();
             this.variableCTerminusTextBox = new System.Windows.Forms.TextBox();
             this.label2 = new System.Windows.Forms.Label();
@@ -41,12 +45,8 @@
             this.maxModsInPeptideTextBox = new System.Windows.Forms.NumericUpDown();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.button1 = new System.Windows.Forms.Button();
-            this.checkedListBox1 = new System.Windows.Forms.CheckedListBox();
-            this.varModsResidueCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.varModsMassCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.varModsBinaryModCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.varModsMaxModsPerPeptide = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.editStaticModButton = new System.Windows.Forms.Button();
+            this.staticModsList = new System.Windows.Forms.CheckedListBox();
             ((System.ComponentModel.ISupportInitialize)(this.varModsDataGridView)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.maxModsInPeptideTextBox)).BeginInit();
             this.groupBox1.SuspendLayout();
@@ -68,6 +68,38 @@
             this.varModsDataGridView.Name = "varModsDataGridView";
             this.varModsDataGridView.Size = new System.Drawing.Size(440, 108);
             this.varModsDataGridView.TabIndex = 0;
+            // 
+            // varModsResidueCol
+            // 
+            this.varModsResidueCol.HeaderText = "Residue";
+            this.varModsResidueCol.Name = "varModsResidueCol";
+            this.varModsResidueCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.varModsResidueCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.varModsResidueCol.Width = 95;
+            // 
+            // varModsMassCol
+            // 
+            this.varModsMassCol.HeaderText = "Mass";
+            this.varModsMassCol.Name = "varModsMassCol";
+            this.varModsMassCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.varModsMassCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.varModsMassCol.Width = 95;
+            // 
+            // varModsBinaryModCol
+            // 
+            this.varModsBinaryModCol.HeaderText = "Binary Mod";
+            this.varModsBinaryModCol.Name = "varModsBinaryModCol";
+            this.varModsBinaryModCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.varModsBinaryModCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.varModsBinaryModCol.Width = 95;
+            // 
+            // varModsMaxModsPerPeptide
+            // 
+            this.varModsMaxModsPerPeptide.HeaderText = "Max Mods";
+            this.varModsMaxModsPerPeptide.Name = "varModsMaxModsPerPeptide";
+            this.varModsMaxModsPerPeptide.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.varModsMaxModsPerPeptide.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.varModsMaxModsPerPeptide.Width = 95;
             // 
             // variableNTerminusTextBox
             // 
@@ -176,8 +208,8 @@
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.button1);
-            this.groupBox2.Controls.Add(this.checkedListBox1);
+            this.groupBox2.Controls.Add(this.editStaticModButton);
+            this.groupBox2.Controls.Add(this.staticModsList);
             this.groupBox2.Location = new System.Drawing.Point(26, 275);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(478, 136);
@@ -185,81 +217,23 @@
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Static Mods";
             // 
-            // button1
+            // editStaticModButton
             // 
-            this.button1.Location = new System.Drawing.Point(185, 28);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 1;
-            this.button1.Text = "Edit";
-            this.button1.UseVisualStyleBackColor = true;
+            this.editStaticModButton.Location = new System.Drawing.Point(185, 28);
+            this.editStaticModButton.Name = "editStaticModButton";
+            this.editStaticModButton.Size = new System.Drawing.Size(75, 23);
+            this.editStaticModButton.TabIndex = 1;
+            this.editStaticModButton.Text = "Edit";
+            this.editStaticModButton.UseVisualStyleBackColor = true;
+            this.editStaticModButton.Click += new System.EventHandler(this.EditStaticModButtonClick);
             // 
-            // checkedListBox1
+            // staticModsList
             // 
-            this.checkedListBox1.FormattingEnabled = true;
-            this.checkedListBox1.Items.AddRange(new object[] {
-            "Glycine (G)",
-            "Alanine (A)",
-            "Serine (S)",
-            "Proline (P)",
-            "Valine (V)",
-            "Threonine (T)",
-            "Cysteine (C)",
-            "Leucine (L)",
-            "Isoleucine (I)",
-            "Asparagine (N)",
-            "Aspartic Acid (D)",
-            "Glutamine (Q)",
-            "Lysine (K)",
-            "Glutamic Acid (E)",
-            "Methionine (M)",
-            "Ornithine (O)",
-            "Histidine (H)",
-            "Phenylalanine (F)",
-            "Arginine (R)",
-            "Tyrosine (Y)",
-            "Tryptophan (W)",
-            "User Amino Acid (B)",
-            "User Amino Acid (J)",
-            "User Amino Acid (U)",
-            "User Amino Acid (X)",
-            "User Amino Acid (Z)"});
-            this.checkedListBox1.Location = new System.Drawing.Point(17, 28);
-            this.checkedListBox1.Name = "checkedListBox1";
-            this.checkedListBox1.Size = new System.Drawing.Size(162, 79);
-            this.checkedListBox1.TabIndex = 0;
-            // 
-            // varModsResidueCol
-            // 
-            this.varModsResidueCol.HeaderText = "Residue";
-            this.varModsResidueCol.Name = "varModsResidueCol";
-            this.varModsResidueCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.varModsResidueCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.varModsResidueCol.Width = 95;
-            // 
-            // varModsMassCol
-            // 
-            this.varModsMassCol.HeaderText = "Mass";
-            this.varModsMassCol.Name = "varModsMassCol";
-            this.varModsMassCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.varModsMassCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.varModsMassCol.Width = 95;
-            // 
-            // varModsBinaryModCol
-            // 
-            this.varModsBinaryModCol.HeaderText = "Binary Mod";
-            this.varModsBinaryModCol.Name = "varModsBinaryModCol";
-            this.varModsBinaryModCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.varModsBinaryModCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.varModsBinaryModCol.Width = 95;
-            // 
-            // varModsMaxModsPerPeptide
-            // 
-            this.varModsMaxModsPerPeptide.HeaderText = "Max Mods";
-            this.varModsMaxModsPerPeptide.Name = "varModsMaxModsPerPeptide";
-            this.varModsMaxModsPerPeptide.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.varModsMaxModsPerPeptide.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.varModsMaxModsPerPeptide.Width = 95;
+            this.staticModsList.FormattingEnabled = true;
+            this.staticModsList.Location = new System.Drawing.Point(17, 28);
+            this.staticModsList.Name = "staticModsList";
+            this.staticModsList.Size = new System.Drawing.Size(162, 79);
+            this.staticModsList.TabIndex = 0;
             // 
             // ModificationSettingsControl
             // 
@@ -293,8 +267,8 @@
         private System.Windows.Forms.NumericUpDown maxModsInPeptideTextBox;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.CheckedListBox checkedListBox1;
-        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.CheckedListBox staticModsList;
+        private System.Windows.Forms.Button editStaticModButton;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsResidueCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsMassCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsBinaryModCol;
