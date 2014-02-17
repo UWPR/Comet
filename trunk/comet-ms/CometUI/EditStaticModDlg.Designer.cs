@@ -98,6 +98,7 @@
             this.avgTextBox.Name = "avgTextBox";
             this.avgTextBox.Size = new System.Drawing.Size(86, 20);
             this.avgTextBox.TabIndex = 5;
+            this.avgTextBox.TextChanged += new System.EventHandler(this.AvgTextBoxTextChanged);
             // 
             // monoisotopicTextBox
             // 
@@ -106,6 +107,7 @@
             this.monoisotopicTextBox.Name = "monoisotopicTextBox";
             this.monoisotopicTextBox.Size = new System.Drawing.Size(86, 20);
             this.monoisotopicTextBox.TabIndex = 4;
+            this.monoisotopicTextBox.TextChanged += new System.EventHandler(this.MonoisotopicTextBoxTextChanged);
             // 
             // avgRadioButton
             // 
@@ -154,6 +156,7 @@
             this.okButton.TabIndex = 1;
             this.okButton.Text = "OK";
             this.okButton.UseVisualStyleBackColor = true;
+            this.okButton.Click += new System.EventHandler(this.OkButtonClick);
             // 
             // cancelButton
             // 
