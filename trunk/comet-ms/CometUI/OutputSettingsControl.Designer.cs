@@ -40,6 +40,7 @@
             this.label1 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.outSkipReSearchingCheckBox = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.numOutputLinesSpinner)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -158,6 +159,7 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.outSkipReSearchingCheckBox);
             this.groupBox1.Controls.Add(this.pepXMLCheckBox);
             this.groupBox1.Controls.Add(this.pinXMLCheckBox);
             this.groupBox1.Controls.Add(this.outShowFragmentIonsCheckBox);
@@ -168,7 +170,7 @@
             this.groupBox1.Controls.Add(this.sqtExpectScoreCheckBox);
             this.groupBox1.Location = new System.Drawing.Point(22, 21);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(225, 228);
+            this.groupBox1.Size = new System.Drawing.Size(225, 251);
             this.groupBox1.TabIndex = 42;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Output Formats";
@@ -179,10 +181,21 @@
             this.groupBox2.Controls.Add(this.label1);
             this.groupBox2.Location = new System.Drawing.Point(274, 21);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(225, 228);
+            this.groupBox2.Size = new System.Drawing.Size(225, 251);
             this.groupBox2.TabIndex = 43;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Options";
+            // 
+            // outSkipReSearchingCheckBox
+            // 
+            this.outSkipReSearchingCheckBox.AutoSize = true;
+            this.outSkipReSearchingCheckBox.Enabled = false;
+            this.outSkipReSearchingCheckBox.Location = new System.Drawing.Point(38, 202);
+            this.outSkipReSearchingCheckBox.Name = "outSkipReSearchingCheckBox";
+            this.outSkipReSearchingCheckBox.Size = new System.Drawing.Size(108, 17);
+            this.outSkipReSearchingCheckBox.TabIndex = 41;
+            this.outSkipReSearchingCheckBox.Text = "Skip re-searching";
+            this.outSkipReSearchingCheckBox.UseVisualStyleBackColor = true;
             // 
             // OutputSettingsControl
             // 
@@ -215,5 +228,6 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.CheckBox outSkipReSearchingCheckBox;
     }
 }

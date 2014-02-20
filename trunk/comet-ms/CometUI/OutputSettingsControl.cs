@@ -32,6 +32,8 @@ namespace CometUI
             outShowFragmentIonsCheckBox.Checked = Settings.Default.OutputFormatShowFragmentIons;
 
             numOutputLinesSpinner.Text = Settings.Default.NumOutputLines.ToString(CultureInfo.InvariantCulture);
+
+            outSkipReSearchingCheckBox.Checked = Settings.Default.OutputFormatSkipReSearching;
         }
 
         private void SqtCheckBoxCheckedChanged(object sender, EventArgs e)
@@ -43,6 +45,7 @@ namespace CometUI
         {
             outExpectScoreCheckBox.Enabled = outFileCheckBox.Checked;
             outShowFragmentIonsCheckBox.Enabled = outFileCheckBox.Checked;
+            outSkipReSearchingCheckBox.Enabled = outFileCheckBox.Checked;
         }
     }
 }

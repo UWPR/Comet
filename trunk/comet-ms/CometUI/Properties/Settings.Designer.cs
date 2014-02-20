@@ -611,5 +611,17 @@ namespace CometUI.Properties {
                 this["StaticModCTermProtein"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool OutputFormatSkipReSearching {
+            get {
+                return ((bool)(this["OutputFormatSkipReSearching"]));
+            }
+            set {
+                this["OutputFormatSkipReSearching"] = value;
+            }
+        }
     }
 }
