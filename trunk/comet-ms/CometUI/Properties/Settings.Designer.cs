@@ -563,5 +563,53 @@ namespace CometUI.Properties {
                 this["StaticMods"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double StaticModNTermPeptide {
+            get {
+                return ((double)(this["StaticModNTermPeptide"]));
+            }
+            set {
+                this["StaticModNTermPeptide"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double StaticModCTermPeptide {
+            get {
+                return ((double)(this["StaticModCTermPeptide"]));
+            }
+            set {
+                this["StaticModCTermPeptide"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double StaticModNTermProtein {
+            get {
+                return ((double)(this["StaticModNTermProtein"]));
+            }
+            set {
+                this["StaticModNTermProtein"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double StaticModCTermProtein {
+            get {
+                return ((double)(this["StaticModCTermProtein"]));
+            }
+            set {
+                this["StaticModCTermProtein"] = value;
+            }
+        }
     }
 }

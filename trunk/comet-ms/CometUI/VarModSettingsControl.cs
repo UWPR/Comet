@@ -5,15 +5,12 @@ using CometUI.Properties;
 
 namespace CometUI
 {
-    public partial class ModificationSettingsControl : UserControl
+    public partial class VarModSettingsControl : UserControl
     {
         public StringCollection VarMods { get; set; }
         private new Form Parent { get; set; }
 
-        public StringCollection StaticMods { get; set; }
-
-
-        public ModificationSettingsControl(Form parent)
+        public VarModSettingsControl(Form parent)
         {
             InitializeComponent();
 
@@ -25,12 +22,6 @@ namespace CometUI
             {
                 string[] cells = row.Split(',');
                 varModsDataGridView.Rows.Add(cells);
-            }
-
-            foreach (var row in StaticMods)
-            {
-                string[] cells = row.Split(',');
-                staticModsDataGridView.Rows.Add(cells);
             }
         }
 
@@ -48,12 +39,6 @@ namespace CometUI
             variableCTerminusDistTextBox.Text = Settings.Default.VariableCTermDistance.ToString(CultureInfo.InvariantCulture);
 
             maxModsInPeptideTextBox.Text = Settings.Default.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);            
-
-            StaticMods = new StringCollection();
-            foreach (var item in Settings.Default.StaticMods)
-            {
-                StaticMods.Add(item);
-            }
         }
     }
 }

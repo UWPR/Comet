@@ -84,6 +84,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="StaticModSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="StaticModSettingsControl.Designer.cs">
+      <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="EnzymeInfoDlg.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -114,11 +120,11 @@
     <Compile Include="MassSettingsControl.Designer.cs">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="ModificationSettingsControl.cs">
+    <Compile Include="VarModSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="ModificationSettingsControl.Designer.cs">
-      <DependentUpon>ModificationSettingsControl.cs</DependentUpon>
+    <Compile Include="VarModSettingsControl.Designer.cs">
+      <DependentUpon>VarModSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="OutputSettingsControl.cs">
       <SubType>UserControl</SubType>
@@ -128,6 +134,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="StaticModSettingsControl.resx">
+      <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="EnzymeInfoDlg.resx">
       <DependentUpon>EnzymeInfoDlg.cs</DependentUpon>
     </EmbeddedResource>
@@ -143,8 +152,8 @@
     <EmbeddedResource Include="MassSettingsControl.resx">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ModificationSettingsControl.resx">
-      <DependentUpon>ModificationSettingsControl.cs</DependentUpon>
+    <EmbeddedResource Include="VarModSettingsControl.resx">
+      <DependentUpon>VarModSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="OutputSettingsControl.resx">
       <DependentUpon>OutputSettingsControl.cs</DependentUpon>
