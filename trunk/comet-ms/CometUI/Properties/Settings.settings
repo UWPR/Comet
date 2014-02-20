@@ -143,5 +143,36 @@
     <Setting Name="MaxVarModsInPeptide" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">5</Value>
     </Setting>
+    <Setting Name="StaticMods" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;string&gt;Glycine,G,0.0000&lt;/string&gt;
+  &lt;string&gt;Alanine,A,0.0000&lt;/string&gt;
+  &lt;string&gt;Serine,S,0.0000&lt;/string&gt;
+  &lt;string&gt;Proline,P,0.0000&lt;/string&gt;
+  &lt;string&gt;Valine,V,0.0000&lt;/string&gt;
+  &lt;string&gt;Threonine,T,0.0000&lt;/string&gt;
+  &lt;string&gt;Cysteine,C,57.021464&lt;/string&gt;
+  &lt;string&gt;Leucine,L,0.0000&lt;/string&gt;
+  &lt;string&gt;Isoleucine,I,0.0000&lt;/string&gt;
+  &lt;string&gt;Asparagine,N,0.0000&lt;/string&gt;
+  &lt;string&gt;Aspartic Acid,D,0.0000&lt;/string&gt;
+  &lt;string&gt;Glutamine,Q,0.0000&lt;/string&gt;
+  &lt;string&gt;Lysine,K,0.0000&lt;/string&gt;
+  &lt;string&gt;Glutamic Acid,E,0.0000&lt;/string&gt;
+  &lt;string&gt;Methionine,M,0.0000&lt;/string&gt;
+  &lt;string&gt;Ornithine,O,0.0000&lt;/string&gt;
+  &lt;string&gt;Histidine,H,0.0000&lt;/string&gt;
+  &lt;string&gt;Phenylalanine,F,0.0000&lt;/string&gt;
+  &lt;string&gt;Arginine,R,0.0000&lt;/string&gt;
+  &lt;string&gt;Tyrosine,Y,0.0000&lt;/string&gt;
+  &lt;string&gt;Tryptophan,W,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,B,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,J,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,U,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,X,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,Z,0.0000&lt;/string&gt;
+&lt;/ArrayOfString&gt;</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -45,12 +45,15 @@
             this.maxModsInPeptideTextBox = new System.Windows.Forms.NumericUpDown();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.editStaticModButton = new System.Windows.Forms.Button();
-            this.staticModsList = new System.Windows.Forms.CheckedListBox();
+            this.staticModsDataGridView = new System.Windows.Forms.DataGridView();
+            this.staticModsNameCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.staticModsResidueCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.staticModsMassDiffCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             ((System.ComponentModel.ISupportInitialize)(this.varModsDataGridView)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.maxModsInPeptideTextBox)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.staticModsDataGridView)).BeginInit();
             this.SuspendLayout();
             // 
             // varModsDataGridView
@@ -79,7 +82,7 @@
             // 
             // varModsMassCol
             // 
-            this.varModsMassCol.HeaderText = "Mass";
+            this.varModsMassCol.HeaderText = "Mass Diff";
             this.varModsMassCol.Name = "varModsMassCol";
             this.varModsMassCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             this.varModsMassCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
@@ -208,32 +211,52 @@
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.editStaticModButton);
-            this.groupBox2.Controls.Add(this.staticModsList);
-            this.groupBox2.Location = new System.Drawing.Point(26, 275);
+            this.groupBox2.Controls.Add(this.staticModsDataGridView);
+            this.groupBox2.Location = new System.Drawing.Point(26, 271);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(478, 136);
+            this.groupBox2.Size = new System.Drawing.Size(478, 140);
             this.groupBox2.TabIndex = 34;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Static Mods";
             // 
-            // editStaticModButton
+            // staticModsDataGridView
             // 
-            this.editStaticModButton.Location = new System.Drawing.Point(185, 28);
-            this.editStaticModButton.Name = "editStaticModButton";
-            this.editStaticModButton.Size = new System.Drawing.Size(75, 23);
-            this.editStaticModButton.TabIndex = 1;
-            this.editStaticModButton.Text = "Edit";
-            this.editStaticModButton.UseVisualStyleBackColor = true;
-            this.editStaticModButton.Click += new System.EventHandler(this.EditStaticModButtonClick);
+            this.staticModsDataGridView.AllowUserToAddRows = false;
+            this.staticModsDataGridView.AllowUserToDeleteRows = false;
+            this.staticModsDataGridView.AllowUserToResizeRows = false;
+            this.staticModsDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.staticModsDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.staticModsNameCol,
+            this.staticModsResidueCol,
+            this.staticModsMassDiffCol});
+            this.staticModsDataGridView.Location = new System.Drawing.Point(17, 28);
+            this.staticModsDataGridView.Name = "staticModsDataGridView";
+            this.staticModsDataGridView.Size = new System.Drawing.Size(350, 88);
+            this.staticModsDataGridView.TabIndex = 1;
             // 
-            // staticModsList
+            // staticModsNameCol
             // 
-            this.staticModsList.FormattingEnabled = true;
-            this.staticModsList.Location = new System.Drawing.Point(17, 28);
-            this.staticModsList.Name = "staticModsList";
-            this.staticModsList.Size = new System.Drawing.Size(162, 79);
-            this.staticModsList.TabIndex = 0;
+            this.staticModsNameCol.HeaderText = "Name";
+            this.staticModsNameCol.Name = "staticModsNameCol";
+            this.staticModsNameCol.ReadOnly = true;
+            this.staticModsNameCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            // 
+            // staticModsResidueCol
+            // 
+            this.staticModsResidueCol.HeaderText = "Residue";
+            this.staticModsResidueCol.Name = "staticModsResidueCol";
+            this.staticModsResidueCol.ReadOnly = true;
+            this.staticModsResidueCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.staticModsResidueCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.staticModsResidueCol.Width = 95;
+            // 
+            // staticModsMassDiffCol
+            // 
+            this.staticModsMassDiffCol.HeaderText = "Mass Diff";
+            this.staticModsMassDiffCol.Name = "staticModsMassDiffCol";
+            this.staticModsMassDiffCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.staticModsMassDiffCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.staticModsMassDiffCol.Width = 95;
             // 
             // ModificationSettingsControl
             // 
@@ -248,6 +271,7 @@
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.staticModsDataGridView)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -267,12 +291,14 @@
         private System.Windows.Forms.NumericUpDown maxModsInPeptideTextBox;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.CheckedListBox staticModsList;
-        private System.Windows.Forms.Button editStaticModButton;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsResidueCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsMassCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsBinaryModCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsMaxModsPerPeptide;
+        private System.Windows.Forms.DataGridView staticModsDataGridView;
+        private System.Windows.Forms.DataGridViewTextBoxColumn staticModsNameCol;
+        private System.Windows.Forms.DataGridViewTextBoxColumn staticModsResidueCol;
+        private System.Windows.Forms.DataGridViewTextBoxColumn staticModsMassDiffCol;
 
     }
 }

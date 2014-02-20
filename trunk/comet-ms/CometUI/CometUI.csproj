@@ -84,12 +84,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EditStaticModDlg.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="EditStaticModDlg.Designer.cs">
-      <DependentUpon>EditStaticModDlg.cs</DependentUpon>
-    </Compile>
     <Compile Include="EnzymeInfoDlg.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -134,9 +128,6 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="EditStaticModDlg.resx">
-      <DependentUpon>EditStaticModDlg.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="EnzymeInfoDlg.resx">
       <DependentUpon>EnzymeInfoDlg.cs</DependentUpon>
     </EmbeddedResource>
