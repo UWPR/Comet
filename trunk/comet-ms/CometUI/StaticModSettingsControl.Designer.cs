@@ -48,6 +48,8 @@
             this.staticModsDataGridView.AllowUserToAddRows = false;
             this.staticModsDataGridView.AllowUserToDeleteRows = false;
             this.staticModsDataGridView.AllowUserToResizeRows = false;
+            this.staticModsDataGridView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
             this.staticModsDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.staticModsDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.staticModsNameCol,
@@ -60,6 +62,7 @@
             // 
             // staticCTermPeptideTextBox
             // 
+            this.staticCTermPeptideTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticCTermPeptideTextBox.Location = new System.Drawing.Point(128, 372);
             this.staticCTermPeptideTextBox.Name = "staticCTermPeptideTextBox";
             this.staticCTermPeptideTextBox.Size = new System.Drawing.Size(86, 20);
@@ -67,6 +70,7 @@
             // 
             // label2
             // 
+            this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(23, 349);
             this.label2.Name = "label2";
@@ -76,6 +80,7 @@
             // 
             // label3
             // 
+            this.label3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(23, 375);
             this.label3.Name = "label3";
@@ -85,6 +90,7 @@
             // 
             // staticNTermPeptideTextBox
             // 
+            this.staticNTermPeptideTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticNTermPeptideTextBox.Location = new System.Drawing.Point(128, 346);
             this.staticNTermPeptideTextBox.Name = "staticNTermPeptideTextBox";
             this.staticNTermPeptideTextBox.Size = new System.Drawing.Size(86, 20);
@@ -92,6 +98,7 @@
             // 
             // staticCTermProteinTextBox
             // 
+            this.staticCTermProteinTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticCTermProteinTextBox.Location = new System.Drawing.Point(372, 372);
             this.staticCTermProteinTextBox.Name = "staticCTermProteinTextBox";
             this.staticCTermProteinTextBox.Size = new System.Drawing.Size(86, 20);
@@ -99,6 +106,7 @@
             // 
             // label1
             // 
+            this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(270, 348);
             this.label1.Name = "label1";
@@ -108,6 +116,7 @@
             // 
             // label4
             // 
+            this.label4.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label4.AutoSize = true;
             this.label4.Location = new System.Drawing.Point(270, 375);
             this.label4.Name = "label4";
@@ -117,6 +126,7 @@
             // 
             // staticNTermProteinTextBox
             // 
+            this.staticNTermProteinTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticNTermProteinTextBox.Location = new System.Drawing.Point(372, 345);
             this.staticNTermProteinTextBox.Name = "staticNTermProteinTextBox";
             this.staticNTermProteinTextBox.Size = new System.Drawing.Size(86, 20);

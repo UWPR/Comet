@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
@@ -30,6 +31,21 @@ namespace CometUI
 
         private void InitializeFromDefaultSettings()
         {
+            var filesList = new List<string>();
+            var inputFilesChecked = new List<bool>();
+            foreach (var item in Settings.Default.InputFiles)
+            {
+                string[] row = item.Split(',');
+                filesList.Add(row[0]);
+                inputFilesChecked.Add(row[1].Equals("1"));
+            }
+
+            InputFiles = filesList.ToArray();
+            for (int i = 0; i < inputFilesList.Items.Count; i++)
+            {
+                inputFilesList.SetItemChecked(i, inputFilesChecked[i]);
+            }
+
             comboBoxReadingFrame.Text = Settings.Default.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
             if (Settings.Default.IsProteinDB)
             {
