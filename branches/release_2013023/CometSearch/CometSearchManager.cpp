@@ -224,10 +224,10 @@ static bool AllocateResultsMem()
    {
       Query* pQuery = g_pvQuery.at(i);
 
-      pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+      pQuery->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
       if (pQuery->_pResults == NULL)
       {
-         string strError = " Error - CometMemMgr::CometMemAlloc(_pResults[])";
+         string strError = " Error malloc(_pResults[])";
          string strFormatError = strError + "\n\n";
          logerr(strFormatError.c_str());
 
@@ -246,11 +246,11 @@ static bool AllocateResultsMem()
 
       if (g_staticParams.options.iDecoySearch==2)
       {
-         pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+         pQuery->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
 
          if (pQuery->_pDecoys == NULL)
          {
-            string strError = " Error CometMemMgr::CometMemAlloc(_pDecoys[])";
+            string strError = " Error malloc(_pDecoys[])";
             string strFormatError = strError + "\n\n";
             logerr(strFormatError.c_str());
 
