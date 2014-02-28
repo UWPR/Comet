@@ -32,9 +32,6 @@ public:
    bool CometMemVirtualLock(void* pvAddress, size_t size);
    bool CometMemVirtualUnlock(void* pvAddress, size_t size);
    DWORD CometMemGetLastError();
-
-private:
-   DWORD _dwPageSize;
 };
 
 extern CometMemMgr g_cometMemMgr;
