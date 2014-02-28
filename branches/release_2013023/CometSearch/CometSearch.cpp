@@ -468,22 +468,23 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                         return false;
                      }
 
-                     for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                     for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                      {
-                        iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                         {
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                            for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                               pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
                         }
                      }
 
-                     for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                     for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                      {
-                        iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                         {
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                            // As both _pdAAforward and _pdAAreverse are increasing, loop through
                            // iLenPeptide-1 to complete set of internal fragment ions.
                            for (ctLen=0; ctLen<iLenMinus1; ctLen++)
