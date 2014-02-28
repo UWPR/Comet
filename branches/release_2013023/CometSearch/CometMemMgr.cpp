@@ -89,11 +89,11 @@ bool CometMemMgr::CometMemInit()
 void* CometMemMgr::CometMemAlloc(size_t size)
 {
    size_t paddedSize = size;
-   int iNumPages = size / VIRTUAL_ALLOC_64KB_BLOCK;
-   if (0 != (size - (iNumPages * VIRTUAL_ALLOC_64KB_BLOCK)))
+   int iNum64KBlocks = size / VIRTUAL_ALLOC_64KB_BLOCK;
+   if (0 != (size - (iNum64KBlocks * VIRTUAL_ALLOC_64KB_BLOCK)))
    {
-       iNumPages++;
-       paddedSize = iNumPages*VIRTUAL_ALLOC_64KB_BLOCK;
+       iNum64KBlocks++;
+       paddedSize = iNum64KBlocks*VIRTUAL_ALLOC_64KB_BLOCK;
    }
 
    return VirtualAlloc(NULL, paddedSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
@@ -103,11 +103,11 @@ void* CometMemMgr::CometMemAlloc(size_t num, size_t size)
 {
    size_t actualSize = num*size;
    size_t paddedSize = actualSize;
-   int iNumPages = actualSize/VIRTUAL_ALLOC_64KB_BLOCK;
-   if (0 != (actualSize - (iNumPages*VIRTUAL_ALLOC_64KB_BLOCK)))
+   int iNum64KBlocks = actualSize/VIRTUAL_ALLOC_64KB_BLOCK;
+   if (0 != (actualSize - (iNum64KBlocks*VIRTUAL_ALLOC_64KB_BLOCK)))
    {
-       iNumPages++;
-       paddedSize = iNumPages*VIRTUAL_ALLOC_64KB_BLOCK;
+       iNum64KBlocks++;
+       paddedSize = iNum64KBlocks*VIRTUAL_ALLOC_64KB_BLOCK;
    }
 
    return VirtualAlloc(NULL, paddedSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
