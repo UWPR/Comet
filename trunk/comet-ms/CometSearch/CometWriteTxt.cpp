@@ -117,48 +117,55 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
       Results *pOutput;
       unsigned long num_matches;
-      if (bDecoy) {
+      if (bDecoy)
+      {
          pOutput = pQuery->_pDecoys;
          num_matches = pQuery->_uliNumMatchedDecoyPeptides;
       }
-      else {
+      else
+      {
          pOutput = pQuery->_pResults;
          num_matches = pQuery->_uliNumMatchedPeptides;
       }
       
       for (size_t iWhichResult=0; iWhichResult<min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches); iWhichResult++)
       {
-        if (pOutput[iWhichResult].fXcorr <= 0) {
-          continue;
+         if (pOutput[iWhichResult].fXcorr <= 0)
+         {
+            continue;
          }
          fprintf(fpout, "%s", szBuf);
 
          double delta_cn;
-         if (pOutput[0].fXcorr <=0) {
+         if (pOutput[0].fXcorr <=0)
+         {
             delta_cn = 0;
-         } else {
+         }
+         else
+         {
             delta_cn = 1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;   // pOutput[0].fXcorr is >0 to enter this fn 
          }
 
          fprintf(fpout,
-                 "%0.4f\t"
-                 "%0.4f\t"
-                 "%0.4f\t"
-                 "%d\t"
-                 "%0.4f\t"
-                 "%lu\t"
-                 "%d\t"
-                 "%d\t"
-                 "%lu\t",
-            pOutput[iWhichResult].dPepMass - PROTON_MASS,
-	    delta_cn,
-            pOutput[iWhichResult].fScoreSp,
-            pOutput[iWhichResult].iRankSp,
-            pOutput[iWhichResult].fXcorr,
-            iWhichResult + 1,                  // assuming want index starting at 1
-            pOutput[iWhichResult].iMatchedIons, 
-            pOutput[iWhichResult].iTotalIons,
-            num_matches);
+               "%0.4f\t"
+               "%0.4f\t"
+               "%0.4f\t"
+               "%d\t"
+               "%0.4f\t"
+               "%lu\t"
+               "%d\t"
+               "%d\t"
+               "%lu\t",
+                  pOutput[iWhichResult].dPepMass - PROTON_MASS,
+                  delta_cn,
+                  pOutput[iWhichResult].fScoreSp,
+                  pOutput[iWhichResult].iRankSp,
+                  pOutput[iWhichResult].fXcorr,
+                  iWhichResult + 1,                  // assuming want index starting at 1
+                  pOutput[iWhichResult].iMatchedIons, 
+                  pOutput[iWhichResult].iTotalIons,
+                  num_matches);
+
          char szBuf2[SIZE_BUF];
          szBuf2[0] = '\0';
             
@@ -166,18 +173,17 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          if (g_staticParams.variableModParameters.bVarModSearch
                && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
          {
-             sprintf(szBuf2, "[%0.4f]",  g_staticParams.variableModParameters.dVarModMassN);
-             //sprintf(szBuf+strlen(szBuf), "]");
-
+            sprintf(szBuf2, "[%0.4f]",  g_staticParams.variableModParameters.dVarModMassN);
          }
 
          for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
          {
             sprintf(szBuf2+strlen(szBuf2), "%c", pOutput[iWhichResult].szPeptide[i]);
 
-            if (pOutput[iWhichResult].pcVarModSites[i] > 0) {
-              sprintf(szBuf2+strlen(szBuf2), "[%0.4f]",
-                 g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
+            if (pOutput[iWhichResult].pcVarModSites[i] > 0)
+            {
+               sprintf(szBuf2+strlen(szBuf2), "[%0.4f]",
+                     g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
             }
          }
 
@@ -231,13 +237,13 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 #endif
 
 #ifdef CRUX
-void CometWriteTxt::PrintTxtLine( int iWhichResult,
+void CometWriteTxt::PrintTxtLine(int iWhichResult,
                                  Results *pOutput,
                                  FILE *fpout)
 {
 }
 #else
-void CometWriteTxt::PrintTxtLine( int iWhichResult,
+void CometWriteTxt::PrintTxtLine(int iWhichResult,
                                  Results *pOutput,
                                  FILE *fpout)
 {

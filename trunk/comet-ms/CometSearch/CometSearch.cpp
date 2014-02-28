@@ -271,12 +271,12 @@ bool CometSearch::DoSearch(sDBEntry dbe)
 
          // Generate complimentary strand.
          seqSize = dbe.strSeq.size()+1;
-         pszTemp=(char *)g_cometMemMgr.CometMemAlloc(seqSize);
+         pszTemp=(char *)malloc(seqSize);
          if (pszTemp == NULL)
          {
             char szErrorMsg[256];
             szErrorMsg[0] = '\0';
-            sprintf(szErrorMsg, " Error - CometMemMgr::CometMemAlloc(szTemp[%d])", seqSize);
+            sprintf(szErrorMsg, " Error - malloc(szTemp[%d])", seqSize);
                   
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);      
@@ -351,10 +351,7 @@ bool CometSearch::DoSearch(sDBEntry dbe)
             }
          }
 
-         if (!g_cometMemMgr.CometMemFree(pszTemp))
-         {
-             return false;
-         }
+         free(pszTemp);
       }
    }
 
@@ -457,11 +454,11 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      }
 
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                     if ((pbDuplFragment = (bool*)g_cometMemMgr.CometMemAlloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
+                     if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
                      {
                         char szErrorMsg[256];
                         szErrorMsg[0] = '\0';
-                        sprintf(szErrorMsg, " Error - CometMemMgr::CometMemAlloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
+                        sprintf(szErrorMsg, " Error - malloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
                   
                         string strErrorMsg(szErrorMsg);
                         g_cometStatus.SetError(true, strErrorMsg);      
@@ -481,12 +478,13 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                         }
                      }
 
-                     for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                     for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                      {
-                        iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
 
-                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                         {
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                            // As both _pdAAforward and _pdAAreverse are increasing, loop through
                            // iLenPeptide-1 to complete set of internal fragment ions.
                            for (ctLen=0; ctLen<iLenMinus1; ctLen++)
@@ -586,12 +584,13 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                         }
 
                         // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                         {
-                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
 
-                           for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+                           for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                            {
+                              iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                               // As both _pdAAforward and _pdAAreverse are increasing, loop through
                               // iLenPeptide-1 to complete set of internal fragment ions.
                               for (ctLen=0; ctLen<iLenMinus1; ctLen++)
@@ -610,10 +609,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                         }
                      }
 
-                     if (!g_cometMemMgr.CometMemFree(pbDuplFragment))
-                     {
-                        return false;
-                     }
+                     free(pbDuplFragment);
                   }
 
                   char pcVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.

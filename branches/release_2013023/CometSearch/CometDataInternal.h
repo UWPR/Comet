@@ -747,11 +747,11 @@ struct Query
          }
       }
 
-      free(_pResults);
+      g_cometMemMgr.CometMemFree(_pResults);
 
       if (g_staticParams.options.iDecoySearch==2)
       {
-         free(_pDecoys);
+         g_cometMemMgr.CometMemFree(_pDecoys);
       }
 
       Threading::DestroyMutex(accessMutex);

@@ -23,6 +23,9 @@ CometMemMgr g_cometMemMgr;
 
 CometMemMgr::CometMemMgr()
 {
+   SYSTEM_INFO sysInfo;
+   GetSystemInfo(&sysInfo);
+   _dwPageSize = sysInfo.dwPageSize;
 }
 
 CometMemMgr::~CometMemMgr()
@@ -86,12 +89,29 @@ bool CometMemMgr::CometMemInit()
 
 void* CometMemMgr::CometMemAlloc(size_t size)
 {
-   return VirtualAlloc(NULL, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+   size_t paddedSize = size;
+   int iNumPages = size / _dwPageSize;
+   if (0 != (size - (iNumPages * _dwPageSize)))
+   {
+      iNumPages++;
+      paddedSize = iNumPages*_dwPageSize;
+   }
+
+   return VirtualAlloc(NULL, paddedSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
 void* CometMemMgr::CometMemAlloc(size_t num, size_t size)
 {
-   return VirtualAlloc(NULL, num*size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+   size_t actualSize = num*size;
+   size_t paddedSize = actualSize;
+   int iNumPages = actualSize/_dwPageSize;
+   if (0 != (actualSize - (iNumPages*_dwPageSize)))
+   {
+      iNumPages++;
+      paddedSize = iNumPages*_dwPageSize;
+   }
+
+   return VirtualAlloc(NULL, paddedSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
 bool CometMemMgr::CometMemFree(void* pvAddress)

@@ -20,10 +20,10 @@
             <li><a href="http://pcarvalho.com/patternlab/">PatternLab</a>
          </ul>
 
-         <p>Comet is freely available and open source with the
+         <p>Comet is a free, open source tool distributed under the
          <a href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0 license</a>.
-         Feel free to use this software in your tool.  If you do, let me know about
-         it and I'll link to it here.
+         If you happen to integrate Comet in your software tool/suite, consider sending
+         me a note about it so that I can link to your software here.
 
       </div>
 

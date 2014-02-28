@@ -16,7 +16,8 @@
                <li>Extend maximum protein accession string length from 40 to 512.
                <li>Change default "<a href="/parameters/parameters_201302/remove_precursor_tolerance.php">remove_precursor_tolerance</a>" value from 2.0 to 1.5.
                <li>Skip writing out blank search hit lines for Crux-compiled text output.
-               <li>No noteworthy reason to update to this maintenance release from 2013.02.1 for linux users.
+               <li>Corrects E-value calculation for decoy entries when using separate
+                   target/decoy searches (i.e. "<a href="/parameters/parameters_201302/decoy_search.php">decoy_search</a> = 2").
             </ul>
             <ul>
                <b>release 2013.02 rev 1 (2013.02.1), release date 2013/11/25</b>
