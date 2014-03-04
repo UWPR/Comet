@@ -58,7 +58,6 @@ bool CometSearch::RunSearch(int minNumThreads,
    if ((fptr=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".", g_staticParams.databaseInfo.szDatabase); 
                   
       string strErrorMsg(szErrorMsg);
@@ -275,7 +274,6 @@ bool CometSearch::DoSearch(sDBEntry dbe)
          if (pszTemp == NULL)
          {
             char szErrorMsg[256];
-            szErrorMsg[0] = '\0';
             sprintf(szErrorMsg, " Error - malloc(szTemp[%d])", seqSize);
                   
             string strErrorMsg(szErrorMsg);
@@ -457,7 +455,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
                      {
                         char szErrorMsg[256];
-                        szErrorMsg[0] = '\0';
                         sprintf(szErrorMsg, " Error - malloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
                   
                         string strErrorMsg(szErrorMsg);
@@ -899,7 +896,6 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       else
       {
          char szErrorMsg[256];
-         szErrorMsg[0] = '\0';
          sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!", g_staticParams.tolerances.iIsotopeError);
                   
          string strErrorMsg(szErrorMsg);
@@ -938,7 +934,6 @@ bool CometSearch::TranslateNA2AA(int *frame,
             if (pTmp == NULL)
             {
                char szErrorMsg[512];
-               szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
@@ -976,7 +971,6 @@ bool CometSearch::TranslateNA2AA(int *frame,
             if (pTmp == NULL)
             {
                char szErrorMsg[512];
-               szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
@@ -2440,7 +2434,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             if ((pbDuplFragment = (bool*)g_cometMemMgr.CometMemAlloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
             {
                char szErrorMsg[256];
-               szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
                   
                string strErrorMsg(szErrorMsg);

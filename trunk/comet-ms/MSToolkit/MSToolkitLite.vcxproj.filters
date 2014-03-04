@@ -129,6 +129,9 @@
     <ClCompile Include="src\expat-2.0.1\xmltok_impl.cpp">
       <Filter>Source Files\expat</Filter>
     </ClCompile>
+    <ClCompile Include="src\mzParser\MSNumpress.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />

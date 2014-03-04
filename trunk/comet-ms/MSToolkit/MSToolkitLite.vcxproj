@@ -146,6 +146,7 @@
     <ClCompile Include="src\mzParser\BasicChromatogram.cpp" />
     <ClCompile Include="src\mzParser\BasicSpectrum.cpp" />
     <ClCompile Include="src\mzParser\Czran.cpp" />
+    <ClCompile Include="src\mzParser\MSNumpress.cpp" />
     <ClCompile Include="src\mzParser\mzp_base64.cpp" />
     <ClCompile Include="src\mzParser\mzParser.cpp" />
     <ClCompile Include="src\mzParser\PWIZface.cpp" />

@@ -644,6 +644,9 @@ struct Query
    Results              *_pResults;
    Results              *_pDecoys;
 
+   DWORD dwpResultsSize;
+   DWORD dwpDecoysSize;
+
    Mutex accessMutex;
 
    Query()
@@ -697,6 +700,9 @@ struct Query
       _pResults = NULL;
       _pDecoys = NULL;
 
+      dwpResultsSize = 0;
+      dwpDecoysSize = 0;
+
       dwSpScoreDataSize = 0;
       dwFastXcorrDataSize = 0;
       dwFastXcorrDataNLSize = 0;
@@ -729,11 +735,9 @@ struct Query
       }
       else
       {
-         if (!g_staticParams.options.bSparseMatrix)
             g_cometMemMgr.CometMemVirtualUnlock(pfSpScoreData, dwSpScoreDataSize);
          g_cometMemMgr.CometMemFree(pfSpScoreData);
 
-         if (!g_staticParams.options.bSparseMatrix)
             g_cometMemMgr.CometMemVirtualUnlock(pfFastXcorrData, dwFastXcorrDataSize);
          g_cometMemMgr.CometMemFree(pfFastXcorrData);
 
@@ -742,16 +746,17 @@ struct Query
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
-            if (!g_staticParams.options.bSparseMatrix)
                g_cometMemMgr.CometMemVirtualUnlock(pfFastXcorrDataNL, dwFastXcorrDataNLSize);
             g_cometMemMgr.CometMemFree(pfFastXcorrDataNL);
          }
       }
 
+      g_cometMemMgr.CometMemVirtualUnlock(_pResults, dwpResultsSize);
       g_cometMemMgr.CometMemFree(_pResults);
 
       if (g_staticParams.options.iDecoySearch==2)
       {
+         g_cometMemMgr.CometMemVirtualUnlock(_pDecoys, dwpDecoysSize);
          g_cometMemMgr.CometMemFree(_pDecoys);
       }
 

@@ -128,7 +128,6 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
          if (err != EEXIST) 
          {
             char szErrorMsg[256];
-            szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
                   
             string strErrorMsg(szErrorMsg);
@@ -152,7 +151,6 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
             if (err != EEXIST) 
             {
                char szErrorMsg[256];
-               szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
                   
                string strErrorMsg(szErrorMsg);
@@ -168,7 +166,6 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
       {
          char szErrorMsg[256];
-         szErrorMsg[0] = '\0';
          sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
                   
          string strErrorMsg(szErrorMsg);
@@ -186,7 +183,6 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
          {
             char szErrorMsg[256];
-            szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
                   
             string strErrorMsg(szErrorMsg);
@@ -224,7 +220,9 @@ static bool AllocateResultsMem()
    {
       Query* pQuery = g_pvQuery.at(i);
 
-      pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+      pQuery->dwpResultsSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
+      pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
+
       if (pQuery->_pResults == NULL)
       {
          string strError = " Error - CometMemMgr::CometMemAlloc(_pResults[])";
@@ -236,6 +234,8 @@ static bool AllocateResultsMem()
          return false;
       }
 
+      g_cometMemMgr.CometMemVirtualLock(pQuery->_pResults, pQuery->dwpResultsSize);
+
       //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
       for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
          pQuery->_pResults[xx].iLenPeptide=0;
@@ -246,7 +246,8 @@ static bool AllocateResultsMem()
 
       if (g_staticParams.options.iDecoySearch==2)
       {
-         pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+         pQuery->dwpDecoysSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
+         pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
 
          if (pQuery->_pDecoys == NULL)
          {
@@ -258,6 +259,8 @@ static bool AllocateResultsMem()
 
             return false;
          }
+
+         g_cometMemMgr.CometMemVirtualLock(pQuery->_pDecoys, pQuery->dwpDecoysSize);
 
          //MH: same logic as my comment above
          for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
@@ -426,7 +429,6 @@ static bool ValidateSequenceDatabaseFile()
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.", g_staticParams.databaseInfo.szDatabase);
       
       string strErrorMsg(szErrorMsg);
@@ -447,7 +449,6 @@ static bool ValidateScanRange()
    if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.", 
             g_staticParams.options.scanRange.iStart,
             g_staticParams.options.scanRange.iEnd);
@@ -1105,7 +1106,6 @@ bool CometSearchManager::InitializeStaticParams()
          || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - bin offset %f must between 0.0 and 1.0\n\n",
             g_staticParams.tolerances.dFragmentBinStartOffset);
            
@@ -1121,7 +1121,6 @@ bool CometSearchManager::InitializeStaticParams()
          && g_staticParams.options.iDecoySearch == 0)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 1\" or \"decoy_search = 2\" ");
                   
       string strErrorMsg(szErrorMsg);
@@ -1381,6 +1380,13 @@ bool CometSearchManager::DoSearch()
    }
    
    bool bSucceeded = true;
+
+   if (!g_staticParams.options.bOutputSqtStream)
+   {
+      logout(" Comet version \"%s\"\n\n", comet_version);
+      fflush(stdout);
+   }
+
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
       bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
@@ -1395,8 +1401,8 @@ bool CometSearchManager::DoSearch()
 
       if (!g_staticParams.options.bOutputSqtStream)
       {
-         logout(" Comet version \"%s\"\n\n", comet_version);
          logout(" Search start:  %s\n", g_staticParams.szDate);
+	 logout(" - Input file: %s\n", g_staticParams.inputFile.szFileName);
          fflush(stdout);
       }
 
@@ -1447,7 +1453,6 @@ bool CometSearchManager::DoSearch()
          if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
          {
             char szErrorMsg[256];
-            szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputSQT);
               
             string strErrorMsg(szErrorMsg);
@@ -1470,7 +1475,6 @@ bool CometSearchManager::DoSearch()
             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
             {   
                char szErrorMsg[256];
-               szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoySQT);
                  
                string strErrorMsg(szErrorMsg);
@@ -1507,7 +1511,6 @@ bool CometSearchManager::DoSearch()
          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
          {
             char szErrorMsg[256];
-            szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputTxt);
                   
             string strErrorMsg(szErrorMsg);
@@ -1530,7 +1533,6 @@ bool CometSearchManager::DoSearch()
             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
             {
                char szErrorMsg[256];
-               szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyTxt);
                  
                string strErrorMsg(szErrorMsg);
@@ -1566,7 +1568,6 @@ bool CometSearchManager::DoSearch()
          if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
          {
             char szErrorMsg[256];
-            szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPepXML);
                   
             string strErrorMsg(szErrorMsg);
@@ -1592,7 +1593,6 @@ bool CometSearchManager::DoSearch()
             if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
             {
                char szErrorMsg[256];
-               szErrorMsg[0] = '\0';
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyPepXML);
                   
                string strErrorMsg(szErrorMsg);
@@ -1620,7 +1620,6 @@ bool CometSearchManager::DoSearch()
          if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
          {
             char szErrorMsg[256];
-            szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPinXML);
                   
             string strErrorMsg(szErrorMsg);
