@@ -34,6 +34,7 @@ Spectrum::Spectrum(){
   actMethod=mstNA;
 
   strcpy(rawFilter,"");
+  strcpy(nativeID,"");
 }
 
 
@@ -85,6 +86,7 @@ Spectrum::Spectrum(const Spectrum& s){
     vZ->push_back(s.vZ->at(i));
   }
   strcpy(rawFilter,s.rawFilter);
+  strcpy(nativeID,s.nativeID);
 }
 
 Spectrum& Spectrum::operator=(const Spectrum& s){
@@ -129,6 +131,7 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
     fileType = s.fileType;
     centroidStatus = s.centroidStatus;
     strcpy(rawFilter,s.rawFilter);
+    strcpy(nativeID,s.nativeID);
   }
   return *this;
 }
@@ -337,8 +340,20 @@ float Spectrum::getIonInjectionTime(){
 
 double Spectrum::getMZ(int index){
 	if(index>(int)mz->size()) return -1.0;
-  return mz->at(index);
+   return mz->at(index);
+
 }
+
+bool Spectrum::getNativeID(char* c, int sz){
+   if(sz<(int)strlen(nativeID)) {
+      cout << "Buffer too small to retrieve spectrumNativeID. " << sizeof(c) << " " << strlen(nativeID) << endl;
+      return false;
+   } else {
+      strcpy(c,nativeID);
+      return true;
+   }
+}
+
 
 bool Spectrum::getRawFilter(char* c, int sz, bool bLock){
   if(sz<(int)strlen(rawFilter)) {
@@ -417,6 +432,11 @@ void Spectrum::setIonInjectionTime(float f){
 void Spectrum::setMZ(double d){
 	clearMZ();
 	mz->push_back(d);
+}
+
+void Spectrum::setNativeID(char* c){
+  if(strlen(c)>256) cout << "Error - spectrumNativeID filter larger than 256 characters." << endl;
+  else strcpy(nativeID,c);
 }
 
 void Spectrum::setRawFilter(char* c){

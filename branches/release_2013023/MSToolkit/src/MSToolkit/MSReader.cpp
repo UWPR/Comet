@@ -1470,6 +1470,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		if(find(filter.begin(), filter.end(), mslevel) != filter.end())	{
       if(scanHeader.centroid) s.setCentroidStatus(1);
       else s.setCentroidStatus(0);
+		  s.setNativeID(scanHeader.idString);
 		  s.setMsLevel(scanHeader.msLevel);
 		  s.setScanNumber(scanHeader.acquisitionNum);
 		  s.setScanNumber(scanHeader.acquisitionNum,true);
@@ -1530,6 +1531,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 
     if(scanHeader.centroid) s.setCentroidStatus(1);
     else s.setCentroidStatus(0);
+		s.setNativeID(scanHeader.idString);
 		s.setMsLevel(scanHeader.msLevel);
 		s.setScanNumber(scanHeader.acquisitionNum);
 		s.setScanNumber(scanHeader.acquisitionNum,true);

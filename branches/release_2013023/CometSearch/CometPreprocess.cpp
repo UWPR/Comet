@@ -234,6 +234,13 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       return false;
    }
 
+   // get mzML nativeID
+   char szNativeID[128];
+   if (mstSpectrum.getNativeID(szNativeID, 128))
+      strcpy(pScoring->_spectrumInfoInternal.szNativeID, szNativeID);
+   else
+      pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
+
    pdTempRawData = (double *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(double));
    if (pdTempRawData == NULL)
    {
