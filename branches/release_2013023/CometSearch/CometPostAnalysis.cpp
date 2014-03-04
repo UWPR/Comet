@@ -37,7 +37,10 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
    bool bSucceeded = true;
 
    if (!g_staticParams.options.bOutputSqtStream)
+   {
       logout(" - Perform post-search analysis\n");
+      fflush(stdout);
+   }
 
    // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to do a post analysis.

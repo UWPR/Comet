@@ -1421,7 +1421,7 @@ bool CometSearchManager::DoSearch()
       if (!g_staticParams.options.bOutputSqtStream)
       {
          logout(" Search start:  %s\n", g_staticParams.szDate);
-         logout(" - Input file: %s\n", g_staticParams.inputFile.szFileName);
+         logout(" - Input file:  %s\n", g_staticParams.inputFile.szFileName);
          fflush(stdout);
       }
 
@@ -1714,7 +1714,10 @@ bool CometSearchManager::DoSearch()
             }
 
             if (!g_staticParams.options.bOutputSqtStream)
+            {
                logout(" - Number of mass-charge spectra loaded: %d\n", (int)g_pvQuery.size());
+               fflush(stdout);
+            }
 
             // Sort g_pvQuery vector by dExpPepMass.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
@@ -1739,7 +1742,10 @@ bool CometSearchManager::DoSearch()
             CalcRunTime(tStartTime);
 
             if (!g_staticParams.options.bOutputSqtStream)
+            {
                logout(" - Write output\n");
+               fflush(stdout);
+            }
 
             if (g_staticParams.options.bOutputOutFiles)
             {
