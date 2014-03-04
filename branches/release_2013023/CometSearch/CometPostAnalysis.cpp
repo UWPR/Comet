@@ -698,7 +698,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   else
                   {
                      char szErrorMsg[256];
-                     szErrorMsg[0] = '\0';
                      sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
                            dFragmentIonMass, 
                            iFragmentIonMass,
@@ -728,7 +727,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   else
                   {
                      char szErrorMsg[256];
-                     szErrorMsg[0] = '\0';
                      sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
                            dFragmentIonMass,
                            iFragmentIonMass,

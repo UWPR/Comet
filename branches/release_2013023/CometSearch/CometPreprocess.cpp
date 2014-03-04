@@ -238,7 +238,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    if (pdTempRawData == NULL)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - calloc(pdTempRawData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
                  
       string strErrorMsg(szErrorMsg);
@@ -253,7 +252,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    if (pdTmpFastXcorrData == NULL)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - calloc(pdTmpFastXcorrData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
       
       string strErrorMsg(szErrorMsg);
@@ -269,7 +267,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    if (NULL == pScoring->pfFastXcorrData)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc(pfFastXcorrData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
        
       string strErrorMsg(szErrorMsg);
@@ -290,7 +287,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       if (NULL == pScoring->pfFastXcorrDataNL)
       {
          char szErrorMsg[256];
-         szErrorMsg[0] = '\0';
          sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc(pfFastXcorrDataNL[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
 
          string strErrorMsg(szErrorMsg);
@@ -389,7 +385,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       if (pScoring->pSparseFastXcorrData == NULL)
       {
          char szErrorMsg[256];
-         szErrorMsg[0] = '\0';
          sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc(pScoring->pSparseFastXcorrData[%d]).", pScoring->iFastXcorrData);
                
          string strErrorMsg(szErrorMsg);
@@ -434,7 +429,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          if (pScoring->pSparseFastXcorrDataNL == NULL)
          {
             char szErrorMsg[256];
-            szErrorMsg[0] = '\0';
             sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc(pScoring->pSparseFastXcorrDataNL[%d]).", pScoring->iFastXcorrDataNL);
                   
             string strErrorMsg(szErrorMsg);
@@ -511,7 +505,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       if (pScoring->pSparseSpScoreData == NULL)
       {
          char szErrorMsg[256];
-         szErrorMsg[0] = '\0';
          sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc(pScoring->pSparseSpScoreData[%d]).", pScoring->iSpScoreData);
                  
          string strErrorMsg(szErrorMsg);
@@ -542,7 +535,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       if (pScoring->pfSpScoreData == NULL)
       {
          char szErrorMsg[256];
-         szErrorMsg[0] = '\0';
          sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc(pfSpScoreData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
 
          string strErrorMsg(szErrorMsg);
@@ -890,7 +882,6 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    else  // Should not get here.
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - iIsotopeError=%d",  g_staticParams.tolerances.iIsotopeError);
                 
       string strErrorMsg(szErrorMsg);
@@ -922,7 +913,6 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    if (pPre->pdCorrelationData == NULL)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - calloc(pdCorrelationData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
                   
       string strErrorMsg(szErrorMsg);
@@ -1093,7 +1083,6 @@ bool CometPreprocess::Smooth(double *data,
    if (pdSmoothedSpectrum == NULL)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - calloc(pdSmoothedSpectrum[%d]).", iArraySize);
                   
       string strErrorMsg(szErrorMsg);
@@ -1134,7 +1123,6 @@ bool CometPreprocess::PeakExtract(double *data,
    if (pdPeakExtracted == NULL)
    {
       char szErrorMsg[256];
-      szErrorMsg[0] = '\0';
       sprintf(szErrorMsg,  " Error - calloc(pdPeakExtracted[%d]).", iArraySize);
                   
       string strErrorMsg(szErrorMsg);
