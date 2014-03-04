@@ -226,8 +226,6 @@ static bool AllocateResultsMem()
 
       pQuery->dwpResultsSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
       pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
-      g_cometMemMgr.CometMemVirtualLock(pQuery->_pResults, pQuery->dwpResultsSize);
-
       if (pQuery->_pResults == NULL)
       {
          string strError = " Error CometMemMgr::CometMemAlloc(_pResults[])";
@@ -239,6 +237,8 @@ static bool AllocateResultsMem()
          return false;
       }
 
+      g_cometMemMgr.CometMemVirtualLock(pQuery->_pResults, pQuery->dwpResultsSize);
+      
       //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
       for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
          pQuery->_pResults[xx].iLenPeptide=0;
@@ -251,8 +251,7 @@ static bool AllocateResultsMem()
       {
          pQuery->dwpDecoysSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
          pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
-         g_cometMemMgr.CometMemVirtualLock(pQuery->_pDecoys, pQuery->dwpDecoysSize);
-
+         
          if (pQuery->_pDecoys == NULL)
          {
             string strError = " Error CometMemMgr::CometMemAlloc(_pDecoys[])";
@@ -264,6 +263,8 @@ static bool AllocateResultsMem()
             return false;
          }
 
+         g_cometMemMgr.CometMemVirtualLock(pQuery->_pDecoys, pQuery->dwpDecoysSize);
+         
          //MH: same logic as my comment above
          for (int xx=0;xx<g_staticParams.options.iNumStored;xx++)
             pQuery->_pDecoys[xx].iLenPeptide=0;
