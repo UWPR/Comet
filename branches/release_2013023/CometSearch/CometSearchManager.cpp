@@ -224,7 +224,10 @@ static bool AllocateResultsMem()
    {
       Query* pQuery = g_pvQuery.at(i);
 
-      pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+      pQuery->dwpResultsSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
+      pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
+      g_cometMemMgr.CometMemVirtualLock(pQuery->_pResults, pQuery->dwpResultsSize);
+
       if (pQuery->_pResults == NULL)
       {
          string strError = " Error CometMemMgr::CometMemAlloc(_pResults[])";
@@ -246,7 +249,9 @@ static bool AllocateResultsMem()
 
       if (g_staticParams.options.iDecoySearch==2)
       {
-         pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
+         pQuery->dwpDecoysSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
+         pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
+         g_cometMemMgr.CometMemVirtualLock(pQuery->_pDecoys, pQuery->dwpDecoysSize);
 
          if (pQuery->_pDecoys == NULL)
          {
@@ -260,7 +265,7 @@ static bool AllocateResultsMem()
          }
 
          //MH: same logic as my comment above
-         for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
+         for (int xx=0;xx<g_staticParams.options.iNumStored;xx++)
             pQuery->_pDecoys[xx].iLenPeptide=0;
 
          pQuery->iDoDecoyXcorrCount = 0;
