@@ -1044,7 +1044,7 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
          dMaxOverallInten = pdTempRawData[i];
    }
 
-   iWindowSize = (int) ceil( (double)(pPre->iHighestIon)/iNumWindows);
+   iWindowSize = (int)((pPre->iHighestIon)/iNumWindows) + 1;
 
    for (i=0; i<iNumWindows; i++)
    {
