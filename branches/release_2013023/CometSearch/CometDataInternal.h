@@ -625,9 +625,6 @@ struct Query
    struct SparseMatrix *pSparseFastXcorrData;
    struct SparseMatrix *pSparseFastXcorrDataNL;
 
-   DWORD dwSparseFastXcorrDataSize;
-   DWORD dwSparseFastXcorrDataNLSize;
-
    // Standard array representation of data
    float *pfSpScoreData;
    float *pfFastXcorrData;
