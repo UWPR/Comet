@@ -18,7 +18,6 @@
 #include "CometSearch.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
-#include "CometMemMgr.h"
 
 
 CometSearch::CometSearch()

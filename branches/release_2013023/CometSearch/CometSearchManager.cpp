@@ -29,7 +29,6 @@
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
-#include "CometMemMgr.h"
 
 #ifdef _WIN32
 #define STRCMP_IGNORE_CASE(a,b) strcmpi(a,b)
@@ -240,11 +239,10 @@ static bool AllocateResultsMem()
    {
       Query* pQuery = g_pvQuery.at(i);
 
-      pQuery->dwpResultsSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
-      pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
+      pQuery->_pResults = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
       if (pQuery->_pResults == NULL)
       {
-         string strError = " Error CometMemMgr::CometMemAlloc(_pResults[])";
+         string strError = " Error malloc(_pResults[])";
          string strFormatError = strError + "\n\n";
          logerr(strFormatError.c_str());
 
@@ -253,8 +251,6 @@ static bool AllocateResultsMem()
          return false;
       }
 
-      g_cometMemMgr.CometMemVirtualLock(pQuery->_pResults, pQuery->dwpResultsSize);
-      
       //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
       for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
          pQuery->_pResults[xx].iLenPeptide=0;
@@ -265,12 +261,10 @@ static bool AllocateResultsMem()
 
       if (g_staticParams.options.iDecoySearch==2)
       {
-         pQuery->dwpDecoysSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
-         pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
-         
+         pQuery->_pDecoys = (struct Results *)malloc(sizeof(struct Results) * g_staticParams.options.iNumStored);
          if (pQuery->_pDecoys == NULL)
          {
-            string strError = " Error CometMemMgr::CometMemAlloc(_pDecoys[])";
+            string strError = " Error malloc(_pDecoys[])";
             string strFormatError = strError + "\n\n";
             logerr(strFormatError.c_str());
 
@@ -279,8 +273,6 @@ static bool AllocateResultsMem()
             return false;
          }
 
-         g_cometMemMgr.CometMemVirtualLock(pQuery->_pDecoys, pQuery->dwpDecoysSize);
-         
          //MH: same logic as my comment above
          for (int xx=0;xx<g_staticParams.options.iNumStored;xx++)
             pQuery->_pDecoys[xx].iLenPeptide=0;
@@ -1393,11 +1385,6 @@ bool CometSearchManager::DoSearch()
       return false;
    }
 
-   if (!g_cometMemMgr.CometMemInit())
-   {
-      return false;
-   }
-   
    bool bSucceeded = true;
 
    if (!g_staticParams.options.bOutputSqtStream)
