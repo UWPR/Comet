@@ -29,7 +29,6 @@
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
-#include "CometMemMgr.h"
 
 #ifdef _WIN32
 #define STRCMP_IGNORE_CASE(a,b) strcmpi(a,b)
@@ -95,6 +94,24 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       g_staticParams.inputFile.iInputType = InputType_MZXML;
    } 
 
+   // per request, perform quick check to validate file still exists
+   // to avoid creating stub output files in these cases.
+   FILE *fp;
+   if ( (fp=fopen(g_staticParams.inputFile.szFileName, "r"))==NULL)
+   {
+      char szErrorMsg[256];
+      sprintf(szErrorMsg,  " Error - cannot read input file \"%s\".",  g_staticParams.inputFile.szFileName);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetError(true, strErrorMsg);
+      logerr("\n Comet version \"%s\"\n\n", comet_version);
+      logerr("%s\n\n", szErrorMsg);
+      return false;
+   }
+   else
+   {
+      fclose(fp);
+   }
+
    if (bUpdateBaseName) // set individual basename from input file
    {
       char *pStr;
@@ -129,10 +146,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
-                  
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);
-            
             logerr("\n Comet version \"%s\"\n\n", comet_version);
             logerr("%s\n\n", szErrorMsg);
             return false;
@@ -152,10 +167,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
             {
                char szErrorMsg[256];
                sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
-                  
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetError(true, strErrorMsg);
-            
                logerr("\n Comet version \"%s\"\n\n", comet_version);
                logerr("%s\n\n", szErrorMsg);
                return false;
@@ -167,10 +180,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       {
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
-                  
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);
-            
          logerr("\n Comet version \"%s\"\n\n", comet_version);
          logerr("%s\n\n", szErrorMsg);
          return false;
@@ -184,10 +195,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
-                  
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);
-            
             logerr("\n Comet version \"%s\"\n\n", comet_version);
             logerr("%s\n\n", szErrorMsg);
             return false;
@@ -220,21 +229,17 @@ static bool AllocateResultsMem()
    {
       Query* pQuery = g_pvQuery.at(i);
 
-      pQuery->dwpResultsSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
-      pQuery->_pResults = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
+      pQuery->_pResults = (struct Results *)malloc((size_t)sizeof(struct Results) * (size_t)g_staticParams.options.iNumStored);
 
       if (pQuery->_pResults == NULL)
       {
-         string strError = " Error - CometMemMgr::CometMemAlloc(_pResults[])";
+         string strError = " Error - malloc(_pResults[])";
          string strFormatError = strError + "\n\n";
          logerr(strFormatError.c_str());
-
          g_cometStatus.SetError(true, strError);
-
          return false;
       }
 
-      g_cometMemMgr.CometMemVirtualLock(pQuery->_pResults, pQuery->dwpResultsSize);
 
       //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
       for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
@@ -246,12 +251,11 @@ static bool AllocateResultsMem()
 
       if (g_staticParams.options.iDecoySearch==2)
       {
-         pQuery->dwpDecoysSize = (size_t)sizeof(struct Results) * g_staticParams.options.iNumStored;
-         pQuery->_pDecoys = (struct Results *)g_cometMemMgr.CometMemAlloc((size_t)sizeof(struct Results), (size_t)g_staticParams.options.iNumStored);
+         pQuery->_pDecoys = (struct Results *)malloc((size_t)sizeof(struct Results) * (size_t)g_staticParams.options.iNumStored);
 
          if (pQuery->_pDecoys == NULL)
          {
-            string strError = " Error CometMemMgr::CometMemAlloc(_pDecoys[])";
+            string strError = " Error malloc(_pDecoys[])";
             string strFormatError = strError + "\n\n";
             logerr(strFormatError.c_str());
 
@@ -259,8 +263,6 @@ static bool AllocateResultsMem()
 
             return false;
          }
-
-         g_cometMemMgr.CometMemVirtualLock(pQuery->_pDecoys, pQuery->dwpDecoysSize);
 
          //MH: same logic as my comment above
          for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
@@ -409,11 +411,9 @@ static bool ValidateOutputFormat()
       string strError = " Please specify at least one output format.";
       
       g_cometStatus.SetError(true, strError);
-
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       string strErrorFormat = strError + "\n\n";
       logerr(strErrorFormat.c_str());
-      
       return false;
    }
 
@@ -433,10 +433,8 @@ static bool ValidateSequenceDatabaseFile()
       
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
-
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       logerr("%s\n\n", szErrorMsg);
-
       return false;
    }
 
@@ -455,10 +453,8 @@ static bool ValidateScanRange()
       
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
-
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       logerr("%s\n\n", szErrorMsg);
-            
       return false;
    }
 
@@ -1111,7 +1107,6 @@ bool CometSearchManager::InitializeStaticParams()
            
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
-             
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       logerr("%s\n\n", szErrorMsg);
       return false;
@@ -1122,10 +1117,8 @@ bool CometSearchManager::InitializeStaticParams()
    {
       char szErrorMsg[256];
       sprintf(szErrorMsg,  " Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 1\" or \"decoy_search = 2\" ");
-                  
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
-             
       logerr("\n Comet version \"%s\"\n\n", comet_version);
       logerr("%s\n\n", szErrorMsg);
       return false;
@@ -1374,11 +1367,6 @@ bool CometSearchManager::DoSearch()
       return false;
    }
 
-   if (!g_cometMemMgr.CometMemInit())
-   {
-      return false;
-   }
-   
    bool bSucceeded = true;
 
    if (!g_staticParams.options.bOutputSqtStream)
@@ -1454,12 +1442,9 @@ bool CometSearchManager::DoSearch()
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputSQT);
-              
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);
-            
             logerr("%s\n\n", szErrorMsg);
-            
             bSucceeded = false;
          }
 
@@ -1476,12 +1461,9 @@ bool CometSearchManager::DoSearch()
             {   
                char szErrorMsg[256];
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoySQT);
-                 
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetError(true, strErrorMsg);
-            
                logerr("%s\n\n", szErrorMsg);
-               
                bSucceeded = false;
             }
 
@@ -1512,12 +1494,9 @@ bool CometSearchManager::DoSearch()
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputTxt);
-                  
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);
-            
             logerr("%s\n\n", szErrorMsg);
-
             bSucceeded = false;
          }
 
@@ -1569,12 +1548,9 @@ bool CometSearchManager::DoSearch()
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPepXML);
-                  
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);
-            
             logerr("%s\n\n", szErrorMsg);
-
             bSucceeded = false;
          }
 
@@ -1594,12 +1570,9 @@ bool CometSearchManager::DoSearch()
             {
                char szErrorMsg[256];
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyPepXML);
-                  
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetError(true, strErrorMsg);
-            
                logerr("%s\n\n", szErrorMsg);
-
                bSucceeded = false;
             }
 
@@ -1621,12 +1594,9 @@ bool CometSearchManager::DoSearch()
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPinXML);
-                  
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);
-            
             logerr("%s\n\n", szErrorMsg);
-            
             bSucceeded = false;
          }
 
@@ -1680,11 +1650,13 @@ bool CometSearchManager::DoSearch()
                iTotalSpectraSearched += g_pvQuery.size();
 
             // Allocate memory to store results for each query spectrum.
+/*
             if (!g_staticParams.options.bOutputSqtStream)
             {
                logout(" - Allocate memory to store results\n");
                fflush(stdout);
             }
+*/
 
             bSucceeded = AllocateResultsMem();
             if (!bSucceeded)

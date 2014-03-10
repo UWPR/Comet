@@ -76,8 +76,4 @@ inline int print_out(const char *format, ...)
 #define logerr(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
-#ifndef DWORD
-typedef unsigned long DWORD;
-#endif
-
 #endif // _COMMON_H_

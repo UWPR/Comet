@@ -19,7 +19,6 @@
 
 #include "CometData.h"
 #include "Threading.h"
-#include "CometMemMgr.h"
 
 class CometSearchManager;
 
@@ -626,26 +625,15 @@ struct Query
    struct SparseMatrix *pSparseFastXcorrData;
    struct SparseMatrix *pSparseFastXcorrDataNL;
 
-   DWORD dwSparseSpScoreDataSize;
-   DWORD dwSparseFastXcorrDataSize;
-   DWORD dwSparseFastXcorrDataNLSize;
-
    // Standard array representation of data
    float *pfSpScoreData;
    float *pfFastXcorrData;
    float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
 
-   DWORD dwSpScoreDataSize;
-   DWORD dwFastXcorrDataSize;
-   DWORD dwFastXcorrDataNLSize;
-   
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;
    Results              *_pResults;
    Results              *_pDecoys;
-
-   DWORD dwpResultsSize;
-   DWORD dwpDecoysSize;
 
    Mutex accessMutex;
 
@@ -700,17 +688,6 @@ struct Query
       _pResults = NULL;
       _pDecoys = NULL;
 
-      dwpResultsSize = 0;
-      dwpDecoysSize = 0;
-
-      dwSpScoreDataSize = 0;
-      dwFastXcorrDataSize = 0;
-      dwFastXcorrDataNLSize = 0;
-
-      dwSparseSpScoreDataSize = 0;
-      dwSparseFastXcorrDataSize = 0;
-      dwSparseFastXcorrDataNLSize = 0;
-
       Threading::CreateMutex(&accessMutex);
    }
 
@@ -718,47 +695,35 @@ struct Query
    {
       if (g_staticParams.options.bSparseMatrix)
       {
-         g_cometMemMgr.CometMemVirtualUnlock(pSparseSpScoreData, dwSparseSpScoreDataSize);
-         g_cometMemMgr.CometMemFree(pSparseSpScoreData);
-
-         g_cometMemMgr.CometMemVirtualUnlock(pSparseFastXcorrData, dwSparseFastXcorrDataSize);
-         g_cometMemMgr.CometMemFree(pSparseFastXcorrData);
+         free(pSparseSpScoreData);
+         free(pSparseFastXcorrData);
 
          if (g_staticParams.ionInformation.bUseNeutralLoss
                && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
-            g_cometMemMgr.CometMemVirtualUnlock(pSparseFastXcorrDataNL, dwSparseFastXcorrDataNLSize);
-            g_cometMemMgr.CometMemFree(pSparseFastXcorrDataNL);
+            free(pSparseFastXcorrDataNL);
          }
       }
       else
       {
-            g_cometMemMgr.CometMemVirtualUnlock(pfSpScoreData, dwSpScoreDataSize);
-         g_cometMemMgr.CometMemFree(pfSpScoreData);
-
-            g_cometMemMgr.CometMemVirtualUnlock(pfFastXcorrData, dwFastXcorrDataSize);
-         g_cometMemMgr.CometMemFree(pfFastXcorrData);
+         free(pfSpScoreData);
+         free(pfFastXcorrData);
 
          if (g_staticParams.ionInformation.bUseNeutralLoss
                && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
-               g_cometMemMgr.CometMemVirtualUnlock(pfFastXcorrDataNL, dwFastXcorrDataNLSize);
-            g_cometMemMgr.CometMemFree(pfFastXcorrDataNL);
+            free(pfFastXcorrDataNL);
          }
       }
 
-      g_cometMemMgr.CometMemVirtualUnlock(_pResults, dwpResultsSize);
-      g_cometMemMgr.CometMemFree(_pResults);
+      free(_pResults);
 
       if (g_staticParams.options.iDecoySearch==2)
-      {
-         g_cometMemMgr.CometMemVirtualUnlock(_pDecoys, dwpDecoysSize);
-         g_cometMemMgr.CometMemFree(_pDecoys);
-      }
+         free(_pDecoys);
 
       Threading::DestroyMutex(accessMutex);
    }

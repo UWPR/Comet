@@ -708,10 +708,8 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   
                      string strErrorMsg(szErrorMsg);
                      g_cometStatus.SetError(true, strErrorMsg);      
-      
                      logerr("\n Comet version \"%s\"\n\n", comet_version);
                      logerr("%s\n\n", szErrorMsg);
-      
                      return false;
                   }
                }
@@ -737,10 +735,8 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   
                      string strErrorMsg(szErrorMsg);
                      g_cometStatus.SetError(true, strErrorMsg);      
-      
                      logerr("\n Comet version \"%s\"\n\n", comet_version);
                      logerr("%s\n\n", szErrorMsg);
-      
                      return false;
                   }
                }

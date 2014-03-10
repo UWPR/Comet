@@ -18,7 +18,6 @@
 #include "CometSearch.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
-#include "CometMemMgr.h"
 
 
 CometSearch::CometSearch()
@@ -59,12 +58,9 @@ bool CometSearch::RunSearch(int minNumThreads,
    {
       char szErrorMsg[256];
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".", g_staticParams.databaseInfo.szDatabase); 
-                  
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
-      
       logerr("%s\n\n", szErrorMsg);
-      
       return false;
    }
 
@@ -95,9 +91,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       {
          string strError = " Error - database file, expecting definition line here.";
          string strFormatError = strError + "\n";
-         
          g_cometStatus.SetError(true, strError);
-         
          logerr(strFormatError.c_str());
          fgets(szBuf, SIZE_BUF, fptr);
          logerr(" %c%s", iTmpCh, szBuf);
@@ -105,7 +99,6 @@ bool CometSearch::RunSearch(int minNumThreads,
          logerr(" %s", szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
          logerr(" %s", szBuf);
-
          return false;
       } 
 
@@ -275,12 +268,9 @@ bool CometSearch::DoSearch(sDBEntry dbe)
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg, " Error - malloc(szTemp[%d])", seqSize);
-                  
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);      
-      
             logerr("%s\n\n", szErrorMsg);
-      
             return false;
          }
 
@@ -456,20 +446,18 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      {
                         char szErrorMsg[256];
                         sprintf(szErrorMsg, " Error - malloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
-                  
                         string strErrorMsg(szErrorMsg);
                         g_cometStatus.SetError(true, strErrorMsg);      
-      
                         logerr("%s\n\n", szErrorMsg);
-      
                         return false;
                      }
 
-                     for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                     for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                      {
-                        iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                         {
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                            for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                               pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
                         }
@@ -477,7 +465,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
 
                      for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                      {
-
                         for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                         {
                            iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
@@ -568,11 +555,12 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                            _pdAAreverseDecoy[iTmp] = dYion;
                         }
 
-                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                         {
-                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-                           for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+                           for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                            {
+                              iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                               for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                               {
                                  pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy))] = false;
@@ -583,7 +571,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                         // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
                         for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                         {
-
                            for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                            {
                               iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
@@ -897,12 +884,9 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       {
          char szErrorMsg[256];
          sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!", g_staticParams.tolerances.iIsotopeError);
-                  
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
-      
          logerr("%s\n\n", szErrorMsg);
-      
          return false;
       }
    }
@@ -941,9 +925,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
                   
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetError(true, strErrorMsg);
-            
                logerr("%s\n\n", szErrorMsg);
-
                return false;
             }
 
@@ -978,9 +960,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
                   
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetError(true, strErrorMsg);
-            
                logerr("%s\n\n", szErrorMsg);
-
                return false;
             }
 
@@ -1140,17 +1120,20 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    dXcorr = 0.0;
 
-   for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+   for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
    {
-      iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-      if (g_staticParams.ionInformation.bUseNeutralLoss && (iWhichIonSeries==0 || iWhichIonSeries==1 || iWhichIonSeries==7))
-         bUseNLPeaks = true;
-      else
-         bUseNLPeaks = false;
-
-      for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+      for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
       {
+         iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+         if (g_staticParams.ionInformation.bUseNeutralLoss
+               && (iWhichIonSeries==ION_SERIES_A || iWhichIonSeries==ION_SERIES_B || iWhichIonSeries==ION_SERIES_Y))
+         {
+            bUseNLPeaks = true;
+         }
+         else
+            bUseNLPeaks = false;
+
          if (ctCharge == 1 && bUseNLPeaks)
          {
             pSparseFastXcorrData = pQuery->pSparseFastXcorrDataNL;
@@ -2431,36 +2414,33 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
 
             // now get the set of binned fragment ions once for all matching peptides
-            if ((pbDuplFragment = (bool*)g_cometMemMgr.CometMemAlloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
+            if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
             {
                char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - CometMemMgr::CometMemAlloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
-                  
+               sprintf(szErrorMsg,  " Error - malloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetError(true, strErrorMsg);
-            
                logerr("%s\n\n", szErrorMsg);
-
                return false;
             }
 
-            for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+            for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
             {
-               iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-               for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+               for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                {
+                  iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                   for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                      pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
                }
             }
 
-            for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+            for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
             {
-               iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-               for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+               for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                {
+                  iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                   // as both _pdAAforward and _pdAAreverse are increasing, loop through
                   // iLenPeptide-1 to complete set of internal fragment ions
                   for (ctLen=0; ctLen<iLenMinus1; ctLen++)
@@ -2596,12 +2576,12 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   }
                }
 
-               for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+               for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                {
-                  iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-                  for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+                  for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                   {
+                     iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                      // as both _pdAAforward and _pdAAreverse are increasing, loop through
                      // iLenPeptide-1 to complete set of internal fragment ions
                      for (ctLen=0; ctLen<iLenMinus1; ctLen++)
@@ -2620,10 +2600,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
             }
 
-            if (!g_cometMemMgr.CometMemFree(pbDuplFragment))
-            {
-                return false;
-            }
+            free(pbDuplFragment);
          }
 
          XcorrScore(szProteinSeq, _proteinInfo.szProteinName, _varModInfo.iStartPos, _varModInfo.iEndPos, true,
