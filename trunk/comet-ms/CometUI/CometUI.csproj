@@ -84,6 +84,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MiscSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MiscSettingsControl.Designer.cs">
+      <DependentUpon>MiscSettingsControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="StaticModSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -134,6 +140,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="MiscSettingsControl.resx">
+      <DependentUpon>MiscSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="StaticModSettingsControl.resx">
       <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
     </EmbeddedResource>

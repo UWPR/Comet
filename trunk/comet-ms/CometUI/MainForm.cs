@@ -14,6 +14,7 @@ namespace CometUI
         private MassSettingsControl MassSettingsControl { get; set; }
         private StaticModSettingsControl StaticModSettingsControl { get; set; }
         private VarModSettingsControl VarModSettingsControl { get; set; }
+        private MiscSettingsControl MiscSettingsControl { get; set; }
         
         private readonly CometSearchManagerWrapper _searchMgr;
 
@@ -70,6 +71,14 @@ namespace CometUI
                 Location = new Point(0, 0)
             };
             varModsTabPage.Controls.Add(VarModSettingsControl);
+
+            // Create and add Misc tab page
+            MiscSettingsControl = new MiscSettingsControl(this)
+            {
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
+                Location = new Point(0, 0)
+            };
+            miscTabPage.Controls.Add(MiscSettingsControl);
         }
 
         private void BtnSearchClick(object sender, EventArgs e)

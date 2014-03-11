@@ -43,11 +43,11 @@
             this.outputTabPage = new System.Windows.Forms.TabPage();
             this.enzymeTabPage = new System.Windows.Forms.TabPage();
             this.massesTabPage = new System.Windows.Forms.TabPage();
+            this.staticModsTabPage = new System.Windows.Forms.TabPage();
             this.varModsTabPage = new System.Windows.Forms.TabPage();
-            this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.miscTabPage = new System.Windows.Forms.TabPage();
             this.statusStripMain = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.staticModsTabPage = new System.Windows.Forms.TabPage();
             this.menuStripMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).BeginInit();
             this.mainSplitContainer.Panel1.SuspendLayout();
@@ -153,7 +153,7 @@
             this.cometMainTab.Controls.Add(this.massesTabPage);
             this.cometMainTab.Controls.Add(this.staticModsTabPage);
             this.cometMainTab.Controls.Add(this.varModsTabPage);
-            this.cometMainTab.Controls.Add(this.tabPage4);
+            this.cometMainTab.Controls.Add(this.miscTabPage);
             this.cometMainTab.Location = new System.Drawing.Point(12, 0);
             this.cometMainTab.Name = "cometMainTab";
             this.cometMainTab.SelectedIndex = 0;
@@ -199,6 +199,15 @@
             this.massesTabPage.Text = "Masses";
             this.massesTabPage.UseVisualStyleBackColor = true;
             // 
+            // staticModsTabPage
+            // 
+            this.staticModsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.staticModsTabPage.Name = "staticModsTabPage";
+            this.staticModsTabPage.Size = new System.Drawing.Size(527, 430);
+            this.staticModsTabPage.TabIndex = 7;
+            this.staticModsTabPage.Text = "Static Mods";
+            this.staticModsTabPage.UseVisualStyleBackColor = true;
+            // 
             // varModsTabPage
             // 
             this.varModsTabPage.Location = new System.Drawing.Point(4, 22);
@@ -209,15 +218,15 @@
             this.varModsTabPage.Text = "Var Mods";
             this.varModsTabPage.UseVisualStyleBackColor = true;
             // 
-            // tabPage4
+            // miscTabPage
             // 
-            this.tabPage4.Location = new System.Drawing.Point(4, 22);
-            this.tabPage4.Name = "tabPage4";
-            this.tabPage4.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage4.Size = new System.Drawing.Size(527, 430);
-            this.tabPage4.TabIndex = 5;
-            this.tabPage4.Text = "Misc";
-            this.tabPage4.UseVisualStyleBackColor = true;
+            this.miscTabPage.Location = new System.Drawing.Point(4, 22);
+            this.miscTabPage.Name = "miscTabPage";
+            this.miscTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.miscTabPage.Size = new System.Drawing.Size(527, 430);
+            this.miscTabPage.TabIndex = 5;
+            this.miscTabPage.Text = "Misc";
+            this.miscTabPage.UseVisualStyleBackColor = true;
             // 
             // statusStripMain
             // 
@@ -234,15 +243,6 @@
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
             this.toolStripStatusLabel1.Size = new System.Drawing.Size(218, 17);
             this.toolStripStatusLabel1.Text = "This is where search status will show up.";
-            // 
-            // staticModsTabPage
-            // 
-            this.staticModsTabPage.Location = new System.Drawing.Point(4, 22);
-            this.staticModsTabPage.Name = "staticModsTabPage";
-            this.staticModsTabPage.Size = new System.Drawing.Size(527, 430);
-            this.staticModsTabPage.TabIndex = 7;
-            this.staticModsTabPage.Text = "Static Mods";
-            this.staticModsTabPage.UseVisualStyleBackColor = true;
             // 
             // CometMainForm
             // 
@@ -285,7 +285,7 @@
         private System.Windows.Forms.StatusStrip statusStripMain;
         private System.Windows.Forms.TabPage massesTabPage;
         private System.Windows.Forms.TabPage varModsTabPage;
-        private System.Windows.Forms.TabPage tabPage4;
+        private System.Windows.Forms.TabPage miscTabPage;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemSettings;
         private System.Windows.Forms.ToolStripMenuItem saveAsDefaultToolStripMenuItem;
