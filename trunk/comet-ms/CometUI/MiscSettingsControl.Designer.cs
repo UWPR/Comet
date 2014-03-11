@@ -41,6 +41,18 @@
             this.label5 = new System.Windows.Forms.Label();
             this.nucleotideReadingFrameCombo = new System.Windows.Forms.ComboBox();
             this.clipNTermMethionineCheckBox = new System.Windows.Forms.CheckBox();
+            this.scanRangeMinTextBox = new System.Windows.Forms.TextBox();
+            this.scanRangeMaxTextBox = new System.Windows.Forms.TextBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
+            this.label8 = new System.Windows.Forms.Label();
+            this.label9 = new System.Windows.Forms.Label();
+            this.precursorChargeMaxTextBox = new System.Windows.Forms.TextBox();
+            this.precursorChargeMinTextBox = new System.Windows.Forms.TextBox();
+            this.label10 = new System.Windows.Forms.Label();
+            this.msLevelCombo = new System.Windows.Forms.ComboBox();
+            this.label11 = new System.Windows.Forms.Label();
+            this.activationLevelCombo = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // numThreadsCombo
@@ -102,7 +114,7 @@
             // 
             this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(38, 98);
             this.spectrumBatchSizeTextBox.Name = "spectrumBatchSizeTextBox";
-            this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(120, 20);
+            this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(71, 20);
             this.spectrumBatchSizeTextBox.TabIndex = 7;
             // 
             // label1
@@ -127,13 +139,13 @@
             // 
             this.numResultsTextBox.Location = new System.Drawing.Point(38, 150);
             this.numResultsTextBox.Name = "numResultsTextBox";
-            this.numResultsTextBox.Size = new System.Drawing.Size(120, 20);
+            this.numResultsTextBox.Size = new System.Drawing.Size(71, 20);
             this.numResultsTextBox.TabIndex = 9;
             // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(250, 40);
+            this.label3.Location = new System.Drawing.Point(35, 224);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(114, 13);
             this.label3.TabIndex = 11;
@@ -142,7 +154,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(250, 82);
+            this.label4.Location = new System.Drawing.Point(35, 268);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(115, 13);
             this.label4.TabIndex = 12;
@@ -162,7 +174,7 @@
             "3",
             "4",
             "5"});
-            this.maxFragmentChargeCombo.Location = new System.Drawing.Point(370, 37);
+            this.maxFragmentChargeCombo.Location = new System.Drawing.Point(155, 221);
             this.maxFragmentChargeCombo.Name = "maxFragmentChargeCombo";
             this.maxFragmentChargeCombo.Size = new System.Drawing.Size(43, 21);
             this.maxFragmentChargeCombo.TabIndex = 13;
@@ -185,7 +197,7 @@
             "7",
             "8",
             "9"});
-            this.maxPrecursorChargeCombo.Location = new System.Drawing.Point(370, 79);
+            this.maxPrecursorChargeCombo.Location = new System.Drawing.Point(155, 265);
             this.maxPrecursorChargeCombo.Name = "maxPrecursorChargeCombo";
             this.maxPrecursorChargeCombo.Size = new System.Drawing.Size(43, 21);
             this.maxPrecursorChargeCombo.TabIndex = 14;
@@ -193,7 +205,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(250, 131);
+            this.label5.Location = new System.Drawing.Point(35, 188);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(136, 13);
             this.label5.TabIndex = 15;
@@ -206,25 +218,154 @@
             this.nucleotideReadingFrameCombo.DropDownWidth = 40;
             this.nucleotideReadingFrameCombo.FormattingEnabled = true;
             this.nucleotideReadingFrameCombo.IntegralHeight = false;
-            this.nucleotideReadingFrameCombo.Location = new System.Drawing.Point(253, 150);
+            this.nucleotideReadingFrameCombo.Location = new System.Drawing.Point(177, 185);
             this.nucleotideReadingFrameCombo.Name = "nucleotideReadingFrameCombo";
-            this.nucleotideReadingFrameCombo.Size = new System.Drawing.Size(160, 21);
+            this.nucleotideReadingFrameCombo.Size = new System.Drawing.Size(133, 21);
             this.nucleotideReadingFrameCombo.TabIndex = 16;
             // 
             // clipNTermMethionineCheckBox
             // 
             this.clipNTermMethionineCheckBox.AutoSize = true;
-            this.clipNTermMethionineCheckBox.Location = new System.Drawing.Point(253, 200);
+            this.clipNTermMethionineCheckBox.Location = new System.Drawing.Point(38, 303);
             this.clipNTermMethionineCheckBox.Name = "clipNTermMethionineCheckBox";
             this.clipNTermMethionineCheckBox.Size = new System.Drawing.Size(131, 17);
             this.clipNTermMethionineCheckBox.TabIndex = 17;
             this.clipNTermMethionineCheckBox.Text = "Clip N-term methionine";
             this.clipNTermMethionineCheckBox.UseVisualStyleBackColor = true;
             // 
+            // scanRangeMinTextBox
+            // 
+            this.scanRangeMinTextBox.Location = new System.Drawing.Point(289, 40);
+            this.scanRangeMinTextBox.Name = "scanRangeMinTextBox";
+            this.scanRangeMinTextBox.Size = new System.Drawing.Size(71, 20);
+            this.scanRangeMinTextBox.TabIndex = 18;
+            // 
+            // scanRangeMaxTextBox
+            // 
+            this.scanRangeMaxTextBox.Location = new System.Drawing.Point(388, 40);
+            this.scanRangeMaxTextBox.Name = "scanRangeMaxTextBox";
+            this.scanRangeMaxTextBox.Size = new System.Drawing.Size(71, 20);
+            this.scanRangeMaxTextBox.TabIndex = 19;
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(213, 43);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(70, 13);
+            this.label6.TabIndex = 20;
+            this.label6.Text = "Scan Range:";
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(366, 43);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(16, 13);
+            this.label7.TabIndex = 21;
+            this.label7.Text = "to";
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(213, 82);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(92, 13);
+            this.label8.TabIndex = 22;
+            this.label8.Text = "Precursor Charge:";
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Location = new System.Drawing.Point(388, 82);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(16, 13);
+            this.label9.TabIndex = 25;
+            this.label9.Text = "to";
+            // 
+            // precursorChargeMaxTextBox
+            // 
+            this.precursorChargeMaxTextBox.Location = new System.Drawing.Point(410, 79);
+            this.precursorChargeMaxTextBox.Name = "precursorChargeMaxTextBox";
+            this.precursorChargeMaxTextBox.Size = new System.Drawing.Size(71, 20);
+            this.precursorChargeMaxTextBox.TabIndex = 24;
+            // 
+            // precursorChargeMinTextBox
+            // 
+            this.precursorChargeMinTextBox.Location = new System.Drawing.Point(311, 79);
+            this.precursorChargeMinTextBox.Name = "precursorChargeMinTextBox";
+            this.precursorChargeMinTextBox.Size = new System.Drawing.Size(71, 20);
+            this.precursorChargeMinTextBox.TabIndex = 23;
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(213, 129);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(55, 13);
+            this.label10.TabIndex = 27;
+            this.label10.Text = "MS Level:";
+            // 
+            // msLevelCombo
+            // 
+            this.msLevelCombo.DropDownHeight = 80;
+            this.msLevelCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.msLevelCombo.DropDownWidth = 40;
+            this.msLevelCombo.FormattingEnabled = true;
+            this.msLevelCombo.IntegralHeight = false;
+            this.msLevelCombo.Items.AddRange(new object[] {
+            "2",
+            "3"});
+            this.msLevelCombo.Location = new System.Drawing.Point(274, 126);
+            this.msLevelCombo.Name = "msLevelCombo";
+            this.msLevelCombo.Size = new System.Drawing.Size(43, 21);
+            this.msLevelCombo.TabIndex = 26;
+            // 
+            // label11
+            // 
+            this.label11.AutoSize = true;
+            this.label11.Location = new System.Drawing.Point(348, 129);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(86, 13);
+            this.label11.TabIndex = 29;
+            this.label11.Text = "Activation Level:";
+            // 
+            // activationLevelCombo
+            // 
+            this.activationLevelCombo.DropDownHeight = 80;
+            this.activationLevelCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.activationLevelCombo.DropDownWidth = 40;
+            this.activationLevelCombo.FormattingEnabled = true;
+            this.activationLevelCombo.IntegralHeight = false;
+            this.activationLevelCombo.Items.AddRange(new object[] {
+            "ALL",
+            "CID",
+            "ECD",
+            "ETD",
+            "PQD",
+            "HCD",
+            "IRMPD"});
+            this.activationLevelCombo.Location = new System.Drawing.Point(440, 126);
+            this.activationLevelCombo.Name = "activationLevelCombo";
+            this.activationLevelCombo.Size = new System.Drawing.Size(43, 21);
+            this.activationLevelCombo.TabIndex = 28;
+            // 
             // MiscSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.label11);
+            this.Controls.Add(this.activationLevelCombo);
+            this.Controls.Add(this.label10);
+            this.Controls.Add(this.msLevelCombo);
+            this.Controls.Add(this.label9);
+            this.Controls.Add(this.precursorChargeMaxTextBox);
+            this.Controls.Add(this.precursorChargeMinTextBox);
+            this.Controls.Add(this.label8);
+            this.Controls.Add(this.label7);
+            this.Controls.Add(this.label6);
+            this.Controls.Add(this.scanRangeMaxTextBox);
+            this.Controls.Add(this.scanRangeMinTextBox);
             this.Controls.Add(this.clipNTermMethionineCheckBox);
             this.Controls.Add(this.nucleotideReadingFrameCombo);
             this.Controls.Add(this.label5);
@@ -260,5 +401,17 @@
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.ComboBox nucleotideReadingFrameCombo;
         private System.Windows.Forms.CheckBox clipNTermMethionineCheckBox;
+        private System.Windows.Forms.TextBox scanRangeMinTextBox;
+        private System.Windows.Forms.TextBox scanRangeMaxTextBox;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.TextBox precursorChargeMaxTextBox;
+        private System.Windows.Forms.TextBox precursorChargeMinTextBox;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.ComboBox msLevelCombo;
+        private System.Windows.Forms.Label label11;
+        private System.Windows.Forms.ComboBox activationLevelCombo;
     }
 }

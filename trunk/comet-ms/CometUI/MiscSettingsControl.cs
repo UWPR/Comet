@@ -21,7 +21,7 @@ namespace CometUI
 
             Parent = parent;
 
-            _nucleotideReadingFrame.Add("Protein Sequence Database", 0);
+            _nucleotideReadingFrame.Add("Protein Sequence DB", 0);
             _nucleotideReadingFrame.Add("1st Forward", 1);
             _nucleotideReadingFrame.Add("2nd Forward", 2);
             _nucleotideReadingFrame.Add("3rd Forward", 3);
