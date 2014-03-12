@@ -3,6 +3,7 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
+               <li><a href="/release/release_201401/">Release 2014.01, 2014/03/??</a></li>
                <li><a href="/release/release_201302/">Release 2013.02, 2013/10/18</a></li>
                <li><a href="/release/release_201301/">Release 2013.01, 2013/06/05</a></li>
                <li><a href="/release/release_201201/">Release 2012.01, 2012/08/16 (last revised 2013/01/10)</a></li>
@@ -14,14 +15,15 @@
 
          <p>Comet is currently or soon-to-be integrated into the following software projects:
          <ul>
-            <li><a href="http://noble.gs.washington.edu/proj/crux/">Crux</a>
-            <li><a href="http://www.labkey.org">LabKey</a>
-            <li><a href="http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP">Trans-Proteomic Pipeline (TPP)</a>
-            <li><a href="http://pcarvalho.com/patternlab/">PatternLab</a>
+            <li><a target="new" href="http://chorusproject.org">Chorus</a>
+            <li><a target="new" href="http://noble.gs.washington.edu/proj/crux/">Crux</a>
+            <li><a target="new" href="http://www.labkey.org">LabKey</a>
+            <li><a target="new" href="http://pcarvalho.com/patternlab/">PatternLab</a>
+            <li><a target="new" href="http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP">Trans-Proteomic Pipeline (TPP)</a>
          </ul>
 
          <p>Comet is a free, open source tool distributed under the
-         <a href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0 license</a>.
+         <a target="new" href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0 license</a>.
          If you happen to integrate Comet in your software tool/suite, consider sending
          me a note about it so that I can link to your software here.
 

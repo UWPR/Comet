@@ -57,9 +57,9 @@
                    search code has been moved into a library in preparation
                    for interfacing with other tools (thanks to T. Jahan).
                <li>Underlying changes to the code were made to facilitate integration
-                   with the <a href="http://noble.gs.washington.edu/proj/crux/">Crux project</a>
+                   with the <a target="new" href="http://noble.gs.washington.edu/proj/crux/">Crux project</a>
                    (thanks to S. McIlwain).
-               <li>This release incorporates an update to the <a href="http://code.google.com/p/mstoolkit/">MSToolkit</a>
+               <li>This release incorporates an update to the <a target="new" href="http://code.google.com/p/mstoolkit/">MSToolkit</a>
                    file parsing library (thanks to M. Hoopmann).
                <li>Support for the mz5 file format has been dropped.  mzXML, mzML, and
                    ms2 formats are the supported input formats.
@@ -86,7 +86,7 @@
 
 
             <p>Documentation for parameters for release 2013.02
-            <a href="http://comet-ms.sourceforge.net/parameters/parameters_201302/">can be found here</a>.
+            <a href="/parameters/parameters_201302/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> link.
 

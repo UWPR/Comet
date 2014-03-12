@@ -6,7 +6,7 @@
             <div class="post hr">
                <p>Support:
                   <ul>
-                     <li><a href="http://groups.google.com/group/comet-ms">Comet's Google group</a>.
+                     <li><a target="new" href="http://groups.google.com/group/comet-ms">Comet's Google group</a>.
                      Post your questions, problems, and feature requests here.
                      <li>If you would rather not post to this public forum, feel
                      free to e-mail me directly (jke000 at gmail.com).

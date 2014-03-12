@@ -16,7 +16,7 @@
 
          <p>Although its history goes back two decades, the Comet search engine was first
          made publicly available in August 2012 on SourceForge under the
-         <a href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache License, version 2.0</A>.
+         <a target="new" href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache License, version 2.0</A>.
          Comet is multithreaded, supports multiple input and output formats, and binaries
          are available for both Windows and Linux operating systems.
 

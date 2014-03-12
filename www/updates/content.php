@@ -9,7 +9,7 @@
                <li><b>2013/11/25</b>: <a href="/release/release_201302">Release 2013.02 rev. 1</a>
                    is now available; this is a maintenance release.
                <p/>
-               <li><b>2013/10/28</b>: Sadly one more <a href="https://groups.google.com/forum/#!topic/comet-ms/C46ln1HeB9E">release 2013.02.0 update</a>
+               <li><b>2013/10/28</b>: Sadly one more <a target="new" href="https://groups.google.com/forum/#!topic/comet-ms/C46ln1HeB9E">release 2013.02.0 update</a>
                    to address tab-delimited text output.
                <p/>
                <li><b>2013/10/18</b>: <a href="/release/release_201302">Release 2013.02 rev. 0</a>
@@ -19,10 +19,10 @@
                    is now available.
                <p/>
                <li><b>2013/02/21</b>: I just posted two known issues to the
-                   <a href="http://groups.google.com/group/comet-ms">Google group</a> as well
+                   <a target="new" href="http://groups.google.com/group/comet-ms">Google group</a> as well
                    as on the <a href="/release/201201/">release page</a>.
                <p/>
-               <li><b>2013/02/21</b>: I created a <a href="http://groups.google.com/group/comet-ms">Comet
+               <li><b>2013/02/21</b>: I created a <a target="new" href="http://groups.google.com/group/comet-ms">Comet
                    Google group</a> for questions, issues, and announcements.
                <p/>
                <li><b>2013/02/04</b>: <a href="/release/201201">Release 2012.01 rev. 3</a>

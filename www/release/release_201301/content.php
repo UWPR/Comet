@@ -29,7 +29,7 @@
                    data representation internally.
                    When using a small fragment_bin_tol value (i.e. 0.01), the original
                    implementation of Comet will use a *huge* amount of memory (see 
-                   the <a href="http://proteomicsresource.washington.edu/sequest_release/release_201201.php#mem_use">memory use table here</a>).
+                   the <a target="new" href="http://proteomicsresource.washington.edu/sequest_release/release_201201.php#mem_use">memory use table here</a>).
                    The sparse matrix implementation reduces memory use tremendously
                    but searches are slower than the classical implementation.
                <li>New parameter:  <a href="/parameters/parameters_201301/spectrum_batch_size.php">spectrum_batch_size</a>
@@ -72,7 +72,7 @@
 
 
             <p>Documentation for parameters for release 2013.01
-            <a href="http://comet-ms.sourceforge.net/parameters/parameters_201301/">can be found here</a>.
+            <a href="/parameters/parameters_201301/">can be found here</a>.
 
             <p>For low-res ms/ms spectra, try the following settings:
                <ul>
