@@ -171,6 +171,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    if (!g_staticParams.options.bOutputSqtStream)
    {
       logout(" 100%%\n");
+      fflush(stdout);
    }
 
    return bSucceeded;
