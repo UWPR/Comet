@@ -19,17 +19,16 @@ namespace CometUI
         {
             // Set up defaults for the precursor mass settings
             precursorMassTolTextBox.Text = Settings.Default.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
-            precursorMassUnitCombo.SelectedIndex = precursorMassUnitCombo.FindStringExact(Settings.Default.PrecursorMassUnit);
-            precursorTolTypeCombo.SelectedIndex = precursorTolTypeCombo.FindStringExact(Settings.Default.PrecursorToleranceType);
-            precursorMassTypeCombo.SelectedIndex =
-                precursorMassTypeCombo.FindStringExact(Settings.Default.PrecursorMassType);
-            precursorIsotopeErrorCombo.SelectedIndex = precursorIsotopeErrorCombo.FindStringExact(Settings.Default.PrecursorIsotopeError);
+            precursorMassUnitCombo.SelectedItem =
+                Settings.Default.PrecursorMassUnit.ToString(CultureInfo.InvariantCulture);
+            precursorTolTypeCombo.SelectedItem = Settings.Default.PrecursorToleranceType;
+            precursorMassTypeCombo.SelectedItem = Settings.Default.PrecursorMassType;
+            precursorIsotopeErrorCombo.SelectedItem = Settings.Default.PrecursorIsotopeError;
 
             // Set up defaults for fragment settings
             fragmentBinSizeTextBox.Text = Settings.Default.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
             fragmentOffsetTextBox.Text = Settings.Default.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
-            fragmentMassTypeCombo.SelectedIndex =
-                fragmentMassTypeCombo.FindStringExact(Settings.Default.FragmentMassType);
+            fragmentMassTypeCombo.SelectedItem = Settings.Default.FragmentMassType;
         
             // Set up defaults for ion settings
             aIonCheckBox.Checked = Settings.Default.UseAIons;

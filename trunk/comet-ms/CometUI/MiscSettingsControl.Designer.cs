@@ -38,21 +38,19 @@
             this.label4 = new System.Windows.Forms.Label();
             this.maxFragmentChargeCombo = new System.Windows.Forms.ComboBox();
             this.maxPrecursorChargeCombo = new System.Windows.Forms.ComboBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.nucleotideReadingFrameCombo = new System.Windows.Forms.ComboBox();
             this.clipNTermMethionineCheckBox = new System.Windows.Forms.CheckBox();
-            this.scanRangeMinTextBox = new System.Windows.Forms.TextBox();
-            this.scanRangeMaxTextBox = new System.Windows.Forms.TextBox();
+            this.mzxmlScanRangeMinTextBox = new System.Windows.Forms.TextBox();
+            this.mzxmlScanRangeMaxTextBox = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
             this.label7 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
-            this.precursorChargeMaxTextBox = new System.Windows.Forms.TextBox();
-            this.precursorChargeMinTextBox = new System.Windows.Forms.TextBox();
+            this.mzxmlPrecursorChargeMaxTextBox = new System.Windows.Forms.TextBox();
+            this.mzxmlPrecursorChargeMinTextBox = new System.Windows.Forms.TextBox();
             this.label10 = new System.Windows.Forms.Label();
-            this.msLevelCombo = new System.Windows.Forms.ComboBox();
+            this.mzxmlMsLevelCombo = new System.Windows.Forms.ComboBox();
             this.label11 = new System.Windows.Forms.Label();
-            this.activationLevelCombo = new System.Windows.Forms.ComboBox();
+            this.mzxmlActivationLevelCombo = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // numThreadsCombo
@@ -202,27 +200,6 @@
             this.maxPrecursorChargeCombo.Size = new System.Drawing.Size(43, 21);
             this.maxPrecursorChargeCombo.TabIndex = 14;
             // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(35, 188);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(136, 13);
-            this.label5.TabIndex = 15;
-            this.label5.Text = "Nucleotide Reading Frame:";
-            // 
-            // nucleotideReadingFrameCombo
-            // 
-            this.nucleotideReadingFrameCombo.DropDownHeight = 80;
-            this.nucleotideReadingFrameCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.nucleotideReadingFrameCombo.DropDownWidth = 40;
-            this.nucleotideReadingFrameCombo.FormattingEnabled = true;
-            this.nucleotideReadingFrameCombo.IntegralHeight = false;
-            this.nucleotideReadingFrameCombo.Location = new System.Drawing.Point(177, 185);
-            this.nucleotideReadingFrameCombo.Name = "nucleotideReadingFrameCombo";
-            this.nucleotideReadingFrameCombo.Size = new System.Drawing.Size(133, 21);
-            this.nucleotideReadingFrameCombo.TabIndex = 16;
-            // 
             // clipNTermMethionineCheckBox
             // 
             this.clipNTermMethionineCheckBox.AutoSize = true;
@@ -233,19 +210,19 @@
             this.clipNTermMethionineCheckBox.Text = "Clip N-term methionine";
             this.clipNTermMethionineCheckBox.UseVisualStyleBackColor = true;
             // 
-            // scanRangeMinTextBox
+            // mzxmlScanRangeMinTextBox
             // 
-            this.scanRangeMinTextBox.Location = new System.Drawing.Point(289, 40);
-            this.scanRangeMinTextBox.Name = "scanRangeMinTextBox";
-            this.scanRangeMinTextBox.Size = new System.Drawing.Size(71, 20);
-            this.scanRangeMinTextBox.TabIndex = 18;
+            this.mzxmlScanRangeMinTextBox.Location = new System.Drawing.Point(289, 40);
+            this.mzxmlScanRangeMinTextBox.Name = "mzxmlScanRangeMinTextBox";
+            this.mzxmlScanRangeMinTextBox.Size = new System.Drawing.Size(71, 20);
+            this.mzxmlScanRangeMinTextBox.TabIndex = 18;
             // 
-            // scanRangeMaxTextBox
+            // mzxmlScanRangeMaxTextBox
             // 
-            this.scanRangeMaxTextBox.Location = new System.Drawing.Point(388, 40);
-            this.scanRangeMaxTextBox.Name = "scanRangeMaxTextBox";
-            this.scanRangeMaxTextBox.Size = new System.Drawing.Size(71, 20);
-            this.scanRangeMaxTextBox.TabIndex = 19;
+            this.mzxmlScanRangeMaxTextBox.Location = new System.Drawing.Point(388, 40);
+            this.mzxmlScanRangeMaxTextBox.Name = "mzxmlScanRangeMaxTextBox";
+            this.mzxmlScanRangeMaxTextBox.Size = new System.Drawing.Size(71, 20);
+            this.mzxmlScanRangeMaxTextBox.TabIndex = 19;
             // 
             // label6
             // 
@@ -283,19 +260,19 @@
             this.label9.TabIndex = 25;
             this.label9.Text = "to";
             // 
-            // precursorChargeMaxTextBox
+            // mzxmlPrecursorChargeMaxTextBox
             // 
-            this.precursorChargeMaxTextBox.Location = new System.Drawing.Point(410, 79);
-            this.precursorChargeMaxTextBox.Name = "precursorChargeMaxTextBox";
-            this.precursorChargeMaxTextBox.Size = new System.Drawing.Size(71, 20);
-            this.precursorChargeMaxTextBox.TabIndex = 24;
+            this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(410, 79);
+            this.mzxmlPrecursorChargeMaxTextBox.Name = "mzxmlPrecursorChargeMaxTextBox";
+            this.mzxmlPrecursorChargeMaxTextBox.Size = new System.Drawing.Size(71, 20);
+            this.mzxmlPrecursorChargeMaxTextBox.TabIndex = 24;
             // 
-            // precursorChargeMinTextBox
+            // mzxmlPrecursorChargeMinTextBox
             // 
-            this.precursorChargeMinTextBox.Location = new System.Drawing.Point(311, 79);
-            this.precursorChargeMinTextBox.Name = "precursorChargeMinTextBox";
-            this.precursorChargeMinTextBox.Size = new System.Drawing.Size(71, 20);
-            this.precursorChargeMinTextBox.TabIndex = 23;
+            this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(311, 79);
+            this.mzxmlPrecursorChargeMinTextBox.Name = "mzxmlPrecursorChargeMinTextBox";
+            this.mzxmlPrecursorChargeMinTextBox.Size = new System.Drawing.Size(71, 20);
+            this.mzxmlPrecursorChargeMinTextBox.TabIndex = 23;
             // 
             // label10
             // 
@@ -306,20 +283,20 @@
             this.label10.TabIndex = 27;
             this.label10.Text = "MS Level:";
             // 
-            // msLevelCombo
+            // mzxmlMsLevelCombo
             // 
-            this.msLevelCombo.DropDownHeight = 80;
-            this.msLevelCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.msLevelCombo.DropDownWidth = 40;
-            this.msLevelCombo.FormattingEnabled = true;
-            this.msLevelCombo.IntegralHeight = false;
-            this.msLevelCombo.Items.AddRange(new object[] {
+            this.mzxmlMsLevelCombo.DropDownHeight = 80;
+            this.mzxmlMsLevelCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.mzxmlMsLevelCombo.DropDownWidth = 40;
+            this.mzxmlMsLevelCombo.FormattingEnabled = true;
+            this.mzxmlMsLevelCombo.IntegralHeight = false;
+            this.mzxmlMsLevelCombo.Items.AddRange(new object[] {
             "2",
             "3"});
-            this.msLevelCombo.Location = new System.Drawing.Point(274, 126);
-            this.msLevelCombo.Name = "msLevelCombo";
-            this.msLevelCombo.Size = new System.Drawing.Size(43, 21);
-            this.msLevelCombo.TabIndex = 26;
+            this.mzxmlMsLevelCombo.Location = new System.Drawing.Point(274, 126);
+            this.mzxmlMsLevelCombo.Name = "mzxmlMsLevelCombo";
+            this.mzxmlMsLevelCombo.Size = new System.Drawing.Size(43, 21);
+            this.mzxmlMsLevelCombo.TabIndex = 26;
             // 
             // label11
             // 
@@ -330,14 +307,14 @@
             this.label11.TabIndex = 29;
             this.label11.Text = "Activation Level:";
             // 
-            // activationLevelCombo
+            // mzxmlActivationLevelCombo
             // 
-            this.activationLevelCombo.DropDownHeight = 80;
-            this.activationLevelCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.activationLevelCombo.DropDownWidth = 40;
-            this.activationLevelCombo.FormattingEnabled = true;
-            this.activationLevelCombo.IntegralHeight = false;
-            this.activationLevelCombo.Items.AddRange(new object[] {
+            this.mzxmlActivationLevelCombo.DropDownHeight = 80;
+            this.mzxmlActivationLevelCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.mzxmlActivationLevelCombo.DropDownWidth = 40;
+            this.mzxmlActivationLevelCombo.FormattingEnabled = true;
+            this.mzxmlActivationLevelCombo.IntegralHeight = false;
+            this.mzxmlActivationLevelCombo.Items.AddRange(new object[] {
             "ALL",
             "CID",
             "ECD",
@@ -345,30 +322,28 @@
             "PQD",
             "HCD",
             "IRMPD"});
-            this.activationLevelCombo.Location = new System.Drawing.Point(440, 126);
-            this.activationLevelCombo.Name = "activationLevelCombo";
-            this.activationLevelCombo.Size = new System.Drawing.Size(43, 21);
-            this.activationLevelCombo.TabIndex = 28;
+            this.mzxmlActivationLevelCombo.Location = new System.Drawing.Point(440, 126);
+            this.mzxmlActivationLevelCombo.Name = "mzxmlActivationLevelCombo";
+            this.mzxmlActivationLevelCombo.Size = new System.Drawing.Size(43, 21);
+            this.mzxmlActivationLevelCombo.TabIndex = 28;
             // 
             // MiscSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.label11);
-            this.Controls.Add(this.activationLevelCombo);
+            this.Controls.Add(this.mzxmlActivationLevelCombo);
             this.Controls.Add(this.label10);
-            this.Controls.Add(this.msLevelCombo);
+            this.Controls.Add(this.mzxmlMsLevelCombo);
             this.Controls.Add(this.label9);
-            this.Controls.Add(this.precursorChargeMaxTextBox);
-            this.Controls.Add(this.precursorChargeMinTextBox);
+            this.Controls.Add(this.mzxmlPrecursorChargeMaxTextBox);
+            this.Controls.Add(this.mzxmlPrecursorChargeMinTextBox);
             this.Controls.Add(this.label8);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.label6);
-            this.Controls.Add(this.scanRangeMaxTextBox);
-            this.Controls.Add(this.scanRangeMinTextBox);
+            this.Controls.Add(this.mzxmlScanRangeMaxTextBox);
+            this.Controls.Add(this.mzxmlScanRangeMinTextBox);
             this.Controls.Add(this.clipNTermMethionineCheckBox);
-            this.Controls.Add(this.nucleotideReadingFrameCombo);
-            this.Controls.Add(this.label5);
             this.Controls.Add(this.maxPrecursorChargeCombo);
             this.Controls.Add(this.maxFragmentChargeCombo);
             this.Controls.Add(this.label4);
@@ -398,20 +373,18 @@
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.ComboBox maxFragmentChargeCombo;
         private System.Windows.Forms.ComboBox maxPrecursorChargeCombo;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.ComboBox nucleotideReadingFrameCombo;
         private System.Windows.Forms.CheckBox clipNTermMethionineCheckBox;
-        private System.Windows.Forms.TextBox scanRangeMinTextBox;
-        private System.Windows.Forms.TextBox scanRangeMaxTextBox;
+        private System.Windows.Forms.TextBox mzxmlScanRangeMinTextBox;
+        private System.Windows.Forms.TextBox mzxmlScanRangeMaxTextBox;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Label label8;
         private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.TextBox precursorChargeMaxTextBox;
-        private System.Windows.Forms.TextBox precursorChargeMinTextBox;
+        private System.Windows.Forms.TextBox mzxmlPrecursorChargeMaxTextBox;
+        private System.Windows.Forms.TextBox mzxmlPrecursorChargeMinTextBox;
         private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.ComboBox msLevelCombo;
+        private System.Windows.Forms.ComboBox mzxmlMsLevelCombo;
         private System.Windows.Forms.Label label11;
-        private System.Windows.Forms.ComboBox activationLevelCombo;
+        private System.Windows.Forms.ComboBox mzxmlActivationLevelCombo;
     }
 }

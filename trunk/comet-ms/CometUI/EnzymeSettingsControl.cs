@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
 using System.Collections.Specialized;
@@ -40,11 +41,10 @@ namespace CometUI
 
         private void InitializeFromDefaultSettings()
         {
-            int enzymeTerminiDefaultIndex = enzymeTerminiCombo.FindString(Settings.Default.EnzymeTermini);
-            enzymeTerminiCombo.SelectedIndex = enzymeTerminiDefaultIndex;
+            enzymeTerminiCombo.SelectedItem = Settings.Default.EnzymeTermini.ToString(CultureInfo.InvariantCulture);
 
             // For this particular combo, index == value of allowed missed cleavages
-            missedCleavagesCombo.SelectedIndex = Settings.Default.AllowedMissedCleavages;
+            missedCleavagesCombo.SelectedItem = Settings.Default.AllowedMissedCleavages.ToString(CultureInfo.InvariantCulture);
 
 
             EnzymeInfo = new StringCollection();
