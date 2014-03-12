@@ -416,6 +416,7 @@ struct StaticParams
    char            szDisplayLine[256]; // used for .out files
    char            szMod[512];         // used for .out files
    char            szDecoyPrefix[256]; // used for prefix to indicate decoys
+   char            szOutputSuffix[256]; // used for suffix to append to output file base names
    int             iElapseTime;
    char            szDate[32];
    Options         options;
@@ -444,6 +445,7 @@ struct StaticParams
       databaseInfo.szDatabase[0] = '\0';
 
       strcpy(szDecoyPrefix, "DECOY_");
+      szOutputSuffix[0] = '\0';
 
       for (i=0; i<SIZE_MASS; i++)
       {
@@ -561,6 +563,7 @@ struct StaticParams
       strcpy(szDisplayLine, a.szDisplayLine);
       strcpy(szMod, a.szMod);
       strcpy(szDecoyPrefix, a.szDecoyPrefix);
+      strcpy(szOutputSuffix, a.szOutputSuffix);
       iElapseTime = a.iElapseTime;
       strcpy(szDate, a.szDate);
       options = a.options;

@@ -275,6 +275,14 @@ void LoadParameters(char *pszParamsFile,
             sscanf(szParamVal, "%256s", szDecoyPrefix);
             pSearchMgr->SetParam("decoy_prefix", szDecoyPrefix, szDecoyPrefix);
 
+         }
+         else if (!strcmp(szParamName, "output_suffix"))
+         {
+            char szOutputSuffix[256];
+            szOutputSuffix[0] = '\0';
+            sscanf(szParamVal, "%256s", szOutputSuffix);
+            pSearchMgr->SetParam("output_suffix", szOutputSuffix, szOutputSuffix);
+
             bCurrentParamsFile = 1;  // this is the new parameter; if this is missing then complain & exit
          }
          else if (!strcmp(szParamName, "nucleotide_reading_frame"))
@@ -1336,6 +1344,7 @@ fprintf(fp,
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
 spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
+basename_suffix =                      # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML\n\
 \n\
 #\n\
 # spectral processing\n\
