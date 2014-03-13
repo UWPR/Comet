@@ -111,44 +111,40 @@
             "30",
             "31",
             "32"});
-            this.numThreadsCombo.Location = new System.Drawing.Point(28, 327);
+            this.numThreadsCombo.Location = new System.Drawing.Point(32, 339);
             this.numThreadsCombo.Name = "numThreadsCombo";
             this.numThreadsCombo.Size = new System.Drawing.Size(65, 21);
             this.numThreadsCombo.TabIndex = 2;
-            this.numThreadsCombo.SelectedIndexChanged += new System.EventHandler(this.numThreadsCombo_SelectedIndexChanged);
             // 
             // searchEnzymeLabel
             // 
             this.searchEnzymeLabel.AutoSize = true;
-            this.searchEnzymeLabel.Location = new System.Drawing.Point(25, 311);
+            this.searchEnzymeLabel.Location = new System.Drawing.Point(29, 323);
             this.searchEnzymeLabel.Name = "searchEnzymeLabel";
             this.searchEnzymeLabel.Size = new System.Drawing.Size(74, 13);
             this.searchEnzymeLabel.TabIndex = 3;
             this.searchEnzymeLabel.Text = "Num Threads:";
-            this.searchEnzymeLabel.Click += new System.EventHandler(this.searchEnzymeLabel_Click);
             // 
             // spectrumBatchSizeTextBox
             // 
-            this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(28, 274);
+            this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 286);
             this.spectrumBatchSizeTextBox.Name = "spectrumBatchSizeTextBox";
             this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(165, 20);
             this.spectrumBatchSizeTextBox.TabIndex = 7;
-            this.spectrumBatchSizeTextBox.TextChanged += new System.EventHandler(this.spectrumBatchSizeTextBox_TextChanged);
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(25, 258);
+            this.label1.Location = new System.Drawing.Point(29, 270);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(109, 13);
             this.label1.TabIndex = 8;
             this.label1.Text = "Spectrum Batch Size:";
-            this.label1.Click += new System.EventHandler(this.label1_Click);
             // 
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(119, 311);
+            this.label2.Location = new System.Drawing.Point(123, 323);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(70, 13);
             this.label2.TabIndex = 10;
@@ -156,7 +152,7 @@
             // 
             // numResultsTextBox
             // 
-            this.numResultsTextBox.Location = new System.Drawing.Point(122, 328);
+            this.numResultsTextBox.Location = new System.Drawing.Point(126, 340);
             this.numResultsTextBox.Name = "numResultsTextBox";
             this.numResultsTextBox.Size = new System.Drawing.Size(71, 20);
             this.numResultsTextBox.TabIndex = 9;
@@ -164,7 +160,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(265, 261);
+            this.label3.Location = new System.Drawing.Point(277, 273);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(114, 13);
             this.label3.TabIndex = 11;
@@ -173,7 +169,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(265, 297);
+            this.label4.Location = new System.Drawing.Point(277, 309);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(115, 13);
             this.label4.TabIndex = 12;
@@ -193,7 +189,7 @@
             "3",
             "4",
             "5"});
-            this.maxFragmentChargeCombo.Location = new System.Drawing.Point(385, 258);
+            this.maxFragmentChargeCombo.Location = new System.Drawing.Point(397, 270);
             this.maxFragmentChargeCombo.Name = "maxFragmentChargeCombo";
             this.maxFragmentChargeCombo.Size = new System.Drawing.Size(43, 21);
             this.maxFragmentChargeCombo.TabIndex = 13;
@@ -216,7 +212,7 @@
             "7",
             "8",
             "9"});
-            this.maxPrecursorChargeCombo.Location = new System.Drawing.Point(385, 294);
+            this.maxPrecursorChargeCombo.Location = new System.Drawing.Point(397, 306);
             this.maxPrecursorChargeCombo.Name = "maxPrecursorChargeCombo";
             this.maxPrecursorChargeCombo.Size = new System.Drawing.Size(43, 21);
             this.maxPrecursorChargeCombo.TabIndex = 14;
@@ -224,7 +220,7 @@
             // clipNTermMethionineCheckBox
             // 
             this.clipNTermMethionineCheckBox.AutoSize = true;
-            this.clipNTermMethionineCheckBox.Location = new System.Drawing.Point(268, 333);
+            this.clipNTermMethionineCheckBox.Location = new System.Drawing.Point(280, 344);
             this.clipNTermMethionineCheckBox.Name = "clipNTermMethionineCheckBox";
             this.clipNTermMethionineCheckBox.Size = new System.Drawing.Size(131, 17);
             this.clipNTermMethionineCheckBox.TabIndex = 17;
@@ -364,7 +360,7 @@
             this.groupBox1.Controls.Add(this.mzxmlPrecursorChargeMinTextBox);
             this.groupBox1.Location = new System.Drawing.Point(28, 24);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(218, 208);
+            this.groupBox1.Size = new System.Drawing.Size(218, 216);
             this.groupBox1.TabIndex = 30;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "mzXML";
@@ -384,9 +380,9 @@
             this.groupBox2.Controls.Add(this.minIntensityTextBox);
             this.groupBox2.Controls.Add(this.label5);
             this.groupBox2.Controls.Add(this.minPeaksTextBox);
-            this.groupBox2.Location = new System.Drawing.Point(268, 24);
+            this.groupBox2.Location = new System.Drawing.Point(272, 24);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(225, 208);
+            this.groupBox2.Size = new System.Drawing.Size(225, 216);
             this.groupBox2.TabIndex = 31;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Spectral Processing";
