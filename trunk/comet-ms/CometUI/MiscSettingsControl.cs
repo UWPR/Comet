@@ -46,5 +46,25 @@ namespace CometUI
             mzxmlActivationLevelCombo.SelectedItem = Settings.Default.mzxmlActivationMethod;
 
         }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void spectrumBatchSizeTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void searchEnzymeLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void numThreadsCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }
