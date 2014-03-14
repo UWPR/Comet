@@ -229,5 +229,23 @@
     <Setting Name="mzxmlActivationMethod" Type="System.String" Scope="User">
       <Value Profile="(Default)">ALL</Value>
     </Setting>
+    <Setting Name="spectralProcessingMinPeaks" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">10</Value>
+    </Setting>
+    <Setting Name="spectralProcessingMinIntensity" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="spectralProcessingRemovePrecursorPeak" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="spectralProcessingRemovePrecursorTol" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1.5</Value>
+    </Setting>
+    <Setting Name="spectralProcessingClearMzMin" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="spectralProcessingClearMzMax" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

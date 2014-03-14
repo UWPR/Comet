@@ -780,5 +780,77 @@ namespace CometUI.Properties {
                 this["mzxmlActivationMethod"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("10")]
+        public int spectralProcessingMinPeaks {
+            get {
+                return ((int)(this["spectralProcessingMinPeaks"]));
+            }
+            set {
+                this["spectralProcessingMinPeaks"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double spectralProcessingMinIntensity {
+            get {
+                return ((double)(this["spectralProcessingMinIntensity"]));
+            }
+            set {
+                this["spectralProcessingMinIntensity"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int spectralProcessingRemovePrecursorPeak {
+            get {
+                return ((int)(this["spectralProcessingRemovePrecursorPeak"]));
+            }
+            set {
+                this["spectralProcessingRemovePrecursorPeak"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1.5")]
+        public double spectralProcessingRemovePrecursorTol {
+            get {
+                return ((double)(this["spectralProcessingRemovePrecursorTol"]));
+            }
+            set {
+                this["spectralProcessingRemovePrecursorTol"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double spectralProcessingClearMzMin {
+            get {
+                return ((double)(this["spectralProcessingClearMzMin"]));
+            }
+            set {
+                this["spectralProcessingClearMzMin"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double spectralProcessingClearMzMax {
+            get {
+                return ((double)(this["spectralProcessingClearMzMax"]));
+            }
+            set {
+                this["spectralProcessingClearMzMax"] = value;
+            }
+        }
     }
 }

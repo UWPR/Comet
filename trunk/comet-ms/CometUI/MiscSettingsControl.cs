@@ -44,6 +44,15 @@ namespace CometUI
             mzxmlPrecursorChargeMaxTextBox.Text = Settings.Default.mzxmlPrecursorChargeRangeMax.ToString(CultureInfo.InvariantCulture);
             mzxmlMsLevelCombo.SelectedItem = Settings.Default.mzxmlMsLevel.ToString(CultureInfo.InvariantCulture);
             mzxmlActivationLevelCombo.SelectedItem = Settings.Default.mzxmlActivationMethod;
+
+            spectralProcessingMinPeaksTextBox.Text = Settings.Default.spectralProcessingMinPeaks.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingMinIntensityTextBox.Text = Settings.Default.spectralProcessingMinIntensity.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingPrecursorRemovalTolTextBox.Text =
+                Settings.Default.spectralProcessingRemovePrecursorTol.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingClearMZRangeMinTextBox.Text = Settings.Default.spectralProcessingClearMzMin.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingClearMZRangeMaxTextBox.Text = Settings.Default.spectralProcessingClearMzMax.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingRemovePrecursorPeakCombo.SelectedItem =
+                Settings.Default.spectralProcessingRemovePrecursorPeak.ToString(CultureInfo.InvariantCulture);
         }
     }
 }
