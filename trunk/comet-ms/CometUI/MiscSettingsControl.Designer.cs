@@ -53,19 +53,19 @@
             this.mzxmlActivationLevelCombo = new System.Windows.Forms.ComboBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.spectralProcessingMinPeaksTextBox = new System.Windows.Forms.TextBox();
-            this.label12 = new System.Windows.Forms.Label();
-            this.spectralProcessingMinIntensityTextBox = new System.Windows.Forms.TextBox();
-            this.label13 = new System.Windows.Forms.Label();
-            this.label14 = new System.Windows.Forms.Label();
-            this.spectralProcessingPrecursorRemovalTolTextBox = new System.Windows.Forms.TextBox();
-            this.label15 = new System.Windows.Forms.Label();
-            this.spectralProcessingRemovePrecursorPeakCombo = new System.Windows.Forms.ComboBox();
             this.label16 = new System.Windows.Forms.Label();
             this.spectralProcessingClearMZRangeMaxTextBox = new System.Windows.Forms.TextBox();
             this.label17 = new System.Windows.Forms.Label();
             this.spectralProcessingClearMZRangeMinTextBox = new System.Windows.Forms.TextBox();
+            this.spectralProcessingRemovePrecursorPeakCombo = new System.Windows.Forms.ComboBox();
+            this.label15 = new System.Windows.Forms.Label();
+            this.spectralProcessingPrecursorRemovalTolTextBox = new System.Windows.Forms.TextBox();
+            this.label14 = new System.Windows.Forms.Label();
+            this.label13 = new System.Windows.Forms.Label();
+            this.label12 = new System.Windows.Forms.Label();
+            this.spectralProcessingMinIntensityTextBox = new System.Windows.Forms.TextBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.spectralProcessingMinPeaksTextBox = new System.Windows.Forms.TextBox();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.SuspendLayout();
@@ -380,96 +380,12 @@
             this.groupBox2.Controls.Add(this.spectralProcessingMinIntensityTextBox);
             this.groupBox2.Controls.Add(this.label5);
             this.groupBox2.Controls.Add(this.spectralProcessingMinPeaksTextBox);
-            this.groupBox2.Location = new System.Drawing.Point(272, 24);
+            this.groupBox2.Location = new System.Drawing.Point(267, 24);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(225, 216);
+            this.groupBox2.Size = new System.Drawing.Size(234, 216);
             this.groupBox2.TabIndex = 31;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Spectral Processing";
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(17, 30);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(60, 13);
-            this.label5.TabIndex = 22;
-            this.label5.Text = "Min Peaks:";
-            // 
-            // spectralProcessingMinPeaksTextBox
-            // 
-            this.spectralProcessingMinPeaksTextBox.Location = new System.Drawing.Point(20, 46);
-            this.spectralProcessingMinPeaksTextBox.Name = "spectralProcessingMinPeaksTextBox";
-            this.spectralProcessingMinPeaksTextBox.Size = new System.Drawing.Size(71, 20);
-            this.spectralProcessingMinPeaksTextBox.TabIndex = 21;
-            // 
-            // label12
-            // 
-            this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(125, 30);
-            this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(69, 13);
-            this.label12.TabIndex = 24;
-            this.label12.Text = "Min Intensity:";
-            // 
-            // spectralProcessingMinIntensityTextBox
-            // 
-            this.spectralProcessingMinIntensityTextBox.Location = new System.Drawing.Point(128, 46);
-            this.spectralProcessingMinIntensityTextBox.Name = "spectralProcessingMinIntensityTextBox";
-            this.spectralProcessingMinIntensityTextBox.Size = new System.Drawing.Size(71, 20);
-            this.spectralProcessingMinIntensityTextBox.TabIndex = 23;
-            // 
-            // label13
-            // 
-            this.label13.AutoSize = true;
-            this.label13.BackColor = System.Drawing.Color.Transparent;
-            this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label13.Location = new System.Drawing.Point(134, 84);
-            this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(13, 13);
-            this.label13.TabIndex = 25;
-            this.label13.Text = "+";
-            // 
-            // label14
-            // 
-            this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(17, 85);
-            this.label14.Name = "label14";
-            this.label14.Size = new System.Drawing.Size(118, 13);
-            this.label14.TabIndex = 26;
-            this.label14.Text = "Precursor Removal Tol:";
-            // 
-            // spectralProcessingPrecursorRemovalTolTextBox
-            // 
-            this.spectralProcessingPrecursorRemovalTolTextBox.Location = new System.Drawing.Point(149, 82);
-            this.spectralProcessingPrecursorRemovalTolTextBox.Name = "spectralProcessingPrecursorRemovalTolTextBox";
-            this.spectralProcessingPrecursorRemovalTolTextBox.Size = new System.Drawing.Size(50, 20);
-            this.spectralProcessingPrecursorRemovalTolTextBox.TabIndex = 27;
-            // 
-            // label15
-            // 
-            this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(17, 122);
-            this.label15.Name = "label15";
-            this.label15.Size = new System.Drawing.Size(126, 13);
-            this.label15.TabIndex = 28;
-            this.label15.Text = "Remove Precursor Peak:";
-            // 
-            // spectralProcessingRemovePrecursorPeakCombo
-            // 
-            this.spectralProcessingRemovePrecursorPeakCombo.DropDownHeight = 80;
-            this.spectralProcessingRemovePrecursorPeakCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.spectralProcessingRemovePrecursorPeakCombo.DropDownWidth = 40;
-            this.spectralProcessingRemovePrecursorPeakCombo.FormattingEnabled = true;
-            this.spectralProcessingRemovePrecursorPeakCombo.IntegralHeight = false;
-            this.spectralProcessingRemovePrecursorPeakCombo.Items.AddRange(new object[] {
-            "0",
-            "1",
-            "2"});
-            this.spectralProcessingRemovePrecursorPeakCombo.Location = new System.Drawing.Point(147, 119);
-            this.spectralProcessingRemovePrecursorPeakCombo.Name = "spectralProcessingRemovePrecursorPeakCombo";
-            this.spectralProcessingRemovePrecursorPeakCombo.Size = new System.Drawing.Size(52, 21);
-            this.spectralProcessingRemovePrecursorPeakCombo.TabIndex = 29;
             // 
             // label16
             // 
@@ -482,9 +398,9 @@
             // 
             // spectralProcessingClearMZRangeMaxTextBox
             // 
-            this.spectralProcessingClearMZRangeMaxTextBox.Location = new System.Drawing.Point(124, 172);
+            this.spectralProcessingClearMZRangeMaxTextBox.Location = new System.Drawing.Point(137, 172);
             this.spectralProcessingClearMZRangeMaxTextBox.Name = "spectralProcessingClearMZRangeMaxTextBox";
-            this.spectralProcessingClearMZRangeMaxTextBox.Size = new System.Drawing.Size(75, 20);
+            this.spectralProcessingClearMZRangeMaxTextBox.Size = new System.Drawing.Size(78, 20);
             this.spectralProcessingClearMZRangeMaxTextBox.TabIndex = 32;
             // 
             // label17
@@ -500,8 +416,88 @@
             // 
             this.spectralProcessingClearMZRangeMinTextBox.Location = new System.Drawing.Point(20, 172);
             this.spectralProcessingClearMZRangeMinTextBox.Name = "spectralProcessingClearMZRangeMinTextBox";
-            this.spectralProcessingClearMZRangeMinTextBox.Size = new System.Drawing.Size(75, 20);
+            this.spectralProcessingClearMZRangeMinTextBox.Size = new System.Drawing.Size(78, 20);
             this.spectralProcessingClearMZRangeMinTextBox.TabIndex = 31;
+            // 
+            // spectralProcessingRemovePrecursorPeakCombo
+            // 
+            this.spectralProcessingRemovePrecursorPeakCombo.DropDownHeight = 80;
+            this.spectralProcessingRemovePrecursorPeakCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.spectralProcessingRemovePrecursorPeakCombo.DropDownWidth = 40;
+            this.spectralProcessingRemovePrecursorPeakCombo.FormattingEnabled = true;
+            this.spectralProcessingRemovePrecursorPeakCombo.IntegralHeight = false;
+            this.spectralProcessingRemovePrecursorPeakCombo.Location = new System.Drawing.Point(147, 119);
+            this.spectralProcessingRemovePrecursorPeakCombo.Name = "spectralProcessingRemovePrecursorPeakCombo";
+            this.spectralProcessingRemovePrecursorPeakCombo.Size = new System.Drawing.Size(68, 21);
+            this.spectralProcessingRemovePrecursorPeakCombo.TabIndex = 29;
+            // 
+            // label15
+            // 
+            this.label15.AutoSize = true;
+            this.label15.Location = new System.Drawing.Point(17, 122);
+            this.label15.Name = "label15";
+            this.label15.Size = new System.Drawing.Size(126, 13);
+            this.label15.TabIndex = 28;
+            this.label15.Text = "Remove Precursor Peak:";
+            // 
+            // spectralProcessingPrecursorRemovalTolTextBox
+            // 
+            this.spectralProcessingPrecursorRemovalTolTextBox.Location = new System.Drawing.Point(149, 82);
+            this.spectralProcessingPrecursorRemovalTolTextBox.Name = "spectralProcessingPrecursorRemovalTolTextBox";
+            this.spectralProcessingPrecursorRemovalTolTextBox.Size = new System.Drawing.Size(66, 20);
+            this.spectralProcessingPrecursorRemovalTolTextBox.TabIndex = 27;
+            // 
+            // label14
+            // 
+            this.label14.AutoSize = true;
+            this.label14.Location = new System.Drawing.Point(17, 85);
+            this.label14.Name = "label14";
+            this.label14.Size = new System.Drawing.Size(118, 13);
+            this.label14.TabIndex = 26;
+            this.label14.Text = "Precursor Removal Tol:";
+            // 
+            // label13
+            // 
+            this.label13.AutoSize = true;
+            this.label13.BackColor = System.Drawing.Color.Transparent;
+            this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label13.Location = new System.Drawing.Point(134, 84);
+            this.label13.Name = "label13";
+            this.label13.Size = new System.Drawing.Size(13, 13);
+            this.label13.TabIndex = 25;
+            this.label13.Text = "+";
+            // 
+            // label12
+            // 
+            this.label12.AutoSize = true;
+            this.label12.Location = new System.Drawing.Point(134, 30);
+            this.label12.Name = "label12";
+            this.label12.Size = new System.Drawing.Size(69, 13);
+            this.label12.TabIndex = 24;
+            this.label12.Text = "Min Intensity:";
+            // 
+            // spectralProcessingMinIntensityTextBox
+            // 
+            this.spectralProcessingMinIntensityTextBox.Location = new System.Drawing.Point(137, 46);
+            this.spectralProcessingMinIntensityTextBox.Name = "spectralProcessingMinIntensityTextBox";
+            this.spectralProcessingMinIntensityTextBox.Size = new System.Drawing.Size(78, 20);
+            this.spectralProcessingMinIntensityTextBox.TabIndex = 23;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(17, 30);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(60, 13);
+            this.label5.TabIndex = 22;
+            this.label5.Text = "Min Peaks:";
+            // 
+            // spectralProcessingMinPeaksTextBox
+            // 
+            this.spectralProcessingMinPeaksTextBox.Location = new System.Drawing.Point(20, 46);
+            this.spectralProcessingMinPeaksTextBox.Name = "spectralProcessingMinPeaksTextBox";
+            this.spectralProcessingMinPeaksTextBox.Size = new System.Drawing.Size(78, 20);
+            this.spectralProcessingMinPeaksTextBox.TabIndex = 21;
             // 
             // MiscSettingsControl
             // 

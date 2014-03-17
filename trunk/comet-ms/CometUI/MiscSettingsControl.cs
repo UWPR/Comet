@@ -15,11 +15,23 @@ namespace CometUI
     {
         private new Form Parent { get; set; }
 
+        private readonly Dictionary<int, string> _removePrecursorPeak = new Dictionary<int, string>();
+
         public MiscSettingsControl(Form parent)
         {
             InitializeComponent();
 
             Parent = parent;
+
+            _removePrecursorPeak.Add(0, "No");
+            _removePrecursorPeak.Add(1, "Yes");
+            _removePrecursorPeak.Add(2, "Yes/ETD");
+
+            Dictionary<int, string>.KeyCollection remPrecursorPeakKeys = _removePrecursorPeak.Keys;
+            foreach (var key in remPrecursorPeakKeys)
+            {
+                spectralProcessingRemovePrecursorPeakCombo.Items.Add(_removePrecursorPeak[key]);
+            }
 
             InitializeFromDefaultSettings();
         }
@@ -51,8 +63,9 @@ namespace CometUI
                 Settings.Default.spectralProcessingRemovePrecursorTol.ToString(CultureInfo.InvariantCulture);
             spectralProcessingClearMZRangeMinTextBox.Text = Settings.Default.spectralProcessingClearMzMin.ToString(CultureInfo.InvariantCulture);
             spectralProcessingClearMZRangeMaxTextBox.Text = Settings.Default.spectralProcessingClearMzMax.ToString(CultureInfo.InvariantCulture);
+            
             spectralProcessingRemovePrecursorPeakCombo.SelectedItem =
-                Settings.Default.spectralProcessingRemovePrecursorPeak.ToString(CultureInfo.InvariantCulture);
+                _removePrecursorPeak[Settings.Default.spectralProcessingRemovePrecursorPeak];
         }
     }
 }
