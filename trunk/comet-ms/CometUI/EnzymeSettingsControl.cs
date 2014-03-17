@@ -17,7 +17,7 @@ namespace CometUI
         private int SampleEnzymeCurrentSelectedIndex { get; set; }
 
         private new Form  Parent { get; set; }
-        private readonly Dictionary<string, int> _enzymeTermini = new Dictionary<string, int>();
+        private readonly Dictionary<int, string> _enzymeTermini = new Dictionary<int, string>();
 
         public EnzymeSettingsControl(Form parent)
         {
@@ -25,15 +25,15 @@ namespace CometUI
 
             Parent = parent;
 
-            _enzymeTermini.Add("Fully-digested", 2);
-            _enzymeTermini.Add("Semi-digested", 1);
-            _enzymeTermini.Add("N-term", 8);
-            _enzymeTermini.Add("C-term", 9);
+            _enzymeTermini.Add(2, "Fully-digested");
+            _enzymeTermini.Add(1, "Semi-digested");
+            _enzymeTermini.Add(8, "N-term");
+            _enzymeTermini.Add(9, "C-term");
 
-            Dictionary<string, int>.KeyCollection enzymeTerminiKeys = _enzymeTermini.Keys;
+            Dictionary<int, string>.KeyCollection enzymeTerminiKeys = _enzymeTermini.Keys;
             foreach (var key in enzymeTerminiKeys)
             {
-                enzymeTerminiCombo.Items.Add(key);
+                enzymeTerminiCombo.Items.Add(_enzymeTermini[key]);
             }
 
             InitializeFromDefaultSettings();
@@ -41,7 +41,7 @@ namespace CometUI
 
         private void InitializeFromDefaultSettings()
         {
-            enzymeTerminiCombo.SelectedItem = Settings.Default.EnzymeTermini.ToString(CultureInfo.InvariantCulture);
+            enzymeTerminiCombo.SelectedItem = _enzymeTermini[Settings.Default.EnzymeTermini];
 
             // For this particular combo, index == value of allowed missed cleavages
             missedCleavagesCombo.SelectedItem = Settings.Default.AllowedMissedCleavages.ToString(CultureInfo.InvariantCulture);

@@ -176,7 +176,7 @@
             this.precursorMassTolTextBox.Location = new System.Drawing.Point(27, 45);
             this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
             this.precursorMassTolTextBox.Size = new System.Drawing.Size(56, 20);
-            this.precursorMassTolTextBox.TabIndex = 31;
+            this.precursorMassTolTextBox.TabIndex = 1;
             // 
             // precursorIsotopeErrorCombo
             // 

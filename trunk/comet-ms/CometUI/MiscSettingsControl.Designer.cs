@@ -51,8 +51,8 @@
             this.mzxmlMsLevelCombo = new System.Windows.Forms.ComboBox();
             this.label11 = new System.Windows.Forms.Label();
             this.mzxmlActivationLevelCombo = new System.Windows.Forms.ComboBox();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.mzXMLGroupBox = new System.Windows.Forms.GroupBox();
+            this.spectralProcessingGroupBox = new System.Windows.Forms.GroupBox();
             this.label16 = new System.Windows.Forms.Label();
             this.spectralProcessingClearMZRangeMaxTextBox = new System.Windows.Forms.TextBox();
             this.label17 = new System.Windows.Forms.Label();
@@ -66,8 +66,8 @@
             this.spectralProcessingMinIntensityTextBox = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.spectralProcessingMinPeaksTextBox = new System.Windows.Forms.TextBox();
-            this.groupBox1.SuspendLayout();
-            this.groupBox2.SuspendLayout();
+            this.mzXMLGroupBox.SuspendLayout();
+            this.spectralProcessingGroupBox.SuspendLayout();
             this.SuspendLayout();
             // 
             // numThreadsCombo
@@ -114,7 +114,7 @@
             this.numThreadsCombo.Location = new System.Drawing.Point(32, 339);
             this.numThreadsCombo.Name = "numThreadsCombo";
             this.numThreadsCombo.Size = new System.Drawing.Size(65, 21);
-            this.numThreadsCombo.TabIndex = 2;
+            this.numThreadsCombo.TabIndex = 14;
             // 
             // searchEnzymeLabel
             // 
@@ -130,7 +130,7 @@
             this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 286);
             this.spectrumBatchSizeTextBox.Name = "spectrumBatchSizeTextBox";
             this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(165, 20);
-            this.spectrumBatchSizeTextBox.TabIndex = 7;
+            this.spectrumBatchSizeTextBox.TabIndex = 13;
             // 
             // label1
             // 
@@ -155,7 +155,7 @@
             this.numResultsTextBox.Location = new System.Drawing.Point(126, 340);
             this.numResultsTextBox.Name = "numResultsTextBox";
             this.numResultsTextBox.Size = new System.Drawing.Size(71, 20);
-            this.numResultsTextBox.TabIndex = 9;
+            this.numResultsTextBox.TabIndex = 15;
             // 
             // label3
             // 
@@ -192,7 +192,7 @@
             this.maxFragmentChargeCombo.Location = new System.Drawing.Point(397, 270);
             this.maxFragmentChargeCombo.Name = "maxFragmentChargeCombo";
             this.maxFragmentChargeCombo.Size = new System.Drawing.Size(43, 21);
-            this.maxFragmentChargeCombo.TabIndex = 13;
+            this.maxFragmentChargeCombo.TabIndex = 16;
             // 
             // maxPrecursorChargeCombo
             // 
@@ -215,7 +215,7 @@
             this.maxPrecursorChargeCombo.Location = new System.Drawing.Point(397, 306);
             this.maxPrecursorChargeCombo.Name = "maxPrecursorChargeCombo";
             this.maxPrecursorChargeCombo.Size = new System.Drawing.Size(43, 21);
-            this.maxPrecursorChargeCombo.TabIndex = 14;
+            this.maxPrecursorChargeCombo.TabIndex = 17;
             // 
             // clipNTermMethionineCheckBox
             // 
@@ -223,7 +223,7 @@
             this.clipNTermMethionineCheckBox.Location = new System.Drawing.Point(280, 344);
             this.clipNTermMethionineCheckBox.Name = "clipNTermMethionineCheckBox";
             this.clipNTermMethionineCheckBox.Size = new System.Drawing.Size(131, 17);
-            this.clipNTermMethionineCheckBox.TabIndex = 17;
+            this.clipNTermMethionineCheckBox.TabIndex = 18;
             this.clipNTermMethionineCheckBox.Text = "Clip N-term methionine";
             this.clipNTermMethionineCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -232,14 +232,14 @@
             this.mzxmlScanRangeMinTextBox.Location = new System.Drawing.Point(18, 46);
             this.mzxmlScanRangeMinTextBox.Name = "mzxmlScanRangeMinTextBox";
             this.mzxmlScanRangeMinTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlScanRangeMinTextBox.TabIndex = 18;
+            this.mzxmlScanRangeMinTextBox.TabIndex = 1;
             // 
             // mzxmlScanRangeMaxTextBox
             // 
             this.mzxmlScanRangeMaxTextBox.Location = new System.Drawing.Point(117, 46);
             this.mzxmlScanRangeMaxTextBox.Name = "mzxmlScanRangeMaxTextBox";
             this.mzxmlScanRangeMaxTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlScanRangeMaxTextBox.TabIndex = 19;
+            this.mzxmlScanRangeMaxTextBox.TabIndex = 2;
             // 
             // label6
             // 
@@ -282,14 +282,14 @@
             this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(117, 101);
             this.mzxmlPrecursorChargeMaxTextBox.Name = "mzxmlPrecursorChargeMaxTextBox";
             this.mzxmlPrecursorChargeMaxTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlPrecursorChargeMaxTextBox.TabIndex = 24;
+            this.mzxmlPrecursorChargeMaxTextBox.TabIndex = 4;
             // 
             // mzxmlPrecursorChargeMinTextBox
             // 
             this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(18, 101);
             this.mzxmlPrecursorChargeMinTextBox.Name = "mzxmlPrecursorChargeMinTextBox";
             this.mzxmlPrecursorChargeMinTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlPrecursorChargeMinTextBox.TabIndex = 23;
+            this.mzxmlPrecursorChargeMinTextBox.TabIndex = 3;
             // 
             // label10
             // 
@@ -313,7 +313,7 @@
             this.mzxmlMsLevelCombo.Location = new System.Drawing.Point(18, 155);
             this.mzxmlMsLevelCombo.Name = "mzxmlMsLevelCombo";
             this.mzxmlMsLevelCombo.Size = new System.Drawing.Size(52, 21);
-            this.mzxmlMsLevelCombo.TabIndex = 26;
+            this.mzxmlMsLevelCombo.TabIndex = 5;
             // 
             // label11
             // 
@@ -342,50 +342,50 @@
             this.mzxmlActivationLevelCombo.Location = new System.Drawing.Point(105, 155);
             this.mzxmlActivationLevelCombo.Name = "mzxmlActivationLevelCombo";
             this.mzxmlActivationLevelCombo.Size = new System.Drawing.Size(83, 21);
-            this.mzxmlActivationLevelCombo.TabIndex = 28;
+            this.mzxmlActivationLevelCombo.TabIndex = 6;
             // 
-            // groupBox1
+            // mzXMLGroupBox
             // 
-            this.groupBox1.Controls.Add(this.label6);
-            this.groupBox1.Controls.Add(this.mzxmlActivationLevelCombo);
-            this.groupBox1.Controls.Add(this.label11);
-            this.groupBox1.Controls.Add(this.mzxmlScanRangeMinTextBox);
-            this.groupBox1.Controls.Add(this.label7);
-            this.groupBox1.Controls.Add(this.mzxmlMsLevelCombo);
-            this.groupBox1.Controls.Add(this.label10);
-            this.groupBox1.Controls.Add(this.mzxmlScanRangeMaxTextBox);
-            this.groupBox1.Controls.Add(this.label8);
-            this.groupBox1.Controls.Add(this.mzxmlPrecursorChargeMaxTextBox);
-            this.groupBox1.Controls.Add(this.label9);
-            this.groupBox1.Controls.Add(this.mzxmlPrecursorChargeMinTextBox);
-            this.groupBox1.Location = new System.Drawing.Point(28, 24);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(218, 216);
-            this.groupBox1.TabIndex = 30;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "mzXML";
+            this.mzXMLGroupBox.Controls.Add(this.label6);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlActivationLevelCombo);
+            this.mzXMLGroupBox.Controls.Add(this.label11);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlScanRangeMinTextBox);
+            this.mzXMLGroupBox.Controls.Add(this.label7);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlMsLevelCombo);
+            this.mzXMLGroupBox.Controls.Add(this.label10);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlScanRangeMaxTextBox);
+            this.mzXMLGroupBox.Controls.Add(this.label8);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlPrecursorChargeMaxTextBox);
+            this.mzXMLGroupBox.Controls.Add(this.label9);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlPrecursorChargeMinTextBox);
+            this.mzXMLGroupBox.Location = new System.Drawing.Point(28, 24);
+            this.mzXMLGroupBox.Name = "mzXMLGroupBox";
+            this.mzXMLGroupBox.Size = new System.Drawing.Size(218, 216);
+            this.mzXMLGroupBox.TabIndex = 0;
+            this.mzXMLGroupBox.TabStop = false;
+            this.mzXMLGroupBox.Text = "mzXML";
             // 
-            // groupBox2
+            // spectralProcessingGroupBox
             // 
-            this.groupBox2.Controls.Add(this.label16);
-            this.groupBox2.Controls.Add(this.spectralProcessingClearMZRangeMaxTextBox);
-            this.groupBox2.Controls.Add(this.label17);
-            this.groupBox2.Controls.Add(this.spectralProcessingClearMZRangeMinTextBox);
-            this.groupBox2.Controls.Add(this.spectralProcessingRemovePrecursorPeakCombo);
-            this.groupBox2.Controls.Add(this.label15);
-            this.groupBox2.Controls.Add(this.spectralProcessingPrecursorRemovalTolTextBox);
-            this.groupBox2.Controls.Add(this.label14);
-            this.groupBox2.Controls.Add(this.label13);
-            this.groupBox2.Controls.Add(this.label12);
-            this.groupBox2.Controls.Add(this.spectralProcessingMinIntensityTextBox);
-            this.groupBox2.Controls.Add(this.label5);
-            this.groupBox2.Controls.Add(this.spectralProcessingMinPeaksTextBox);
-            this.groupBox2.Location = new System.Drawing.Point(267, 24);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(234, 216);
-            this.groupBox2.TabIndex = 31;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Spectral Processing";
+            this.spectralProcessingGroupBox.Controls.Add(this.label16);
+            this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingClearMZRangeMaxTextBox);
+            this.spectralProcessingGroupBox.Controls.Add(this.label17);
+            this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingClearMZRangeMinTextBox);
+            this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingRemovePrecursorPeakCombo);
+            this.spectralProcessingGroupBox.Controls.Add(this.label15);
+            this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingPrecursorRemovalTolTextBox);
+            this.spectralProcessingGroupBox.Controls.Add(this.label14);
+            this.spectralProcessingGroupBox.Controls.Add(this.label13);
+            this.spectralProcessingGroupBox.Controls.Add(this.label12);
+            this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingMinIntensityTextBox);
+            this.spectralProcessingGroupBox.Controls.Add(this.label5);
+            this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingMinPeaksTextBox);
+            this.spectralProcessingGroupBox.Location = new System.Drawing.Point(267, 24);
+            this.spectralProcessingGroupBox.Name = "spectralProcessingGroupBox";
+            this.spectralProcessingGroupBox.Size = new System.Drawing.Size(234, 216);
+            this.spectralProcessingGroupBox.TabIndex = 7;
+            this.spectralProcessingGroupBox.TabStop = false;
+            this.spectralProcessingGroupBox.Text = "Spectral Processing";
             // 
             // label16
             // 
@@ -401,12 +401,12 @@
             this.spectralProcessingClearMZRangeMaxTextBox.Location = new System.Drawing.Point(137, 172);
             this.spectralProcessingClearMZRangeMaxTextBox.Name = "spectralProcessingClearMZRangeMaxTextBox";
             this.spectralProcessingClearMZRangeMaxTextBox.Size = new System.Drawing.Size(78, 20);
-            this.spectralProcessingClearMZRangeMaxTextBox.TabIndex = 32;
+            this.spectralProcessingClearMZRangeMaxTextBox.TabIndex = 12;
             // 
             // label17
             // 
             this.label17.AutoSize = true;
-            this.label17.Location = new System.Drawing.Point(102, 175);
+            this.label17.Location = new System.Drawing.Point(109, 175);
             this.label17.Name = "label17";
             this.label17.Size = new System.Drawing.Size(16, 13);
             this.label17.TabIndex = 33;
@@ -417,7 +417,7 @@
             this.spectralProcessingClearMZRangeMinTextBox.Location = new System.Drawing.Point(20, 172);
             this.spectralProcessingClearMZRangeMinTextBox.Name = "spectralProcessingClearMZRangeMinTextBox";
             this.spectralProcessingClearMZRangeMinTextBox.Size = new System.Drawing.Size(78, 20);
-            this.spectralProcessingClearMZRangeMinTextBox.TabIndex = 31;
+            this.spectralProcessingClearMZRangeMinTextBox.TabIndex = 11;
             // 
             // spectralProcessingRemovePrecursorPeakCombo
             // 
@@ -429,7 +429,7 @@
             this.spectralProcessingRemovePrecursorPeakCombo.Location = new System.Drawing.Point(147, 119);
             this.spectralProcessingRemovePrecursorPeakCombo.Name = "spectralProcessingRemovePrecursorPeakCombo";
             this.spectralProcessingRemovePrecursorPeakCombo.Size = new System.Drawing.Size(68, 21);
-            this.spectralProcessingRemovePrecursorPeakCombo.TabIndex = 29;
+            this.spectralProcessingRemovePrecursorPeakCombo.TabIndex = 10;
             // 
             // label15
             // 
@@ -445,7 +445,7 @@
             this.spectralProcessingPrecursorRemovalTolTextBox.Location = new System.Drawing.Point(149, 82);
             this.spectralProcessingPrecursorRemovalTolTextBox.Name = "spectralProcessingPrecursorRemovalTolTextBox";
             this.spectralProcessingPrecursorRemovalTolTextBox.Size = new System.Drawing.Size(66, 20);
-            this.spectralProcessingPrecursorRemovalTolTextBox.TabIndex = 27;
+            this.spectralProcessingPrecursorRemovalTolTextBox.TabIndex = 9;
             // 
             // label14
             // 
@@ -481,7 +481,7 @@
             this.spectralProcessingMinIntensityTextBox.Location = new System.Drawing.Point(137, 46);
             this.spectralProcessingMinIntensityTextBox.Name = "spectralProcessingMinIntensityTextBox";
             this.spectralProcessingMinIntensityTextBox.Size = new System.Drawing.Size(78, 20);
-            this.spectralProcessingMinIntensityTextBox.TabIndex = 23;
+            this.spectralProcessingMinIntensityTextBox.TabIndex = 8;
             // 
             // label5
             // 
@@ -497,18 +497,18 @@
             this.spectralProcessingMinPeaksTextBox.Location = new System.Drawing.Point(20, 46);
             this.spectralProcessingMinPeaksTextBox.Name = "spectralProcessingMinPeaksTextBox";
             this.spectralProcessingMinPeaksTextBox.Size = new System.Drawing.Size(78, 20);
-            this.spectralProcessingMinPeaksTextBox.TabIndex = 21;
+            this.spectralProcessingMinPeaksTextBox.TabIndex = 7;
             // 
             // MiscSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.groupBox2);
+            this.Controls.Add(this.spectralProcessingGroupBox);
             this.Controls.Add(this.maxPrecursorChargeCombo);
             this.Controls.Add(this.maxFragmentChargeCombo);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label4);
-            this.Controls.Add(this.groupBox1);
+            this.Controls.Add(this.mzXMLGroupBox);
             this.Controls.Add(this.clipNTermMethionineCheckBox);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.numResultsTextBox);
@@ -518,10 +518,10 @@
             this.Controls.Add(this.numThreadsCombo);
             this.Name = "MiscSettingsControl";
             this.Size = new System.Drawing.Size(527, 450);
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
-            this.groupBox2.ResumeLayout(false);
-            this.groupBox2.PerformLayout();
+            this.mzXMLGroupBox.ResumeLayout(false);
+            this.mzXMLGroupBox.PerformLayout();
+            this.spectralProcessingGroupBox.ResumeLayout(false);
+            this.spectralProcessingGroupBox.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -552,8 +552,8 @@
         private System.Windows.Forms.ComboBox mzxmlMsLevelCombo;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.ComboBox mzxmlActivationLevelCombo;
-        private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.GroupBox mzXMLGroupBox;
+        private System.Windows.Forms.GroupBox spectralProcessingGroupBox;
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.TextBox spectralProcessingMinIntensityTextBox;
         private System.Windows.Forms.Label label5;

@@ -85,10 +85,10 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Fully-digested")]
-        public string EnzymeTermini {
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
+        public int EnzymeTermini {
             get {
-                return ((string)(this["EnzymeTermini"]));
+                return ((int)(this["EnzymeTermini"]));
             }
             set {
                 this["EnzymeTermini"] = value;
