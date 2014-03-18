@@ -30,23 +30,17 @@
         {
             this.numThreadsCombo = new System.Windows.Forms.ComboBox();
             this.searchEnzymeLabel = new System.Windows.Forms.Label();
-            this.spectrumBatchSizeTextBox = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
-            this.numResultsTextBox = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.maxFragmentChargeCombo = new System.Windows.Forms.ComboBox();
             this.maxPrecursorChargeCombo = new System.Windows.Forms.ComboBox();
             this.clipNTermMethionineCheckBox = new System.Windows.Forms.CheckBox();
-            this.mzxmlScanRangeMinTextBox = new System.Windows.Forms.TextBox();
-            this.mzxmlScanRangeMaxTextBox = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
             this.label7 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
-            this.mzxmlPrecursorChargeMaxTextBox = new System.Windows.Forms.TextBox();
-            this.mzxmlPrecursorChargeMinTextBox = new System.Windows.Forms.TextBox();
             this.label10 = new System.Windows.Forms.Label();
             this.mzxmlMsLevelCombo = new System.Windows.Forms.ComboBox();
             this.label11 = new System.Windows.Forms.Label();
@@ -65,9 +59,22 @@
             this.label12 = new System.Windows.Forms.Label();
             this.spectralProcessingMinIntensityTextBox = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
-            this.spectralProcessingMinPeaksTextBox = new System.Windows.Forms.TextBox();
+            this.mzxmlScanRangeMinTextBox = new System.Windows.Forms.NumericUpDown();
+            this.mzxmlScanRangeMaxTextBox = new System.Windows.Forms.NumericUpDown();
+            this.mzxmlPrecursorChargeMinTextBox = new System.Windows.Forms.NumericUpDown();
+            this.mzxmlPrecursorChargeMaxTextBox = new System.Windows.Forms.NumericUpDown();
+            this.spectralProcessingMinPeaksTextBox = new System.Windows.Forms.NumericUpDown();
+            this.spectrumBatchSizeTextBox = new System.Windows.Forms.NumericUpDown();
+            this.numResultsTextBox = new System.Windows.Forms.NumericUpDown();
             this.mzXMLGroupBox.SuspendLayout();
             this.spectralProcessingGroupBox.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.mzxmlScanRangeMinTextBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.mzxmlScanRangeMaxTextBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.mzxmlPrecursorChargeMinTextBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.mzxmlPrecursorChargeMaxTextBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.spectralProcessingMinPeaksTextBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.spectrumBatchSizeTextBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numResultsTextBox)).BeginInit();
             this.SuspendLayout();
             // 
             // numThreadsCombo
@@ -125,13 +132,6 @@
             this.searchEnzymeLabel.TabIndex = 3;
             this.searchEnzymeLabel.Text = "Num Threads:";
             // 
-            // spectrumBatchSizeTextBox
-            // 
-            this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 286);
-            this.spectrumBatchSizeTextBox.Name = "spectrumBatchSizeTextBox";
-            this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(165, 20);
-            this.spectrumBatchSizeTextBox.TabIndex = 13;
-            // 
             // label1
             // 
             this.label1.AutoSize = true;
@@ -149,13 +149,6 @@
             this.label2.Size = new System.Drawing.Size(70, 13);
             this.label2.TabIndex = 10;
             this.label2.Text = "Num Results:";
-            // 
-            // numResultsTextBox
-            // 
-            this.numResultsTextBox.Location = new System.Drawing.Point(126, 340);
-            this.numResultsTextBox.Name = "numResultsTextBox";
-            this.numResultsTextBox.Size = new System.Drawing.Size(71, 20);
-            this.numResultsTextBox.TabIndex = 15;
             // 
             // label3
             // 
@@ -227,20 +220,6 @@
             this.clipNTermMethionineCheckBox.Text = "Clip N-term methionine";
             this.clipNTermMethionineCheckBox.UseVisualStyleBackColor = true;
             // 
-            // mzxmlScanRangeMinTextBox
-            // 
-            this.mzxmlScanRangeMinTextBox.Location = new System.Drawing.Point(18, 46);
-            this.mzxmlScanRangeMinTextBox.Name = "mzxmlScanRangeMinTextBox";
-            this.mzxmlScanRangeMinTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlScanRangeMinTextBox.TabIndex = 1;
-            // 
-            // mzxmlScanRangeMaxTextBox
-            // 
-            this.mzxmlScanRangeMaxTextBox.Location = new System.Drawing.Point(117, 46);
-            this.mzxmlScanRangeMaxTextBox.Name = "mzxmlScanRangeMaxTextBox";
-            this.mzxmlScanRangeMaxTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlScanRangeMaxTextBox.TabIndex = 2;
-            // 
             // label6
             // 
             this.label6.AutoSize = true;
@@ -276,20 +255,6 @@
             this.label9.Size = new System.Drawing.Size(16, 13);
             this.label9.TabIndex = 25;
             this.label9.Text = "to";
-            // 
-            // mzxmlPrecursorChargeMaxTextBox
-            // 
-            this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(117, 101);
-            this.mzxmlPrecursorChargeMaxTextBox.Name = "mzxmlPrecursorChargeMaxTextBox";
-            this.mzxmlPrecursorChargeMaxTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlPrecursorChargeMaxTextBox.TabIndex = 4;
-            // 
-            // mzxmlPrecursorChargeMinTextBox
-            // 
-            this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(18, 101);
-            this.mzxmlPrecursorChargeMinTextBox.Name = "mzxmlPrecursorChargeMinTextBox";
-            this.mzxmlPrecursorChargeMinTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlPrecursorChargeMinTextBox.TabIndex = 3;
             // 
             // label10
             // 
@@ -346,18 +311,18 @@
             // 
             // mzXMLGroupBox
             // 
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlPrecursorChargeMaxTextBox);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlPrecursorChargeMinTextBox);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlScanRangeMaxTextBox);
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlScanRangeMinTextBox);
             this.mzXMLGroupBox.Controls.Add(this.label6);
             this.mzXMLGroupBox.Controls.Add(this.mzxmlActivationLevelCombo);
             this.mzXMLGroupBox.Controls.Add(this.label11);
-            this.mzXMLGroupBox.Controls.Add(this.mzxmlScanRangeMinTextBox);
             this.mzXMLGroupBox.Controls.Add(this.label7);
             this.mzXMLGroupBox.Controls.Add(this.mzxmlMsLevelCombo);
             this.mzXMLGroupBox.Controls.Add(this.label10);
-            this.mzXMLGroupBox.Controls.Add(this.mzxmlScanRangeMaxTextBox);
             this.mzXMLGroupBox.Controls.Add(this.label8);
-            this.mzXMLGroupBox.Controls.Add(this.mzxmlPrecursorChargeMaxTextBox);
             this.mzXMLGroupBox.Controls.Add(this.label9);
-            this.mzXMLGroupBox.Controls.Add(this.mzxmlPrecursorChargeMinTextBox);
             this.mzXMLGroupBox.Location = new System.Drawing.Point(28, 24);
             this.mzXMLGroupBox.Name = "mzXMLGroupBox";
             this.mzXMLGroupBox.Size = new System.Drawing.Size(218, 216);
@@ -367,6 +332,7 @@
             // 
             // spectralProcessingGroupBox
             // 
+            this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingMinPeaksTextBox);
             this.spectralProcessingGroupBox.Controls.Add(this.label16);
             this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingClearMZRangeMaxTextBox);
             this.spectralProcessingGroupBox.Controls.Add(this.label17);
@@ -379,7 +345,6 @@
             this.spectralProcessingGroupBox.Controls.Add(this.label12);
             this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingMinIntensityTextBox);
             this.spectralProcessingGroupBox.Controls.Add(this.label5);
-            this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingMinPeaksTextBox);
             this.spectralProcessingGroupBox.Location = new System.Drawing.Point(267, 24);
             this.spectralProcessingGroupBox.Name = "spectralProcessingGroupBox";
             this.spectralProcessingGroupBox.Size = new System.Drawing.Size(234, 216);
@@ -492,17 +457,86 @@
             this.label5.TabIndex = 22;
             this.label5.Text = "Min Peaks:";
             // 
+            // mzxmlScanRangeMinTextBox
+            // 
+            this.mzxmlScanRangeMinTextBox.Location = new System.Drawing.Point(18, 46);
+            this.mzxmlScanRangeMinTextBox.Maximum = new decimal(new int[] {
+            -1486618624,
+            232830643,
+            0,
+            0});
+            this.mzxmlScanRangeMinTextBox.Name = "mzxmlScanRangeMinTextBox";
+            this.mzxmlScanRangeMinTextBox.Size = new System.Drawing.Size(71, 20);
+            this.mzxmlScanRangeMinTextBox.TabIndex = 1;
+            // 
+            // mzxmlScanRangeMaxTextBox
+            // 
+            this.mzxmlScanRangeMaxTextBox.Location = new System.Drawing.Point(117, 46);
+            this.mzxmlScanRangeMaxTextBox.Maximum = new decimal(new int[] {
+            -1486618624,
+            232830643,
+            0,
+            0});
+            this.mzxmlScanRangeMaxTextBox.Name = "mzxmlScanRangeMaxTextBox";
+            this.mzxmlScanRangeMaxTextBox.Size = new System.Drawing.Size(71, 20);
+            this.mzxmlScanRangeMaxTextBox.TabIndex = 2;
+            // 
+            // mzxmlPrecursorChargeMinTextBox
+            // 
+            this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(18, 101);
+            this.mzxmlPrecursorChargeMinTextBox.Name = "mzxmlPrecursorChargeMinTextBox";
+            this.mzxmlPrecursorChargeMinTextBox.Size = new System.Drawing.Size(71, 20);
+            this.mzxmlPrecursorChargeMinTextBox.TabIndex = 3;
+            // 
+            // mzxmlPrecursorChargeMaxTextBox
+            // 
+            this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(117, 101);
+            this.mzxmlPrecursorChargeMaxTextBox.Name = "mzxmlPrecursorChargeMaxTextBox";
+            this.mzxmlPrecursorChargeMaxTextBox.Size = new System.Drawing.Size(71, 20);
+            this.mzxmlPrecursorChargeMaxTextBox.TabIndex = 4;
+            // 
             // spectralProcessingMinPeaksTextBox
             // 
             this.spectralProcessingMinPeaksTextBox.Location = new System.Drawing.Point(20, 46);
+            this.spectralProcessingMinPeaksTextBox.Maximum = new decimal(new int[] {
+            -1486618624,
+            232830643,
+            0,
+            0});
             this.spectralProcessingMinPeaksTextBox.Name = "spectralProcessingMinPeaksTextBox";
             this.spectralProcessingMinPeaksTextBox.Size = new System.Drawing.Size(78, 20);
             this.spectralProcessingMinPeaksTextBox.TabIndex = 7;
+            // 
+            // spectrumBatchSizeTextBox
+            // 
+            this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 286);
+            this.spectrumBatchSizeTextBox.Maximum = new decimal(new int[] {
+            -1486618624,
+            232830643,
+            0,
+            0});
+            this.spectrumBatchSizeTextBox.Name = "spectrumBatchSizeTextBox";
+            this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(107, 20);
+            this.spectrumBatchSizeTextBox.TabIndex = 13;
+            // 
+            // numResultsTextBox
+            // 
+            this.numResultsTextBox.Location = new System.Drawing.Point(126, 339);
+            this.numResultsTextBox.Maximum = new decimal(new int[] {
+            -1486618624,
+            232830643,
+            0,
+            0});
+            this.numResultsTextBox.Name = "numResultsTextBox";
+            this.numResultsTextBox.Size = new System.Drawing.Size(74, 20);
+            this.numResultsTextBox.TabIndex = 15;
             // 
             // MiscSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.numResultsTextBox);
+            this.Controls.Add(this.spectrumBatchSizeTextBox);
             this.Controls.Add(this.spectralProcessingGroupBox);
             this.Controls.Add(this.maxPrecursorChargeCombo);
             this.Controls.Add(this.maxFragmentChargeCombo);
@@ -511,9 +545,7 @@
             this.Controls.Add(this.mzXMLGroupBox);
             this.Controls.Add(this.clipNTermMethionineCheckBox);
             this.Controls.Add(this.label2);
-            this.Controls.Add(this.numResultsTextBox);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.spectrumBatchSizeTextBox);
             this.Controls.Add(this.searchEnzymeLabel);
             this.Controls.Add(this.numThreadsCombo);
             this.Name = "MiscSettingsControl";
@@ -522,6 +554,13 @@
             this.mzXMLGroupBox.PerformLayout();
             this.spectralProcessingGroupBox.ResumeLayout(false);
             this.spectralProcessingGroupBox.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.mzxmlScanRangeMinTextBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.mzxmlScanRangeMaxTextBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.mzxmlPrecursorChargeMinTextBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.mzxmlPrecursorChargeMaxTextBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.spectralProcessingMinPeaksTextBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.spectrumBatchSizeTextBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numResultsTextBox)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -531,23 +570,17 @@
 
         private System.Windows.Forms.ComboBox numThreadsCombo;
         private System.Windows.Forms.Label searchEnzymeLabel;
-        private System.Windows.Forms.TextBox spectrumBatchSizeTextBox;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.TextBox numResultsTextBox;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.ComboBox maxFragmentChargeCombo;
         private System.Windows.Forms.ComboBox maxPrecursorChargeCombo;
         private System.Windows.Forms.CheckBox clipNTermMethionineCheckBox;
-        private System.Windows.Forms.TextBox mzxmlScanRangeMinTextBox;
-        private System.Windows.Forms.TextBox mzxmlScanRangeMaxTextBox;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Label label8;
         private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.TextBox mzxmlPrecursorChargeMaxTextBox;
-        private System.Windows.Forms.TextBox mzxmlPrecursorChargeMinTextBox;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.ComboBox mzxmlMsLevelCombo;
         private System.Windows.Forms.Label label11;
@@ -557,7 +590,6 @@
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.TextBox spectralProcessingMinIntensityTextBox;
         private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.TextBox spectralProcessingMinPeaksTextBox;
         private System.Windows.Forms.TextBox spectralProcessingPrecursorRemovalTolTextBox;
         private System.Windows.Forms.Label label14;
         private System.Windows.Forms.Label label13;
@@ -567,5 +599,12 @@
         private System.Windows.Forms.TextBox spectralProcessingClearMZRangeMaxTextBox;
         private System.Windows.Forms.Label label17;
         private System.Windows.Forms.TextBox spectralProcessingClearMZRangeMinTextBox;
+        private System.Windows.Forms.NumericUpDown mzxmlScanRangeMinTextBox;
+        private System.Windows.Forms.NumericUpDown mzxmlScanRangeMaxTextBox;
+        private System.Windows.Forms.NumericUpDown mzxmlPrecursorChargeMinTextBox;
+        private System.Windows.Forms.NumericUpDown mzxmlPrecursorChargeMaxTextBox;
+        private System.Windows.Forms.NumericUpDown spectralProcessingMinPeaksTextBox;
+        private System.Windows.Forms.NumericUpDown spectrumBatchSizeTextBox;
+        private System.Windows.Forms.NumericUpDown numResultsTextBox;
     }
 }
