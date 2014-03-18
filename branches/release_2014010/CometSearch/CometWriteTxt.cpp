@@ -98,8 +98,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
                                  FILE *fpout)
 {
-   if ((!bDecoy && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > 0.0)
-         || (bDecoy && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > 0.0))
+   if ((!bDecoy && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
+         || (bDecoy && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
    {
       char szBuf[SIZE_BUF];
 
@@ -130,21 +130,19 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       
       for (size_t iWhichResult=0; iWhichResult<min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches); iWhichResult++)
       {
-         if (pOutput[iWhichResult].fXcorr <= 0)
-         {
+         if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
             continue;
-         }
+
          fprintf(fpout, "%s", szBuf);
 
-         double delta_cn;
-         if (pOutput[0].fXcorr <=0)
-         {
-            delta_cn = 0;
-         }
+         double dDeltaCn;
+
+         if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr >= 0.0)
+            dDeltaCn = 1.0 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;
+         else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr < 0.0)
+            dDeltaCn = 1.0;
          else
-         {
-            delta_cn = 1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;   // pOutput[0].fXcorr is >0 to enter this fn 
-         }
+            dDeltaCn = 0.0;
 
          fprintf(fpout,
                "%0.4f\t"
@@ -157,7 +155,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                "%d\t"
                "%lu\t",
                   pOutput[iWhichResult].dPepMass - PROTON_MASS,
-                  delta_cn,
+                  dDeltaCn,
                   pOutput[iWhichResult].fScoreSp,
                   pOutput[iWhichResult].iRankSp,
                   pOutput[iWhichResult].fXcorr,
@@ -202,7 +200,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          // e-value
          fprintf(fpout, "%0.2E\n", pOutput[iWhichResult].dExpect);
       }
-
    }
 }
 
@@ -229,7 +226,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
    else
       pOutput = pQuery->_pResults;
 
-   if (pOutput[0].fXcorr > 0.0)
+   if (pOutput[0].fXcorr > XCORR_CUTOFF)
       PrintTxtLine(0, pOutput, fpout);  // print top hit only right now
    else
       fprintf(fpout, "\n");
@@ -250,11 +247,20 @@ void CometWriteTxt::PrintTxtLine(int iWhichResult,
    int  i;
    char szBuf[SIZE_BUF];
 
+   double dDeltaCn;
+
+   if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr >= 0.0)
+      dDeltaCn = 1.0 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;
+   else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr < 0.0)
+      dDeltaCn = 1.0;
+   else
+      dDeltaCn = 0.0;
+
    sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
-         1.000000 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr,   // pOutput[0].fXcorr is >0 to enter this fn
+         dDeltaCn,
          pOutput[iWhichResult].fScoreSp,
          pOutput[iWhichResult].iMatchedIons, 
          pOutput[iWhichResult].iTotalIons);

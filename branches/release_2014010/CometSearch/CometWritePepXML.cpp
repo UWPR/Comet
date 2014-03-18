@@ -443,7 +443,13 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          // calculate deltaCn only if sequences are less than 0.75 similar
          if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
          {
-            dDeltaCn = (pOutput[i].fXcorr - pOutput[j].fXcorr) / pOutput[i].fXcorr;
+            if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+               dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
+            else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+               dDeltaCn = 1.0;
+            else
+               dDeltaCn = 0.0;
+
             bNoDeltaCnYet = 0;
    
             if (j - i > 1)
@@ -458,10 +464,17 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       if (i > 0 && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
-      if (pOutput[i].fXcorr > 0.0)
+      if (pOutput[i].fXcorr > XCORR_CUTOFF)
       {
          if (bDeltaCnStar && i+1<iDoXcorrCount)
-            dDeltaCnStar = (pOutput[i].fXcorr - pOutput[i+1].fXcorr)/pOutput[i].fXcorr;
+         {
+            if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr >= 0.0)
+               dDeltaCnStar = 1.0 - pOutput[i+1].fXcorr/pOutput[i].fXcorr;
+            else if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr < 0.0)
+               dDeltaCnStar = 1.0;
+            else
+               dDeltaCnStar = 0.0;
+         }
          else
             dDeltaCnStar = 0.0;
 

@@ -282,7 +282,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
       if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
-      if (pOutput[i].fXcorr > 0)
+      if (pOutput[i].fXcorr > XCORR_CUTOFF)
          PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, pOutput, fpout);
    } 
 
@@ -313,7 +313,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
                dVal = pQuery->fDecoyPar[0] + pQuery->fDecoyPar[1] * i;
                dExpect = pow(10.0, dVal);
 
-               if (dExpect>999.0)
+               if (dExpect > 999.0)
                   dExpect = 999.0;
 
                fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
@@ -342,7 +342,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
                dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
                dExpect = pow(10.0, dVal);
 
-               if (dExpect>999.0)
+               if (dExpect > 999.0)
                   dExpect = 999.0;
 
                fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
@@ -374,12 +374,21 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
         iWidthPrintRef;
    char szBuf[SIZE_BUF];
 
+   double dDeltaCn;
+
+   if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr >= 0.0)
+      dDeltaCn = 1.0 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr;
+   else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr < 0.0)
+      dDeltaCn = 1.0;
+   else
+      dDeltaCn = 0.0;
+
    sprintf(szBuf, "%3d. %3d /%3d  %9.4f  %6.4f %7.4f ",
          iWhichResult+1,
          iRankXcorr,
          pOutput[iWhichResult].iRankSp,
          pOutput[iWhichResult].dPepMass,
-         1.000 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr,
+         dDeltaCn,
          pOutput[iWhichResult].fXcorr);
 
    if (g_staticParams.options.bPrintExpectScore)

@@ -61,6 +61,12 @@ class CometSearchManager;
 #define ION_SERIES_Y                4
 #define ION_SERIES_Z                5
 
+#ifdef CRUX
+#define XCORR_CUTOFF                -999.0
+#else
+#define XCORR_CUTOFF                0.0
+#endif
+
 
 struct msdata                    // used in the preprocessing
 {
@@ -666,8 +672,8 @@ struct Query
       fLowestSpScore = 0.0;
       fLowestDecoySpScore = 0.0;
 
-      fLowestCorrScore = 0.0;
-      fLowestDecoyCorrScore = 0.0;
+      fLowestCorrScore = XCORR_CUTOFF;
+      fLowestDecoyCorrScore = XCORR_CUTOFF;
 
       _uliNumMatchedPeptides = 0;
       _uliNumMatchedDecoyPeptides = 0;

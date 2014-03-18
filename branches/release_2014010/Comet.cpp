@@ -1290,11 +1290,11 @@ max_variable_mods_in_peptide = 5\n\
 # fragment ions\n\
 #\n\
 # ion trap ms/ms:  1.0005 tolerance, 0.4 offset (mono masses), theoretical_fragment_ions = 1\n\
-# high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0\n\
+# high res ms/ms:    0.05 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0\n\
 #\n\
 fragment_bin_tol = 1.0005              # binning to use on fragment ions\n\
 fragment_bin_offset = 0.4              # offset position to start the binning (0.0 to 1.0)\n\
-theoretical_fragment_ions = 1          # 0=default peak shape, 1=M peak only\n\
+theoretical_fragment_ions = 1          # 0=use flanking peaks, 1=M peak only\n\
 use_A_ions = 0\n\
 use_B_ions = 1\n\
 use_C_ions = 0\n\

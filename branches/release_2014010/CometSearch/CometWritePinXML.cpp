@@ -40,13 +40,13 @@ bool CometWritePinXML::WritePinXML(FILE *fpout)
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
       // print out entry only if there's a valid target or decoy search hit
-      if (g_pvQuery.at(i)->_pResults[0].fXcorr > 0.0
-            || (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > 0.0))
+      if (g_pvQuery.at(i)->_pResults[0].fXcorr > XCORR_CUTOFF
+            || (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
       {
          fprintf(fpout, "<fragSpectrumScan xmlns=\"http://per-colator.com/percolator_in/12\" scanNumber=\"%d\">\n",
                g_pvQuery[i]->_spectrumInfoInternal.iScanNumber);
 
-         if (g_pvQuery.at(i)->_pResults[0].fXcorr > 0.0)
+         if (g_pvQuery.at(i)->_pResults[0].fXcorr > XCORR_CUTOFF)
          {
             if (!PrintResults(i, fpout, 0))  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
             {
@@ -54,7 +54,7 @@ bool CometWritePinXML::WritePinXML(FILE *fpout)
             }
          }
 
-         if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > 0.0)
+         if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > XCORR_CUTOFF)
          {
             if (!PrintResults(i, fpout, 1))  // print decoy hit
             {
@@ -221,17 +221,25 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
       // calculate deltaCn only if sequences are less than 0.75 similar
       if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
       {
-         dDeltaCn = (pOutput[0].fXcorr - pOutput[j].fXcorr) / pOutput[0].fXcorr;
+         if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+            dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[0].fXcorr;
+         else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+            dDeltaCn = 1.0;
+         else
+            dDeltaCn = 0.0;
+
          bNoDeltaCnYet = 0;
 
          break;
       }
    }
 
-   if (pOutput[0].fXcorr > 0.0)
-      dLastDeltaCn = (pOutput[0].fXcorr - pOutput[iDoXcorrCount].fXcorr) / pOutput[0].fXcorr;
-   else
+   if (pOutput[0].fXcorr > 0.0 && pOutput[iDoXcorrCount].fXcorr >= 0.0)
+      dLastDeltaCn = 1.0 - pOutput[iDoXcorrCount].fXcorr/pOutput[0].fXcorr;
+   else if (pOutput[0].fXcorr > 0.0 && pOutput[iDoXcorrCount].fXcorr < 0.0)
       dLastDeltaCn = 1.0;
+   else
+      dLastDeltaCn = 0.0;
 
    if (bNoDeltaCnYet)
       dDeltaCn = 1.0;

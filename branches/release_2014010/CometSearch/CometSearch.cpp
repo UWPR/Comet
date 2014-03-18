@@ -1170,8 +1170,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       }
    }
 
-   if (dXcorr <= 0.0)
-      dXcorr = 0.0;
+   if (dXcorr < XCORR_CUTOFF)
+      dXcorr = XCORR_CUTOFF;
    else
       dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E5.
 
@@ -1188,6 +1188,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       int iTmp;
 
       iTmp = (int)(dXcorr * 10.0 + 0.5);
+
+      if (iTmp < 0) // possible for CRUX compiled option
+         iTmp = 0;
+
       if (iTmp >= HISTO_SIZE)
          iTmp = HISTO_SIZE - 1;
    
@@ -1376,9 +1380,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
             = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
-
-      if (dXcorr < 0.0)
-         dXcorr = 0.0;
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
 
