@@ -29,14 +29,14 @@
         private void InitializeComponent()
         {
             this.staticModsDataGridView = new System.Windows.Forms.DataGridView();
-            this.staticCTermPeptideTextBox = new System.Windows.Forms.TextBox();
+            this.staticCTermPeptideTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
-            this.staticNTermPeptideTextBox = new System.Windows.Forms.TextBox();
-            this.staticCTermProteinTextBox = new System.Windows.Forms.TextBox();
+            this.staticNTermPeptideTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
+            this.staticCTermProteinTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.staticNTermProteinTextBox = new System.Windows.Forms.TextBox();
+            this.staticNTermProteinTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
             this.staticModsNameCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.staticModsResidueCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.staticModsMassDiffCol = new System.Windows.Forms.DataGridViewTextBoxColumn();

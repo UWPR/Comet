@@ -32,9 +32,9 @@
             this.fragmentMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label9 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
-            this.fragmentOffsetTextBox = new System.Windows.Forms.TextBox();
+            this.fragmentOffsetTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
             this.label7 = new System.Windows.Forms.Label();
-            this.fragmentBinSizeTextBox = new System.Windows.Forms.TextBox();
+            this.fragmentBinSizeTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.precursorGroupBox = new System.Windows.Forms.GroupBox();
@@ -55,7 +55,7 @@
             this.xIonCheckBox = new System.Windows.Forms.CheckBox();
             this.cIonCheckBox = new System.Windows.Forms.CheckBox();
             this.aIonCheckBox = new System.Windows.Forms.CheckBox();
-            this.precursorMassTolTextBox = new System.Windows.Forms.TextBox();
+            this.precursorMassTolTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
             this.fragmentGroupBox.SuspendLayout();
             this.precursorGroupBox.SuspendLayout();
             this.groupBox1.SuspendLayout();

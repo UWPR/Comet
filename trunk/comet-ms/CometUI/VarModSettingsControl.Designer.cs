@@ -29,20 +29,20 @@
         private void InitializeComponent()
         {
             this.varModsDataGridView = new System.Windows.Forms.DataGridView();
-            this.variableNTerminusTextBox = new System.Windows.Forms.TextBox();
-            this.variableCTerminusTextBox = new System.Windows.Forms.TextBox();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.variableNTerminusDistTextBox = new System.Windows.Forms.TextBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.variableCTerminusDistTextBox = new System.Windows.Forms.TextBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.maxModsInPeptideTextBox = new System.Windows.Forms.NumericUpDown();
             this.varModsResidueCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.varModsMassCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.varModsBinaryModCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.varModsMaxModsPerPeptide = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.variableNTerminusTextBox = new CometUI.NumericTextBox();
+            this.variableCTerminusTextBox = new CometUI.NumericTextBox();
+            this.label2 = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
+            this.label4 = new System.Windows.Forms.Label();
+            this.variableNTerminusDistTextBox = new CometUI.NumericTextBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.variableCTerminusDistTextBox = new CometUI.NumericTextBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.maxModsInPeptideTextBox = new System.Windows.Forms.NumericUpDown();
             ((System.ComponentModel.ISupportInitialize)(this.varModsDataGridView)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.maxModsInPeptideTextBox)).BeginInit();
             this.SuspendLayout();
@@ -63,8 +63,37 @@
             this.varModsDataGridView.Size = new System.Drawing.Size(443, 155);
             this.varModsDataGridView.TabIndex = 0;
             // 
+            // varModsResidueCol
+            // 
+            this.varModsResidueCol.HeaderText = "Residue";
+            this.varModsResidueCol.Name = "varModsResidueCol";
+            this.varModsResidueCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.varModsResidueCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            // 
+            // varModsMassCol
+            // 
+            this.varModsMassCol.HeaderText = "Mass Diff";
+            this.varModsMassCol.Name = "varModsMassCol";
+            this.varModsMassCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.varModsMassCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            // 
+            // varModsBinaryModCol
+            // 
+            this.varModsBinaryModCol.HeaderText = "Binary Mod";
+            this.varModsBinaryModCol.Name = "varModsBinaryModCol";
+            this.varModsBinaryModCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.varModsBinaryModCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            // 
+            // varModsMaxModsPerPeptide
+            // 
+            this.varModsMaxModsPerPeptide.HeaderText = "Max Mods";
+            this.varModsMaxModsPerPeptide.Name = "varModsMaxModsPerPeptide";
+            this.varModsMaxModsPerPeptide.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.varModsMaxModsPerPeptide.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            // 
             // variableNTerminusTextBox
             // 
+            this.variableNTerminusTextBox.AllowSpace = false;
             this.variableNTerminusTextBox.Location = new System.Drawing.Point(89, 214);
             this.variableNTerminusTextBox.Name = "variableNTerminusTextBox";
             this.variableNTerminusTextBox.Size = new System.Drawing.Size(63, 20);
@@ -72,6 +101,7 @@
             // 
             // variableCTerminusTextBox
             // 
+            this.variableCTerminusTextBox.AllowSpace = false;
             this.variableCTerminusTextBox.Location = new System.Drawing.Point(89, 240);
             this.variableCTerminusTextBox.Name = "variableCTerminusTextBox";
             this.variableCTerminusTextBox.Size = new System.Drawing.Size(63, 20);
@@ -106,6 +136,7 @@
             // 
             // variableNTerminusDistTextBox
             // 
+            this.variableNTerminusDistTextBox.AllowSpace = false;
             this.variableNTerminusDistTextBox.Location = new System.Drawing.Point(229, 214);
             this.variableNTerminusDistTextBox.Name = "variableNTerminusDistTextBox";
             this.variableNTerminusDistTextBox.Size = new System.Drawing.Size(63, 20);
@@ -122,6 +153,7 @@
             // 
             // variableCTerminusDistTextBox
             // 
+            this.variableCTerminusDistTextBox.AllowSpace = false;
             this.variableCTerminusDistTextBox.Location = new System.Drawing.Point(229, 240);
             this.variableCTerminusDistTextBox.Name = "variableCTerminusDistTextBox";
             this.variableCTerminusDistTextBox.Size = new System.Drawing.Size(63, 20);
@@ -147,34 +179,6 @@
             this.maxModsInPeptideTextBox.Name = "maxModsInPeptideTextBox";
             this.maxModsInPeptideTextBox.Size = new System.Drawing.Size(104, 20);
             this.maxModsInPeptideTextBox.TabIndex = 32;
-            // 
-            // varModsResidueCol
-            // 
-            this.varModsResidueCol.HeaderText = "Residue";
-            this.varModsResidueCol.Name = "varModsResidueCol";
-            this.varModsResidueCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.varModsResidueCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
-            // varModsMassCol
-            // 
-            this.varModsMassCol.HeaderText = "Mass Diff";
-            this.varModsMassCol.Name = "varModsMassCol";
-            this.varModsMassCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.varModsMassCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
-            // varModsBinaryModCol
-            // 
-            this.varModsBinaryModCol.HeaderText = "Binary Mod";
-            this.varModsBinaryModCol.Name = "varModsBinaryModCol";
-            this.varModsBinaryModCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.varModsBinaryModCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
-            // varModsMaxModsPerPeptide
-            // 
-            this.varModsMaxModsPerPeptide.HeaderText = "Max Mods";
-            this.varModsMaxModsPerPeptide.Name = "varModsMaxModsPerPeptide";
-            this.varModsMaxModsPerPeptide.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.varModsMaxModsPerPeptide.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             // 
             // VarModSettingsControl
             // 
@@ -203,20 +207,20 @@
         #endregion
 
         private System.Windows.Forms.DataGridView varModsDataGridView;
-        private System.Windows.Forms.TextBox variableNTerminusTextBox;
-        private System.Windows.Forms.TextBox variableCTerminusTextBox;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox variableNTerminusDistTextBox;
         private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.TextBox variableCTerminusDistTextBox;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.NumericUpDown maxModsInPeptideTextBox;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsResidueCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsMassCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsBinaryModCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn varModsMaxModsPerPeptide;
+        private NumericTextBox variableNTerminusTextBox;
+        private NumericTextBox variableCTerminusTextBox;
+        private NumericTextBox variableNTerminusDistTextBox;
+        private NumericTextBox variableCTerminusDistTextBox;
 
     }
 }
