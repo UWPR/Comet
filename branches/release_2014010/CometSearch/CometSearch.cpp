@@ -103,9 +103,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       } 
 
       bTrimDescr = 0;
-      while (((iTmpCh = getc(fptr)) != '\n')
-            && (iTmpCh != '\r')
-            && (iTmpCh != EOF))
+      while (((iTmpCh = getc(fptr)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
       {
          // Don't bother storing description text past first blank.
          if (isspace(iTmpCh) || iscntrl(iTmpCh))
@@ -118,7 +116,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       // Load sequence.
       while (((iTmpCh=getc(fptr)) != '>') && (iTmpCh != EOF))
       {
-         if (33<=iTmpCh && iTmpCh<=126) // Ascii physical character range.
+         if (33<=iTmpCh && iTmpCh<=126) // ASCII physical character range.
          {
             // Convert all sequences to upper case.
             dbe.strSeq += toupper(iTmpCh);
@@ -205,6 +203,7 @@ bool CometSearch::DoSearch(sDBEntry dbe)
       if (g_staticParams.options.bClipNtermMet && dbe.strSeq[0]=='M')
       {
          _proteinInfo.iProteinSeqLength -= 1;
+
          if (!SearchForPeptides((char *)dbe.strSeq.c_str()+1, (char *)dbe.strName.c_str(), 1))
          {
             return false;
@@ -828,9 +827,12 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
 {
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
+
    if ((dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus)
          && (dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus))
    {
+      double dMassDiff = pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass;
+
       if (g_staticParams.tolerances.iIsotopeError == 0)
       {
          return true;
@@ -838,22 +840,17 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       else if (g_staticParams.tolerances.iIsotopeError == 1)
       {
          double dC13diff = 1.00335483;
-         double dTwoC13diff = 1.00335483 + 1.00335483;
-         double dThreeC13diff = 1.00335483 + 1.00335483 + 1.00335483;
+         double d2C13diff = 1.00335483 + 1.00335483;
+         double d3C13diff = 1.00335483 + 1.00335483 + 1.00335483;
 
          // Using C13 isotope mass difference here but likely should
          // be slightly bigger for other elemental contaminents.
 
-         if ((fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - dC13diff)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - dTwoC13diff)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - dThreeC13diff)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass + dC13diff)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+         if ((fabs(dMassDiff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(dMassDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(dMassDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(dMassDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
          {
             return true;
          }            
@@ -864,16 +861,11 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       }
       else if (g_staticParams.tolerances.iIsotopeError == 2)
       {
-         if ((fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - 4.0070995)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass - 8.014199)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass + 4.0070995)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-               || (fabs(pQuery->_pepMassInfo.dExpPepMass - dCalcPepMass + 8.014199)
-                  <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+         if ((fabs(dMassDiff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(dMassDiff - 4.0070995) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(dMassDiff - 8.014199)  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(dMassDiff + 4.0070995) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+               || (fabs(dMassDiff + 8.014199)  <= pQuery->_pepMassInfo.dPeptideMassTolerance))
          {
             return true;
          }            
@@ -2399,6 +2391,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                _pdAAforward[iPos] = dBion;
             }
 
+            // this needs to be a separate loop from one above because of pcVarModSites being set above
             for (i=_varModInfo.iEndPos; i>=_varModInfo.iStartPos; i--)
             {
                int iPos = i - _varModInfo.iStartPos ;
