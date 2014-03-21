@@ -2564,11 +2564,12 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
 
                // now get the set of binned fragment ions once for all matching decoy peptides
-               for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+               for (ctCharge = 1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                {
-                  iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-                  for (ctCharge = 1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+                  for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                   {
+                     iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
                      for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                      {
                         pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy))] = false;
