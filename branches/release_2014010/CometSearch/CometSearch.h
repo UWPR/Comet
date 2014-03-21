@@ -185,8 +185,7 @@ private:
    // Processing results
    void SortResults(struct Results *_pResults,
                     bool bDecoy);
-   void CalculateEvalue(struct Results *_pResults,
-                        bool bDecoy);
+   void CalculateEvalue(struct Results *_pResults);
    void GenerateXcorrDecoys(struct Results *_pResults,
                             bool bDecoy);
 

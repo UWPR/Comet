@@ -128,7 +128,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          num_matches = pQuery->_uliNumMatchedPeptides;
       }
       
-      for (size_t iWhichResult=0; iWhichResult<min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches); iWhichResult++)
+      size_t iNumPrintLines = min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches);
+      for (size_t iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
       {
          if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
             continue;

@@ -164,7 +164,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
                                  FILE *fpout)
 {
    int  i,
-        iDoXcorrCount,
+        iNumPrintLines,
         iRankXcorr;
    char szBuf[SIZE_BUF],
         scan1[32],
@@ -208,13 +208,13 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
       fprintf(fpout, "%s", szBuf);
 
    if (bDecoy)
-      iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
+      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
    else
-      iDoXcorrCount = pQuery->iDoXcorrCount;
+      iNumPrintLines = pQuery->iMatchPeptideCount;
 
    // Print out each sequence line.
-   if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
-      iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
+   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
+      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
    Results *pOutput;
 
@@ -225,7 +225,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
-   for (i=0; i<iDoXcorrCount; i++)
+   for (i=0; i<iNumPrintLines; i++)
    {
       if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;

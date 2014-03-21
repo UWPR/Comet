@@ -603,16 +603,14 @@ struct SparseMatrix
 // This struct is allocated for each spectrum/charge combination
 struct Query
 {
-   int   iCorrelationHistogram[HISTO_SIZE];
-   int   iDoXcorrCount;
+   int   iXcorrHistogram[HISTO_SIZE];
+   int   iHistogramCount;   // # of entries in histogram
    float fPar[4];           // parameters of LMA regression
 
-   int   iDecoyCorrelationHistogram[HISTO_SIZE];
-   int   iDoDecoyXcorrCount;
-   float fDecoyPar[4];      // parameters of LMA regression
+   int iMatchPeptideCount;        // # of peptide matches
+   int iDecoyMatchPeptideCount;   // # of decoy peptide matches
 
-   short siMaxXcorr;        // index of maximum correlation score in iCorrelationHistogram
-   short siMaxDecoyXcorr;   // index of maximum correlation score in iDecoyCorrelationHistogram
+   short siMaxXcorr;        // index of maximum correlation score in iXcorrHistogram
 
    short siLowestSpScoreIndex;
    short siLowestDecoySpScoreIndex;
@@ -648,24 +646,19 @@ struct Query
 
    Query()
    {
-      for (int i = 0; i < HISTO_SIZE; i++)
-      {
-         iCorrelationHistogram[i] = 0;
-         iDecoyCorrelationHistogram[i] = 0;
-      }
+      for (int i=0; i < HISTO_SIZE; i++)
+         iXcorrHistogram[i] = 0;
 
-      iDoXcorrCount = 0;
+      iMatchPeptideCount= 0;
+      iDecoyMatchPeptideCount= 0;
+      iHistogramCount = 0;
+
       fPar[0]=0.0;
       fPar[1]=0.0;
       fPar[2]=0.0;
+      fPar[3]=0.0;
 
-      iDoDecoyXcorrCount = 0;
-      fDecoyPar[0]=0.0;
-      fDecoyPar[1]=0.0;
-      fDecoyPar[2]=0.0;
-
-      siMaxXcorr = 0;                        // index of maximum correlation score in iCorrelationHistogram
-      siMaxDecoyXcorr = 0;                   // index of maximum correlation score in iDecoyCorrelationHistogram
+      siMaxXcorr = 0;                        // index of maximum correlation score in iXcorrHistogram
       siLowestSpScoreIndex = 0;
       siLowestDecoySpScoreIndex = 0;
 

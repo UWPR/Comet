@@ -1189,16 +1189,14 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
       iTmp = (int)(dXcorr * 10.0 + 0.5);
 
-      if (iTmp < 0) // possible for CRUX compiled option
-         iTmp = 0;
+      if (iTmp < 0) // possible for CRUX compiled option to have a negative xcorr
+         iTmp = 0;  // lump these all in the zero bin of the histogram
 
       if (iTmp >= HISTO_SIZE)
          iTmp = HISTO_SIZE - 1;
    
-      if (bDecoyPep && g_staticParams.options.iDecoySearch==2)
-         pQuery->iDecoyCorrelationHistogram[iTmp] += 1;
-      else
-         pQuery->iCorrelationHistogram[iTmp] += 1;
+      pQuery->iXcorrHistogram[iTmp] += 1;
+      pQuery->iHistogramCount += 1;
    }
 
    if (bDecoyPep && g_staticParams.options.iDecoySearch==2)
@@ -1290,7 +1288,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       siLowestDecoySpScoreIndex = pQuery->siLowestDecoySpScoreIndex;
 
-      pQuery->iDoDecoyXcorrCount++;
+      pQuery->iDecoyMatchPeptideCount++;
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].iLenPeptide = iLenPeptide;
 
       memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
@@ -1361,7 +1359,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       siLowestSpScoreIndex = pQuery->siLowestSpScoreIndex;
 
-      pQuery->iDoXcorrCount++;
+      pQuery->iMatchPeptideCount++;
       pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide = iLenPeptide;
 
       memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);

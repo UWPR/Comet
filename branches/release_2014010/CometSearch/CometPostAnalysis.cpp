@@ -92,17 +92,11 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
          || g_staticParams.options.bOutputPinXMLFile
          || g_staticParams.options.bOutputTxtFile)
    {
-      if (g_pvQuery.at(iQueryIndex)->iDoXcorrCount> 0)
+
+      if (g_pvQuery.at(iQueryIndex)->iMatchPeptideCount > 0
+            || g_pvQuery.at(iQueryIndex)->iDecoyMatchPeptideCount > 0)
       {
-         bSucceeded = CalculateEValue(iQueryIndex, 0);
-      }
-      
-      if (bSucceeded && g_staticParams.options.iDecoySearch == 2
-            && g_pvQuery.at(iQueryIndex)->iDoDecoyXcorrCount> 0)
-      {
-         // No need to check the return value here, errors have already been 
-         // logged, so nothing to do.
-         CalculateEValue(iQueryIndex, 1);
+         bSucceeded = CalculateEValue(iQueryIndex);
       }
    }
 
@@ -115,51 +109,52 @@ void CometPostAnalysis::AnalyzeSP(int i)
 {
    Query* pQuery = g_pvQuery.at(i);
 
-   int iSize = pQuery->iDoXcorrCount;
+   int iSize = pQuery->iMatchPeptideCount;
 
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
-   // Target search.
-   CalculateSP(pQuery->_pResults,
-               i,
-               iSize);
+   // Target search
+   CalculateSP(pQuery->_pResults, i, iSize);
 
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), SPQSortFn);
    pQuery->_pResults[0].iRankSp = 1;
 
-   for (int ii=1; ii<iSize; ii++)
+   for (unsigned int ii=1; ii<iSize; ii++)
    {
-      // Determine score rankings.
+      // Determine score rankings
       if (isEqual(pQuery->_pResults[ii].fScoreSp, pQuery->_pResults[ii-1].fScoreSp))
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp;
       else
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp + 1;
    }
 
-   // Then sort each entry by xcorr.
+   // Then sort each entry by xcorr
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), XcorrQSortFn);
  
-   // Repeast for decoy search.
+   // Repeat for decoy search
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      CalculateSP(pQuery->_pDecoys,
-                  i,
-                  iSize);
+      iSize = pQuery->iDecoyMatchPeptideCount;
+
+      if (iSize > g_staticParams.options.iNumStored)
+         iSize = g_staticParams.options.iNumStored;
+
+      CalculateSP(pQuery->_pDecoys, i, iSize);
 
       qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), SPQSortFn);
       pQuery->_pDecoys[0].iRankSp = 1;
 
-      for (int ii=1; ii<iSize; ii++)
+      for (unsigned int ii=1; ii<iSize; ii++)
       {
-         // Determine score rankings.
+         // Determine score rankings
          if (isEqual(pQuery->_pDecoys[ii].fScoreSp, pQuery->_pDecoys[ii-1].fScoreSp))
             pQuery->_pDecoys[ii].iRankSp = pQuery->_pDecoys[ii-1].iRankSp;
          else
             pQuery->_pDecoys[ii].iRankSp = pQuery->_pDecoys[ii-1].iRankSp + 1;
       }
 
-      // Then sort each entry by xcorr.
+      // Then sort each entry by xcorr
       qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), XcorrQSortFn);
    }
 }
@@ -176,8 +171,8 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    for (i=0; i<iSize; i++)
    {
-      int  ii,
-           ctCharge;
+      int  ii;
+      int  ctCharge;
       double dFragmentIonMass = 0.0;
       double dConsec = 0.0;
       double dBion = g_staticParams.precalcMasses.dNtermProton;
@@ -327,35 +322,23 @@ int CometPostAnalysis::XcorrQSortFn(const void *a,
 }
 
 
-bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
-                                        bool bDecoy)
+bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
 {
    int i;
    int *piHistogram;
-   int iHistogramCount;
    int iMaxCorr;
    int iStartCorr;
    int iNextCorr;
-   int iXcorrCount;
    double dSlope;
    double dIntercept;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   if (bDecoy)
-   {
-      piHistogram = pQuery->iDecoyCorrelationHistogram;
-      iHistogramCount = pQuery->iDoDecoyXcorrCount;
-   }
-   else
-   {
-      piHistogram = pQuery->iCorrelationHistogram;
-      iHistogramCount = pQuery->iDoXcorrCount;
-   }
+   piHistogram = pQuery->iXcorrHistogram;
 
-   if (iHistogramCount < DECOY_SIZE)
+   if (pQuery->iHistogramCount < DECOY_SIZE)
    {
-      if (!GenerateXcorrDecoys(iWhichQuery, bDecoy))
+      if (!GenerateXcorrDecoys(iWhichQuery))
       {
           return false;
       }
@@ -363,68 +346,65 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
 
    LinearRegression(piHistogram, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
 
-   if (bDecoy)
-   {
-      iXcorrCount = pQuery->iDoDecoyXcorrCount;
-      pQuery->fDecoyPar[0] = (float)dIntercept;  // b   y=mx+b
-      pQuery->fDecoyPar[1] = (float)dSlope;      // m
-      pQuery->fDecoyPar[2] = (float)iStartCorr;
-      pQuery->fDecoyPar[3] = (float)iNextCorr;
-      pQuery->siMaxDecoyXcorr = (short)iMaxCorr;
-   }
-   else
-   {
-      iXcorrCount = pQuery->iDoXcorrCount;
-      pQuery->fPar[0] = (float)dIntercept;  // b
-      pQuery->fPar[1] = (float)dSlope    ;  // m
-      pQuery->fPar[2] = (float)iStartCorr;
-      pQuery->fPar[3] = (float)iNextCorr;
-      pQuery->siMaxXcorr = (short)iMaxCorr;
-   }
-
-   if (iXcorrCount > g_staticParams.options.iNumPeptideOutputLines)
-      iXcorrCount = g_staticParams.options.iNumPeptideOutputLines;
+   pQuery->fPar[0] = (float)dIntercept;  // b
+   pQuery->fPar[1] = (float)dSlope    ;  // m
+   pQuery->fPar[2] = (float)iStartCorr;
+   pQuery->fPar[3] = (float)iNextCorr;
+   pQuery->siMaxXcorr = (short)iMaxCorr;
 
    dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
 
-   for (i=0; i<iXcorrCount; i++)
+   int iLoopCount; 
+
+   iLoopCount = max(pQuery->iMatchPeptideCount, pQuery->iDecoyMatchPeptideCount);
+
+   if (iLoopCount > g_staticParams.options.iNumPeptideOutputLines)
+      iLoopCount = g_staticParams.options.iNumPeptideOutputLines;
+
+   for (i=0; i<iLoopCount; i++)
    {
       if (dSlope >= 0.0)
       {
-         pQuery->_pResults[i].dExpect = 999.0;
+         if (i<pQuery->iMatchPeptideCount)
+            pQuery->_pResults[i].dExpect = 999.0;
+         if (i<pQuery->iDecoyMatchPeptideCount)
+            pQuery->_pDecoys[i].dExpect = 999.0;
       }
       else
       {
          double dExpect;
 
-         if (bDecoy)
-            dExpect = pow(10.0, dSlope * pQuery->_pDecoys[i].fXcorr + dIntercept);
-         else
-            dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
-
-         if (dExpect > 999.0)
-            dExpect = 999.0;
-
-         // Sanity constraints - no low e-values allowed for xcorr < 1.0.
-         // I'll admit xcorr < 1.0 is an arbitrary cutoff but something is needed.
-         if (dExpect < 1.0)
+         if (i<pQuery->iMatchPeptideCount)
          {
-            if (bDecoy)
-            {
-               if (pQuery->_pDecoys[i].fXcorr < 1.0)
-                  dExpect = 1.0;
-            }
-            else
+            dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
+            if (dExpect > 999.0)
+               dExpect = 999.0;
+
+            // Sanity constraints - no low e-values allowed for xcorr < 1.0.
+            // I'll admit xcorr < 1.0 is an arbitrary cutoff but something is needed.
+            if (dExpect < 1.0)
             {
                if (pQuery->_pResults[i].fXcorr < 1.0)
                   dExpect = 1.0;
             }
+
+            pQuery->_pResults[i].dExpect = dExpect;
          }
 
-         if (bDecoy)
+         if (i<pQuery->iDecoyMatchPeptideCount)
+         {
+            dExpect = pow(10.0, dSlope * pQuery->_pDecoys[i].fXcorr + dIntercept);
+            if (dExpect > 999.0)
+               dExpect = 999.0;
+
+            if (dExpect < 1.0)
+            {
+               if (pQuery->_pDecoys[i].fXcorr < 1.0)
+                  dExpect = 1.0;
+            }
+
             pQuery->_pDecoys[i].dExpect = dExpect;
-         else
-            pQuery->_pResults[i].dExpect = dExpect;
+         }
       }
    }
 
@@ -563,8 +543,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
 // Make synthetic decoy spectra to fill out correlation histogram by going
 // through each candidate peptide and rotating spectra in m/z space.
-bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
-                                            bool bDecoy)
+bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 {
    int i;
    int ii;
@@ -583,38 +562,44 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
    double dFragmentIonMass = 0.0;
 
    int *piHistogram;
-   int iHistogramCount;
 
    int iFragmentIonMass;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   if (bDecoy)
-   {
-      piHistogram = pQuery->iDecoyCorrelationHistogram;
-      iHistogramCount = pQuery->iDoDecoyXcorrCount;
-   }
-   else
-   {
-      piHistogram = pQuery->iCorrelationHistogram;
-      iHistogramCount = pQuery->iDoXcorrCount;
-   }
-
-   if (iHistogramCount > g_staticParams.options.iNumStored)
-      iHistogramCount = g_staticParams.options.iNumStored;
+   piHistogram = pQuery->iXcorrHistogram;
 
    iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
 
-   j=0;
  
-   int iLoopMax = DECOY_SIZE - iHistogramCount;
+   // DECOY_SIZE is the minimum # of decoys required or else this function is
+   // called.  So need generate iLoopMax more xcorr scores for the histogram.
+   int iLoopMax = DECOY_SIZE - pQuery->iHistogramCount;
    int iLenPeptide=0;
    char *szPeptide;
    double dPepMass;
+   bool bDecoy;
+   int iLastEntry;
 
+   // Determine if using target or decoy peptides to rotate to fill out histogram.
+   if (pQuery->iMatchPeptideCount >= pQuery->iDecoyMatchPeptideCount)
+   {
+      iLastEntry = pQuery->iMatchPeptideCount;
+      bDecoy = false;
+   }
+   else
+   {
+      iLastEntry = pQuery->iDecoyMatchPeptideCount;
+      bDecoy = true;
+   }
+
+   if (iLastEntry > g_staticParams.options.iNumStored)
+      iLastEntry = g_staticParams.options.iNumStored;
+
+   j=0;
    for (i=0; i<iLoopMax; i++)
    {
-      if (j == iHistogramCount)  // j is rotating index through hit list.
+      if (j == iLastEntry)      // j is rotating index through stored peptides
       {
          j=0;
          dShift += 5.8524;      // Some random shift value.

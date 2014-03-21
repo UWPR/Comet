@@ -240,15 +240,6 @@ static bool AllocateResultsMem()
          return false;
       }
 
-
-      //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
-      for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
-         pQuery->_pResults[xx].iLenPeptide=0;
-
-      pQuery->iDoXcorrCount = 0;
-      pQuery->siLowestSpScoreIndex = 0;
-      pQuery->fLowestSpScore = 0.0;
-
       if (g_staticParams.options.iDecoySearch==2)
       {
          pQuery->_pDecoys = (struct Results *)malloc((size_t)sizeof(struct Results) * (size_t)g_staticParams.options.iNumStored);
@@ -258,41 +249,36 @@ static bool AllocateResultsMem()
             string strError = " Error malloc(_pDecoys[])";
             string strFormatError = strError + "\n\n";
             logerr(strFormatError.c_str());
-
             g_cometStatus.SetError(true, strError);
-
             return false;
          }
-
-         //MH: same logic as my comment above
-         for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
-            pQuery->_pDecoys[xx].iLenPeptide=0;
-
-         pQuery->iDoDecoyXcorrCount = 0;
-         pQuery->siLowestDecoySpScoreIndex = 0;
-         pQuery->fLowestDecoySpScore = 0.0;
       }
 
-      int j;
-      for (j=0; j<HISTO_SIZE; j++)
+      for (unsigned j=0; j<g_staticParams.options.iNumStored; j++)
       {
-         pQuery->iCorrelationHistogram[j]=0;
-         pQuery->iDecoyCorrelationHistogram[j]=0;
-      }
-
-      for (j=0; j<g_staticParams.options.iNumStored; j++)
-      {
-         pQuery->_pResults[j].fXcorr = XCORR_CUTOFF;
-         pQuery->_pResults[j].fScoreSp = 0.0;
+         pQuery->_pResults[j].dPepMass = 0.0;
          pQuery->_pResults[j].dExpect = 0.0;
+         pQuery->_pResults[j].fScoreSp = 0.0;
+         pQuery->_pResults[j].fXcorr = XCORR_CUTOFF;
+         pQuery->_pResults[j].iDuplicateCount = 0;
+         pQuery->_pResults[j].iLenPeptide = 0;
+         pQuery->_pResults[j].iRankSp = 0;
+         pQuery->_pResults[j].iMatchedIons = 0;
+         pQuery->_pResults[j].iTotalIons = 0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
          pQuery->_pResults[j].szProtein[0] = '\0';
 
          if (g_staticParams.options.iDecoySearch==2)
          {
-            pQuery->_pDecoys[j].fXcorr = XCORR_CUTOFF;
-            pQuery->_pDecoys[j].fScoreSp = 0.0;
+            pQuery->_pDecoys[j].dPepMass = 0.0;
             pQuery->_pDecoys[j].dExpect = 0.0;
+            pQuery->_pDecoys[j].fScoreSp = 0.0;
+            pQuery->_pDecoys[j].fXcorr = XCORR_CUTOFF;
+            pQuery->_pDecoys[j].iDuplicateCount = 0;
+            pQuery->_pDecoys[j].iLenPeptide = 0;
+            pQuery->_pDecoys[j].iRankSp = 0;
+            pQuery->_pDecoys[j].iMatchedIons = 0;
+            pQuery->_pDecoys[j].iTotalIons = 0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
             pQuery->_pDecoys[j].szProtein[0] = '\0';
          }

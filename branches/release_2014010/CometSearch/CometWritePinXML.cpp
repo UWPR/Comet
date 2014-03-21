@@ -141,7 +141,7 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
                                     bool bDecoy)
 {
    int  i,
-        iDoXcorrCount,
+        iNumPrintLines,
         iMinLength;
    double dMZcalc,
           dMZexp;
@@ -153,12 +153,12 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
    if (bDecoy)
    {
       pOutput = pQuery->_pDecoys;
-      iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
+      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
    }
    else
    {
       pOutput = pQuery->_pResults;
-      iDoXcorrCount = pQuery->iDoXcorrCount;
+      iNumPrintLines = pQuery->iMatchPeptideCount;
    }
 
    dMZexp = (pQuery->_pepMassInfo.dExpPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
@@ -180,11 +180,11 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
    else
       fprintf(fpout, "isDecoy=\"false\">\n");
 
-   if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
-      iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
+   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
+      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
    iMinLength = 999;
-   for (i=0; i<iDoXcorrCount; i++)
+   for (i=0; i<iNumPrintLines; i++)
    {
       int iLen = (int)strlen(pOutput[i].szPeptide);
       if (iLen == 0)
@@ -198,7 +198,7 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
    double dDeltaCn=1.0;       // this is deltaCn between i and first dissimilar peptide
    double dLastDeltaCn=1.0;   // this is deltaCn between first and last peptide in output list
 
-   for (j=1; j<iDoXcorrCount; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
+   for (j=1; j<iNumPrintLines; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
    {
       // very poor way of calculating peptide similarity but it's what we have for now
       int iDiffCt = 0;
@@ -234,9 +234,9 @@ bool CometWritePinXML::PrintResults(int iWhichQuery,
       }
    }
 
-   if (pOutput[0].fXcorr > 0.0 && pOutput[iDoXcorrCount].fXcorr >= 0.0)
-      dLastDeltaCn = 1.0 - pOutput[iDoXcorrCount].fXcorr/pOutput[0].fXcorr;
-   else if (pOutput[0].fXcorr > 0.0 && pOutput[iDoXcorrCount].fXcorr < 0.0)
+   if (pOutput[0].fXcorr > 0.0 && pOutput[iNumPrintLines].fXcorr >= 0.0)
+      dLastDeltaCn = 1.0 - pOutput[iNumPrintLines].fXcorr/pOutput[0].fXcorr;
+   else if (pOutput[0].fXcorr > 0.0 && pOutput[iNumPrintLines].fXcorr < 0.0)
       dLastDeltaCn = 1.0;
    else
       dLastDeltaCn = 0.0;
