@@ -18,11 +18,7 @@ namespace CometUI
                  
             InitializeFromDefaultSettings();
 
-            foreach (var row in VarMods)
-            {
-                string[] cells = row.Split(',');
-                varModsDataGridView.Rows.Add(cells);
-            }
+            UpdateVarModsDataGridView();
         }
 
         private void InitializeFromDefaultSettings()
@@ -39,6 +35,37 @@ namespace CometUI
             variableCTerminusDistTextBox.Text = Settings.Default.VariableCTermDistance.ToString(CultureInfo.InvariantCulture);
 
             maxModsInPeptideTextBox.Text = Settings.Default.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);            
+        }
+
+        private void UpdateVarModsDataGridView()
+        {
+            varModsDataGridView.Rows.Add(VarMods.Count);
+            for (int rowIndex = 0; rowIndex < VarMods.Count; rowIndex++)
+            {
+                var varModsRow = VarMods[rowIndex];
+                string[] varModsCells = varModsRow.Split(',');
+                var dataGridViewRow = varModsDataGridView.Rows[rowIndex];
+                for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
+                {
+                    string cellColTitle = dataGridViewRow.Cells[colIndex].OwningColumn.HeaderCell.Value.ToString();
+                    if (cellColTitle.Equals("Binary Mod"))
+                    {
+                        var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
+                        if (null != checkBoxCell)
+                        {
+                            checkBoxCell.Value = varModsCells[colIndex].Equals("1");
+                        }
+                    }
+                    else
+                    {
+                        var textBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewTextBoxCell;
+                        if (null != textBoxCell)
+                        {
+                            textBoxCell.Value = varModsCells[colIndex];
+                        }
+                    }
+                }
+            }
         }
     }
 }
