@@ -174,7 +174,7 @@
       <OmitFramePointers>true</OmitFramePointers>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <StringPooling>true</StringPooling>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <EnableEnhancedInstructionSet>
@@ -182,8 +182,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <MinimalRebuild>false</MinimalRebuild>
-      <CompileAsManaged>
-      </CompileAsManaged>
+      <CompileAsManaged>true</CompileAsManaged>
       <CallingConvention>
       </CallingConvention>
       <AdditionalOptions>/GL %(AdditionalOptions)</AdditionalOptions>
