@@ -10,6 +10,9 @@ namespace CometUI
         public StringCollection VarMods { get; set; }
         private new Form Parent { get; set; }
 
+        private const string _aminoAcids = "GASPVTCLINDQKEMOHFRYW";
+
+
         public VarModSettingsControl(Form parent)
         {
             InitializeComponent();
@@ -47,7 +50,7 @@ namespace CometUI
                 var dataGridViewRow = varModsDataGridView.Rows[rowIndex];
                 for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
                 {
-                    string cellColTitle = dataGridViewRow.Cells[colIndex].OwningColumn.HeaderCell.Value.ToString();
+                    string cellColTitle = dataGridViewRow.Cells[colIndex].OwningColumn.HeaderText;
                     if (cellColTitle.Equals("Binary Mod"))
                     {
                         var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
@@ -67,5 +70,35 @@ namespace CometUI
                 }
             }
         }
+
+        private void VarModsDataGridViewCellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            var cell = varModsDataGridView.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            if (cell.OwningColumn.HeaderText.Equals("Residue"))
+            {
+                var textBoxCell = cell as DataGridViewTextBoxCell;
+                if (textBoxCell != null)
+                {
+                    if (!textBoxCell.Value.ToString().ToUpper().Equals("X"))
+                    {
+                        char[] residue = textBoxCell.Value.ToString().ToUpper().ToCharArray();
+                        foreach (var aa in residue)
+                        {
+                            if (!_aminoAcids.Contains(aa.ToString(CultureInfo.InvariantCulture)))
+                            {
+                                MessageBox.Show(this,
+                                                Resources.
+                                                    VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_residue_,
+                                                Resources.
+                                                    VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue,
+                                                MessageBoxButtons.OKCancel);
+                                cell.Value = "X";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }

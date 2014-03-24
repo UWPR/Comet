@@ -126,4 +126,10 @@
   <data name="InputFilesControl_ShowOpenDatabaseFile_Open_Proteome_Database_File">
     <value xml:space="preserve">Open Proteome Database File</value>
   </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_residue_">
+    <value xml:space="preserve">Please enter a valid residue.</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue">
+    <value xml:space="preserve">Invalid Residue</value>
+  </data>
 </root>
