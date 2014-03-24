@@ -1525,8 +1525,8 @@ void CometSearch::SubtractVarMods(int *piVarModCounts,
    int i;
    for (i=0; i<VMODS; i++)
    {
-      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0) &&
-            strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, character))
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+            && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, character))
       {
          piVarModCounts[i]--;
       }

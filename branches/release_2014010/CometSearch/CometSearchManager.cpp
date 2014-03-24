@@ -254,7 +254,7 @@ static bool AllocateResultsMem()
          }
       }
 
-      for (unsigned j=0; j<g_staticParams.options.iNumStored; j++)
+      for (int j=0; j<g_staticParams.options.iNumStored; j++)
       {
          pQuery->_pResults[j].dPepMass = 0.0;
          pQuery->_pResults[j].dExpect = 0.0;
@@ -291,6 +291,11 @@ static bool AllocateResultsMem()
 static bool compareByPeptideMass(Query const* a, Query const* b)
 {
    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
+}
+
+static bool compareByScanNumber(Query const* a, Query const* b)
+{
+   return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }
 
 static void CalcRunTime(time_t tStartTime)
@@ -1677,6 +1682,9 @@ bool CometSearchManager::DoSearch()
             {
                goto cleanup_results;
             }
+
+            // Sort g_pvQuery vector by scan.
+            std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
             CalcRunTime(tStartTime);
 
