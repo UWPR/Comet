@@ -29,17 +29,17 @@
         private void InitializeComponent()
         {
             this.staticModsDataGridView = new System.Windows.Forms.DataGridView();
-            this.staticCTermPeptideTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.staticNTermPeptideTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
-            this.staticCTermProteinTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.staticNTermProteinTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
             this.staticModsNameCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.staticModsResidueCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.staticModsMassDiffCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.staticCTermPeptideTextBox = new CometUI.NumericTextBox();
+            this.label2 = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
+            this.staticNTermPeptideTextBox = new CometUI.NumericTextBox();
+            this.staticCTermProteinTextBox = new CometUI.NumericTextBox();
+            this.label1 = new System.Windows.Forms.Label();
+            this.label4 = new System.Windows.Forms.Label();
+            this.staticNTermProteinTextBox = new CometUI.NumericTextBox();
             ((System.ComponentModel.ISupportInitialize)(this.staticModsDataGridView)).BeginInit();
             this.SuspendLayout();
             // 
@@ -59,9 +59,36 @@
             this.staticModsDataGridView.Name = "staticModsDataGridView";
             this.staticModsDataGridView.Size = new System.Drawing.Size(432, 287);
             this.staticModsDataGridView.TabIndex = 1;
+            this.staticModsDataGridView.CellEndEdit += new System.Windows.Forms.DataGridViewCellEventHandler(this.StaticModsDataGridViewCellEndEdit);
+            // 
+            // staticModsNameCol
+            // 
+            this.staticModsNameCol.HeaderText = "Name";
+            this.staticModsNameCol.Name = "staticModsNameCol";
+            this.staticModsNameCol.ReadOnly = true;
+            this.staticModsNameCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.staticModsNameCol.Width = 124;
+            // 
+            // staticModsResidueCol
+            // 
+            this.staticModsResidueCol.HeaderText = "Residue";
+            this.staticModsResidueCol.Name = "staticModsResidueCol";
+            this.staticModsResidueCol.ReadOnly = true;
+            this.staticModsResidueCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.staticModsResidueCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.staticModsResidueCol.Width = 124;
+            // 
+            // staticModsMassDiffCol
+            // 
+            this.staticModsMassDiffCol.HeaderText = "Mass Diff";
+            this.staticModsMassDiffCol.Name = "staticModsMassDiffCol";
+            this.staticModsMassDiffCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.staticModsMassDiffCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.staticModsMassDiffCol.Width = 124;
             // 
             // staticCTermPeptideTextBox
             // 
+            this.staticCTermPeptideTextBox.AllowSpace = false;
             this.staticCTermPeptideTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticCTermPeptideTextBox.Location = new System.Drawing.Point(128, 372);
             this.staticCTermPeptideTextBox.Name = "staticCTermPeptideTextBox";
@@ -90,6 +117,7 @@
             // 
             // staticNTermPeptideTextBox
             // 
+            this.staticNTermPeptideTextBox.AllowSpace = false;
             this.staticNTermPeptideTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticNTermPeptideTextBox.Location = new System.Drawing.Point(128, 346);
             this.staticNTermPeptideTextBox.Name = "staticNTermPeptideTextBox";
@@ -98,6 +126,7 @@
             // 
             // staticCTermProteinTextBox
             // 
+            this.staticCTermProteinTextBox.AllowSpace = false;
             this.staticCTermProteinTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticCTermProteinTextBox.Location = new System.Drawing.Point(372, 372);
             this.staticCTermProteinTextBox.Name = "staticCTermProteinTextBox";
@@ -126,36 +155,12 @@
             // 
             // staticNTermProteinTextBox
             // 
+            this.staticNTermProteinTextBox.AllowSpace = false;
             this.staticNTermProteinTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticNTermProteinTextBox.Location = new System.Drawing.Point(372, 345);
             this.staticNTermProteinTextBox.Name = "staticNTermProteinTextBox";
             this.staticNTermProteinTextBox.Size = new System.Drawing.Size(86, 20);
             this.staticNTermProteinTextBox.TabIndex = 15;
-            // 
-            // staticModsNameCol
-            // 
-            this.staticModsNameCol.HeaderText = "Name";
-            this.staticModsNameCol.Name = "staticModsNameCol";
-            this.staticModsNameCol.ReadOnly = true;
-            this.staticModsNameCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.staticModsNameCol.Width = 124;
-            // 
-            // staticModsResidueCol
-            // 
-            this.staticModsResidueCol.HeaderText = "Residue";
-            this.staticModsResidueCol.Name = "staticModsResidueCol";
-            this.staticModsResidueCol.ReadOnly = true;
-            this.staticModsResidueCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.staticModsResidueCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.staticModsResidueCol.Width = 124;
-            // 
-            // staticModsMassDiffCol
-            // 
-            this.staticModsMassDiffCol.HeaderText = "Mass Diff";
-            this.staticModsMassDiffCol.Name = "staticModsMassDiffCol";
-            this.staticModsMassDiffCol.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.staticModsMassDiffCol.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.staticModsMassDiffCol.Width = 124;
             // 
             // StaticModSettingsControl
             // 
@@ -181,17 +186,17 @@
         #endregion
 
         private System.Windows.Forms.DataGridView staticModsDataGridView;
-        private System.Windows.Forms.TextBox staticCTermPeptideTextBox;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.TextBox staticNTermPeptideTextBox;
-        private System.Windows.Forms.TextBox staticCTermProteinTextBox;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox staticNTermProteinTextBox;
         private System.Windows.Forms.DataGridViewTextBoxColumn staticModsNameCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn staticModsResidueCol;
         private System.Windows.Forms.DataGridViewTextBoxColumn staticModsMassDiffCol;
+        private NumericTextBox staticCTermPeptideTextBox;
+        private NumericTextBox staticNTermPeptideTextBox;
+        private NumericTextBox staticCTermProteinTextBox;
+        private NumericTextBox staticNTermProteinTextBox;
 
     }
 }

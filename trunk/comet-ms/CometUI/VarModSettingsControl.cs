@@ -1,4 +1,5 @@
-﻿using System.Collections.Specialized;
+﻿using System;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
@@ -10,7 +11,7 @@ namespace CometUI
         public StringCollection VarMods { get; set; }
         private new Form Parent { get; set; }
 
-        private const string _aminoAcids = "GASPVTCLINDQKEMOHFRYW";
+        private const string AminoAcids = "GASPVTCLINDQKEMOHFRYW";
 
 
         public VarModSettingsControl(Form parent)
@@ -84,7 +85,7 @@ namespace CometUI
                         char[] residue = textBoxCell.Value.ToString().ToUpper().ToCharArray();
                         foreach (var aa in residue)
                         {
-                            if (!_aminoAcids.Contains(aa.ToString(CultureInfo.InvariantCulture)))
+                            if (!AminoAcids.Contains(aa.ToString(CultureInfo.InvariantCulture)))
                             {
                                 MessageBox.Show(this,
                                                 Resources.
@@ -98,7 +99,37 @@ namespace CometUI
                     }
                 }
             }
-        }
+            else if (cell.OwningColumn.HeaderText.Equals("Mass Diff"))
+            {
+                var textBoxCell = cell as DataGridViewTextBoxCell;
+                if (textBoxCell != null)
+                {
+                    string strValue = textBoxCell.Value.ToString();
+                    try
+                    {
+                        double massDiff = Convert.ToDouble(strValue);
+                    }
+                    catch (Exception)
+                    {
 
+                        MessageBox.Show(this,
+                                        Resources.
+                                            VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_,
+                                        Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Mass_Diff,
+                                        MessageBoxButtons.OKCancel);
+                        cell.Value = "0.0";
+                    }
+
+                }
+            }
+            else if (cell.OwningColumn.HeaderText.Equals("Max Mods"))
+            {
+                // Do we want to make this a combo box drop-down?
+                var textBoxCell = cell as DataGridViewTextBoxCell;
+                if (textBoxCell != null)
+                {
+                }
+            }
+        }
     }
 }

@@ -97,11 +97,49 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Invalid Mass Diff.
+        /// </summary>
+        internal static string StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff {
+            get {
+                return ResourceManager.GetString("StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please enter a valid number for the mass difference..
+        /// </summary>
+        internal static string StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_ {
+            get {
+                return ResourceManager.GetString("StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Please_enter_a_valid_n" +
+                        "umber_for_the_mass_difference_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid Mass Diff.
+        /// </summary>
+        internal static string VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Mass_Diff {
+            get {
+                return ResourceManager.GetString("VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Mass_Diff", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Invalid Residue.
         /// </summary>
         internal static string VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue {
             get {
                 return ResourceManager.GetString("VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please enter a valid number for the mass difference..
+        /// </summary>
+        internal static string VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_ {
+            get {
+                return ResourceManager.GetString("VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_" +
+                        "for_the_mass_difference_", resourceCulture);
             }
         }
         

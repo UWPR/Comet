@@ -1,4 +1,5 @@
-﻿using System.Collections.Specialized;
+﻿using System;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
@@ -53,6 +54,35 @@ namespace CometUI
                 }
             }
             
+        }
+
+        private void StaticModsDataGridViewCellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            var cell = staticModsDataGridView.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            if (cell.OwningColumn.HeaderText.Equals("Mass Diff"))
+            {
+                var textBoxCell = cell as DataGridViewTextBoxCell;
+                if (textBoxCell != null)
+                {
+                    string strValue = textBoxCell.Value.ToString();
+                    try
+                    {
+                        double massDiff = Convert.ToDouble(strValue);
+                    }
+                    catch (Exception)
+                    {
+
+                        MessageBox.Show(this,
+                                        Resources.
+                                            StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_,
+                                        Resources.
+                                            StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff,
+                                        MessageBoxButtons.OKCancel);
+                        cell.Value = "0.0000";
+                    }
+
+                }
+            }
         }
     }
 }

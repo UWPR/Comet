@@ -132,4 +132,16 @@
   <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue">
     <value xml:space="preserve">Invalid Residue</value>
   </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_">
+    <value xml:space="preserve">Please enter a valid number for the mass difference.</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Mass_Diff">
+    <value xml:space="preserve">Invalid Mass Diff</value>
+  </data>
+  <data name="StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_">
+    <value xml:space="preserve">Please enter a valid number for the mass difference.</value>
+  </data>
+  <data name="StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff">
+    <value xml:space="preserve">Invalid Mass Diff</value>
+  </data>
 </root>
