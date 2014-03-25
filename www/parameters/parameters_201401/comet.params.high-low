@@ -21,7 +21,7 @@ isotope_error = 1                      # 0=off, 1=on -1/0/1/2/3 (standard C13 er
 # search enzyme
 #
 search_enzyme_number = 1               # choose from list at end of this params file
-num_enzyme_termini = 1                 # valid values are 1 (semi-digested), 2 (fully digested, default), 8 N-term, 9 C-term
+num_enzyme_termini = 2                 # valid values are 1 (semi-digested), 2 (fully digested, default), 8 N-term, 9 C-term
 allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search
 
 #
@@ -41,11 +41,11 @@ max_variable_mods_in_peptide = 5
 # fragment ions
 #
 # ion trap ms/ms:  1.0005 tolerance, 0.4 offset (mono masses), theoretical_fragment_ions = 1
-# high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0
+# high res ms/ms:    0.05 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0
 #
 fragment_bin_tol = 1.0005              # binning to use on fragment ions
 fragment_bin_offset = 0.4              # offset position to start the binning (0.0 to 1.0)
-theoretical_fragment_ions = 1          # 0=default peak shape, 1=M peak only
+theoretical_fragment_ions = 1          # 0=use flanking peaks, 1=M peak only
 use_A_ions = 0
 use_B_ions = 1
 use_C_ions = 0
@@ -88,10 +88,10 @@ skip_researching = 1                   # for '.out' file output only, 0=search e
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max 5)
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max 9)
 nucleotide_reading_frame = 0           # 0=proteinDB, 1-6, 7=forward three, 8=reverse three, 9=all six
-clip_nterm_methionine = 1              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine
+clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine
 spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession
-output_suffix =                        # add a suffix to output base names i.e. suffix "-C" generates base-C.pep.xml from base.mzXML input
+output_suffix =                        # add a suffix to output base names i.e. suffix "-C" generates base-C.pep.xml from base.mzXML
 
 #
 # spectral processing
@@ -108,8 +108,8 @@ clear_mz_range = 0.0 0.0               # for iTRAQ/TMT type data; will clear out
 
 variable_C_terminus = 0.0
 variable_N_terminus = 0.0
-variable_C_terminus_dstance = -1      # -1=all peptides, 0=protein terminus, 1-N = maximum offset from C-terminus
-variable_N_terminus_distance = 1      # -1=all peptides, 0=protein terminus, 1-N = maximum offset from N-terminus
+variable_C_terminus_distance = -1      # -1=all peptides, 0=protein terminus, 1-N = maximum offset from C-terminus
+variable_N_terminus_distance = -1      # -1=all peptides, 0=protein terminus, 1-N = maximum offset from N-terminus
 
 add_Cterm_peptide = 0.0
 add_Nterm_peptide = 0.0

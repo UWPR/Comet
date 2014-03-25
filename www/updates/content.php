@@ -2,6 +2,8 @@
    <div id="content_full">
       <div class="post hr">
          <h1>Updates</h1>
+               <li><b>2014/03/25</b>: <a href="/release/release_201401">Release 2014.01 rev. 0</a>
+                   is available; this is a full release.
                <li><b>2014/01/23</b>: <a href="/release/release_201302">Release 2013.02 rev. 2</a>
                    is available.  This maintenance release primarily addresses Windows search
                    performance under certain circumstances.

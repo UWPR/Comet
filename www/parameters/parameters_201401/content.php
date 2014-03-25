@@ -11,9 +11,9 @@
          
          <p>To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
          <br>Example comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
-         <br>&#9679;&nbsp; <a href="comet.params.low-low">comet.params.low-low</a> for low res MS1 and low res MS2 e.g. ion trap
-         <br>&#9679;&nbsp; <a href="comet.params.high-low">comet.params.high-low</a> high res MS1 and low res MS2 e.g. Velos-Orbitrap
-         <br>&#9679;&nbsp; <a href="comet.params.high-high">comet.params.high-high</a> high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
+         <br>&#9679;&nbsp; <a target="new" href="comet.params.low-low">comet.params.low-low</a> for low res MS1 and low res MS2 e.g. ion trap
+         <br>&#9679;&nbsp; <a target="new" href="comet.params.high-low">comet.params.high-low</a> high res MS1 and low res MS2 e.g. Velos-Orbitrap
+         <br>&#9679;&nbsp; <a target="new" href="comet.params.high-high">comet.params.high-high</a> high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
 
          <p>Here's a link to <a href="combined.php">all parameter descriptions on a single web page</a>.</p>
 
@@ -64,9 +64,9 @@
          <ul>
          <li><a href="output_sqtstream.php">output_sqtstream</a></li>
          <li><a href="output_sqtfile.php">output_sqtfile</a></li>
-         <li><a href="output_txtfile.php">output_txtfile</a> <font color="red">**</font></li>
+         <li><a href="output_txtfile.php">output_txtfile</a></li>
          <li><a href="output_pepxmlfile.php">output_pepxmlfile</a></li>
-         <li><a href="output_pinxmlfile.php">output_pinxmlfile</a> <font color="red">*</font></li>
+         <li><a href="output_pinxmlfile.php">output_pinxmlfile</a></li>
          <li><a href="output_outfiles.php">output_outfiles</a></li>
          <li><a href="print_expect_score.php">print_expect_score</a></li>
          <li><a href="num_output_lines.php">num_output_lines</a></li>
@@ -92,7 +92,7 @@
          <li><a href="nucleotide_reading_frame.php">nucleotide_reading_frame</a></li>
          <li><a href="clip_nterm_methionine.php">clip_nterm_methionine</a></li>
          <li><a href="spectrum_batch_size.php">spectrum_batch_size</a></li>
-         <li><a href="decoy_prefix.php">decoy_prefix</a>
+         <li><a href="decoy_prefix.php">decoy_prefix</a></li>
          <li><a href="output_suffix.php">output_suffix</a> <font color="red">*</font></li>
          </ul>
 
