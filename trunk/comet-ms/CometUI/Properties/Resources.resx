@@ -144,4 +144,10 @@
   <data name="StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff">
     <value xml:space="preserve">Invalid Mass Diff</value>
   </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_between_0_and_64_">
+    <value xml:space="preserve">Please enter a valid number between 0 and 64.</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods">
+    <value xml:space="preserve">Invalid Max Mods</value>
+  </data>
 </root>

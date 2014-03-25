@@ -128,6 +128,21 @@ namespace CometUI
                 var textBoxCell = cell as DataGridViewTextBoxCell;
                 if (textBoxCell != null)
                 {
+                    string strValue = textBoxCell.Value.ToString();
+                    try
+                    {
+                        int maxMods = (int) Convert.ToUInt16(strValue);
+                        if (maxMods > 64)
+                        {
+                            throw new ArgumentException();
+                        }
+                    }
+                    catch (Exception)
+                    {
+
+                        MessageBox.Show(this,Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_between_0_and_64_, Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods, MessageBoxButtons.OKCancel);
+                        cell.Value = "3";
+                    }
                 }
             }
         }

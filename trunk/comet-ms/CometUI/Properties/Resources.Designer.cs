@@ -125,11 +125,30 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Invalid Max Mods.
+        /// </summary>
+        internal static string VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods {
+            get {
+                return ResourceManager.GetString("VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Invalid Residue.
         /// </summary>
         internal static string VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue {
             get {
                 return ResourceManager.GetString("VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please enter a valid number between 0 and 64..
+        /// </summary>
+        internal static string VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_between_0_and_64_ {
+            get {
+                return ResourceManager.GetString("VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_" +
+                        "between_0_and_64_", resourceCulture);
             }
         }
         
