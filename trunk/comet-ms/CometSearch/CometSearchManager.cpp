@@ -240,15 +240,6 @@ static bool AllocateResultsMem()
          return false;
       }
 
-
-      //MH: Initializing iLenPeptide to 0 is necessary to silence Valgrind Errors.
-      for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
-         pQuery->_pResults[xx].iLenPeptide=0;
-
-      pQuery->iDoXcorrCount = 0;
-      pQuery->siLowestSpScoreIndex = 0;
-      pQuery->fLowestSpScore = 0.0;
-
       if (g_staticParams.options.iDecoySearch==2)
       {
          pQuery->_pDecoys = (struct Results *)malloc((size_t)sizeof(struct Results) * (size_t)g_staticParams.options.iNumStored);
@@ -258,41 +249,36 @@ static bool AllocateResultsMem()
             string strError = " Error malloc(_pDecoys[])";
             string strFormatError = strError + "\n\n";
             logerr(strFormatError.c_str());
-
             g_cometStatus.SetError(true, strError);
-
             return false;
          }
-
-         //MH: same logic as my comment above
-         for(int xx=0;xx<g_staticParams.options.iNumStored;xx++)
-            pQuery->_pDecoys[xx].iLenPeptide=0;
-
-         pQuery->iDoDecoyXcorrCount = 0;
-         pQuery->siLowestDecoySpScoreIndex = 0;
-         pQuery->fLowestDecoySpScore = 0.0;
       }
 
-      int j;
-      for (j=0; j<HISTO_SIZE; j++)
+      for (int j=0; j<g_staticParams.options.iNumStored; j++)
       {
-         pQuery->iCorrelationHistogram[j]=0;
-         pQuery->iDecoyCorrelationHistogram[j]=0;
-      }
-
-      for (j=0; j<g_staticParams.options.iNumStored; j++)
-      {
-         pQuery->_pResults[j].fXcorr = 0.0;
-         pQuery->_pResults[j].fScoreSp = 0.0;
+         pQuery->_pResults[j].dPepMass = 0.0;
          pQuery->_pResults[j].dExpect = 0.0;
+         pQuery->_pResults[j].fScoreSp = 0.0;
+         pQuery->_pResults[j].fXcorr = XCORR_CUTOFF;
+         pQuery->_pResults[j].iDuplicateCount = 0;
+         pQuery->_pResults[j].iLenPeptide = 0;
+         pQuery->_pResults[j].iRankSp = 0;
+         pQuery->_pResults[j].iMatchedIons = 0;
+         pQuery->_pResults[j].iTotalIons = 0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
          pQuery->_pResults[j].szProtein[0] = '\0';
 
          if (g_staticParams.options.iDecoySearch==2)
          {
-            pQuery->_pDecoys[j].fXcorr = 0.0;
-            pQuery->_pDecoys[j].fScoreSp = 0.0;
+            pQuery->_pDecoys[j].dPepMass = 0.0;
             pQuery->_pDecoys[j].dExpect = 0.0;
+            pQuery->_pDecoys[j].fScoreSp = 0.0;
+            pQuery->_pDecoys[j].fXcorr = XCORR_CUTOFF;
+            pQuery->_pDecoys[j].iDuplicateCount = 0;
+            pQuery->_pDecoys[j].iLenPeptide = 0;
+            pQuery->_pDecoys[j].iRankSp = 0;
+            pQuery->_pDecoys[j].iMatchedIons = 0;
+            pQuery->_pDecoys[j].iTotalIons = 0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
             pQuery->_pDecoys[j].szProtein[0] = '\0';
          }
@@ -305,6 +291,11 @@ static bool AllocateResultsMem()
 static bool compareByPeptideMass(Query const* a, Query const* b)
 {
    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
+}
+
+static bool compareByScanNumber(Query const* a, Query const* b)
+{
+   return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }
 
 static void CalcRunTime(time_t tStartTime)
@@ -508,6 +499,11 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("decoy_prefix", strData))
    {
       strcpy(g_staticParams.szDecoyPrefix, strData.c_str());
+   }
+
+   if (GetParamValue("output_suffix", strData))
+   {
+      strcpy(g_staticParams.szOutputSuffix, strData.c_str());
    }
 
    GetParamValue("nucleotide_reading_frame", g_staticParams.options.iWhichReadingFrame);
@@ -1424,17 +1420,17 @@ bool CometSearchManager::DoSearch()
          if (iAnalysisType == AnalysisType_EntireFile)
          {
 #ifdef CRUX
-            sprintf(szOutputSQT, "%s.target.sqt", g_staticParams.inputFile.szBaseName);        
+            sprintf(szOutputSQT, "%s%s.target.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #else
-            sprintf(szOutputSQT, "%s.sqt", g_staticParams.inputFile.szBaseName);
+            sprintf(szOutputSQT, "%s%s.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #endif
          }
          else
          {
 #ifdef CRUX
-            sprintf(szOutputSQT, "%s.%d-%d.target.sqt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputSQT, "%s%s.%d-%d.target.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #else
-            sprintf(szOutputSQT, "%s.%d-%d.sqt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputSQT, "%s%s.%d-%d.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #endif
          }
 
@@ -1453,9 +1449,9 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-               sprintf(szOutputDecoySQT, "%s.decoy.sqt", g_staticParams.inputFile.szBaseName);
+               sprintf(szOutputDecoySQT, "%s%s.decoy.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
             else
-               sprintf(szOutputDecoySQT, "%s.%d-%d.decoy.sqt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+               sprintf(szOutputDecoySQT, "%s%s.%d-%d.decoy.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 
             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
             {   
@@ -1476,17 +1472,17 @@ bool CometSearchManager::DoSearch()
          if (iAnalysisType == AnalysisType_EntireFile)
          {
 #ifdef CRUX
-            sprintf(szOutputTxt, "%s.target.txt", g_staticParams.inputFile.szBaseName);
+            sprintf(szOutputTxt, "%s%s.target.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #else
-            sprintf(szOutputTxt, "%s.txt", g_staticParams.inputFile.szBaseName);
+            sprintf(szOutputTxt, "%s%s.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #endif
          }
          else
          {
 #ifdef CRUX
-            sprintf(szOutputTxt, "%s.%d-%d.target.txt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputTxt, "%s%s.%d-%d.target.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #else
-            sprintf(szOutputTxt, "%s.%d-%d.txt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputTxt, "%s%s.%d-%d.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #endif
          }
 
@@ -1505,9 +1501,9 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-               sprintf(szOutputDecoyTxt, "%s.decoy.txt", g_staticParams.inputFile.szBaseName);
+               sprintf(szOutputDecoyTxt, "%s%s.decoy.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
             else
-               sprintf(szOutputDecoyTxt, "%s.%d-%d.decoy.txt", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+               sprintf(szOutputDecoyTxt, "%s%s.%d-%d.decoy.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 
             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
             {
@@ -1530,17 +1526,17 @@ bool CometSearchManager::DoSearch()
          if (iAnalysisType == AnalysisType_EntireFile)
          {
 #ifdef CRUX
-            sprintf(szOutputPepXML, "%s.target.pep.xml", g_staticParams.inputFile.szBaseName);
+            sprintf(szOutputPepXML, "%s%s.target.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #else
-            sprintf(szOutputPepXML, "%s.pep.xml", g_staticParams.inputFile.szBaseName);
+            sprintf(szOutputPepXML, "%s%s.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #endif
          }
          else
          {
 #ifdef CRUX
-            sprintf(szOutputPepXML, "%s.%d-%d.target.pep.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputPepXML, "%s%s.%d-%d.target.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #else
-            sprintf(szOutputPepXML, "%s.%d-%d.pep.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputPepXML, "%s%s.%d-%d.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #endif
          }
 
@@ -1562,9 +1558,9 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-               sprintf(szOutputDecoyPepXML, "%s.decoy.pep.xml", g_staticParams.inputFile.szBaseName);
+               sprintf(szOutputDecoyPepXML, "%s%s.decoy.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
             else
-               sprintf(szOutputDecoyPepXML, "%s.%d-%d.decoy.pep.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+               sprintf(szOutputDecoyPepXML, "%s%s.%d-%d.decoy.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 
             if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
             {
@@ -1586,9 +1582,9 @@ bool CometSearchManager::DoSearch()
       if (bSucceeded && g_staticParams.options.bOutputPinXMLFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputPinXML, "%s.pin.xml", g_staticParams.inputFile.szBaseName);
+            sprintf(szOutputPinXML, "%s%s.pin.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
          else
-            sprintf(szOutputPinXML, "%s.%d-%d.pin.xml", g_staticParams.inputFile.szBaseName, iFirstScan, iLastScan);
+            sprintf(szOutputPinXML, "%s%s.%d-%d.pin.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 
          if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
          {
@@ -1686,6 +1682,9 @@ bool CometSearchManager::DoSearch()
             {
                goto cleanup_results;
             }
+
+            // Sort g_pvQuery vector by scan.
+            std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
             CalcRunTime(tStartTime);
 

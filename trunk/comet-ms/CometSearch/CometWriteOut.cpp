@@ -65,7 +65,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 {
    int  i,
         ii,
-        iDoXcorrCount,
+        iNumPrintLines,
         iLenMaxDuplicates,
         iMaxWidthReference,
         iRankXcorr;
@@ -198,13 +198,13 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    fprintf(fpout, "%s\n", szBuf);
 
    if (bDecoySearch)
-      iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
+      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
    else
-      iDoXcorrCount = pQuery->iDoXcorrCount;
+      iNumPrintLines = pQuery->iMatchPeptideCount;
 
    // Print out each sequence line.
-   if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
-      iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
+   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
+      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
    Results *pOutput;
 
@@ -215,7 +215,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    iMaxWidthReference = 9;
    iLenMaxDuplicates = 0;
-   for (i=0; i<iDoXcorrCount; i++)
+   for (i=0; i<iNumPrintLines; i++)
    {
       if (pOutput[i].iDuplicateCount > iLenMaxDuplicates)
          iLenMaxDuplicates = pOutput[i].iDuplicateCount;
@@ -277,12 +277,12 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
-   for (i=0; i<iDoXcorrCount; i++)
+   for (i=0; i<iNumPrintLines; i++)
    {
       if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
-      if (pOutput[i].fXcorr > 0)
+      if (pOutput[i].fXcorr > XCORR_CUTOFF)
          PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, pOutput, fpout);
    } 
 
@@ -290,7 +290,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    // Print out the fragment ions for the selected ion series
    // and mark matched ions in the sp scoring routine.
-   if (g_staticParams.options.bShowFragmentIons && iDoXcorrCount > 0)
+   if (g_staticParams.options.bShowFragmentIons && iNumPrintLines > 0)
    {
       PrintIons(iWhichQuery, fpout);
    }
@@ -303,23 +303,23 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
       if (bDecoySearch)
       {
-         fprintf(fpout, "a=%f b=%f\n", pQuery->fDecoyPar[1], pQuery->fDecoyPar[0]);
+         fprintf(fpout, "a=%f b=%f\n", pQuery->fPar[1], pQuery->fPar[0]);
 
-         // iDecoyCorrelationHistogram is already cummulative here.
-         for (i=0; i<=pQuery->siMaxDecoyXcorr; i++)
+         // iXcorrHistogram is already cummulative here.
+         for (i=0; i<=pQuery->siMaxXcorr; i++)
          {
-            if (pQuery->iDecoyCorrelationHistogram[i]> 0)
+            if (pQuery->iXcorrHistogram[i]> 0)
             {
-               dVal = pQuery->fDecoyPar[0] + pQuery->fDecoyPar[1] * i;
+               dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
                dExpect = pow(10.0, dVal);
 
-               if (dExpect>999.0)
+               if (dExpect > 999.0)
                   dExpect = 999.0;
 
                fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
                      i*0.1,
-                     pQuery->iDecoyCorrelationHistogram[i],
-                     log10((float)pQuery->iDecoyCorrelationHistogram[i]),
+                     pQuery->iXcorrHistogram[i],
+                     log10((float)pQuery->iXcorrHistogram[i]),
                      dVal,
                      dExpect);
             }
@@ -334,21 +334,21 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
                (int)pQuery->fPar[2],
                (int)pQuery->fPar[3]);
 
-         // iCorrelationHistogram is already cummulative here.
+         // iXcorrHistogram is already cummulative here.
          for (i=0; i<=pQuery->siMaxXcorr; i++)
          {
-            if (pQuery->iCorrelationHistogram[i]> 0)
+            if (pQuery->iXcorrHistogram[i]> 0)
             {
                dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
                dExpect = pow(10.0, dVal);
 
-               if (dExpect>999.0)
+               if (dExpect > 999.0)
                   dExpect = 999.0;
 
                fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
                      i*0.1,
-                     pQuery->iCorrelationHistogram[i],
-                     log10((float)pQuery->iCorrelationHistogram[i]),
+                     pQuery->iXcorrHistogram[i],
+                     log10((float)pQuery->iXcorrHistogram[i]),
                      dVal,
                      dExpect);
             }
@@ -374,12 +374,21 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
         iWidthPrintRef;
    char szBuf[SIZE_BUF];
 
+   double dDeltaCn;
+
+   if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr >= 0.0)
+      dDeltaCn = 1.0 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr;
+   else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr < 0.0)
+      dDeltaCn = 1.0;
+   else
+      dDeltaCn = 0.0;
+
    sprintf(szBuf, "%3d. %3d /%3d  %9.4f  %6.4f %7.4f ",
          iWhichResult+1,
          iRankXcorr,
          pOutput[iWhichResult].iRankSp,
          pOutput[iWhichResult].dPepMass,
-         1.000 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr,
+         dDeltaCn,
          pOutput[iWhichResult].fXcorr);
 
    if (g_staticParams.options.bPrintExpectScore)

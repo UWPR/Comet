@@ -164,7 +164,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
                                  FILE *fpout)
 {
    int  i,
-        iDoXcorrCount,
+        iNumPrintLines,
         iRankXcorr;
    char szBuf[SIZE_BUF],
         scan1[32],
@@ -208,13 +208,13 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
       fprintf(fpout, "%s", szBuf);
 
    if (bDecoy)
-      iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
+      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
    else
-      iDoXcorrCount = pQuery->iDoXcorrCount;
+      iNumPrintLines = pQuery->iMatchPeptideCount;
 
    // Print out each sequence line.
-   if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
-      iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
+   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
+      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
    Results *pOutput;
 
@@ -225,12 +225,12 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
-   for (i=0; i<iDoXcorrCount; i++)
+   for (i=0; i<iNumPrintLines; i++)
    {
       if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
-      if (pOutput[i].fXcorr > 0)
+      if (pOutput[i].fXcorr > XCORR_CUTOFF)
          PrintSqtLine(iRankXcorr, i, pOutput, fpout);
    } 
 }
@@ -243,12 +243,20 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
 {
    int  i;
    char szBuf[SIZE_BUF];
+   double dDeltaCn;
+
+   if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr >= 0.0)
+      dDeltaCn = 1.0 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr;
+   else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr < 0.0)
+      dDeltaCn = 1.0;
+   else
+      dDeltaCn = 0.0;
 
    sprintf(szBuf, "M\t%d\t%d\t%0.6f\t%0.4f\t%0.4f\t",
          iRankXcorr,
          pOutput[iWhichResult].iRankSp,
          pOutput[iWhichResult].dPepMass,
-         1.000000 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr,
+         dDeltaCn,
          pOutput[iWhichResult].fXcorr);
 
    if (g_staticParams.options.bPrintExpectScore)

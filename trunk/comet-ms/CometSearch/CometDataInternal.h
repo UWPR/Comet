@@ -61,6 +61,12 @@ class CometSearchManager;
 #define ION_SERIES_Y                4
 #define ION_SERIES_Z                5
 
+#ifdef CRUX
+#define XCORR_CUTOFF                -999.0
+#else
+#define XCORR_CUTOFF                0.0
+#endif
+
 
 struct msdata                    // used in the preprocessing
 {
@@ -416,6 +422,7 @@ struct StaticParams
    char            szDisplayLine[256]; // used for .out files
    char            szMod[512];         // used for .out files
    char            szDecoyPrefix[256]; // used for prefix to indicate decoys
+   char            szOutputSuffix[256]; // used for suffix to append to output file base names
    int             iElapseTime;
    char            szDate[32];
    Options         options;
@@ -444,6 +451,7 @@ struct StaticParams
       databaseInfo.szDatabase[0] = '\0';
 
       strcpy(szDecoyPrefix, "DECOY_");
+      szOutputSuffix[0] = '\0';
 
       for (i=0; i<SIZE_MASS; i++)
       {
@@ -561,6 +569,7 @@ struct StaticParams
       strcpy(szDisplayLine, a.szDisplayLine);
       strcpy(szMod, a.szMod);
       strcpy(szDecoyPrefix, a.szDecoyPrefix);
+      strcpy(szOutputSuffix, a.szOutputSuffix);
       iElapseTime = a.iElapseTime;
       strcpy(szDate, a.szDate);
       options = a.options;
@@ -594,16 +603,14 @@ struct SparseMatrix
 // This struct is allocated for each spectrum/charge combination
 struct Query
 {
-   int   iCorrelationHistogram[HISTO_SIZE];
-   int   iDoXcorrCount;
+   int   iXcorrHistogram[HISTO_SIZE];
+   int   iHistogramCount;   // # of entries in histogram
    float fPar[4];           // parameters of LMA regression
 
-   int   iDecoyCorrelationHistogram[HISTO_SIZE];
-   int   iDoDecoyXcorrCount;
-   float fDecoyPar[4];      // parameters of LMA regression
+   int iMatchPeptideCount;        // # of peptide matches
+   int iDecoyMatchPeptideCount;   // # of decoy peptide matches
 
-   short siMaxXcorr;        // index of maximum correlation score in iCorrelationHistogram
-   short siMaxDecoyXcorr;   // index of maximum correlation score in iDecoyCorrelationHistogram
+   short siMaxXcorr;        // index of maximum correlation score in iXcorrHistogram
 
    short siLowestSpScoreIndex;
    short siLowestDecoySpScoreIndex;
@@ -639,32 +646,27 @@ struct Query
 
    Query()
    {
-      for (int i = 0; i < HISTO_SIZE; i++)
-      {
-         iCorrelationHistogram[i] = 0;
-         iDecoyCorrelationHistogram[i] = 0;
-      }
+      for (int i=0; i < HISTO_SIZE; i++)
+         iXcorrHistogram[i] = 0;
 
-      iDoXcorrCount = 0;
+      iMatchPeptideCount= 0;
+      iDecoyMatchPeptideCount= 0;
+      iHistogramCount = 0;
+
       fPar[0]=0.0;
       fPar[1]=0.0;
       fPar[2]=0.0;
+      fPar[3]=0.0;
 
-      iDoDecoyXcorrCount = 0;
-      fDecoyPar[0]=0.0;
-      fDecoyPar[1]=0.0;
-      fDecoyPar[2]=0.0;
-
-      siMaxXcorr = 0;                        // index of maximum correlation score in iCorrelationHistogram
-      siMaxDecoyXcorr = 0;                   // index of maximum correlation score in iDecoyCorrelationHistogram
+      siMaxXcorr = 0;                        // index of maximum correlation score in iXcorrHistogram
       siLowestSpScoreIndex = 0;
       siLowestDecoySpScoreIndex = 0;
 
       fLowestSpScore = 0.0;
       fLowestDecoySpScore = 0.0;
 
-      fLowestCorrScore = 0.0;
-      fLowestDecoyCorrScore = 0.0;
+      fLowestCorrScore = XCORR_CUTOFF;
+      fLowestDecoyCorrScore = XCORR_CUTOFF;
 
       _uliNumMatchedPeptides = 0;
       _uliNumMatchedDecoyPeptides = 0;

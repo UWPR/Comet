@@ -344,7 +344,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
                                     FILE *fpout)
 {
    int  i,
-        iDoXcorrCount,
+        iNumPrintLines,
         iRankXcorr,
         iMinLength;
    char *pStr;
@@ -384,13 +384,13 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    fprintf(fpout, "  <search_result>\n");
 
    if (bDecoy)
-      iDoXcorrCount = pQuery->iDoDecoyXcorrCount;
+      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
    else
-      iDoXcorrCount = pQuery->iDoXcorrCount;
+      iNumPrintLines = pQuery->iMatchPeptideCount;
 
    // Print out each sequence line.
-   if (iDoXcorrCount > (g_staticParams.options.iNumPeptideOutputLines))
-      iDoXcorrCount = (g_staticParams.options.iNumPeptideOutputLines);
+   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
+      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
    Results *pOutput;
 
@@ -402,7 +402,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    iRankXcorr = 1;
 
    iMinLength = 999;
-   for (i=0; i<iDoXcorrCount; i++)
+   for (i=0; i<iNumPrintLines; i++)
    {
       int iLen = (int)strlen(pOutput[i].szPeptide);
       if (iLen == 0)
@@ -411,7 +411,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          iMinLength = iLen;
    }
 
-   for (i=0; i<iDoXcorrCount; i++)
+   for (i=0; i<iNumPrintLines; i++)
    {
       int j;
       bool bNoDeltaCnYet = true;
@@ -420,7 +420,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       double dDeltaCnStar;   // this is explicit deltaCn between i and i+1 hits or 0.0 ...
                              // I honestly don't understand the logic in the deltacnstar convention being used in TPP
 
-      for (j=i+1; j<iDoXcorrCount; j++)
+      for (j=i+1; j<iNumPrintLines; j++)
       {
          // very poor way of calculating peptide similarity but it's what we have for now
          int iDiffCt = 0;
@@ -443,7 +443,13 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          // calculate deltaCn only if sequences are less than 0.75 similar
          if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
          {
-            dDeltaCn = (pOutput[i].fXcorr - pOutput[j].fXcorr) / pOutput[i].fXcorr;
+            if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+               dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
+            else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+               dDeltaCn = 1.0;
+            else
+               dDeltaCn = 0.0;
+
             bNoDeltaCnYet = 0;
    
             if (j - i > 1)
@@ -458,10 +464,17 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       if (i > 0 && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
-      if (pOutput[i].fXcorr > 0.0)
+      if (pOutput[i].fXcorr > XCORR_CUTOFF)
       {
-         if (bDeltaCnStar && i+1<iDoXcorrCount)
-            dDeltaCnStar = (pOutput[i].fXcorr - pOutput[i+1].fXcorr)/pOutput[i].fXcorr;
+         if (bDeltaCnStar && i+1<iNumPrintLines)
+         {
+            if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr >= 0.0)
+               dDeltaCnStar = 1.0 - pOutput[i+1].fXcorr/pOutput[i].fXcorr;
+            else if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr < 0.0)
+               dDeltaCnStar = 1.0;
+            else
+               dDeltaCnStar = 0.0;
+         }
          else
             dDeltaCnStar = 0.0;
 

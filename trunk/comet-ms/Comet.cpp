@@ -207,7 +207,7 @@ void LoadParameters(char *pszParamsFile,
       {
          sscanf(szParamBuf, "%*s %*s %128s", szVersion);
          // Major version number must match to current binary
-         if (strstr(comet_version, szVersion))
+         if (strstr(comet_version, szVersion) || strstr(szVersion, "2013.02"))
          {
             bValidParamsFile = true;
             break;
@@ -275,7 +275,13 @@ void LoadParameters(char *pszParamsFile,
             sscanf(szParamVal, "%256s", szDecoyPrefix);
             pSearchMgr->SetParam("decoy_prefix", szDecoyPrefix, szDecoyPrefix);
 
-            bCurrentParamsFile = 1;  // this is the new parameter; if this is missing then complain & exit
+         }
+         else if (!strcmp(szParamName, "output_suffix"))
+         {
+            char szOutputSuffix[256];
+            szOutputSuffix[0] = '\0';
+            sscanf(szParamVal, "%256s", szOutputSuffix);
+            pSearchMgr->SetParam("output_suffix", szOutputSuffix, szOutputSuffix);
          }
          else if (!strcmp(szParamName, "nucleotide_reading_frame"))
          {
@@ -605,6 +611,8 @@ void LoadParameters(char *pszParamsFile,
             szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("output_pinxmlfile", szParamStringVal, iIntParam);
+
+            bCurrentParamsFile = 1;  // this is the new parameter; if this is missing then complain & exit
          }
          else if (!strcmp(szParamName, "output_outfiles"))
          {
@@ -1282,11 +1290,11 @@ max_variable_mods_in_peptide = 5\n\
 # fragment ions\n\
 #\n\
 # ion trap ms/ms:  1.0005 tolerance, 0.4 offset (mono masses), theoretical_fragment_ions = 1\n\
-# high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0\n\
+# high res ms/ms:    0.05 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0\n\
 #\n\
 fragment_bin_tol = 1.0005              # binning to use on fragment ions\n\
 fragment_bin_offset = 0.4              # offset position to start the binning (0.0 to 1.0)\n\
-theoretical_fragment_ions = 1          # 0=default peak shape, 1=M peak only\n\
+theoretical_fragment_ions = 1          # 0=use flanking peaks, 1=M peak only\n\
 use_A_ions = 0\n\
 use_B_ions = 1\n\
 use_C_ions = 0\n\
@@ -1336,6 +1344,7 @@ fprintf(fp,
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
 spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
+output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML\n\
 \n\
 #\n\
 # spectral processing\n\
