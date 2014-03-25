@@ -207,7 +207,7 @@ void LoadParameters(char *pszParamsFile,
       {
          sscanf(szParamBuf, "%*s %*s %128s", szVersion);
          // Major version number must match to current binary
-         if (strstr(comet_version, szVersion))
+         if (strstr(comet_version, szVersion) || strstr(szVersion, "2013.02"))
          {
             bValidParamsFile = true;
             break;
@@ -282,8 +282,6 @@ void LoadParameters(char *pszParamsFile,
             szOutputSuffix[0] = '\0';
             sscanf(szParamVal, "%256s", szOutputSuffix);
             pSearchMgr->SetParam("output_suffix", szOutputSuffix, szOutputSuffix);
-
-            bCurrentParamsFile = 1;  // this is the new parameter; if this is missing then complain & exit
          }
          else if (!strcmp(szParamName, "nucleotide_reading_frame"))
          {
@@ -613,6 +611,8 @@ void LoadParameters(char *pszParamsFile,
             szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("output_pinxmlfile", szParamStringVal, iIntParam);
+
+            bCurrentParamsFile = 1;  // this is the new parameter; if this is missing then complain & exit
          }
          else if (!strcmp(szParamName, "output_outfiles"))
          {
