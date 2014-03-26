@@ -90,6 +90,12 @@
     <Compile Include="CometUI.Designer.cs">
       <DependentUpon>CometUI.cs</DependentUpon>
     </Compile>
+    <Compile Include="RunSearchDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RunSearchDlg.Designer.cs">
+      <DependentUpon>RunSearchDlg.cs</DependentUpon>
+    </Compile>
     <Compile Include="SettingsUI\MiscSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -151,6 +157,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="CometUI.resx">
       <DependentUpon>CometUI.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="RunSearchDlg.resx">
+      <DependentUpon>RunSearchDlg.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="SettingsUI\MiscSettingsControl.resx">
       <DependentUpon>MiscSettingsControl.cs</DependentUpon>

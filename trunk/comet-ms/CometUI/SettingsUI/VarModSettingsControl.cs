@@ -131,7 +131,7 @@ namespace CometUI.SettingsUI
                     string strValue = textBoxCell.Value.ToString();
                     try
                     {
-                        int maxMods = (int) Convert.ToUInt16(strValue);
+                        var maxMods = (int) Convert.ToUInt16(strValue);
                         if (maxMods > 64)
                         {
                             throw new ArgumentException();

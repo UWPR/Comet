@@ -19,5 +19,14 @@ namespace CometUI
                 // Do something here?  Maybe save the settings?
             }
         }
+
+        private void RunSearchToolStripMenuItemClick(object sender, EventArgs e)
+        {
+            var runSearchDlg = new RunSearchDlg();
+            if (DialogResult.OK == runSearchDlg.ShowDialog())
+            {
+                // Do something here?  Ask to view results?
+            }
+        }
     }
 }

@@ -89,6 +89,7 @@
             this.runSearchToolStripMenuItem.Name = "runSearchToolStripMenuItem";
             this.runSearchToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.runSearchToolStripMenuItem.Text = "&Run Search...";
+            this.runSearchToolStripMenuItem.Click += new System.EventHandler(this.RunSearchToolStripMenuItemClick);
             // 
             // settingsToolStripMenuItem
             // 
