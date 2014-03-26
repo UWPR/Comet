@@ -4,7 +4,7 @@ using System.Windows.Forms;
 using CometWrapper;
 using System.Drawing;
 
-namespace CometUI
+namespace CometUI.SettingsUI
 {
     public partial class SearchSettingsDlg : Form
     {

@@ -5,7 +5,7 @@ using System.Windows.Forms;
 using CometUI.Properties;
 using System.Collections.Specialized;
 
-namespace CometUI
+namespace CometUI.SettingsUI
 {
     public partial class EnzymeSettingsControl : UserControl
     {

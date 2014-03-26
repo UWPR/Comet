@@ -2,7 +2,7 @@
 using System.Windows.Forms;
 using CometUI.Properties;
 
-namespace CometUI
+namespace CometUI.SettingsUI
 {
     public partial class MassSettingsControl : UserControl
     {
@@ -11,6 +11,8 @@ namespace CometUI
         public MassSettingsControl(Form parent)
         {
             InitializeComponent();
+
+            Parent = parent;
 
             InitializeFromDefaultSettings();
         }

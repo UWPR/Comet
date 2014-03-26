@@ -1,4 +1,4 @@
-﻿namespace CometUI
+﻿namespace CometUI.SettingsUI
 {
     partial class EnzymeSettingsControl
     {

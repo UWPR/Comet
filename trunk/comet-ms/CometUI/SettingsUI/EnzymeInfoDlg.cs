@@ -2,7 +2,7 @@
 using System.Collections.Specialized;
 using System.Windows.Forms;
 
-namespace CometUI
+namespace CometUI.SettingsUI
 {
     public partial class EnzymeInfoDlg : Form
     {

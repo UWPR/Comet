@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using System.IO;
 using CometUI.Properties;
 
-namespace CometUI
+namespace CometUI.SettingsUI
 {
     public partial class InputSettingsControl : UserControl
     {
