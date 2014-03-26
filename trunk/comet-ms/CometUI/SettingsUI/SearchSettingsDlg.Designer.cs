@@ -1,6 +1,6 @@
 ﻿namespace CometUI
 {
-    partial class CometMainForm
+    partial class SearchSettingsDlg
     {
         /// <summary>
         /// Required designer variable.
@@ -28,15 +28,8 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CometMainForm));
-            this.btnSearch = new System.Windows.Forms.Button();
-            this.menuStripMain = new System.Windows.Forms.MenuStrip();
-            this.toolStripMenuItemSettings = new System.Windows.Forms.ToolStripMenuItem();
-            this.saveAsDefaultToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.importFromFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.exportToFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripMenuItemHelp = new System.Windows.Forms.ToolStripMenuItem();
-            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SearchSettingsDlg));
+            this.btnOK = new System.Windows.Forms.Button();
             this.mainSplitContainer = new System.Windows.Forms.SplitContainer();
             this.cometMainTab = new System.Windows.Forms.TabControl();
             this.inputFilesTabPage = new System.Windows.Forms.TabPage();
@@ -46,87 +39,31 @@
             this.staticModsTabPage = new System.Windows.Forms.TabPage();
             this.varModsTabPage = new System.Windows.Forms.TabPage();
             this.miscTabPage = new System.Windows.Forms.TabPage();
-            this.statusStripMain = new System.Windows.Forms.StatusStrip();
-            this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.menuStripMain.SuspendLayout();
+            this.btnCancel = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).BeginInit();
             this.mainSplitContainer.Panel1.SuspendLayout();
             this.mainSplitContainer.Panel2.SuspendLayout();
             this.mainSplitContainer.SuspendLayout();
             this.cometMainTab.SuspendLayout();
-            this.statusStripMain.SuspendLayout();
             this.SuspendLayout();
             // 
-            // btnSearch
+            // btnOK
             // 
-            this.btnSearch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSearch.Location = new System.Drawing.Point(469, 0);
-            this.btnSearch.Name = "btnSearch";
-            this.btnSearch.Size = new System.Drawing.Size(78, 23);
-            this.btnSearch.TabIndex = 18;
-            this.btnSearch.Text = "Search";
-            this.btnSearch.UseVisualStyleBackColor = true;
-            this.btnSearch.Click += new System.EventHandler(this.BtnSearchClick);
-            // 
-            // menuStripMain
-            // 
-            this.menuStripMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripMenuItemSettings,
-            this.toolStripMenuItemHelp});
-            this.menuStripMain.Location = new System.Drawing.Point(0, 0);
-            this.menuStripMain.Name = "menuStripMain";
-            this.menuStripMain.Size = new System.Drawing.Size(559, 24);
-            this.menuStripMain.TabIndex = 1;
-            this.menuStripMain.Text = "Main Menu";
-            // 
-            // toolStripMenuItemSettings
-            // 
-            this.toolStripMenuItemSettings.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.saveAsDefaultToolStripMenuItem,
-            this.importFromFileToolStripMenuItem,
-            this.exportToFileToolStripMenuItem});
-            this.toolStripMenuItemSettings.Name = "toolStripMenuItemSettings";
-            this.toolStripMenuItemSettings.Size = new System.Drawing.Size(61, 20);
-            this.toolStripMenuItemSettings.Text = "&Settings";
-            // 
-            // saveAsDefaultToolStripMenuItem
-            // 
-            this.saveAsDefaultToolStripMenuItem.Name = "saveAsDefaultToolStripMenuItem";
-            this.saveAsDefaultToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
-            this.saveAsDefaultToolStripMenuItem.Text = "&Save as Default...";
-            // 
-            // importFromFileToolStripMenuItem
-            // 
-            this.importFromFileToolStripMenuItem.Name = "importFromFileToolStripMenuItem";
-            this.importFromFileToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
-            this.importFromFileToolStripMenuItem.Text = "&Import...";
-            // 
-            // exportToFileToolStripMenuItem
-            // 
-            this.exportToFileToolStripMenuItem.Name = "exportToFileToolStripMenuItem";
-            this.exportToFileToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
-            this.exportToFileToolStripMenuItem.Text = "&Export...";
-            // 
-            // toolStripMenuItemHelp
-            // 
-            this.toolStripMenuItemHelp.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.aboutToolStripMenuItem});
-            this.toolStripMenuItemHelp.Name = "toolStripMenuItemHelp";
-            this.toolStripMenuItemHelp.Size = new System.Drawing.Size(44, 20);
-            this.toolStripMenuItemHelp.Text = "&Help";
-            // 
-            // aboutToolStripMenuItem
-            // 
-            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
-            this.aboutToolStripMenuItem.Text = "&About";
+            this.btnOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnOK.Location = new System.Drawing.Point(385, 16);
+            this.btnOK.Name = "btnOK";
+            this.btnOK.Size = new System.Drawing.Size(78, 23);
+            this.btnOK.TabIndex = 18;
+            this.btnOK.Text = "OK";
+            this.btnOK.UseVisualStyleBackColor = true;
+            this.btnOK.Click += new System.EventHandler(this.BtnSearchClick);
             // 
             // mainSplitContainer
             // 
             this.mainSplitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
             this.mainSplitContainer.FixedPanel = System.Windows.Forms.FixedPanel.Panel2;
             this.mainSplitContainer.IsSplitterFixed = true;
-            this.mainSplitContainer.Location = new System.Drawing.Point(0, 24);
+            this.mainSplitContainer.Location = new System.Drawing.Point(0, 0);
             this.mainSplitContainer.Name = "mainSplitContainer";
             this.mainSplitContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
@@ -136,10 +73,10 @@
             // 
             // mainSplitContainer.Panel2
             // 
-            this.mainSplitContainer.Panel2.Controls.Add(this.statusStripMain);
-            this.mainSplitContainer.Panel2.Controls.Add(this.btnSearch);
-            this.mainSplitContainer.Size = new System.Drawing.Size(559, 513);
-            this.mainSplitContainer.SplitterDistance = 458;
+            this.mainSplitContainer.Panel2.Controls.Add(this.btnCancel);
+            this.mainSplitContainer.Panel2.Controls.Add(this.btnOK);
+            this.mainSplitContainer.Size = new System.Drawing.Size(559, 512);
+            this.mainSplitContainer.SplitterDistance = 457;
             this.mainSplitContainer.TabIndex = 2;
             // 
             // cometMainTab
@@ -157,7 +94,7 @@
             this.cometMainTab.Location = new System.Drawing.Point(12, 0);
             this.cometMainTab.Name = "cometMainTab";
             this.cometMainTab.SelectedIndex = 0;
-            this.cometMainTab.Size = new System.Drawing.Size(535, 456);
+            this.cometMainTab.Size = new System.Drawing.Size(535, 455);
             this.cometMainTab.TabIndex = 10;
             // 
             // inputFilesTabPage
@@ -165,7 +102,7 @@
             this.inputFilesTabPage.Location = new System.Drawing.Point(4, 22);
             this.inputFilesTabPage.Name = "inputFilesTabPage";
             this.inputFilesTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.inputFilesTabPage.Size = new System.Drawing.Size(527, 430);
+            this.inputFilesTabPage.Size = new System.Drawing.Size(527, 429);
             this.inputFilesTabPage.TabIndex = 0;
             this.inputFilesTabPage.Text = "Input";
             this.inputFilesTabPage.UseVisualStyleBackColor = true;
@@ -174,7 +111,7 @@
             // 
             this.outputTabPage.Location = new System.Drawing.Point(4, 22);
             this.outputTabPage.Name = "outputTabPage";
-            this.outputTabPage.Size = new System.Drawing.Size(527, 430);
+            this.outputTabPage.Size = new System.Drawing.Size(527, 454);
             this.outputTabPage.TabIndex = 6;
             this.outputTabPage.Text = "Output";
             this.outputTabPage.UseVisualStyleBackColor = true;
@@ -184,7 +121,7 @@
             this.enzymeTabPage.Location = new System.Drawing.Point(4, 22);
             this.enzymeTabPage.Name = "enzymeTabPage";
             this.enzymeTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.enzymeTabPage.Size = new System.Drawing.Size(527, 430);
+            this.enzymeTabPage.Size = new System.Drawing.Size(527, 454);
             this.enzymeTabPage.TabIndex = 1;
             this.enzymeTabPage.Text = "Enzyme";
             this.enzymeTabPage.UseVisualStyleBackColor = true;
@@ -194,7 +131,7 @@
             this.massesTabPage.Location = new System.Drawing.Point(4, 22);
             this.massesTabPage.Name = "massesTabPage";
             this.massesTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.massesTabPage.Size = new System.Drawing.Size(527, 430);
+            this.massesTabPage.Size = new System.Drawing.Size(527, 454);
             this.massesTabPage.TabIndex = 2;
             this.massesTabPage.Text = "Masses";
             this.massesTabPage.UseVisualStyleBackColor = true;
@@ -203,7 +140,7 @@
             // 
             this.staticModsTabPage.Location = new System.Drawing.Point(4, 22);
             this.staticModsTabPage.Name = "staticModsTabPage";
-            this.staticModsTabPage.Size = new System.Drawing.Size(527, 430);
+            this.staticModsTabPage.Size = new System.Drawing.Size(527, 454);
             this.staticModsTabPage.TabIndex = 7;
             this.staticModsTabPage.Text = "Static Mods";
             this.staticModsTabPage.UseVisualStyleBackColor = true;
@@ -213,7 +150,7 @@
             this.varModsTabPage.Location = new System.Drawing.Point(4, 22);
             this.varModsTabPage.Name = "varModsTabPage";
             this.varModsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.varModsTabPage.Size = new System.Drawing.Size(527, 430);
+            this.varModsTabPage.Size = new System.Drawing.Size(527, 454);
             this.varModsTabPage.TabIndex = 3;
             this.varModsTabPage.Text = "Var Mods";
             this.varModsTabPage.UseVisualStyleBackColor = true;
@@ -223,76 +160,55 @@
             this.miscTabPage.Location = new System.Drawing.Point(4, 22);
             this.miscTabPage.Name = "miscTabPage";
             this.miscTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.miscTabPage.Size = new System.Drawing.Size(527, 430);
+            this.miscTabPage.Size = new System.Drawing.Size(527, 454);
             this.miscTabPage.TabIndex = 5;
             this.miscTabPage.Text = "Misc";
             this.miscTabPage.UseVisualStyleBackColor = true;
             // 
-            // statusStripMain
+            // btnCancel
             // 
-            this.statusStripMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripStatusLabel1});
-            this.statusStripMain.Location = new System.Drawing.Point(0, 29);
-            this.statusStripMain.Name = "statusStripMain";
-            this.statusStripMain.Size = new System.Drawing.Size(559, 22);
-            this.statusStripMain.TabIndex = 19;
-            this.statusStripMain.Text = "statusStrip";
+            this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnCancel.Location = new System.Drawing.Point(469, 16);
+            this.btnCancel.Name = "btnCancel";
+            this.btnCancel.Size = new System.Drawing.Size(78, 23);
+            this.btnCancel.TabIndex = 19;
+            this.btnCancel.Text = "Cancel";
+            this.btnCancel.UseVisualStyleBackColor = true;
+            this.btnCancel.Click += new System.EventHandler(this.BtnCancelClick);
             // 
-            // toolStripStatusLabel1
-            // 
-            this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-            this.toolStripStatusLabel1.Size = new System.Drawing.Size(218, 17);
-            this.toolStripStatusLabel1.Text = "This is where search status will show up.";
-            // 
-            // CometMainForm
+            // SearchSettingsDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(559, 537);
+            this.ClientSize = new System.Drawing.Size(559, 512);
             this.Controls.Add(this.mainSplitContainer);
-            this.Controls.Add(this.menuStripMain);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.MainMenuStrip = this.menuStripMain;
-            this.MinimumSize = new System.Drawing.Size(575, 575);
-            this.Name = "CometMainForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Comet";
-            this.menuStripMain.ResumeLayout(false);
-            this.menuStripMain.PerformLayout();
+            this.MinimumSize = new System.Drawing.Size(575, 550);
+            this.Name = "SearchSettingsDlg";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            this.Text = "Search Settings";
             this.mainSplitContainer.Panel1.ResumeLayout(false);
             this.mainSplitContainer.Panel2.ResumeLayout(false);
-            this.mainSplitContainer.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).EndInit();
             this.mainSplitContainer.ResumeLayout(false);
             this.cometMainTab.ResumeLayout(false);
-            this.statusStripMain.ResumeLayout(false);
-            this.statusStripMain.PerformLayout();
             this.ResumeLayout(false);
-            this.PerformLayout();
 
         }
 
         #endregion
 
-        private System.Windows.Forms.Button btnSearch;
-        private System.Windows.Forms.MenuStrip menuStripMain;
-        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemHelp;
-        private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
+        private System.Windows.Forms.Button btnOK;
         private System.Windows.Forms.SplitContainer mainSplitContainer;
         private System.Windows.Forms.TabControl cometMainTab;
         private System.Windows.Forms.TabPage inputFilesTabPage;
         private System.Windows.Forms.TabPage enzymeTabPage;
-        private System.Windows.Forms.StatusStrip statusStripMain;
         private System.Windows.Forms.TabPage massesTabPage;
         private System.Windows.Forms.TabPage varModsTabPage;
         private System.Windows.Forms.TabPage miscTabPage;
-        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
-        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemSettings;
-        private System.Windows.Forms.ToolStripMenuItem saveAsDefaultToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem exportToFileToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem importFromFileToolStripMenuItem;
         private System.Windows.Forms.TabPage outputTabPage;
         private System.Windows.Forms.TabPage staticModsTabPage;
+        private System.Windows.Forms.Button btnCancel;
     }
 }
 

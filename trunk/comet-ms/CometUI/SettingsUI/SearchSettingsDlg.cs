@@ -6,7 +6,7 @@ using System.Drawing;
 
 namespace CometUI
 {
-    public partial class CometMainForm : Form
+    public partial class SearchSettingsDlg : Form
     {
         private InputSettingsControl InputFilesControl { get; set; }
         private OutputSettingsControl OutputSettingsControl { get; set; }
@@ -18,7 +18,7 @@ namespace CometUI
         
         private readonly CometSearchManagerWrapper _searchMgr;
 
-        public CometMainForm()
+        public SearchSettingsDlg()
         {
             InitializeComponent();
 
@@ -82,6 +82,11 @@ namespace CometUI
         }
 
         private void BtnSearchClick(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.OK;
+        }
+
+        private void TestDoSearch()
         {
             if (!_searchMgr.DoSearch())
             {
@@ -149,5 +154,11 @@ namespace CometUI
                 _searchMgr.DoSearch();
             }
         }
+
+        private void BtnCancelClick(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.Cancel;
+        }
+
     }
 }

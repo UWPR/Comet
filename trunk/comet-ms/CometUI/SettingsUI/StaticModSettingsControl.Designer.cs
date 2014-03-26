@@ -32,14 +32,14 @@
             this.staticModsNameCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.staticModsResidueCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.staticModsMassDiffCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.staticCTermPeptideTextBox = new CometUI.NumericTextBox();
+            this.staticCTermPeptideTextBox = new NumericTextBox();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
-            this.staticNTermPeptideTextBox = new CometUI.NumericTextBox();
-            this.staticCTermProteinTextBox = new CometUI.NumericTextBox();
+            this.staticNTermPeptideTextBox = new NumericTextBox();
+            this.staticCTermProteinTextBox = new NumericTextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.staticNTermProteinTextBox = new CometUI.NumericTextBox();
+            this.staticNTermProteinTextBox = new NumericTextBox();
             ((System.ComponentModel.ISupportInitialize)(this.staticModsDataGridView)).BeginInit();
             this.SuspendLayout();
             // 

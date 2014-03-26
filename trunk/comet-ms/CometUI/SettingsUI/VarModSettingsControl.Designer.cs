@@ -33,14 +33,14 @@
             this.varModsMassCol = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.varModsBinaryModCol = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.varModsMaxModsPerPeptide = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.variableNTerminusTextBox = new CometUI.NumericTextBox();
-            this.variableCTerminusTextBox = new CometUI.NumericTextBox();
+            this.variableNTerminusTextBox = new NumericTextBox();
+            this.variableCTerminusTextBox = new NumericTextBox();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.variableNTerminusDistTextBox = new CometUI.NumericTextBox();
+            this.variableNTerminusDistTextBox = new NumericTextBox();
             this.label5 = new System.Windows.Forms.Label();
-            this.variableCTerminusDistTextBox = new CometUI.NumericTextBox();
+            this.variableCTerminusDistTextBox = new NumericTextBox();
             this.label6 = new System.Windows.Forms.Label();
             this.maxModsInPeptideTextBox = new System.Windows.Forms.NumericUpDown();
             ((System.ComponentModel.ISupportInitialize)(this.varModsDataGridView)).BeginInit();

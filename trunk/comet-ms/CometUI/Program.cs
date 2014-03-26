@@ -15,7 +15,7 @@ namespace CometUI
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new CometMainForm());
+            Application.Run(new CometUI());
         }
     }
 }

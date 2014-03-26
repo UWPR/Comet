@@ -84,90 +84,99 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MiscSettingsControl.cs">
+    <Compile Include="CometUI.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CometUI.Designer.cs">
+      <DependentUpon>CometUI.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SettingsUI\MiscSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="MiscSettingsControl.Designer.cs">
+    <Compile Include="SettingsUI\MiscSettingsControl.Designer.cs">
       <DependentUpon>MiscSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="NumericTextBox.cs">
+    <Compile Include="CommonControls\NumericTextBox.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="StaticModSettingsControl.cs">
+    <Compile Include="SettingsUI\StaticModSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="StaticModSettingsControl.Designer.cs">
+    <Compile Include="SettingsUI\StaticModSettingsControl.Designer.cs">
       <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="EnzymeInfoDlg.cs">
+    <Compile Include="SettingsUI\EnzymeInfoDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="EnzymeInfoDlg.Designer.cs">
+    <Compile Include="SettingsUI\EnzymeInfoDlg.Designer.cs">
       <DependentUpon>EnzymeInfoDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="EnzymeSettingsControl.cs">
+    <Compile Include="SettingsUI\EnzymeSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="EnzymeSettingsControl.Designer.cs">
+    <Compile Include="SettingsUI\EnzymeSettingsControl.Designer.cs">
       <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="InputSettingsControl.cs">
+    <Compile Include="SettingsUI\InputSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="InputSettingsControl.Designer.cs">
+    <Compile Include="SettingsUI\InputSettingsControl.Designer.cs">
       <DependentUpon>InputSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="MainForm.cs">
+    <Compile Include="SettingsUI\SearchSettingsDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="MainForm.Designer.cs">
-      <DependentUpon>MainForm.cs</DependentUpon>
+    <Compile Include="SettingsUI\SearchSettingsDlg.Designer.cs">
+      <DependentUpon>SearchSettingsDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="MassSettingsControl.cs">
+    <Compile Include="SettingsUI\MassSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="MassSettingsControl.Designer.cs">
+    <Compile Include="SettingsUI\MassSettingsControl.Designer.cs">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="VarModSettingsControl.cs">
+    <Compile Include="SettingsUI\VarModSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="VarModSettingsControl.Designer.cs">
+    <Compile Include="SettingsUI\VarModSettingsControl.Designer.cs">
       <DependentUpon>VarModSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="OutputSettingsControl.cs">
+    <Compile Include="SettingsUI\OutputSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="OutputSettingsControl.Designer.cs">
+    <Compile Include="SettingsUI\OutputSettingsControl.Designer.cs">
       <DependentUpon>OutputSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="MiscSettingsControl.resx">
+    <EmbeddedResource Include="CometUI.resx">
+      <DependentUpon>CometUI.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SettingsUI\MiscSettingsControl.resx">
       <DependentUpon>MiscSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="StaticModSettingsControl.resx">
+    <EmbeddedResource Include="SettingsUI\StaticModSettingsControl.resx">
       <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="EnzymeInfoDlg.resx">
+    <EmbeddedResource Include="SettingsUI\EnzymeInfoDlg.resx">
       <DependentUpon>EnzymeInfoDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="EnzymeSettingsControl.resx">
+    <EmbeddedResource Include="SettingsUI\EnzymeSettingsControl.resx">
       <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="InputSettingsControl.resx">
+    <EmbeddedResource Include="SettingsUI\InputSettingsControl.resx">
       <DependentUpon>InputSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="MainForm.resx">
-      <DependentUpon>MainForm.cs</DependentUpon>
+    <EmbeddedResource Include="SettingsUI\SearchSettingsDlg.resx">
+      <DependentUpon>SearchSettingsDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="MassSettingsControl.resx">
+    <EmbeddedResource Include="SettingsUI\MassSettingsControl.resx">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="VarModSettingsControl.resx">
+    <EmbeddedResource Include="SettingsUI\VarModSettingsControl.resx">
       <DependentUpon>VarModSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="OutputSettingsControl.resx">
+    <EmbeddedResource Include="SettingsUI\OutputSettingsControl.resx">
       <DependentUpon>OutputSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
