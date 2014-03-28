@@ -25,5 +25,10 @@ namespace CometUI
                 // Do something here?  Maybe save the settings?
             }
         }
+
+        private void BtnCancelClick(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.Cancel;
+        }
     }
 }
