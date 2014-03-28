@@ -22,7 +22,7 @@ namespace CometUI
 
         private void RunSearchToolStripMenuItemClick(object sender, EventArgs e)
         {
-            var runSearchDlg = new RunSearchDlg();
+            var runSearchDlg = new RunSearchDlg(this);
             if (DialogResult.OK == runSearchDlg.ShowDialog())
             {
                 // Do something here?  Ask to view results?

@@ -44,7 +44,7 @@
             this.btnSettings.Location = new System.Drawing.Point(211, 177);
             this.btnSettings.Name = "btnSettings";
             this.btnSettings.Size = new System.Drawing.Size(75, 23);
-            this.btnSettings.TabIndex = 0;
+            this.btnSettings.TabIndex = 4;
             this.btnSettings.Text = "&Settings...";
             this.btnSettings.UseVisualStyleBackColor = true;
             this.btnSettings.Click += new System.EventHandler(this.BtnSettingsClick);
@@ -69,7 +69,8 @@
             this.inputFilesList.Location = new System.Drawing.Point(12, 33);
             this.inputFilesList.Name = "inputFilesList";
             this.inputFilesList.Size = new System.Drawing.Size(355, 124);
-            this.inputFilesList.TabIndex = 35;
+            this.inputFilesList.TabIndex = 1;
+            this.inputFilesList.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.InputFilesListItemCheck);
             // 
             // btnRemInputFile
             // 
@@ -78,9 +79,10 @@
             this.btnRemInputFile.Location = new System.Drawing.Point(373, 62);
             this.btnRemInputFile.Name = "btnRemInputFile";
             this.btnRemInputFile.Size = new System.Drawing.Size(75, 23);
-            this.btnRemInputFile.TabIndex = 38;
+            this.btnRemInputFile.TabIndex = 3;
             this.btnRemInputFile.Text = "Re&move";
             this.btnRemInputFile.UseVisualStyleBackColor = true;
+            this.btnRemInputFile.Click += new System.EventHandler(this.BtnRemInputFileClick);
             // 
             // btnAddInputFile
             // 
@@ -88,17 +90,19 @@
             this.btnAddInputFile.Location = new System.Drawing.Point(373, 33);
             this.btnAddInputFile.Name = "btnAddInputFile";
             this.btnAddInputFile.Size = new System.Drawing.Size(75, 23);
-            this.btnAddInputFile.TabIndex = 36;
+            this.btnAddInputFile.TabIndex = 2;
             this.btnAddInputFile.Text = "&Add...";
             this.btnAddInputFile.UseVisualStyleBackColor = true;
+            this.btnAddInputFile.Click += new System.EventHandler(this.BtnAddInputFileClick);
             // 
             // btnRunSearch
             // 
             this.btnRunSearch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnRunSearch.Enabled = false;
             this.btnRunSearch.Location = new System.Drawing.Point(292, 177);
             this.btnRunSearch.Name = "btnRunSearch";
             this.btnRunSearch.Size = new System.Drawing.Size(75, 23);
-            this.btnRunSearch.TabIndex = 39;
+            this.btnRunSearch.TabIndex = 5;
             this.btnRunSearch.Text = "&Run";
             this.btnRunSearch.UseVisualStyleBackColor = true;
             // 
@@ -108,7 +112,7 @@
             this.btnCancel.Location = new System.Drawing.Point(373, 177);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
-            this.btnCancel.TabIndex = 40;
+            this.btnCancel.TabIndex = 6;
             this.btnCancel.Text = "&Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.BtnCancelClick);

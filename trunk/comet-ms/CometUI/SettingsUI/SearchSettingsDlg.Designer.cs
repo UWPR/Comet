@@ -104,14 +104,14 @@
             this.inputFilesTabPage.Padding = new System.Windows.Forms.Padding(3);
             this.inputFilesTabPage.Size = new System.Drawing.Size(527, 429);
             this.inputFilesTabPage.TabIndex = 0;
-            this.inputFilesTabPage.Text = "Input";
+            this.inputFilesTabPage.Text = "Database";
             this.inputFilesTabPage.UseVisualStyleBackColor = true;
             // 
             // outputTabPage
             // 
             this.outputTabPage.Location = new System.Drawing.Point(4, 22);
             this.outputTabPage.Name = "outputTabPage";
-            this.outputTabPage.Size = new System.Drawing.Size(527, 454);
+            this.outputTabPage.Size = new System.Drawing.Size(527, 429);
             this.outputTabPage.TabIndex = 6;
             this.outputTabPage.Text = "Output";
             this.outputTabPage.UseVisualStyleBackColor = true;
@@ -121,7 +121,7 @@
             this.enzymeTabPage.Location = new System.Drawing.Point(4, 22);
             this.enzymeTabPage.Name = "enzymeTabPage";
             this.enzymeTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.enzymeTabPage.Size = new System.Drawing.Size(527, 454);
+            this.enzymeTabPage.Size = new System.Drawing.Size(527, 429);
             this.enzymeTabPage.TabIndex = 1;
             this.enzymeTabPage.Text = "Enzyme";
             this.enzymeTabPage.UseVisualStyleBackColor = true;
@@ -131,7 +131,7 @@
             this.massesTabPage.Location = new System.Drawing.Point(4, 22);
             this.massesTabPage.Name = "massesTabPage";
             this.massesTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.massesTabPage.Size = new System.Drawing.Size(527, 454);
+            this.massesTabPage.Size = new System.Drawing.Size(527, 429);
             this.massesTabPage.TabIndex = 2;
             this.massesTabPage.Text = "Masses";
             this.massesTabPage.UseVisualStyleBackColor = true;
@@ -140,7 +140,7 @@
             // 
             this.staticModsTabPage.Location = new System.Drawing.Point(4, 22);
             this.staticModsTabPage.Name = "staticModsTabPage";
-            this.staticModsTabPage.Size = new System.Drawing.Size(527, 454);
+            this.staticModsTabPage.Size = new System.Drawing.Size(527, 429);
             this.staticModsTabPage.TabIndex = 7;
             this.staticModsTabPage.Text = "Static Mods";
             this.staticModsTabPage.UseVisualStyleBackColor = true;
@@ -150,7 +150,7 @@
             this.varModsTabPage.Location = new System.Drawing.Point(4, 22);
             this.varModsTabPage.Name = "varModsTabPage";
             this.varModsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.varModsTabPage.Size = new System.Drawing.Size(527, 454);
+            this.varModsTabPage.Size = new System.Drawing.Size(527, 429);
             this.varModsTabPage.TabIndex = 3;
             this.varModsTabPage.Text = "Var Mods";
             this.varModsTabPage.UseVisualStyleBackColor = true;
@@ -160,7 +160,7 @@
             this.miscTabPage.Location = new System.Drawing.Point(4, 22);
             this.miscTabPage.Name = "miscTabPage";
             this.miscTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.miscTabPage.Size = new System.Drawing.Size(527, 454);
+            this.miscTabPage.Size = new System.Drawing.Size(527, 429);
             this.miscTabPage.TabIndex = 5;
             this.miscTabPage.Text = "Misc";
             this.miscTabPage.UseVisualStyleBackColor = true;
