@@ -5,12 +5,14 @@ using System.Linq;
 using System.Windows.Forms;
 using CometUI.Properties;
 using CometUI.SettingsUI;
+using CometWrapper;
 
 namespace CometUI
 {
     public partial class RunSearchDlg : Form
     {
         private new Form Parent { get; set; }
+        private readonly CometSearchManagerWrapper _searchMgr;
 
         public RunSearchDlg(Form parent)
         {
@@ -19,6 +21,8 @@ namespace CometUI
             Parent = parent;
 
             InitializeFromDefaultSettings();
+
+            _searchMgr = new CometSearchManagerWrapper();
         }
 
         private void InitializeFromDefaultSettings()
@@ -182,6 +186,33 @@ namespace CometUI
             return false;
         }
 
+        private static InputType GetInputFileType(string inputFileName)
+        {
+            var inputType = InputType.Unknown;
+            var extension = Path.GetExtension(inputFileName);
+            if (extension != null)
+            {
+                string fileExt = extension.ToLower();
+                switch (fileExt)
+                {
+                    case ".mzxml":
+                        inputType = InputType.MZXML;
+                        break;
+                    case ".mzml":
+                        inputType = InputType.MZML;
+                        break;
+                    case ".ms2":
+                        inputType = InputType.MS2;
+                        break;
+                    case ".cms2":
+                        inputType = InputType.CMS2;
+                        break;
+                }
+            }
+
+            return inputType;
+        }
+
         private void BtnRemInputFileClick(object sender, EventArgs e)
         {
             var checkedIndices = inputFilesList.CheckedIndices;
@@ -208,6 +239,24 @@ namespace CometUI
 
             btnRemInputFile.Enabled = checkedItemsCount > 0;
             btnRunSearch.Enabled = checkedItemsCount > 0;
+        }
+
+        private void BtnRunSearchClick(object sender, EventArgs e)
+        {
+            var inputFiles = new List<InputFileInfoWrapper>();
+            foreach (var inputFile in InputFiles)
+            {
+                var inputFileInfo = new InputFileInfoWrapper();
+                inputFileInfo.set_InputType(GetInputFileType(inputFile));
+                inputFileInfo.set_FirstScan(0);
+                inputFileInfo.set_LastScan(0);
+                inputFileInfo.set_AnalysisType(AnalysisType.EntireFile);
+                inputFileInfo.set_FileName(inputFile);
+                inputFileInfo.set_BaseName(Path.GetFileNameWithoutExtension(inputFile));
+                inputFiles.Add(inputFileInfo);
+            }
+
+            _searchMgr.AddInputFiles(inputFiles);
         }
 
     }

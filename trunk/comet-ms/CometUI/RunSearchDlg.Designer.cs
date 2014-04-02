@@ -105,6 +105,7 @@
             this.btnRunSearch.TabIndex = 5;
             this.btnRunSearch.Text = "&Run";
             this.btnRunSearch.UseVisualStyleBackColor = true;
+            this.btnRunSearch.Click += new System.EventHandler(this.BtnRunSearchClick);
             // 
             // btnCancel
             // 
