@@ -14,8 +14,8 @@ namespace CometWrapper {
 
     public enum class InputType
     {
-        Unknown = 0,
-        MS2,
+        Unknown = -1,
+        MS2 = 0,
         MZXML,
         MZML,
         CMS2

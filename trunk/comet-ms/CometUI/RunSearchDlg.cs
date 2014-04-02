@@ -243,6 +243,12 @@ namespace CometUI
 
         private void BtnRunSearchClick(object sender, EventArgs e)
         {
+            RunSearch();
+        }
+
+        private void RunSearch()
+        {
+            // Set up the input files
             var inputFiles = new List<InputFileInfoWrapper>();
             foreach (var inputFile in InputFiles)
             {

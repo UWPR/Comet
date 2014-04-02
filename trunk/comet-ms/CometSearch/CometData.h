@@ -204,6 +204,8 @@ struct EnzymeInfo
    }
 };
 
+// *IMPORTANT* If you change this enum, please also change the corresponding
+// enum in CometDataWrapper.h in the CometWrapper namespace.
 enum AnalysisType 
 {
    AnalysisType_Unknown = 0,
@@ -213,10 +215,14 @@ enum AnalysisType
    AnalysisType_EntireFile
 };
 
+// *IMPORTANT* If you change this enum, please also change the corresponding
+// enum in CometDataWrapper.h in the CometWrapper namespace.
 enum InputType 
 {
    InputType_MS2 = 0,           // ms2, cms2, bms2, etc.
-   InputType_MZXML
+   InputType_MZXML,
+   InputType_MZML,
+   InputType_CMS2
 };
 
 struct InputFileInfo
