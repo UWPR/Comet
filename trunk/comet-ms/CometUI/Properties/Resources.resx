@@ -150,4 +150,10 @@
   <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods">
     <value xml:space="preserve">Invalid Max Mods</value>
   </data>
+  <data name="RunSearchDlg_BtnRunSearchClick_Search_Failed">
+    <value xml:space="preserve">Search Failed</value>
+  </data>
+  <data name="RunSearchDlg_BtnRunSearchClick_Search_Completed">
+    <value xml:space="preserve">Search Completed</value>
+  </data>
 </root>

@@ -243,26 +243,65 @@ namespace CometUI
 
         private void BtnRunSearchClick(object sender, EventArgs e)
         {
-            RunSearch();
+            string statusMessage = string.Empty;
+            if (!RunSearch(ref statusMessage))
+            {
+                MessageBox.Show(this, statusMessage, Resources.RunSearchDlg_BtnRunSearchClick_Search_Failed, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else
+            {
+                MessageBox.Show(this, statusMessage, Resources.RunSearchDlg_BtnRunSearchClick_Search_Completed, MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+            }
         }
 
-        private void RunSearch()
+        private bool RunSearch(ref string statusMessage)
         {
+            if (statusMessage == null)
+            {
+                return false;
+            }
+
             // Set up the input files
             var inputFiles = new List<InputFileInfoWrapper>();
             foreach (var inputFile in InputFiles)
             {
                 var inputFileInfo = new InputFileInfoWrapper();
-                inputFileInfo.set_InputType(GetInputFileType(inputFile));
-                inputFileInfo.set_FirstScan(0);
-                inputFileInfo.set_LastScan(0);
+                var inputType = GetInputFileType(inputFile);
+                inputFileInfo.set_InputType(inputType);
+                if (inputType == InputType.MZXML)
+                {
+                    inputFileInfo.set_FirstScan(Settings.Default.mzxmlScanRangeMin);
+                    inputFileInfo.set_LastScan(Settings.Default.mzxmlScanRangeMax);
+                }
+                else
+                {
+                    inputFileInfo.set_FirstScan(0);
+                    inputFileInfo.set_LastScan(0);
+                }
+
                 inputFileInfo.set_AnalysisType(AnalysisType.EntireFile);
                 inputFileInfo.set_FileName(inputFile);
                 inputFileInfo.set_BaseName(Path.GetFileNameWithoutExtension(inputFile));
                 inputFiles.Add(inputFileInfo);
             }
 
-            _searchMgr.AddInputFiles(inputFiles);
+            if (!_searchMgr.AddInputFiles(inputFiles))
+            {
+                statusMessage = "Could not add input files.";
+                return false;
+            }
+
+            // Set up the proteome database
+            if (!_searchMgr.SetParam("database_name", Settings.Default.ProteomeDatabaseFile,
+                                Settings.Default.ProteomeDatabaseFile))
+            {
+                statusMessage = "Could not set proteome database parameter.";
+                return false;
+            }
+
+            statusMessage = "Search completed successfully.";
+            return true;
         }
 
     }

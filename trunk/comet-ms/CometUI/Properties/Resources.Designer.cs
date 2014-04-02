@@ -97,6 +97,24 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Search Completed.
+        /// </summary>
+        internal static string RunSearchDlg_BtnRunSearchClick_Search_Completed {
+            get {
+                return ResourceManager.GetString("RunSearchDlg_BtnRunSearchClick_Search_Completed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search Failed.
+        /// </summary>
+        internal static string RunSearchDlg_BtnRunSearchClick_Search_Failed {
+            get {
+                return ResourceManager.GetString("RunSearchDlg_BtnRunSearchClick_Search_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Invalid Mass Diff.
         /// </summary>
         internal static string StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff {
