@@ -15,9 +15,17 @@
          <li>This parameter expects to integer values as input.
          <li>If the first input value is 0 then this parameter is ignored and all charge
          states are searched
+         <li>Only in the case where a spectrum does not have a precursor charge will all charges
+         in the specified charge range be searched.
          <li>If the first input value is not 0 then all charge states between (and inclusive of)
-         the first and second input values are searched.
+         the first and second input values are searched.  Again, only for those spectra with no
+         specified precursor charge state.
+         <li>If a precursor charge is present for a particular spectrum, this parameter will
+         not override that charge state and that spectrum will always be searched.
+         <li>With the default "0 0" values and a spectrum with no precursor charge, Comet will
+         either search the spectrum as a 1+ or a 2+/3+.
          <li>The default value is "0 0" if this parameter is missing.
+
          </ul>
 
          <p>Example:

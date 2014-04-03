@@ -73,7 +73,7 @@
 
             <div class="post hr">
                <p>To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
-               <br>Example version 2013.02 comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
+               <br>Example version 2014.01 comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
                <ul>
                   <li><a href="/parameters/parameters_201401/comet.params.low-low">comet.params.low-low</a> - low res MS1 and low res MS2 e.g. ion trap
                   <li><a href="/parameters/parameters_201401/comet.params.high-low">comet.params.high-low</a> - high res MS1 and low res MS2 e.g. LTQ-Orbitrap
