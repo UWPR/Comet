@@ -34,6 +34,8 @@ namespace CometUI
             if (!_runSearchBackgroundWorker.IsBusy)
             {
                 _runSearchBackgroundWorker.RunWorkerAsync(runSearchDlg);
+                _progressDialog.UpdateTitleText("Search Progress");
+                _progressDialog.UpdateStatusText("Running search...");
                 _progressDialog.Show();
             }
         }
@@ -73,6 +75,8 @@ namespace CometUI
 
         private void RunSearchBackgroundWorkerProgressChanged(object sender, ProgressChangedEventArgs e)
         {
+            // This will become useful if we can get search to send us status
+            // updates
             const string statusText = "Running search...";
             _progressDialog.UpdateStatusText(statusText);
         }

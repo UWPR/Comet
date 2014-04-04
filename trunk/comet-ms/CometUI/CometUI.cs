@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
-using CometUI.Properties;
 using CometUI.SettingsUI;
 
 namespace CometUI
 {
     public partial class CometUI : Form
     {
-        private List<RunSearchBackgroundWorker> _runSearchWorkers = new List<RunSearchBackgroundWorker>();
+        private readonly List<RunSearchBackgroundWorker> _runSearchWorkers = 
+            new List<RunSearchBackgroundWorker>();
 
         public CometUI()
         {
@@ -29,7 +29,7 @@ namespace CometUI
             var runSearchDlg = new RunSearchDlg(this);
             if (DialogResult.OK == runSearchDlg.ShowDialog())
             {
-                RunSearchBackgroundWorker runSearchWorker = new RunSearchBackgroundWorker();
+                var runSearchWorker = new RunSearchBackgroundWorker();
                 runSearchWorker.DoWork(runSearchDlg);
                 _runSearchWorkers.Add(runSearchWorker);
             }
@@ -63,6 +63,11 @@ namespace CometUI
         {
             WorkerThreadsCleanupTimer.Enabled = true;
             WorkerThreadsCleanupTimer.Start();
+        }
+
+        private void ExitToolStripMenuItemClick(object sender, EventArgs e)
+        {
+            Close();
         }
     }
 }

@@ -13,8 +13,7 @@ namespace CometUI
     public partial class RunSearchDlg : Form
     {
         private new Form Parent { get; set; }
-        private readonly CometSearchManagerWrapper _searchMgr;
-
+        
         public RunSearchDlg(Form parent)
         {
             InitializeComponent();
@@ -22,8 +21,6 @@ namespace CometUI
             Parent = parent;
 
             InitializeFromDefaultSettings();
-
-            _searchMgr = new CometSearchManagerWrapper();
         }
 
         private void InitializeFromDefaultSettings()
@@ -252,6 +249,8 @@ namespace CometUI
 
         public bool RunSearch()
         {
+            var searchMgr = new CometSearchManagerWrapper();
+
             // Set up the input files
             var inputFiles = new List<InputFileInfoWrapper>();
             foreach (var inputFile in InputFiles)
@@ -276,7 +275,7 @@ namespace CometUI
                 inputFiles.Add(inputFileInfo);
             }
 
-            if (!_searchMgr.AddInputFiles(inputFiles))
+            if (!searchMgr.AddInputFiles(inputFiles))
             {
                 SearchStatusMessage = "Could not add input files.";
                 SearchSucceeded = false;
@@ -284,7 +283,7 @@ namespace CometUI
             }
 
             // Set up the proteome database
-            if (!_searchMgr.SetParam("database_name", Settings.Default.ProteomeDatabaseFile,
+            if (!searchMgr.SetParam("database_name", Settings.Default.ProteomeDatabaseFile,
                                      Settings.Default.ProteomeDatabaseFile))
             {
                 SearchStatusMessage = "Could not set proteome database parameter.";
@@ -292,7 +291,7 @@ namespace CometUI
                 return false;
             }
 
-            Thread.Sleep(5000);
+            Thread.Sleep(10000);
 
             SearchStatusMessage = "Search completed successfully.";
             SearchSucceeded = true;
