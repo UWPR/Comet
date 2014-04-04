@@ -1,11 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
+using CometUI.Properties;
 using CometUI.SettingsUI;
 
 namespace CometUI
 {
     public partial class CometUI : Form
     {
+        private List<RunSearchBackgroundWorker> _runSearchWorkers = new List<RunSearchBackgroundWorker>();
+
         public CometUI()
         {
             InitializeComponent();
@@ -25,8 +29,40 @@ namespace CometUI
             var runSearchDlg = new RunSearchDlg(this);
             if (DialogResult.OK == runSearchDlg.ShowDialog())
             {
-                // Do something here?  Ask to view results?
+                RunSearchBackgroundWorker runSearchWorker = new RunSearchBackgroundWorker();
+                runSearchWorker.DoWork(runSearchDlg);
+                _runSearchWorkers.Add(runSearchWorker);
             }
+        }
+
+        private void CometUIFormClosing(object sender, FormClosingEventArgs e)
+        {
+            WorkerThreadsCleanupTimer.Stop();
+            WorkerThreadsCleanupTimer.Enabled = false;
+
+            foreach (var worker in _runSearchWorkers)
+            {
+                worker.CancelAsync();
+            }
+
+            _runSearchWorkers.Clear();
+        }
+
+        private void WorkerThreadsCleanupTimerTick(object sender, EventArgs e)
+        {
+            foreach (var worker in _runSearchWorkers)
+            {
+                if (!worker.IsBusy())
+                {
+                    _runSearchWorkers.Remove(worker);
+                }
+            }
+        }
+
+        private void CometUILoad(object sender, EventArgs e)
+        {
+            WorkerThreadsCleanupTimer.Enabled = true;
+            WorkerThreadsCleanupTimer.Start();
         }
     }
 }

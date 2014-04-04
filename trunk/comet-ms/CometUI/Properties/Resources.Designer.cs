@@ -97,6 +97,16 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Run Search Completed.
+        /// </summary>
+        internal static string RunSearchBackgroundWorker_RunSearchBackgroundWorkerRunWorkerCompleted_Run_Search_Completed {
+            get {
+                return ResourceManager.GetString("RunSearchBackgroundWorker_RunSearchBackgroundWorkerRunWorkerCompleted_Run_Search_" +
+                        "Completed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Search Completed.
         /// </summary>
         internal static string RunSearchDlg_BtnRunSearchClick_Search_Completed {

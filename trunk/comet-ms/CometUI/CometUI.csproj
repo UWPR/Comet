@@ -90,6 +90,13 @@
     <Compile Include="CometUI.Designer.cs">
       <DependentUpon>CometUI.cs</DependentUpon>
     </Compile>
+    <Compile Include="CommonControls\ProgressDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CommonControls\ProgressDlg.designer.cs">
+      <DependentUpon>ProgressDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RunSearchBackgroundWorker.cs" />
     <Compile Include="RunSearchDlg.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -157,6 +164,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="CometUI.resx">
       <DependentUpon>CometUI.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CommonControls\ProgressDlg.resx">
+      <DependentUpon>ProgressDlg.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="RunSearchDlg.resx">
       <DependentUpon>RunSearchDlg.cs</DependentUpon>

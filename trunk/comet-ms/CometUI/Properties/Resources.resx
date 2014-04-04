@@ -156,4 +156,7 @@
   <data name="RunSearchDlg_BtnRunSearchClick_Search_Completed">
     <value xml:space="preserve">Search Completed</value>
   </data>
+  <data name="RunSearchBackgroundWorker_RunSearchBackgroundWorkerRunWorkerCompleted_Run_Search_Completed">
+    <value xml:space="preserve">Run Search Completed</value>
+  </data>
 </root>

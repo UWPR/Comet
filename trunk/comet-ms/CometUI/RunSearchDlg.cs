@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 using CometUI.Properties;
 using CometUI.SettingsUI;
@@ -44,6 +45,7 @@ namespace CometUI
         }
 
         private string[] _inputFiles = new string[0];
+
         public string[] InputFiles
         {
             get { return _inputFiles; }
@@ -106,16 +108,17 @@ namespace CometUI
 
         private static IEnumerable<string> ShowAddInputFile()
         {
-            const string filter = "Search Input Files (*.mzXML, *.mzML, *.ms2, *.cms2)|*.mzXML;*.mzML;*.ms2;*.cms2|All Files (*.*)|*.*";
+            const string filter =
+                "Search Input Files (*.mzXML, *.mzML, *.ms2, *.cms2)|*.mzXML;*.mzML;*.ms2;*.cms2|All Files (*.*)|*.*";
             var fdlg = new OpenFileDialog
-            {
-                Title = Resources.InputFilesControl_ShowAddInputFile_Open_Input_File,
-                InitialDirectory = @".",
-                Filter = filter,
-                FilterIndex = 1,
-                Multiselect = true,
-                RestoreDirectory = true
-            };
+                           {
+                               Title = Resources.InputFilesControl_ShowAddInputFile_Open_Input_File,
+                               InitialDirectory = @".",
+                               Filter = filter,
+                               FilterIndex = 1,
+                               Multiselect = true,
+                               RestoreDirectory = true
+                           };
 
             if (fdlg.ShowDialog() == DialogResult.OK)
             {
@@ -130,7 +133,8 @@ namespace CometUI
             InputFiles = AddInputFiles(Parent, InputFiles, inputFiles);
         }
 
-        public static string[] AddInputFiles(Form parent, IEnumerable<string> inputFileNames, IEnumerable<string> fileNames)
+        public static string[] AddInputFiles(Form parent, IEnumerable<string> inputFileNames,
+                                             IEnumerable<string> fileNames)
         {
             var filesNew = new List<string>(inputFileNames);
             var filesError = new List<string>();
@@ -243,25 +247,11 @@ namespace CometUI
 
         private void BtnRunSearchClick(object sender, EventArgs e)
         {
-            string statusMessage = string.Empty;
-            if (!RunSearch(ref statusMessage))
-            {
-                MessageBox.Show(this, statusMessage, Resources.RunSearchDlg_BtnRunSearchClick_Search_Failed, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            else
-            {
-                MessageBox.Show(this, statusMessage, Resources.RunSearchDlg_BtnRunSearchClick_Search_Completed, MessageBoxButtons.OK,
-                                MessageBoxIcon.Information);
-            }
+            DialogResult = DialogResult.OK;
         }
 
-        private bool RunSearch(ref string statusMessage)
+        public bool RunSearch()
         {
-            if (statusMessage == null)
-            {
-                return false;
-            }
-
             // Set up the input files
             var inputFiles = new List<InputFileInfoWrapper>();
             foreach (var inputFile in InputFiles)
@@ -288,21 +278,28 @@ namespace CometUI
 
             if (!_searchMgr.AddInputFiles(inputFiles))
             {
-                statusMessage = "Could not add input files.";
+                SearchStatusMessage = "Could not add input files.";
+                SearchSucceeded = false;
                 return false;
             }
 
             // Set up the proteome database
             if (!_searchMgr.SetParam("database_name", Settings.Default.ProteomeDatabaseFile,
-                                Settings.Default.ProteomeDatabaseFile))
+                                     Settings.Default.ProteomeDatabaseFile))
             {
-                statusMessage = "Could not set proteome database parameter.";
+                SearchStatusMessage = "Could not set proteome database parameter.";
+                SearchSucceeded = false;
                 return false;
             }
 
-            statusMessage = "Search completed successfully.";
+            Thread.Sleep(5000);
+
+            SearchStatusMessage = "Search completed successfully.";
+            SearchSucceeded = true;
             return true;
         }
 
+        public String SearchStatusMessage { get; private set; }
+        public bool SearchSucceeded { get; private set; } 
     }
 }

@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CometUI));
             this.mainMenuStrip = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -46,6 +47,7 @@
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpAboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
+            this.WorkerThreadsCleanupTimer = new System.Windows.Forms.Timer(this.components);
             this.mainMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -73,7 +75,7 @@
             // openToolStripMenuItem
             // 
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
-            this.openToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.openToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
             this.openToolStripMenuItem.Text = "&Open...";
             // 
             // toolsToolStripMenuItem
@@ -87,7 +89,7 @@
             // runSearchToolStripMenuItem
             // 
             this.runSearchToolStripMenuItem.Name = "runSearchToolStripMenuItem";
-            this.runSearchToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.runSearchToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.runSearchToolStripMenuItem.Text = "&Run Search...";
             this.runSearchToolStripMenuItem.Click += new System.EventHandler(this.RunSearchToolStripMenuItemClick);
             // 
@@ -168,7 +170,7 @@
             // helpAboutToolStripMenuItem
             // 
             this.helpAboutToolStripMenuItem.Name = "helpAboutToolStripMenuItem";
-            this.helpAboutToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.helpAboutToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
             this.helpAboutToolStripMenuItem.Text = "&About...";
             // 
             // mainStatusStrip
@@ -178,6 +180,11 @@
             this.mainStatusStrip.Size = new System.Drawing.Size(734, 22);
             this.mainStatusStrip.TabIndex = 1;
             this.mainStatusStrip.Text = "statusStrip1";
+            // 
+            // WorkerThreadsCleanupTimer
+            // 
+            this.WorkerThreadsCleanupTimer.Interval = 60000;
+            this.WorkerThreadsCleanupTimer.Tick += new System.EventHandler(this.WorkerThreadsCleanupTimerTick);
             // 
             // CometUI
             // 
@@ -190,6 +197,8 @@
             this.MainMenuStrip = this.mainMenuStrip;
             this.Name = "CometUI";
             this.Text = "Comet";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.CometUIFormClosing);
+            this.Load += new System.EventHandler(this.CometUILoad);
             this.mainMenuStrip.ResumeLayout(false);
             this.mainMenuStrip.PerformLayout();
             this.ResumeLayout(false);
@@ -216,5 +225,6 @@
         private System.Windows.Forms.ToolStripMenuItem searchSettingsToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem searchSettingsToolStripMenuItem2;
         private System.Windows.Forms.ToolStripMenuItem searchSettingsToolStripMenuItem3;
+        private System.Windows.Forms.Timer WorkerThreadsCleanupTimer;
     }
 }
