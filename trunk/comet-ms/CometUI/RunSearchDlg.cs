@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -249,8 +250,32 @@ namespace CometUI
 
         public bool RunSearch()
         {
+            // Begin with the assumption that the search is going to fail,
+            // and only set it to succeeded at the end if run completes
+            // successfully
+            SearchSucceeded = false;
+
             var searchMgr = new CometSearchManagerWrapper();
 
+            if (!ConfigureInputFiles(searchMgr))
+            {
+                return false;
+            }
+
+            if (!ConfigureInputSettings(searchMgr))
+            {
+                return false;
+            }
+
+            Thread.Sleep(10000);
+
+            SearchStatusMessage = "Search completed successfully.";
+            SearchSucceeded = true;
+            return true;
+        }
+
+        private bool ConfigureInputFiles(CometSearchManagerWrapper searchMgr)
+        {
             // Set up the input files
             var inputFiles = new List<InputFileInfoWrapper>();
             foreach (var inputFile in InputFiles)
@@ -278,23 +303,44 @@ namespace CometUI
             if (!searchMgr.AddInputFiles(inputFiles))
             {
                 SearchStatusMessage = "Could not add input files.";
-                SearchSucceeded = false;
                 return false;
             }
 
+            return true;
+        }
+
+        private bool ConfigureInputSettings(CometSearchManagerWrapper searchMgr)
+        {
             // Set up the proteome database
-            if (!searchMgr.SetParam("database_name", Settings.Default.ProteomeDatabaseFile,
-                                     Settings.Default.ProteomeDatabaseFile))
+            var dbFileName = Settings.Default.ProteomeDatabaseFile;
+            if (!searchMgr.SetParam("database_name", dbFileName, dbFileName))
             {
                 SearchStatusMessage = "Could not set proteome database parameter.";
-                SearchSucceeded = false;
                 return false;
             }
 
-            Thread.Sleep(10000);
+            // Set up the target vs. decoy parameters
+            var searchType = Settings.Default.SearchType;
+            if (!searchMgr.SetParam("decoy_search", searchType.ToString(CultureInfo.InvariantCulture), searchType))
+            {
+                SearchStatusMessage = "Could not set search type.";
+                return false;
+            }
 
-            SearchStatusMessage = "Search completed successfully.";
-            SearchSucceeded = true;
+            var decoyPrefix = Settings.Default.DecoyPrefix;
+            if (!searchMgr.SetParam("decoy_prefix", decoyPrefix, decoyPrefix))
+            {
+                SearchStatusMessage = "Could not set the decoy prefix.";
+                return false;
+            }
+
+            var nucleotideReadingFrame = Settings.Default.NucleotideReadingFrame;
+            if (!searchMgr.SetParam("nucleotide_reading_frame", nucleotideReadingFrame.ToString(CultureInfo.InvariantCulture), nucleotideReadingFrame))
+            {
+                SearchStatusMessage = "Could not set the nucleotide reading frame.";
+                return false;
+            }
+
             return true;
         }
 
