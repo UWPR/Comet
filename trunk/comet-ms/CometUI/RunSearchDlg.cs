@@ -267,6 +267,11 @@ namespace CometUI
                 return false;
             }
 
+            if (!ConfigureOutputSettings(searchMgr))
+            {
+                return false;
+            }
+
             Thread.Sleep(10000);
 
             SearchStatusMessage = "Search completed successfully.";
@@ -315,7 +320,7 @@ namespace CometUI
             var dbFileName = Settings.Default.ProteomeDatabaseFile;
             if (!searchMgr.SetParam("database_name", dbFileName, dbFileName))
             {
-                SearchStatusMessage = "Could not set proteome database parameter.";
+                SearchStatusMessage = "Could not set the proteome database name.";
                 return false;
             }
 
@@ -323,7 +328,7 @@ namespace CometUI
             var searchType = Settings.Default.SearchType;
             if (!searchMgr.SetParam("decoy_search", searchType.ToString(CultureInfo.InvariantCulture), searchType))
             {
-                SearchStatusMessage = "Could not set search type.";
+                SearchStatusMessage = "Could not set the search type.";
                 return false;
             }
 
@@ -341,6 +346,47 @@ namespace CometUI
                 return false;
             }
 
+            return true;
+        }
+
+        private bool ConfigureOutputSettings(CometSearchManagerWrapper searchMgr)
+        {
+            int outputPepXMLFile = Settings.Default.OutputFormatPepXML ? 1 : 0;
+            if (!searchMgr.SetParam("output_pepxmlfile", outputPepXMLFile.ToString(CultureInfo.InvariantCulture), outputPepXMLFile))
+            {
+                SearchStatusMessage = "Could not set the pepXML file output format.";
+                return false;
+            }
+
+            int outputPinXMLFile = Settings.Default.OutputFormatPinXML ? 1 : 0;
+            if (!searchMgr.SetParam("output_pinxmlfile", outputPinXMLFile.ToString(CultureInfo.InvariantCulture), outputPinXMLFile))
+            {
+                SearchStatusMessage = "Could not set the pinXML file output format.";
+                return false;
+            }
+
+            int outputTextFile = Settings.Default.OutputFormatTextFile ? 1 : 0;
+            if (!searchMgr.SetParam("output_txtfile", outputTextFile.ToString(CultureInfo.InvariantCulture), outputTextFile))
+            {
+                SearchStatusMessage = "Could not set the text file output format.";
+                return false;
+            }
+
+            int outputSqtFile = Settings.Default.OutputFormatSqtFile ? 1 : 0;
+            if (!searchMgr.SetParam("output_sqtfile", outputSqtFile.ToString(CultureInfo.InvariantCulture), outputSqtFile))
+            {
+                SearchStatusMessage = "Could not set the sqt file output format.";
+                return false;
+            }
+
+            int printExpectScore = Settings.Default.PrintExpectScoreInPlaceOfSP ? 1 : 0;
+            if (!searchMgr.SetParam("print_expect_score", printExpectScore.ToString(CultureInfo.InvariantCulture), printExpectScore))
+            {
+                SearchStatusMessage = "Could not set the print expect score parameter.";
+                return false;
+            }
+
+            // Todo: do the rest of the output formats
             return true;
         }
 
