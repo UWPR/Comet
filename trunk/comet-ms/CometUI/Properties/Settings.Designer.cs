@@ -852,5 +852,17 @@ namespace CometUI.Properties {
                 this["spectralProcessingClearMzMax"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool useSparseMatrix {
+            get {
+                return ((bool)(this["useSparseMatrix"]));
+            }
+            set {
+                this["useSparseMatrix"] = value;
+            }
+        }
     }
 }

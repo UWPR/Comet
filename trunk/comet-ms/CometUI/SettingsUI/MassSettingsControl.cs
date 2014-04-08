@@ -31,6 +31,7 @@ namespace CometUI.SettingsUI
             fragmentBinSizeTextBox.Text = Settings.Default.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
             fragmentOffsetTextBox.Text = Settings.Default.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
             fragmentMassTypeCombo.SelectedItem = Settings.Default.FragmentMassType;
+            sparseMatrixCheckBox.Checked = Settings.Default.useSparseMatrix;
         
             // Set up defaults for ion settings
             aIonCheckBox.Checked = Settings.Default.UseAIons;

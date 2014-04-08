@@ -32,12 +32,13 @@
             this.fragmentMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label9 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
-            this.fragmentOffsetTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
+            this.fragmentOffsetTextBox = new NumericTextBox();
             this.label7 = new System.Windows.Forms.Label();
-            this.fragmentBinSizeTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
+            this.fragmentBinSizeTextBox = new NumericTextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.precursorGroupBox = new System.Windows.Forms.GroupBox();
+            this.precursorMassTolTextBox = new NumericTextBox();
             this.precursorIsotopeErrorCombo = new System.Windows.Forms.ComboBox();
             this.precursorMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label3 = new System.Windows.Forms.Label();
@@ -55,7 +56,7 @@
             this.xIonCheckBox = new System.Windows.Forms.CheckBox();
             this.cIonCheckBox = new System.Windows.Forms.CheckBox();
             this.aIonCheckBox = new System.Windows.Forms.CheckBox();
-            this.precursorMassTolTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
+            this.sparseMatrixCheckBox = new System.Windows.Forms.CheckBox();
             this.fragmentGroupBox.SuspendLayout();
             this.precursorGroupBox.SuspendLayout();
             this.groupBox1.SuspendLayout();
@@ -63,6 +64,7 @@
             // 
             // fragmentGroupBox
             // 
+            this.fragmentGroupBox.Controls.Add(this.sparseMatrixCheckBox);
             this.fragmentGroupBox.Controls.Add(this.fragmentMassTypeCombo);
             this.fragmentGroupBox.Controls.Add(this.label9);
             this.fragmentGroupBox.Controls.Add(this.label8);
@@ -71,7 +73,7 @@
             this.fragmentGroupBox.Controls.Add(this.fragmentBinSizeTextBox);
             this.fragmentGroupBox.Location = new System.Drawing.Point(272, 17);
             this.fragmentGroupBox.Name = "fragmentGroupBox";
-            this.fragmentGroupBox.Size = new System.Drawing.Size(225, 144);
+            this.fragmentGroupBox.Size = new System.Drawing.Size(225, 202);
             this.fragmentGroupBox.TabIndex = 1;
             this.fragmentGroupBox.TabStop = false;
             this.fragmentGroupBox.Text = "Fragment";
@@ -108,6 +110,7 @@
             // 
             // fragmentOffsetTextBox
             // 
+            this.fragmentOffsetTextBox.AllowSpace = false;
             this.fragmentOffsetTextBox.Location = new System.Drawing.Point(127, 45);
             this.fragmentOffsetTextBox.Name = "fragmentOffsetTextBox";
             this.fragmentOffsetTextBox.Size = new System.Drawing.Size(67, 20);
@@ -124,6 +127,7 @@
             // 
             // fragmentBinSizeTextBox
             // 
+            this.fragmentBinSizeTextBox.AllowSpace = false;
             this.fragmentBinSizeTextBox.Location = new System.Drawing.Point(18, 45);
             this.fragmentBinSizeTextBox.Name = "fragmentBinSizeTextBox";
             this.fragmentBinSizeTextBox.Size = new System.Drawing.Size(67, 20);
@@ -164,10 +168,18 @@
             this.precursorGroupBox.Controls.Add(this.label1);
             this.precursorGroupBox.Location = new System.Drawing.Point(26, 17);
             this.precursorGroupBox.Name = "precursorGroupBox";
-            this.precursorGroupBox.Size = new System.Drawing.Size(225, 254);
+            this.precursorGroupBox.Size = new System.Drawing.Size(225, 316);
             this.precursorGroupBox.TabIndex = 0;
             this.precursorGroupBox.TabStop = false;
             this.precursorGroupBox.Text = "Precursor";
+            // 
+            // precursorMassTolTextBox
+            // 
+            this.precursorMassTolTextBox.AllowSpace = false;
+            this.precursorMassTolTextBox.Location = new System.Drawing.Point(23, 45);
+            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
+            this.precursorMassTolTextBox.Size = new System.Drawing.Size(60, 20);
+            this.precursorMassTolTextBox.TabIndex = 1;
             // 
             // precursorIsotopeErrorCombo
             // 
@@ -264,7 +276,7 @@
             this.groupBox1.Controls.Add(this.xIonCheckBox);
             this.groupBox1.Controls.Add(this.cIonCheckBox);
             this.groupBox1.Controls.Add(this.aIonCheckBox);
-            this.groupBox1.Location = new System.Drawing.Point(272, 173);
+            this.groupBox1.Location = new System.Drawing.Point(272, 235);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(225, 98);
             this.groupBox1.TabIndex = 2;
@@ -351,12 +363,15 @@
             this.aIonCheckBox.Text = "a";
             this.aIonCheckBox.UseVisualStyleBackColor = true;
             // 
-            // precursorMassTolTextBox
+            // sparseMatrixCheckBox
             // 
-            this.precursorMassTolTextBox.Location = new System.Drawing.Point(23, 45);
-            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
-            this.precursorMassTolTextBox.Size = new System.Drawing.Size(60, 20);
-            this.precursorMassTolTextBox.TabIndex = 1;
+            this.sparseMatrixCheckBox.AutoSize = true;
+            this.sparseMatrixCheckBox.Location = new System.Drawing.Point(18, 162);
+            this.sparseMatrixCheckBox.Name = "sparseMatrixCheckBox";
+            this.sparseMatrixCheckBox.Size = new System.Drawing.Size(109, 17);
+            this.sparseMatrixCheckBox.TabIndex = 33;
+            this.sparseMatrixCheckBox.Text = "Use sparse matrix";
+            this.sparseMatrixCheckBox.UseVisualStyleBackColor = true;
             // 
             // MassSettingsControl
             // 
@@ -393,9 +408,7 @@
         private System.Windows.Forms.ComboBox precursorMassTypeCombo;
         private System.Windows.Forms.ComboBox precursorIsotopeErrorCombo;
         private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.TextBox fragmentBinSizeTextBox;
         private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.TextBox fragmentOffsetTextBox;
         private System.Windows.Forms.ComboBox fragmentMassTypeCombo;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.CheckBox xIonCheckBox;
@@ -406,7 +419,10 @@
         private System.Windows.Forms.CheckBox bIonCheckBox;
         private System.Windows.Forms.CheckBox useNLCheckBox;
         private System.Windows.Forms.CheckBox flankCheckBox;
-        private System.Windows.Forms.TextBox precursorMassTolTextBox;
+        private System.Windows.Forms.CheckBox sparseMatrixCheckBox;
+        private NumericTextBox fragmentBinSizeTextBox;
+        private NumericTextBox fragmentOffsetTextBox;
+        private NumericTextBox precursorMassTolTextBox;
 
     }
 }
