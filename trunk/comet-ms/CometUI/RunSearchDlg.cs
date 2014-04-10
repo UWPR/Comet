@@ -272,6 +272,11 @@ namespace CometUI
                 return false;
             }
 
+            if (!ConfigureEnzymeSettings(searchMgr))
+            {
+                return false;
+            }
+
             Thread.Sleep(10000);
 
             SearchStatusMessage = "Search completed successfully.";
@@ -411,6 +416,39 @@ namespace CometUI
             if (!searchMgr.SetParam("num_output_lines", numOutputLines.ToString(CultureInfo.InvariantCulture), numOutputLines))
             {
                 SearchStatusMessage = "Could not set the num_output_lines parameter.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ConfigureEnzymeSettings(CometSearchManagerWrapper searchMgr)
+        {
+            var searchEnzymeNumber = Settings.Default.SearchEnzymeNumber;
+            if (!searchMgr.SetParam("search_enzyme_number", searchEnzymeNumber.ToString(CultureInfo.InvariantCulture), searchEnzymeNumber))
+            {
+                SearchStatusMessage = "Could not set the search_enzyme_number parameter.";
+                return false;
+            }
+
+            var sampleEnzymeNumber = Settings.Default.SampleEnzymeNumber;
+            if (!searchMgr.SetParam("sample_enzyme_number", sampleEnzymeNumber.ToString(CultureInfo.InvariantCulture), sampleEnzymeNumber))
+            {
+                SearchStatusMessage = "Could not set the sample_enzyme_number parameter.";
+                return false;
+            }
+
+            var allowedMissedCleavages = Settings.Default.AllowedMissedCleavages;
+            if (!searchMgr.SetParam("allowed_missed_cleavage", allowedMissedCleavages.ToString(CultureInfo.InvariantCulture), allowedMissedCleavages))
+            {
+                SearchStatusMessage = "Could not set the allowed_missed_cleavage parameter.";
+                return false;
+            }
+
+            var enzymeTermini = Settings.Default.EnzymeTermini;
+            if (!searchMgr.SetParam("num_enzyme_termini", enzymeTermini.ToString(CultureInfo.InvariantCulture), enzymeTermini))
+            {
+                SearchStatusMessage = "Could not set the num_enzyme_termini parameter.";
                 return false;
             }
 
