@@ -1605,6 +1605,9 @@ bool CometSearchManager::DoSearch()
          }
       }
 
+      //MH: Allocate memory shared by threads during spectral processing.
+      CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+
       if (bSucceeded)
       {
          // For file access using MSToolkit.
@@ -1763,6 +1766,9 @@ bool CometSearchManager::DoSearch()
             }
          }
       }
+
+      //MH: Deallocate spectral processing memory.
+      CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
 
       if (NULL != fpout_pepxml)
       {
