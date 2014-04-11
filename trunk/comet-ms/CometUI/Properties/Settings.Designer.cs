@@ -856,12 +856,12 @@ namespace CometUI.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool useSparseMatrix {
+        public bool UseSparseMatrix {
             get {
-                return ((bool)(this["useSparseMatrix"]));
+                return ((bool)(this["UseSparseMatrix"]));
             }
             set {
-                this["useSparseMatrix"] = value;
+                this["UseSparseMatrix"] = value;
             }
         }
     }

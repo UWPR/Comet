@@ -247,7 +247,7 @@
     <Setting Name="spectralProcessingClearMzMax" Type="System.Double" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
-    <Setting Name="useSparseMatrix" Type="System.Boolean" Scope="User">
+    <Setting Name="UseSparseMatrix" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>

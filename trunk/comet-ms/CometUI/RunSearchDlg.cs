@@ -277,6 +277,11 @@ namespace CometUI
                 return false;
             }
 
+            if (!ConfigureMassSettings(searchMgr))
+            {
+                return false;
+            }
+
             Thread.Sleep(10000);
 
             SearchStatusMessage = "Search completed successfully.";
@@ -449,6 +454,137 @@ namespace CometUI
             if (!searchMgr.SetParam("num_enzyme_termini", enzymeTermini.ToString(CultureInfo.InvariantCulture), enzymeTermini))
             {
                 SearchStatusMessage = "Could not set the num_enzyme_termini parameter.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ConfigureMassSettings(CometSearchManagerWrapper searchMgr)
+        {
+            // Configure precursor mass settings
+            
+            var precursorMassTol = Settings.Default.PrecursorMassTolerance;
+            if (!searchMgr.SetParam("peptide_mass_tolerance", precursorMassTol.ToString(CultureInfo.InvariantCulture), precursorMassTol))
+            {
+                SearchStatusMessage = "Could not set the peptide_mass_tolerance parameter.";
+                return false;
+            }
+
+            var precursorMassUnit = Settings.Default.PrecursorMassUnit;
+            if (!searchMgr.SetParam("peptide_mass_units", precursorMassUnit.ToString(CultureInfo.InvariantCulture), precursorMassUnit))
+            {
+                SearchStatusMessage = "Could not set the peptide_mass_units parameter.";
+                return false;
+            }
+
+            var precursorMassType = Settings.Default.PrecursorMassType;
+            if (!searchMgr.SetParam("mass_type_parent", precursorMassType.ToString(CultureInfo.InvariantCulture), precursorMassType))
+            {
+                SearchStatusMessage = "Could not set the mass_type_parent parameter.";
+                return false;
+            }
+
+            var precursorTolType = Settings.Default.PrecursorToleranceType;
+            if (!searchMgr.SetParam("precursor_tolerance_type", precursorTolType.ToString(CultureInfo.InvariantCulture), precursorTolType))
+            {
+                SearchStatusMessage = "Could not set the precursor_tolerance_type parameter.";
+                return false;
+            }
+
+            var isotopeError = Settings.Default.PrecursorIsotopeError;
+            if (!searchMgr.SetParam("isotope_error", isotopeError.ToString(CultureInfo.InvariantCulture), isotopeError))
+            {
+                SearchStatusMessage = "Could not set the isotope_error parameter.";
+                return false;
+            }
+
+            
+            // Configure fragment mass settings
+            
+            var fragmentBinSize = Settings.Default.FragmentBinSize;
+            if (!searchMgr.SetParam("fragment_bin_tol", fragmentBinSize.ToString(CultureInfo.InvariantCulture), fragmentBinSize))
+            {
+                SearchStatusMessage = "Could not set the fragment_bin_tol parameter.";
+                return false;
+            }
+
+            var fragmentBinOffset = Settings.Default.FragmentBinOffset;
+            if (!searchMgr.SetParam("fragment_bin_offset", fragmentBinOffset.ToString(CultureInfo.InvariantCulture), fragmentBinOffset))
+            {
+                SearchStatusMessage = "Could not set the fragment_bin_offset parameter.";
+                return false;
+            }
+
+            var fragmentMassType = Settings.Default.FragmentMassType;
+            if (!searchMgr.SetParam("mass_type_fragment", fragmentMassType.ToString(CultureInfo.InvariantCulture), fragmentMassType))
+            {
+                SearchStatusMessage = "Could not set the mass_type_fragment parameter.";
+                return false;
+            }
+
+            var useSparseMatrix = Settings.Default.UseSparseMatrix ? 1 : 0;
+            if (!searchMgr.SetParam("use_sparse_matrix", useSparseMatrix.ToString(CultureInfo.InvariantCulture), useSparseMatrix))
+            {
+                SearchStatusMessage = "Could not set the use_sparse_matrix parameter.";
+                return false;
+            }
+
+            // Configure fragment ions
+
+            var useAIons = Settings.Default.UseAIons ? 1 : 0;
+            if (!searchMgr.SetParam("use_A_ions", useAIons.ToString(CultureInfo.InvariantCulture), useAIons))
+            {
+                SearchStatusMessage = "Could not set the use_A_ions parameter.";
+                return false;
+            }
+
+            var useBIons = Settings.Default.UseBIons ? 1 : 0;
+            if (!searchMgr.SetParam("use_B_ions", useBIons.ToString(CultureInfo.InvariantCulture), useBIons))
+            {
+                SearchStatusMessage = "Could not set the use_B_ions parameter.";
+                return false;
+            }
+
+            var useCIons = Settings.Default.UseCIons ? 1 : 0;
+            if (!searchMgr.SetParam("use_C_ions", useCIons.ToString(CultureInfo.InvariantCulture), useCIons))
+            {
+                SearchStatusMessage = "Could not set the use_C_ions parameter.";
+                return false;
+            }
+
+            var useXIons = Settings.Default.UseXIons ? 1 : 0;
+            if (!searchMgr.SetParam("use_X_ions", useXIons.ToString(CultureInfo.InvariantCulture), useXIons))
+            {
+                SearchStatusMessage = "Could not set the use_X_ions parameter.";
+                return false;
+            }
+
+            var useYIons = Settings.Default.UseYIons ? 1 : 0;
+            if (!searchMgr.SetParam("use_Y_ions", useXIons.ToString(CultureInfo.InvariantCulture), useYIons))
+            {
+                SearchStatusMessage = "Could not set the use_Y_ions parameter.";
+                return false;
+            }
+
+            var useZIons = Settings.Default.UseZIons ? 1 : 0;
+            if (!searchMgr.SetParam("use_Z_ions", useZIons.ToString(CultureInfo.InvariantCulture), useZIons))
+            {
+                SearchStatusMessage = "Could not set the use_Z_ions parameter.";
+                return false;
+            }
+
+            var useFlankIons = Settings.Default.TheoreticalFragmentIons ? 1 : 0;
+            if (!searchMgr.SetParam("theoretical_fragment_ions", useFlankIons.ToString(CultureInfo.InvariantCulture), useFlankIons))
+            {
+                SearchStatusMessage = "Could not set the theoretical_fragment_ions parameter.";
+                return false;
+            }
+
+            var useNLIons = Settings.Default.UseNLIons ? 1 : 0;
+            if (!searchMgr.SetParam("use_NL_ions", useNLIons.ToString(CultureInfo.InvariantCulture), useNLIons))
+            {
+                SearchStatusMessage = "Could not set the use_NL_ions parameter.";
                 return false;
             }
 
