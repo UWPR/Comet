@@ -230,7 +230,7 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0.04")]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.4")]
         public double FragmentBinOffset {
             get {
                 return ((double)(this["FragmentBinOffset"]));

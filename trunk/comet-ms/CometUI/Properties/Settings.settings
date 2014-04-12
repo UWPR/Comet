@@ -64,7 +64,7 @@
       <Value Profile="(Default)">1.0005</Value>
     </Setting>
     <Setting Name="FragmentBinOffset" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">0.04</Value>
+      <Value Profile="(Default)">0.4</Value>
     </Setting>
     <Setting Name="FragmentMassType" Type="System.String" Scope="User">
       <Value Profile="(Default)">mono</Value>
