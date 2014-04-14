@@ -25,6 +25,8 @@ bool CometPreprocess::_bFirstScan;
 bool *CometPreprocess::pbMemoryPool;
 double **CometPreprocess::pdTempRawDataArr;
 double **CometPreprocess::pdTmpFastXcorrDataArr;
+double **CometPreprocess::pdSmoothedSpectrumArr;
+double **CometPreprocess::pdPeakExtractedArr;
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (pdCorrelationData).
 CometPreprocess::CometPreprocess()
@@ -229,7 +231,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    //MH: Give memory manager access to the thread.
    pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);
 
-   PreprocessSpectrum(pPreprocessThreadData->mstSpectrum, pdTempRawDataArr[i], pdTmpFastXcorrDataArr[i]);
+   PreprocessSpectrum(pPreprocessThreadData->mstSpectrum, pdTempRawDataArr[i], pdTmpFastXcorrDataArr[i], pdSmoothedSpectrumArr[i], pdPeakExtractedArr[i]);
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
@@ -245,7 +247,9 @@ bool CometPreprocess::DoneProcessingAllSpectra()
 bool CometPreprocess::Preprocess(struct Query *pScoring,
                                  Spectrum mstSpectrum,
                                  double *pdTempRawData,
-                                 double *pdTmpFastXcorrData)
+                                 double *pdTmpFastXcorrData,
+                                 double *pdSmoothedSpectrum,
+                                 double *pdPeakExtracted)
 {
    int i;
    int j;
@@ -447,12 +451,12 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Arbitrary bin size cutoff to do smoothing, peak extraction.
    if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
    {
-      if (!Smooth(pdTempRawData, pScoring->_spectrumInfoInternal.iArraySize))
+      if (!Smooth(pdTempRawData, pScoring->_spectrumInfoInternal.iArraySize, pdSmoothedSpectrum))
       {
          return false;
       }
 
-      if (!PeakExtract(pdTempRawData, pScoring->_spectrumInfoInternal.iArraySize))
+      if (!PeakExtract(pdTempRawData, pScoring->_spectrumInfoInternal.iArraySize, pdPeakExtracted))
       {
          return false;
       }
@@ -635,7 +639,9 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 
 bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                   double *pdTempRawData,
-                                  double *pdTmpFastXcorrData)
+                                  double *pdTmpFastXcorrData,
+                                  double *pdSmoothedSpectrum,
+                                  double *pdPeakExtracted)
 {
    int z;
    int zStart;
@@ -741,7 +747,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          // Populate pdCorrelation data.
          // NOTE: there must be a good way of doing this just once per spectrum instead
          //       of repeating for each charge state.
-         if (!Preprocess(pScoring, spec, pdTempRawData, pdTmpFastXcorrData))
+         if (!Preprocess(pScoring, spec, pdTempRawData, pdTmpFastXcorrData, pdSmoothedSpectrum, pdPeakExtracted))
          {
             return false;
          }
@@ -1034,22 +1040,10 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
 
 // Smooth input data over 5 points.
 bool CometPreprocess::Smooth(double *data,
-                             int iArraySize)
+                             int iArraySize,
+                             double *pdSmoothedSpectrum)
 {
-   double *pdSmoothedSpectrum;
    int  i;
-
-   pdSmoothedSpectrum = (double *)calloc((size_t)iArraySize, (size_t)sizeof(double));
-
-   if (pdSmoothedSpectrum == NULL)
-   {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - calloc(pdSmoothedSpectrum[%d]).", iArraySize);
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetError(true, strErrorMsg);      
-      logerr("%s\n\n", szErrorMsg);
-      return false;
-   }
 
    for (i=2; i<iArraySize-2; i++)
    {
@@ -1059,23 +1053,21 @@ bool CometPreprocess::Smooth(double *data,
 
    memcpy(data, pdSmoothedSpectrum, iArraySize*sizeof(double));
 
-   free(pdSmoothedSpectrum);
-
    return true;
 }
 
 
 // Run 2 passes through to pull out peaks.
 bool CometPreprocess::PeakExtract(double *data,
-                                  int iArraySize)
+                                  int iArraySize,
+                                  double *pdPeakExtracted)
 {
    int  i,
         ii,
         iStartIndex,
         iEndIndex;
    double dStdDev,
-          dAvgInten,
-          *pdPeakExtracted;
+          dAvgInten;
 
    pdPeakExtracted = (double *)calloc((size_t)iArraySize, (size_t)sizeof(double));
    if (pdPeakExtracted == NULL)
@@ -1295,6 +1287,38 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
       }
    }
 
+   //MH: Allocate arrays
+   pdSmoothedSpectrumArr = new double*[maxNumThreads];
+   for (i=0; i<maxNumThreads; i++)
+   {
+      pdSmoothedSpectrumArr[i] = new double[iArraySize];
+      if (pdSmoothedSpectrumArr[i] == NULL)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]).", iArraySize);
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetError(true, strErrorMsg);      
+         logerr("%s\n\n", szErrorMsg);
+         return false;
+      }
+   }
+
+   //MH: Allocate arrays
+   pdPeakExtractedArr = new double*[maxNumThreads];
+   for (i=0; i<maxNumThreads; i++)
+   {
+      pdPeakExtractedArr[i] = new double[iArraySize];
+      if (pdPeakExtractedArr[i] == NULL)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]).", iArraySize);
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetError(true, strErrorMsg);      
+         logerr("%s\n\n", szErrorMsg);
+         return false;
+      }
+   }
+
    return true;
 }
 
@@ -1308,10 +1332,14 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads){
    {
       delete [] pdTempRawDataArr[i];
       delete [] pdTmpFastXcorrDataArr[i];
+      delete [] pdSmoothedSpectrumArr[i];
+      delete [] pdPeakExtractedArr[i];
    }
 
    delete [] pdTempRawDataArr;
    delete [] pdTmpFastXcorrDataArr;
+   delete [] pdSmoothedSpectrumArr;
+   delete [] pdPeakExtractedArr;
 
    return true;
 }

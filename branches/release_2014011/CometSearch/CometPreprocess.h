@@ -78,7 +78,9 @@ private:
    // Private static methods
    static bool PreprocessSpectrum(Spectrum &spec,
                                   double *pdTempRawData,
-                                  double *pdTmpFastXcorrData);
+                                  double *pdTmpFastXcorrData,
+                                  double *pdSmoothedSpectrum,
+                                  double *pdPeakExtracted);
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
@@ -96,7 +98,9 @@ private:
    static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum,
                           double *pdTempRawData,
-                          double *pdTmpFastXcorrData);
+                          double *pdTmpFastXcorrData,
+                          double *pdSmoothedSpectrum,
+                          double *pdPeakExtracted);
    static bool LoadIons(struct Query *pScoring,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
@@ -104,9 +108,11 @@ private:
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);
    static bool Smooth(double *data,
-                      int iArraySize);
+                      int iArraySize,
+                      double *pdSmoothedSpectrum);
    static bool PeakExtract(double *data,
-                           int iArraySize);
+                           int iArraySize,
+                           double *pdPeakExtracted);
    static void GetTopIons(double *pdTempRawData,
                           struct msdata *pTempSpData,
                           int iArraySize);
@@ -124,6 +130,8 @@ private:
    static bool *pbMemoryPool;             //MH: Regulator of memory use
    static double **pdTempRawDataArr;      //MH: Number of arrays equals threads
    static double **pdTmpFastXcorrDataArr; //MH: Ditto
+   static double **pdSmoothedSpectrumArr; //MH: Ditto
+   static double **pdPeakExtractedArr;    //MH: Ditto
 };
 
 #endif // _COMETPREPROCESS_H_
