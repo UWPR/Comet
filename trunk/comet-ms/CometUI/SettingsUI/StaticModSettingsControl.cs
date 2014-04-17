@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
 
-namespace CometUI
+namespace CometUI.SettingsUI
 {
     public partial class StaticModSettingsControl : UserControl
     {

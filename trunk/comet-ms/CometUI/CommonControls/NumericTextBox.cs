@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.Windows.Forms;
 
-namespace CometUI
+namespace CometUI.CommonControls
 {
     public class NumericTextBox : TextBox
     {

@@ -282,6 +282,11 @@ namespace CometUI
                 return false;
             }
 
+            if (!ConfigureStaticModSettings(searchMgr))
+            {
+                return false;
+            }
+
             Thread.Sleep(10000);
 
             SearchStatusMessage = "Search completed successfully.";
@@ -585,6 +590,143 @@ namespace CometUI
             if (!searchMgr.SetParam("use_NL_ions", useNLIons.ToString(CultureInfo.InvariantCulture), useNLIons))
             {
                 SearchStatusMessage = "Could not set the use_NL_ions parameter.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ConfigureStaticModSettings(CometSearchManagerWrapper searchMgr)
+        {
+            foreach (var item in Settings.Default.StaticMods)
+            {
+                string paramName;
+                string[] staticMods = item.Split(',');
+                switch (staticMods[1])
+                {
+                    case "G":
+                        paramName = "add_G_glycine";
+                        break;
+                    case "A":
+                        paramName = "add_A_alanine";
+                        break;
+                    case "S":
+                        paramName = "add_S_serine";
+                        break;
+                    case "P":
+                        paramName = "add_P_proline";
+                        break;
+                    case "V":
+                        paramName = "add_V_valine";
+                        break;
+                    case "T":
+                        paramName = "add_T_threonine";
+                        break;
+                    case "C":
+                        paramName = "add_C_cysteine";
+                        break;
+                    case "L":
+                        paramName = "add_L_leucine";
+                        break;
+                    case "I":
+                        paramName = "add_I_isoleucine";
+                        break;
+                    case "N":
+                        paramName = "add_N_asparagine";
+                        break;
+                    case "D":
+                        paramName = "add_D_aspartic_acid";
+                        break;
+                    case "Q":
+                        paramName = "add_Q_glutamine";
+                        break;
+                    case "K":
+                        paramName = "add_K_lysine";
+                        break;
+                    case "E":
+                        paramName = "add_E_glutamic_acid";
+                        break;
+                    case "M":
+                        paramName = "add_M_methionine";
+                        break;
+                    case "O":
+                        paramName = "add_O_ornithine";
+                        break;
+                    case "H":
+                        paramName = "add_H_histidine";
+                        break;
+                    case "F":
+                        paramName = "add_F_phenylalanine";
+                        break;
+                    case "R":
+                        paramName = "add_R_arginine";
+                        break;
+                    case "Y":
+                        paramName = "add_Y_tyrosine";
+                        break;
+                    case "W":
+                        paramName = "add_W_tryptophan";
+                        break;
+                    case "B":
+                        paramName = "add_B_user_amino_acid";
+                        break;
+                    case "J":
+                        paramName = "add_J_user_amino_acid";
+                        break;
+                    case "U":
+                        paramName = "add_U_user_amino_acid";
+                        break;
+                    case "X":
+                        paramName = "add_X_user_amino_acid";
+                        break;
+                    case "Z":
+                        paramName = "add_Z_user_amino_acid";
+                        break;
+                    default:
+                        return false;
+                }
+
+                try
+                {
+                    var massDiff = Convert.ToDouble(staticMods[2]);
+                    if (!searchMgr.SetParam(paramName, massDiff.ToString(CultureInfo.InvariantCulture), massDiff))
+                    {
+                        SearchStatusMessage = "Could not set the " + paramName + " parameter.";
+                        return false;
+                    }
+                }
+                catch(Exception e)
+                {
+                    SearchStatusMessage = e.Message + "\nInvalid mass difference value for " + paramName + ".";
+                    return false;
+                }
+            }
+
+            var cTermPeptideMass = Settings.Default.StaticModCTermPeptide;
+            if (!searchMgr.SetParam("add_Cterm_peptide", cTermPeptideMass.ToString(CultureInfo.InvariantCulture), cTermPeptideMass))
+            {
+                SearchStatusMessage = "Could not set the add_Cterm_peptide parameter.";
+                return false;
+            }
+
+            var nTermPeptideMass = Settings.Default.StaticModNTermPeptide;
+            if (!searchMgr.SetParam("add_Nterm_peptide", nTermPeptideMass.ToString(CultureInfo.InvariantCulture), nTermPeptideMass))
+            {
+                SearchStatusMessage = "Could not set the add_Nterm_peptide parameter.";
+                return false;
+            }
+
+            var cTermProteinMass = Settings.Default.StaticModCTermProtein;
+            if (!searchMgr.SetParam("add_Cterm_protein", cTermProteinMass.ToString(CultureInfo.InvariantCulture), cTermProteinMass))
+            {
+                SearchStatusMessage = "Could not set the add_Cterm_protein parameter.";
+                return false;
+            }
+
+            var nTermProteinMass = Settings.Default.StaticModNTermProtein;
+            if (!searchMgr.SetParam("add_Nterm_protein", nTermProteinMass.ToString(CultureInfo.InvariantCulture), nTermProteinMass))
+            {
+                SearchStatusMessage = "Could not set the add_Nterm_protein parameter.";
                 return false;
             }
 

@@ -1,4 +1,6 @@
-﻿namespace CometUI.SettingsUI
+﻿using CometUI.CommonControls;
+
+namespace CometUI.SettingsUI
 {
     partial class MassSettingsControl
     {
