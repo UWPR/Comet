@@ -686,18 +686,20 @@ namespace CometUI
                         return false;
                 }
 
+                double massDiff;
                 try
                 {
-                    var massDiff = Convert.ToDouble(staticMods[2]);
-                    if (!searchMgr.SetParam(paramName, massDiff.ToString(CultureInfo.InvariantCulture), massDiff))
-                    {
-                        SearchStatusMessage = "Could not set the " + paramName + " parameter.";
-                        return false;
-                    }
+                    massDiff = Convert.ToDouble(staticMods[2]);
                 }
                 catch(Exception e)
                 {
                     SearchStatusMessage = e.Message + "\nInvalid mass difference value for " + paramName + ".";
+                    return false;
+                }
+
+                if (!searchMgr.SetParam(paramName, massDiff.ToString(CultureInfo.InvariantCulture), massDiff))
+                {
+                    SearchStatusMessage = "Could not set the " + paramName + " parameter.";
                     return false;
                 }
             }
@@ -730,6 +732,58 @@ namespace CometUI
                 return false;
             }
 
+            return true;
+        }
+
+        private bool ConfigureVariableModSettings(CometSearchManagerWrapper searchMgr)
+        {
+            int modNum = 0;
+            foreach (var item in Settings.Default.VariableMods)
+            {
+                modNum++;
+                string paramName = "variable_mod" + modNum;
+                string[] varMods = item.Split(',');
+                var varModsWrapper = new VarModsWrapper();
+                varModsWrapper.set_VarModChar(varMods[0]);
+
+                try
+                {
+                    varModsWrapper.set_VarModMass(Convert.ToDouble(varMods[1]));
+                }
+                catch (Exception e)
+                {
+                    SearchStatusMessage = e.Message + "\nInvalid Mass Diff value for " + paramName + ".";
+                    return false;
+                }
+
+                try
+                {
+                    varModsWrapper.set_BinaryMod(Convert.ToInt32(varMods[2]));
+                }
+                catch (Exception e)
+                {
+                    SearchStatusMessage = e.Message + "\nInvalid Binary Mod value for " + paramName + ".";
+                    return false;
+                }
+
+                try
+                {
+                    varModsWrapper.set_MaxNumVarModAAPerMod(Convert.ToInt32(varMods[3]));
+                }
+                catch (Exception e)
+                {
+                    SearchStatusMessage = e.Message + "\nInvalid Max Mods value for " + paramName + ".";
+                    return false;
+                }
+
+                if (!searchMgr.SetParam(paramName, item, varModsWrapper))
+                {
+                    SearchStatusMessage = "Could not set the " + paramName + " parameter.";
+                    return false;
+                }
+            }
+
+            // Todo: finish the rest of the variable mods
             return true;
         }
 
