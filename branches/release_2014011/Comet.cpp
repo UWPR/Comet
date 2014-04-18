@@ -18,6 +18,7 @@
 #include "Common.h"
 #include "CometData.h"
 #include "CometInterfaces.h"
+#include "Profiler.h"
 
 #include <algorithm>
 
@@ -48,12 +49,16 @@ int main(int argc, char *argv[])
    ICometSearchManager* pCometSearchMgr = GetCometSearchManager();
    char szParamsFile[SIZE_FILE];
 
+   Profiler::Init();
+
    ProcessCmdLine(argc, argv, szParamsFile, pvInputFiles, pCometSearchMgr);
    pCometSearchMgr->AddInputFiles(pvInputFiles);
 
    bool bSearchSucceeded = pCometSearchMgr->DoSearch();
    
    ReleaseCometSearchManager();
+
+   Profiler::Release();
    
    if (!bSearchSucceeded)
    {

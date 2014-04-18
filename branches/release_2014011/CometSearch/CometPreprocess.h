@@ -19,6 +19,7 @@
 
 #include "Common.h"
 #include "ThreadPool.h"
+#include "Profiler.h"
 
 struct PreprocessThreadData
 {

@@ -51,6 +51,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                                                int minNumThreads,
                                                int maxNumThreads)
 {
+   int pid = Profiler::StartTimer("LoadAndPreprocessSpectra");
    int iFileLastScan = -1;         // The actual last scan in the file.
    int iScanNumber = 0;
    int iTotalScans = 0;
@@ -76,14 +77,18 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
       // Loads in MSMS spectrum data.
       if (_bFirstScan)
       {
+         Profiler::StopTimer(pid);
          PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+         pid = Profiler::StartTimer("LoadAndPreprocessSpectra");
          _bFirstScan = false;
 
          iFirstScanInRange = mstSpectrum.getScanNumber();
       }
       else
       {
+         Profiler::StopTimer(pid);
          PreloadIons(mstReader, mstSpectrum, true);
+         pid = Profiler::StartTimer("LoadAndPreprocessSpectra");
       }
 
       if (iFileLastScan == -1)
@@ -200,12 +205,14 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    g_cometStatus.GetError(bError);
    bool bSucceeded = !bError;
    
+   Profiler::StopTimer(pid);
    return bSucceeded;
 }
 
 
 void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData)
 {
+   int pid = Profiler::StartTimer("PreprocessThreadProc");
    // This returns false if it fails, but the errors are already logged
    // so no need to check the return value here.
 
@@ -231,10 +238,14 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    //MH: Give memory manager access to the thread.
    pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);
 
+   Profiler::StopTimer(pid);
    PreprocessSpectrum(pPreprocessThreadData->mstSpectrum, pdTempRawDataArr[i], pdTmpFastXcorrDataArr[i], pdSmoothedSpectrumArr[i], pdPeakExtractedArr[i]);
+   pid = Profiler::StartTimer("PreprocessThreadProc");
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
+
+   Profiler::StopTimer(pid);
 }
 
 
@@ -251,6 +262,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                                  double *pdSmoothedSpectrum,
                                  double *pdPeakExtracted)
 {
+
+   int pid = Profiler::StartTimer("Preprocess");
+
    int i;
    int j;
    struct msdata pTempSpData[NUM_SP_IONS];
@@ -259,10 +273,13 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
 
+   Profiler::StopTimer(pid);
    if (!LoadIons(pScoring, mstSpectrum, &pPre))
    {
+     
       return false;
    }
+   pid = Profiler::StartTimer("Preprocess");
 
    // get mzML nativeID
    char szNativeID[128];
@@ -279,6 +296,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
+      Profiler::StopTimer(pid);
       return false;
    }
 
@@ -296,12 +314,15 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
+         Profiler::StopTimer(pid);
          return false;
       }
    }
 
    // Create data for correlation analysis.
+   Profiler::StopTimer(pid);
    MakeCorrData(pdTempRawData, pScoring, &pPre);
+   pid = Profiler::StartTimer("Preprocess");
 
    // Make fast xcorr spectrum.
    double dSum=0.0;
@@ -388,6 +409,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
+         Profiler::StopTimer(pid);
          return false;
       }
 
@@ -423,6 +445,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
+            Profiler::StopTimer(pid);
             return false;
          }
 
@@ -451,15 +474,19 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Arbitrary bin size cutoff to do smoothing, peak extraction.
    if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
    {
+     Profiler::StopTimer(pid);
       if (!Smooth(pdTempRawData, pScoring->_spectrumInfoInternal.iArraySize, pdSmoothedSpectrum))
       {
+        
          return false;
       }
 
       if (!PeakExtract(pdTempRawData, pScoring->_spectrumInfoInternal.iArraySize, pdPeakExtracted))
       {
+        Profiler::StopTimer(pid);
          return false;
       }
+      pid = Profiler::StartTimer("Preprocess");
    }
 
    for (i=0; i<NUM_SP_IONS; i++)
@@ -468,12 +495,16 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       pTempSpData[i].dIntensity = 0.0;
    }
 
+   Profiler::StopTimer(pid);
    GetTopIons(pdTempRawData, &(pTempSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
+   pid = Profiler::StartTimer("Preprocess");
 
    qsort(pTempSpData, NUM_SP_IONS, sizeof(struct msdata), QsortByIon);
 
    // Modify for Sp data.
+   Profiler::StopTimer(pid);
    StairStep(pTempSpData);
+   pid = Profiler::StartTimer("Preprocess");
 
    if (g_staticParams.options.bSparseMatrix)
    {
@@ -488,6 +519,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
+         Profiler::StopTimer(pid);
          return false;
       }
 
@@ -512,6 +544,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
+         Profiler::StopTimer(pid);
          return false;
       }
 
@@ -519,6 +552,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          pScoring->pfSpScoreData[(int)(pTempSpData[i].dIon+0.5)] = (float) pTempSpData[i].dIntensity;
    }
 
+   Profiler::StopTimer(pid);
    return true;
 }
 
@@ -530,6 +564,7 @@ void CometPreprocess::PreloadIons(MSReader &mstReader,
                                   bool bNext,
                                   int scNum)
 {
+   int pid = Profiler::StartTimer("PreloadIons");
    if (!bNext)
    {
       mstReader.readFile(g_staticParams.inputFile.szFileName, spec, scNum);
@@ -538,11 +573,13 @@ void CometPreprocess::PreloadIons(MSReader &mstReader,
    {
       mstReader.readFile(NULL, spec);
    }
+   Profiler::StopTimer(pid);
 }
 
 
 bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
 {
+  int pid = Profiler::StartTimer("CheckActivationMethodFilter");
    bool bSearchSpectrum = true;
   
    // Check possible activation method filter.
@@ -574,6 +611,7 @@ bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
       }
    }
 
+   Profiler::StopTimer(pid);
    return bSearchSpectrum;
 }
 
@@ -585,16 +623,19 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
                                 int iReaderLastScan,
                                 int iNumSpectraLoaded)
 {
+   int pid = Profiler::StartTimer("CheckExit");
    bool bError = false;
    g_cometStatus.GetError(bError);
    if (bError)
    {
+     Profiler::StopTimer(pid);
       return true;
    }
 
    if (iAnalysisType == AnalysisType_SpecificScan)
    {
       _bDoneProcessingAllSpectra = true;
+      Profiler::StopTimer(pid);
       return true;
    }
 
@@ -605,6 +646,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
          if (iScanNum >= iLastScan)
          {
             _bDoneProcessingAllSpectra = true;
+            Profiler::StopTimer(pid);
             return true;
          }
       }
@@ -615,6 +657,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
          && iScanNum == 0)
    {
       _bDoneProcessingAllSpectra = true;
+      Profiler::StopTimer(pid);
       return true;
    }
 
@@ -624,15 +667,18 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    if (g_staticParams.inputFile.iInputType == InputType_MZXML && iTotalScans > iReaderLastScan)
    {
       _bDoneProcessingAllSpectra = true;
+      Profiler::StopTimer(pid);
       return true;
    }
 
    if ((g_staticParams.options.iSpectrumBatchSize != 0)
          && (iNumSpectraLoaded >= g_staticParams.options.iSpectrumBatchSize))
    {
+     Profiler::StopTimer(pid);
       return true;
    }
 
+   Profiler::StopTimer(pid);
    return false;
 }
 
@@ -643,6 +689,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                   double *pdSmoothedSpectrum,
                                   double *pdPeakExtracted)
 {
+   int pid = Profiler::StartTimer("PreprocessSpectrum");
    int z;
    int zStart;
    int zStop;
@@ -739,8 +786,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
          Threading::UnlockMutex(_maxChargeMutex);
 
+        Profiler::StopTimer(pid);
          if (!AdjustMassTol(pScoring))
-         {
+         {   
             return false;
          }
 
@@ -748,9 +796,10 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          // NOTE: there must be a good way of doing this just once per spectrum instead
          //       of repeating for each charge state.
          if (!Preprocess(pScoring, spec, pdTempRawData, pdTmpFastXcorrData, pdSmoothedSpectrum, pdPeakExtracted))
-         {
+         {  
             return false;
          }
+         pid = Profiler::StartTimer("PreprocessSpectrum");
 
          Threading::LockMutex(g_pvQueryMutex);
          g_pvQuery.push_back(pScoring);
@@ -758,6 +807,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       }
    }
 
+   Profiler::StopTimer(pid);
    return true;
 }
 
@@ -808,6 +858,7 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
 
 bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
 {
+   int pid = Profiler::StartTimer("AdjustMassTol");
    if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
    {
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance;
@@ -858,9 +909,11 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
       logerr("%s\n\n", szErrorMsg);
+      Profiler::StopTimer(pid);
       return false;
    }
 
+   Profiler::StopTimer(pid);
    return true;
 }
 
@@ -870,6 +923,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                                Spectrum mstSpectrum,
                                struct PreprocessStruct *pPre)
 {
+   int pid = Profiler::StartTimer("LoadIons");
    int  i;
    double dIon,
           dIntensity;
@@ -886,6 +940,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
       logerr("%s\n\n", szErrorMsg);
+      Profiler::StopTimer(pid);
       return false;
    }
 
@@ -968,6 +1023,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
       }
    }
 
+   Profiler::StopTimer(pid);
    return true;
 }
 
@@ -977,6 +1033,7 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
                                    struct Query *pScoring,
                                    struct PreprocessStruct *pPre)
 {
+   int pid = Profiler::StartTimer("MakeCorrData");
    int  i,
         ii,
         iBin,
@@ -1035,6 +1092,7 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
          }
       }
    }
+   Profiler::StopTimer(pid);
 }
 
 
@@ -1043,6 +1101,7 @@ bool CometPreprocess::Smooth(double *data,
                              int iArraySize,
                              double *pdSmoothedSpectrum)
 {
+   int pid = Profiler::StartTimer("Smooth");
    int  i;
 
    for (i=2; i<iArraySize-2; i++)
@@ -1053,6 +1112,7 @@ bool CometPreprocess::Smooth(double *data,
 
    memcpy(data, pdSmoothedSpectrum, iArraySize*sizeof(double));
 
+   Profiler::StopTimer(pid);
    return true;
 }
 
@@ -1062,6 +1122,7 @@ bool CometPreprocess::PeakExtract(double *data,
                                   int iArraySize,
                                   double *pdPeakExtracted)
 {
+   int pid = Profiler::StartTimer("PeakExtract");
    int  i,
         ii,
         iStartIndex,
@@ -1077,6 +1138,7 @@ bool CometPreprocess::PeakExtract(double *data,
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
+      Profiler::StopTimer(pid);
       return false;
    }
 
@@ -1146,6 +1208,7 @@ bool CometPreprocess::PeakExtract(double *data,
 
    free(pdPeakExtracted);
 
+   Profiler::StopTimer(pid);
    return true;
 }
 
@@ -1155,6 +1218,7 @@ void CometPreprocess::GetTopIons(double *pdTempRawData,
                                  struct msdata *pTempSpData,
                                  int iArraySize)
 {
+   int pid = Profiler::StartTimer("GetTopIons");
    int  i,
         ii,
         iLowestIntenIndex=0;
@@ -1190,6 +1254,7 @@ void CometPreprocess::GetTopIons(double *pdTempRawData,
       for (i=0; i<NUM_SP_IONS; i++)
          (pTempSpData+i)->dIntensity = (((pTempSpData+i)->dIntensity)/dMaxInten)*100.0;
    }
+   Profiler::StopTimer(pid);
 }
 
 
@@ -1207,6 +1272,7 @@ int CometPreprocess::QsortByIon(const void *p0, const void *p1)
 // Works on Sp data.
 void CometPreprocess::StairStep(struct msdata *pTempSpData)
 {
+   int pid = Profiler::StartTimer("StairStep");
    int  i,
         ii,
         iii;
@@ -1239,10 +1305,12 @@ void CometPreprocess::StairStep(struct msdata *pTempSpData)
 
       i = ii;
    }
+   Profiler::StopTimer(pid);
 }
 
 //MH: This function allocates memory to be shared by threads for spectral processing
 bool CometPreprocess::AllocateMemory(int maxNumThreads){
+   int pid = Profiler::StartTimer("AllocateMemory");
    int i;
 
    //MH: Must be equal to largest possible array
@@ -1267,6 +1335,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
+         Profiler::StopTimer(pid);
          return false;
       }
    }
@@ -1283,6 +1352,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
+         Profiler::StopTimer(pid);
          return false;
       }
    }
@@ -1299,6 +1369,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
+         Profiler::StopTimer(pid);
          return false;
       }
    }
@@ -1315,15 +1386,18 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
+         Profiler::StopTimer(pid);
          return false;
       }
    }
 
+   Profiler::StopTimer(pid);
    return true;
 }
 
 //MH: Deallocates memory shared by threads during spectral processing.
 bool CometPreprocess::DeallocateMemory(int maxNumThreads){
+   int pid = Profiler::StartTimer("DeallocateMemory");
    int i;
 
    delete [] pbMemoryPool;
@@ -1341,5 +1415,6 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads){
    delete [] pdSmoothedSpectrumArr;
    delete [] pdPeakExtractedArr;
 
+   Profiler::StopTimer(pid);
    return true;
 }
