@@ -287,6 +287,11 @@ namespace CometUI
                 return false;
             }
 
+            if (!ConfigureVariableModSettings(searchMgr))
+            {
+                return false;
+            }
+
             Thread.Sleep(10000);
 
             SearchStatusMessage = "Search completed successfully.";
@@ -783,7 +788,41 @@ namespace CometUI
                 }
             }
 
-            // Todo: finish the rest of the variable mods
+            var varCTerminus = Settings.Default.VariableCTerminus;
+            if (!searchMgr.SetParam("variable_C_terminus", varCTerminus.ToString(CultureInfo.InvariantCulture), varCTerminus))
+            {
+                SearchStatusMessage = "Could not set the variable_C_terminus parameter.";
+                return false;
+            }
+
+            var varCTerminusDist = Settings.Default.VariableCTermDistance;
+            if (!searchMgr.SetParam("variable_C_terminus_distance", varCTerminusDist.ToString(CultureInfo.InvariantCulture), varCTerminusDist))
+            {
+                SearchStatusMessage = "Could not set the variable_C_terminus_distance parameter.";
+                return false;
+            }
+
+            var varNTerminus = Settings.Default.VariableNTerminus;
+            if (!searchMgr.SetParam("variable_N_terminus", varNTerminus.ToString(CultureInfo.InvariantCulture), varNTerminus))
+            {
+                SearchStatusMessage = "Could not set the variable_N_terminus parameter.";
+                return false;
+            }
+
+            var varNTerminusDist = Settings.Default.VariableNTermDistance;
+            if (!searchMgr.SetParam("variable_N_terminus_distance", varNTerminusDist.ToString(CultureInfo.InvariantCulture), varNTerminusDist))
+            {
+                SearchStatusMessage = "Could not set the variable_N_terminus_distance parameter.";
+                return false;
+            }
+
+            var maxVarModsInPeptide = Settings.Default.MaxVarModsInPeptide;
+            if (!searchMgr.SetParam("max_variable_mods_in_peptide", maxVarModsInPeptide.ToString(CultureInfo.InvariantCulture), maxVarModsInPeptide))
+            {
+                SearchStatusMessage = "Could not set the max_variable_mods_in_peptide parameter.";
+                return false;
+            }
+
             return true;
         }
 
