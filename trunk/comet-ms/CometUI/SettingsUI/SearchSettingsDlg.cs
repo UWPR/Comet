@@ -158,6 +158,7 @@ namespace CometUI.SettingsUI
         private void BtnOKClick(object sender, EventArgs e)
         {
             InputSettingsControl.VerifyAndSaveSettings();
+
             DialogResult = DialogResult.OK;
         }
 

@@ -111,7 +111,7 @@ namespace CometUI.SettingsUI
             panelNucleotideReadingFrame.Enabled = radioButtonNucleotide.Checked;
         }
 
-        public bool VerifyAndSaveSettings()
+        public void VerifyAndSaveSettings()
         {
             if (String.Empty != proteomeDbFileCombo.Text)
             {
@@ -120,8 +120,6 @@ namespace CometUI.SettingsUI
                     Settings.Default.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
                 }
             }
-
-            return true;
         }
     }
 }
