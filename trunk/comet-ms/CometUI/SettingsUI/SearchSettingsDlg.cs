@@ -8,7 +8,7 @@ namespace CometUI.SettingsUI
 {
     public partial class SearchSettingsDlg : Form
     {
-        private InputSettingsControl InputFilesControl { get; set; }
+        private InputSettingsControl InputSettingsControl { get; set; }
         private OutputSettingsControl OutputSettingsControl { get; set; }
         private EnzymeSettingsControl EnzymeSettingsControl { get; set; }
         private MassSettingsControl MassSettingsControl { get; set; }
@@ -25,12 +25,12 @@ namespace CometUI.SettingsUI
             _searchMgr = new CometSearchManagerWrapper();
 
             // Create and add Input Files tab page
-            InputFilesControl = new InputSettingsControl(this)
+            InputSettingsControl = new InputSettingsControl(this)
             {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
                 Location = new Point(0, 0)
             };
-            inputFilesTabPage.Controls.Add(InputFilesControl);
+            inputFilesTabPage.Controls.Add(InputSettingsControl);
 
             // Create and add Input Files tab page
             OutputSettingsControl = new OutputSettingsControl(this)
@@ -79,11 +79,6 @@ namespace CometUI.SettingsUI
                 Location = new Point(0, 0)
             };
             miscTabPage.Controls.Add(MiscSettingsControl);
-        }
-
-        private void BtnSearchClick(object sender, EventArgs e)
-        {
-            DialogResult = DialogResult.OK;
         }
 
         private void TestDoSearch()
@@ -158,6 +153,12 @@ namespace CometUI.SettingsUI
         private void BtnCancelClick(object sender, EventArgs e)
         {
             DialogResult = DialogResult.Cancel;
+        }
+
+        private void BtnOKClick(object sender, EventArgs e)
+        {
+            InputSettingsControl.VerifyAndSaveSettings();
+            DialogResult = DialogResult.OK;
         }
 
     }

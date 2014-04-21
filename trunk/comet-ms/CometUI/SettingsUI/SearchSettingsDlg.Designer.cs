@@ -56,7 +56,7 @@
             this.btnOK.TabIndex = 18;
             this.btnOK.Text = "OK";
             this.btnOK.UseVisualStyleBackColor = true;
-            this.btnOK.Click += new System.EventHandler(this.BtnSearchClick);
+            this.btnOK.Click += new System.EventHandler(this.BtnOKClick);
             // 
             // mainSplitContainer
             // 
