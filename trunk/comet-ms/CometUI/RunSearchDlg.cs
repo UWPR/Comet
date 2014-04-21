@@ -292,7 +292,24 @@ namespace CometUI
                 return false;
             }
 
-            Thread.Sleep(10000);
+            if (!ConfigureVariableMiscSettings(searchMgr))
+            {
+                return false;
+            }
+
+            if (!searchMgr.DoSearch())
+            {
+                string errorMessage = null;
+                if (searchMgr.GetErrorMessage(ref errorMessage))
+                {
+                    SearchStatusMessage = errorMessage;
+                }
+                else
+                {
+                    SearchStatusMessage = "Search failed, but unable to get the error message.";
+                }
+                return false;
+            }
 
             SearchStatusMessage = "Search completed successfully.";
             SearchSucceeded = true;
