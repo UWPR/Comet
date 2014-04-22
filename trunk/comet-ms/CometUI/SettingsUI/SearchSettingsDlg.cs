@@ -8,6 +8,7 @@ namespace CometUI.SettingsUI
 {
     public partial class SearchSettingsDlg : Form
     {
+        public bool SettingsChanged { get; set; }
         private InputSettingsControl InputSettingsControl { get; set; }
         private OutputSettingsControl OutputSettingsControl { get; set; }
         private EnzymeSettingsControl EnzymeSettingsControl { get; set; }
@@ -21,6 +22,8 @@ namespace CometUI.SettingsUI
         public SearchSettingsDlg()
         {
             InitializeComponent();
+
+            SettingsChanged = false;
 
             _searchMgr = new CometSearchManagerWrapper();
 
@@ -157,7 +160,7 @@ namespace CometUI.SettingsUI
 
         private void BtnOKClick(object sender, EventArgs e)
         {
-            InputSettingsControl.VerifyAndSaveSettings();
+            InputSettingsControl.VerifyAndUpdateSettings();
 
             DialogResult = DialogResult.OK;
         }

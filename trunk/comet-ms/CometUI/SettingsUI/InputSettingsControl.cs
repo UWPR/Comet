@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Windows.Forms;
 using System.IO;
 using CometUI.Properties;
@@ -17,9 +15,9 @@ namespace CometUI.SettingsUI
             SearchTypeDecoyTwo
             
         }
-        private new Form  Parent { get; set; }
+        private new SearchSettingsDlg  Parent { get; set; }
 
-        public InputSettingsControl(Form parent)
+        public InputSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
 
@@ -111,15 +109,69 @@ namespace CometUI.SettingsUI
             panelNucleotideReadingFrame.Enabled = radioButtonNucleotide.Checked;
         }
 
-        public void VerifyAndSaveSettings()
+        public bool VerifyAndUpdateSettings()
         {
-            if (String.Empty != proteomeDbFileCombo.Text)
+            if (!String.Equals(Settings.Default.ProteomeDatabaseFile, proteomeDbFileCombo.Text))
             {
-                if (File.Exists(proteomeDbFileCombo.Text))
+                if (String.Empty != proteomeDbFileCombo.Text)
                 {
+                    if (!File.Exists(proteomeDbFileCombo.Text))
+                    {
+                        String msg = "Proteome Database (.fasta) file " + proteomeDbFileCombo.Text + " does not exist.";
+                        MessageBox.Show(msg, Resources.InputSettingsControl_VerifyAndSaveSettings_Search_Settings,
+                                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return false;
+                    }
+
                     Settings.Default.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
+                    Parent.SettingsChanged = true;
                 }
             }
+
+            if (Settings.Default.IsProteinDB != radioButtonProtein.Checked)
+            {
+                Settings.Default.IsProteinDB = radioButtonProtein.Checked;
+                Parent.SettingsChanged = true;
+            }
+            
+            if (radioButtonNucleotide.Checked)
+            {
+                var nucleotideReadingFrame = Convert.ToInt32(comboBoxReadingFrame.SelectedItem);
+                if (nucleotideReadingFrame != Settings.Default.NucleotideReadingFrame)
+                {
+                    Settings.Default.NucleotideReadingFrame = nucleotideReadingFrame;
+                    Parent.SettingsChanged = true;
+                }
+            }
+
+            SearchType searchType;
+            if (radioButtonDecoyOne.Checked)
+            {
+                searchType = SearchType.SearchTypeDecoyOne;
+            }
+            else if (radioButtonDecoyTwo.Checked)
+            {
+                searchType = SearchType.SearchTypeDecoyTwo;
+            }
+            else
+            {
+                searchType = SearchType.SearchTypeTarget;
+            }
+
+            if (searchType != (SearchType)Settings.Default.SearchType)
+            {
+                Settings.Default.SearchType = (int)searchType;
+                Parent.SettingsChanged = true;
+            }
+
+            if ((radioButtonDecoyOne.Checked || radioButtonDecoyTwo.Checked) &&
+                !textBoxDecoyPrefix.Text.Equals(Settings.Default.DecoyPrefix))
+            {
+                Settings.Default.DecoyPrefix = textBoxDecoyPrefix.Text;
+                Parent.SettingsChanged = true;
+            }
+
+            return true;
         }
     }
 }

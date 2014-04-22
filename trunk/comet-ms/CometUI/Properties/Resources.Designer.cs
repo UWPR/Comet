@@ -97,6 +97,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Search Settings.
+        /// </summary>
+        internal static string InputSettingsControl_VerifyAndSaveSettings_Search_Settings {
+            get {
+                return ResourceManager.GetString("InputSettingsControl_VerifyAndSaveSettings_Search_Settings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cancellation request sent, but the background proces may continue running for a while. If you want to continue to receive progress status, please click Cancel. Otherwise, click OK.
         /// </summary>
         internal static string ProgressDlg_VerifyCancel_Cancellation_request_sent__but_the_background_proces_may_continue_running_for_a_while__If_you_want_to_continue_to_receive_progress_status__please_click_Cancel__Otherwise__click_OK {

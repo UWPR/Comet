@@ -162,4 +162,7 @@
   <data name="ProgressDlg_VerifyCancel_Cancellation_request_sent__but_the_background_proces_may_continue_running_for_a_while__If_you_want_to_continue_to_receive_progress_status__please_click_Cancel__Otherwise__click_OK">
     <value xml:space="preserve">Cancellation request sent, but the background proces may continue running for a while. If you want to continue to receive progress status, please click Cancel. Otherwise, click OK</value>
   </data>
+  <data name="InputSettingsControl_VerifyAndSaveSettings_Search_Settings">
+    <value xml:space="preserve">Search Settings</value>
+  </data>
 </root>
