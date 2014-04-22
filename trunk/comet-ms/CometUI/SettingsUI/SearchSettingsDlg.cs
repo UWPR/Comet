@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
+using CometUI.Properties;
 using CometWrapper;
 using System.Drawing;
 
@@ -160,7 +161,19 @@ namespace CometUI.SettingsUI
 
         private void BtnOKClick(object sender, EventArgs e)
         {
-            InputSettingsControl.VerifyAndUpdateSettings();
+            if (!InputSettingsControl.VerifyAndUpdateSettings())
+            {
+                MessageBox.Show(Resources.SearchSettingsDlg_BtnOKClick_Error_updating_input_settings_, Resources.SearchSettingsDlg_BtnOKClick_Search_Settings, MessageBoxButtons.OK,
+                                    MessageBoxIcon.Error);
+                DialogResult = DialogResult.Abort;
+            }
+
+            if (!OutputSettingsControl.VerifyAndUpdateSettings())
+            {
+                MessageBox.Show(Resources.SearchSettingsDlg_BtnOKClick_Error_updating_Output_settings_, Resources.SearchSettingsDlg_BtnOKClick_Search_Settings, MessageBoxButtons.OK,
+                                    MessageBoxIcon.Error);
+                DialogResult = DialogResult.Abort;
+            }
 
             DialogResult = DialogResult.OK;
         }

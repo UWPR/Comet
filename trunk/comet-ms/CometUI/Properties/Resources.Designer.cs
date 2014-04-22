@@ -106,6 +106,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Search Settings.
+        /// </summary>
+        internal static string OutputSettingsControl_VerifyAndUpdateSettings_Search_Settings {
+            get {
+                return ResourceManager.GetString("OutputSettingsControl_VerifyAndUpdateSettings_Search_Settings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cancellation request sent, but the background proces may continue running for a while. If you want to continue to receive progress status, please click Cancel. Otherwise, click OK.
         /// </summary>
         internal static string ProgressDlg_VerifyCancel_Cancellation_request_sent__but_the_background_proces_may_continue_running_for_a_while__If_you_want_to_continue_to_receive_progress_status__please_click_Cancel__Otherwise__click_OK {
@@ -141,6 +150,69 @@ namespace CometUI.Properties {
         internal static string RunSearchDlg_BtnRunSearchClick_Search_Failed {
             get {
                 return ResourceManager.GetString("RunSearchDlg_BtnRunSearchClick_Search_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not update all search settings..
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Could_not_update_all_search_settings_ {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Could_not_update_all_search_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error updating Input settings..
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Error_updating_input_settings_ {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Error_updating_input_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error updating Output settings..
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Error_updating_Output_settings_ {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Error_updating_Output_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search Settings.
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Search_Settings {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Search_Settings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unable to update input settings..
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Unable_to_update_input_settings_ {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Unable_to_update_input_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unable to update the input settings..
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Unable_to_update_the_input_settings_ {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Unable_to_update_the_input_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search Settings.
+        /// </summary>
+        internal static string SearchSettingsDlg_Search_Settings {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_Search_Settings", resourceCulture);
             }
         }
         

@@ -165,4 +165,28 @@
   <data name="InputSettingsControl_VerifyAndSaveSettings_Search_Settings">
     <value xml:space="preserve">Search Settings</value>
   </data>
+  <data name="OutputSettingsControl_VerifyAndUpdateSettings_Search_Settings">
+    <value xml:space="preserve">Search Settings</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Unable_to_update_the_input_settings_">
+    <value xml:space="preserve">Unable to update the input settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Unable_to_update_input_settings_">
+    <value xml:space="preserve">Unable to update input settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_Search_Settings">
+    <value xml:space="preserve">Search Settings</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Search_Settings">
+    <value xml:space="preserve">Search Settings</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Could_not_update_all_search_settings_">
+    <value xml:space="preserve">Could not update all search settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_input_settings_">
+    <value xml:space="preserve">Error updating Input settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_Output_settings_">
+    <value xml:space="preserve">Error updating Output settings.</value>
+  </data>
 </root>
