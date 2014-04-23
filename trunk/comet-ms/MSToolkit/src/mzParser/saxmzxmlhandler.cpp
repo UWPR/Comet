@@ -20,6 +20,8 @@
 
 #include "mzParser.h"
 
+
+
 mzpSAXMzxmlHandler::mzpSAXMzxmlHandler(BasicSpectrum* bs){
 	m_bInMsInstrument=false;
 	m_bInDataProcessing=false;
@@ -185,6 +187,15 @@ void mzpSAXMzxmlHandler::endElement(const XML_Char *el) {
 		m_bInIndex=false;
 		posIndex=-1;
 		stopParser();
+		list<cindex> tmplist;
+		for (int i=0; i<m_vIndex.size(); i++) {
+		  tmplist.push_back(m_vIndex[i]);
+		}
+		tmplist.sort(cindex::compare);
+		for (int i=0; i<m_vIndex.size(); i++) {
+		  m_vIndex[i] = tmplist.front();
+		  tmplist.pop_front();
+		}
 
 	} else if(isElement("msInstrument",el)){
 		m_vInstrument.push_back(m_instrument);

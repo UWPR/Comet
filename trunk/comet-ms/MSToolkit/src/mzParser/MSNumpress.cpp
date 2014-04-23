@@ -17,7 +17,7 @@ limitations under the License.
 */
 
 #include <stdio.h>
-//#include <stdint.h>
+#include <stdint.h>
 #include <stdexcept>
 #include <vector>
 #include <iostream>

@@ -148,6 +148,11 @@ enum enumActivation {
 //For holding mzML and mzXML indexes
 class cindex	{
 public:
+	static bool compare (const cindex& first, const cindex& second)
+ 	 {		
+    		return ( first.scanNum < second.scanNum );
+  	 }
+
 	int scanNum;
 	string idRef;
 	f_off offset;

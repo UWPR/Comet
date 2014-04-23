@@ -258,10 +258,20 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
 	} else if(isElement("index",el)){
 		m_bSpectrumIndex=false;
 		m_bChromatogramIndex=false;
+		
 
 	} else if(isElement("indexList",el)){
 		m_bInIndexList=false;
 		stopParser();
+		list<cindex> tmplist;
+		for (int i=0; i<m_vIndex.size(); i++) {
+		  tmplist.push_back(m_vIndex[i]);
+		}
+		tmplist.sort(cindex::compare);
+		for (int i=0; i<m_vIndex.size(); i++) {
+		  m_vIndex[i] = tmplist.front();
+		  tmplist.pop_front();
+		}
 
 	} else if(isElement("offset",el) && m_bChromatogramIndex){
 		curChromatIndex.offset=mzpatoi64(&m_strData[0]);

@@ -160,5 +160,4 @@ void mzpMz5Config::setFiltering(const bool flag) const {
 void mzpMz5Config::setTranslating(const bool flag) const {
 	doTranslating_ = flag;
 }
-
 #endif
