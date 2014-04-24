@@ -222,7 +222,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    {
       if(pbMemoryPool[i]==false)
       {
-         pbMemoryPool[i]==true;
+         pbMemoryPool[i]=true;
          break;
       }
    }
