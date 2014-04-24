@@ -27,6 +27,7 @@
   #define toMicroSec(a) (a)
   #define timeToSec(a,b) (a/b)
 #else //These are the Linux functions, I think. I did not test them.
+#include <sys/time.h>
   typedef uint64_t int64;
   #define getExactTime(a) gettimeofday(&a,NULL)
   #define toMicroSec(a) a.tv_sec*1000000+a.tv_usec
