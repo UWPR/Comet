@@ -21,6 +21,9 @@
 #include "CometSearchManager.h"
 #include "CometStatus.h"
 
+#include "limits.h"
+#include "stdlib.h"
+
 
 CometWritePepXML::CometWritePepXML()
 {
@@ -69,7 +72,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // Get msModel + msManufacturer from mzXML. Easy way to get from mzML too?
    ReadInstrument(szManufacturer, szModel);
 
-   char resolvedPathBaseName[SIZE_FILE];
+   char resolvedPathBaseName[PATH_MAX];
 
 #ifdef _WIN32
    _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, SIZE_FILE);
