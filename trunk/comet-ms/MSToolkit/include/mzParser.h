@@ -491,6 +491,8 @@ private:
 	bool m_bSpectrumIndex;
   bool m_bZlib;
   int  m_iDataType;   //0=unspecified, 1=32-bit float, 2=64-bit float
+
+  bool m_bIndexSorted;
 	
 	//  mzpSAXMzmlHandler index data members.
 	vector<cindex>		m_vIndex;
@@ -578,7 +580,8 @@ private:
 	bool m_bNetworkData;	// i.e. big endian
 	bool m_bNoIndex;
 	bool m_bScanIndex;
-	
+	bool m_bIndexSorted;
+
 	//  mzpSAXMzxmlHandler index data members.
 	vector<cindex>		m_vIndex;
 	cindex						curIndex;

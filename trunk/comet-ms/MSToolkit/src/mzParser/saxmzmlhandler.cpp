@@ -52,6 +52,7 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs){
 	m_bHeaderOnly=false;
 	m_bSpectrumIndex=false;
 	m_bNoIndex=true;
+	m_bIndexSorted = true;
   m_bZlib=false;
   m_iDataType=0;
 	spec=bs;
@@ -79,6 +80,7 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs, BasicChromatogram* cs){
 	m_bHeaderOnly=false;
 	m_bSpectrumIndex=false;
 	m_bNoIndex=true;
+	m_bIndexSorted = true;
   m_bZlib=false;
   m_iDataType=0;
 	spec=bs;
@@ -263,14 +265,16 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
 	} else if(isElement("indexList",el)){
 		m_bInIndexList=false;
 		stopParser();
-		list<cindex> tmplist;
-		for (int i=0; i<m_vIndex.size(); i++) {
-		  tmplist.push_back(m_vIndex[i]);
-		}
-		tmplist.sort(cindex::compare);
-		for (int i=0; i<m_vIndex.size(); i++) {
-		  m_vIndex[i] = tmplist.front();
-		  tmplist.pop_front();
+		if (!m_bIndexSorted) {
+		  list<cindex> tmplist;
+		  for (int i=0; i<m_vIndex.size(); i++) {
+		    tmplist.push_back(m_vIndex[i]);
+		  }
+		  tmplist.sort(cindex::compare);
+		  for (int i=0; i<m_vIndex.size(); i++) {
+		    m_vIndex[i] = tmplist.front();
+		    tmplist.pop_front();
+		  }
 		}
 
 	} else if(isElement("offset",el) && m_bChromatogramIndex){
@@ -280,6 +284,11 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
 	} else if(isElement("offset",el) && m_bSpectrumIndex){
 		curIndex.offset=mzpatoi64(&m_strData[0]);
 		m_vIndex.push_back(curIndex);
+		if (m_bIndexSorted && m_vIndex.size() > 1) {
+		  if (m_vIndex[m_vIndex.size()-1].scanNum < m_vIndex[m_vIndex.size()-2].scanNum) {
+		    m_bIndexSorted = false;
+		  }
+		}
 
 	} else if(isElement("precursorList",el)){
 		
