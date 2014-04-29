@@ -241,50 +241,49 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    else
       pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
 
-   pdTempRawData = (double *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(double));
+   pdTempRawData = new double[pScoring->_spectrumInfoInternal.iArraySize];
    if (pdTempRawData == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - calloc(pdTempRawData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pdTempRawData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
       return false;
    }
 
-   pdTmpFastXcorrData = (double *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(double));
+   pdTmpFastXcorrData = new double[pScoring->_spectrumInfoInternal.iArraySize];
    if (pdTmpFastXcorrData == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - calloc(pdTmpFastXcorrData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pdTmpFastXcorrData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
       return false;
    }
 
-   pScoring->pfFastXcorrData = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+   pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize];
    if (NULL == pScoring->pfFastXcorrData)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - calloc(pfFastXcorrData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pfFastXcorrData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
       return false;
    }
-
-
+   
    if (g_staticParams.ionInformation.bUseNeutralLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
-      pScoring->pfFastXcorrDataNL = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+      pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize];
       if (NULL == pScoring->pfFastXcorrDataNL)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - calloc(pfFastXcorrDataNL[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+         sprintf(szErrorMsg,  " Error - new(pfFastXcorrDataNL[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -362,8 +361,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       }
    }
 
-   free(pPre.pdCorrelationData);
-   free(pdTmpFastXcorrData);
+   delete[] pPre.pdCorrelationData;
+   pPre.pdCorrelationData = NULL;
+
+   delete[] pdTmpFastXcorrData;
+   pdTmpFastXcorrData = NULL;
 
    // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
    if (g_staticParams.options.bSparseMatrix)
@@ -373,11 +375,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->iFastXcorrDataNL++;
 
       //MH: Fill sparse matrix
-      pScoring->pSparseFastXcorrData = (SparseMatrix *)calloc((size_t)pScoring->iFastXcorrData, (size_t)sizeof(SparseMatrix));
+      pScoring->pSparseFastXcorrData = new SparseMatrix[pScoring->iFastXcorrData];
       if (pScoring->pSparseFastXcorrData == NULL)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - calloc(pScoring->pSparseFastXcorrData[%d]).", pScoring->iFastXcorrData);
+         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrData[%d]).", pScoring->iFastXcorrData);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -400,7 +402,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->pSparseFastXcorrData[j].bin=i;
       pScoring->pSparseFastXcorrData[j].fIntensity=0;
 
-      free(pScoring->pfFastXcorrData);
+      delete[] pScoring->pfFastXcorrData;
+      pScoring->pfFastXcorrData = NULL;
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
       if (g_staticParams.ionInformation.bUseNeutralLoss
@@ -408,11 +411,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         pScoring->pSparseFastXcorrDataNL = (SparseMatrix *)calloc((size_t)pScoring->iFastXcorrDataNL, (size_t)sizeof(SparseMatrix));
+         pScoring->pSparseFastXcorrDataNL = new SparseMatrix[pScoring->iFastXcorrDataNL];
          if (pScoring->pSparseFastXcorrDataNL == NULL)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - calloc(pScoring->pSparseFastXcorrDataNL[%d]).", pScoring->iFastXcorrDataNL);
+            sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrDataNL[%d]).", pScoring->iFastXcorrDataNL);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
@@ -436,7 +439,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          pScoring->pSparseFastXcorrDataNL[j].bin=i;
          pScoring->pSparseFastXcorrDataNL[j].fIntensity=0;
 
-         free(pScoring->pfFastXcorrDataNL);
+         delete[] pScoring->pfFastXcorrDataNL;
+         pScoring->pfFastXcorrDataNL = NULL;
       }
    }
 
@@ -468,18 +472,19 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Modify for Sp data.
    StairStep(pTempSpData);
 
-   free(pdTempRawData);
+   delete[] pdTempRawData;
+   pdTempRawData = NULL;
 
    if (g_staticParams.options.bSparseMatrix)
    {
       // MH: Fill sparse matrix for SpScore - Note that we allocate max number of sp ions,
       // but will use less than this amount.
 
-      pScoring->pSparseSpScoreData = (SparseMatrix *)calloc((size_t)NUM_SP_IONS, (size_t)sizeof(SparseMatrix));
+      pScoring->pSparseSpScoreData = new SparseMatrix[NUM_SP_IONS];
       if (pScoring->pSparseSpScoreData == NULL)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - calloc(pScoring->pSparseSpScoreData[%d]).", pScoring->iSpScoreData);
+         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseSpScoreData[%d]).", pScoring->iSpScoreData);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -499,11 +504,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    else
    {
-      pScoring->pfSpScoreData = (float *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(float));
+      pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize];
       if (pScoring->pfSpScoreData == NULL)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - calloc(pfSpScoreData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+         sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -869,11 +874,11 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + 100.0)
          / g_staticParams.tolerances.dFragmentBinSize);
 
-   pPre->pdCorrelationData = (double *)calloc((size_t)pScoring->_spectrumInfoInternal.iArraySize, (size_t)sizeof(double));
+   pPre->pdCorrelationData = new double[pScoring->_spectrumInfoInternal.iArraySize];
    if (pPre->pdCorrelationData == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - calloc(pdCorrelationData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pdCorrelationData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
       logerr("%s\n\n", szErrorMsg);
@@ -1036,12 +1041,11 @@ bool CometPreprocess::Smooth(double *data,
    double *pdSmoothedSpectrum;
    int  i;
 
-   pdSmoothedSpectrum = (double *)calloc((size_t)iArraySize, (size_t)sizeof(double));
-
+   pdSmoothedSpectrum = new double[iArraySize];
    if (pdSmoothedSpectrum == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - calloc(pdSmoothedSpectrum[%d]).", iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]).", iArraySize);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
@@ -1056,7 +1060,8 @@ bool CometPreprocess::Smooth(double *data,
 
    memcpy(data, pdSmoothedSpectrum, iArraySize*sizeof(double));
 
-   free(pdSmoothedSpectrum);
+   delete[] pdSmoothedSpectrum;
+   pdSmoothedSpectrum = NULL;
 
    return true;
 }
@@ -1074,11 +1079,11 @@ bool CometPreprocess::PeakExtract(double *data,
           dAvgInten,
           *pdPeakExtracted;
 
-   pdPeakExtracted = (double *)calloc((size_t)iArraySize, (size_t)sizeof(double));
+   pdPeakExtracted = new double[iArraySize];
    if (pdPeakExtracted == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - calloc(pdPeakExtracted[%d]).", iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pdPeakExtracted[%d]).", iArraySize);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
@@ -1149,7 +1154,8 @@ bool CometPreprocess::PeakExtract(double *data,
 
    memcpy(data, pdPeakExtracted, (size_t)iArraySize*sizeof(double));
 
-   free(pdPeakExtracted);
+   delete[] pdPeakExtracted;
+   pdPeakExtracted = NULL;
 
    return true;
 }

@@ -697,35 +697,47 @@ struct Query
    {
       if (g_staticParams.options.bSparseMatrix)
       {
-         free(pSparseSpScoreData);
-         free(pSparseFastXcorrData);
+         delete[] pSparseSpScoreData;
+         pSparseSpScoreData = NULL;
+         
+         delete[] pSparseFastXcorrData;
+         pSparseFastXcorrData = NULL;
 
          if (g_staticParams.ionInformation.bUseNeutralLoss
                && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
-            free(pSparseFastXcorrDataNL);
+            delete[] pSparseFastXcorrDataNL;
+            pSparseFastXcorrDataNL = NULL;
          }
       }
       else
       {
-         free(pfSpScoreData);
-         free(pfFastXcorrData);
+         delete[] pfSpScoreData;
+         pfSpScoreData = NULL;
+
+         delete[] pfFastXcorrData;
+         pfFastXcorrData = NULL;
 
          if (g_staticParams.ionInformation.bUseNeutralLoss
                && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
-            free(pfFastXcorrDataNL);
+            delete[] pfFastXcorrDataNL;
+            pfFastXcorrDataNL = NULL;
          }
       }
 
-      free(_pResults);
+      delete[] _pResults;
+      _pResults = NULL;
 
       if (g_staticParams.options.iDecoySearch==2)
-         free(_pDecoys);
+      {
+          delete[] _pDecoys;
+          _pDecoys = NULL;
+      }
 
       Threading::DestroyMutex(accessMutex);
    }

@@ -263,11 +263,11 @@ bool CometSearch::DoSearch(sDBEntry dbe)
 
          // Generate complimentary strand.
          seqSize = dbe.strSeq.size()+1;
-         pszTemp=(char *)malloc(seqSize);
+         pszTemp= new char[seqSize];
          if (pszTemp == NULL)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg, " Error - malloc(szTemp[%d])", seqSize);
+            sprintf(szErrorMsg, " Error - new(szTemp[%d])", seqSize);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
@@ -339,7 +339,8 @@ bool CometSearch::DoSearch(sDBEntry dbe)
             }
          }
 
-         free(pszTemp);
+         delete[] pszTemp;
+         pszTemp = NULL;
       }
    }
 
@@ -442,10 +443,11 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      }
 
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                     if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
+                     pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
+                     if (NULL == pbDuplFragment)
                      {
                         char szErrorMsg[256];
-                        sprintf(szErrorMsg, " Error - malloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
+                        sprintf(szErrorMsg, " Error - new pbDuplFragments; iWhichQuery = %d", iWhichQuery);
                         string strErrorMsg(szErrorMsg);
                         g_cometStatus.SetError(true, strErrorMsg);      
                         logerr("%s\n\n", szErrorMsg);
@@ -593,7 +595,8 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                         }
                      }
 
-                     free(pbDuplFragment);
+                     delete[] pbDuplFragment;
+                     pbDuplFragment = NULL;
                   }
 
                   char pcVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
@@ -2405,10 +2408,11 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
 
             // now get the set of binned fragment ions once for all matching peptides
-            if ((pbDuplFragment = (bool*)malloc(g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize * (size_t)sizeof(bool)))==NULL)
+            pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
+            if (NULL == pbDuplFragment)
             {
                char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - malloc pbDuplFragments; iWhichQuery = %d", iWhichQuery);
+               sprintf(szErrorMsg,  " Error - new pbDuplFragments; iWhichQuery = %d", iWhichQuery);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetError(true, strErrorMsg);
                logerr("%s\n\n", szErrorMsg);
@@ -2592,7 +2596,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
             }
 
-            free(pbDuplFragment);
+            delete[] pbDuplFragment;
+            pbDuplFragment = NULL;
          }
 
          XcorrScore(szProteinSeq, _proteinInfo.szProteinName, _varModInfo.iStartPos, _varModInfo.iEndPos, true,
