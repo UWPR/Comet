@@ -5,6 +5,16 @@
                               
             <ul>
                <b>release 2014.01 rev. 0 (2014.01.0), release date 2014/03/25</b>
+               <li>Known issue: there is a memory leak in the program. Avoid invoking
+                   Comet with a ton of input files on the command line.
+               <li>Known issue: report of inconsistent results using
+                   "<a href="/parameters/parameters_201401/sparse_matrix.php">sparse_matrix</a> = 0"  and
+                   "<a href="/parameters/parameters_201401/sparse_matrix.php">sparse_matrix</a> = 1" 
+                   searches. I believe this is due to decoy xcorr score generation, affecting
+                   E-values, in cases where there is a low number of candidate peptide matches.
+               <li>Known issue:  it's been reported that results are inconsistent
+                   depending on the number of threads used in a search (Windows).  Some numbers
+                   deviate in the 3rd/4th decimal point.
                <li>Add "<a href="/parameters/parameters_201401/output_suffix.php">output_suffix</a>"
                    parameter option which appends a suffix to the
                    base name of pep.xml, pin.xml, txt, and sqt output files.

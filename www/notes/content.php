@@ -12,7 +12,21 @@
                      free to e-mail me directly (jke000 at gmail dot com).
                   </ul>
             </div>
+            <div class="post hr">
+               <p>We appear to have Windows memory management issues.  This is limited to Windows and
+                  is not an issue for Linux.  Avoid specifying multiple
+                  input files to Comet when run under windows i.e. do not run "<tt>comet.exe *.mzXML</tt>".
 
+               <p>Instead, create a wrapper script batch program which is just a text file with a ".bat"
+                  file extension.  Name it something like "runcomet.bat" with the contents as below
+                  and execute it instead of executing Comet directly i.e. "<tt>runcomet.bat *.mzXML</tt>".
+                  By running such a batch script, it will invoke individual instances of Comet to
+                  search all input files as opposed to one instance of Comet to search all input
+                  files.
+
+               <p>Contents of runcomet.bat: &nbsp; <tt>for %%A in (%*) do {comet.exe %%A}</tt>
+
+            </div>
             <div class="post hr">
                <p>To run Comet, you need one or more input spectral files in mzXML, mzML, ms2/cms2 formats
                   and a comet.params file.  Then issue a command such as:
