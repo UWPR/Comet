@@ -1386,7 +1386,7 @@ bool CometSearchManager::DoSearch()
       if (!g_staticParams.options.bOutputSqtStream)
       {
          logout(" Search start:  %s\n", g_staticParams.szDate);
-	 logout(" - Input file: %s\n", g_staticParams.inputFile.szFileName);
+         logout(" - Input file: %s\n", g_staticParams.inputFile.szFileName);
          fflush(stdout);
       }
 
