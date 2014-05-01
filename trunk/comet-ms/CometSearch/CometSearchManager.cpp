@@ -229,25 +229,33 @@ static bool AllocateResultsMem()
    {
       Query* pQuery = g_pvQuery.at(i);
 
-      pQuery->_pResults = new Results[g_staticParams.options.iNumStored];
-      if (pQuery->_pResults == NULL)
+      try
       {
-         string strError = " Error - new(_pResults[])";
-         string strFormatError = strError + "\n\n";
-         logerr(strFormatError.c_str());
-         g_cometStatus.SetError(true, strError);
+         pQuery->_pResults = new Results[g_staticParams.options.iNumStored];
+      }
+      catch (std::bad_alloc& ba)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg, " Error - new(_pResults[]). bad_alloc: %s.", ba.what());
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetError(true, strErrorMsg);      
+         logerr("%s\n\n", szErrorMsg);
          return false;
       }
 
       if (g_staticParams.options.iDecoySearch==2)
       {
-         pQuery->_pDecoys = new Results[g_staticParams.options.iNumStored];
-         if (pQuery->_pDecoys == NULL)
+         try
          {
-            string strError = " Error new(_pDecoys[])";
-            string strFormatError = strError + "\n\n";
-            logerr(strFormatError.c_str());
-            g_cometStatus.SetError(true, strError);
+            pQuery->_pDecoys = new Results[g_staticParams.options.iNumStored];
+         }
+         catch (std::bad_alloc& ba)
+         {
+            char szErrorMsg[256];
+            sprintf(szErrorMsg, " Error - new(_pDecoys[]). bad_alloc: %s.", ba.what());
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetError(true, strErrorMsg);      
+            logerr("%s\n\n", szErrorMsg);
             return false;
          }
       }

@@ -263,11 +263,14 @@ bool CometSearch::DoSearch(sDBEntry dbe)
 
          // Generate complimentary strand.
          seqSize = dbe.strSeq.size()+1;
-         pszTemp= new char[seqSize];
-         if (pszTemp == NULL)
+         try
+         {
+            pszTemp= new char[seqSize];
+         }
+         catch (std::bad_alloc& ba)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg, " Error - new(szTemp[%d])", seqSize);
+            sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.", seqSize, ba.what());
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
@@ -443,11 +446,14 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      }
 
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                     pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
-                     if (NULL == pbDuplFragment)
+                     try
+                     {
+                        pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
+                     }
+                     catch (std::bad_alloc& ba)
                      {
                         char szErrorMsg[256];
-                        sprintf(szErrorMsg, " Error - new pbDuplFragments; iWhichQuery = %d", iWhichQuery);
+                        sprintf(szErrorMsg, " Error - new pbDuplFragments; iWhichQuery = %d. bad_alloc: %s.", iWhichQuery, ba.what());
                         string strErrorMsg(szErrorMsg);
                         g_cometStatus.SetError(true, strErrorMsg);      
                         logerr("%s\n\n", szErrorMsg);
@@ -2408,11 +2414,14 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
 
             // now get the set of binned fragment ions once for all matching peptides
-            pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
-            if (NULL == pbDuplFragment)
+            try
+            {
+               pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
+            }
+            catch (std::bad_alloc& ba)
             {
                char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - new pbDuplFragments; iWhichQuery = %d", iWhichQuery);
+               sprintf(szErrorMsg,  " Error - new pbDuplFragments; iWhichQuery = %d. bad_alloc: %s.", iWhichQuery, ba.what());
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetError(true, strErrorMsg);
                logerr("%s\n\n", szErrorMsg);

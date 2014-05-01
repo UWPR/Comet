@@ -271,11 +271,14 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    else
       pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
 
-   pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-   if (NULL == pScoring->pfFastXcorrData)
+   try
+   {
+      pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+   }
+   catch (std::bad_alloc& ba)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pfFastXcorrData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pfFastXcorrData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
@@ -287,11 +290,14 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
-      pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-      if (NULL == pScoring->pfFastXcorrDataNL)
+      try
+      {
+         pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+      }
+      catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pfFastXcorrDataNL[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+         sprintf(szErrorMsg,  " Error - new(pfFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -380,11 +386,14 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->iFastXcorrDataNL++;
 
       //MH: Fill sparse matrix
-      pScoring->pSparseFastXcorrData = new SparseMatrix[pScoring->iFastXcorrData]();
-      if (pScoring->pSparseFastXcorrData == NULL)
+      try
+      {
+         pScoring->pSparseFastXcorrData = new SparseMatrix[pScoring->iFastXcorrData]();
+      }
+      catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrData[%d]).", pScoring->iFastXcorrData);
+         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrData[%d]). bad_alloc: %s.", pScoring->iFastXcorrData, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -416,11 +425,14 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         pScoring->pSparseFastXcorrDataNL = new SparseMatrix[pScoring->iFastXcorrDataNL]();
-         if (pScoring->pSparseFastXcorrDataNL == NULL)
+         try
+         {
+            pScoring->pSparseFastXcorrDataNL = new SparseMatrix[pScoring->iFastXcorrDataNL]();
+         }
+         catch (std::bad_alloc& ba)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrDataNL[%d]).", pScoring->iFastXcorrDataNL);
+            sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
@@ -482,11 +494,14 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       // MH: Fill sparse matrix for SpScore - Note that we allocate max number of sp ions,
       // but will use less than this amount.
 
-      pScoring->pSparseSpScoreData = new SparseMatrix[NUM_SP_IONS]();
-      if (pScoring->pSparseSpScoreData == NULL)
+      try
+      {
+         pScoring->pSparseSpScoreData = new SparseMatrix[NUM_SP_IONS]();
+      }
+      catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseSpScoreData[%d]).", pScoring->iSpScoreData);
+         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseSpScoreData[%d]). bad_alloc: %s.", pScoring->iSpScoreData, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -506,11 +521,14 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    else
    {
-      pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-      if (pScoring->pfSpScoreData == NULL)
+      try
+      {
+         pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+      }
+      catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+         sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -880,11 +898,14 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + 100.0)
          / g_staticParams.tolerances.dFragmentBinSize);
 
-   pPre->pdCorrelationData = new double[pScoring->_spectrumInfoInternal.iArraySize]();
-   if (pPre->pdCorrelationData == NULL)
+   try
+   {
+      pPre->pdCorrelationData = new double[pScoring->_spectrumInfoInternal.iArraySize]();
+   }
+   catch (std::bad_alloc& ba)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pdCorrelationData[%d]).", pScoring->_spectrumInfoInternal.iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pdCorrelationData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);
       logerr("%s\n\n", szErrorMsg);
@@ -1071,11 +1092,14 @@ bool CometPreprocess::PeakExtract(double *data,
    double dStdDev,
           dAvgInten;
 
-   pdPeakExtracted = new double[iArraySize]();
-   if (pdPeakExtracted == NULL)
+   try
+   {
+      pdPeakExtracted = new double[iArraySize]();
+   }
+   catch (std::bad_alloc& ba)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pdPeakExtracted[%d]).", iArraySize);
+      sprintf(szErrorMsg,  " Error - new(pdPeakExtracted[%d]). bad_alloc: %s.", iArraySize, ba.what());
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
@@ -1262,11 +1286,14 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    pdTempRawDataArr = new double*[maxNumThreads];
    for (i=0; i<maxNumThreads; i++)
    {
-      pdTempRawDataArr[i] = new double[iArraySize];
-      if (pdTempRawDataArr[i] == NULL)
+      try
+      {
+         pdTempRawDataArr[i] = new double[iArraySize];
+      }
+      catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTempRawData[%d]).", iArraySize);
+         sprintf(szErrorMsg,  " Error - new(pdTempRawData[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1278,11 +1305,14 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    pdTmpFastXcorrDataArr = new double*[maxNumThreads];
    for (i=0; i<maxNumThreads; i++)
    {
-      pdTmpFastXcorrDataArr[i] = new double[iArraySize];
-      if (pdTmpFastXcorrDataArr[i] == NULL)
+      try
+      {
+         pdTmpFastXcorrDataArr[i] = new double[iArraySize];
+      }
+      catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpFastXcorrData[%d]).", iArraySize);
+         sprintf(szErrorMsg,  " Error - new(pdTmpFastXcorrData[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1294,11 +1324,14 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    pdSmoothedSpectrumArr = new double*[maxNumThreads];
    for (i=0; i<maxNumThreads; i++)
    {
-      pdSmoothedSpectrumArr[i] = new double[iArraySize];
-      if (pdSmoothedSpectrumArr[i] == NULL)
+      try
+      {
+         pdSmoothedSpectrumArr[i] = new double[iArraySize];
+      }
+      catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]).", iArraySize);
+         sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1310,11 +1343,14 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    pdPeakExtractedArr = new double*[maxNumThreads];
    for (i=0; i<maxNumThreads; i++)
    {
-      pdPeakExtractedArr[i] = new double[iArraySize];
-      if (pdPeakExtractedArr[i] == NULL)
+      try
+      {
+         pdPeakExtractedArr[i] = new double[iArraySize];
+      }
+      catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]).", iArraySize);
+         sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
