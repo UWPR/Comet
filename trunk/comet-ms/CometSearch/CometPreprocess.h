@@ -25,6 +25,7 @@ struct PreprocessThreadData
    Spectrum mstSpectrum;
    int iAnalysisType;
    int iFileLastScan;
+   bool *pbMemoryPool;  //MH: Manages active memory pool
 
    PreprocessThreadData()
    {
@@ -37,6 +38,19 @@ struct PreprocessThreadData
       mstSpectrum = spec_in;
       iAnalysisType = iAnalysisType_in;
       iFileLastScan = iFileLastScan_in;
+   }
+
+   ~PreprocessThreadData()
+   {
+      //MH: Mark that the memory is no longer in use. 
+      //DO NOT FREE MEMORY HERE. Just release pointer.
+      if(pbMemoryPool!=NULL) *pbMemoryPool=false;
+      pbMemoryPool=NULL;
+   }
+
+   void SetMemory(bool *pbMemoryPool_in)
+   {
+      pbMemoryPool = pbMemoryPool_in;
    }
 };
 
@@ -56,11 +70,17 @@ public:
                                         int maxNumThreads);
    static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData);
    static bool DoneProcessingAllSpectra();
+   static bool AllocateMemory(int maxNumThreads);
+   static bool DeallocateMemory(int maxNumThreads);
    
 private:
    
    // Private static methods
-   static bool PreprocessSpectrum(Spectrum &spec);
+   static bool PreprocessSpectrum(Spectrum &spec,
+                                  double *pdTempRawData,
+                                  double *pdTmpFastXcorrData,
+                                  double *pdSmoothedSpectrum,
+                                  double *pdPeakExtracted);
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
@@ -76,7 +96,11 @@ private:
                          int iReaderLastScan,
                          int iNumSpectraLoaded);
    static bool Preprocess(struct Query *pScoring,
-                          Spectrum mstSpectrum);
+                          Spectrum mstSpectrum,
+                          double *pdTempRawData,
+                          double *pdTmpFastXcorrData,
+                          double *pdSmoothedSpectrum,
+                          double *pdPeakExtracted);
    static bool LoadIons(struct Query *pScoring,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
@@ -84,9 +108,11 @@ private:
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);
    static bool Smooth(double *data,
-                      int iArraySize);
+                      int iArraySize,
+                      double *pdSmoothedSpectrum);
    static bool PeakExtract(double *data,
-                           int iArraySize);
+                           int iArraySize,
+                           double *pdPeakExtracted);
    static void GetTopIons(double *pdTempRawData,
                           struct msdata *pTempSpData,
                           int iArraySize);
@@ -99,6 +125,13 @@ private:
    static Mutex _maxChargeMutex;
    static bool _bFirstScan;
    static bool _bDoneProcessingAllSpectra;
+
+   //MH: Common memory to be shared by all threads during spectral processing
+   static bool *pbMemoryPool;             //MH: Regulator of memory use
+   static double **pdTempRawDataArr;      //MH: Number of arrays equals threads
+   static double **pdTmpFastXcorrDataArr; //MH: Ditto
+   static double **pdSmoothedSpectrumArr; //MH: Ditto
+   static double **pdPeakExtractedArr;    //MH: Ditto
 };
 
 #endif // _COMETPREPROCESS_H_
