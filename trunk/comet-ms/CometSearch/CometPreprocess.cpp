@@ -23,10 +23,10 @@ Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
 bool CometPreprocess::_bFirstScan;
 bool *CometPreprocess::pbMemoryPool;
-double **CometPreprocess::pdTempRawDataArr;
-double **CometPreprocess::pdTmpFastXcorrDataArr;
-double **CometPreprocess::pdSmoothedSpectrumArr;
-double **CometPreprocess::pdPeakExtractedArr;
+double **CometPreprocess::ppdTempRawDataArr;
+double **CometPreprocess::ppdTmpFastXcorrDataArr;
+double **CometPreprocess::ppdSmoothedSpectrumArr;
+double **CometPreprocess::ppdPeakExtractedArr;
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (pdCorrelationData).
 CometPreprocess::CometPreprocess()
@@ -231,7 +231,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    //MH: Give memory manager access to the thread.
    pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);
 
-   PreprocessSpectrum(pPreprocessThreadData->mstSpectrum, pdTempRawDataArr[i], pdTmpFastXcorrDataArr[i], pdSmoothedSpectrumArr[i], pdPeakExtractedArr[i]);
+   PreprocessSpectrum(pPreprocessThreadData->mstSpectrum, ppdTempRawDataArr[i], ppdTmpFastXcorrDataArr[i], ppdSmoothedSpectrumArr[i], ppdPeakExtractedArr[i]);
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
@@ -1283,12 +1283,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   pdTempRawDataArr = new double*[maxNumThreads];
+   ppdTempRawDataArr = new double*[maxNumThreads];
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         pdTempRawDataArr[i] = new double[iArraySize];
+         ppdTempRawDataArr[i] = new double[iArraySize];
       }
       catch (std::bad_alloc& ba)
       {
@@ -1302,12 +1302,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   pdTmpFastXcorrDataArr = new double*[maxNumThreads];
+   ppdTmpFastXcorrDataArr = new double*[maxNumThreads];
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         pdTmpFastXcorrDataArr[i] = new double[iArraySize];
+         ppdTmpFastXcorrDataArr[i] = new double[iArraySize];
       }
       catch (std::bad_alloc& ba)
       {
@@ -1321,12 +1321,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   pdSmoothedSpectrumArr = new double*[maxNumThreads];
+   ppdSmoothedSpectrumArr = new double*[maxNumThreads];
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         pdSmoothedSpectrumArr[i] = new double[iArraySize];
+         ppdSmoothedSpectrumArr[i] = new double[iArraySize];
       }
       catch (std::bad_alloc& ba)
       {
@@ -1340,12 +1340,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   pdPeakExtractedArr = new double*[maxNumThreads];
+   ppdPeakExtractedArr = new double*[maxNumThreads];
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         pdPeakExtractedArr[i] = new double[iArraySize];
+         ppdPeakExtractedArr[i] = new double[iArraySize];
       }
       catch (std::bad_alloc& ba)
       {
@@ -1369,16 +1369,16 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads){
 
    for (i=0; i<maxNumThreads; i++)
    {
-      delete [] pdTempRawDataArr[i];
-      delete [] pdTmpFastXcorrDataArr[i];
-      delete [] pdSmoothedSpectrumArr[i];
-      delete [] pdPeakExtractedArr[i];
+      delete [] ppdTempRawDataArr[i];
+      delete [] ppdTmpFastXcorrDataArr[i];
+      delete [] ppdSmoothedSpectrumArr[i];
+      delete [] ppdPeakExtractedArr[i];
    }
 
-   delete [] pdTempRawDataArr;
-   delete [] pdTmpFastXcorrDataArr;
-   delete [] pdSmoothedSpectrumArr;
-   delete [] pdPeakExtractedArr;
+   delete [] ppdTempRawDataArr;
+   delete [] ppdTmpFastXcorrDataArr;
+   delete [] ppdSmoothedSpectrumArr;
+   delete [] ppdPeakExtractedArr;
 
    return true;
 }

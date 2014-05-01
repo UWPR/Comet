@@ -128,10 +128,10 @@ private:
 
    //MH: Common memory to be shared by all threads during spectral processing
    static bool *pbMemoryPool;             //MH: Regulator of memory use
-   static double **pdTempRawDataArr;      //MH: Number of arrays equals threads
-   static double **pdTmpFastXcorrDataArr; //MH: Ditto
-   static double **pdSmoothedSpectrumArr; //MH: Ditto
-   static double **pdPeakExtractedArr;    //MH: Ditto
+   static double **ppdTempRawDataArr;      //MH: Number of arrays equals threads
+   static double **ppdTmpFastXcorrDataArr; //MH: Ditto
+   static double **ppdSmoothedSpectrumArr; //MH: Ditto
+   static double **ppdPeakExtractedArr;    //MH: Ditto
 };
 
 #endif // _COMETPREPROCESS_H_
