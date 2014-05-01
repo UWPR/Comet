@@ -223,7 +223,14 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
 				processCVParam(&m_refGroupCvParams[i].name[0], &m_refGroupCvParams[i].accession[0], &m_refGroupCvParams[i].value[0], &m_refGroupCvParams[i].unitName[0], &m_refGroupCvParams[i].unitAccession[0]);
 			}
 		}
-	}
+	} else if (isElement("userParam", el)) {
+    const char* name = getAttrValue("name", attr);
+    const char* dtype = getAttrValue("type", attr);
+    const char* value = getAttrValue("value", attr);
+    if(strcmp(name,"[Thermo Trailer Extra]Monoisotopic M/Z:")==0){
+      spec->setPrecursorMonoMZ(atof(value));
+    }
+  }
 
 	if(isElement("binary", el))	{
 		m_strData.clear();
@@ -266,15 +273,8 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
 		m_bInIndexList=false;
 		stopParser();
 		if (!m_bIndexSorted) {
-		  list<cindex> tmplist;
-		  for (int i=0; i<m_vIndex.size(); i++) {
-		    tmplist.push_back(m_vIndex[i]);
-		  }
-		  tmplist.sort(cindex::compare);
-		  for (int i=0; i<m_vIndex.size(); i++) {
-		    m_vIndex[i] = tmplist.front();
-		    tmplist.pop_front();
-		  }
+      qsort(&m_vIndex[0],m_vIndex.size(),sizeof(cindex),cindex::compare);
+      m_bIndexSorted=true;
 		}
 
 	} else if(isElement("offset",el) && m_bChromatogramIndex){

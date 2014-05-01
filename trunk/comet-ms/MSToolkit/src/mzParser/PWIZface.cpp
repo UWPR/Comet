@@ -18,20 +18,20 @@ ChromatogramList::ChromatogramList(){
 
 ChromatogramList::ChromatogramList(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* bc){
 	mzML=ml;
-#ifdef MZP_MZ5
-	mz5=(mzpMz5Handler*)m5;
-#endif
+  #ifdef MZP_MZ5
+    mz5=(mzpMz5Handler*)m5;
+  #endif
 	chromat=new Chromatogram();
 	chromat->bc=bc;
 }
 
 ChromatogramList::~ChromatogramList(){
 	mzML=NULL;
-  vChromatIndex=NULL;
-#ifdef MZP_MZ5
+	vChromatIndex=NULL;
+  #ifdef MZP_MZ5
 	mz5=NULL;
   vMz5Index=NULL;
-#endif
+  #endif
 	delete chromat;
 }
 
@@ -42,21 +42,21 @@ ChromatogramPtr ChromatogramList::chromatogram(int index, bool binaryData) {
 		chromat->bc->getIDString(str);
 		chromat->id=str;
 		return chromat;
-#ifdef MZP_MZ5
+  #ifdef MZP_MZ5
 	}	else if(mz5!=NULL) {
 		mz5->readChromatogram(index);
 		chromat->bc->getIDString(str);
 		chromat->id=str;
 		return chromat;
-#endif
+  #endif
 	}
 	return NULL;
 }
 bool ChromatogramList::get() {
 	if(mzML!=NULL) vChromatIndex = mzML->getChromatIndex();
-#ifdef MZP_MZ5
+  #ifdef MZP_MZ5
 	else if(mz5!=NULL) vMz5Index = mz5->getChromatIndex();
-#endif
+  #endif
 	else return false;
 	return true;
 }
@@ -67,9 +67,9 @@ unsigned int ChromatogramList::size() {
 		return 0;
 	}
 	if(mzML!=NULL) return vChromatIndex->size();
-#ifdef MZP_MZ5
+  #ifdef MZP_MZ5
 	else if(mz5!=NULL) return vMz5Index->size();
-#endif
+  #endif
 	else return 0;
 }
 
@@ -80,7 +80,7 @@ PwizRun::PwizRun(){
 PwizRun::PwizRun(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b){
 	mzML=ml;
 #ifdef MZP_MZ5
-	mz5=(mzpMz5Handler*)m5;
+  mz5=(mzpMz5Handler*)m5;
 #endif
 	bc=b;
 	chromatogramListPtr = new ChromatogramList(ml, m5, b);

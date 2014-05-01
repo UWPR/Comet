@@ -232,7 +232,7 @@ int MzParser::checkFileType(char* fname){
     return 0;
 #endif
   }
-
+  
 	if(!strcmp(ext,"GZ")) {
 		if(!strcmp(preExt,"MZML")) return 3;
 		if(!strcmp(preExt,"MZXML")) return 4;

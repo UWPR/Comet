@@ -189,15 +189,8 @@ void mzpSAXMzxmlHandler::endElement(const XML_Char *el) {
 		posIndex=-1;
 		stopParser();
 		if (!m_bIndexSorted) {
-		  list<cindex> tmplist;
-		  for (int i=0; i<m_vIndex.size(); i++) {
-		    tmplist.push_back(m_vIndex[i]);
-		  }
-		  tmplist.sort(cindex::compare);
-		  for (int i=0; i<m_vIndex.size(); i++) {
-		    m_vIndex[i] = tmplist.front();
-		    tmplist.pop_front();
-		  }
+      qsort(&m_vIndex[0],m_vIndex.size(),sizeof(cindex),cindex::compare);
+      m_bIndexSorted=true;
 		}
 
 	} else if(isElement("msInstrument",el)){

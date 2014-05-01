@@ -457,7 +457,7 @@ void Spectrum::setIonInjectionTime(float f){
 void Spectrum::setMZ(double d, double mono){
 	clearMZ();
 	mz->push_back(d);
-  monoMZ->push_back(d);
+  monoMZ->push_back(mono);
 }
 
 void Spectrum::setNativeID(char* c){

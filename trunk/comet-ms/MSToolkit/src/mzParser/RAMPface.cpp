@@ -308,6 +308,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	scanHeader->numPossibleCharges=0;
 	scanHeader->precursorCharge=0;
 	scanHeader->precursorIntensity=0.0;
+  scanHeader->precursorMonoMZ=0.0;
 	scanHeader->precursorMZ=0.0;
 	scanHeader->precursorScanNum=-1;
 	scanHeader->retentionTime=0.0;
@@ -383,6 +384,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	scanHeader->precursorCharge=pFI->bs->getPrecursorCharge();
 	scanHeader->precursorIntensity=pFI->bs->getPrecursorIntensity();
 	scanHeader->compensationVoltage=pFI->bs->getCompensationVoltage();
+  scanHeader->precursorMonoMZ=pFI->bs->getPrecursorMonoMZ();
 	scanHeader->precursorMZ=pFI->bs->getPrecursorMZ();
 	scanHeader->precursorScanNum=pFI->bs->getPrecursorScanNum();
 	scanHeader->retentionTime=(double)pFI->bs->getRTime(false);
@@ -419,8 +421,7 @@ ramp_fileoffset_t* readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *
 			v=pFI->mzML->getSpecIndex();
 			rIndex = (ramp_fileoffset_t *) malloc((pFI->mzML->highScan()+2)*sizeof(ramp_fileoffset_t));
 			memset(rIndex,-1,(pFI->mzML->highScan()+2)*sizeof(ramp_fileoffset_t));
-			for(i=0;i<v->size();i++) 
-			  rIndex[v->at(i).scanNum]=(ramp_fileoffset_t)v->at(i).offset;
+			for(i=0;i<v->size();i++) rIndex[v->at(i).scanNum]=(ramp_fileoffset_t)v->at(i).offset;
 			rIndex[v->at(i-1).scanNum+1]=-1;
 			*iLastScan=v->at(i-1).scanNum;
 			break;
@@ -432,7 +433,7 @@ ramp_fileoffset_t* readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *
 			for(i=0;i<v->size();i++) rIndex[v->at(i).scanNum]=(ramp_fileoffset_t)v->at(i).offset;
 			rIndex[v->at(i-1).scanNum+1]=-1;
 			*iLastScan=v->at(i-1).scanNum;
-			break;      
+			break;
 #ifdef MZP_MZ5
 		case 5:
 			v2=pFI->mz5->getSpecIndex();
@@ -448,7 +449,7 @@ ramp_fileoffset_t* readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *
 			*iLastScan=0;
 			break;
 	}
-	v=NULL;  
+	v=NULL;
 #ifdef MZP_MZ5
 	v2=NULL;
 #endif

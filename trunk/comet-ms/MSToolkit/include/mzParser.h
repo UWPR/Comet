@@ -24,7 +24,6 @@
 // Standard libraries
 //------------------------------------------------
 #include <vector>
-#include <list>
 #include <map>
 #include <stdio.h>
 #include <iostream>
@@ -53,10 +52,13 @@ using namespace H5;
 //#define OSX_TIGER // use with OSX if OSX Tiger is being used
 //#define OSX_INTEL // compile with cc on Macintosh OSX on Intel-style processors
 //#define GCC				// to compile with gcc (or g++) on LINUX
-#define __LINUX__				// to compile with gcc (or g++) on LINUX
-#ifdef _MSC_VER	// to compile with Microsoft Studio
+//#define __LINUX__				// to compile with gcc (or g++) on LINUX
+//#define _MSC_VER	// to compile with Microsoft Studio
+#define __LINUX__                             // to compile with gcc (or g++) on LINUX
+#ifdef _MSC_VER       // to compile with Microsoft Studio
 #undef __LINUX__
 #endif
+
 
 #define XMLCLASS		
 #ifndef XML_STATIC
@@ -149,15 +151,19 @@ enum enumActivation {
 //For holding mzML and mzXML indexes
 class cindex	{
 public:
-	static bool compare (const cindex& first, const cindex& second)
- 	 {		
-    		return ( first.scanNum < second.scanNum );
-  	 }
+
+  static int compare (const void* a, const void* b) {
+    if( *(int*)a < *(int*)b ) return -1;
+    if( *(int*)a > *(int*)b ) return 1;
+    return 0;
+  }
 
 	int scanNum;
 	string idRef;
 	f_off offset;
 };
+
+
 
 //For instrument information
 class instrumentInfo {
@@ -216,6 +222,7 @@ public:
 	void setPositiveScan(bool b);
 	void setPrecursorCharge(int z);
 	void setPrecursorIntensity(double d);
+  void setPrecursorMonoMZ(double mz);
 	void setPrecursorMZ(double mz);
 	void setPrecursorScanNum(int i);
 	void setRTime(float t);
@@ -239,6 +246,7 @@ public:
 	bool					getPositiveScan();
 	int						getPrecursorCharge();
 	double				getPrecursorIntensity();
+  double        getPrecursorMonoMZ();
 	double				getPrecursorMZ();
 	int						getPrecursorScanNum();
 	float					getRTime(bool min=true);
@@ -265,6 +273,7 @@ protected:
 	bool						positiveScan;
 	int							precursorCharge;			//Precursor ion charge; 0 if no precursor or unknown
 	double					precursorIntensity;		//Precursor ion intensity; 0 if no precursor or unknown
+  double          precursorMonoMZ;      //Might be reported in Thermo data
 	double					precursorMZ;					//Precursor ion m/z value; 0 if no precursor or unknown
 	int							precursorScanNum;			//Precursor scan number; 0 if no precursor or unknown
 	float						rTime;								//always stored in minutes
@@ -408,6 +417,7 @@ protected:
 	string  m_strFileName;
 	bool m_bStopParse;
 	bool m_bGZCompression;
+
 	FILE* fptr;
 	Czran gzObj;
 
@@ -491,9 +501,7 @@ private:
 	bool m_bSpectrumIndex;
   bool m_bZlib;
   int  m_iDataType;   //0=unspecified, 1=32-bit float, 2=64-bit float
-
   bool m_bIndexSorted;
-	
 	//  mzpSAXMzmlHandler index data members.
 	vector<cindex>		m_vIndex;
 	cindex						curIndex;
@@ -581,7 +589,6 @@ private:
 	bool m_bNoIndex;
 	bool m_bScanIndex;
 	bool m_bIndexSorted;
-
 	//  mzpSAXMzxmlHandler index data members.
 	vector<cindex>		m_vIndex;
 	cindex						curIndex;
@@ -1237,6 +1244,7 @@ struct ScanHeaderStruct {
 	double					ionisationEnergy;
 	double					lowMZ;
 	double					precursorIntensity;  /* only if MS level > 1 */
+  double          precursorMonoMZ;
 	double					precursorMZ;  /* only if MS level > 1 */
 	double					retentionTime;        /* in seconds */
 	double					totIonCurrent;

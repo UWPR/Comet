@@ -217,7 +217,7 @@ int Czran::build_index(FILE *in, f_off span, gz_access **built){
     /* clean up and return index (release unused entries in list) */
 		fileSize=strm.total_out;
     (void)inflateEnd(&strm);
-    index->list = (point*)realloc(index->list, sizeof(struct point) * index->have);
+    index = (gz_access*)realloc(index, sizeof(point) * index->have);
     index->size = index->have;
     *built = index;
     return index->size;
@@ -358,10 +358,6 @@ int Czran::extract(FILE *in, f_off offset, unsigned char *buf, int len){
 
 		//otherwise grab what we can and try extending buffer
 		seg=(int)(bufferLen-(offset-bufferOffset));
-		if (buffer == NULL) {
-		  cerr << "DDS: WTF!?" << endl;
-		  ret=extract(in,offset);
-		}
 		memcpy(buf,buffer+(offset-bufferOffset),seg);
 		len-=seg;
 

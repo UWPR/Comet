@@ -25,6 +25,7 @@ BasicSpectrum::BasicSpectrum() {
 	precursorCharge=0;
 	precursorIntensity=0.0;
 	compensationVoltage=0.0;
+  precursorMonoMZ=0.0;
 	precursorMZ=0.0;
 	precursorScanNum=-1;
 	rTime=0.0f;
@@ -49,6 +50,7 @@ BasicSpectrum::BasicSpectrum(const BasicSpectrum& s){
 	precursorCharge=s.precursorCharge;
 	precursorIntensity=s.precursorIntensity;
 	compensationVoltage=s.compensationVoltage;
+  precursorMonoMZ=s.precursorMonoMZ;
 	precursorMZ=s.precursorMZ;
 	precursorScanNum=s.precursorScanNum;
 	rTime=s.rTime;
@@ -79,6 +81,7 @@ BasicSpectrum& BasicSpectrum::operator=(const BasicSpectrum& s){
 		precursorCharge=s.precursorCharge;
 		precursorIntensity=s.precursorIntensity;
 		compensationVoltage=s.compensationVoltage;
+    precursorMonoMZ=s.precursorMonoMZ;
 		precursorMZ=s.precursorMZ;
 		precursorScanNum=s.precursorScanNum;
 		rTime=s.rTime;
@@ -142,6 +145,7 @@ void BasicSpectrum::setPeaksCount(int i){ peaksCount=i;}
 void BasicSpectrum::setPositiveScan(bool b){ positiveScan=b;}
 void BasicSpectrum::setPrecursorCharge(int z){ precursorCharge=z;}
 void BasicSpectrum::setPrecursorIntensity(double d){ precursorIntensity=d;}
+void BasicSpectrum::setPrecursorMonoMZ(double mz){ precursorMonoMZ=mz;}
 void BasicSpectrum::setPrecursorMZ(double mz){ precursorMZ=mz;}
 void BasicSpectrum::setPrecursorScanNum(int i){ precursorScanNum=i;}
 void BasicSpectrum::setRTime(float f){ rTime=f;}
@@ -173,6 +177,7 @@ int BasicSpectrum::getPeaksCount(){ return peaksCount;}
 bool BasicSpectrum::getPositiveScan(){ return positiveScan;}
 int BasicSpectrum::getPrecursorCharge(){ return precursorCharge;}
 double BasicSpectrum::getPrecursorIntensity(){ return precursorIntensity;}
+double BasicSpectrum::getPrecursorMonoMZ(){ return precursorMonoMZ;}
 double BasicSpectrum::getPrecursorMZ(){ return precursorMZ;}
 int BasicSpectrum::getPrecursorScanNum(){ return precursorScanNum;}
 float BasicSpectrum::getRTime(bool min){

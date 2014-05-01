@@ -1,6 +1,6 @@
 #include "mzParser.h"
-
 #ifdef MZP_MZ5
+
 mzpMz5Handler::mzpMz5Handler(mzpMz5Config* c, BasicSpectrum* s){
 	config_=c;
 	spec=s;
@@ -481,4 +481,3 @@ bool mzpMz5Handler::readSpectrum(int num){
 }
 
 #endif
-
