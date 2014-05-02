@@ -671,7 +671,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
    // Since we have no filter, just add zlines.
    // WARNING: only good up to charge state 3
-   if (spec.sizeZ() == 0)
+   if (spec.sizeZ() == 0 || g_staticParams.options.bOverrideCharge)
    {
       // Use +1 or +2/+3 rule.
       if (g_staticParams.options.iStartCharge == 0)

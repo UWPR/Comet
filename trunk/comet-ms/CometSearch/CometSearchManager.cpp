@@ -811,6 +811,14 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
+   if (GetParamValue("override_charge", iIntData))
+   {
+      if (iIntData > 0)
+      {
+         g_staticParams.options.bOverrideCharge = iIntData;
+      }
+   }
+
    if (GetParamValue("precursor_charge", intRangeData))
    {
       if ((intRangeData.iEnd >= intRangeData.iStart) && (intRangeData.iStart >= 0) && (intRangeData.iEnd > 0))

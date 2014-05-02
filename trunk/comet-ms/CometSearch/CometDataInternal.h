@@ -106,6 +106,8 @@ struct Options             // output parameters
    double dRemovePrecursorTol;
    double dLowPeptideMass;       // MH+ mass
    double dHighPeptideMass;      // MH+ mass
+   int bOverrideCharge; 
+
    IntRange scanRange;
    DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
@@ -512,6 +514,7 @@ struct StaticParams
       options.bNoEnzymeSelected = 1;
       options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 0;
+      options.bOverrideCharge = 0;
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;  
 
