@@ -928,12 +928,11 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%d %d", intRangeParam.iStart, intRangeParam.iEnd);
             pSearchMgr->SetParam("precursor_charge", szParamStringVal, intRangeParam);
          }
-	 else if (!strcmp(szParamName, "override_charge"))
+         else if (!strcmp(szParamName, "override_charge"))
          {
-	    iIntParam = 0;
-	    sscanf(szParamVal, "%d",  &iIntParam);
-	    szParamStringVal[0] = '\0';
-	    szParamStringVal[0] = '\0';
+            iIntParam = 0;
+            sscanf(szParamVal, "%d",  &iIntParam);
+            szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("override_charge", szParamStringVal, iIntParam);
          }
@@ -1334,8 +1333,8 @@ sample_enzyme_number = 1               # Sample enzyme which is possibly differe
 # mzXML parameters\n\
 #\n\
 scan_range = 0 0                       # start and scan scan range to search; 0 as 1st entry ignores parameter\n\
-precursor_charge = 0 0                 # precursor charge range to analyze; does not override mzXML charge; 0 as 1st entry ignores parameter\n\
-override_charge = 0                  # allows to override the listed precursor charge state\n\
+precursor_charge = 0 0                 # precursor charge range to analyze; does not override any existing charge; 0 as 1st entry ignores parameter\n\
+override_charge = 0                    # 0=no, 1=yes to override existing precursor charge states with precursor_charge parameter\n\
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3\n\
 activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, PQD, HCD, IRMPD\n\
 \n\
