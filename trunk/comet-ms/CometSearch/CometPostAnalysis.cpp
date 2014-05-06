@@ -675,9 +675,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                      iFastXcorrIndex = FindFastXcorrIndex(pQuery, iFragmentIonMass, iLastFastXcorrIndex);
                      dFastXcorr += pQuery->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
 
-                     if (iFastXcorrIndex>0 && iFragmentIonMass==pQuery->pSparseFastXcorrData[iFastXcorrIndex].bin)
-                        dFastXcorr += 0.5 * pQuery->pSparseFastXcorrData[iFastXcorrIndex-1].fIntensity;
-
                      iLastFastXcorrIndex=iFastXcorrIndex;
                   }
                   else
@@ -703,9 +700,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
                      dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
-
-                     if (iFragmentIonMass > 0)
-                        dFastXcorr += 0.5 * pQuery->pfFastXcorrData[iFragmentIonMass-1];
                   }
                   else
                   {
