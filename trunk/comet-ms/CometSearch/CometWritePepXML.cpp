@@ -111,12 +111,19 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, "raw_data_type=\"%s\" ", "raw");
    fprintf(fpout, "raw_data=\"%s\">\n", pStr);
 
-   fprintf(fpout, " <sample_enzyme name=\"%s\">\n",
-         (g_staticParams.options.bNoEnzymeSelected?"nonspecific":g_staticParams.enzymeInformation.szSearchEnzymeName));
+   if (!strncmp(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, "-", 1)
+         && !strncmp(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, "-", 1))
+   {
+      fprintf(fpout, " <sample_enzyme name=\"nonspecific\">\n");
+   }
+   else
+   {
+      fprintf(fpout, " <sample_enzyme name=\"%s\">\n", g_staticParams.enzymeInformation.szSampleEnzymeName);
+   }
    fprintf(fpout, "  <specificity cut=\"%s\" no_cut=\"%s\" sense=\"%c\"/>\n",
          g_staticParams.enzymeInformation.szSampleEnzymeBreakAA,
          g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA,
-         g_staticParams.enzymeInformation.iSearchEnzymeOffSet?'C':'N');
+         g_staticParams.enzymeInformation.iSampleEnzymeOffSet?'C':'N');
    fprintf(fpout, " </sample_enzyme>\n");
 
    fprintf(fpout, " <search_summary base_name=\"%s\"", resolvedPathBaseName);

@@ -1041,7 +1041,7 @@ void LoadParameters(char *pszParamsFile,
       fgets(szParamBuf, SIZE_BUF, fp);
    }
    fclose(fp);
-   
+
    if (!bCurrentParamsFile)
    {
       logerr("\n Comet version %s\n\n", comet_version);
