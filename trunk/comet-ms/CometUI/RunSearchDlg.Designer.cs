@@ -144,6 +144,7 @@
             this.proteomeDbFileCombo.Name = "proteomeDbFileCombo";
             this.proteomeDbFileCombo.Size = new System.Drawing.Size(352, 23);
             this.proteomeDbFileCombo.TabIndex = 39;
+            this.proteomeDbFileCombo.SelectedIndexChanged += new System.EventHandler(this.ProteomeDbFileComboSelectedIndexChanged);
             this.proteomeDbFileCombo.TextUpdate += new System.EventHandler(this.ProteomeDbFileComboTextUpdate);
             // 
             // protDbLabel

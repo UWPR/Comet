@@ -232,6 +232,8 @@
             this.proteomeDbFileCombo.Name = "proteomeDbFileCombo";
             this.proteomeDbFileCombo.Size = new System.Drawing.Size(401, 23);
             this.proteomeDbFileCombo.TabIndex = 35;
+            this.proteomeDbFileCombo.SelectedIndexChanged += new System.EventHandler(this.ProteomeDbFileComboSelectedIndexChanged);
+            this.proteomeDbFileCombo.TextUpdate += new System.EventHandler(this.ProteomeDbFileComboTextUpdate);
             // 
             // InputSettingsControl
             // 

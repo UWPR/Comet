@@ -1013,7 +1013,17 @@ namespace CometUI
                 }
             }
 
+            if (-1 == proteomeDbFileCombo.FindStringExact(proteomeDbFileCombo.Text))
+            {
+                proteomeDbFileCombo.Items.Add(proteomeDbFileCombo.Text);
+            }
+
             btnRunSearch.Enabled = inputFilesList.CheckedItems.Count > 0 && File.Exists(proteomeDbFileCombo.Text);
+        }
+
+        private void ProteomeDbFileComboSelectedIndexChanged(object sender, EventArgs e)
+        {
+            ProteomeDbFileNameChanged();
         }
     }
 }

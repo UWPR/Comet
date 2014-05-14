@@ -73,6 +73,8 @@ namespace CometUI.SettingsUI
             {
                 DatabaseFile = databaseFile;
             }
+
+            ProteomeDbFileNameChanged();
         }
 
         public static string ShowOpenDatabaseFile()
@@ -94,6 +96,14 @@ namespace CometUI.SettingsUI
             }
 
             return null;
+        }
+
+        private void ProteomeDbFileNameChanged()
+        {
+            if (-1 == proteomeDbFileCombo.FindStringExact(proteomeDbFileCombo.Text))
+            {
+                proteomeDbFileCombo.Items.Add(proteomeDbFileCombo.Text);
+            }
         }
 
         private void RadioButtonDecoyOneCheckedChanged(object sender, EventArgs e)
@@ -174,6 +184,16 @@ namespace CometUI.SettingsUI
             }
 
             return true;
+        }
+
+        private void ProteomeDbFileComboSelectedIndexChanged(object sender, EventArgs e)
+        {
+            ProteomeDbFileNameChanged();
+        }
+
+        private void ProteomeDbFileComboTextUpdate(object sender, EventArgs e)
+        {
+            ProteomeDbFileNameChanged();
         }
     }
 }
