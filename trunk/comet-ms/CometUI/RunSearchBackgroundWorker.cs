@@ -94,14 +94,15 @@ namespace CometUI
                 {
                     if (!e.Cancelled && runSearchDlg.SearchSucceeded)
                     {
-                        msg = runSearchDlg.SearchStatusMessage;
                         msgIcon = MessageBoxIcon.Information;
                     }
                     else
                     {
-                        msg = runSearchDlg.SearchStatusMessage;
                         msgIcon = MessageBoxIcon.Error;
                     }
+
+                    msg += runSearchDlg.SearchStatusMessage;
+
                 }
             }
             catch (Exception exception)

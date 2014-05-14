@@ -154,6 +154,25 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Run Search.
+        /// </summary>
+        internal static string RunSearchDlg_ProteomeDbFileNameChanged_Run_Search {
+            get {
+                return ResourceManager.GetString("RunSearchDlg_ProteomeDbFileNameChanged_Run_Search", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Would you like to update the proteome database file name in the search settings with the one you have specified here?.
+        /// </summary>
+        internal static string RunSearchDlg_ProteomeDbFileNameChanged_Would_you_like_to_update_the_proteome_database_file_name_in_the_search_settings_with_the_one_you_have_specified_here_ {
+            get {
+                return ResourceManager.GetString("RunSearchDlg_ProteomeDbFileNameChanged_Would_you_like_to_update_the_proteome_data" +
+                        "base_file_name_in_the_search_settings_with_the_one_you_have_specified_here_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Could not update all search settings..
         /// </summary>
         internal static string SearchSettingsDlg_BtnOKClick_Could_not_update_all_search_settings_ {

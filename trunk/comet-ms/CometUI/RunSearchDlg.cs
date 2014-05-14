@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Windows.Forms;
 using CometUI.Properties;
 using CometUI.SettingsUI;
@@ -40,6 +39,8 @@ namespace CometUI
             {
                 inputFilesList.SetItemChecked(i, inputFilesChecked[i]);
             }
+
+            proteomeDbFileCombo.Text = Settings.Default.ProteomeDatabaseFile;
         }
 
         private string[] _inputFiles = new string[0];
@@ -76,11 +77,17 @@ namespace CometUI
 
                 inputFilesList.EndUpdate();
 
+                btnRunSearch.Enabled = inputFilesList.CheckedItems.Count > 0 && File.Exists(proteomeDbFileCombo.Text);
                 btnRemInputFile.Enabled = inputFilesList.CheckedItems.Count > 0;
             }
         }
 
         private void BtnSettingsClick(object sender, EventArgs e)
+        {
+            OpenSettingsDialog();
+        }
+
+        private void OpenSettingsDialog()
         {
             var searchSettingsDlg = new SearchSettingsDlg();
             if (DialogResult.OK == searchSettingsDlg.ShowDialog())
@@ -240,7 +247,7 @@ namespace CometUI
             }
 
             btnRemInputFile.Enabled = checkedItemsCount > 0;
-            btnRunSearch.Enabled = checkedItemsCount > 0;
+            btnRunSearch.Enabled = checkedItemsCount > 0 && File.Exists(proteomeDbFileCombo.Text);
         }
 
         private void BtnRunSearchClick(object sender, EventArgs e)
@@ -969,6 +976,44 @@ namespace CometUI
         }
 
         public String SearchStatusMessage { get; private set; }
-        public bool SearchSucceeded { get; private set; } 
+        public bool SearchSucceeded { get; private set; }
+
+        private string DatabaseFile
+        {
+            get { return proteomeDbFileCombo.Text; }
+
+            set { proteomeDbFileCombo.Text = value; }
+        }
+
+        private void BtnBrowseProteomeDbFileClick(object sender, EventArgs e)
+        {
+            string databaseFile = InputSettingsControl.ShowOpenDatabaseFile();
+            if (null != databaseFile)
+            {
+                if (!String.Equals(DatabaseFile, databaseFile))
+                {
+                    DatabaseFile = databaseFile;
+                    ProteomeDbFileNameChanged();
+                }
+            }
+        }
+
+        private void ProteomeDbFileComboTextUpdate(object sender, EventArgs e)
+        {
+            ProteomeDbFileNameChanged();
+        } 
+
+        private void ProteomeDbFileNameChanged()
+        {
+            if (File.Exists(proteomeDbFileCombo.Text) && !String.Equals(proteomeDbFileCombo.Text, Settings.Default.ProteomeDatabaseFile))
+            {
+                if (DialogResult.OK == MessageBox.Show(Resources.RunSearchDlg_ProteomeDbFileNameChanged_Would_you_like_to_update_the_proteome_database_file_name_in_the_search_settings_with_the_one_you_have_specified_here_, Resources.RunSearchDlg_ProteomeDbFileNameChanged_Run_Search, MessageBoxButtons.OKCancel, MessageBoxIcon.Question))
+                {
+                    Settings.Default.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
+                }
+            }
+
+            btnRunSearch.Enabled = inputFilesList.CheckedItems.Count > 0 && File.Exists(proteomeDbFileCombo.Text);
+        }
     }
 }

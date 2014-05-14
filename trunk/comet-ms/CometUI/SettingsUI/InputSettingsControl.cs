@@ -28,6 +28,8 @@ namespace CometUI.SettingsUI
 
         private void InitializeFromDefaultSettings()
         {
+            proteomeDbFileCombo.Text = Settings.Default.ProteomeDatabaseFile;
+
             comboBoxReadingFrame.Text = Settings.Default.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
             if (Settings.Default.IsProteinDB)
             {
@@ -73,7 +75,7 @@ namespace CometUI.SettingsUI
             }
         }
 
-        private static string ShowOpenDatabaseFile()
+        public static string ShowOpenDatabaseFile()
         {
             const string filter = "All Files (*.*)|*.*";
             var fdlg = new OpenFileDialog

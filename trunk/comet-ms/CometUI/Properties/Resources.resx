@@ -189,4 +189,10 @@
   <data name="SearchSettingsDlg_BtnOKClick_Error_updating_Output_settings_">
     <value xml:space="preserve">Error updating Output settings.</value>
   </data>
+  <data name="RunSearchDlg_ProteomeDbFileNameChanged_Would_you_like_to_update_the_proteome_database_file_name_in_the_search_settings_with_the_one_you_have_specified_here_">
+    <value xml:space="preserve">Would you like to update the proteome database file name in the search settings with the one you have specified here?</value>
+  </data>
+  <data name="RunSearchDlg_ProteomeDbFileNameChanged_Run_Search">
+    <value xml:space="preserve">Run Search</value>
+  </data>
 </root>
