@@ -17,6 +17,7 @@ namespace CometUI.SettingsUI
         private int SampleEnzymeCurrentSelectedIndex { get; set; }
 
         private new SearchSettingsDlg Parent { get; set; }
+        private EnzymeInfoDlg EnzymeInfoDlg { get; set; }
         private readonly Dictionary<int, string> _enzymeTermini = new Dictionary<int, string>();
 
         public EnzymeSettingsControl(SearchSettingsDlg parent)
@@ -37,6 +38,8 @@ namespace CometUI.SettingsUI
             }
 
             InitializeFromDefaultSettings();
+
+            EnzymeInfoDlg = new EnzymeInfoDlg(this);
         }
 
         private void InitializeFromDefaultSettings()
@@ -90,9 +93,8 @@ namespace CometUI.SettingsUI
             var srchEnzymeCombo = (ComboBox) sender;
             if (SearchEnzymeComboEditListIndex == srchEnzymeCombo.SelectedIndex)
             {
-                var dlgEnzymeInfo = new EnzymeInfoDlg(this);
-                if ((DialogResult.OK == dlgEnzymeInfo.ShowDialog()) &&
-                    dlgEnzymeInfo.EnzymeInfoChanged)
+                if ((DialogResult.OK == EnzymeInfoDlg.ShowDialog()) &&
+                    EnzymeInfoDlg.EnzymeInfoChanged)
                 {
                     UpdateEnzymeInfo();
                 }
@@ -112,10 +114,9 @@ namespace CometUI.SettingsUI
             var smplEnzymeCombo = (ComboBox)sender;
             if (SampleEnzymeComboEditListIndex == smplEnzymeCombo.SelectedIndex)
             {
-                var dlgEnzymeInfo = new EnzymeInfoDlg(this);
-                if (DialogResult.OK == dlgEnzymeInfo.ShowDialog())
+                if (DialogResult.OK == EnzymeInfoDlg.ShowDialog())
                 {
-                    if (dlgEnzymeInfo.EnzymeInfoChanged)
+                    if (EnzymeInfoDlg.EnzymeInfoChanged)
                     {
                         UpdateEnzymeInfo();
                     }
@@ -166,6 +167,12 @@ namespace CometUI.SettingsUI
 
                     break;
                 }
+            }
+
+            if (EnzymeInfoDlg.EnzymeInfoChanged)
+            {
+                Settings.Default.EnzymeInfo = EnzymeInfo;
+                Parent.SettingsChanged = true;
             }
 
             return true;
