@@ -182,6 +182,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Error updating enzyme settings..
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Error_updating_enzyme_settings_ {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Error_updating_enzyme_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error updating Input settings..
         /// </summary>
         internal static string SearchSettingsDlg_BtnOKClick_Error_updating_input_settings_ {
