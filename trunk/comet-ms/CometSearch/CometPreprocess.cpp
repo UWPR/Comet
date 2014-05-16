@@ -213,7 +213,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    int i;
    for (i=0; i<g_staticParams.options.iNumThreads; i++) 
    {
-      if(pbMemoryPool[i]==false)
+      if (pbMemoryPool[i]==false)
       {
          pbMemoryPool[i]=true;
          break;
@@ -222,7 +222,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    //MH: Fail-safe to stop if memory isn't available for the next thread.
    //Needs better capture and return?
-   if(i==g_staticParams.options.iNumThreads)
+   if (i==g_staticParams.options.iNumThreads)
    {
       printf("Error with memory pool.\n");
       exit(1);
@@ -370,7 +370,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          }
 
          //MH: Count number of sparse entries needed
-         if(g_staticParams.options.bSparseMatrix && i>0 && !isEqual(pScoring->pfFastXcorrDataNL[i], pScoring->pfFastXcorrDataNL[i-1]))
+         if (g_staticParams.options.bSparseMatrix && i>0 && !isEqual(pScoring->pfFastXcorrDataNL[i], pScoring->pfFastXcorrDataNL[i-1]))
             pScoring->iFastXcorrDataNL++;
       }
    }
@@ -680,9 +680,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          double dSumBelow = 0.0;
          double dSumTotal = 0.0;
 
-         while(true)
+         while (true)
          {
-            if(i >= spec.size())
+            if (i >= spec.size())
                break;
 
             dSumTotal += spec.at(i).intensity;
@@ -1068,6 +1068,11 @@ bool CometPreprocess::Smooth(double *data,
 {
    int  i;
 
+   pdSmoothedSpectrum[0] = 0.0;
+   pdSmoothedSpectrum[1] = 0.0;
+   pdSmoothedSpectrum[iArraySize-1] = 0.0;
+   pdSmoothedSpectrum[iArraySize-2] = 0.0;   // need to zero out edge points; rest of array ok not reinitialized
+
    for (i=2; i<iArraySize-2; i++)
    {
       // *0.0625 is same as divide by 16.
@@ -1283,12 +1288,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   ppdTempRawDataArr = new double*[maxNumThreads];
+   ppdTempRawDataArr = new double*[maxNumThreads]();
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         ppdTempRawDataArr[i] = new double[iArraySize];
+         ppdTempRawDataArr[i] = new double[iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
@@ -1302,12 +1307,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   ppdTmpFastXcorrDataArr = new double*[maxNumThreads];
+   ppdTmpFastXcorrDataArr = new double*[maxNumThreads]();
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         ppdTmpFastXcorrDataArr[i] = new double[iArraySize];
+         ppdTmpFastXcorrDataArr[i] = new double[iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
@@ -1321,12 +1326,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   ppdSmoothedSpectrumArr = new double*[maxNumThreads];
+   ppdSmoothedSpectrumArr = new double*[maxNumThreads]();
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         ppdSmoothedSpectrumArr[i] = new double[iArraySize];
+         ppdSmoothedSpectrumArr[i] = new double[iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
@@ -1340,12 +1345,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   ppdPeakExtractedArr = new double*[maxNumThreads];
+   ppdPeakExtractedArr = new double*[maxNumThreads]();
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         ppdPeakExtractedArr[i] = new double[iArraySize];
+         ppdPeakExtractedArr[i] = new double[iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
