@@ -162,7 +162,11 @@ void Profiler::StopTimer(int id){
   p->count--;
   if(p->count==0){
     getExactTime(tmp);
+
+    Threading::UnlockMutex(profilerMutex);  // mutex gets locked in AddTime; need to unlock otherwise will block
     AddTime(p->id,tmp-p->start);
+    Threading::LockMutex(profilerMutex);
+
     if(p->prev==NULL && p->next==NULL) {
       active=NULL;
       active_last=NULL;
