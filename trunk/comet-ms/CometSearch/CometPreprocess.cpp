@@ -799,13 +799,13 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
       FILE *fpcheck;
 
 #ifdef _WIN32
-   if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL)
+      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL)
 #else
-   if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
+      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
 #endif
-      pStr = g_staticParams.inputFile.szBaseName;
-   else
-      (*pStr)++;
+         pStr = g_staticParams.inputFile.szBaseName;
+      else
+         *pStr++;
 
       sprintf(szOutputFileName, "%s/%s.%.5d.%.5d.%d.out",
             g_staticParams.inputFile.szBaseName,
