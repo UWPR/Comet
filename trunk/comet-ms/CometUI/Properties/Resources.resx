@@ -198,4 +198,7 @@
   <data name="SearchSettingsDlg_BtnOKClick_Error_updating_enzyme_settings_">
     <value xml:space="preserve">Error updating enzyme settings.</value>
   </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_mass_settings_">
+    <value xml:space="preserve">Error updating mass settings.</value>
+  </data>
 </root>
