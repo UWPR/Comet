@@ -237,9 +237,6 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
          ppdTmpSmoothedSpectrumArr[i],
          ppdTmpPeakExtractedArr[i]);
 
-//needed to put array back into available pool?
-pbMemoryPool[i]=false;
-
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
 }
@@ -675,15 +672,6 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    int zStop;
 
    int iScanNumber = spec.getScanNumber();
-
-/*
-   // Initialize these arrays that are re-used between threads
-   int iSize = (int)((g_staticParams.options.dHighPeptideMass + 100.0) * g_staticParams.dInverseBinWidth);
-   memset(pdTmpRawData, 0, iSize);
-   memset(pdTmpFastXcorrData, 0, iSize);
-   memset(pdTmpSmoothedSpectrum, 0, iSize);
-   memset(pdTmpPeakExtracted, 0, iSize);
-*/
 
    // Since we have no filter, just add zlines.
    // WARNING: only good up to charge state 3
