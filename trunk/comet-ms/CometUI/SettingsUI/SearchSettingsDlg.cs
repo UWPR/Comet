@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Specialized;
 using System.Windows.Forms;
 using CometUI.Properties;
 using System.Drawing;
@@ -79,6 +80,48 @@ namespace CometUI.SettingsUI
             miscTabPage.Controls.Add(MiscSettingsControl);
         }
 
+        public static bool ConvertStrToDouble(string strValue, out double doubleValueOut)
+        {
+            var doubleValue = 0.0;
+            try
+            {
+                doubleValue = Convert.ToDouble(strValue);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            finally
+            {
+                doubleValueOut = doubleValue;
+            }
+
+            return true;
+        }
+
+        public static void DataGridViewToStringCollection(DataGridView dataGridView, out StringCollection strCollection)
+        {
+            strCollection = new StringCollection();
+            for (int rowIndex = 0; rowIndex < dataGridView.Rows.Count; rowIndex++)
+            {
+                var dataGridViewRow = dataGridView.Rows[rowIndex];
+                string row = String.Empty;
+                for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
+                {
+                    var textBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewTextBoxCell;
+                    if (null != textBoxCell)
+                    {
+                        row += textBoxCell.Value;
+                        if (colIndex != dataGridViewRow.Cells.Count - 1)
+                        {
+                            row += ",";
+                        }
+                    }
+                }
+                strCollection.Add(row);
+            }
+        }
+
         private void BtnCancelClick(object sender, EventArgs e)
         {
             DialogResult = DialogResult.Cancel;
@@ -111,8 +154,16 @@ namespace CometUI.SettingsUI
             if (!MassSettingsControl.VerifyAndUpdateSettings())
             {
                 MessageBox.Show(Resources.SearchSettingsDlg_BtnOKClick_Error_updating_mass_settings_,
-                Resources.SearchSettingsDlg_BtnOKClick_Search_Settings, MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
+                    Resources.SearchSettingsDlg_BtnOKClick_Search_Settings, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                DialogResult = DialogResult.Abort;
+            }
+
+            if (!StaticModSettingsControl.VerifyAndUpdateSettings())
+            {
+                MessageBox.Show(Resources.SearchSettingsDlg_BtnOKClick_Error_updating_static_mods_settings_,
+                    Resources.SearchSettingsDlg_BtnOKClick_Search_Settings, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
                 DialogResult = DialogResult.Abort;
             }
 

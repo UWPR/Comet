@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
@@ -8,10 +7,10 @@ namespace CometUI.SettingsUI
 {
     public partial class StaticModSettingsControl : UserControl
     {
-        private new Form Parent { get; set; }
+        private new SearchSettingsDlg Parent { get; set; }
         public StringCollection StaticMods { get; set; }
 
-        public StaticModSettingsControl(Form parent)
+        public StaticModSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
 
@@ -53,7 +52,6 @@ namespace CometUI.SettingsUI
                     }
                 }
             }
-            
         }
 
         private void StaticModsDataGridViewCellEndEdit(object sender, DataGridViewCellEventArgs e)
@@ -65,24 +63,77 @@ namespace CometUI.SettingsUI
                 if (textBoxCell != null)
                 {
                     string strValue = textBoxCell.Value.ToString();
-                    try
+                    double massDiff;
+                    if (!SearchSettingsDlg.ConvertStrToDouble(strValue, out massDiff))
                     {
-                        double massDiff = Convert.ToDouble(strValue);
-                    }
-                    catch (Exception)
-                    {
-
                         MessageBox.Show(this,
-                                        Resources.
-                                            StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_,
-                                        Resources.
-                                            StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff,
-                                        MessageBoxButtons.OKCancel);
+                                      Resources.
+                                          StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_,
+                                      Resources.
+                                          StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff,
+                                      MessageBoxButtons.OKCancel);
                         cell.Value = "0.0000";
                     }
-
                 }
             }
+        }
+
+        public bool VerifyAndUpdateSettings()
+        {
+            StringCollection strCollection;
+            SearchSettingsDlg.DataGridViewToStringCollection(staticModsDataGridView, out strCollection);
+            StaticMods = strCollection;
+            if (!StaticMods.Equals(Settings.Default.StaticMods))
+            {
+                Settings.Default.StaticMods = StaticMods;
+                Parent.SettingsChanged = true;
+            }
+
+            double staticNTermPeptide;
+            if (!SearchSettingsDlg.ConvertStrToDouble(staticNTermPeptideTextBox.Text, out staticNTermPeptide))
+            {
+                return false;
+            }
+            if (!staticNTermPeptide.Equals(Settings.Default.StaticModNTermPeptide))
+            {
+                Settings.Default.StaticModNTermPeptide = staticNTermPeptide;
+                Parent.SettingsChanged = true;
+            }
+
+            double staticCTermPeptide;
+            if (!SearchSettingsDlg.ConvertStrToDouble(staticCTermPeptideTextBox.Text, out staticCTermPeptide))
+            {
+                return false;
+            }
+            if (!staticCTermPeptide.Equals(Settings.Default.StaticModCTermPeptide))
+            {
+                Settings.Default.StaticModCTermPeptide = staticCTermPeptide;
+                Parent.SettingsChanged = true;
+            }
+
+            double staticNTermProtein;
+            if (!SearchSettingsDlg.ConvertStrToDouble(staticNTermProteinTextBox.Text, out staticNTermProtein))
+            {
+                return false;
+            }
+            if (!staticNTermProtein.Equals(Settings.Default.StaticModNTermProtein))
+            {
+                Settings.Default.StaticModNTermProtein = staticNTermProtein;
+                Parent.SettingsChanged = true;
+            }
+
+            double staticCTermProtein;
+            if (!SearchSettingsDlg.ConvertStrToDouble(staticCTermProteinTextBox.Text, out staticCTermProtein))
+            {
+                return false;
+            }
+                        if (!staticCTermProtein.Equals(Settings.Default.StaticModCTermProtein))
+            {
+                Settings.Default.StaticModCTermProtein = staticCTermProtein;
+                Parent.SettingsChanged = true;
+            }
+
+            return true;
         }
     }
 }

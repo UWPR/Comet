@@ -201,4 +201,7 @@
   <data name="SearchSettingsDlg_BtnOKClick_Error_updating_mass_settings_">
     <value xml:space="preserve">Error updating mass settings.</value>
   </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_static_mods_settings_">
+    <value xml:space="preserve">Error updating static mods settings.</value>
+  </data>
 </root>

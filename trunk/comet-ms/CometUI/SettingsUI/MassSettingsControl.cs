@@ -1,5 +1,4 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows.Forms;
 using CometUI.Properties;
 
@@ -48,7 +47,7 @@ namespace CometUI.SettingsUI
         {
             // Verify and save the precursor mass settings
             double precursorMassTol;
-            if (!Convert(precursorMassTolTextBox.Text, out precursorMassTol))
+            if (!SearchSettingsDlg.ConvertStrToDouble(precursorMassTolTextBox.Text, out precursorMassTol))
             {
                 return false;
             }
@@ -84,7 +83,7 @@ namespace CometUI.SettingsUI
 
             // Set up defaults for fragment settings
             double fragmentBinSize;
-            if (!Convert(fragmentBinSizeTextBox.Text, out fragmentBinSize))
+            if (!SearchSettingsDlg.ConvertStrToDouble(fragmentBinSizeTextBox.Text, out fragmentBinSize))
             {
                 return false;
             }
@@ -95,7 +94,7 @@ namespace CometUI.SettingsUI
             }
 
             double fragmentOffset;
-            if (!Convert(fragmentOffsetTextBox.Text, out fragmentOffset))
+            if (!SearchSettingsDlg.ConvertStrToDouble(fragmentOffsetTextBox.Text, out fragmentOffset))
             {
                 return false;
             }
@@ -164,25 +163,6 @@ namespace CometUI.SettingsUI
             {
                 Settings.Default.TheoreticalFragmentIons = flankCheckBox.Checked;
                 Parent.SettingsChanged = true;
-            }
-
-            return true;
-        }
-
-        private bool Convert(string strValue, out double doubleValueOut)
-        {
-            var doubleValue = 0.0;
-            try
-            {
-                doubleValue = System.Convert.ToDouble(strValue);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            finally
-            {
-                doubleValueOut = doubleValue;
             }
 
             return true;

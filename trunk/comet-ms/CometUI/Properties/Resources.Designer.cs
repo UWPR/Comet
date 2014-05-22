@@ -218,6 +218,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Error updating static mods settings..
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Error_updating_static_mods_settings_ {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Error_updating_static_mods_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Search Settings.
         /// </summary>
         internal static string SearchSettingsDlg_BtnOKClick_Search_Settings {
