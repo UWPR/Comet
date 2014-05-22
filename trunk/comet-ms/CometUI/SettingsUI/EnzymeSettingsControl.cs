@@ -42,6 +42,52 @@ namespace CometUI.SettingsUI
             EnzymeInfoDlg = new EnzymeInfoDlg(this);
         }
 
+        public bool VerifyAndUpdateSettings()
+        {
+            if (Settings.Default.SearchEnzymeNumber != SearchEnzymeCurrentSelectedIndex)
+            {
+                Settings.Default.SearchEnzymeNumber = SearchEnzymeCurrentSelectedIndex;
+                Parent.SettingsChanged = true;
+            }
+
+            if (Settings.Default.SampleEnzymeNumber != SampleEnzymeCurrentSelectedIndex)
+            {
+                Settings.Default.SampleEnzymeNumber = SampleEnzymeCurrentSelectedIndex;
+                Parent.SettingsChanged = true;
+            }
+
+            var allowedMissedCleavages = missedCleavagesCombo.SelectedIndex;
+            if (Settings.Default.AllowedMissedCleavages != allowedMissedCleavages)
+            {
+                Settings.Default.AllowedMissedCleavages = allowedMissedCleavages;
+                Parent.SettingsChanged = true;
+            }
+
+            // Check each key in the dictionary to see which matches the value
+            // currently selected in the enzyme termini combo box.
+            foreach (var key in _enzymeTermini.Keys)
+            {
+                if (_enzymeTermini[key].Equals(enzymeTerminiCombo.SelectedItem.ToString()))
+                {
+                    if (Settings.Default.EnzymeTermini != key)
+                    {
+                        Settings.Default.EnzymeTermini = key;
+                        Parent.SettingsChanged = true;
+                    }
+
+                    break;
+                }
+            }
+
+            if (EnzymeInfoDlg.EnzymeInfoChanged)
+            {
+                Settings.Default.EnzymeInfo = EnzymeInfo;
+                Parent.SettingsChanged = true;
+            }
+
+            return true;
+        }
+
         private void InitializeFromDefaultSettings()
         {
             enzymeTerminiCombo.SelectedItem = _enzymeTermini[Settings.Default.EnzymeTermini];
@@ -130,52 +176,6 @@ namespace CometUI.SettingsUI
             {
                 SampleEnzymeCurrentSelectedIndex = smplEnzymeCombo.SelectedIndex;
             }
-        }
-
-        public bool VerifyAndUpdateSettings()
-        {
-            if (Settings.Default.SearchEnzymeNumber != SearchEnzymeCurrentSelectedIndex)
-            {
-                Settings.Default.SearchEnzymeNumber = SearchEnzymeCurrentSelectedIndex;
-                Parent.SettingsChanged = true;
-            }
-
-            if (Settings.Default.SampleEnzymeNumber != SampleEnzymeCurrentSelectedIndex)
-            {
-                Settings.Default.SampleEnzymeNumber = SampleEnzymeCurrentSelectedIndex;
-                Parent.SettingsChanged = true;
-            }
-
-            var allowedMissedCleavages = missedCleavagesCombo.SelectedIndex;
-            if (Settings.Default.AllowedMissedCleavages != allowedMissedCleavages)
-            {
-                Settings.Default.AllowedMissedCleavages = allowedMissedCleavages;
-                Parent.SettingsChanged = true;
-            }
-
-            // Check each key in the dictionary to see which matches the value
-            // currently selected in the enzyme termini combo box.
-            foreach (var key in _enzymeTermini.Keys)
-            {
-                if (_enzymeTermini[key].Equals(enzymeTerminiCombo.SelectedItem.ToString()))
-                {
-                    if (Settings.Default.EnzymeTermini != key)
-                    {
-                        Settings.Default.EnzymeTermini = key;
-                        Parent.SettingsChanged = true;
-                    }
-
-                    break;
-                }
-            }
-
-            if (EnzymeInfoDlg.EnzymeInfoChanged)
-            {
-                Settings.Default.EnzymeInfo = EnzymeInfo;
-                Parent.SettingsChanged = true;
-            }
-
-            return true;
         }
     }
 }

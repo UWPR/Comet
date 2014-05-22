@@ -204,4 +204,7 @@
   <data name="SearchSettingsDlg_BtnOKClick_Error_updating_static_mods_settings_">
     <value xml:space="preserve">Error updating static mods settings.</value>
   </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_var_mods_settings_">
+    <value xml:space="preserve">Error updating var mods settings.</value>
+  </data>
 </root>

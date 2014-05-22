@@ -99,27 +99,23 @@ namespace CometUI.SettingsUI
             return true;
         }
 
-        public static void DataGridViewToStringCollection(DataGridView dataGridView, out StringCollection strCollection)
+        public static bool ConvertStrToInt32(string strValue, out int intValueOut)
         {
-            strCollection = new StringCollection();
-            for (int rowIndex = 0; rowIndex < dataGridView.Rows.Count; rowIndex++)
+            var intValue = 0;
+            try
             {
-                var dataGridViewRow = dataGridView.Rows[rowIndex];
-                string row = String.Empty;
-                for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
-                {
-                    var textBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewTextBoxCell;
-                    if (null != textBoxCell)
-                    {
-                        row += textBoxCell.Value;
-                        if (colIndex != dataGridViewRow.Cells.Count - 1)
-                        {
-                            row += ",";
-                        }
-                    }
-                }
-                strCollection.Add(row);
+                intValue = Convert.ToInt32(strValue);
             }
+            catch (Exception)
+            {
+                return false;
+            }
+            finally
+            {
+                intValueOut = intValue;
+            }
+
+            return true;
         }
 
         private void BtnCancelClick(object sender, EventArgs e)
@@ -162,6 +158,14 @@ namespace CometUI.SettingsUI
             if (!StaticModSettingsControl.VerifyAndUpdateSettings())
             {
                 MessageBox.Show(Resources.SearchSettingsDlg_BtnOKClick_Error_updating_static_mods_settings_,
+                    Resources.SearchSettingsDlg_BtnOKClick_Search_Settings, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                DialogResult = DialogResult.Abort;
+            }
+
+            if (!VarModSettingsControl.VerifyAndUpdateSettings())
+            {
+                MessageBox.Show(Resources.SearchSettingsDlg_BtnOKClick_Error_updating_var_mods_settings_,
                     Resources.SearchSettingsDlg_BtnOKClick_Search_Settings, MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 DialogResult = DialogResult.Abort;

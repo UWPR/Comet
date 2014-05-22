@@ -18,36 +18,6 @@ namespace CometUI.SettingsUI
             InitializeFromDefaultSettings();
         }
 
-        private void InitializeFromDefaultSettings()
-        {
-            pepXMLCheckBox.Checked = Settings.Default.OutputFormatPepXML;
-            pinXMLCheckBox.Checked = Settings.Default.OutputFormatPinXML;
-            outFileCheckBox.Checked = Settings.Default.OutputFormatOutFiles;
-            textCheckBox.Checked = Settings.Default.OutputFormatTextFile;
-            sqtCheckBox.Checked = Settings.Default.OutputFormatSqtFile;
-
-            sqtExpectScoreCheckBox.Checked = Settings.Default.PrintExpectScoreInPlaceOfSP;
-            outExpectScoreCheckBox.Checked = Settings.Default.PrintExpectScoreInPlaceOfSP;
-
-            outShowFragmentIonsCheckBox.Checked = Settings.Default.OutputFormatShowFragmentIons;
-
-            numOutputLinesSpinner.Text = Settings.Default.NumOutputLines.ToString(CultureInfo.InvariantCulture);
-
-            outSkipReSearchingCheckBox.Checked = Settings.Default.OutputFormatSkipReSearching;
-        }
-
-        private void SqtCheckBoxCheckedChanged(object sender, EventArgs e)
-        {
-            sqtExpectScoreCheckBox.Enabled = sqtCheckBox.Checked;
-        }
-
-        private void OutFileCheckBoxCheckedChanged(object sender, EventArgs e)
-        {
-            outExpectScoreCheckBox.Enabled = outFileCheckBox.Checked;
-            outShowFragmentIonsCheckBox.Enabled = outFileCheckBox.Checked;
-            outSkipReSearchingCheckBox.Enabled = outFileCheckBox.Checked;
-        }
-
         public bool VerifyAndUpdateSettings()
         {
             if (pepXMLCheckBox.Checked != Settings.Default.OutputFormatPepXML)
@@ -55,7 +25,7 @@ namespace CometUI.SettingsUI
                 Settings.Default.OutputFormatPepXML = pepXMLCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
-            
+
             if (pinXMLCheckBox.Checked != Settings.Default.OutputFormatPinXML)
             {
                 Settings.Default.OutputFormatPinXML = pinXMLCheckBox.Checked;
@@ -67,7 +37,7 @@ namespace CometUI.SettingsUI
                 Settings.Default.OutputFormatOutFiles = outFileCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
-            
+
             if (textCheckBox.Checked != Settings.Default.OutputFormatTextFile)
             {
                 Settings.Default.OutputFormatTextFile = textCheckBox.Checked;
@@ -114,6 +84,36 @@ namespace CometUI.SettingsUI
             }
 
             return true;
+        }
+
+        private void InitializeFromDefaultSettings()
+        {
+            pepXMLCheckBox.Checked = Settings.Default.OutputFormatPepXML;
+            pinXMLCheckBox.Checked = Settings.Default.OutputFormatPinXML;
+            outFileCheckBox.Checked = Settings.Default.OutputFormatOutFiles;
+            textCheckBox.Checked = Settings.Default.OutputFormatTextFile;
+            sqtCheckBox.Checked = Settings.Default.OutputFormatSqtFile;
+
+            sqtExpectScoreCheckBox.Checked = Settings.Default.PrintExpectScoreInPlaceOfSP;
+            outExpectScoreCheckBox.Checked = Settings.Default.PrintExpectScoreInPlaceOfSP;
+
+            outShowFragmentIonsCheckBox.Checked = Settings.Default.OutputFormatShowFragmentIons;
+
+            numOutputLinesSpinner.Text = Settings.Default.NumOutputLines.ToString(CultureInfo.InvariantCulture);
+
+            outSkipReSearchingCheckBox.Checked = Settings.Default.OutputFormatSkipReSearching;
+        }
+
+        private void SqtCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            sqtExpectScoreCheckBox.Enabled = sqtCheckBox.Checked;
+        }
+
+        private void OutFileCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            outExpectScoreCheckBox.Enabled = outFileCheckBox.Checked;
+            outShowFragmentIonsCheckBox.Enabled = outFileCheckBox.Checked;
+            outSkipReSearchingCheckBox.Enabled = outFileCheckBox.Checked;
         }
     }
 }

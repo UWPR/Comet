@@ -9,12 +9,12 @@ namespace CometUI.SettingsUI
     public partial class VarModSettingsControl : UserControl
     {
         public StringCollection VarMods { get; set; }
-        private new Form Parent { get; set; }
+        private new SearchSettingsDlg Parent { get; set; }
 
         private const string AminoAcids = "GASPVTCLINDQKEMOHFRYW";
 
 
-        public VarModSettingsControl(Form parent)
+        public VarModSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
 
@@ -23,6 +23,73 @@ namespace CometUI.SettingsUI
             InitializeFromDefaultSettings();
 
             UpdateVarModsDataGridView();
+        }
+
+        public bool VerifyAndUpdateSettings()
+        {
+            VarMods = VarModsDataGridViewToStringCollection();
+            if (!VarMods.Equals(Settings.Default.VariableMods))
+            {
+                Settings.Default.VariableMods = VarMods;
+                Parent.SettingsChanged = true;
+            }
+
+            double variableNTerminus;
+            if (!SearchSettingsDlg.ConvertStrToDouble(variableNTerminusTextBox.Text, out variableNTerminus))
+            {
+                return false;
+            }
+            if (!variableNTerminus.Equals(Settings.Default.VariableNTerminus))
+            {
+                Settings.Default.VariableNTerminus = variableNTerminus;
+                Parent.SettingsChanged = true;
+            }
+
+            double variableCTerminus;
+            if (!SearchSettingsDlg.ConvertStrToDouble(variableCTerminusTextBox.Text, out variableCTerminus))
+            {
+                return false;
+            }
+            if (!variableCTerminus.Equals(Settings.Default.VariableCTerminus))
+            {
+                Settings.Default.VariableCTerminus = variableCTerminus;
+                Parent.SettingsChanged = true;
+            }
+
+            int variableNTerminusDist;
+            if (!SearchSettingsDlg.ConvertStrToInt32(variableNTerminusDistTextBox.Text, out variableNTerminusDist))
+            {
+                return false;
+            } 
+            if (!variableNTerminusDist.Equals(Settings.Default.VariableNTermDistance))
+            {
+                Settings.Default.VariableNTermDistance = variableNTerminusDist;
+                Parent.SettingsChanged = true;
+            }
+
+            int variableCTerminusDist;
+            if (!SearchSettingsDlg.ConvertStrToInt32(variableCTerminusDistTextBox.Text, out variableCTerminusDist))
+            {
+                return false;
+            }
+            if (!variableCTerminusDist.Equals(Settings.Default.VariableCTermDistance))
+            {
+                Settings.Default.VariableCTermDistance = variableCTerminusDist;
+                Parent.SettingsChanged = true;
+            }
+
+            int maxModsInPeptide;
+            if (!SearchSettingsDlg.ConvertStrToInt32(maxModsInPeptideTextBox.Text, out maxModsInPeptide))
+            {
+                return false;
+            }
+            if (!maxModsInPeptide.Equals(Settings.Default.MaxVarModsInPeptide))
+            {
+                Settings.Default.MaxVarModsInPeptide = maxModsInPeptide;
+                Parent.SettingsChanged = true;
+            }
+
+            return true;
         }
 
         private void InitializeFromDefaultSettings()
@@ -39,6 +106,43 @@ namespace CometUI.SettingsUI
             variableCTerminusDistTextBox.Text = Settings.Default.VariableCTermDistance.ToString(CultureInfo.InvariantCulture);
 
             maxModsInPeptideTextBox.Text = Settings.Default.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);            
+        }
+
+        private StringCollection VarModsDataGridViewToStringCollection()
+        {
+            var strCollection = new StringCollection();
+            for (int rowIndex = 0; rowIndex < varModsDataGridView.Rows.Count; rowIndex++)
+            {
+                var dataGridViewRow = varModsDataGridView.Rows[rowIndex];
+                string row = String.Empty;
+                for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
+                {
+                    var textBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewTextBoxCell;
+                    if (null != textBoxCell)
+                    {
+                        row += textBoxCell.Value;
+                        if (colIndex != dataGridViewRow.Cells.Count - 1)
+                        {
+                            row += ",";
+                        }
+                    }
+                    else
+                    {
+                        var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
+                        if (null != checkBoxCell)
+                        {
+                            row += (bool)checkBoxCell.Value ? "1" : "0";
+                            if (colIndex != dataGridViewRow.Cells.Count - 1)
+                            {
+                                row += ",";
+                            }
+                        }
+                    }
+                }
+                strCollection.Add(row);
+            }
+
+            return strCollection;
         }
 
         private void UpdateVarModsDataGridView()
@@ -105,13 +209,9 @@ namespace CometUI.SettingsUI
                 if (textBoxCell != null)
                 {
                     string strValue = textBoxCell.Value.ToString();
-                    try
+                    double massDiff;
+                    if (!SearchSettingsDlg.ConvertStrToDouble(strValue, out massDiff))
                     {
-                        double massDiff = Convert.ToDouble(strValue);
-                    }
-                    catch (Exception)
-                    {
-
                         MessageBox.Show(this,
                                         Resources.
                                             VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_,
@@ -119,7 +219,6 @@ namespace CometUI.SettingsUI
                                         MessageBoxButtons.OKCancel);
                         cell.Value = "0.0";
                     }
-
                 }
             }
             else if (cell.OwningColumn.HeaderText.Equals("Max Mods"))
@@ -129,19 +228,16 @@ namespace CometUI.SettingsUI
                 if (textBoxCell != null)
                 {
                     string strValue = textBoxCell.Value.ToString();
-                    try
+                    int maxMods;
+                    if (!SearchSettingsDlg.ConvertStrToInt32(strValue, out maxMods))
                     {
-                        var maxMods = (int) Convert.ToUInt16(strValue);
-                        if (maxMods > 64)
-                        {
-                            throw new ArgumentException();
-                        }
-                    }
-                    catch (Exception)
-                    {
-
-                        MessageBox.Show(this,Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_between_0_and_64_, Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods, MessageBoxButtons.OKCancel);
+                        MessageBox.Show(this, Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_between_0_and_64_, Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods, MessageBoxButtons.OKCancel);
                         cell.Value = "3";
+                    }
+                    
+                    if (maxMods > 64)
+                    {
+                        throw new ArgumentException();
                     }
                 }
             }

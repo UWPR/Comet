@@ -17,32 +17,6 @@ namespace CometUI.SettingsUI
             InitializeFromDefaultSettings();
         }
 
-        private void InitializeFromDefaultSettings()
-        {
-            // Set up defaults for the precursor mass settings
-            precursorMassTolTextBox.Text = Settings.Default.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
-            precursorMassUnitCombo.SelectedItem = Settings.Default.PrecursorMassUnit;
-            precursorTolTypeCombo.SelectedItem = Settings.Default.PrecursorToleranceType;
-            precursorMassTypeCombo.SelectedItem = Settings.Default.PrecursorMassType;
-            precursorIsotopeErrorCombo.SelectedItem = Settings.Default.PrecursorIsotopeError;
-
-            // Set up defaults for fragment settings
-            fragmentBinSizeTextBox.Text = Settings.Default.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
-            fragmentOffsetTextBox.Text = Settings.Default.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
-            fragmentMassTypeCombo.SelectedItem = Settings.Default.FragmentMassType;
-            sparseMatrixCheckBox.Checked = Settings.Default.UseSparseMatrix;
-        
-            // Set up defaults for ion settings
-            aIonCheckBox.Checked = Settings.Default.UseAIons;
-            bIonCheckBox.Checked = Settings.Default.UseBIons;
-            cIonCheckBox.Checked = Settings.Default.UseCIons;
-            xIonCheckBox.Checked = Settings.Default.UseXIons;
-            yIonCheckBox.Checked = Settings.Default.UseYIons;
-            zIonCheckBox.Checked = Settings.Default.UseZIons;
-            useNLCheckBox.Checked = Settings.Default.UseNLIons;
-            flankCheckBox.Checked = Settings.Default.TheoreticalFragmentIons;
-        }
-
         public bool VerifyAndUpdateSettings()
         {
             // Verify and save the precursor mass settings
@@ -108,7 +82,7 @@ namespace CometUI.SettingsUI
             {
                 Settings.Default.FragmentMassType = fragmentMassTypeCombo.SelectedItem.ToString();
                 Parent.SettingsChanged = true;
-             }
+            }
 
             if (Settings.Default.UseSparseMatrix != sparseMatrixCheckBox.Checked)
             {
@@ -166,6 +140,32 @@ namespace CometUI.SettingsUI
             }
 
             return true;
+        }
+
+        private void InitializeFromDefaultSettings()
+        {
+            // Set up defaults for the precursor mass settings
+            precursorMassTolTextBox.Text = Settings.Default.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
+            precursorMassUnitCombo.SelectedItem = Settings.Default.PrecursorMassUnit;
+            precursorTolTypeCombo.SelectedItem = Settings.Default.PrecursorToleranceType;
+            precursorMassTypeCombo.SelectedItem = Settings.Default.PrecursorMassType;
+            precursorIsotopeErrorCombo.SelectedItem = Settings.Default.PrecursorIsotopeError;
+
+            // Set up defaults for fragment settings
+            fragmentBinSizeTextBox.Text = Settings.Default.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
+            fragmentOffsetTextBox.Text = Settings.Default.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
+            fragmentMassTypeCombo.SelectedItem = Settings.Default.FragmentMassType;
+            sparseMatrixCheckBox.Checked = Settings.Default.UseSparseMatrix;
+        
+            // Set up defaults for ion settings
+            aIonCheckBox.Checked = Settings.Default.UseAIons;
+            bIonCheckBox.Checked = Settings.Default.UseBIons;
+            cIonCheckBox.Checked = Settings.Default.UseCIons;
+            xIonCheckBox.Checked = Settings.Default.UseXIons;
+            yIonCheckBox.Checked = Settings.Default.UseYIons;
+            zIonCheckBox.Checked = Settings.Default.UseZIons;
+            useNLCheckBox.Checked = Settings.Default.UseNLIons;
+            flankCheckBox.Checked = Settings.Default.TheoreticalFragmentIons;
         }
     }
 }

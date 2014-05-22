@@ -8,6 +8,13 @@ namespace CometUI.SettingsUI
 {
     public partial class InputSettingsControl : UserControl
     {
+        public string DatabaseFile
+        {
+            get { return proteomeDbFileCombo.Text; }
+
+            set { proteomeDbFileCombo.Text = value; }
+        }
+
         private enum SearchType
         {
             SearchTypeTarget = 0,
@@ -24,57 +31,6 @@ namespace CometUI.SettingsUI
             Parent = parent;
 
             InitializeFromDefaultSettings();
-        }
-
-        private void InitializeFromDefaultSettings()
-        {
-            proteomeDbFileCombo.Text = Settings.Default.ProteomeDatabaseFile;
-
-            comboBoxReadingFrame.Text = Settings.Default.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
-            if (Settings.Default.IsProteinDB)
-            {
-                radioButtonProtein.Checked = true;
-            }
-            else
-            {
-                radioButtonNucleotide.Checked = true;
-            }
-
-            switch ((SearchType)Settings.Default.SearchType)
-            {
-                case SearchType.SearchTypeDecoyOne:
-                    radioButtonDecoyOne.Checked = true;
-                    break;
-                case SearchType.SearchTypeDecoyTwo:
-                    radioButtonDecoyTwo.Checked = true;
-                    break;
-                    case SearchType.SearchTypeTarget:
-                    radioButtonTarget.Checked = true;
-                    break;
-                default:
-                    radioButtonTarget.Checked = true;
-                    break;
-            }
-
-            textBoxDecoyPrefix.Text = Settings.Default.DecoyPrefix;
-        }
-
-        public string DatabaseFile 
-        {
-            get { return proteomeDbFileCombo.Text; }
-
-            set { proteomeDbFileCombo.Text = value; }
-        }
-
-        private void BtnBrowseProteomeDbFileClick(object sender, EventArgs e)
-        {
-            string databaseFile = ShowOpenDatabaseFile();
-            if (null != databaseFile)
-            {
-                DatabaseFile = databaseFile;
-            }
-
-            ProteomeDbFileNameChanged();
         }
 
         public static string ShowOpenDatabaseFile()
@@ -96,29 +52,6 @@ namespace CometUI.SettingsUI
             }
 
             return null;
-        }
-
-        private void ProteomeDbFileNameChanged()
-        {
-            if (-1 == proteomeDbFileCombo.FindStringExact(proteomeDbFileCombo.Text))
-            {
-                proteomeDbFileCombo.Items.Add(proteomeDbFileCombo.Text);
-            }
-        }
-
-        private void RadioButtonDecoyOneCheckedChanged(object sender, EventArgs e)
-        {
-            panelDecoyPrefix.Enabled = radioButtonDecoyOne.Checked;
-        }
-
-        private void RadioButtonDecoyTwoCheckedChanged(object sender, EventArgs e)
-        {
-            panelDecoyPrefix.Enabled = radioButtonDecoyTwo.Checked;
-        }
-
-        private void RadioButtonNucleotideCheckedChanged(object sender, EventArgs e)
-        {
-            panelNucleotideReadingFrame.Enabled = radioButtonNucleotide.Checked;
         }
 
         public bool VerifyAndUpdateSettings()
@@ -145,7 +78,7 @@ namespace CometUI.SettingsUI
                 Settings.Default.IsProteinDB = radioButtonProtein.Checked;
                 Parent.SettingsChanged = true;
             }
-            
+
             if (radioButtonNucleotide.Checked)
             {
                 var nucleotideReadingFrame = Convert.ToInt32(comboBoxReadingFrame.SelectedItem);
@@ -184,6 +117,73 @@ namespace CometUI.SettingsUI
             }
 
             return true;
+        }
+
+        private void InitializeFromDefaultSettings()
+        {
+            proteomeDbFileCombo.Text = Settings.Default.ProteomeDatabaseFile;
+
+            comboBoxReadingFrame.Text = Settings.Default.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
+            if (Settings.Default.IsProteinDB)
+            {
+                radioButtonProtein.Checked = true;
+            }
+            else
+            {
+                radioButtonNucleotide.Checked = true;
+            }
+
+            switch ((SearchType)Settings.Default.SearchType)
+            {
+                case SearchType.SearchTypeDecoyOne:
+                    radioButtonDecoyOne.Checked = true;
+                    break;
+                case SearchType.SearchTypeDecoyTwo:
+                    radioButtonDecoyTwo.Checked = true;
+                    break;
+                    case SearchType.SearchTypeTarget:
+                    radioButtonTarget.Checked = true;
+                    break;
+                default:
+                    radioButtonTarget.Checked = true;
+                    break;
+            }
+
+            textBoxDecoyPrefix.Text = Settings.Default.DecoyPrefix;
+        }
+
+        private void BtnBrowseProteomeDbFileClick(object sender, EventArgs e)
+        {
+            string databaseFile = ShowOpenDatabaseFile();
+            if (null != databaseFile)
+            {
+                DatabaseFile = databaseFile;
+            }
+
+            ProteomeDbFileNameChanged();
+        }
+
+        private void ProteomeDbFileNameChanged()
+        {
+            if (-1 == proteomeDbFileCombo.FindStringExact(proteomeDbFileCombo.Text))
+            {
+                proteomeDbFileCombo.Items.Add(proteomeDbFileCombo.Text);
+            }
+        }
+
+        private void RadioButtonDecoyOneCheckedChanged(object sender, EventArgs e)
+        {
+            panelDecoyPrefix.Enabled = radioButtonDecoyOne.Checked;
+        }
+
+        private void RadioButtonDecoyTwoCheckedChanged(object sender, EventArgs e)
+        {
+            panelDecoyPrefix.Enabled = radioButtonDecoyTwo.Checked;
+        }
+
+        private void RadioButtonNucleotideCheckedChanged(object sender, EventArgs e)
+        {
+            panelNucleotideReadingFrame.Enabled = radioButtonNucleotide.Checked;
         }
 
         private void ProteomeDbFileComboSelectedIndexChanged(object sender, EventArgs e)
