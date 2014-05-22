@@ -448,7 +448,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
                      try
                      {
-                        pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
+                        pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize]();
                      }
                      catch (std::bad_alloc& ba)
                      {
@@ -848,9 +848,9 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       }
       else if (g_staticParams.tolerances.iIsotopeError == 1)
       {
-         double dC13diff = 1.00335483;
-         double d2C13diff = 1.00335483 + 1.00335483;
-         double d3C13diff = 1.00335483 + 1.00335483 + 1.00335483;
+         double dC13diff  = C13_DIFF;
+         double d2C13diff = C13_DIFF + C13_DIFF;
+         double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
 
          // Using C13 isotope mass difference here but likely should
          // be slightly bigger for other elemental contaminents.
@@ -2416,7 +2416,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             // now get the set of binned fragment ions once for all matching peptides
             try
             {
-               pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
+               pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize]();
             }
             catch (std::bad_alloc& ba)
             {

@@ -23,6 +23,7 @@
 class CometSearchManager;
 
 #define PROTON_MASS                 1.00727646688
+#define C13_DIFF                    1.00335483
 
 #define FLOAT_ZERO                  0.000001
 #define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
@@ -208,7 +209,7 @@ struct PreprocessStruct
    int iHighestIon;
    double dHighestIntensity;
    double *pdCorrelationData;
-   struct msdata pTempSpData[NUM_SP_IONS];
+   struct msdata pTmpSpData[NUM_SP_IONS];
 };
 
 //-->MH

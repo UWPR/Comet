@@ -23,10 +23,10 @@ Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
 bool CometPreprocess::_bFirstScan;
 bool *CometPreprocess::pbMemoryPool;
-double **CometPreprocess::ppdTempRawDataArr;
+double **CometPreprocess::ppdTmpRawDataArr;
 double **CometPreprocess::ppdTmpFastXcorrDataArr;
-double **CometPreprocess::ppdSmoothedSpectrumArr;
-double **CometPreprocess::ppdPeakExtractedArr;
+double **CometPreprocess::ppdTmpSmoothedSpectrumArr;
+double **CometPreprocess::ppdTmpPeakExtractedArr;
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (pdCorrelationData).
 CometPreprocess::CometPreprocess()
@@ -231,7 +231,14 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    //MH: Give memory manager access to the thread.
    pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);
 
-   PreprocessSpectrum(pPreprocessThreadData->mstSpectrum, ppdTempRawDataArr[i], ppdTmpFastXcorrDataArr[i], ppdSmoothedSpectrumArr[i], ppdPeakExtractedArr[i]);
+   PreprocessSpectrum(pPreprocessThreadData->mstSpectrum,
+         ppdTmpRawDataArr[i],
+         ppdTmpFastXcorrDataArr[i],
+         ppdTmpSmoothedSpectrumArr[i],
+         ppdTmpPeakExtractedArr[i]);
+
+//needed to put array back into available pool?
+pbMemoryPool[i]=false;
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
@@ -246,14 +253,14 @@ bool CometPreprocess::DoneProcessingAllSpectra()
 
 bool CometPreprocess::Preprocess(struct Query *pScoring,
                                  Spectrum mstSpectrum,
-                                 double *pdTempRawData,
+                                 double *pdTmpRawData,
                                  double *pdTmpFastXcorrData,
-                                 double *pdSmoothedSpectrum,
-                                 double *pdPeakExtracted)
+                                 double *pdTmpSmoothedSpectrum,
+                                 double *pdTmpPeakExtracted)
 {
    int i;
    int j;
-   struct msdata pTempSpData[NUM_SP_IONS];
+   struct msdata pTmpSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
 
    pPre.iHighestIon = 0;
@@ -306,7 +313,18 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
 
    // Create data for correlation analysis.
-   MakeCorrData(pdTempRawData, pScoring, &pPre);
+   MakeCorrData(pdTmpRawData, pScoring, &pPre);
+
+if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
+{
+   FILE *fp;
+   int x;
+   fp=fopen("8117.txt","w");
+   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
+      if (pdTmpRawData[x] > 0.0)
+         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
+   fclose(fp);
+}
 
    // Make fast xcorr spectrum.
    double dSum=0.0;
@@ -377,6 +395,17 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    delete[] pPre.pdCorrelationData;
    pPre.pdCorrelationData = NULL;
+
+if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
+{
+   FILE *fp;
+   int x;
+   fp=fopen("8117.txt.1","w");
+   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
+      if (pdTmpRawData[x] > 0.0)
+         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
+   fclose(fp);
+}
 
    // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
    if (g_staticParams.options.bSparseMatrix)
@@ -465,12 +494,36 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Arbitrary bin size cutoff to do smoothing, peak extraction.
    if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
    {
-      if (!Smooth(pdTempRawData, pScoring->_spectrumInfoInternal.iArraySize, pdSmoothedSpectrum))
+
+if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
+{
+   FILE *fp;
+   int x;
+   fp=fopen("8117.txt.2","w");
+   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
+      if (pdTmpRawData[x] > 0.0)
+         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
+   fclose(fp);
+}
+
+      if (!Smooth(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpSmoothedSpectrum))
       {
          return false;
       }
 
-      if (!PeakExtract(pdTempRawData, pScoring->_spectrumInfoInternal.iArraySize, pdPeakExtracted))
+if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
+{
+   FILE *fp;
+   int x;
+   fp=fopen("8117.txt.3","w");
+   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
+      if (pdTmpRawData[x] > 0.0)
+         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
+   fclose(fp);
+}
+
+
+      if (!PeakExtract(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpPeakExtracted))
       {
          return false;
       }
@@ -478,16 +531,40 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    for (i=0; i<NUM_SP_IONS; i++)
    {
-      pTempSpData[i].dIon = 0.0;
-      pTempSpData[i].dIntensity = 0.0;
+      pTmpSpData[i].dIon = 0.0;
+      pTmpSpData[i].dIntensity = 0.0;
    }
 
-   GetTopIons(pdTempRawData, &(pTempSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
+   GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
 
-   qsort(pTempSpData, NUM_SP_IONS, sizeof(struct msdata), QsortByIon);
+/*
+if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
+{
+   FILE *fp;
+   int x;
+
+   fp=fopen("8117.txt","w");
+   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
+      if (pdTmpRawData[x] > 0.0)
+         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
+
+   fclose(fp);
+}
+ 
+if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
+{
+   int x;
+   for (x=0; x<NUM_SP_IONS; x++)
+   {
+      printf("%d\t%f\n", x, pTmpSpData[x]);
+   }
+}
+*/
+
+   qsort(pTmpSpData, NUM_SP_IONS, sizeof(struct msdata), QsortByIon);
 
    // Modify for Sp data.
-   StairStep(pTempSpData);
+   StairStep(pTmpSpData);
 
    if (g_staticParams.options.bSparseMatrix)
    {
@@ -511,10 +588,10 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       pScoring->iSpScoreData=0;
       for (i=0; i<NUM_SP_IONS; i++)
       {
-         if ((float)pTempSpData[i].dIntensity > FLOAT_ZERO)
+         if ((float)pTmpSpData[i].dIntensity > FLOAT_ZERO)
          {
-            pScoring->pSparseSpScoreData[pScoring->iSpScoreData].bin = (int)(pTempSpData[i].dIon+0.5);
-            pScoring->pSparseSpScoreData[pScoring->iSpScoreData].fIntensity = (float) pTempSpData[i].dIntensity;
+            pScoring->pSparseSpScoreData[pScoring->iSpScoreData].bin = (int)(pTmpSpData[i].dIon+0.5);
+            pScoring->pSparseSpScoreData[pScoring->iSpScoreData].fIntensity = (float) pTmpSpData[i].dIntensity;
             pScoring->iSpScoreData++;
          }
       }
@@ -536,7 +613,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       }
 
       for (i=0; i<NUM_SP_IONS; i++)
-         pScoring->pfSpScoreData[(int)(pTempSpData[i].dIon+0.5)] = (float) pTempSpData[i].dIntensity;
+         pScoring->pfSpScoreData[(int)(pTmpSpData[i].dIon+0.5)] = (float) pTmpSpData[i].dIntensity;
    }
 
    return true;
@@ -658,16 +735,25 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 
 
 bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
-                                  double *pdTempRawData,
-                                  double *pdTmpFastXcorrData,
-                                  double *pdSmoothedSpectrum,
-                                  double *pdPeakExtracted)
+                                         double *pdTmpRawData,
+                                         double *pdTmpFastXcorrData,
+                                         double *pdTmpSmoothedSpectrum,
+                                         double *pdTmpPeakExtracted)
 {
    int z;
    int zStart;
    int zStop;
 
    int iScanNumber = spec.getScanNumber();
+
+/*
+   // Initialize these arrays that are re-used between threads
+   int iSize = (int)((g_staticParams.options.dHighPeptideMass + 100.0) * g_staticParams.dInverseBinWidth);
+   memset(pdTmpRawData, 0, iSize);
+   memset(pdTmpFastXcorrData, 0, iSize);
+   memset(pdTmpSmoothedSpectrum, 0, iSize);
+   memset(pdTmpPeakExtracted, 0, iSize);
+*/
 
    // Since we have no filter, just add zlines.
    // WARNING: only good up to charge state 3
@@ -767,7 +853,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          // Populate pdCorrelation data.
          // NOTE: there must be a good way of doing this just once per spectrum instead
          //       of repeating for each charge state.
-         if (!Preprocess(pScoring, spec, pdTempRawData, pdTmpFastXcorrData, pdSmoothedSpectrum, pdPeakExtracted))
+         if (!Preprocess(pScoring, spec, pdTmpRawData, pdTmpFastXcorrData, pdTmpSmoothedSpectrum, pdTmpPeakExtracted))
          {
             return false;
          }
@@ -858,10 +944,10 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    else if (g_staticParams.tolerances.iIsotopeError == 1) // search -1 to +1, +2, +3 isotope windows
    {
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0*1.00335*PROTON_MASS;
+         - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
 
       pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance + 1.0*1.00335*PROTON_MASS;
+         + pScoring->_pepMassInfo.dPeptideMassTolerance + 1.0 * C13_DIFF * PROTON_MASS;
    }
    else if (g_staticParams.tolerances.iIsotopeError == 2) // search -8, -4, 0, 4, 8 windows
    {
@@ -995,8 +1081,8 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 }
 
 
-// pdTempRawData now holds raw data, pdCorrelationData is windowed data.
-void CometPreprocess::MakeCorrData(double *pdTempRawData,
+// pdTmpRawData now holds raw data, pdCorrelationData is windowed data after this function
+void CometPreprocess::MakeCorrData(double *pdTmpRawData,
                                    struct Query *pScoring,
                                    struct PreprocessStruct *pPre)
 {
@@ -1019,11 +1105,11 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
 
    for (i=0; i < pScoring->_spectrumInfoInternal.iArraySize; i++)
    {
-      pdTempRawData[i] = pPre->pdCorrelationData[i]*dTmp1;
+      pdTmpRawData[i] = pPre->pdCorrelationData[i]*dTmp1;
       pPre->pdCorrelationData[i]=0.0;
 
-      if (dMaxOverallInten < pdTempRawData[i])
-         dMaxOverallInten = pdTempRawData[i];
+      if (dMaxOverallInten < pdTmpRawData[i])
+         dMaxOverallInten = pdTmpRawData[i];
    }
 
    iWindowSize = (int)((pPre->iHighestIon)/iNumWindows) + 1;
@@ -1037,8 +1123,8 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
          iBin = i*iWindowSize+ii;
          if (iBin < pScoring->_spectrumInfoInternal.iArraySize)
          {
-            if (pdTempRawData[iBin] > dMaxWindowInten)
-               dMaxWindowInten = pdTempRawData[iBin];
+            if (pdTmpRawData[iBin] > dMaxWindowInten)
+               dMaxWindowInten = pdTmpRawData[iBin];
          }
       }
 
@@ -1052,8 +1138,8 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
             iBin = i*iWindowSize+ii;
             if (iBin < pScoring->_spectrumInfoInternal.iArraySize)
             {
-               if (pdTempRawData[iBin] > dTmp2)
-                  pPre->pdCorrelationData[iBin] = pdTempRawData[iBin]*dTmp1;
+               if (pdTmpRawData[iBin] > dTmp2)
+                  pPre->pdCorrelationData[iBin] = pdTmpRawData[iBin]*dTmp1;
             }
          }
       }
@@ -1064,22 +1150,22 @@ void CometPreprocess::MakeCorrData(double *pdTempRawData,
 // Smooth input data over 5 points.
 bool CometPreprocess::Smooth(double *data,
                              int iArraySize,
-                             double *pdSmoothedSpectrum)
+                             double *pdTmpSmoothedSpectrum)
 {
    int  i;
 
-   pdSmoothedSpectrum[0] = 0.0;
-   pdSmoothedSpectrum[1] = 0.0;
-   pdSmoothedSpectrum[iArraySize-1] = 0.0;
-   pdSmoothedSpectrum[iArraySize-2] = 0.0;   // need to zero out edge points; rest of array ok not reinitialized
+   data[0] = 0.0;
+   data[1] = 0.0;
+   data[iArraySize-1] = 0.0;
+   data[iArraySize-2] = 0.0;
 
    for (i=2; i<iArraySize-2; i++)
    {
       // *0.0625 is same as divide by 16.
-      pdSmoothedSpectrum[i] = (data[i-2]+4.0*data[i-1]+6.0*data[i]+4.0*data[i+1]+data[i+2]) * 0.0625;
+      pdTmpSmoothedSpectrum[i] = (data[i-2]+4.0*data[i-1]+6.0*data[i]+4.0*data[i+1]+data[i+2]) * 0.0625;
    }
 
-   memcpy(data, pdSmoothedSpectrum, iArraySize*sizeof(double));
+   memcpy(data, pdTmpSmoothedSpectrum, iArraySize*sizeof(double));
 
    return true;
 }
@@ -1088,7 +1174,7 @@ bool CometPreprocess::Smooth(double *data,
 // Run 2 passes through to pull out peaks.
 bool CometPreprocess::PeakExtract(double *data,
                                   int iArraySize,
-                                  double *pdPeakExtracted)
+                                  double *pdTmpPeakExtracted)
 {
    int  i,
         ii,
@@ -1099,12 +1185,12 @@ bool CometPreprocess::PeakExtract(double *data,
 
    try
    {
-      pdPeakExtracted = new double[iArraySize]();
+      pdTmpPeakExtracted = new double[iArraySize]();
    }
    catch (std::bad_alloc& ba)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pdPeakExtracted[%d]). bad_alloc: %s.", iArraySize, ba.what());
+      sprintf(szErrorMsg,  " Error - new(pdTmpPeakExtracted[%d]). bad_alloc: %s.", iArraySize, ba.what());
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetError(true, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
@@ -1114,15 +1200,14 @@ bool CometPreprocess::PeakExtract(double *data,
    // 1st pass, choose only peak greater than avg + dStdDev.
    for (i=0; i<iArraySize; i++)
    {
-      pdPeakExtracted[i] = 0.0;
+      pdTmpPeakExtracted[i] = 0.0;
       dAvgInten = 0.0;
-      iStartIndex = i-50;
 
+      iStartIndex = i-50;
       if (i-50 < 0)
          iStartIndex = 0;
 
       iEndIndex = i+50;
-
       if (i+50 > iArraySize-1)
          iEndIndex = iArraySize-1;
 
@@ -1139,7 +1224,7 @@ bool CometPreprocess::PeakExtract(double *data,
       {
          if (data[i] > (dAvgInten+dStdDev))
          {
-            pdPeakExtracted[i] = data[i] - dAvgInten + dStdDev;
+            pdTmpPeakExtracted[i] = data[i] - dAvgInten + dStdDev;
             data[i] = 0;     // Remove the peak before 2nd pass.
          }
       }
@@ -1149,6 +1234,7 @@ bool CometPreprocess::PeakExtract(double *data,
    for (i=0; i<iArraySize; i++)
    {
       dAvgInten = 0.0;
+
       iStartIndex = i-50;
       if (i-50 < 0)
          iStartIndex = 0;
@@ -1169,22 +1255,22 @@ bool CometPreprocess::PeakExtract(double *data,
       if ((i > 0) && (i < iArraySize-1))
       {
          if (data[i] > (dAvgInten + 2*dStdDev))
-            pdPeakExtracted[i] = data[i] - dAvgInten + dStdDev;
+            pdTmpPeakExtracted[i] = data[i] - dAvgInten + dStdDev;
       }
    }
 
-   memcpy(data, pdPeakExtracted, (size_t)iArraySize*sizeof(double));
+   memcpy(data, pdTmpPeakExtracted, (size_t)iArraySize*sizeof(double));
 
-   delete[] pdPeakExtracted;
-   pdPeakExtracted = NULL;
+   delete[] pdTmpPeakExtracted;
+   pdTmpPeakExtracted = NULL;
 
    return true;
 }
 
 
 // Pull out top # ions for intensity matching in search.
-void CometPreprocess::GetTopIons(double *pdTempRawData,
-                                 struct msdata *pTempSpData,
+void CometPreprocess::GetTopIons(double *pdTmpRawData,
+                                 struct msdata *pTmpSpData,
                                  int iArraySize)
 {
    int  i,
@@ -1195,22 +1281,22 @@ void CometPreprocess::GetTopIons(double *pdTempRawData,
 
    for (i=0; i<iArraySize; i++)
    {
-      if (pdTempRawData[i] > dLowestInten)
+      if (pdTmpRawData[i] > dLowestInten)
       {
-         (pTempSpData+iLowestIntenIndex)->dIntensity = (double)pdTempRawData[i];
-         (pTempSpData+iLowestIntenIndex)->dIon = (double)i;
+         (pTmpSpData+iLowestIntenIndex)->dIntensity = (double)pdTmpRawData[i];
+         (pTmpSpData+iLowestIntenIndex)->dIon = (double)i;
 
-         if ((pTempSpData+iLowestIntenIndex)->dIntensity > dMaxInten)
-            dMaxInten = (pTempSpData+iLowestIntenIndex)->dIntensity;
+         if ((pTmpSpData+iLowestIntenIndex)->dIntensity > dMaxInten)
+            dMaxInten = (pTmpSpData+iLowestIntenIndex)->dIntensity;
 
-         dLowestInten = (pTempSpData+0)->dIntensity;
+         dLowestInten = (pTmpSpData+0)->dIntensity;
          iLowestIntenIndex = 0;
 
          for (ii=1; ii<NUM_SP_IONS; ii++)
          {
-            if ((pTempSpData+ii)->dIntensity < dLowestInten)
+            if ((pTmpSpData+ii)->dIntensity < dLowestInten)
             {
-               dLowestInten = (pTempSpData+ii)->dIntensity;
+               dLowestInten = (pTmpSpData+ii)->dIntensity;
                iLowestIntenIndex=ii;
             }
          }
@@ -1220,7 +1306,7 @@ void CometPreprocess::GetTopIons(double *pdTempRawData,
    if (dMaxInten > FLOAT_ZERO)
    {
       for (i=0; i<NUM_SP_IONS; i++)
-         (pTempSpData+i)->dIntensity = (((pTempSpData+i)->dIntensity)/dMaxInten)*100.0;
+         (pTmpSpData+i)->dIntensity = (((pTmpSpData+i)->dIntensity)/dMaxInten)*100.0;
    }
 }
 
@@ -1237,7 +1323,7 @@ int CometPreprocess::QsortByIon(const void *p0, const void *p1)
 
 
 // Works on Sp data.
-void CometPreprocess::StairStep(struct msdata *pTempSpData)
+void CometPreprocess::StairStep(struct msdata *pTmpSpData)
 {
    int  i,
         ii,
@@ -1249,29 +1335,30 @@ void CometPreprocess::StairStep(struct msdata *pTempSpData)
    while (i < NUM_SP_IONS-1)
    {
       ii = i;
-      dMaxInten = (pTempSpData+i)->dIntensity;
+      dMaxInten = (pTmpSpData+i)->dIntensity;
       dGap = 0.0;
 
       while (dGap<=g_staticParams.tolerances.dFragmentBinSize && ii<NUM_SP_IONS-1)
       {
          ii++;
-         dGap = (pTempSpData+ii)->dIon - (pTempSpData+ii-1)->dIon;
+         dGap = (pTmpSpData+ii)->dIon - (pTmpSpData+ii-1)->dIon;
 
          // Finds the max intensity for adjacent points.
          if (dGap<=g_staticParams.tolerances.dFragmentBinSize)
          {
-            if ((pTempSpData+ii)->dIntensity > dMaxInten)
-               dMaxInten = (pTempSpData+ii)->dIntensity;
+            if ((pTmpSpData+ii)->dIntensity > dMaxInten)
+               dMaxInten = (pTmpSpData+ii)->dIntensity;
          }
       }
 
       // Sets the adjacent points to the dMaxInten.
       for (iii=i; iii<ii; iii++)
-         (pTempSpData+iii)->dIntensity = dMaxInten; 
+         (pTmpSpData+iii)->dIntensity = dMaxInten; 
 
       i = ii;
    }
 }
+
 
 //MH: This function allocates memory to be shared by threads for spectral processing
 bool CometPreprocess::AllocateMemory(int maxNumThreads){
@@ -1288,17 +1375,17 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   ppdTempRawDataArr = new double*[maxNumThreads]();
+   ppdTmpRawDataArr = new double*[maxNumThreads]();
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         ppdTempRawDataArr[i] = new double[iArraySize]();
+         ppdTmpRawDataArr[i] = new double[iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTempRawData[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpRawData[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1326,17 +1413,17 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   ppdSmoothedSpectrumArr = new double*[maxNumThreads]();
+   ppdTmpSmoothedSpectrumArr = new double*[maxNumThreads]();
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         ppdSmoothedSpectrumArr[i] = new double[iArraySize]();
+         ppdTmpSmoothedSpectrumArr[i] = new double[iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1345,17 +1432,17 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    }
 
    //MH: Allocate arrays
-   ppdPeakExtractedArr = new double*[maxNumThreads]();
+   ppdTmpPeakExtractedArr = new double*[maxNumThreads]();
    for (i=0; i<maxNumThreads; i++)
    {
       try
       {
-         ppdPeakExtractedArr[i] = new double[iArraySize]();
+         ppdTmpPeakExtractedArr[i] = new double[iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetError(true, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1366,6 +1453,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
    return true;
 }
 
+
 //MH: Deallocates memory shared by threads during spectral processing.
 bool CometPreprocess::DeallocateMemory(int maxNumThreads){
    int i;
@@ -1374,16 +1462,16 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads){
 
    for (i=0; i<maxNumThreads; i++)
    {
-      delete [] ppdTempRawDataArr[i];
+      delete [] ppdTmpRawDataArr[i];
       delete [] ppdTmpFastXcorrDataArr[i];
-      delete [] ppdSmoothedSpectrumArr[i];
-      delete [] ppdPeakExtractedArr[i];
+      delete [] ppdTmpSmoothedSpectrumArr[i];
+      delete [] ppdTmpPeakExtractedArr[i];
    }
 
-   delete [] ppdTempRawDataArr;
+   delete [] ppdTmpRawDataArr;
    delete [] ppdTmpFastXcorrDataArr;
-   delete [] ppdSmoothedSpectrumArr;
-   delete [] ppdPeakExtractedArr;
+   delete [] ppdTmpSmoothedSpectrumArr;
+   delete [] ppdTmpPeakExtractedArr;
 
    return true;
 }

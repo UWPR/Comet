@@ -44,7 +44,8 @@ struct PreprocessThreadData
    {
       //MH: Mark that the memory is no longer in use. 
       //DO NOT FREE MEMORY HERE. Just release pointer.
-      if(pbMemoryPool!=NULL) *pbMemoryPool=false;
+      if(pbMemoryPool!=NULL)
+         *pbMemoryPool=false;
       pbMemoryPool=NULL;
    }
 
@@ -77,10 +78,10 @@ private:
    
    // Private static methods
    static bool PreprocessSpectrum(Spectrum &spec,
-                                  double *pdTempRawData,
+                                  double *pdTmpRawData,
                                   double *pdTmpFastXcorrData,
-                                  double *pdSmoothedSpectrum,
-                                  double *pdPeakExtracted);
+                                  double *pdTmpSmoothedSpectrum,
+                                  double *pdTmpPeakExtracted);
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
@@ -97,14 +98,14 @@ private:
                          int iNumSpectraLoaded);
    static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum,
-                          double *pdTempRawData,
+                          double *pdTmpRawData,
                           double *pdTmpFastXcorrData,
                           double *pdSmoothedSpectrum,
-                          double *pdPeakExtracted);
+                          double *pdTmpPeakExtracted);
    static bool LoadIons(struct Query *pScoring,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
-   static void MakeCorrData(double *pdTempRawData,
+   static void MakeCorrData(double *pdTmpRawData,
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);
    static bool Smooth(double *data,
@@ -112,13 +113,13 @@ private:
                       double *pdSmoothedSpectrum);
    static bool PeakExtract(double *data,
                            int iArraySize,
-                           double *pdPeakExtracted);
-   static void GetTopIons(double *pdTempRawData,
-                          struct msdata *pTempSpData,
+                           double *pdTmpPeakExtracted);
+   static void GetTopIons(double *pdTmpRawData,
+                          struct msdata *pTmpSpData,
                           int iArraySize);
    static int QsortByIon(const void *p0,
                          const void *p1);
-   static void StairStep(struct msdata *pTempSpData);
+   static void StairStep(struct msdata *pTmpSpData);
 
 
    // Private member variables
@@ -127,11 +128,11 @@ private:
    static bool _bDoneProcessingAllSpectra;
 
    //MH: Common memory to be shared by all threads during spectral processing
-   static bool *pbMemoryPool;             //MH: Regulator of memory use
-   static double **ppdTempRawDataArr;      //MH: Number of arrays equals threads
-   static double **ppdTmpFastXcorrDataArr; //MH: Ditto
-   static double **ppdSmoothedSpectrumArr; //MH: Ditto
-   static double **ppdPeakExtractedArr;    //MH: Ditto
+   static bool *pbMemoryPool;                 //MH: Regulator of memory use
+   static double **ppdTmpRawDataArr;          //MH: Number of arrays equals threads
+   static double **ppdTmpFastXcorrDataArr;    //MH: Ditto
+   static double **ppdTmpSmoothedSpectrumArr; //MH: Ditto
+   static double **ppdTmpPeakExtractedArr;    //MH: Ditto
 };
 
 #endif // _COMETPREPROCESS_H_
