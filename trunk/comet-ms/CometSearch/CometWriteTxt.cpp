@@ -257,7 +257,7 @@ void CometWriteTxt::PrintTxtLine(int iWhichResult,
    else
       dDeltaCn = 0.0;
 
-   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d\t",
+   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d",
          pOutput[iWhichResult].dPepMass - PROTON_MASS,
          pOutput[iWhichResult].dExpect,
          pOutput[iWhichResult].fXcorr,
