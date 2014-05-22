@@ -315,17 +315,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Create data for correlation analysis.
    MakeCorrData(pdTmpRawData, pScoring, &pPre);
 
-if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
-{
-   FILE *fp;
-   int x;
-   fp=fopen("8117.txt","w");
-   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
-      if (pdTmpRawData[x] > 0.0)
-         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
-   fclose(fp);
-}
-
    // Make fast xcorr spectrum.
    double dSum=0.0;
    pScoring->iFastXcorrData=1;
@@ -395,17 +384,6 @@ if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
 
    delete[] pPre.pdCorrelationData;
    pPre.pdCorrelationData = NULL;
-
-if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
-{
-   FILE *fp;
-   int x;
-   fp=fopen("8117.txt.1","w");
-   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
-      if (pdTmpRawData[x] > 0.0)
-         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
-   fclose(fp);
-}
 
    // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
    if (g_staticParams.options.bSparseMatrix)
@@ -494,34 +472,10 @@ if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
    // Arbitrary bin size cutoff to do smoothing, peak extraction.
    if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
    {
-
-if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
-{
-   FILE *fp;
-   int x;
-   fp=fopen("8117.txt.2","w");
-   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
-      if (pdTmpRawData[x] > 0.0)
-         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
-   fclose(fp);
-}
-
       if (!Smooth(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpSmoothedSpectrum))
       {
          return false;
       }
-
-if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
-{
-   FILE *fp;
-   int x;
-   fp=fopen("8117.txt.3","w");
-   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
-      if (pdTmpRawData[x] > 0.0)
-         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
-   fclose(fp);
-}
-
 
       if (!PeakExtract(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpPeakExtracted))
       {
@@ -536,30 +490,6 @@ if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
    }
 
    GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
-
-/*
-if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
-{
-   FILE *fp;
-   int x;
-
-   fp=fopen("8117.txt","w");
-   for (x=0; x<pScoring->_spectrumInfoInternal.iArraySize; x++)
-      if (pdTmpRawData[x] > 0.0)
-         fprintf(fp, "%d\t%f\n", x, pdTmpRawData[x]);
-
-   fclose(fp);
-}
- 
-if (pScoring->_spectrumInfoInternal.iScanNumber==8117)
-{
-   int x;
-   for (x=0; x<NUM_SP_IONS; x++)
-   {
-      printf("%d\t%f\n", x, pTmpSpData[x]);
-   }
-}
-*/
 
    qsort(pTmpSpData, NUM_SP_IONS, sizeof(struct msdata), QsortByIon);
 
