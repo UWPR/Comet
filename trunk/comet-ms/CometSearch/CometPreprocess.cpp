@@ -469,6 +469,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Arbitrary bin size cutoff to do smoothing, peak extraction.
    if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
    {
+
       if (!Smooth(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpSmoothedSpectrum))
       {
          return false;
@@ -898,10 +899,6 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    double dIon,
           dIntensity;
 
-   // Just need to pad iArraySize by 75.
-   pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + 100.0)
-         / g_staticParams.tolerances.dFragmentBinSize);
-
    try
    {
       pPre->pdCorrelationData = new double[pScoring->_spectrumInfoInternal.iArraySize]();
@@ -1279,7 +1276,8 @@ void CometPreprocess::StairStep(struct msdata *pTmpSpData)
 
 
 //MH: This function allocates memory to be shared by threads for spectral processing
-bool CometPreprocess::AllocateMemory(int maxNumThreads){
+bool CometPreprocess::AllocateMemory(int maxNumThreads)
+{
    int i;
 
    //MH: Must be equal to largest possible array
@@ -1373,7 +1371,8 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads){
 
 
 //MH: Deallocates memory shared by threads during spectral processing.
-bool CometPreprocess::DeallocateMemory(int maxNumThreads){
+bool CometPreprocess::DeallocateMemory(int maxNumThreads)
+{
    int i;
 
    delete [] pbMemoryPool;
