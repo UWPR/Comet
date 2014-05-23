@@ -95,6 +95,7 @@ namespace CometUI.SettingsUI
             // 
             // variableNTerminusTextBox
             // 
+            this.variableNTerminusTextBox.AllowDecimal = true;
             this.variableNTerminusTextBox.AllowSpace = false;
             this.variableNTerminusTextBox.Location = new System.Drawing.Point(89, 214);
             this.variableNTerminusTextBox.Name = "variableNTerminusTextBox";
@@ -103,6 +104,7 @@ namespace CometUI.SettingsUI
             // 
             // variableCTerminusTextBox
             // 
+            this.variableCTerminusTextBox.AllowDecimal = true;
             this.variableCTerminusTextBox.AllowSpace = false;
             this.variableCTerminusTextBox.Location = new System.Drawing.Point(89, 240);
             this.variableCTerminusTextBox.Name = "variableCTerminusTextBox";
@@ -138,6 +140,7 @@ namespace CometUI.SettingsUI
             // 
             // variableNTerminusDistTextBox
             // 
+            this.variableNTerminusDistTextBox.AllowDecimal = false;
             this.variableNTerminusDistTextBox.AllowSpace = false;
             this.variableNTerminusDistTextBox.Location = new System.Drawing.Point(229, 214);
             this.variableNTerminusDistTextBox.Name = "variableNTerminusDistTextBox";
@@ -155,6 +158,7 @@ namespace CometUI.SettingsUI
             // 
             // variableCTerminusDistTextBox
             // 
+            this.variableCTerminusDistTextBox.AllowDecimal = false;
             this.variableCTerminusDistTextBox.AllowSpace = false;
             this.variableCTerminusDistTextBox.Location = new System.Drawing.Point(229, 240);
             this.variableCTerminusDistTextBox.Name = "variableCTerminusDistTextBox";

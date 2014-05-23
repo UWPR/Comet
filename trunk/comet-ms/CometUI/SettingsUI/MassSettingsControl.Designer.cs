@@ -35,10 +35,13 @@ namespace CometUI.SettingsUI
             this.fragmentMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label9 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
+            this.fragmentOffsetTextBox = new NumericTextBox();
             this.label7 = new System.Windows.Forms.Label();
+            this.fragmentBinSizeTextBox = new NumericTextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.precursorGroupBox = new System.Windows.Forms.GroupBox();
+            this.precursorMassTolTextBox = new NumericTextBox();
             this.precursorIsotopeErrorCombo = new System.Windows.Forms.ComboBox();
             this.precursorMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label3 = new System.Windows.Forms.Label();
@@ -56,9 +59,6 @@ namespace CometUI.SettingsUI
             this.xIonCheckBox = new System.Windows.Forms.CheckBox();
             this.cIonCheckBox = new System.Windows.Forms.CheckBox();
             this.aIonCheckBox = new System.Windows.Forms.CheckBox();
-            this.fragmentOffsetTextBox = new NumericTextBox();
-            this.fragmentBinSizeTextBox = new NumericTextBox();
-            this.precursorMassTolTextBox = new NumericTextBox();
             this.fragmentGroupBox.SuspendLayout();
             this.precursorGroupBox.SuspendLayout();
             this.groupBox1.SuspendLayout();
@@ -120,6 +120,15 @@ namespace CometUI.SettingsUI
             this.label8.TabIndex = 27;
             this.label8.Text = "Offset:";
             // 
+            // fragmentOffsetTextBox
+            // 
+            this.fragmentOffsetTextBox.AllowDecimal = true;
+            this.fragmentOffsetTextBox.AllowSpace = false;
+            this.fragmentOffsetTextBox.Location = new System.Drawing.Point(131, 45);
+            this.fragmentOffsetTextBox.Name = "fragmentOffsetTextBox";
+            this.fragmentOffsetTextBox.Size = new System.Drawing.Size(83, 20);
+            this.fragmentOffsetTextBox.TabIndex = 7;
+            // 
             // label7
             // 
             this.label7.AutoSize = true;
@@ -128,6 +137,15 @@ namespace CometUI.SettingsUI
             this.label7.Size = new System.Drawing.Size(48, 13);
             this.label7.TabIndex = 25;
             this.label7.Text = "Bin Size:";
+            // 
+            // fragmentBinSizeTextBox
+            // 
+            this.fragmentBinSizeTextBox.AllowDecimal = true;
+            this.fragmentBinSizeTextBox.AllowSpace = false;
+            this.fragmentBinSizeTextBox.Location = new System.Drawing.Point(18, 45);
+            this.fragmentBinSizeTextBox.Name = "fragmentBinSizeTextBox";
+            this.fragmentBinSizeTextBox.Size = new System.Drawing.Size(83, 20);
+            this.fragmentBinSizeTextBox.TabIndex = 6;
             // 
             // label1
             // 
@@ -168,6 +186,15 @@ namespace CometUI.SettingsUI
             this.precursorGroupBox.TabIndex = 0;
             this.precursorGroupBox.TabStop = false;
             this.precursorGroupBox.Text = "Precursor";
+            // 
+            // precursorMassTolTextBox
+            // 
+            this.precursorMassTolTextBox.AllowDecimal = true;
+            this.precursorMassTolTextBox.AllowSpace = false;
+            this.precursorMassTolTextBox.Location = new System.Drawing.Point(23, 45);
+            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
+            this.precursorMassTolTextBox.Size = new System.Drawing.Size(76, 20);
+            this.precursorMassTolTextBox.TabIndex = 1;
             // 
             // precursorIsotopeErrorCombo
             // 
@@ -350,30 +377,6 @@ namespace CometUI.SettingsUI
             this.aIonCheckBox.TabIndex = 9;
             this.aIonCheckBox.Text = "a";
             this.aIonCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // fragmentOffsetTextBox
-            // 
-            this.fragmentOffsetTextBox.AllowSpace = false;
-            this.fragmentOffsetTextBox.Location = new System.Drawing.Point(131, 45);
-            this.fragmentOffsetTextBox.Name = "fragmentOffsetTextBox";
-            this.fragmentOffsetTextBox.Size = new System.Drawing.Size(83, 20);
-            this.fragmentOffsetTextBox.TabIndex = 7;
-            // 
-            // fragmentBinSizeTextBox
-            // 
-            this.fragmentBinSizeTextBox.AllowSpace = false;
-            this.fragmentBinSizeTextBox.Location = new System.Drawing.Point(18, 45);
-            this.fragmentBinSizeTextBox.Name = "fragmentBinSizeTextBox";
-            this.fragmentBinSizeTextBox.Size = new System.Drawing.Size(83, 20);
-            this.fragmentBinSizeTextBox.TabIndex = 6;
-            // 
-            // precursorMassTolTextBox
-            // 
-            this.precursorMassTolTextBox.AllowSpace = false;
-            this.precursorMassTolTextBox.Location = new System.Drawing.Point(23, 45);
-            this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
-            this.precursorMassTolTextBox.Size = new System.Drawing.Size(76, 20);
-            this.precursorMassTolTextBox.TabIndex = 1;
             // 
             // MassSettingsControl
             // 

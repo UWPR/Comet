@@ -90,6 +90,7 @@ namespace CometUI.SettingsUI
             // 
             // staticCTermPeptideTextBox
             // 
+            this.staticCTermPeptideTextBox.AllowDecimal = true;
             this.staticCTermPeptideTextBox.AllowSpace = false;
             this.staticCTermPeptideTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticCTermPeptideTextBox.Location = new System.Drawing.Point(128, 372);
@@ -119,6 +120,7 @@ namespace CometUI.SettingsUI
             // 
             // staticNTermPeptideTextBox
             // 
+            this.staticNTermPeptideTextBox.AllowDecimal = true;
             this.staticNTermPeptideTextBox.AllowSpace = false;
             this.staticNTermPeptideTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticNTermPeptideTextBox.Location = new System.Drawing.Point(128, 346);
@@ -128,6 +130,7 @@ namespace CometUI.SettingsUI
             // 
             // staticCTermProteinTextBox
             // 
+            this.staticCTermProteinTextBox.AllowDecimal = true;
             this.staticCTermProteinTextBox.AllowSpace = false;
             this.staticCTermProteinTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticCTermProteinTextBox.Location = new System.Drawing.Point(372, 372);
@@ -157,6 +160,7 @@ namespace CometUI.SettingsUI
             // 
             // staticNTermProteinTextBox
             // 
+            this.staticNTermProteinTextBox.AllowDecimal = true;
             this.staticNTermProteinTextBox.AllowSpace = false;
             this.staticNTermProteinTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticNTermProteinTextBox.Location = new System.Drawing.Point(372, 345);

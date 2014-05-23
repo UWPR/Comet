@@ -20,11 +20,7 @@ namespace CometUI.SettingsUI
         public bool VerifyAndUpdateSettings()
         {
             // Verify and save the precursor mass settings
-            double precursorMassTol;
-            if (!SearchSettingsDlg.ConvertStrToDouble(precursorMassTolTextBox.Text, out precursorMassTol))
-            {
-                return false;
-            }
+            var precursorMassTol = (double) precursorMassTolTextBox.DecimalValue;
             if (!Settings.Default.PrecursorMassTolerance.Equals(precursorMassTol))
             {
                 Settings.Default.PrecursorMassTolerance = precursorMassTol;
@@ -56,22 +52,14 @@ namespace CometUI.SettingsUI
             }
 
             // Set up defaults for fragment settings
-            double fragmentBinSize;
-            if (!SearchSettingsDlg.ConvertStrToDouble(fragmentBinSizeTextBox.Text, out fragmentBinSize))
-            {
-                return false;
-            }
+            var fragmentBinSize = (double) fragmentBinSizeTextBox.DecimalValue;
             if (!Settings.Default.FragmentBinSize.Equals(fragmentBinSize))
             {
                 Settings.Default.FragmentBinSize = fragmentBinSize;
                 Parent.SettingsChanged = true;
             }
 
-            double fragmentOffset;
-            if (!SearchSettingsDlg.ConvertStrToDouble(fragmentOffsetTextBox.Text, out fragmentOffset))
-            {
-                return false;
-            }
+            var fragmentOffset = (double) fragmentOffsetTextBox.DecimalValue;
             if (!Settings.Default.FragmentBinOffset.Equals(fragmentOffset))
             {
                 Settings.Default.FragmentBinOffset = fragmentOffset;

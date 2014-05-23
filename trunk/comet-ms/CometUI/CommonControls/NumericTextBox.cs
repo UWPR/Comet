@@ -6,8 +6,6 @@ namespace CometUI.CommonControls
 {
     public class NumericTextBox : TextBox
     {
-        bool _allowSpace;
-
         // Restricts the entry of characters to digits (including hex), the negative sign, 
         // the decimal point, and editing keystrokes (backspace). 
         protected override void OnKeyPress(KeyPressEventArgs e)
@@ -31,7 +29,7 @@ namespace CometUI.CommonControls
             {
                 // Digits are OK
             }
-            else if (keyInput.Equals(decimalSeparator) || keyInput.Equals(groupSeparator) ||
+            else if ((keyInput.Equals(decimalSeparator) && AllowDecimal) || keyInput.Equals(groupSeparator) ||
              keyInput.Equals(negativeSign))
             {
                 // Decimal separator is OK
@@ -44,7 +42,7 @@ namespace CometUI.CommonControls
             //    { 
             //     // Let the edit control handle control and alt key combinations 
             //    } 
-            else if (_allowSpace && e.KeyChar == ' ')
+            else if (AllowSpace && e.KeyChar == ' ')
             {
 
             }
@@ -72,18 +70,8 @@ namespace CometUI.CommonControls
             }
         }
 
-        public bool AllowSpace
-        {
-            set
-            {
-                _allowSpace = value;
-            }
-
-            get
-            {
-                return _allowSpace;
-            }
-        }
+        public bool AllowSpace { get; set; }
+        public bool AllowDecimal { get; set; }
     }
 
 }

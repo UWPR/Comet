@@ -31,44 +31,28 @@ namespace CometUI.SettingsUI
                 Parent.SettingsChanged = true;
             }
 
-            double staticNTermPeptide;
-            if (!SearchSettingsDlg.ConvertStrToDouble(staticNTermPeptideTextBox.Text, out staticNTermPeptide))
-            {
-                return false;
-            }
+            var staticNTermPeptide = (double) staticNTermPeptideTextBox.DecimalValue;
             if (!staticNTermPeptide.Equals(Settings.Default.StaticModNTermPeptide))
             {
                 Settings.Default.StaticModNTermPeptide = staticNTermPeptide;
                 Parent.SettingsChanged = true;
             }
 
-            double staticCTermPeptide;
-            if (!SearchSettingsDlg.ConvertStrToDouble(staticCTermPeptideTextBox.Text, out staticCTermPeptide))
-            {
-                return false;
-            }
+            var staticCTermPeptide = (double) staticCTermPeptideTextBox.DecimalValue;
             if (!staticCTermPeptide.Equals(Settings.Default.StaticModCTermPeptide))
             {
                 Settings.Default.StaticModCTermPeptide = staticCTermPeptide;
                 Parent.SettingsChanged = true;
             }
 
-            double staticNTermProtein;
-            if (!SearchSettingsDlg.ConvertStrToDouble(staticNTermProteinTextBox.Text, out staticNTermProtein))
-            {
-                return false;
-            }
+            var staticNTermProtein = (double)staticNTermProteinTextBox.DecimalValue;
             if (!staticNTermProtein.Equals(Settings.Default.StaticModNTermProtein))
             {
                 Settings.Default.StaticModNTermProtein = staticNTermProtein;
                 Parent.SettingsChanged = true;
             }
 
-            double staticCTermProtein;
-            if (!SearchSettingsDlg.ConvertStrToDouble(staticCTermProteinTextBox.Text, out staticCTermProtein))
-            {
-                return false;
-            }
+            var staticCTermProtein = (double) staticCTermProteinTextBox.DecimalValue;
             if (!staticCTermProtein.Equals(Settings.Default.StaticModCTermProtein))
             {
                 Settings.Default.StaticModCTermProtein = staticCTermProtein;

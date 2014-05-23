@@ -68,9 +68,7 @@ namespace CometUI.SettingsUI
                 Parent.SettingsChanged = true;
             }
 
-            // No way for Convert to throw an exception here because we
-            // already limit the input of the spinner control to int values.
-            var numOutputLines = Convert.ToInt32(numOutputLinesSpinner.Text);
+            var numOutputLines = (int) numOutputLinesSpinner.Value;
             if (numOutputLines != Settings.Default.NumOutputLines)
             {
                 Settings.Default.NumOutputLines = numOutputLines;

@@ -34,55 +34,35 @@ namespace CometUI.SettingsUI
                 Parent.SettingsChanged = true;
             }
 
-            double variableNTerminus;
-            if (!SearchSettingsDlg.ConvertStrToDouble(variableNTerminusTextBox.Text, out variableNTerminus))
-            {
-                return false;
-            }
+            var variableNTerminus = (double) variableNTerminusTextBox.DecimalValue;
             if (!variableNTerminus.Equals(Settings.Default.VariableNTerminus))
             {
                 Settings.Default.VariableNTerminus = variableNTerminus;
                 Parent.SettingsChanged = true;
             }
 
-            double variableCTerminus;
-            if (!SearchSettingsDlg.ConvertStrToDouble(variableCTerminusTextBox.Text, out variableCTerminus))
-            {
-                return false;
-            }
+            var variableCTerminus = (double) variableCTerminusTextBox.DecimalValue;
             if (!variableCTerminus.Equals(Settings.Default.VariableCTerminus))
             {
                 Settings.Default.VariableCTerminus = variableCTerminus;
                 Parent.SettingsChanged = true;
             }
 
-            int variableNTerminusDist;
-            if (!SearchSettingsDlg.ConvertStrToInt32(variableNTerminusDistTextBox.Text, out variableNTerminusDist))
-            {
-                return false;
-            } 
+            int variableNTerminusDist = variableNTerminusDistTextBox.IntValue;
             if (!variableNTerminusDist.Equals(Settings.Default.VariableNTermDistance))
             {
                 Settings.Default.VariableNTermDistance = variableNTerminusDist;
                 Parent.SettingsChanged = true;
             }
 
-            int variableCTerminusDist;
-            if (!SearchSettingsDlg.ConvertStrToInt32(variableCTerminusDistTextBox.Text, out variableCTerminusDist))
-            {
-                return false;
-            }
+            int variableCTerminusDist = variableCTerminusDistTextBox.IntValue;
             if (!variableCTerminusDist.Equals(Settings.Default.VariableCTermDistance))
             {
                 Settings.Default.VariableCTermDistance = variableCTerminusDist;
                 Parent.SettingsChanged = true;
             }
 
-            int maxModsInPeptide;
-            if (!SearchSettingsDlg.ConvertStrToInt32(maxModsInPeptideTextBox.Text, out maxModsInPeptide))
-            {
-                return false;
-            }
+            int maxModsInPeptide = (int)maxModsInPeptideTextBox.Value;
             if (!maxModsInPeptide.Equals(Settings.Default.MaxVarModsInPeptide))
             {
                 Settings.Default.MaxVarModsInPeptide = maxModsInPeptide;
