@@ -1662,15 +1662,6 @@ bool CometSearchManager::DoSearch()
             else
                iTotalSpectraSearched += g_pvQuery.size();
 
-            // Allocate memory to store results for each query spectrum.
-/*
-            if (!g_staticParams.options.bOutputSqtStream)
-            {
-               logout(" - Allocate memory to store results\n");
-               fflush(stdout);
-            }
-*/
-
             bSucceeded = AllocateResultsMem();
             if (!bSucceeded)
             {

@@ -23,8 +23,7 @@
 
 using namespace CometInterfaces;
 
-void Usage(int failure,
-           char *pszCmd);
+void Usage(char *pszCmd);
 void ProcessCmdLine(int argc, 
                     char *argv[], 
                     char *szParamsFile,
@@ -42,7 +41,7 @@ bool ValidateInputMsMsFile(char *pszInputFileName);
 int main(int argc, char *argv[])
 {
    if (argc < 2) 
-      Usage(0, argv[0]);
+      Usage(argv[0]);
 
    vector<InputFileInfo*> pvInputFiles;
    ICometSearchManager* pCometSearchMgr = GetCometSearchManager();
@@ -66,7 +65,7 @@ int main(int argc, char *argv[])
 } // main
 
 
-void Usage(int failure, char *pszCmd)
+void Usage(char *pszCmd)
 {
    logout("\n");
    logout(" Comet version \"%s\"\n %s\n", comet_version, copyright);

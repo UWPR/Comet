@@ -208,7 +208,6 @@ struct PreprocessStruct
 {
    int iHighestIon;
    double dHighestIntensity;
-   double *pdCorrelationData;
    struct msdata pTmpSpData[NUM_SP_IONS];
 };
 

@@ -80,6 +80,7 @@ private:
    static bool PreprocessSpectrum(Spectrum &spec,
                                   double *pdTmpRawData,
                                   double *pdTmpFastXcorrData,
+                                  double *pdTmpCorrelationData,
                                   double *pdTmpSmoothedSpectrum,
                                   double *pdTmpPeakExtracted);
    static bool CheckExistOutFile(int iCharge,
@@ -100,12 +101,15 @@ private:
                           Spectrum mstSpectrum,
                           double *pdTmpRawData,
                           double *pdTmpFastXcorrData,
+                          double *pdTmpCorrelationData,
                           double *pdSmoothedSpectrum,
                           double *pdTmpPeakExtracted);
    static bool LoadIons(struct Query *pScoring,
+                        double *pdTmpCorrelationData,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
    static void MakeCorrData(double *pdTmpRawData,
+                            double *pdTmpCorrelationData,
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);
    static bool Smooth(double *data,
@@ -131,6 +135,7 @@ private:
    static bool *pbMemoryPool;                 //MH: Regulator of memory use
    static double **ppdTmpRawDataArr;          //MH: Number of arrays equals threads
    static double **ppdTmpFastXcorrDataArr;    //MH: Ditto
+   static double **ppdTmpCorrelationDataArr;  //MH: Ditto
    static double **ppdTmpSmoothedSpectrumArr; //MH: Ditto
    static double **ppdTmpPeakExtractedArr;    //MH: Ditto
 };
