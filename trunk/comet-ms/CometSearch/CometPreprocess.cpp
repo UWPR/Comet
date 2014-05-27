@@ -274,7 +274,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    memset(pdTmpSmoothedSpectrum, 0, iTmp);
    memset(pdTmpPeakExtracted, 0, iTmp);
 
-   if (!LoadIons(pScoring, pdTmpCorrelationData, mstSpectrum, &pPre))
+   // pdTmpRawData is a binned array holding raw data
+   if (!LoadIons(pScoring, pdTmpRawData, mstSpectrum, &pPre))
    {
       return false;
    }
@@ -321,6 +322,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
 
    // Create data for correlation analysis.
+   // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
    MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
 
    // Make fast xcorr spectrum.
@@ -904,29 +906,13 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
 
 //  Reads MSMS data file as ASCII mass/intensity pairs.
 bool CometPreprocess::LoadIons(struct Query *pScoring,
-                               double *pdTmpCorrelationData,
+                               double *pdTmpRawData,
                                Spectrum mstSpectrum,
                                struct PreprocessStruct *pPre)
 {
    int  i;
    double dIon,
           dIntensity;
-
-/*
-   try
-   {
-      pPre->pdCorrelationData = new double[pScoring->_spectrumInfoInternal.iArraySize]();
-   }
-   catch (std::bad_alloc& ba)
-   {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pdCorrelationData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetError(true, strErrorMsg);
-      logerr("%s\n\n", szErrorMsg);
-      return false;
-   }
-*/
 
    i = 0;
    while(true)
@@ -952,7 +938,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                pPre->iHighestIon = iBinIon;
 
             if ((iBinIon < pScoring->_spectrumInfoInternal.iArraySize)
-                  && (dIntensity > pdTmpCorrelationData[iBinIon]))
+                  && (dIntensity > pdTmpRawData[iBinIon]))
             {
                if (g_staticParams.options.iRemovePrecursor == 1)
                {
@@ -962,11 +948,11 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
                   if (fabs(dIon - dMZ) > g_staticParams.options.dRemovePrecursorTol)
                   {
-                     if (dIntensity > pdTmpCorrelationData[iBinIon])
-                        pdTmpCorrelationData[iBinIon] = dIntensity;
+                     if (dIntensity > pdTmpRawData[iBinIon])
+                        pdTmpRawData[iBinIon] = dIntensity;
 
-                     if (pdTmpCorrelationData[iBinIon] > pPre->dHighestIntensity)
-                        pPre->dHighestIntensity = pdTmpCorrelationData[iBinIon];
+                     if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
+                        pPre->dHighestIntensity = pdTmpRawData[iBinIon];
                   }
                }
                else if (g_staticParams.options.iRemovePrecursor == 2)
@@ -987,20 +973,20 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                   }
                   if (bNotPrec)
                   {
-                     if (dIntensity > pdTmpCorrelationData[iBinIon])
-                        pdTmpCorrelationData[iBinIon] = dIntensity;
+                     if (dIntensity > pdTmpRawData[iBinIon])
+                        pdTmpRawData[iBinIon] = dIntensity;
 
-                     if (pdTmpCorrelationData[iBinIon] > pPre->dHighestIntensity)
-                        pPre->dHighestIntensity = pdTmpCorrelationData[iBinIon];
+                     if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
+                        pPre->dHighestIntensity = pdTmpRawData[iBinIon];
                   }
                }
                else // iRemovePrecursor==0
                {
-                  if (dIntensity > pdTmpCorrelationData[iBinIon])
-                     pdTmpCorrelationData[iBinIon] = dIntensity;
+                  if (dIntensity > pdTmpRawData[iBinIon])
+                     pdTmpRawData[iBinIon] = dIntensity;
 
-                  if (pdTmpCorrelationData[iBinIon] > pPre->dHighestIntensity)
-                     pPre->dHighestIntensity = pdTmpCorrelationData[iBinIon];
+                  if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
+                     pPre->dHighestIntensity = pdTmpRawData[iBinIon];
                }
             }
          }
@@ -1036,8 +1022,7 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
 
    for (i=0; i < pScoring->_spectrumInfoInternal.iArraySize; i++)
    {
-      pdTmpRawData[i] = pdTmpCorrelationData[i]*dTmp1;
-      pdTmpCorrelationData[i]=0.0;
+      pdTmpRawData[i] = pdTmpRawData[i]*dTmp1;
 
       if (dMaxOverallInten < pdTmpRawData[i])
          dMaxOverallInten = pdTmpRawData[i];

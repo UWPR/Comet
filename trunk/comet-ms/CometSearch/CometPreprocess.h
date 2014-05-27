@@ -105,7 +105,7 @@ private:
                           double *pdSmoothedSpectrum,
                           double *pdTmpPeakExtracted);
    static bool LoadIons(struct Query *pScoring,
-                        double *pdTmpCorrelationData,
+                        double *pdTmpRawData,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
    static void MakeCorrData(double *pdTmpRawData,
