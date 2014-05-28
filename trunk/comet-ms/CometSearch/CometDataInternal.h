@@ -746,9 +746,10 @@ struct Query
    }
 };
 
-extern vector <Query*>  g_pvQuery;
+extern vector <Query*>         g_pvQuery;
 extern vector <InputFileInfo*> g_pvInputFiles;
-extern Mutex            g_pvQueryMutex;
+extern Mutex                   g_pvQueryMutex;
+extern Mutex                   g_preprocessMemoryPoolMutex;
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {

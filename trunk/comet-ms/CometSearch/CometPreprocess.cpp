@@ -212,6 +212,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    //MH: Grab available array from shared memory pool.
    int i;
+   Threading::LockMutex(g_preprocessMemoryPoolMutex);
    for (i=0; i<g_staticParams.options.iNumThreads; i++) 
    {
       if (pbMemoryPool[i]==false)
@@ -220,7 +221,8 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
          break;
       }
    }
-
+   Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
+   
    //MH: Fail-safe to stop if memory isn't available for the next thread.
    //Needs better capture and return?
    if (i==g_staticParams.options.iNumThreads)

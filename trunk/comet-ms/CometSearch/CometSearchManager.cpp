@@ -41,6 +41,7 @@ std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
+Mutex                         g_preprocessMemoryPoolMutex;
 CometStatus                   g_cometStatus;
 
 /******************************************************************************
@@ -468,12 +469,16 @@ CometSearchManager::CometSearchManager()
 {
    // Initialize the mutexes we'll use to protect global data.
    Threading::CreateMutex(&g_pvQueryMutex);
+
+   Threading::CreateMutex(&g_preprocessMemoryPoolMutex);
 }
 
 CometSearchManager::~CometSearchManager()
 {
    // Destroy the mutex we used to protect g_pvQuery.
    Threading::DestroyMutex(g_pvQueryMutex);
+
+   Threading::DestroyMutex(g_preprocessMemoryPoolMutex);
 
    // Clean up the input files vector
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)

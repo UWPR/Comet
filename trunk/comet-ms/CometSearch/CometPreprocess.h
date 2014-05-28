@@ -44,9 +44,13 @@ struct PreprocessThreadData
    {
       //MH: Mark that the memory is no longer in use. 
       //DO NOT FREE MEMORY HERE. Just release pointer.
+      Threading::LockMutex(g_preprocessMemoryPoolMutex);
+
       if(pbMemoryPool!=NULL)
          *pbMemoryPool=false;
       pbMemoryPool=NULL;
+      
+      Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
    }
 
    void SetMemory(bool *pbMemoryPool_in)
