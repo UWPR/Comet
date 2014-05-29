@@ -171,6 +171,14 @@ namespace CometUI.SettingsUI
                 DialogResult = DialogResult.Abort;
             }
 
+            if (!MiscSettingsControl.VerifyAndUpdateSettings())
+            {
+                MessageBox.Show(Resources.SearchSettingsDlg_BtnOKClick_Error_updating_misc_settings_,
+                    Resources.SearchSettingsDlg_BtnOKClick_Search_Settings, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                DialogResult = DialogResult.Abort;
+            }
+
             DialogResult = DialogResult.OK;
         }
 

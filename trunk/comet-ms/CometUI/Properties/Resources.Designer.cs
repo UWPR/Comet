@@ -209,6 +209,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Error updating misc settings..
+        /// </summary>
+        internal static string SearchSettingsDlg_BtnOKClick_Error_updating_misc_settings_ {
+            get {
+                return ResourceManager.GetString("SearchSettingsDlg_BtnOKClick_Error_updating_misc_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error updating Output settings..
         /// </summary>
         internal static string SearchSettingsDlg_BtnOKClick_Error_updating_Output_settings_ {

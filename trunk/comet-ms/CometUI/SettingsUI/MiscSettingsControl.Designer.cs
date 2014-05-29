@@ -1,4 +1,5 @@
 ﻿using CometUI.CommonControls;
+using CometUI.CustomControls;
 
 namespace CometUI.SettingsUI
 {
@@ -48,35 +49,28 @@ namespace CometUI.SettingsUI
             this.label11 = new System.Windows.Forms.Label();
             this.mzxmlActivationLevelCombo = new System.Windows.Forms.ComboBox();
             this.mzXMLGroupBox = new System.Windows.Forms.GroupBox();
+            this.mzxmlPrecursorChargeMaxTextBox = new NumericTextBox();
+            this.mzxmlPrecursorChargeMinTextBox = new NumericTextBox();
+            this.mzxmlScanRangeMaxTextBox = new NumericTextBox();
+            this.mzxmlScanRangeMinTextBox = new NumericTextBox();
             this.spectralProcessingGroupBox = new System.Windows.Forms.GroupBox();
+            this.spectralProcessingMinPeaksTextBox = new NumericTextBox();
             this.label16 = new System.Windows.Forms.Label();
-            this.spectralProcessingClearMZRangeMaxTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
+            this.spectralProcessingClearMZRangeMaxTextBox = new NumericTextBox();
             this.label17 = new System.Windows.Forms.Label();
-            this.spectralProcessingClearMZRangeMinTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
+            this.spectralProcessingClearMZRangeMinTextBox = new NumericTextBox();
             this.spectralProcessingRemovePrecursorPeakCombo = new System.Windows.Forms.ComboBox();
             this.label15 = new System.Windows.Forms.Label();
-            this.spectralProcessingPrecursorRemovalTolTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
+            this.spectralProcessingPrecursorRemovalTolTextBox = new NumericTextBox();
             this.label14 = new System.Windows.Forms.Label();
             this.label13 = new System.Windows.Forms.Label();
             this.label12 = new System.Windows.Forms.Label();
-            this.spectralProcessingMinIntensityTextBox = new NumericTextBox();//System.Windows.Forms.TextBox();
+            this.spectralProcessingMinIntensityTextBox = new NumericTextBox();
             this.label5 = new System.Windows.Forms.Label();
-            this.mzxmlScanRangeMinTextBox = new System.Windows.Forms.NumericUpDown();
-            this.mzxmlScanRangeMaxTextBox = new System.Windows.Forms.NumericUpDown();
-            this.mzxmlPrecursorChargeMinTextBox = new System.Windows.Forms.NumericUpDown();
-            this.mzxmlPrecursorChargeMaxTextBox = new System.Windows.Forms.NumericUpDown();
-            this.spectralProcessingMinPeaksTextBox = new System.Windows.Forms.NumericUpDown();
-            this.spectrumBatchSizeTextBox = new System.Windows.Forms.NumericUpDown();
-            this.numResultsTextBox = new System.Windows.Forms.NumericUpDown();
+            this.spectrumBatchSizeTextBox = new NumericTextBox();
+            this.numResultsTextBox = new NumericTextBox();
             this.mzXMLGroupBox.SuspendLayout();
             this.spectralProcessingGroupBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.mzxmlScanRangeMinTextBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mzxmlScanRangeMaxTextBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mzxmlPrecursorChargeMinTextBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mzxmlPrecursorChargeMaxTextBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.spectralProcessingMinPeaksTextBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.spectrumBatchSizeTextBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numResultsTextBox)).BeginInit();
             this.SuspendLayout();
             // 
             // numThreadsCombo
@@ -234,7 +228,7 @@ namespace CometUI.SettingsUI
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(95, 49);
+            this.label7.Location = new System.Drawing.Point(101, 49);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(16, 13);
             this.label7.TabIndex = 21;
@@ -252,7 +246,7 @@ namespace CometUI.SettingsUI
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(95, 104);
+            this.label9.Location = new System.Drawing.Point(101, 103);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(16, 13);
             this.label9.TabIndex = 25;
@@ -285,7 +279,7 @@ namespace CometUI.SettingsUI
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(102, 139);
+            this.label11.Location = new System.Drawing.Point(117, 139);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(86, 13);
             this.label11.TabIndex = 29;
@@ -306,7 +300,7 @@ namespace CometUI.SettingsUI
             "PQD",
             "HCD",
             "IRMPD"});
-            this.mzxmlActivationLevelCombo.Location = new System.Drawing.Point(105, 155);
+            this.mzxmlActivationLevelCombo.Location = new System.Drawing.Point(120, 155);
             this.mzxmlActivationLevelCombo.Name = "mzxmlActivationLevelCombo";
             this.mzxmlActivationLevelCombo.Size = new System.Drawing.Size(83, 21);
             this.mzxmlActivationLevelCombo.TabIndex = 6;
@@ -332,6 +326,42 @@ namespace CometUI.SettingsUI
             this.mzXMLGroupBox.TabStop = false;
             this.mzXMLGroupBox.Text = "mzXML";
             // 
+            // mzxmlPrecursorChargeMaxTextBox
+            // 
+            this.mzxmlPrecursorChargeMaxTextBox.AllowDecimal = false;
+            this.mzxmlPrecursorChargeMaxTextBox.AllowSpace = false;
+            this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(123, 100);
+            this.mzxmlPrecursorChargeMaxTextBox.Name = "mzxmlPrecursorChargeMaxTextBox";
+            this.mzxmlPrecursorChargeMaxTextBox.Size = new System.Drawing.Size(80, 20);
+            this.mzxmlPrecursorChargeMaxTextBox.TabIndex = 4;
+            // 
+            // mzxmlPrecursorChargeMinTextBox
+            // 
+            this.mzxmlPrecursorChargeMinTextBox.AllowDecimal = false;
+            this.mzxmlPrecursorChargeMinTextBox.AllowSpace = false;
+            this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(18, 100);
+            this.mzxmlPrecursorChargeMinTextBox.Name = "mzxmlPrecursorChargeMinTextBox";
+            this.mzxmlPrecursorChargeMinTextBox.Size = new System.Drawing.Size(80, 20);
+            this.mzxmlPrecursorChargeMinTextBox.TabIndex = 3;
+            // 
+            // mzxmlScanRangeMaxTextBox
+            // 
+            this.mzxmlScanRangeMaxTextBox.AllowDecimal = false;
+            this.mzxmlScanRangeMaxTextBox.AllowSpace = false;
+            this.mzxmlScanRangeMaxTextBox.Location = new System.Drawing.Point(123, 45);
+            this.mzxmlScanRangeMaxTextBox.Name = "mzxmlScanRangeMaxTextBox";
+            this.mzxmlScanRangeMaxTextBox.Size = new System.Drawing.Size(80, 20);
+            this.mzxmlScanRangeMaxTextBox.TabIndex = 2;
+            // 
+            // mzxmlScanRangeMinTextBox
+            // 
+            this.mzxmlScanRangeMinTextBox.AllowDecimal = false;
+            this.mzxmlScanRangeMinTextBox.AllowSpace = false;
+            this.mzxmlScanRangeMinTextBox.Location = new System.Drawing.Point(18, 46);
+            this.mzxmlScanRangeMinTextBox.Name = "mzxmlScanRangeMinTextBox";
+            this.mzxmlScanRangeMinTextBox.Size = new System.Drawing.Size(80, 20);
+            this.mzxmlScanRangeMinTextBox.TabIndex = 1;
+            // 
             // spectralProcessingGroupBox
             // 
             this.spectralProcessingGroupBox.Controls.Add(this.spectralProcessingMinPeaksTextBox);
@@ -354,6 +384,15 @@ namespace CometUI.SettingsUI
             this.spectralProcessingGroupBox.TabStop = false;
             this.spectralProcessingGroupBox.Text = "Spectral Processing";
             // 
+            // spectralProcessingMinPeaksTextBox
+            // 
+            this.spectralProcessingMinPeaksTextBox.AllowDecimal = false;
+            this.spectralProcessingMinPeaksTextBox.AllowSpace = false;
+            this.spectralProcessingMinPeaksTextBox.Location = new System.Drawing.Point(20, 45);
+            this.spectralProcessingMinPeaksTextBox.Name = "spectralProcessingMinPeaksTextBox";
+            this.spectralProcessingMinPeaksTextBox.Size = new System.Drawing.Size(80, 20);
+            this.spectralProcessingMinPeaksTextBox.TabIndex = 7;
+            // 
             // label16
             // 
             this.label16.AutoSize = true;
@@ -365,9 +404,11 @@ namespace CometUI.SettingsUI
             // 
             // spectralProcessingClearMZRangeMaxTextBox
             // 
-            this.spectralProcessingClearMZRangeMaxTextBox.Location = new System.Drawing.Point(137, 172);
+            this.spectralProcessingClearMZRangeMaxTextBox.AllowDecimal = true;
+            this.spectralProcessingClearMZRangeMaxTextBox.AllowSpace = false;
+            this.spectralProcessingClearMZRangeMaxTextBox.Location = new System.Drawing.Point(135, 172);
             this.spectralProcessingClearMZRangeMaxTextBox.Name = "spectralProcessingClearMZRangeMaxTextBox";
-            this.spectralProcessingClearMZRangeMaxTextBox.Size = new System.Drawing.Size(78, 20);
+            this.spectralProcessingClearMZRangeMaxTextBox.Size = new System.Drawing.Size(80, 20);
             this.spectralProcessingClearMZRangeMaxTextBox.TabIndex = 12;
             // 
             // label17
@@ -381,9 +422,11 @@ namespace CometUI.SettingsUI
             // 
             // spectralProcessingClearMZRangeMinTextBox
             // 
+            this.spectralProcessingClearMZRangeMinTextBox.AllowDecimal = true;
+            this.spectralProcessingClearMZRangeMinTextBox.AllowSpace = false;
             this.spectralProcessingClearMZRangeMinTextBox.Location = new System.Drawing.Point(20, 172);
             this.spectralProcessingClearMZRangeMinTextBox.Name = "spectralProcessingClearMZRangeMinTextBox";
-            this.spectralProcessingClearMZRangeMinTextBox.Size = new System.Drawing.Size(78, 20);
+            this.spectralProcessingClearMZRangeMinTextBox.Size = new System.Drawing.Size(80, 20);
             this.spectralProcessingClearMZRangeMinTextBox.TabIndex = 11;
             // 
             // spectralProcessingRemovePrecursorPeakCombo
@@ -409,6 +452,8 @@ namespace CometUI.SettingsUI
             // 
             // spectralProcessingPrecursorRemovalTolTextBox
             // 
+            this.spectralProcessingPrecursorRemovalTolTextBox.AllowDecimal = true;
+            this.spectralProcessingPrecursorRemovalTolTextBox.AllowSpace = false;
             this.spectralProcessingPrecursorRemovalTolTextBox.Location = new System.Drawing.Point(149, 82);
             this.spectralProcessingPrecursorRemovalTolTextBox.Name = "spectralProcessingPrecursorRemovalTolTextBox";
             this.spectralProcessingPrecursorRemovalTolTextBox.Size = new System.Drawing.Size(66, 20);
@@ -437,7 +482,7 @@ namespace CometUI.SettingsUI
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(134, 30);
+            this.label12.Location = new System.Drawing.Point(132, 30);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(69, 13);
             this.label12.TabIndex = 24;
@@ -445,9 +490,11 @@ namespace CometUI.SettingsUI
             // 
             // spectralProcessingMinIntensityTextBox
             // 
-            this.spectralProcessingMinIntensityTextBox.Location = new System.Drawing.Point(137, 46);
+            this.spectralProcessingMinIntensityTextBox.AllowDecimal = true;
+            this.spectralProcessingMinIntensityTextBox.AllowSpace = false;
+            this.spectralProcessingMinIntensityTextBox.Location = new System.Drawing.Point(135, 46);
             this.spectralProcessingMinIntensityTextBox.Name = "spectralProcessingMinIntensityTextBox";
-            this.spectralProcessingMinIntensityTextBox.Size = new System.Drawing.Size(78, 20);
+            this.spectralProcessingMinIntensityTextBox.Size = new System.Drawing.Size(80, 20);
             this.spectralProcessingMinIntensityTextBox.TabIndex = 8;
             // 
             // label5
@@ -459,78 +506,22 @@ namespace CometUI.SettingsUI
             this.label5.TabIndex = 22;
             this.label5.Text = "Min Peaks:";
             // 
-            // mzxmlScanRangeMinTextBox
-            // 
-            this.mzxmlScanRangeMinTextBox.Location = new System.Drawing.Point(18, 46);
-            this.mzxmlScanRangeMinTextBox.Maximum = new decimal(new int[] {
-            -1486618624,
-            232830643,
-            0,
-            0});
-            this.mzxmlScanRangeMinTextBox.Name = "mzxmlScanRangeMinTextBox";
-            this.mzxmlScanRangeMinTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlScanRangeMinTextBox.TabIndex = 1;
-            // 
-            // mzxmlScanRangeMaxTextBox
-            // 
-            this.mzxmlScanRangeMaxTextBox.Location = new System.Drawing.Point(117, 46);
-            this.mzxmlScanRangeMaxTextBox.Maximum = new decimal(new int[] {
-            -1486618624,
-            232830643,
-            0,
-            0});
-            this.mzxmlScanRangeMaxTextBox.Name = "mzxmlScanRangeMaxTextBox";
-            this.mzxmlScanRangeMaxTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlScanRangeMaxTextBox.TabIndex = 2;
-            // 
-            // mzxmlPrecursorChargeMinTextBox
-            // 
-            this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(18, 101);
-            this.mzxmlPrecursorChargeMinTextBox.Name = "mzxmlPrecursorChargeMinTextBox";
-            this.mzxmlPrecursorChargeMinTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlPrecursorChargeMinTextBox.TabIndex = 3;
-            // 
-            // mzxmlPrecursorChargeMaxTextBox
-            // 
-            this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(117, 101);
-            this.mzxmlPrecursorChargeMaxTextBox.Name = "mzxmlPrecursorChargeMaxTextBox";
-            this.mzxmlPrecursorChargeMaxTextBox.Size = new System.Drawing.Size(71, 20);
-            this.mzxmlPrecursorChargeMaxTextBox.TabIndex = 4;
-            // 
-            // spectralProcessingMinPeaksTextBox
-            // 
-            this.spectralProcessingMinPeaksTextBox.Location = new System.Drawing.Point(20, 46);
-            this.spectralProcessingMinPeaksTextBox.Maximum = new decimal(new int[] {
-            -1486618624,
-            232830643,
-            0,
-            0});
-            this.spectralProcessingMinPeaksTextBox.Name = "spectralProcessingMinPeaksTextBox";
-            this.spectralProcessingMinPeaksTextBox.Size = new System.Drawing.Size(78, 20);
-            this.spectralProcessingMinPeaksTextBox.TabIndex = 7;
-            // 
             // spectrumBatchSizeTextBox
             // 
-            this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 286);
-            this.spectrumBatchSizeTextBox.Maximum = new decimal(new int[] {
-            -1486618624,
-            232830643,
-            0,
-            0});
+            this.spectrumBatchSizeTextBox.AllowDecimal = false;
+            this.spectrumBatchSizeTextBox.AllowSpace = false;
+            this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 287);
             this.spectrumBatchSizeTextBox.Name = "spectrumBatchSizeTextBox";
-            this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(107, 20);
+            this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(103, 20);
             this.spectrumBatchSizeTextBox.TabIndex = 13;
             // 
             // numResultsTextBox
             // 
+            this.numResultsTextBox.AllowDecimal = false;
+            this.numResultsTextBox.AllowSpace = false;
             this.numResultsTextBox.Location = new System.Drawing.Point(126, 339);
-            this.numResultsTextBox.Maximum = new decimal(new int[] {
-            -1486618624,
-            232830643,
-            0,
-            0});
             this.numResultsTextBox.Name = "numResultsTextBox";
-            this.numResultsTextBox.Size = new System.Drawing.Size(74, 20);
+            this.numResultsTextBox.Size = new System.Drawing.Size(67, 20);
             this.numResultsTextBox.TabIndex = 15;
             // 
             // MiscSettingsControl
@@ -556,13 +547,6 @@ namespace CometUI.SettingsUI
             this.mzXMLGroupBox.PerformLayout();
             this.spectralProcessingGroupBox.ResumeLayout(false);
             this.spectralProcessingGroupBox.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.mzxmlScanRangeMinTextBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mzxmlScanRangeMaxTextBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mzxmlPrecursorChargeMinTextBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mzxmlPrecursorChargeMaxTextBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.spectralProcessingMinPeaksTextBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.spectrumBatchSizeTextBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numResultsTextBox)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -590,23 +574,23 @@ namespace CometUI.SettingsUI
         private System.Windows.Forms.GroupBox mzXMLGroupBox;
         private System.Windows.Forms.GroupBox spectralProcessingGroupBox;
         private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.TextBox spectralProcessingMinIntensityTextBox;
         private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.TextBox spectralProcessingPrecursorRemovalTolTextBox;
         private System.Windows.Forms.Label label14;
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.Label label15;
         private System.Windows.Forms.ComboBox spectralProcessingRemovePrecursorPeakCombo;
         private System.Windows.Forms.Label label16;
-        private System.Windows.Forms.TextBox spectralProcessingClearMZRangeMaxTextBox;
         private System.Windows.Forms.Label label17;
-        private System.Windows.Forms.TextBox spectralProcessingClearMZRangeMinTextBox;
-        private System.Windows.Forms.NumericUpDown mzxmlScanRangeMinTextBox;
-        private System.Windows.Forms.NumericUpDown mzxmlScanRangeMaxTextBox;
-        private System.Windows.Forms.NumericUpDown mzxmlPrecursorChargeMinTextBox;
-        private System.Windows.Forms.NumericUpDown mzxmlPrecursorChargeMaxTextBox;
-        private System.Windows.Forms.NumericUpDown spectralProcessingMinPeaksTextBox;
-        private System.Windows.Forms.NumericUpDown spectrumBatchSizeTextBox;
-        private System.Windows.Forms.NumericUpDown numResultsTextBox;
+        private NumericTextBox spectralProcessingMinIntensityTextBox;
+        private NumericTextBox spectralProcessingPrecursorRemovalTolTextBox;
+        private NumericTextBox spectralProcessingClearMZRangeMaxTextBox;
+        private NumericTextBox spectralProcessingClearMZRangeMinTextBox;
+        private NumericTextBox mzxmlScanRangeMinTextBox;
+        private NumericTextBox mzxmlScanRangeMaxTextBox;
+        private NumericTextBox mzxmlPrecursorChargeMinTextBox;
+        private NumericTextBox mzxmlPrecursorChargeMaxTextBox;
+        private NumericTextBox spectrumBatchSizeTextBox;
+        private NumericTextBox numResultsTextBox;
+        private NumericTextBox spectralProcessingMinPeaksTextBox;
     }
 }
