@@ -69,6 +69,11 @@ public:
 
    ~ThreadPool()
    {
+     for (int i = 0; i < _threads.size(); i++)
+     {
+         _threads[i]->End();
+     }
+
      Threading::DestroyMutex(_poolAccessMutex);
    }
 
@@ -212,6 +217,8 @@ public:
 
    ThreadManager(ThreadPool<T> *pPool)
    {
+      _endThread = false;
+
       ThreadManager<T>::_pPool = pPool;
 
       Threading::CreateSemaphore(&_wakeSemaphore);
@@ -247,6 +254,13 @@ public:
       Threading::SignalSemaphore(_wakeSemaphore);
    }
 
+   void End()
+   {
+      Threading::WaitSemaphore(_sleepSemaphore);
+      _endThread = true;
+      Threading::SignalSemaphore(_wakeSemaphore);
+   }
+
    uint32_t Run()
    {
       typename ThreadPool<T>::NextThreadState nextState;
@@ -258,13 +272,20 @@ public:
             Sleep();
          } 
 
-         // We've been awoken, so we run the function we're bound to.
+         // We've been awoken. First check to see if we should die. If not, 
+         // we run the function we're bound to.
+         if (_endThread)
+         {
+             break;
+         }
+
          (*_pPool->GetThreadProc()) (GetParam());
 
          // So we don't loop endlessly with the same parameter
          SetParam(NULL);
       }
       // The thread exits if the pool won't accept it's rejoin - deleting itself on exit
+      Threading::EndThread();
       delete this;
       return 0;
    }
@@ -275,6 +296,7 @@ protected:
    Semaphore     _sleepSemaphore;
    Semaphore     _wakeSemaphore;
    ThreadId      _threadIdentifier;
+   bool          _endThread;
 };
 
 #endif

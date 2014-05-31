@@ -43,12 +43,16 @@ public:
    // Thread-specific methods
    static void BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId);
    static void ThreadSleep(unsigned long dwMilliseconds);
+   static void EndThread();
   
    // Semaphore methods
    static void CreateSemaphore(Semaphore* pSem);
    static void WaitSemaphore(Semaphore& sem);
    static void SignalSemaphore(Semaphore& sem);
    static void DestroySemaphore(Semaphore& sem);
+
+private:
+    static ThreadId _threadId;
 };
 
 #endif // ifndef _THREADING_H

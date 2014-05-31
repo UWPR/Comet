@@ -68,7 +68,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    Threading::CreateMutex(&_maxChargeMutex);
 
    // Get the thread pool of threads that will preprocess the data.
-   ThreadPool<PreprocessThreadData *> preprocessThreadPool(PreprocessThreadProc,
+   ThreadPool<PreprocessThreadData *> *pPreprocessThreadPool = new ThreadPool<PreprocessThreadData *>(PreprocessThreadProc,
          minNumThreads, maxNumThreads);
 
    // Load all input spectra.
@@ -147,7 +147,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                Threading::UnlockMutex(g_pvQueryMutex);
 
                // Queue at most 1 additional parameter for threads to process.
-               preprocessThreadPool.WaitForQueuedParams(1, 1);
+               pPreprocessThreadPool->WaitForQueuedParams(1, 1);
               
                //-->MH
                //If there are no Z-lines, filter the spectrum for charge state
@@ -156,7 +156,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                PreprocessThreadData *pPreprocessThreadData =
                   new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
-               preprocessThreadPool.Launch(pPreprocessThreadData);
+               pPreprocessThreadPool->Launch(pPreprocessThreadData);
             }
          }
 
@@ -193,9 +193,12 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    }
 
    // Wait for active preprocess threads to complete processing.
-   preprocessThreadPool.WaitForThreads();
+   pPreprocessThreadPool->WaitForThreads();
 
    Threading::DestroyMutex(_maxChargeMutex);
+
+   delete pPreprocessThreadPool;
+   pPreprocessThreadPool = NULL;
 
    bool bError = false;
    g_cometStatus.GetError(bError);

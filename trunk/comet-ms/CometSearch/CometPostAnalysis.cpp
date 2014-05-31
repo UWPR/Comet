@@ -41,13 +41,13 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
 
    // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to do a post analysis.
-   ThreadPool<PostAnalysisThreadData *> postAnalysisThreadPool(PostAnalysisThreadProc,
+   ThreadPool<PostAnalysisThreadData *> *pPostAnalysisThreadPool = new ThreadPool<PostAnalysisThreadData*>(PostAnalysisThreadProc,
          minNumThreads, maxNumThreads);
 
    for (int i=0; i<(int)g_pvQuery.size(); i++)
    {
       PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
-      postAnalysisThreadPool.Launch(pThreadData);
+      pPostAnalysisThreadPool->Launch(pThreadData);
 
       bool bError = false;
       g_cometStatus.GetError(bError);
@@ -59,7 +59,10 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
    }
 
    // Wait for active post analysis threads to complete processing.
-   postAnalysisThreadPool.WaitForThreads();
+   pPostAnalysisThreadPool->WaitForThreads();
+
+   delete pPostAnalysisThreadPool;
+   pPostAnalysisThreadPool = NULL;
 
    // Check for errors one more time since there might have been an error 
    // while we were waiting for the threads.

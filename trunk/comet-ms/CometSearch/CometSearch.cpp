@@ -49,7 +49,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to so a search.
-   ThreadPool<SearchThreadData *> searchThreadPool(SearchThreadProc, minNumThreads, maxNumThreads);
+   ThreadPool<SearchThreadData *> *pSearchThreadPool = new ThreadPool<SearchThreadData *>(SearchThreadProc, minNumThreads, maxNumThreads);
 
    g_staticParams.databaseInfo.uliTotAACount = 0;
    g_staticParams.databaseInfo.iTotalNumProteins = 0;
@@ -81,7 +81,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    while(!feof(fptr))
    {
       // Queue at most 1 additional parameter for threads to process.
-      searchThreadPool.WaitForQueuedParams(1);
+      pSearchThreadPool->WaitForQueuedParams(1);
 
       dbe.strName = "";
       dbe.strSeq = "";
@@ -138,7 +138,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       // Now search sequence entry; add threading here so that
       // each protein sequence is passed to a separate thread.
       SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
-      searchThreadPool.Launch(pSearchThreadData);
+      pSearchThreadPool->Launch(pSearchThreadData);
 
       bool bError = false;
       g_cometStatus.GetError(bError);
@@ -150,7 +150,10 @@ bool CometSearch::RunSearch(int minNumThreads,
    }
 
    // Wait for active search threads to complete processing.
-   searchThreadPool.WaitForThreads();
+   pSearchThreadPool->WaitForThreads();
+
+   delete pSearchThreadPool;
+   pSearchThreadPool = NULL;
 
    // Check for errors one more time since there might have been an error 
    // while we were waiting for the threads.

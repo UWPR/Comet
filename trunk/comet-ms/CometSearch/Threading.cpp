@@ -16,6 +16,7 @@
 
 #include "Threading.h"
 
+ThreadId Threading::_threadId;
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -56,7 +57,13 @@ void Threading::DestroyMutex(Mutex& mutex)
 
 void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
 {
+   _threadId = *pThreadId;
    pthread_create(pThreadId, NULL, pFunction, arg);
+}
+
+void Threading::EndThread()
+{
+    pthread_exit((void*)&_threadId);
 }
 
 void Threading::ThreadSleep(unsigned long dwMilliseconds)
@@ -134,12 +141,18 @@ void Threading::DestroyMutex(Mutex& mutex)
 
 void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
 {
+    _threadId = *pThreadId;
    _beginthreadex (NULL,
          0,
          (unsigned int(__stdcall*) ( void*)) pFunction, 
          (void*) arg,
          0,
          pThreadId);
+}
+
+void Threading::EndThread()
+{
+    _endthreadex(0);
 }
 
 void Threading::ThreadSleep(unsigned long dwMilliseconds)
