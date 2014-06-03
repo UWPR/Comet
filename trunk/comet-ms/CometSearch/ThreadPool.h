@@ -69,7 +69,7 @@ public:
 
    ~ThreadPool()
    {
-     for (int i = 0; i < _threads.size(); i++)
+     for (unsigned int i = 0; i < _threads.size(); i++)
      {
          _threads[i]->End();
      }

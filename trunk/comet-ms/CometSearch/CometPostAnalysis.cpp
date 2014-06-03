@@ -123,7 +123,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), SPQSortFn);
    pQuery->_pResults[0].iRankSp = 1;
 
-   for (unsigned int ii=1; ii<iSize; ii++)
+   for (int ii=1; ii<iSize; ii++)
    {
       // Determine score rankings
       if (isEqual(pQuery->_pResults[ii].fScoreSp, pQuery->_pResults[ii-1].fScoreSp))
@@ -148,7 +148,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
       qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), SPQSortFn);
       pQuery->_pDecoys[0].iRankSp = 1;
 
-      for (unsigned int ii=1; ii<iSize; ii++)
+      for (int ii=1; ii<iSize; ii++)
       {
          // Determine score rankings
          if (isEqual(pQuery->_pDecoys[ii].fScoreSp, pQuery->_pDecoys[ii-1].fScoreSp))
