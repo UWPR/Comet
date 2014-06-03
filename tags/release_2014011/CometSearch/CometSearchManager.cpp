@@ -1360,6 +1360,11 @@ void CometSearchManager::GetErrorMessage(string &strErrorMsg)
 
 bool CometSearchManager::DoSearch()
 {
+
+#ifdef _WIN32
+   _set_output_format(_TWO_DIGIT_EXPONENT);  // set exponent precision to 2 digits to match linux
+#endif
+
    if (!InitializeStaticParams())
    {
       return false;
