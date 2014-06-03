@@ -1,0 +1,213 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="InputFilesControl_AddInputFiles_Error">
+    <value xml:space="preserve">Error</value>
+  </data>
+  <data name="InputFilesControl_ShowAddInputFile_Open_Input_File">
+    <value xml:space="preserve">Open Input File</value>
+  </data>
+  <data name="CometUI_Title_Error">
+    <value xml:space="preserve">Error</value>
+  </data>
+  <data name="InputFilesControl_ShowOpenDatabaseFile_Open_Proteome_Database_File">
+    <value xml:space="preserve">Open Proteome Database File</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_residue_">
+    <value xml:space="preserve">Please enter a valid residue.</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue">
+    <value xml:space="preserve">Invalid Residue</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_">
+    <value xml:space="preserve">Please enter a valid number for the mass difference.</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Mass_Diff">
+    <value xml:space="preserve">Invalid Mass Diff</value>
+  </data>
+  <data name="StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_">
+    <value xml:space="preserve">Please enter a valid number for the mass difference.</value>
+  </data>
+  <data name="StaticModSettingsControl_StaticModsDataGridViewCellEndEdit_Invalid_Mass_Diff">
+    <value xml:space="preserve">Invalid Mass Diff</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_between_0_and_64_">
+    <value xml:space="preserve">Please enter a valid number between 0 and 64.</value>
+  </data>
+  <data name="VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods">
+    <value xml:space="preserve">Invalid Max Mods</value>
+  </data>
+  <data name="RunSearchDlg_BtnRunSearchClick_Search_Failed">
+    <value xml:space="preserve">Search Failed</value>
+  </data>
+  <data name="RunSearchDlg_BtnRunSearchClick_Search_Completed">
+    <value xml:space="preserve">Search Completed</value>
+  </data>
+  <data name="RunSearchBackgroundWorker_RunSearchBackgroundWorkerRunWorkerCompleted_Run_Search_Completed">
+    <value xml:space="preserve">Run Search Completed</value>
+  </data>
+  <data name="ProgressDlg_VerifyCancel_Cancellation_request_sent__but_the_background_proces_may_continue_running_for_a_while__If_you_want_to_continue_to_receive_progress_status__please_click_Cancel__Otherwise__click_OK">
+    <value xml:space="preserve">Cancellation request sent, but the background proces may continue running for a while. If you want to continue to receive progress status, please click Cancel. Otherwise, click OK</value>
+  </data>
+  <data name="InputSettingsControl_VerifyAndSaveSettings_Search_Settings">
+    <value xml:space="preserve">Search Settings</value>
+  </data>
+  <data name="OutputSettingsControl_VerifyAndUpdateSettings_Search_Settings">
+    <value xml:space="preserve">Search Settings</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Unable_to_update_the_input_settings_">
+    <value xml:space="preserve">Unable to update the input settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Unable_to_update_input_settings_">
+    <value xml:space="preserve">Unable to update input settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_Search_Settings">
+    <value xml:space="preserve">Search Settings</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Search_Settings">
+    <value xml:space="preserve">Search Settings</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Could_not_update_all_search_settings_">
+    <value xml:space="preserve">Could not update all search settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_input_settings_">
+    <value xml:space="preserve">Error updating Input settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_Output_settings_">
+    <value xml:space="preserve">Error updating Output settings.</value>
+  </data>
+  <data name="RunSearchDlg_ProteomeDbFileNameChanged_Would_you_like_to_update_the_proteome_database_file_name_in_the_search_settings_with_the_one_you_have_specified_here_">
+    <value xml:space="preserve">Would you like to update the proteome database file name in the search settings with the one you have specified here?</value>
+  </data>
+  <data name="RunSearchDlg_ProteomeDbFileNameChanged_Run_Search">
+    <value xml:space="preserve">Run Search</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_enzyme_settings_">
+    <value xml:space="preserve">Error updating enzyme settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_mass_settings_">
+    <value xml:space="preserve">Error updating mass settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_static_mods_settings_">
+    <value xml:space="preserve">Error updating static mods settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_var_mods_settings_">
+    <value xml:space="preserve">Error updating var mods settings.</value>
+  </data>
+  <data name="SearchSettingsDlg_BtnOKClick_Error_updating_misc_settings_">
+    <value xml:space="preserve">Error updating misc settings.</value>
+  </data>
+</root>
