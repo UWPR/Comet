@@ -61,6 +61,25 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to overwrite the current settings?.
+        /// </summary>
+        internal static string CometUI_SaveSearchSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_ {
+            get {
+                return ResourceManager.GetString("CometUI_SaveSearchSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwri" +
+                        "te_the_current_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Save Search Settings.
+        /// </summary>
+        internal static string CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings {
+            get {
+                return ResourceManager.GetString("CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error.
         /// </summary>
         internal static string CometUI_Title_Error {

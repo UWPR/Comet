@@ -209,6 +209,7 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="app.config" />
+    <None Include="ClassDiagram1.cd" />
     <None Include="Properties\DataSources\CometUI.Properties.Settings.datasource" />
     <None Include="Properties\DataSources\EnzymeSettingsControl.datasource" />
     <None Include="Properties\Settings.settings">

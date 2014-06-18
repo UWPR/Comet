@@ -33,11 +33,13 @@
             this.mainMenuStrip = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+            this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.runSearchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveCurrentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.searchSettingsToolStripMenuItem3 = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveSearchSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.importToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.searchSettingsToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.exportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -48,8 +50,6 @@
             this.helpAboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
             this.WorkerThreadsCleanupTimer = new System.Windows.Forms.Timer(this.components);
-            this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.mainMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -79,8 +79,20 @@
             // openToolStripMenuItem
             // 
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
-            this.openToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.openToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
             this.openToolStripMenuItem.Text = "&Open...";
+            // 
+            // toolStripSeparator2
+            // 
+            this.toolStripSeparator2.Name = "toolStripSeparator2";
+            this.toolStripSeparator2.Size = new System.Drawing.Size(109, 6);
+            // 
+            // exitToolStripMenuItem
+            // 
+            this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
+            this.exitToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
+            this.exitToolStripMenuItem.Text = "&Exit";
+            this.exitToolStripMenuItem.Click += new System.EventHandler(this.ExitToolStripMenuItemClick);
             // 
             // toolsToolStripMenuItem
             // 
@@ -112,16 +124,17 @@
             // saveCurrentToolStripMenuItem
             // 
             this.saveCurrentToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.searchSettingsToolStripMenuItem3});
+            this.saveSearchSettingsToolStripMenuItem});
             this.saveCurrentToolStripMenuItem.Name = "saveCurrentToolStripMenuItem";
             this.saveCurrentToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
             this.saveCurrentToolStripMenuItem.Text = "&Save Current";
             // 
-            // searchSettingsToolStripMenuItem3
+            // saveSearchSettingsToolStripMenuItem
             // 
-            this.searchSettingsToolStripMenuItem3.Name = "searchSettingsToolStripMenuItem3";
-            this.searchSettingsToolStripMenuItem3.Size = new System.Drawing.Size(154, 22);
-            this.searchSettingsToolStripMenuItem3.Text = "&Search Settings";
+            this.saveSearchSettingsToolStripMenuItem.Name = "saveSearchSettingsToolStripMenuItem";
+            this.saveSearchSettingsToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.saveSearchSettingsToolStripMenuItem.Text = "&Search Settings";
+            this.saveSearchSettingsToolStripMenuItem.Click += new System.EventHandler(this.SaveSearchSettingsToolStripMenuItemClick);
             // 
             // importToolStripMenuItem
             // 
@@ -190,18 +203,6 @@
             this.WorkerThreadsCleanupTimer.Interval = 60000;
             this.WorkerThreadsCleanupTimer.Tick += new System.EventHandler(this.WorkerThreadsCleanupTimerTick);
             // 
-            // exitToolStripMenuItem
-            // 
-            this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.exitToolStripMenuItem.Text = "&Exit";
-            this.exitToolStripMenuItem.Click += new System.EventHandler(this.ExitToolStripMenuItemClick);
-            // 
-            // toolStripSeparator2
-            // 
-            this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(149, 6);
-            // 
             // CometUI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -240,7 +241,7 @@
         private System.Windows.Forms.ToolStripMenuItem importToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem searchSettingsToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem searchSettingsToolStripMenuItem2;
-        private System.Windows.Forms.ToolStripMenuItem searchSettingsToolStripMenuItem3;
+        private System.Windows.Forms.ToolStripMenuItem saveSearchSettingsToolStripMenuItem;
         private System.Windows.Forms.Timer WorkerThreadsCleanupTimer;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;

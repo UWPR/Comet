@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
+using CometUI.Properties;
 using CometUI.SettingsUI;
 
 namespace CometUI
@@ -68,6 +69,14 @@ namespace CometUI
         private void ExitToolStripMenuItemClick(object sender, EventArgs e)
         {
             Close();
+        }
+
+        private void SaveSearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
+        {
+            if (MessageBox.Show(Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_, Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings, MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
+            {
+                Settings.Default.Save();
+            }
         }
     }
 }

@@ -210,4 +210,10 @@
   <data name="SearchSettingsDlg_BtnOKClick_Error_updating_misc_settings_">
     <value xml:space="preserve">Error updating misc settings.</value>
   </data>
+  <data name="CometUI_SaveSearchSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_">
+    <value xml:space="preserve">Are you sure you want to overwrite the current settings?</value>
+  </data>
+  <data name="CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings">
+    <value xml:space="preserve">Save Search Settings</value>
+  </data>
 </root>
