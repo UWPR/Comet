@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Specialized;
 using System.Windows.Forms;
 using CometUI.Properties;
 using System.Drawing;

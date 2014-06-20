@@ -12,9 +12,9 @@ namespace CometUI
 {
     public partial class RunSearchDlg : Form
     {
-        private new Form Parent { get; set; }
+        private new CometUI Parent { get; set; }
         
-        public RunSearchDlg(Form parent)
+        public RunSearchDlg(CometUI parent)
         {
             InitializeComponent();
 
@@ -92,7 +92,10 @@ namespace CometUI
             var searchSettingsDlg = new SearchSettingsDlg();
             if (DialogResult.OK == searchSettingsDlg.ShowDialog())
             {
-                // Do something here?  Maybe save the settings?
+                if (searchSettingsDlg.SettingsChanged)
+                {
+                    Parent.UpdateCometParams(Settings.Default);
+                }
             }
         }
 
@@ -629,90 +632,11 @@ namespace CometUI
         {
             foreach (var item in Settings.Default.StaticMods)
             {
-                string paramName;
                 string[] staticMods = item.Split(',');
-                switch (staticMods[1])
+                string paramName = CometUI.GetStaticModParamName(staticMods[1]);
+                if (String.Empty == paramName)
                 {
-                    case "G":
-                        paramName = "add_G_glycine";
-                        break;
-                    case "A":
-                        paramName = "add_A_alanine";
-                        break;
-                    case "S":
-                        paramName = "add_S_serine";
-                        break;
-                    case "P":
-                        paramName = "add_P_proline";
-                        break;
-                    case "V":
-                        paramName = "add_V_valine";
-                        break;
-                    case "T":
-                        paramName = "add_T_threonine";
-                        break;
-                    case "C":
-                        paramName = "add_C_cysteine";
-                        break;
-                    case "L":
-                        paramName = "add_L_leucine";
-                        break;
-                    case "I":
-                        paramName = "add_I_isoleucine";
-                        break;
-                    case "N":
-                        paramName = "add_N_asparagine";
-                        break;
-                    case "D":
-                        paramName = "add_D_aspartic_acid";
-                        break;
-                    case "Q":
-                        paramName = "add_Q_glutamine";
-                        break;
-                    case "K":
-                        paramName = "add_K_lysine";
-                        break;
-                    case "E":
-                        paramName = "add_E_glutamic_acid";
-                        break;
-                    case "M":
-                        paramName = "add_M_methionine";
-                        break;
-                    case "O":
-                        paramName = "add_O_ornithine";
-                        break;
-                    case "H":
-                        paramName = "add_H_histidine";
-                        break;
-                    case "F":
-                        paramName = "add_F_phenylalanine";
-                        break;
-                    case "R":
-                        paramName = "add_R_arginine";
-                        break;
-                    case "Y":
-                        paramName = "add_Y_tyrosine";
-                        break;
-                    case "W":
-                        paramName = "add_W_tryptophan";
-                        break;
-                    case "B":
-                        paramName = "add_B_user_amino_acid";
-                        break;
-                    case "J":
-                        paramName = "add_J_user_amino_acid";
-                        break;
-                    case "U":
-                        paramName = "add_U_user_amino_acid";
-                        break;
-                    case "X":
-                        paramName = "add_X_user_amino_acid";
-                        break;
-                    case "Z":
-                        paramName = "add_Z_user_amino_acid";
-                        break;
-                    default:
-                        return false;
+                    return false;
                 }
 
                 double massDiff;
