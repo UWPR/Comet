@@ -105,7 +105,7 @@
             // runSearchToolStripMenuItem
             // 
             this.runSearchToolStripMenuItem.Name = "runSearchToolStripMenuItem";
-            this.runSearchToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.runSearchToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.runSearchToolStripMenuItem.Text = "&Run Search...";
             this.runSearchToolStripMenuItem.Click += new System.EventHandler(this.RunSearchToolStripMenuItemClick);
             // 
@@ -149,6 +149,7 @@
             this.searchSettingsToolStripMenuItem1.Name = "searchSettingsToolStripMenuItem1";
             this.searchSettingsToolStripMenuItem1.Size = new System.Drawing.Size(154, 22);
             this.searchSettingsToolStripMenuItem1.Text = "&Search Settings";
+            this.searchSettingsToolStripMenuItem1.Click += new System.EventHandler(this.searchSettingsToolStripMenuItem1_Click);
             // 
             // exportToolStripMenuItem
             // 
@@ -163,6 +164,7 @@
             this.searchSettingsToolStripMenuItem2.Name = "searchSettingsToolStripMenuItem2";
             this.searchSettingsToolStripMenuItem2.Size = new System.Drawing.Size(154, 22);
             this.searchSettingsToolStripMenuItem2.Text = "&Search Settings";
+            this.searchSettingsToolStripMenuItem2.Click += new System.EventHandler(this.searchSettingsToolStripMenuItem2_Click);
             // 
             // toolStripSeparator1
             // 

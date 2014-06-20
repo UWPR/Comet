@@ -74,6 +74,7 @@
             this.inputFilesList.Size = new System.Drawing.Size(355, 124);
             this.inputFilesList.TabIndex = 1;
             this.inputFilesList.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.InputFilesListItemCheck);
+            this.inputFilesList.SelectedIndexChanged += new System.EventHandler(this.inputFilesList_SelectedIndexChanged);
             // 
             // btnRemInputFile
             // 
@@ -156,6 +157,7 @@
             this.protDbLabel.Size = new System.Drawing.Size(139, 13);
             this.protDbLabel.TabIndex = 41;
             this.protDbLabel.Text = "&Proteome Database (.fasta):";
+            this.protDbLabel.Click += new System.EventHandler(this.protDbLabel_Click);
             // 
             // RunSearchDlg
             // 

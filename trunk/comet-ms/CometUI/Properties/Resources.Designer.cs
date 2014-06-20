@@ -89,6 +89,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Open Params File.
+        /// </summary>
+        internal static string ImportParamsDlg_BtnBrowseProteomeDbFileClick_Open_Params_File {
+            get {
+                return ResourceManager.GetString("ImportParamsDlg_BtnBrowseProteomeDbFileClick_Open_Params_File", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error.
         /// </summary>
         internal static string InputFilesControl_AddInputFiles_Error {

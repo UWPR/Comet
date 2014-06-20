@@ -568,5 +568,17 @@ namespace CometUI
                 Settings.Default.Save();
             }
         }
+
+        private void searchSettingsToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            var importParamsDlg = new ImportParamsDlg();
+            importParamsDlg.ShowDialog();
+        }
+
+        private void searchSettingsToolStripMenuItem2_Click(object sender, EventArgs e)
+        {
+            var exportParamsDlg = new ExportParamsDlg();
+            exportParamsDlg.ShowDialog();
+        }
     }
 }

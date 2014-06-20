@@ -216,4 +216,7 @@
   <data name="CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings">
     <value xml:space="preserve">Save Search Settings</value>
   </data>
+  <data name="ImportParamsDlg_BtnBrowseProteomeDbFileClick_Open_Params_File">
+    <value xml:space="preserve">Open Params File</value>
+  </data>
 </root>

@@ -941,13 +941,21 @@ namespace CometUI
             {
                 proteomeDbFileCombo.Items.Add(proteomeDbFileCombo.Text);
             }
-
-            btnRunSearch.Enabled = inputFilesList.CheckedItems.Count > 0 && File.Exists(proteomeDbFileCombo.Text);
         }
 
         private void ProteomeDbFileComboSelectedIndexChanged(object sender, EventArgs e)
         {
             ProteomeDbFileNameChanged();
+        }
+
+        private void protDbLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void inputFilesList_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

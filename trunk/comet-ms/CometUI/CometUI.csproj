@@ -97,12 +97,27 @@
     <Compile Include="CustomControls\ProgressDlg.designer.cs">
       <DependentUpon>ProgressDlg.cs</DependentUpon>
     </Compile>
+    <Compile Include="ExportParamsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ExportParamsDialog.Designer.cs">
+      <DependentUpon>ExportParamsDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ImportParamsDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ImportParamsDlg.Designer.cs">
+      <DependentUpon>ImportParamsDlg.cs</DependentUpon>
+    </Compile>
     <Compile Include="RunSearchBackgroundWorker.cs" />
     <Compile Include="RunSearchDlg.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="RunSearchDlg.Designer.cs">
       <DependentUpon>RunSearchDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SettingsUI\InputSettingsControl.Designer.cs">
+      <DependentUpon>InputSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="SettingsUI\MiscSettingsControl.cs">
       <SubType>UserControl</SubType>
@@ -133,9 +148,6 @@
     </Compile>
     <Compile Include="SettingsUI\InputSettingsControl.cs">
       <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="SettingsUI\InputSettingsControl.Designer.cs">
-      <DependentUpon>InputSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="SettingsUI\SearchSettingsDlg.cs">
       <SubType>Form</SubType>
@@ -168,6 +180,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="CustomControls\ProgressDlg.resx">
       <DependentUpon>ProgressDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ExportParamsDialog.resx">
+      <DependentUpon>ExportParamsDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ImportParamsDlg.resx">
+      <DependentUpon>ImportParamsDlg.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="RunSearchDlg.resx">
       <DependentUpon>RunSearchDlg.cs</DependentUpon>
