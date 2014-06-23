@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
+using System.Windows.Forms;
 using CometUI.Properties;
 
 namespace CometUI
@@ -38,7 +39,6 @@ namespace CometUI
         VarMods,
         DoubleRange,
         IntRange,
-        EnzymeInfo,
         Bool,
         StrCollection
     }
@@ -52,7 +52,7 @@ namespace CometUI
             CometParams = new Dictionary<string, CometParam>();
         }
 
-        public void UpdateCometParamsFromSettings(Settings settings)
+        public void GenerateCometParamsFromSettings(Settings settings)
         {
             if (CometParams.Count > 0)
             {
@@ -542,6 +542,158 @@ namespace CometUI
             }
 
             return paramName;
+        }
+
+        public bool GetCometParamValue(String name, out int value)
+        {
+            value = 0;
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<int>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            return true;
+        }
+
+        public bool GetCometParamValue(String name, out double value)
+        {
+            value = 0.0;
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<double>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            return true;
+        }
+
+        public bool GetCometParamValue(String name, out String value)
+        {
+            value = String.Empty;
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<String>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            return true;
+        }
+
+        public bool GetCometParamValue(String name, out VarMods value)
+        {
+            value = null;
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<VarMods>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            return true;
+        }
+
+        public bool GetCometParamValue(String name, out DoubleRange value)
+        {
+            value = null;
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<DoubleRange>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            return true;
+        }
+
+        public bool GetCometParamValue(String name, out IntRange value)
+        {
+            value = null;
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<IntRange>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            return true;
+        }
+
+        public bool GetCometParamValue(String name, out bool value)
+        {
+            value = false;
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<bool>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            return true;
+        }
+
+        public bool GetCometParamValue(String name, out StringCollection value)
+        {
+            value = null;
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<StringCollection>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            return true;
         }
     }
 
