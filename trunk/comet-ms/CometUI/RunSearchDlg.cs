@@ -92,10 +92,6 @@ namespace CometUI
             var searchSettingsDlg = new SearchSettingsDlg();
             if (DialogResult.OK == searchSettingsDlg.ShowDialog())
             {
-                if (searchSettingsDlg.SettingsChanged)
-                {
-                    Parent.UpdateCometParams(Settings.Default);
-                }
             }
         }
 
@@ -633,7 +629,7 @@ namespace CometUI
             foreach (var item in Settings.Default.StaticMods)
             {
                 string[] staticMods = item.Split(',');
-                string paramName = CometUI.GetStaticModParamName(staticMods[1]);
+                string paramName = CometParamsMap.GetStaticModParamName(staticMods[1]);
                 if (String.Empty == paramName)
                 {
                     return false;
@@ -946,16 +942,6 @@ namespace CometUI
         private void ProteomeDbFileComboSelectedIndexChanged(object sender, EventArgs e)
         {
             ProteomeDbFileNameChanged();
-        }
-
-        private void protDbLabel_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void inputFilesList_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
         }
     }
 }

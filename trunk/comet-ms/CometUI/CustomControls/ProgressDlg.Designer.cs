@@ -89,7 +89,7 @@
 
         private System.Windows.Forms.Label StatusText;
         private System.Windows.Forms.ProgressBar ProgressBar;
-        private System.Windows.Forms.Button CancelButton;
+        private new System.Windows.Forms.Button CancelButton;
         private System.Windows.Forms.ToolTip ProgressDlgToolTip;
 
 
