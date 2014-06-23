@@ -219,4 +219,7 @@
   <data name="ImportParamsDlg_BtnBrowseProteomeDbFileClick_Open_Params_File">
     <value xml:space="preserve">Open Params File</value>
   </data>
+  <data name="ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params">
+    <value xml:space="preserve">Comet Params Files (*.params)|*.params</value>
+  </data>
 </root>

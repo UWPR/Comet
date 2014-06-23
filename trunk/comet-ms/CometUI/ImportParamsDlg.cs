@@ -1,11 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 using CometUI.Properties;
 
@@ -18,32 +11,24 @@ namespace CometUI
             InitializeComponent();
         }
         
-        private void Button1Click(object sender, EventArgs e)
+        private void BtnCancelClick(object sender, EventArgs e)
         {
             DialogResult = DialogResult.Cancel;
         }
 
-        private void BtnBrowseProteomeDbFileClick(object sender, EventArgs e)
+        private void BtnBrowseParamsClick(object sender, EventArgs e)
         {
             var paramsOpenFileDialog = new OpenFileDialog();
             paramsOpenFileDialog.Title = Resources.ImportParamsDlg_BtnBrowseProteomeDbFileClick_Open_Params_File;
             paramsOpenFileDialog.InitialDirectory = @".";
-            paramsOpenFileDialog.Filter = "Params files (*.params)|*.params";
+            paramsOpenFileDialog.Filter = Resources.ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params;
             paramsOpenFileDialog.Multiselect = false;
             paramsOpenFileDialog.RestoreDirectory = true;
 
             if (paramsOpenFileDialog.ShowDialog() == DialogResult.OK)
             {
-                paramsDbFileCombo.Text = paramsOpenFileDialog.SafeFileName;
-
+                paramsDbFileCombo.Text = paramsOpenFileDialog.FileName;
             }
-
         }
-
-        private void ImportParamsDlg_Load(object sender, EventArgs e)
-        {
-
-        }
-
      }
 }

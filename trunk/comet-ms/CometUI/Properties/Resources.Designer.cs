@@ -89,6 +89,16 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Comet Params Files (*.params)|*.params.
+        /// </summary>
+        internal static string ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params {
+            get {
+                return ResourceManager.GetString("ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____para" +
+                        "ms", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Open Params File.
         /// </summary>
         internal static string ImportParamsDlg_BtnBrowseProteomeDbFileClick_Open_Params_File {

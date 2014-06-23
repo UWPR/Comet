@@ -39,13 +39,13 @@
             // btnCancel
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnCancel.Location = new System.Drawing.Point(347, 84);
+            this.btnCancel.Location = new System.Drawing.Point(381, 88);
             this.btnCancel.Name = "btnCancel";
-            this.btnCancel.Size = new System.Drawing.Size(101, 23);
-            this.btnCancel.TabIndex = 0;
+            this.btnCancel.Size = new System.Drawing.Size(75, 23);
+            this.btnCancel.TabIndex = 103;
             this.btnCancel.Text = "&Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
-            this.btnCancel.Click += new System.EventHandler(this.Button1Click);
+            this.btnCancel.Click += new System.EventHandler(this.BtnCancelClick);
             // 
             // paramsDbFileCombo
             // 
@@ -53,37 +53,37 @@
             this.paramsDbFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
             this.paramsDbFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
             this.paramsDbFileCombo.FormattingEnabled = true;
-            this.paramsDbFileCombo.Location = new System.Drawing.Point(12, 30);
+            this.paramsDbFileCombo.Location = new System.Drawing.Point(15, 32);
             this.paramsDbFileCombo.Name = "paramsDbFileCombo";
-            this.paramsDbFileCombo.Size = new System.Drawing.Size(352, 23);
-            this.paramsDbFileCombo.TabIndex = 40;
+            this.paramsDbFileCombo.Size = new System.Drawing.Size(360, 23);
+            this.paramsDbFileCombo.TabIndex = 100;
             // 
             // btnBrowseParams
             // 
-            this.btnBrowseParams.Location = new System.Drawing.Point(370, 30);
+            this.btnBrowseParams.Location = new System.Drawing.Point(381, 32);
             this.btnBrowseParams.Name = "btnBrowseParams";
             this.btnBrowseParams.Size = new System.Drawing.Size(75, 23);
-            this.btnBrowseParams.TabIndex = 42;
+            this.btnBrowseParams.TabIndex = 101;
             this.btnBrowseParams.Text = "&Browse";
             this.btnBrowseParams.UseVisualStyleBackColor = true;
-            this.btnBrowseParams.Click += new System.EventHandler(this.BtnBrowseProteomeDbFileClick);
+            this.btnBrowseParams.Click += new System.EventHandler(this.BtnBrowseParamsClick);
             // 
             // paramsDbLabel
             // 
             this.paramsDbLabel.AutoSize = true;
-            this.paramsDbLabel.Location = new System.Drawing.Point(9, 14);
+            this.paramsDbLabel.Location = new System.Drawing.Point(12, 16);
             this.paramsDbLabel.Name = "paramsDbLabel";
-            this.paramsDbLabel.Size = new System.Drawing.Size(139, 13);
+            this.paramsDbLabel.Size = new System.Drawing.Size(128, 13);
             this.paramsDbLabel.TabIndex = 43;
-            this.paramsDbLabel.Text = "&Proteome Database (.fasta):";
+            this.paramsDbLabel.Text = "&Parameters File (.params):";
             // 
             // btnImport
             // 
             this.btnImport.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnImport.Location = new System.Drawing.Point(240, 84);
+            this.btnImport.Location = new System.Drawing.Point(300, 88);
             this.btnImport.Name = "btnImport";
-            this.btnImport.Size = new System.Drawing.Size(101, 23);
-            this.btnImport.TabIndex = 44;
+            this.btnImport.Size = new System.Drawing.Size(75, 23);
+            this.btnImport.TabIndex = 102;
             this.btnImport.Text = "&Import";
             this.btnImport.UseVisualStyleBackColor = true;
             // 
@@ -91,7 +91,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(460, 118);
+            this.ClientSize = new System.Drawing.Size(465, 123);
             this.Controls.Add(this.btnImport);
             this.Controls.Add(this.btnBrowseParams);
             this.Controls.Add(this.paramsDbLabel);
@@ -99,8 +99,7 @@
             this.Controls.Add(this.btnCancel);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "ImportParamsDlg";
-            this.Text = "Import Parameters";
-            this.Load += new System.EventHandler(this.ImportParamsDlg_Load);
+            this.Text = "Import Search Settings";
             this.ResumeLayout(false);
             this.PerformLayout();
 
