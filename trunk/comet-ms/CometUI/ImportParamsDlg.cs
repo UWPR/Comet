@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Windows.Forms;
 using CometUI.Properties;
 
@@ -27,8 +28,35 @@ namespace CometUI
 
             if (paramsOpenFileDialog.ShowDialog() == DialogResult.OK)
             {
-                paramsDbFileCombo.Text = paramsOpenFileDialog.FileName;
+                paramsFileCombo.Text = paramsOpenFileDialog.FileName;
             }
+            btnImport.Enabled = false;
+            string path = paramsFileCombo.Text;
+            if (File.Exists(path))
+            {
+                btnImport.Enabled = true;
+            }
+        }
+
+        private void BtnImportClick(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void ParamsTextChanged()
+        {
+            string path = paramsFileCombo.Text;
+            btnImport.Enabled = File.Exists(path);
+        }
+
+        private void ParamsFileComboSelectedIndexChanged(object sender, EventArgs e)
+        {
+            ParamsTextChanged();
+        }
+
+        private void ParamsFileComboTextChanged(object sender, EventArgs e)
+        {
+            ParamsTextChanged();
         }
      }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Windows.Forms;
 
 namespace CometUI
@@ -21,8 +22,31 @@ namespace CometUI
 
             if (paramsFolderBrowserDialog.ShowDialog() == DialogResult.OK)
             {
-                textBoxLocation.Text = paramsFolderBrowserDialog.SelectedPath;
+                textBoxPath.Text = paramsFolderBrowserDialog.SelectedPath;
             }
+        }
+
+        private void BtnExportClick(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void ExportTextChange()
+        {
+            string fileName = textBoxName.Text;
+            string filePath = textBoxPath.Text;
+
+            btnExport.Enabled = (fileName != string.Empty) && Directory.Exists(filePath);
+        }
+
+        private void TextBoxNameTextChanged(object sender, EventArgs e)
+        {
+            ExportTextChange();
+        }
+
+        private void TextBoxPathTextChanged(object sender, EventArgs e)
+        {
+            ExportTextChange();
         }
     }
 }

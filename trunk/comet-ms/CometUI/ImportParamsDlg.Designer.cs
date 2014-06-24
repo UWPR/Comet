@@ -30,7 +30,7 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ImportParamsDlg));
             this.btnCancel = new System.Windows.Forms.Button();
-            this.paramsDbFileCombo = new System.Windows.Forms.ComboBox();
+            this.paramsFileCombo = new System.Windows.Forms.ComboBox();
             this.btnBrowseParams = new System.Windows.Forms.Button();
             this.paramsDbLabel = new System.Windows.Forms.Label();
             this.btnImport = new System.Windows.Forms.Button();
@@ -47,16 +47,18 @@
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.BtnCancelClick);
             // 
-            // paramsDbFileCombo
+            // paramsFileCombo
             // 
-            this.paramsDbFileCombo.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest;
-            this.paramsDbFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
-            this.paramsDbFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
-            this.paramsDbFileCombo.FormattingEnabled = true;
-            this.paramsDbFileCombo.Location = new System.Drawing.Point(15, 32);
-            this.paramsDbFileCombo.Name = "paramsDbFileCombo";
-            this.paramsDbFileCombo.Size = new System.Drawing.Size(360, 23);
-            this.paramsDbFileCombo.TabIndex = 100;
+            this.paramsFileCombo.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest;
+            this.paramsFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
+            this.paramsFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
+            this.paramsFileCombo.FormattingEnabled = true;
+            this.paramsFileCombo.Location = new System.Drawing.Point(15, 32);
+            this.paramsFileCombo.Name = "paramsFileCombo";
+            this.paramsFileCombo.Size = new System.Drawing.Size(360, 23);
+            this.paramsFileCombo.TabIndex = 100;
+            this.paramsFileCombo.SelectedIndexChanged += new System.EventHandler(this.ParamsFileComboSelectedIndexChanged);
+            this.paramsFileCombo.TextChanged += new System.EventHandler(this.ParamsFileComboTextChanged);
             // 
             // btnBrowseParams
             // 
@@ -80,12 +82,14 @@
             // btnImport
             // 
             this.btnImport.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnImport.Enabled = false;
             this.btnImport.Location = new System.Drawing.Point(300, 88);
             this.btnImport.Name = "btnImport";
             this.btnImport.Size = new System.Drawing.Size(75, 23);
             this.btnImport.TabIndex = 102;
             this.btnImport.Text = "&Import";
             this.btnImport.UseVisualStyleBackColor = true;
+            this.btnImport.Click += new System.EventHandler(this.BtnImportClick);
             // 
             // ImportParamsDlg
             // 
@@ -95,7 +99,7 @@
             this.Controls.Add(this.btnImport);
             this.Controls.Add(this.btnBrowseParams);
             this.Controls.Add(this.paramsDbLabel);
-            this.Controls.Add(this.paramsDbFileCombo);
+            this.Controls.Add(this.paramsFileCombo);
             this.Controls.Add(this.btnCancel);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "ImportParamsDlg";
@@ -108,7 +112,7 @@
         #endregion
 
         private System.Windows.Forms.Button btnCancel;
-        private System.Windows.Forms.ComboBox paramsDbFileCombo;
+        private System.Windows.Forms.ComboBox paramsFileCombo;
         private System.Windows.Forms.Button btnBrowseParams;
         private System.Windows.Forms.Label paramsDbLabel;
         private System.Windows.Forms.Button btnImport;
