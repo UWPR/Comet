@@ -9,8 +9,8 @@ namespace CometUI
 {
     public class CometParam
     {
-        private CometParamType Type { get; set; }
-        private String Value { get; set; }
+        public CometParamType Type { get; set; }
+        public String Value { get; set; }
 
         public CometParam(CometParamType paramType, ref String strValue)
         {
