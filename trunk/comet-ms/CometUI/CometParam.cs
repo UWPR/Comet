@@ -448,7 +448,7 @@ namespace CometUI
             string enzymeInfoStr = String.Empty;
             foreach (var row in settings.EnzymeInfo)
             {
-                enzymeInfoStr += row + "\n";
+                enzymeInfoStr += row + Environment.NewLine;
             }
 
             CometParams.Add("[COMET_ENZYME_INFO]",
