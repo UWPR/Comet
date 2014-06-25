@@ -47,12 +47,13 @@ namespace CometUI
     {
         public Dictionary<string, CometParam> CometParams { get; private set; }
 
-        public CometParamsMap()
+        public CometParamsMap(Settings settings)
         {
             CometParams = new Dictionary<string, CometParam>();
+            UpdateCometParamsFromSettings(settings);
         }
 
-        public Dictionary<string, CometParam> GenerateCometParamsFromSettings(Settings settings)
+        public void UpdateCometParamsFromSettings(Settings settings)
         {
             if (CometParams.Count > 0)
             {
@@ -454,8 +455,6 @@ namespace CometUI
                             new TypedCometParam<StringCollection>(CometParamType.StrCollection,
                                                                   enzymeInfoStr,
                                                                   settings.EnzymeInfo));
-
-            return CometParams;
         }
 
         public static String GetStaticModParamName(String aa)
