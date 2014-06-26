@@ -222,4 +222,25 @@
   <data name="ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params">
     <value xml:space="preserve">Comet Params Files (*.params)|*.params</value>
   </data>
+  <data name="ExportParamsDlg_BtnExportClick_Settings_exported_to_">
+    <value xml:space="preserve">Settings exported to </value>
+  </data>
+  <data name="ExportParamsDlg_BtnExportClick_Export_Search_Settings">
+    <value xml:space="preserve">Export Search Settings</value>
+  </data>
+  <data name="ExportParamsDlg_BtnExportClick_File_Name_has_Invalid_Characters">
+    <value xml:space="preserve">File Name has Invalid Characters</value>
+  </data>
+  <data name="ExportParamsDlg_BtnExportClick_Save_Failed">
+    <value xml:space="preserve">Save Failed</value>
+  </data>
+  <data name="ExportParamsDlg_BtnExportClick__already_exists_in_this_folder__Would_you_like_to_replace_it_">
+    <value xml:space="preserve"> already exists in this folder. Would you like to replace it?</value>
+  </data>
+  <data name="ExportParamsDlg_BtnExportClick_File_name_has_invalid_characters_">
+    <value xml:space="preserve">File name has invalid characters.</value>
+  </data>
+  <data name="ExportParamsDlg_BtnExportClick_Export_Failed">
+    <value xml:space="preserve">Export Failed</value>
+  </data>
 </root>

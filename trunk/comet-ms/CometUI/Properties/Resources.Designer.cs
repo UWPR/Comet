@@ -89,6 +89,70 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to  already exists in this folder. Would you like to replace it?.
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick__already_exists_in_this_folder__Would_you_like_to_replace_it_ {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick__already_exists_in_this_folder__Would_you_like_to_" +
+                        "replace_it_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export Failed.
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_Export_Failed {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_Export_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export Search Settings.
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_Export_Search_Settings {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_Export_Search_Settings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to File Name has Invalid Characters.
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_File_Name_has_Invalid_Characters {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_File_Name_has_Invalid_Characters", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to File name has invalid characters..
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_File_name_has_invalid_characters_ {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_File_name_has_invalid_characters_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Save Failed.
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_Save_Failed {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_Save_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Settings exported to .
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_Settings_exported_to_ {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_Settings_exported_to_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Comet Params Files (*.params)|*.params.
         /// </summary>
         internal static string ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params {
