@@ -243,4 +243,10 @@
   <data name="ExportParamsDlg_BtnExportClick_Export_Failed">
     <value xml:space="preserve">Export Failed</value>
   </data>
+  <data name="ExportParamsDlg_BtnExportClick_Unable_to_get_the_Comet_version__Settings_cannot_be_exported_without_a_valid_Comet_version">
+    <value xml:space="preserve">Unable to get the Comet version. Settings cannot be exported without a valid Comet version.</value>
+  </data>
+  <data name="ExportParamsDlg_BtnExportClick_Error">
+    <value xml:space="preserve">Error</value>
+  </data>
 </root>

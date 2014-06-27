@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows.Forms;
 using CometUI.Properties;
+using CometWrapper;
 
 namespace CometUI
 {
@@ -62,25 +63,42 @@ namespace CometUI
 
                 if (proceedWithExport)
                 {
-                    var paramsMap = new CometParamsMap(Settings.Default);
-                    var map = paramsMap.CometParams;
                     using (var sw = new StreamWriter(FilePath))
                     {
-                        foreach (var pair in map)
+                        var searchManager = new CometSearchManagerWrapper();
+                        String cometVersion = String.Empty;
+                        if (!searchManager.GetParamValue("# comet_version ", ref cometVersion))
                         {
-                            if (pair.Key == "[COMET_ENZYME_INFO]")
-                            {
-                                sw.WriteLine(pair.Key + Environment.NewLine + pair.Value.Value);
-                            }
-                            else
-                            {
-                                sw.WriteLine(pair.Key + " = " + pair.Value.Value);
-                            }
+                            MessageBox.Show(
+                                Resources.ExportParamsDlg_BtnExportClick_Unable_to_get_the_Comet_version__Settings_cannot_be_exported_without_a_valid_Comet_version,
+                                Resources.ExportParamsDlg_BtnExportClick_Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            DialogResult = DialogResult.Abort;
                         }
+                        else
+                        {
+                            // write the version to the params file here
+                            sw.WriteLine("# comet_version " + cometVersion);
 
-                        sw.Flush();
+                            var paramsMap = new CometParamsMap(Settings.Default);
+                            var map = paramsMap.CometParams;
+
+                            foreach (var pair in map)
+                            {
+                                if (pair.Key == "[COMET_ENZYME_INFO]")
+                                {
+                                    sw.WriteLine(pair.Key + Environment.NewLine + pair.Value.Value);
+                                }
+                                else
+                                {
+                                    sw.WriteLine(pair.Key + " = " + pair.Value.Value);
+                                }
+                            }
+
+                            sw.Flush();
+
+                            DialogResult = DialogResult.OK;
+                        }
                     }
-                    DialogResult = DialogResult.OK;
                 }
             }
         }

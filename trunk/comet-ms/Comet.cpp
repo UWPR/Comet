@@ -210,6 +210,7 @@ void LoadParameters(char *pszParamsFile,
          if (strstr(comet_version, szVersion) || strstr(szVersion, "2013.02"))
          {
             bValidParamsFile = true;
+			pSearchMgr->SetParam("# comet_version ", szVersion, szVersion);
             break;
          }
       }

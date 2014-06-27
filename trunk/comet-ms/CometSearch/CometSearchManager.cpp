@@ -471,6 +471,9 @@ CometSearchManager::CometSearchManager()
    Threading::CreateMutex(&g_pvQueryMutex);
 
    Threading::CreateMutex(&g_preprocessMemoryPoolMutex);
+
+   // Initialize the Comet version
+   SetParam("# comet_version ", comet_version, comet_version);
 }
 
 CometSearchManager::~CometSearchManager()

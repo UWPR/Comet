@@ -99,6 +99,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Error.
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_Error {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_Error", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Export Failed.
         /// </summary>
         internal static string ExportParamsDlg_BtnExportClick_Export_Failed {
@@ -149,6 +158,16 @@ namespace CometUI.Properties {
         internal static string ExportParamsDlg_BtnExportClick_Settings_exported_to_ {
             get {
                 return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_Settings_exported_to_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unable to get the Comet version. Settings cannot be exported without a valid Comet version..
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_Unable_to_get_the_Comet_version__Settings_cannot_be_exported_without_a_valid_Comet_version {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_Unable_to_get_the_Comet_version__Settings_cannot_b" +
+                        "e_exported_without_a_valid_Comet_version", resourceCulture);
             }
         }
         
