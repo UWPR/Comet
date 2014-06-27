@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
-using System.Windows.Forms;
 using CometUI.Properties;
 
 namespace CometUI
@@ -21,7 +20,7 @@ namespace CometUI
 
     public class TypedCometParam <T> : CometParam
     {
-        public T Value { get; set; }
+        public new T Value { get; set; }
 
         public TypedCometParam(CometParamType paramType, String strValue, T value) : base(paramType, ref strValue)
         {
@@ -39,7 +38,6 @@ namespace CometUI
         VarMods,
         DoubleRange,
         IntRange,
-        Bool,
         StrCollection
     }
 
@@ -84,51 +82,51 @@ namespace CometUI
                                                      nucleotideReadingFrame.ToString(CultureInfo.InvariantCulture),
                                                      nucleotideReadingFrame));
 
-            var outputPepXMLFile = settings.OutputFormatPepXML;
+            var outputPepXMLFile = settings.OutputFormatPepXML ? 1 : 0;
             CometParams.Add("output_pepxmlfile",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      outputPepXMLFile.ToString(CultureInfo.InvariantCulture),
                                                      outputPepXMLFile));
 
-            var outputPinXMLFile = settings.OutputFormatPinXML;
+            var outputPinXMLFile = settings.OutputFormatPinXML ? 1 : 0;
             CometParams.Add("output_pinxmlfile",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      outputPinXMLFile.ToString(CultureInfo.InvariantCulture),
                                                      outputPinXMLFile));
 
-            var outputTextFile = settings.OutputFormatTextFile;
+            var outputTextFile = settings.OutputFormatTextFile ? 1 : 0;
             CometParams.Add("output_txtfile",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      outputTextFile.ToString(CultureInfo.InvariantCulture),
                                                      outputTextFile));
 
-            var outputSqtFile = settings.OutputFormatSqtFile;
+            var outputSqtFile = settings.OutputFormatSqtFile ? 1 : 0;
             CometParams.Add("output_sqtfile",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      outputSqtFile.ToString(CultureInfo.InvariantCulture),
                                                      outputSqtFile));
 
-            var outputOutFile = settings.OutputFormatOutFiles;
+            var outputOutFile = settings.OutputFormatOutFiles ? 1 : 0;
             CometParams.Add("output_outfiles",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      outputOutFile.ToString(CultureInfo.InvariantCulture),
                                                      outputOutFile));
 
-            var printExpectScore = settings.PrintExpectScoreInPlaceOfSP;
+            var printExpectScore = settings.PrintExpectScoreInPlaceOfSP ? 1 : 0;
             CometParams.Add("print_expect_score",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      printExpectScore.ToString(CultureInfo.InvariantCulture),
                                                      printExpectScore));
 
-            var showFragmentIons = settings.OutputFormatShowFragmentIons;
+            var showFragmentIons = settings.OutputFormatShowFragmentIons ? 1 : 0;
             CometParams.Add("show_fragment_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      showFragmentIons.ToString(CultureInfo.InvariantCulture),
                                                      showFragmentIons));
 
-            var skipResearching = settings.OutputFormatSkipReSearching;
+            var skipResearching = settings.OutputFormatSkipReSearching ? 1 : 0;
             CometParams.Add("skip_researching",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      skipResearching.ToString(CultureInfo.InvariantCulture),
                                                      skipResearching));
 
@@ -210,57 +208,57 @@ namespace CometUI
                                                         fragmentMassType,
                                                         fragmentMassType));
 
-            var useSparseMatrix = settings.UseSparseMatrix;
+            var useSparseMatrix = settings.UseSparseMatrix ? 1 : 0;
             CometParams.Add("use_sparse_matrix",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useSparseMatrix.ToString(CultureInfo.InvariantCulture),
                                                      useSparseMatrix));
 
-            var useAIons = settings.UseAIons;
+            var useAIons = settings.UseAIons ? 1 : 0;
             CometParams.Add("use_A_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useAIons.ToString(CultureInfo.InvariantCulture),
                                                      useAIons));
 
-            var useBIons = settings.UseBIons;
+            var useBIons = settings.UseBIons ? 1 : 0;
             CometParams.Add("use_B_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useBIons.ToString(CultureInfo.InvariantCulture),
                                                      useBIons));
 
-            var useCIons = settings.UseCIons;
+            var useCIons = settings.UseCIons ? 1 : 0;
             CometParams.Add("use_C_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useCIons.ToString(CultureInfo.InvariantCulture),
                                                      useCIons));
 
-            var useXIons = settings.UseXIons;
+            var useXIons = settings.UseXIons ? 1 : 0;
             CometParams.Add("use_X_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useXIons.ToString(CultureInfo.InvariantCulture),
                                                      useXIons));
 
-            var useYIons = settings.UseYIons;
+            var useYIons = settings.UseYIons ? 1 : 0;
             CometParams.Add("use_Y_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useYIons.ToString(CultureInfo.InvariantCulture),
                                                      useYIons));
 
-            var useZIons = settings.UseZIons;
+            var useZIons = settings.UseZIons ? 1 : 0;
             CometParams.Add("use_Z_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useZIons.ToString(CultureInfo.InvariantCulture),
                                                      useZIons));
 
-            var useFlankIons = settings.TheoreticalFragmentIons;
+            var useFlankIons = settings.TheoreticalFragmentIons ? 1 : 0;
             CometParams.Add("theoretical_fragment_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useFlankIons.ToString(CultureInfo.InvariantCulture),
                                                      useFlankIons));
 
-            var useNLIons = settings.UseNLIons;
+            var useNLIons = settings.UseNLIons ? 1 : 0;
             CometParams.Add("use_NL_ions",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      useNLIons.ToString(CultureInfo.InvariantCulture),
                                                      useNLIons));
 
@@ -439,9 +437,9 @@ namespace CometUI
                                                      maxPrecursorCharge.ToString(CultureInfo.InvariantCulture),
                                                      maxPrecursorCharge));
 
-            var clipNTermMethionine = settings.ClipNTermMethionine;
+            var clipNTermMethionine = settings.ClipNTermMethionine ? 1 : 0;
             CometParams.Add("clip_nterm_methionine",
-                            new TypedCometParam<bool>(CometParamType.Bool,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                      clipNTermMethionine.ToString(CultureInfo.InvariantCulture),
                                                      clipNTermMethionine));
 
