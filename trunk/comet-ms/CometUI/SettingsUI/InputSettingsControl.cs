@@ -71,6 +71,16 @@ namespace CometUI.SettingsUI
                     Settings.Default.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
                     Parent.SettingsChanged = true;
                 }
+                else
+                {
+                    const string msg = "Search will not work without a valid proteome database file. Are you sure you want to clear this field?";
+                    if (DialogResult.OK == MessageBox.Show(msg, Resources.InputSettingsControl_VerifyAndSaveSettings_Search_Settings,
+                                    MessageBoxButtons.OKCancel, MessageBoxIcon.Warning))
+                    {
+                        Settings.Default.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
+                        Parent.SettingsChanged = true;
+                    }
+                }
             }
 
             if (Settings.Default.IsProteinDB != radioButtonProtein.Checked)
