@@ -172,6 +172,26 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to You have not specified a proteome database name in the Input Settings. The params file you are about to create will leave the &apos;database_name&apos; field blank. Click Ok to continue with no &quot;database_name&quot;, or Cancel to abort save..
+        /// </summary>
+        internal static string ExportParamsDlg_BtnExportClick_You_have_not_specified_a_proteome_database_name_in_the_Input_Settings_The_params_file_you_are_about_to_create_will_leave_the_database_name_field_blank {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_BtnExportClick_You_have_not_specified_a_proteome_database_name_in" +
+                        "_the_Input_Settings_The_params_file_you_are_about_to_create_will_leave_the_datab" +
+                        "ase_name_field_blank", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to comet.
+        /// </summary>
+        internal static string ExportParamsDlg_ExportParamsDlg_comet {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_ExportParamsDlg_comet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Comet Params Files (*.params)|*.params.
         /// </summary>
         internal static string ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params {

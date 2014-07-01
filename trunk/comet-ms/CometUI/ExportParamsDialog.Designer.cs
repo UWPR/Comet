@@ -46,7 +46,7 @@
             this.textBoxName.Location = new System.Drawing.Point(15, 36);
             this.textBoxName.Name = "textBoxName";
             this.textBoxName.Size = new System.Drawing.Size(331, 20);
-            this.textBoxName.TabIndex = 0;
+            this.textBoxName.TabIndex = 10;
             this.textBoxName.TextChanged += new System.EventHandler(this.TextBoxNameTextChanged);
             // 
             // textBoxPath
@@ -57,7 +57,7 @@
             this.textBoxPath.Location = new System.Drawing.Point(15, 86);
             this.textBoxPath.Name = "textBoxPath";
             this.textBoxPath.Size = new System.Drawing.Size(331, 20);
-            this.textBoxPath.TabIndex = 1;
+            this.textBoxPath.TabIndex = 11;
             this.textBoxPath.TextChanged += new System.EventHandler(this.TextBoxPathTextChanged);
             // 
             // label1
@@ -113,7 +113,7 @@
             this.btnExportPath.Location = new System.Drawing.Point(373, 83);
             this.btnExportPath.Name = "btnExportPath";
             this.btnExportPath.Size = new System.Drawing.Size(75, 23);
-            this.btnExportPath.TabIndex = 2;
+            this.btnExportPath.TabIndex = 9;
             this.btnExportPath.Text = "&Browse...";
             this.btnExportPath.UseVisualStyleBackColor = true;
             this.btnExportPath.Click += new System.EventHandler(this.BtnExportPathClick);

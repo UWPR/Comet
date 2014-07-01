@@ -249,4 +249,10 @@
   <data name="ExportParamsDlg_BtnExportClick_Error">
     <value xml:space="preserve">Error</value>
   </data>
+  <data name="ExportParamsDlg_ExportParamsDlg_comet">
+    <value xml:space="preserve">comet</value>
+  </data>
+  <data name="ExportParamsDlg_BtnExportClick_You_have_not_specified_a_proteome_database_name_in_the_Input_Settings_The_params_file_you_are_about_to_create_will_leave_the_database_name_field_blank">
+    <value xml:space="preserve">You have not specified a proteome database name in the Input Settings. The params file you are about to create will leave the 'database_name' field blank. Click Ok to continue with no "database_name", or Cancel to abort save.</value>
+  </data>
 </root>
