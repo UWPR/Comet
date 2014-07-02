@@ -170,10 +170,10 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("amu")]
-        public string PrecursorMassUnit {
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int PrecursorMassUnit {
             get {
-                return ((string)(this["PrecursorMassUnit"]));
+                return ((int)(this["PrecursorMassUnit"]));
             }
             set {
                 this["PrecursorMassUnit"] = value;
@@ -182,10 +182,10 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("MH+")]
-        public string PrecursorToleranceType {
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int PrecursorToleranceType {
             get {
-                return ((string)(this["PrecursorToleranceType"]));
+                return ((int)(this["PrecursorToleranceType"]));
             }
             set {
                 this["PrecursorToleranceType"] = value;
@@ -194,10 +194,10 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("mono")]
-        public string PrecursorMassType {
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int PrecursorMassType {
             get {
-                return ((string)(this["PrecursorMassType"]));
+                return ((int)(this["PrecursorMassType"]));
             }
             set {
                 this["PrecursorMassType"] = value;
@@ -206,10 +206,10 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("no C13")]
-        public string PrecursorIsotopeError {
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int PrecursorIsotopeError {
             get {
-                return ((string)(this["PrecursorIsotopeError"]));
+                return ((int)(this["PrecursorIsotopeError"]));
             }
             set {
                 this["PrecursorIsotopeError"] = value;
@@ -862,18 +862,6 @@ namespace CometUI.Properties {
             }
             set {
                 this["UseSparseMatrix"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string Setting {
-            get {
-                return ((string)(this["Setting"]));
-            }
-            set {
-                this["Setting"] = value;
             }
         }
     }

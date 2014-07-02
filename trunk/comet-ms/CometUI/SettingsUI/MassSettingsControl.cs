@@ -7,7 +7,7 @@ namespace CometUI.SettingsUI
     public partial class MassSettingsControl : UserControl
     {
         private new SearchSettingsDlg Parent { get; set; }
-
+     
         public MassSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
@@ -29,25 +29,25 @@ namespace CometUI.SettingsUI
 
             if (!Settings.Default.PrecursorMassUnit.Equals(precursorMassUnitCombo.SelectedItem))
             {
-                Settings.Default.PrecursorMassUnit = precursorMassUnitCombo.SelectedItem.ToString();
+                Settings.Default.PrecursorMassUnit = precursorMassUnitCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
             if (!Settings.Default.PrecursorToleranceType.Equals(precursorTolTypeCombo.SelectedItem))
             {
-                Settings.Default.PrecursorToleranceType = precursorTolTypeCombo.SelectedItem.ToString();
+                Settings.Default.PrecursorToleranceType = precursorTolTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
             if (!Settings.Default.PrecursorMassType.Equals(precursorMassTypeCombo.SelectedItem))
             {
-                Settings.Default.PrecursorMassType = precursorMassTypeCombo.SelectedItem.ToString();
+                Settings.Default.PrecursorMassType = precursorMassTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
             if (!Settings.Default.PrecursorIsotopeError.Equals(precursorIsotopeErrorCombo.SelectedItem))
             {
-                Settings.Default.PrecursorIsotopeError = precursorIsotopeErrorCombo.SelectedItem.ToString();
+                Settings.Default.PrecursorIsotopeError = precursorIsotopeErrorCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
@@ -134,10 +134,10 @@ namespace CometUI.SettingsUI
         {
             // Set up defaults for the precursor mass settings
             precursorMassTolTextBox.Text = Settings.Default.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
-            precursorMassUnitCombo.SelectedItem = Settings.Default.PrecursorMassUnit;
-            precursorTolTypeCombo.SelectedItem = Settings.Default.PrecursorToleranceType;
-            precursorMassTypeCombo.SelectedItem = Settings.Default.PrecursorMassType;
-            precursorIsotopeErrorCombo.SelectedItem = Settings.Default.PrecursorIsotopeError;
+            precursorMassUnitCombo.SelectedIndex = Settings.Default.PrecursorMassUnit;
+            precursorTolTypeCombo.SelectedIndex = Settings.Default.PrecursorToleranceType;
+            precursorMassTypeCombo.SelectedIndex = Settings.Default.PrecursorMassType;
+            precursorIsotopeErrorCombo.SelectedIndex = Settings.Default.PrecursorIsotopeError;
 
             // Set up defaults for fragment settings
             fragmentBinSizeTextBox.Text = Settings.Default.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
