@@ -242,10 +242,10 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("mono")]
-        public string FragmentMassType {
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int FragmentMassType {
             get {
-                return ((string)(this["FragmentMassType"]));
+                return ((int)(this["FragmentMassType"]));
             }
             set {
                 this["FragmentMassType"] = value;

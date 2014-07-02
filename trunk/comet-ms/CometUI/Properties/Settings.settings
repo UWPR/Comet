@@ -66,8 +66,8 @@
     <Setting Name="FragmentBinOffset" Type="System.Double" Scope="User">
       <Value Profile="(Default)">0.4</Value>
     </Setting>
-    <Setting Name="FragmentMassType" Type="System.String" Scope="User">
-      <Value Profile="(Default)">mono</Value>
+    <Setting Name="FragmentMassType" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
     </Setting>
     <Setting Name="UseAIons" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>

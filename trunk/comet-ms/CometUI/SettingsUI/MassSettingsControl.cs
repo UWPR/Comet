@@ -68,7 +68,7 @@ namespace CometUI.SettingsUI
 
             if (!Settings.Default.FragmentMassType.Equals(fragmentMassTypeCombo.SelectedItem))
             {
-                Settings.Default.FragmentMassType = fragmentMassTypeCombo.SelectedItem.ToString();
+                Settings.Default.FragmentMassType = fragmentMassTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
@@ -142,7 +142,7 @@ namespace CometUI.SettingsUI
             // Set up defaults for fragment settings
             fragmentBinSizeTextBox.Text = Settings.Default.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
             fragmentOffsetTextBox.Text = Settings.Default.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
-            fragmentMassTypeCombo.SelectedItem = Settings.Default.FragmentMassType;
+            fragmentMassTypeCombo.SelectedIndex = Settings.Default.FragmentMassType;
             sparseMatrixCheckBox.Checked = Settings.Default.UseSparseMatrix;
         
             // Set up defaults for ion settings

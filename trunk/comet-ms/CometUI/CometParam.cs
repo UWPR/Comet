@@ -63,7 +63,7 @@ namespace CometUI
         //        }
 
         //        return _cometSettings;
-        //    } 
+        //    }
         //}
 
         //private bool UpdateSettings { get; set; }
@@ -82,14 +82,15 @@ namespace CometUI
         //private bool UpdateSettingsFromCometParams()
         //{
         //    String dbName;
-        //    if (!GetCometParamValue("database_name", out dbName))
+        //    if (!GetCometParamValue("database_name", out dbName, out dbName))
         //    {
         //        return false;
         //    }
         //    _cometSettings.ProteomeDatabaseFile = dbName;
 
         //    int searchType;
-        //    if (!GetCometParamValue("decoy_search", out searchType))
+        //    String searchTypeStr;
+        //    if (!GetCometParamValue("decoy_search", out searchType, out searchTypeStr))
         //    {
         //        return false;
         //    }
@@ -97,56 +98,65 @@ namespace CometUI
         //    _cometSettings.SearchType = searchType;
 
         //    String decoyPrefix;
-        //    if (!GetCometParamValue("decoy_prefix", out decoyPrefix))
+        //    if (!GetCometParamValue("decoy_prefix", out decoyPrefix, out decoyPrefix))
         //    {
         //        return false;
         //    }
         //    _cometSettings.DecoyPrefix = decoyPrefix;
 
         //    int nucleotideReadingFrame;
-        //    if (!GetCometParamValue("nucleotide_reading_frame", out nucleotideReadingFrame))
+        //    String nucleotideReadingFrameStr;
+        //    if (!GetCometParamValue("nucleotide_reading_frame", 
+        //        out nucleotideReadingFrame,
+        //        out nucleotideReadingFrameStr))
         //    {
         //        return false;
         //    }
         //    _cometSettings.NucleotideReadingFrame = nucleotideReadingFrame;
 
         //    int outputPepXMLFile;
-        //    if (!GetCometParamValue("output_pepxmlfile", out outputPepXMLFile))
+        //    String outputPepXMLFileStr;
+        //    if (!GetCometParamValue("output_pepxmlfile", out outputPepXMLFile, out outputPepXMLFileStr))
         //    {
         //        return false;
         //    }
         //    _cometSettings.OutputFormatPepXML = outputPepXMLFile == 1;
 
         //    int outputPinXMLFile;
-        //    if (!GetCometParamValue("output_pinxmlfile", out outputPinXMLFile))
+        //    String outputPinXMLFileStr;
+        //    if (!GetCometParamValue("output_pinxmlfile", out outputPinXMLFile, out outputPinXMLFileStr))
         //    {
         //        return false;
         //    }
         //    _cometSettings.OutputFormatPinXML = outputPinXMLFile == 1;
 
         //    int outputTextFile;
-        //    if (!GetCometParamValue("output_txtfile", out outputTextFile))
+        //    String outputTextFileStr;
+        //    if (!GetCometParamValue("output_txtfile", out outputTextFile, out outputTextFileStr))
         //    {
         //        return false;
         //    }
         //    _cometSettings.OutputFormatTextFile = outputTextFile == 1;
 
         //    int outputSqtFile;
-        //    if (!GetCometParamValue("output_sqtfile", out outputSqtFile))
+        //    String outputSqtFileStr;
+        //    if (!GetCometParamValue("output_sqtfile", out outputSqtFile, out outputSqtFileStr))
         //    {
         //        return false;
         //    }
         //    _cometSettings.OutputFormatSqtFile = outputSqtFile == 1;
 
         //    int outputOutFile;
-        //    if (!GetCometParamValue("output_outfiles", out outputOutFile))
+        //    String outputOutFileStr;
+        //    if (!GetCometParamValue("output_outfiles", out outputOutFile, out outputOutFileStr))
         //    {
         //        return false;
         //    }
         //    _cometSettings.OutputFormatOutFiles = outputOutFile == 1;
 
         //    int printExpectScore;
-        //    if (!GetCometParamValue("print_expect_score", out printExpectScore))
+        //    String printExpectScoreStr;
+        //    if (!GetCometParamValue("print_expect_score", out printExpectScore, out printExpectScoreStr))
         //    {
         //        return false;
         //    }
@@ -374,22 +384,22 @@ namespace CometUI
 
         //    }
 
-        //        foreach (var item in settings.VariableMods)
-        //        {
-        //            modNum++;
-        //            string paramName = "variable_mod" + modNum;
-        //            string[] varModsStr = item.Split(',');
-        //            var varMods = new VarMod(varModsStr[0],
-        //                                      Convert.ToDouble(varModsStr[1]),
-        //                                      Convert.ToInt32(varModsStr[2]),
-        //                                      Convert.ToInt32(varModsStr[3]));
-        //            var varModsStrValue = varMods.VarModMass + " " + varMods.VarModChar + " " + varMods.BinaryMod + " " + varMods.MaxNumVarModAAPerMod;
-        //            CometParams.Add(paramName,
-        //                            new TypedCometParam<VarMod>(CometParamType.VarMods,
-        //                                                         varModsStrValue,
-        //                                                         varMods));
+        //    foreach (var item in settings.VariableMods)
+        //    {
+        //        modNum++;
+        //        string paramName = "variable_mod" + modNum;
+        //        string[] varModsStr = item.Split(',');
+        //        var varMods = new VarMod(varModsStr[0],
+        //                                  Convert.ToDouble(varModsStr[1]),
+        //                                  Convert.ToInt32(varModsStr[2]),
+        //                                  Convert.ToInt32(varModsStr[3]));
+        //        var varModsStrValue = varMods.VarModMass + " " + varMods.VarModChar + " " + varMods.BinaryMod + " " + varMods.MaxNumVarModAAPerMod;
+        //        CometParams.Add(paramName,
+        //                        new TypedCometParam<VarMod>(CometParamType.VarMods,
+        //                                                     varModsStrValue,
+        //                                                     varMods));
 
-        //        }
+        //    }
 
         //    var varCTerminus = settings.VariableCTerminus;
         //    CometParams.Add("variable_C_terminus",
@@ -683,8 +693,8 @@ namespace CometUI
 
             var fragmentMassType = settings.FragmentMassType;
             CometParams.Add("mass_type_fragment",
-                            new TypedCometParam<string>(CometParamType.String,
-                                                        fragmentMassType,
+                            new TypedCometParam<int>(CometParamType.String,
+                                                        fragmentMassType.ToString(CultureInfo.InvariantCulture),
                                                         fragmentMassType));
 
             var useSparseMatrix = settings.UseSparseMatrix ? 1 : 0;
@@ -1046,9 +1056,11 @@ namespace CometUI
             return true;
         }
 
-        public bool GetCometParamValue(String name, out double value)
+        public bool GetCometParamValue(String name, out double value, out String strValue)
         {
             value = 0.0;
+            strValue = String.Empty;
+
             CometParam param;
             if (!CometParams.TryGetValue(name, out param))
             {
@@ -1062,12 +1074,15 @@ namespace CometUI
             }
 
             value = typedParam.Value;
+            strValue = param.Value;
             return true;
         }
 
-        public bool GetCometParamValue(String name, out String value)
+        public bool GetCometParamValue(String name, out String value, out String strValue)
         {
             value = String.Empty;
+            strValue = String.Empty;
+
             CometParam param;
             if (!CometParams.TryGetValue(name, out param))
             {
@@ -1081,6 +1096,7 @@ namespace CometUI
             }
 
             value = typedParam.Value;
+            strValue = param.Value;
             return true;
         }
 
@@ -1106,9 +1122,11 @@ namespace CometUI
             return true;
         }
 
-        public bool GetCometParamValue(String name, out DoubleRange value)
+        public bool GetCometParamValue(String name, out DoubleRange value, out String strValue)
         {
             value = null;
+            strValue = String.Empty;
+
             CometParam param;
             if (!CometParams.TryGetValue(name, out param))
             {
@@ -1122,12 +1140,15 @@ namespace CometUI
             }
 
             value = typedParam.Value;
+            strValue = param.Value;
             return true;
         }
 
-        public bool GetCometParamValue(String name, out IntRange value)
+        public bool GetCometParamValue(String name, out IntRange value, out String strValue)
         {
             value = null;
+            strValue = String.Empty;
+
             CometParam param;
             if (!CometParams.TryGetValue(name, out param))
             {
@@ -1141,12 +1162,15 @@ namespace CometUI
             }
 
             value = typedParam.Value;
+            strValue = param.Value;
             return true;
         }
 
-        public bool GetCometParamValue(String name, out StringCollection value)
+        public bool GetCometParamValue(String name, out StringCollection value, out String strValue)
         {
             value = null;
+            strValue = String.Empty;
+
             CometParam param;
             if (!CometParams.TryGetValue(name, out param))
             {
@@ -1160,6 +1184,7 @@ namespace CometUI
             }
 
             value = typedParam.Value;
+            strValue = param.Value;
             return true;
         }
 
