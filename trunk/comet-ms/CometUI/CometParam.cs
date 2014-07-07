@@ -43,30 +43,31 @@ namespace CometUI
 
     public class CometParamsMap
     {
+        private int _maxNumVarMods = 6;
         public Dictionary<string, CometParam> CometParams { get; private set; }
 
         private Settings _cometSettings;
-        //public Settings CometSettings
-        //{
-        //    get
-        //    {
-        //        if (UpdateSettings)
-        //        {
-        //            if (!UpdateSettingsFromCometParams())
-        //            {
-        //                // Need to do something here: Show error, pass error on somewhere?
-        //            }
-        //            else
-        //            {
-        //                UpdateSettings = false;
-        //            }
-        //        }
+        public Settings CometSettings
+        {
+            get
+            {
+                if (UpdateSettings)
+                {
+                    if (!UpdateSettingsFromCometParams())
+                    {
+                        // Need to do something here: Show error, pass error on somewhere?
+                    }
+                    else
+                    {
+                        UpdateSettings = false;
+                    }
+                }
 
-        //        return _cometSettings;
-        //    }
-        //}
+                return _cometSettings;
+            }
+        }
 
-        //private bool UpdateSettings { get; set; }
+        private bool UpdateSettings { get; set; }
 
         public CometParamsMap()
         {
@@ -79,466 +80,439 @@ namespace CometUI
             UpdateCometParamsFromSettings(settings);
         }
 
-        //private bool UpdateSettingsFromCometParams()
-        //{
-        //    String dbName;
-        //    if (!GetCometParamValue("database_name", out dbName, out dbName))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.ProteomeDatabaseFile = dbName;
-
-        //    int searchType;
-        //    String searchTypeStr;
-        //    if (!GetCometParamValue("decoy_search", out searchType, out searchTypeStr))
-        //    {
-        //        return false;
-        //    }
-
-        //    _cometSettings.SearchType = searchType;
-
-        //    String decoyPrefix;
-        //    if (!GetCometParamValue("decoy_prefix", out decoyPrefix, out decoyPrefix))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.DecoyPrefix = decoyPrefix;
-
-        //    int nucleotideReadingFrame;
-        //    String nucleotideReadingFrameStr;
-        //    if (!GetCometParamValue("nucleotide_reading_frame", 
-        //        out nucleotideReadingFrame,
-        //        out nucleotideReadingFrameStr))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.NucleotideReadingFrame = nucleotideReadingFrame;
-
-        //    int outputPepXMLFile;
-        //    String outputPepXMLFileStr;
-        //    if (!GetCometParamValue("output_pepxmlfile", out outputPepXMLFile, out outputPepXMLFileStr))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.OutputFormatPepXML = outputPepXMLFile == 1;
-
-        //    int outputPinXMLFile;
-        //    String outputPinXMLFileStr;
-        //    if (!GetCometParamValue("output_pinxmlfile", out outputPinXMLFile, out outputPinXMLFileStr))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.OutputFormatPinXML = outputPinXMLFile == 1;
-
-        //    int outputTextFile;
-        //    String outputTextFileStr;
-        //    if (!GetCometParamValue("output_txtfile", out outputTextFile, out outputTextFileStr))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.OutputFormatTextFile = outputTextFile == 1;
-
-        //    int outputSqtFile;
-        //    String outputSqtFileStr;
-        //    if (!GetCometParamValue("output_sqtfile", out outputSqtFile, out outputSqtFileStr))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.OutputFormatSqtFile = outputSqtFile == 1;
-
-        //    int outputOutFile;
-        //    String outputOutFileStr;
-        //    if (!GetCometParamValue("output_outfiles", out outputOutFile, out outputOutFileStr))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.OutputFormatOutFiles = outputOutFile == 1;
-
-        //    int printExpectScore;
-        //    String printExpectScoreStr;
-        //    if (!GetCometParamValue("print_expect_score", out printExpectScore, out printExpectScoreStr))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.PrintExpectScoreInPlaceOfSP = printExpectScore == 1;
-
-        //    int showFragmentIons;
-        //    if (!GetCometParamValue("show_fragment_ions", out showFragmentIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.OutputFormatShowFragmentIons = showFragmentIons == 1;
-
-        //    int skipResearching;
-        //    if (!GetCometParamValue("skip_researching", out skipResearching))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.OutputFormatSkipReSearching = skipResearching == 1;
-
-        //    int numOutputLines;
-        //    if (!GetCometParamValue("num_output_lines", out numOutputLines))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.NumOutputLines = numOutputLines;
-
-        //    int searchEnzymeNumber;
-        //    if (!GetCometParamValue("search_enzyme_number", out searchEnzymeNumber))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.SearchEnzymeNumber = searchEnzymeNumber;
-
-        //    int sampleEnzymeNumber;
-        //    if (!GetCometParamValue("sample_enzyme_number", out sampleEnzymeNumber))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.SampleEnzymeNumber = sampleEnzymeNumber;
-
-        //    int allowedMissedCleavages;
-        //    if (!GetCometParamValue("allowed_missed_cleavage", out allowedMissedCleavages))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.AllowedMissedCleavages = allowedMissedCleavages;
-
-        //    int enzymeTermini;
-        //    if (!GetCometParamValue("num_enzyme_termini", out enzymeTermini))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.EnzymeTermini = enzymeTermini;
-
-        //    double precursorMassTol;
-        //    if (!GetCometParamValue("peptide_mass_tolerance", out precursorMassTol))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.PrecursorMassTolerance = precursorMassTol;
-
-        //    String precursorMassUnit;
-        //    if (!GetCometParamValue("peptide_mass_units", out precursorMassUnit))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.PrecursorMassUnit = precursorMassUnit;
-
-        //    String precursorMassType;
-        //    if (!GetCometParamValue("mass_type_parent", out precursorMassType))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.PrecursorMassType = precursorMassType;
-
-        //    String precursorTolType;
-        //    if (!GetCometParamValue("precursor_tolerance_type", out precursorTolType))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.PrecursorToleranceType = precursorTolType;
-
-        //    String isotopeError;
-        //    if (!GetCometParamValue("isotope_error", out isotopeError))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.PrecursorIsotopeError = isotopeError;
-
-        //    double fragmentBinSize;
-        //    if (!GetCometParamValue("fragment_bin_tol", out fragmentBinSize))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.FragmentBinSize = fragmentBinSize;
-
-        //    double fragmentBinOffset;
-        //    if (!GetCometParamValue("fragment_bin_offset", out fragmentBinOffset))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.FragmentBinOffset = fragmentBinOffset;
-
-        //    String fragmentMassType;
-        //    if (!GetCometParamValue("mass_type_fragment", out fragmentMassType))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.FragmentMassType = fragmentMassType;
-
-        //    int useSparseMatrix;
-        //    if (!GetCometParamValue("use_sparse_matrix", out useSparseMatrix))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.UseSparseMatrix = useSparseMatrix == 1;
-
-        //    int useAIons;
-        //    if (!GetCometParamValue("use_A_ions", out useAIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.UseAIons = useAIons == 1;
-
-        //    int useBIons;
-        //    if (!GetCometParamValue("use_B_ions", out useBIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.UseBIons = useBIons == 1;
-
-        //    int useCIons;
-        //    if (!GetCometParamValue("use_C_ions", out useCIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.UseCIons = useCIons == 1;
-
-        //    int useXIons;
-        //    if (!GetCometParamValue("use_X_ions", out useXIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.UseXIons = useXIons == 1;
-
-        //    int useYIons;
-        //    if (!GetCometParamValue("use_Y_ions", out useYIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.UseYIons = useYIons == 1;
-
-        //    int useZIons;
-        //    if (!GetCometParamValue("use_Z_ions", out useZIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.UseZIons = useZIons == 1;
-
-        //    int useFlankIons;
-        //    if (!GetCometParamValue("theoretical_fragment_ions", out useFlankIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.TheoreticalFragmentIons = useFlankIons == 1;
-
-        //    int useNLIons;
-        //    if (!GetCometParamValue("use_NL_ions", out useNLIons))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.UseNLIons = useNLIons == 1;
-
-
-        //    //foreach (var item in settings.StaticMods)
-        //    //{
-        //    //    string[] staticMods = item.Split(',');
-
-        //    //    string paramName = GetStaticModParamName(staticMods[1]);
-        //    //    double massDiff = Convert.ToDouble(staticMods[2]);
-        //    //    CometParams.Add(paramName,
-        //    //                    new TypedCometParam<double>(CometParamType.Double,
-        //    //                                                massDiff.ToString(CultureInfo.InvariantCulture),
-        //    //                                                massDiff));
-        //    //}
-
-        //    double cTermPeptideMass;
-        //    if (!GetCometParamValue("add_Cterm_peptide", out cTermPeptideMass))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.StaticModCTermPeptide = cTermPeptideMass;
-
-        //    double nTermPeptideMass;
-        //    if (!GetCometParamValue("add_Nterm_peptide", out nTermPeptideMass))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.StaticModNTermPeptide = nTermPeptideMass;
-
-        //    double cTermProteinMass;
-        //    if (!GetCometParamValue("add_Cterm_protein", out cTermProteinMass))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.StaticModCTermProtein = cTermProteinMass;
-
-        //    double nTermProteinMass;
-        //    if (!GetCometParamValue("add_Nterm_protein", out nTermProteinMass))
-        //    {
-        //        return false;
-        //    }
-        //    _cometSettings.StaticModNTermProtein = nTermProteinMass;
-
-        //    StringCollection varModsStrCollection = new StringCollection();
-        //    for (int modNum = 0; modNum < NumVarMods; modNum++)
-        //    {
-        //        string paramName = "variable_mod" + modNum;
-        //        VarMod varMod;
-        //        if (!GetCometParamValue(paramName, out varMod))
-        //        {
-        //            return false;
-        //        }
-
-
-        //    }
-
-        //    foreach (var item in settings.VariableMods)
-        //    {
-        //        modNum++;
-        //        string paramName = "variable_mod" + modNum;
-        //        string[] varModsStr = item.Split(',');
-        //        var varMods = new VarMod(varModsStr[0],
-        //                                  Convert.ToDouble(varModsStr[1]),
-        //                                  Convert.ToInt32(varModsStr[2]),
-        //                                  Convert.ToInt32(varModsStr[3]));
-        //        var varModsStrValue = varMods.VarModMass + " " + varMods.VarModChar + " " + varMods.BinaryMod + " " + varMods.MaxNumVarModAAPerMod;
-        //        CometParams.Add(paramName,
-        //                        new TypedCometParam<VarMod>(CometParamType.VarMods,
-        //                                                     varModsStrValue,
-        //                                                     varMods));
-
-        //    }
-
-        //    var varCTerminus = settings.VariableCTerminus;
-        //    CometParams.Add("variable_C_terminus",
-        //        new TypedCometParam<double>(CometParamType.Double,
-        //                                    varCTerminus.ToString(CultureInfo.InvariantCulture),
-        //                                    varCTerminus));
-
-        //    var varCTerminusDist = settings.VariableCTermDistance;
-        //    CometParams.Add("variable_C_terminus_distance",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             varCTerminusDist.ToString(CultureInfo.InvariantCulture),
-        //                                             varCTerminusDist));
-
-        //    var varNTerminus = settings.VariableNTerminus;
-        //    CometParams.Add("variable_N_terminus",
-        //        new TypedCometParam<double>(CometParamType.Double,
-        //                                    varNTerminus.ToString(CultureInfo.InvariantCulture),
-        //                                    varNTerminus));
-
-        //    var varNTerminusDist = settings.VariableNTermDistance;
-        //    CometParams.Add("variable_N_terminus_distance",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             varNTerminusDist.ToString(CultureInfo.InvariantCulture),
-        //                                             varNTerminusDist));
-
-        //    var maxVarModsInPeptide = settings.MaxVarModsInPeptide;
-        //    CometParams.Add("max_variable_mods_in_peptide",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             maxVarModsInPeptide.ToString(CultureInfo.InvariantCulture),
-        //                                             maxVarModsInPeptide));
-
-        //    var mzxmlScanRange = new IntRange(settings.mzxmlScanRangeMin, settings.mzxmlScanRangeMax);
-        //    string mzxmlScanRangeString = mzxmlScanRange.Start.ToString(CultureInfo.InvariantCulture)
-        //                                  + " " + mzxmlScanRange.End.ToString(CultureInfo.InvariantCulture);
-        //    CometParams.Add("scan_range",
-        //                    new TypedCometParam<IntRange>(CometParamType.IntRange,
-        //                                                  mzxmlScanRangeString,
-        //                                                  mzxmlScanRange));
-
-        //    var mzxmlPrecursorChargeRange = new IntRange(settings.mzxmlPrecursorChargeRangeMin, settings.mzxmlPrecursorChargeRangeMax);
-        //    string mzxmlPrecursorChargeRageString = mzxmlPrecursorChargeRange.Start.ToString(CultureInfo.InvariantCulture)
-        //                                  + " " + mzxmlPrecursorChargeRange.End.ToString(CultureInfo.InvariantCulture);
-        //    CometParams.Add("precursor_charge",
-        //                    new TypedCometParam<IntRange>(CometParamType.IntRange,
-        //                                                  mzxmlPrecursorChargeRageString,
-        //                                                  mzxmlPrecursorChargeRange));
-
-        //    var mzxmlMSLevel = settings.mzxmlMsLevel;
-        //    CometParams.Add("ms_level",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             mzxmlMSLevel.ToString(CultureInfo.InvariantCulture),
-        //                                             mzxmlMSLevel));
-
-        //    var mzxmlActivationMethod = settings.mzxmlActivationMethod;
-        //    CometParams.Add("activation_method",
-        //                    new TypedCometParam<string>(CometParamType.String,
-        //                                                mzxmlActivationMethod,
-        //                                                mzxmlActivationMethod));
-
-        //    var minPeaks = settings.spectralProcessingMinPeaks;
-        //    CometParams.Add("minimum_peaks",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             minPeaks.ToString(CultureInfo.InvariantCulture),
-        //                                             minPeaks));
-
-        //    var minIntensity = settings.spectralProcessingMinIntensity;
-        //    CometParams.Add("minimum_intensity",
-        //        new TypedCometParam<double>(CometParamType.Double,
-        //                                    minIntensity.ToString(CultureInfo.InvariantCulture),
-        //                                    minIntensity));
-
-        //    var removePrecursorTol = settings.spectralProcessingRemovePrecursorTol;
-        //    CometParams.Add("remove_precursor_tolerance",
-        //        new TypedCometParam<double>(CometParamType.Double,
-        //                                    removePrecursorTol.ToString(CultureInfo.InvariantCulture),
-        //                                    removePrecursorTol));
-
-        //    var removePrecursorPeak = settings.spectralProcessingRemovePrecursorPeak;
-        //    CometParams.Add("remove_precursor_peak",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             removePrecursorPeak.ToString(CultureInfo.InvariantCulture),
-        //                                             removePrecursorPeak));
-
-        //    var clearMzRange = new DoubleRange(settings.spectralProcessingClearMzMin,
-        //                                       settings.spectralProcessingClearMzMax);
-        //    string clearMzRangeString = clearMzRange.Start.ToString(CultureInfo.InvariantCulture)
-        //                                  + " " + clearMzRange.End.ToString(CultureInfo.InvariantCulture);
-        //    CometParams.Add("clear_mz_range",
-        //                    new TypedCometParam<DoubleRange>(CometParamType.DoubleRange,
-        //                                                     clearMzRangeString,
-        //                                                     clearMzRange));
-
-        //    var spectrumBatchSize = settings.SpectrumBatchSize;
-        //    CometParams.Add("spectrum_batch_size",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             spectrumBatchSize.ToString(CultureInfo.InvariantCulture),
-        //                                             spectrumBatchSize));
-
-        //    var numThreads = settings.NumThreads;
-        //    CometParams.Add("num_threads",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             numThreads.ToString(CultureInfo.InvariantCulture),
-        //                                             numThreads));
-
-        //    var numResults = settings.NumResults;
-        //    CometParams.Add("num_results",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             numResults.ToString(CultureInfo.InvariantCulture),
-        //                                             numResults));
-
-        //    var maxFragmentCharge = settings.MaxFragmentCharge;
-        //    CometParams.Add("max_fragment_charge",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             maxFragmentCharge.ToString(CultureInfo.InvariantCulture),
-        //                                             maxFragmentCharge));
-
-        //    var maxPrecursorCharge = settings.MaxPrecursorCharge;
-        //    CometParams.Add("max_precursor_charge",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             maxPrecursorCharge.ToString(CultureInfo.InvariantCulture),
-        //                                             maxPrecursorCharge));
-
-        //    var clipNTermMethionine = settings.ClipNTermMethionine ? 1 : 0;
-        //    CometParams.Add("clip_nterm_methionine",
-        //                    new TypedCometParam<int>(CometParamType.Int,
-        //                                             clipNTermMethionine.ToString(CultureInfo.InvariantCulture),
-        //                                             clipNTermMethionine));
-
-        //    string enzymeInfoStr = String.Empty;
-        //    foreach (var row in settings.EnzymeInfo)
-        //    {
-        //        enzymeInfoStr += row + Environment.NewLine;
-        //    }
-
-        //    CometParams.Add("[COMET_ENZYME_INFO]",
-        //                    new TypedCometParam<StringCollection>(CometParamType.StrCollection,
-        //                                                          enzymeInfoStr,
-        //                                                          settings.EnzymeInfo));
-        //}
+        private bool UpdateSettingsFromCometParams()
+        {
+            String paramValueStr;
+
+            String dbName;
+            if (!GetCometParamValue("database_name", out dbName, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.ProteomeDatabaseFile = dbName;
+
+            int searchType;
+            if (!GetCometParamValue("decoy_search", out searchType, out paramValueStr))
+            {
+                return false;
+            }
+
+            _cometSettings.SearchType = searchType;
+
+            String decoyPrefix;
+            if (!GetCometParamValue("decoy_prefix", out decoyPrefix, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.DecoyPrefix = decoyPrefix;
+
+            int nucleotideReadingFrame;
+            if (!GetCometParamValue("nucleotide_reading_frame",
+                out nucleotideReadingFrame,
+                out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.NucleotideReadingFrame = nucleotideReadingFrame;
+
+            int outputPepXMLFile;
+            if (!GetCometParamValue("output_pepxmlfile", out outputPepXMLFile, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.OutputFormatPepXML = outputPepXMLFile == 1;
+
+            int outputPinXMLFile;
+            if (!GetCometParamValue("output_pinxmlfile", out outputPinXMLFile, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.OutputFormatPinXML = outputPinXMLFile == 1;
+
+            int outputTextFile;
+            if (!GetCometParamValue("output_txtfile", out outputTextFile, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.OutputFormatTextFile = outputTextFile == 1;
+
+            int outputSqtFile;
+            if (!GetCometParamValue("output_sqtfile", out outputSqtFile, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.OutputFormatSqtFile = outputSqtFile == 1;
+
+            int outputOutFile;
+            if (!GetCometParamValue("output_outfiles", out outputOutFile, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.OutputFormatOutFiles = outputOutFile == 1;
+
+            int printExpectScore;
+            if (!GetCometParamValue("print_expect_score", out printExpectScore, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.PrintExpectScoreInPlaceOfSP = printExpectScore == 1;
+
+            int showFragmentIons;
+            if (!GetCometParamValue("show_fragment_ions", out showFragmentIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.OutputFormatShowFragmentIons = showFragmentIons == 1;
+
+            int skipResearching;
+            if (!GetCometParamValue("skip_researching", out skipResearching, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.OutputFormatSkipReSearching = skipResearching == 1;
+
+            int numOutputLines;
+            if (!GetCometParamValue("num_output_lines", out numOutputLines, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.NumOutputLines = numOutputLines;
+
+            int searchEnzymeNumber;
+            if (!GetCometParamValue("search_enzyme_number", out searchEnzymeNumber, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.SearchEnzymeNumber = searchEnzymeNumber;
+
+            int sampleEnzymeNumber;
+            if (!GetCometParamValue("sample_enzyme_number", out sampleEnzymeNumber, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.SampleEnzymeNumber = sampleEnzymeNumber;
+
+            int allowedMissedCleavages;
+            if (!GetCometParamValue("allowed_missed_cleavage", out allowedMissedCleavages, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.AllowedMissedCleavages = allowedMissedCleavages;
+
+            int enzymeTermini;
+            if (!GetCometParamValue("num_enzyme_termini", out enzymeTermini, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.EnzymeTermini = enzymeTermini;
+
+            double precursorMassTol;
+            if (!GetCometParamValue("peptide_mass_tolerance", out precursorMassTol, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.PrecursorMassTolerance = precursorMassTol;
+
+            int precursorMassUnit;
+            if (!GetCometParamValue("peptide_mass_units", out precursorMassUnit, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.PrecursorMassUnit = precursorMassUnit;
+
+            int precursorMassType;
+            if (!GetCometParamValue("mass_type_parent", out precursorMassType, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.PrecursorMassType = precursorMassType;
+
+            int precursorTolType;
+            if (!GetCometParamValue("precursor_tolerance_type", out precursorTolType, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.PrecursorToleranceType = precursorTolType;
+
+            int isotopeError;
+            if (!GetCometParamValue("isotope_error", out isotopeError, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.PrecursorIsotopeError = isotopeError;
+
+            double fragmentBinSize;
+            if (!GetCometParamValue("fragment_bin_tol", out fragmentBinSize, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.FragmentBinSize = fragmentBinSize;
+
+            double fragmentBinOffset;
+            if (!GetCometParamValue("fragment_bin_offset", out fragmentBinOffset, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.FragmentBinOffset = fragmentBinOffset;
+
+            int fragmentMassType;
+            if (!GetCometParamValue("mass_type_fragment", out fragmentMassType, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.FragmentMassType = fragmentMassType;
+
+            int useSparseMatrix;
+            if (!GetCometParamValue("use_sparse_matrix", out useSparseMatrix, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.UseSparseMatrix = useSparseMatrix == 1;
+
+            int useAIons;
+            if (!GetCometParamValue("use_A_ions", out useAIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.UseAIons = useAIons == 1;
+
+            int useBIons;
+            if (!GetCometParamValue("use_B_ions", out useBIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.UseBIons = useBIons == 1;
+
+            int useCIons;
+            if (!GetCometParamValue("use_C_ions", out useCIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.UseCIons = useCIons == 1;
+
+            int useXIons;
+            if (!GetCometParamValue("use_X_ions", out useXIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.UseXIons = useXIons == 1;
+
+            int useYIons;
+            if (!GetCometParamValue("use_Y_ions", out useYIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.UseYIons = useYIons == 1;
+
+            int useZIons;
+            if (!GetCometParamValue("use_Z_ions", out useZIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.UseZIons = useZIons == 1;
+
+            int useFlankIons;
+            if (!GetCometParamValue("theoretical_fragment_ions", out useFlankIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.TheoreticalFragmentIons = useFlankIons == 1;
+
+            int useNLIons;
+            if (!GetCometParamValue("use_NL_ions", out useNLIons, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.UseNLIons = useNLIons == 1;
+
+            var staticMods = new StringCollection();
+            if (!AddStaticModsToStrCollection(ref staticMods))
+            {
+                return false;
+            }
+            _cometSettings.StaticMods = staticMods;
+
+            double cTermPeptideMass;
+            if (!GetCometParamValue("add_Cterm_peptide", out cTermPeptideMass, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.StaticModCTermPeptide = cTermPeptideMass;
+
+            double nTermPeptideMass;
+            if (!GetCometParamValue("add_Nterm_peptide", out nTermPeptideMass, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.StaticModNTermPeptide = nTermPeptideMass;
+
+            double cTermProteinMass;
+            if (!GetCometParamValue("add_Cterm_protein", out cTermProteinMass, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.StaticModCTermProtein = cTermProteinMass;
+
+            double nTermProteinMass;
+            if (!GetCometParamValue("add_Nterm_protein", out nTermProteinMass, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.StaticModNTermProtein = nTermProteinMass;
+
+            var varModsStrCollection = new StringCollection();
+            if (!AddVarModsToStrCollection(ref varModsStrCollection))
+            {
+                return false;
+            }
+            _cometSettings.VariableMods = varModsStrCollection;
+
+            double varCTerminus;
+            if (!GetCometParamValue("variable_C_terminus", out varCTerminus, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.VariableCTerminus = varCTerminus;
+
+            int varCTerminusDist;
+            if (!GetCometParamValue("variable_C_terminus_distance", out varCTerminusDist, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.VariableCTermDistance = varCTerminusDist;
+
+            double varNTerminus;
+            if (!GetCometParamValue("variable_N_terminus", out varNTerminus, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.VariableNTerminus = varNTerminus;
+
+            int varNTerminusDist;
+            if (!GetCometParamValue("variable_N_terminus_distance", out varNTerminusDist, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.VariableNTermDistance = varNTerminusDist;
+
+            int maxVarModsInPeptide;
+            if (!GetCometParamValue("max_variable_mods_in_peptide", out maxVarModsInPeptide, out paramValueStr))
+            {
+                return false;
+            }
+            _cometSettings.MaxVarModsInPeptide = maxVarModsInPeptide;
+
+
+            //var mzxmlScanRange = new IntRange(settings.mzxmlScanRangeMin, settings.mzxmlScanRangeMax);
+            //string mzxmlScanRangeString = mzxmlScanRange.Start.ToString(CultureInfo.InvariantCulture)
+            //                              + " " + mzxmlScanRange.End.ToString(CultureInfo.InvariantCulture);
+            //CometParams.Add("scan_range",
+            //                new TypedCometParam<IntRange>(CometParamType.IntRange,
+            //                                              mzxmlScanRangeString,
+            //                                              mzxmlScanRange));
+
+            //var mzxmlPrecursorChargeRange = new IntRange(settings.mzxmlPrecursorChargeRangeMin, settings.mzxmlPrecursorChargeRangeMax);
+            //string mzxmlPrecursorChargeRageString = mzxmlPrecursorChargeRange.Start.ToString(CultureInfo.InvariantCulture)
+            //                              + " " + mzxmlPrecursorChargeRange.End.ToString(CultureInfo.InvariantCulture);
+            //CometParams.Add("precursor_charge",
+            //                new TypedCometParam<IntRange>(CometParamType.IntRange,
+            //                                              mzxmlPrecursorChargeRageString,
+            //                                              mzxmlPrecursorChargeRange));
+
+            //var mzxmlMSLevel = settings.mzxmlMsLevel;
+            //CometParams.Add("ms_level",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         mzxmlMSLevel.ToString(CultureInfo.InvariantCulture),
+            //                                         mzxmlMSLevel));
+
+            //var mzxmlActivationMethod = settings.mzxmlActivationMethod;
+            //CometParams.Add("activation_method",
+            //                new TypedCometParam<string>(CometParamType.String,
+            //                                            mzxmlActivationMethod,
+            //                                            mzxmlActivationMethod));
+
+            //var minPeaks = settings.spectralProcessingMinPeaks;
+            //CometParams.Add("minimum_peaks",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         minPeaks.ToString(CultureInfo.InvariantCulture),
+            //                                         minPeaks));
+
+            //var minIntensity = settings.spectralProcessingMinIntensity;
+            //CometParams.Add("minimum_intensity",
+            //    new TypedCometParam<double>(CometParamType.Double,
+            //                                minIntensity.ToString(CultureInfo.InvariantCulture),
+            //                                minIntensity));
+
+            //var removePrecursorTol = settings.spectralProcessingRemovePrecursorTol;
+            //CometParams.Add("remove_precursor_tolerance",
+            //    new TypedCometParam<double>(CometParamType.Double,
+            //                                removePrecursorTol.ToString(CultureInfo.InvariantCulture),
+            //                                removePrecursorTol));
+
+            //var removePrecursorPeak = settings.spectralProcessingRemovePrecursorPeak;
+            //CometParams.Add("remove_precursor_peak",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         removePrecursorPeak.ToString(CultureInfo.InvariantCulture),
+            //                                         removePrecursorPeak));
+
+            //var clearMzRange = new DoubleRange(settings.spectralProcessingClearMzMin,
+            //                                   settings.spectralProcessingClearMzMax);
+            //string clearMzRangeString = clearMzRange.Start.ToString(CultureInfo.InvariantCulture)
+            //                              + " " + clearMzRange.End.ToString(CultureInfo.InvariantCulture);
+            //CometParams.Add("clear_mz_range",
+            //                new TypedCometParam<DoubleRange>(CometParamType.DoubleRange,
+            //                                                 clearMzRangeString,
+            //                                                 clearMzRange));
+
+            //var spectrumBatchSize = settings.SpectrumBatchSize;
+            //CometParams.Add("spectrum_batch_size",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         spectrumBatchSize.ToString(CultureInfo.InvariantCulture),
+            //                                         spectrumBatchSize));
+
+            //var numThreads = settings.NumThreads;
+            //CometParams.Add("num_threads",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         numThreads.ToString(CultureInfo.InvariantCulture),
+            //                                         numThreads));
+
+            //var numResults = settings.NumResults;
+            //CometParams.Add("num_results",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         numResults.ToString(CultureInfo.InvariantCulture),
+            //                                         numResults));
+
+            //var maxFragmentCharge = settings.MaxFragmentCharge;
+            //CometParams.Add("max_fragment_charge",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         maxFragmentCharge.ToString(CultureInfo.InvariantCulture),
+            //                                         maxFragmentCharge));
+
+            //var maxPrecursorCharge = settings.MaxPrecursorCharge;
+            //CometParams.Add("max_precursor_charge",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         maxPrecursorCharge.ToString(CultureInfo.InvariantCulture),
+            //                                         maxPrecursorCharge));
+
+            //var clipNTermMethionine = settings.ClipNTermMethionine ? 1 : 0;
+            //CometParams.Add("clip_nterm_methionine",
+            //                new TypedCometParam<int>(CometParamType.Int,
+            //                                         clipNTermMethionine.ToString(CultureInfo.InvariantCulture),
+            //                                         clipNTermMethionine));
+
+            //string enzymeInfoStr = String.Empty;
+            //foreach (var row in settings.EnzymeInfo)
+            //{
+            //    enzymeInfoStr += row + Environment.NewLine;
+            //}
+
+            //CometParams.Add("[COMET_ENZYME_INFO]",
+            //                new TypedCometParam<StringCollection>(CometParamType.StrCollection,
+            //                                                      enzymeInfoStr,
+            //                                                      settings.EnzymeInfo));
+
+            return true;
+        }
 
         public void UpdateCometParamsFromSettings(Settings settings)
         {
@@ -657,25 +631,25 @@ namespace CometUI
 
             var precursorMassUnit = settings.PrecursorMassUnit;
             CometParams.Add("peptide_mass_units",
-                            new TypedCometParam<int>(CometParamType.String,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                         precursorMassUnit.ToString(CultureInfo.InvariantCulture),
                                                         precursorMassUnit));
 
             var precursorMassType = settings.PrecursorMassType;
             CometParams.Add("mass_type_parent",
-                            new TypedCometParam<int>(CometParamType.String,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                         precursorMassType.ToString(CultureInfo.InvariantCulture),
                                                         precursorMassType));
 
             var precursorTolType = settings.PrecursorToleranceType;
             CometParams.Add("precursor_tolerance_type",
-                            new TypedCometParam<int>(CometParamType.String,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                         precursorTolType.ToString(CultureInfo.InvariantCulture),
                                                         precursorTolType));
 
             var isotopeError = settings.PrecursorIsotopeError;
             CometParams.Add("isotope_error",
-                            new TypedCometParam<int>(CometParamType.String,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                         isotopeError.ToString(CultureInfo.InvariantCulture),
                                                         isotopeError));
 
@@ -693,7 +667,7 @@ namespace CometUI
 
             var fragmentMassType = settings.FragmentMassType;
             CometParams.Add("mass_type_fragment",
-                            new TypedCometParam<int>(CometParamType.String,
+                            new TypedCometParam<int>(CometParamType.Int,
                                                         fragmentMassType.ToString(CultureInfo.InvariantCulture),
                                                         fragmentMassType));
 
@@ -944,6 +918,171 @@ namespace CometUI
                                                                   settings.EnzymeInfo));
 
             _cometSettings = settings;
+        }
+
+        private bool AddVarModsToStrCollection(ref StringCollection varMods)
+        {
+            for (int modNum = 0; modNum < _maxNumVarMods; modNum++)
+            {
+                string paramName = "variable_mod" + modNum;
+                VarMod varMod;
+                String paramValueStr;
+                if (!GetCometParamValue(paramName, out varMod, out paramValueStr))
+                {
+                    return false;
+                }
+
+                varMods.Add(paramValueStr);
+            }
+
+            return true;
+        }
+
+        private bool AddStaticModsToStrCollection(ref StringCollection staticMods)
+        {
+            if (!AddStaticModToStrCollection("add_G_glycine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_A_alanine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_S_serine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_P_proline", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_V_valine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_T_threonine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_C_cysteine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_L_leucine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_I_isoleucine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_N_asparagine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_D_aspartic_acid", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_Q_glutamine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_K_lysine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_E_glutamic_acid", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_M_methionine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_O_ornithine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_H_histidine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_F_phenylalanine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_R_arginine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_Y_tyrosine", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_W_tryptophan", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_B_user_amino_acid", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_J_user_amino_acid", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_U_user_amino_acid", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_X_user_amino_acid", ref staticMods))
+            {
+                return false;
+            }
+
+            if (!AddStaticModToStrCollection("add_Z_user_amino_acid", ref staticMods))
+            {
+                return false;
+            }
+
+            return false;
+        }
+
+        private bool AddStaticModToStrCollection(String modName, ref StringCollection strCollection)
+        {
+            String paramValueStr;
+            double massDiff;
+            if (!GetCometParamValue(modName, out massDiff, out paramValueStr))
+            {
+                return false;
+            }
+            strCollection.Add(modName + "," + massDiff);
+            return true;
         }
 
         public static String GetStaticModParamName(String aa)
