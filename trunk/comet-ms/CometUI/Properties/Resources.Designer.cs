@@ -61,6 +61,16 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap comet {
+            get {
+                object obj = ResourceManager.GetObject("comet", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Are you sure you want to overwrite the current settings?.
         /// </summary>
         internal static string CometUI_SaveSearchSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_ {
@@ -188,6 +198,15 @@ namespace CometUI.Properties {
         internal static string ExportParamsDlg_ExportParamsDlg_comet {
             get {
                 return ResourceManager.GetString("ExportParamsDlg_ExportParamsDlg_comet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to comet.params.
+        /// </summary>
+        internal static string ExportParamsDlg_ExportParamsDlg_comet_params {
+            get {
+                return ResourceManager.GetString("ExportParamsDlg_ExportParamsDlg_comet_params", resourceCulture);
             }
         }
         

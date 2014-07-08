@@ -72,6 +72,8 @@
     <Reference Include="CometWrapper">
       <HintPath>..\Release\CometWrapper.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="Microsoft.VisualBasic.PowerPacks.Vs, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -84,6 +86,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="About Dlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="About Dlg.Designer.cs">
+      <DependentUpon>About Dlg.cs</DependentUpon>
+    </Compile>
     <Compile Include="CometParam.cs" />
     <Compile Include="CometUI.cs">
       <SubType>Form</SubType>
@@ -175,6 +183,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="About Dlg.resx">
+      <DependentUpon>About Dlg.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="CometUI.resx">
       <DependentUpon>CometUI.cs</DependentUpon>
     </EmbeddedResource>
@@ -262,6 +273,12 @@
       <ProductName>Windows Installer 3.1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\comet.jpeg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\comet.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

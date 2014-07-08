@@ -74,7 +74,9 @@ namespace CometUI
 
         private void SaveSearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
         {
-            if (MessageBox.Show(Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_, Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings, MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
+            if (MessageBox.Show(Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_,
+                                Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings,
+                                MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
             {
                 Settings.Default.Save();
             }
@@ -95,6 +97,12 @@ namespace CometUI
                 Resources.ExportParamsDlg_BtnExportClick_Export_Search_Settings, MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             }
+        }
+
+        private void HelpAboutToolStripMenuItemClick(object sender, EventArgs e)
+        {
+            var aboutDlg = new AboutDlg();
+            aboutDlg.ShowDialog();
         }
     }
 }

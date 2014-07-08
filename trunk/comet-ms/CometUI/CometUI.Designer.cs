@@ -189,8 +189,9 @@
             // helpAboutToolStripMenuItem
             // 
             this.helpAboutToolStripMenuItem.Name = "helpAboutToolStripMenuItem";
-            this.helpAboutToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
-            this.helpAboutToolStripMenuItem.Text = "&About...";
+            this.helpAboutToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.helpAboutToolStripMenuItem.Text = "&About Comet";
+            this.helpAboutToolStripMenuItem.Click += new System.EventHandler(this.HelpAboutToolStripMenuItemClick);
             // 
             // mainStatusStrip
             // 
