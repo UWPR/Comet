@@ -35,7 +35,7 @@ namespace CometUI
         Int,
         Double,
         String,
-        VarMods,
+        VarMod,
         DoubleRange,
         IntRange,
         StrCollection
@@ -756,7 +756,7 @@ namespace CometUI
                                           Convert.ToInt32(varModsStr[3]));
                 var varModsStrValue = varMods.VarModMass + " " + varMods.VarModChar + " " + varMods.BinaryMod + " " + varMods.MaxNumVarModAAPerMod;
                 CometParams.Add(paramName,
-                                new TypedCometParam<VarMod>(CometParamType.VarMods,
+                                new TypedCometParam<VarMod>(CometParamType.VarMod,
                                                              varModsStrValue,
                                                              varMods));
 
@@ -1057,77 +1057,52 @@ namespace CometUI
 
         public bool SetCometParam(String paramName, CometParamType paramType, String strValue)
         {
-            CometParam cometParam = null;
+            CometParam cometParam;
             switch (paramType)
             {
                 case CometParamType.Int:
-                    int intValue;
-                    if (!int.TryParse(strValue, out intValue))
-                    {
-                        return false;
-                    }
-                    cometParam = new TypedCometParam<int>(paramType, strValue, intValue);
+                    cometParam = ParseCometIntParam(strValue);
                     break;
                 case CometParamType.Double:
-                    double doubleValue;
-                    if (!double.TryParse(strValue, out doubleValue))
-                    {
-                        return false;
-                    }
-                    cometParam = new TypedCometParam<double>(paramType, strValue, doubleValue);
+                    cometParam = ParseCometDoubleParam(strValue);
                     break;
                 case CometParamType.String:
                     cometParam = new TypedCometParam<String>(paramType, strValue, strValue);
                     break;
                 case CometParamType.IntRange:
-                    String[] intStrValues = strValue.Split(' ');
-                    if (intStrValues.Length < 2)
-                    {
-                        return false;
-                    }
-                    int minIntVal, maxIntVal;
-                    if (!int.TryParse(intStrValues[0], out minIntVal) || !int.TryParse(intStrValues[1], out maxIntVal))
-                    {
-                        return false;
-                    }
-                    cometParam = new TypedCometParam<IntRange>(paramType, strValue, new IntRange(minIntVal, maxIntVal));
+                    cometParam = ParseCometIntRangeParam(strValue);
                     break;
                 case CometParamType.DoubleRange:
-                    String[] doubleStrValues = strValue.Split(' ');
-                    if (doubleStrValues.Length < 2)
-                    {
-                        return false;
-                    }
-                    double minDoubleVal, maxDoubleVal;
-                    if (!double.TryParse(doubleStrValues[0], out minDoubleVal) || !double.TryParse(doubleStrValues[1], out maxDoubleVal))
-                    {
-                        return false;
-                    }
-                    cometParam = new TypedCometParam<DoubleRange>(paramType, strValue, new DoubleRange(minDoubleVal, maxDoubleVal));
+                    cometParam = ParseCometDoubleRangeParam(strValue);
                     break;
-                case CometParamType.VarMods:
+                case CometParamType.VarMod:
+                    cometParam = ParseCometVarModParam(strValue);
                     break;
                 case CometParamType.StrCollection:
+                    cometParam = ParseCometStringCollectionParam(strValue);
                     break;
                 default:
                     return false;
             }
 
-            if (null != cometParam)
+            if (null == cometParam)
             {
-                // If a parameter by the paramName passed in already exists,
-                // just update its value; otherwise, add a new dictionary 
-                // entry for it.
-                CometParam currentParam;
-                if (CometParams.TryGetValue(paramName, out currentParam))
-                {
-                    CometParams[paramName] = cometParam;
-                }
-                else
-                {
-                    CometParams.Add(paramName, cometParam);
-                }
+                return false;
             }
+
+            // If a parameter by the paramName passed in already exists,
+            // just update its value; otherwise, add a new dictionary 
+            // entry for it.
+            CometParam currentParam;
+            if (CometParams.TryGetValue(paramName, out currentParam))
+            {
+                CometParams[paramName] = cometParam;
+            }
+            else
+            {
+                CometParams.Add(paramName, cometParam);
+            }
+
             return true;
         }
 
@@ -1383,6 +1358,115 @@ namespace CometUI
             strCollection.Add(modName + "," + massDiff);
             return true;
         }
+
+        private CometParam ParseCometIntParam(String strValue)
+        {
+            int intValue;
+            if (!int.TryParse(strValue, out intValue))
+            {
+                return null;
+            }
+            return new TypedCometParam<int>(CometParamType.Int, strValue, intValue);
+        }
+
+        private CometParam ParseCometDoubleParam(String strValue)
+        {
+            double doubleValue;
+            if (!double.TryParse(strValue, out doubleValue))
+            {
+                return null;
+            }
+            return new TypedCometParam<double>(CometParamType.Double, strValue, doubleValue);
+        }
+
+        private CometParam ParseCometIntRangeParam(String strValue)
+        {
+            String[] intStrValues = strValue.Split(' ');
+            if (intStrValues.Length < 2)
+            {
+                return null;
+            }
+            int minIntVal, maxIntVal;
+            if (!int.TryParse(intStrValues[0], out minIntVal) || !int.TryParse(intStrValues[1], out maxIntVal))
+            {
+                return null;
+            }
+            return new TypedCometParam<IntRange>(CometParamType.IntRange, strValue, new IntRange(minIntVal, maxIntVal));
+        }
+
+        private CometParam ParseCometDoubleRangeParam(String strValue)
+        {
+            String[] doubleStrValues = strValue.Split(' ');
+            if (doubleStrValues.Length < 2)
+            {
+                return null;
+            }
+
+            double minDoubleVal, maxDoubleVal;
+            if (!double.TryParse(doubleStrValues[0], out minDoubleVal) || !double.TryParse(doubleStrValues[1], out maxDoubleVal))
+            {
+                return null;
+            }
+            
+            return new TypedCometParam<DoubleRange>(CometParamType.DoubleRange, strValue, new DoubleRange(minDoubleVal, maxDoubleVal));
+        }
+
+        private CometParam ParseCometVarModParam(String strValue)
+        {
+            String[] varModStrValues = strValue.Split(' ');
+            if (varModStrValues.Length < 4)
+            {
+                return null;
+            }
+
+            double mass;
+            if (!double.TryParse(varModStrValues[0], out mass))
+            {
+                return null;
+            }
+
+            var varModChar = varModStrValues[1];
+
+            int binaryMod;
+            if (!int.TryParse(varModStrValues[2], out binaryMod))
+            {
+                return null;
+            }
+
+            int maxMods;
+            if (!int.TryParse(varModStrValues[2], out maxMods))
+            {
+                return null;
+            }
+
+            var newStrValue = strValue.Replace(' ', ',');
+
+            return new TypedCometParam<VarMod>(CometParamType.VarMod, newStrValue, new VarMod(varModChar, mass, binaryMod, maxMods));
+        }
+
+        private CometParam ParseCometStringCollectionParam(String strValue)
+        {
+            var strCollectionParam = new StringCollection();
+            String newStrValue = String.Empty;
+            String modifiedStrValue = strValue.Replace(Environment.NewLine, "\n");
+            String[] rows = modifiedStrValue.Split('\n');
+            foreach (var row in rows)
+            {
+                var newRow = row.Replace('.', ' ');
+                char[] duplicateChars = { ' ' };
+                newRow = RemoveDuplicateChars(newRow, duplicateChars);
+                newRow = newRow.Replace(' ', ',');
+                strCollectionParam.Add(newRow);
+                newStrValue += newRow + Environment.NewLine;
+            }
+            return new TypedCometParam<StringCollection>(CometParamType.StrCollection, newStrValue, strCollectionParam);
+        }
+
+        private string RemoveDuplicateChars(string src, char[] dupes)
+        {
+            return string.Join(" ", src.Split(dupes, StringSplitOptions.RemoveEmptyEntries));
+        }
+
     }
 
     public class VarMod
