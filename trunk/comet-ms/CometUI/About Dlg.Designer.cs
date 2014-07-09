@@ -52,6 +52,7 @@
             // pictureBox1
             // 
             this.pictureBox1.Image = global::CometUI.Properties.Resources.comet;
+            this.pictureBox1.InitialImage = global::CometUI.Properties.Resources.comet;
             this.pictureBox1.Location = new System.Drawing.Point(82, 24);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(57, 52);
