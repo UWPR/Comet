@@ -702,7 +702,9 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                {
                   if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
-                     dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
+					  int iFastXcorr = 0;
+					  iFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass]; 
+                     dFastXcorr += iFastXcorr/1000.0;
                   }
                   else
                   {

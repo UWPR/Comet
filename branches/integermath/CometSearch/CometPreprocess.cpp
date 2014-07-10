@@ -294,7 +294,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    try
    {
-      pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+      pScoring->pfFastXcorrData = new int [pScoring->_spectrumInfoInternal.iArraySize]();
    }
    catch (std::bad_alloc& ba)
    {
@@ -313,7 +313,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    {
       try
       {
-         pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+         pScoring->pfFastXcorrDataNL = new int[pScoring->_spectrumInfoInternal.iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
@@ -352,7 +352,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    {
       double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
 
-      pScoring->pfFastXcorrData[i] = (float)dTmp;
+      pScoring->pfFastXcorrData[i] = (int) ((dTmp*1000.0)+0.5);
 
       // Add flanking peaks if used
       if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
@@ -360,11 +360,13 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          int iTmp;
 
          iTmp = i-1;
-         pScoring->pfFastXcorrData[i] += (float) (pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+         //pScoring->pfFastXcorrData[i] += (float) (pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+		 pScoring->pfFastXcorrData[i] += (int) (((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5*1000.0)+0.5);
 
          iTmp = i+1;
          if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
-            pScoring->pfFastXcorrData[i] += (float) (pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+            //pScoring->pfFastXcorrData[i] += (float) (pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+			pScoring->pfFastXcorrData[i] += (int) (((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5*1000.0)+0.5);
       }
 
       //MH: Count number of sparse entries needed
@@ -384,13 +386,15 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          iTmp = i-g_staticParams.precalcMasses.iMinus17;
          if (iTmp>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)(pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2;
+            //pScoring->pfFastXcorrDataNL[i] += (float)(pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2;
+			 pScoring->pfFastXcorrDataNL[i] += (int)(((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2*1000.0)+0.5);
          }
 
          iTmp = i-g_staticParams.precalcMasses.iMinus18;
          if (iTmp>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)(pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2;
+            //pScoring->pfFastXcorrDataNL[i] += (float)(pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2;
+			 pScoring->pfFastXcorrDataNL[i] += (int)(((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2*1000.0)+0.5);
          }
 
          //MH: Count number of sparse entries needed

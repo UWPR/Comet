@@ -1106,6 +1106,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
         ctIonSeries,
         ctCharge;
    double dXcorr;
+   int iXcorr;
    int iLenPeptideMinus1 = iLenPeptide - 1;
 
    // Pointer to either regular or decoy uiBinnedIonMasses[][][].
@@ -1122,9 +1123,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    struct SparseMatrix *pSparseFastXcorrData;  // use this if bSparseMatrix
-   float *pFastXcorrData;                      // use this if not using SparseMatrix
+   int *pFastXcorrData;                      // use this if not using SparseMatrix
 
    dXcorr = 0.0;
+   iXcorr = 0;
 
    for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
    {
@@ -1168,12 +1170,13 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          else
          {
             for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
-               dXcorr += pFastXcorrData[ *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) ];
+               iXcorr += pFastXcorrData[ *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) ];
 
             // *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen].
          }
       }
    }
+   dXcorr+=iXcorr/1000.0;
 
    if (dXcorr < XCORR_CUTOFF)
       dXcorr = XCORR_CUTOFF;

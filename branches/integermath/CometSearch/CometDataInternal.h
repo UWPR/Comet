@@ -637,8 +637,8 @@ struct Query
 
    // Standard array representation of data
    float *pfSpScoreData;
-   float *pfFastXcorrData;
-   float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
+   int *pfFastXcorrData;
+   int *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
 
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;
