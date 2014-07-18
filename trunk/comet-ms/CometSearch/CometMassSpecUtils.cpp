@@ -111,4 +111,10 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
    pdAAMass['W'] = C*11 + H*10 + N*2 + O ;
 
    pdAAMass['O'] = C*5  + H*12 + N*2 + O*2 ;
+
+   pdAAMass['B'] = 0.0;
+   pdAAMass['J'] = 0.0;
+   pdAAMass['U'] = 0.0;
+   pdAAMass['X'] = 0.0;
+   pdAAMass['Z'] = 0.0;
 }
