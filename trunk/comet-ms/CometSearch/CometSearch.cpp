@@ -451,7 +451,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
                      try
                      {
-                        pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize]();
+                        pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
                      }
                      catch (std::bad_alloc& ba)
                      {
@@ -2419,7 +2419,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             // now get the set of binned fragment ions once for all matching peptides
             try
             {
-               pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize]();
+               pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
             }
             catch (std::bad_alloc& ba)
             {
