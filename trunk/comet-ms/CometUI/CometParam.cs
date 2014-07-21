@@ -49,6 +49,7 @@ namespace CometUI
         public CometParamsMap()
         {
             CometParams = new Dictionary<string, CometParam>();
+            UpdateCometParamsFromSettings(Settings.Default);
         }
 
         public CometParamsMap(Settings settings)
@@ -1055,9 +1056,15 @@ namespace CometUI
             return true;
         }
 
-        public bool SetCometParam(String paramName, CometParamType paramType, String strValue)
+        public bool SetCometParam(String paramName, String strValue)
         {
             CometParam cometParam;
+            if (!CometParams.TryGetValue(paramName, out cometParam))
+            {
+                return false;
+            }
+
+            CometParamType paramType = cometParam.Type;
             switch (paramType)
             {
                 case CometParamType.Int:
@@ -1090,18 +1097,7 @@ namespace CometUI
                 return false;
             }
 
-            // If a parameter by the paramName passed in already exists,
-            // just update its value; otherwise, add a new dictionary 
-            // entry for it.
-            CometParam currentParam;
-            if (CometParams.TryGetValue(paramName, out currentParam))
-            {
-                CometParams[paramName] = cometParam;
-            }
-            else
-            {
-                CometParams.Add(paramName, cometParam);
-            }
+            CometParams[paramName] = cometParam;
 
             return true;
         }
