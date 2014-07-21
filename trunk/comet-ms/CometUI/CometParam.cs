@@ -500,214 +500,209 @@ namespace CometUI
 
         public void UpdateCometParamsFromSettings(Settings settings)
         {
-            if (CometParams.Count > 0)
-            {
-                CometParams.Clear();
-            }
-
             var dbName = settings.ProteomeDatabaseFile;
-            CometParams.Add("database_name",
-                            new TypedCometParam<string>(CometParamType.String,
-                                                        dbName,
-                                                        dbName));
+            UpdateCometParam("database_name", 
+                             new TypedCometParam<string>(CometParamType.String,
+                                                         dbName,
+                                                         dbName));
 
             var searchType = settings.SearchType;
-            CometParams.Add("decoy_search",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     searchType.ToString(CultureInfo.InvariantCulture),
-                                                     searchType));
+            UpdateCometParam("decoy_search",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      searchType.ToString(CultureInfo.InvariantCulture),
+                                                      searchType));
 
             var decoyPrefix = settings.DecoyPrefix;
-            CometParams.Add("decoy_prefix",
-                            new TypedCometParam<string>(CometParamType.String,
-                                                        decoyPrefix,
-                                                        decoyPrefix));
+            UpdateCometParam("decoy_prefix",
+                             new TypedCometParam<string>(CometParamType.String,
+                                                         decoyPrefix,
+                                                         decoyPrefix));
 
             var nucleotideReadingFrame = settings.NucleotideReadingFrame;
-            CometParams.Add("nucleotide_reading_frame",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     nucleotideReadingFrame.ToString(CultureInfo.InvariantCulture),
-                                                     nucleotideReadingFrame));
+            UpdateCometParam("nucleotide_reading_frame",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      nucleotideReadingFrame.ToString(CultureInfo.InvariantCulture),
+                                                      nucleotideReadingFrame));
 
             var outputPepXMLFile = settings.OutputFormatPepXML ? 1 : 0;
-            CometParams.Add("output_pepxmlfile",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     outputPepXMLFile.ToString(CultureInfo.InvariantCulture),
-                                                     outputPepXMLFile));
+            UpdateCometParam("output_pepxmlfile",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      outputPepXMLFile.ToString(CultureInfo.InvariantCulture),
+                                                      outputPepXMLFile));
 
             var outputPinXMLFile = settings.OutputFormatPinXML ? 1 : 0;
-            CometParams.Add("output_pinxmlfile",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     outputPinXMLFile.ToString(CultureInfo.InvariantCulture),
-                                                     outputPinXMLFile));
+            UpdateCometParam("output_pinxmlfile",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      outputPinXMLFile.ToString(CultureInfo.InvariantCulture),
+                                                      outputPinXMLFile));
 
             var outputTextFile = settings.OutputFormatTextFile ? 1 : 0;
-            CometParams.Add("output_txtfile",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     outputTextFile.ToString(CultureInfo.InvariantCulture),
-                                                     outputTextFile));
+            UpdateCometParam("output_txtfile",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      outputTextFile.ToString(CultureInfo.InvariantCulture),
+                                                      outputTextFile));
 
             var outputSqtFile = settings.OutputFormatSqtFile ? 1 : 0;
-            CometParams.Add("output_sqtfile",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     outputSqtFile.ToString(CultureInfo.InvariantCulture),
-                                                     outputSqtFile));
+            UpdateCometParam("output_sqtfile",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      outputSqtFile.ToString(CultureInfo.InvariantCulture),
+                                                      outputSqtFile));
 
             var outputOutFile = settings.OutputFormatOutFiles ? 1 : 0;
-            CometParams.Add("output_outfiles",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     outputOutFile.ToString(CultureInfo.InvariantCulture),
-                                                     outputOutFile));
+            UpdateCometParam("output_outfiles",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      outputOutFile.ToString(CultureInfo.InvariantCulture),
+                                                      outputOutFile));
 
             var printExpectScore = settings.PrintExpectScoreInPlaceOfSP ? 1 : 0;
-            CometParams.Add("print_expect_score",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     printExpectScore.ToString(CultureInfo.InvariantCulture),
-                                                     printExpectScore));
+            UpdateCometParam("print_expect_score",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      printExpectScore.ToString(CultureInfo.InvariantCulture),
+                                                      printExpectScore));
 
             var showFragmentIons = settings.OutputFormatShowFragmentIons ? 1 : 0;
-            CometParams.Add("show_fragment_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     showFragmentIons.ToString(CultureInfo.InvariantCulture),
-                                                     showFragmentIons));
+            UpdateCometParam("show_fragment_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      showFragmentIons.ToString(CultureInfo.InvariantCulture),
+                                                      showFragmentIons));
 
             var skipResearching = settings.OutputFormatSkipReSearching ? 1 : 0;
-            CometParams.Add("skip_researching",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     skipResearching.ToString(CultureInfo.InvariantCulture),
-                                                     skipResearching));
+            UpdateCometParam("skip_researching",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      skipResearching.ToString(CultureInfo.InvariantCulture),
+                                                      skipResearching));
 
             var numOutputLines = settings.NumOutputLines;
-            CometParams.Add("num_output_lines",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     numOutputLines.ToString(CultureInfo.InvariantCulture),
-                                                     numOutputLines));
+            UpdateCometParam("num_output_lines",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      numOutputLines.ToString(CultureInfo.InvariantCulture),
+                                                      numOutputLines));
 
             var searchEnzymeNumber = settings.SearchEnzymeNumber;
-            CometParams.Add("search_enzyme_number",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     searchEnzymeNumber.ToString(CultureInfo.InvariantCulture),
-                                                     searchEnzymeNumber));
+            UpdateCometParam("search_enzyme_number",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      searchEnzymeNumber.ToString(CultureInfo.InvariantCulture),
+                                                      searchEnzymeNumber));
 
             var sampleEnzymeNumber = settings.SampleEnzymeNumber;
-            CometParams.Add("sample_enzyme_number",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     sampleEnzymeNumber.ToString(CultureInfo.InvariantCulture),
-                                                     sampleEnzymeNumber));
+            UpdateCometParam("sample_enzyme_number",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      sampleEnzymeNumber.ToString(CultureInfo.InvariantCulture),
+                                                      sampleEnzymeNumber));
 
             var allowedMissedCleavages = settings.AllowedMissedCleavages;
-            CometParams.Add("allowed_missed_cleavage",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     allowedMissedCleavages.ToString(CultureInfo.InvariantCulture),
-                                                     allowedMissedCleavages));
+            UpdateCometParam("allowed_missed_cleavage",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      allowedMissedCleavages.ToString(CultureInfo.InvariantCulture),
+                                                      allowedMissedCleavages));
 
             var enzymeTermini = settings.EnzymeTermini;
-            CometParams.Add("num_enzyme_termini",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     enzymeTermini.ToString(CultureInfo.InvariantCulture),
-                                                     enzymeTermini));
+            UpdateCometParam("num_enzyme_termini",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      enzymeTermini.ToString(CultureInfo.InvariantCulture),
+                                                      enzymeTermini));
 
             var precursorMassTol = settings.PrecursorMassTolerance;
-            CometParams.Add("peptide_mass_tolerance",
-                            new TypedCometParam<double>(CometParamType.Double,
-                                                        precursorMassTol.ToString(CultureInfo.InvariantCulture),
-                                                        precursorMassTol));
+            UpdateCometParam("peptide_mass_tolerance",
+                             new TypedCometParam<double>(CometParamType.Double,
+                                                         precursorMassTol.ToString(CultureInfo.InvariantCulture),
+                                                         precursorMassTol));
 
             var precursorMassUnit = settings.PrecursorMassUnit;
-            CometParams.Add("peptide_mass_units",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                        precursorMassUnit.ToString(CultureInfo.InvariantCulture),
-                                                        precursorMassUnit));
+            UpdateCometParam("peptide_mass_units",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                         precursorMassUnit.ToString(CultureInfo.InvariantCulture),
+                                                         precursorMassUnit));
 
             var precursorMassType = settings.PrecursorMassType;
-            CometParams.Add("mass_type_parent",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                        precursorMassType.ToString(CultureInfo.InvariantCulture),
-                                                        precursorMassType));
+            UpdateCometParam("mass_type_parent",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                         precursorMassType.ToString(CultureInfo.InvariantCulture),
+                                                         precursorMassType));
 
             var precursorTolType = settings.PrecursorToleranceType;
-            CometParams.Add("precursor_tolerance_type",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                        precursorTolType.ToString(CultureInfo.InvariantCulture),
-                                                        precursorTolType));
+            UpdateCometParam("precursor_tolerance_type",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                         precursorTolType.ToString(CultureInfo.InvariantCulture),
+                                                         precursorTolType));
 
             var isotopeError = settings.PrecursorIsotopeError;
-            CometParams.Add("isotope_error",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                        isotopeError.ToString(CultureInfo.InvariantCulture),
-                                                        isotopeError));
+            UpdateCometParam("isotope_error",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                         isotopeError.ToString(CultureInfo.InvariantCulture),
+                                                         isotopeError));
 
             var fragmentBinSize = settings.FragmentBinSize;
-            CometParams.Add("fragment_bin_tol",
-                            new TypedCometParam<double>(CometParamType.Double,
-                                                        fragmentBinSize.ToString(CultureInfo.InvariantCulture),
-                                                        fragmentBinSize));
+            UpdateCometParam("fragment_bin_tol",
+                             new TypedCometParam<double>(CometParamType.Double,
+                                                         fragmentBinSize.ToString(CultureInfo.InvariantCulture),
+                                                         fragmentBinSize));
 
             var fragmentBinOffset = settings.FragmentBinOffset;
-            CometParams.Add("fragment_bin_offset",
-                            new TypedCometParam<double>(CometParamType.Double,
-                                                        fragmentBinOffset.ToString(CultureInfo.InvariantCulture),
-                                                        fragmentBinOffset));
+            UpdateCometParam("fragment_bin_offset",
+                             new TypedCometParam<double>(CometParamType.Double,
+                                                         fragmentBinOffset.ToString(CultureInfo.InvariantCulture),
+                                                         fragmentBinOffset));
 
             var fragmentMassType = settings.FragmentMassType;
-            CometParams.Add("mass_type_fragment",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                        fragmentMassType.ToString(CultureInfo.InvariantCulture),
-                                                        fragmentMassType));
+            UpdateCometParam("mass_type_fragment",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                         fragmentMassType.ToString(CultureInfo.InvariantCulture),
+                                                         fragmentMassType));
 
             var useSparseMatrix = settings.UseSparseMatrix ? 1 : 0;
-            CometParams.Add("use_sparse_matrix",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useSparseMatrix.ToString(CultureInfo.InvariantCulture),
-                                                     useSparseMatrix));
+            UpdateCometParam("use_sparse_matrix",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useSparseMatrix.ToString(CultureInfo.InvariantCulture),
+                                                      useSparseMatrix));
 
             var useAIons = settings.UseAIons ? 1 : 0;
-            CometParams.Add("use_A_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useAIons.ToString(CultureInfo.InvariantCulture),
-                                                     useAIons));
+            UpdateCometParam("use_A_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useAIons.ToString(CultureInfo.InvariantCulture),
+                                                      useAIons));
 
             var useBIons = settings.UseBIons ? 1 : 0;
-            CometParams.Add("use_B_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useBIons.ToString(CultureInfo.InvariantCulture),
-                                                     useBIons));
+            UpdateCometParam("use_B_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useBIons.ToString(CultureInfo.InvariantCulture),
+                                                      useBIons));
 
             var useCIons = settings.UseCIons ? 1 : 0;
-            CometParams.Add("use_C_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useCIons.ToString(CultureInfo.InvariantCulture),
-                                                     useCIons));
+            UpdateCometParam("use_C_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useCIons.ToString(CultureInfo.InvariantCulture),
+                                                      useCIons));
 
             var useXIons = settings.UseXIons ? 1 : 0;
-            CometParams.Add("use_X_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useXIons.ToString(CultureInfo.InvariantCulture),
-                                                     useXIons));
+            UpdateCometParam("use_X_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useXIons.ToString(CultureInfo.InvariantCulture),
+                                                      useXIons));
 
             var useYIons = settings.UseYIons ? 1 : 0;
-            CometParams.Add("use_Y_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useYIons.ToString(CultureInfo.InvariantCulture),
-                                                     useYIons));
+            UpdateCometParam("use_Y_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useYIons.ToString(CultureInfo.InvariantCulture),
+                                                      useYIons));
 
             var useZIons = settings.UseZIons ? 1 : 0;
-            CometParams.Add("use_Z_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useZIons.ToString(CultureInfo.InvariantCulture),
-                                                     useZIons));
+            UpdateCometParam("use_Z_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useZIons.ToString(CultureInfo.InvariantCulture),
+                                                      useZIons));
 
             var useFlankIons = settings.TheoreticalFragmentIons ? 1 : 0;
-            CometParams.Add("theoretical_fragment_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useFlankIons.ToString(CultureInfo.InvariantCulture),
-                                                     useFlankIons));
+            UpdateCometParam("theoretical_fragment_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useFlankIons.ToString(CultureInfo.InvariantCulture),
+                                                      useFlankIons));
 
             var useNLIons = settings.UseNLIons ? 1 : 0;
-            CometParams.Add("use_NL_ions",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     useNLIons.ToString(CultureInfo.InvariantCulture),
-                                                     useNLIons));
+            UpdateCometParam("use_NL_ions",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      useNLIons.ToString(CultureInfo.InvariantCulture),
+                                                      useNLIons));
 
             foreach (var item in settings.StaticMods)
             {
@@ -715,32 +710,32 @@ namespace CometUI
 
                 string paramName = GetStaticModParamName(staticMods[1]);
                 double massDiff = Convert.ToDouble(staticMods[2]);
-                CometParams.Add(paramName,
-                                new TypedCometParam<double>(CometParamType.Double,
-                                                            massDiff.ToString(CultureInfo.InvariantCulture),
-                                                            massDiff));
+                UpdateCometParam(paramName,
+                                 new TypedCometParam<double>(CometParamType.Double,
+                                                             massDiff.ToString(CultureInfo.InvariantCulture),
+                                                             massDiff));
             }
 
             var cTermPeptideMass = settings.StaticModCTermPeptide;
-            CometParams.Add("add_Cterm_peptide",
+            UpdateCometParam("add_Cterm_peptide",
                 new TypedCometParam<double>(CometParamType.Double,
                                             cTermPeptideMass.ToString(CultureInfo.InvariantCulture),
                                             cTermPeptideMass));
 
             var nTermPeptideMass = settings.StaticModNTermPeptide;
-            CometParams.Add("add_Nterm_peptide",
+            UpdateCometParam("add_Nterm_peptide",
                 new TypedCometParam<double>(CometParamType.Double,
                                             nTermPeptideMass.ToString(CultureInfo.InvariantCulture),
                                             nTermPeptideMass));
 
             var cTermProteinMass = settings.StaticModCTermProtein;
-            CometParams.Add("add_Cterm_protein",
+            UpdateCometParam("add_Cterm_protein",
                 new TypedCometParam<double>(CometParamType.Double,
                                             cTermProteinMass.ToString(CultureInfo.InvariantCulture),
                                             cTermProteinMass));
 
             var nTermProteinMass = settings.StaticModNTermProtein;
-            CometParams.Add("add_Nterm_protein",
+            UpdateCometParam("add_Nterm_protein",
                 new TypedCometParam<double>(CometParamType.Double,
                                             nTermProteinMass.ToString(CultureInfo.InvariantCulture),
                                             nTermProteinMass));
@@ -756,139 +751,139 @@ namespace CometUI
                                           Convert.ToInt32(varModsStr[2]),
                                           Convert.ToInt32(varModsStr[3]));
                 var varModsStrValue = varMods.VarModMass + " " + varMods.VarModChar + " " + varMods.BinaryMod + " " + varMods.MaxNumVarModAAPerMod;
-                CometParams.Add(paramName,
-                                new TypedCometParam<VarMod>(CometParamType.VarMod,
+                UpdateCometParam(paramName,
+                                 new TypedCometParam<VarMod>(CometParamType.VarMod,
                                                              varModsStrValue,
                                                              varMods));
 
             }
 
             var varCTerminus = settings.VariableCTerminus;
-            CometParams.Add("variable_C_terminus",
-                new TypedCometParam<double>(CometParamType.Double,
+            UpdateCometParam("variable_C_terminus",
+                             new TypedCometParam<double>(CometParamType.Double,
                                             varCTerminus.ToString(CultureInfo.InvariantCulture),
                                             varCTerminus));
 
             var varCTerminusDist = settings.VariableCTermDistance;
-            CometParams.Add("variable_C_terminus_distance",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     varCTerminusDist.ToString(CultureInfo.InvariantCulture),
-                                                     varCTerminusDist));
+            UpdateCometParam("variable_C_terminus_distance",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      varCTerminusDist.ToString(CultureInfo.InvariantCulture),
+                                                      varCTerminusDist));
 
             var varNTerminus = settings.VariableNTerminus;
-            CometParams.Add("variable_N_terminus",
-                new TypedCometParam<double>(CometParamType.Double,
+            UpdateCometParam("variable_N_terminus",
+                             new TypedCometParam<double>(CometParamType.Double,
                                             varNTerminus.ToString(CultureInfo.InvariantCulture),
                                             varNTerminus));
 
             var varNTerminusDist = settings.VariableNTermDistance;
-            CometParams.Add("variable_N_terminus_distance",
+            UpdateCometParam("variable_N_terminus_distance",
                             new TypedCometParam<int>(CometParamType.Int,
                                                      varNTerminusDist.ToString(CultureInfo.InvariantCulture),
                                                      varNTerminusDist));
 
             var maxVarModsInPeptide = settings.MaxVarModsInPeptide;
-            CometParams.Add("max_variable_mods_in_peptide",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     maxVarModsInPeptide.ToString(CultureInfo.InvariantCulture),
-                                                     maxVarModsInPeptide));
+            UpdateCometParam("max_variable_mods_in_peptide",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      maxVarModsInPeptide.ToString(CultureInfo.InvariantCulture),
+                                                      maxVarModsInPeptide));
 
             var mzxmlScanRange = new IntRange(settings.mzxmlScanRangeMin, settings.mzxmlScanRangeMax);
             string mzxmlScanRangeString = mzxmlScanRange.Start.ToString(CultureInfo.InvariantCulture)
                                           + " " + mzxmlScanRange.End.ToString(CultureInfo.InvariantCulture);
-            CometParams.Add("scan_range",
-                            new TypedCometParam<IntRange>(CometParamType.IntRange,
-                                                          mzxmlScanRangeString,
-                                                          mzxmlScanRange));
+            UpdateCometParam("scan_range",
+                             new TypedCometParam<IntRange>(CometParamType.IntRange,
+                                                           mzxmlScanRangeString,
+                                                           mzxmlScanRange));
 
             var mzxmlPrecursorChargeRange = new IntRange(settings.mzxmlPrecursorChargeRangeMin, settings.mzxmlPrecursorChargeRangeMax);
             string mzxmlPrecursorChargeRageString = mzxmlPrecursorChargeRange.Start.ToString(CultureInfo.InvariantCulture)
                                           + " " + mzxmlPrecursorChargeRange.End.ToString(CultureInfo.InvariantCulture);
-            CometParams.Add("precursor_charge",
-                            new TypedCometParam<IntRange>(CometParamType.IntRange,
-                                                          mzxmlPrecursorChargeRageString,
-                                                          mzxmlPrecursorChargeRange));
+            UpdateCometParam("precursor_charge",
+                             new TypedCometParam<IntRange>(CometParamType.IntRange,
+                                                           mzxmlPrecursorChargeRageString,
+                                                           mzxmlPrecursorChargeRange));
 
             var mzxmlMSLevel = settings.mzxmlMsLevel;
-            CometParams.Add("ms_level",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     mzxmlMSLevel.ToString(CultureInfo.InvariantCulture),
-                                                     mzxmlMSLevel));
+            UpdateCometParam("ms_level",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      mzxmlMSLevel.ToString(CultureInfo.InvariantCulture),
+                                                      mzxmlMSLevel));
 
             var mzxmlActivationMethod = settings.mzxmlActivationMethod;
-            CometParams.Add("activation_method",
-                            new TypedCometParam<string>(CometParamType.String,
-                                                        mzxmlActivationMethod,
-                                                        mzxmlActivationMethod));
+            UpdateCometParam("activation_method",
+                             new TypedCometParam<string>(CometParamType.String,
+                                                         mzxmlActivationMethod,
+                                                         mzxmlActivationMethod));
 
             var minPeaks = settings.spectralProcessingMinPeaks;
-            CometParams.Add("minimum_peaks",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     minPeaks.ToString(CultureInfo.InvariantCulture),
-                                                     minPeaks));
+            UpdateCometParam("minimum_peaks",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      minPeaks.ToString(CultureInfo.InvariantCulture),
+                                                      minPeaks));
 
             var minIntensity = settings.spectralProcessingMinIntensity;
-            CometParams.Add("minimum_intensity",
+            UpdateCometParam("minimum_intensity",
                 new TypedCometParam<double>(CometParamType.Double,
                                             minIntensity.ToString(CultureInfo.InvariantCulture),
                                             minIntensity));
 
             var removePrecursorTol = settings.spectralProcessingRemovePrecursorTol;
-            CometParams.Add("remove_precursor_tolerance",
+            UpdateCometParam("remove_precursor_tolerance",
                 new TypedCometParam<double>(CometParamType.Double,
                                             removePrecursorTol.ToString(CultureInfo.InvariantCulture),
                                             removePrecursorTol));
 
             var removePrecursorPeak = settings.spectralProcessingRemovePrecursorPeak;
-            CometParams.Add("remove_precursor_peak",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     removePrecursorPeak.ToString(CultureInfo.InvariantCulture),
-                                                     removePrecursorPeak));
+            UpdateCometParam("remove_precursor_peak",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      removePrecursorPeak.ToString(CultureInfo.InvariantCulture),
+                                                      removePrecursorPeak));
 
             var clearMzRange = new DoubleRange(settings.spectralProcessingClearMzMin,
                                                settings.spectralProcessingClearMzMax);
             string clearMzRangeString = clearMzRange.Start.ToString(CultureInfo.InvariantCulture)
                                           + " " + clearMzRange.End.ToString(CultureInfo.InvariantCulture);
-            CometParams.Add("clear_mz_range",
-                            new TypedCometParam<DoubleRange>(CometParamType.DoubleRange,
-                                                             clearMzRangeString,
-                                                             clearMzRange));
+            UpdateCometParam("clear_mz_range",
+                             new TypedCometParam<DoubleRange>(CometParamType.DoubleRange,
+                                                              clearMzRangeString,
+                                                              clearMzRange));
 
             var spectrumBatchSize = settings.SpectrumBatchSize;
-            CometParams.Add("spectrum_batch_size",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     spectrumBatchSize.ToString(CultureInfo.InvariantCulture),
-                                                     spectrumBatchSize));
+            UpdateCometParam("spectrum_batch_size",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      spectrumBatchSize.ToString(CultureInfo.InvariantCulture),
+                                                      spectrumBatchSize));
 
             var numThreads = settings.NumThreads;
-            CometParams.Add("num_threads",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     numThreads.ToString(CultureInfo.InvariantCulture),
-                                                     numThreads));
+            UpdateCometParam("num_threads",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      numThreads.ToString(CultureInfo.InvariantCulture),
+                                                      numThreads));
 
             var numResults = settings.NumResults;
-            CometParams.Add("num_results",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     numResults.ToString(CultureInfo.InvariantCulture),
-                                                     numResults));
+            UpdateCometParam("num_results",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      numResults.ToString(CultureInfo.InvariantCulture),
+                                                      numResults));
 
             var maxFragmentCharge = settings.MaxFragmentCharge;
-            CometParams.Add("max_fragment_charge",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     maxFragmentCharge.ToString(CultureInfo.InvariantCulture),
-                                                     maxFragmentCharge));
+            UpdateCometParam("max_fragment_charge",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      maxFragmentCharge.ToString(CultureInfo.InvariantCulture),
+                                                      maxFragmentCharge));
 
             var maxPrecursorCharge = settings.MaxPrecursorCharge;
-            CometParams.Add("max_precursor_charge",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     maxPrecursorCharge.ToString(CultureInfo.InvariantCulture),
-                                                     maxPrecursorCharge));
+            UpdateCometParam("max_precursor_charge",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      maxPrecursorCharge.ToString(CultureInfo.InvariantCulture),
+                                                      maxPrecursorCharge));
 
             var clipNTermMethionine = settings.ClipNTermMethionine ? 1 : 0;
-            CometParams.Add("clip_nterm_methionine",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     clipNTermMethionine.ToString(CultureInfo.InvariantCulture),
-                                                     clipNTermMethionine));
+            UpdateCometParam("clip_nterm_methionine",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      clipNTermMethionine.ToString(CultureInfo.InvariantCulture),
+                                                      clipNTermMethionine));
 
             string enzymeInfoStr = String.Empty;
             foreach (var row in settings.EnzymeInfo)
@@ -896,10 +891,10 @@ namespace CometUI
                 enzymeInfoStr += row + Environment.NewLine;
             }
 
-            CometParams.Add("[COMET_ENZYME_INFO]",
-                            new TypedCometParam<StringCollection>(CometParamType.StrCollection,
-                                                                  enzymeInfoStr,
-                                                                  settings.EnzymeInfo));
+            UpdateCometParam("[COMET_ENZYME_INFO]",
+                             new TypedCometParam<StringCollection>(CometParamType.StrCollection,
+                                                                   enzymeInfoStr,
+                                                                   settings.EnzymeInfo));
         }
 
         public bool GetCometParamValue(String name, out int value, out String strValue)
@@ -1188,6 +1183,19 @@ namespace CometUI
             }
 
             return paramName;
+        }
+
+        private void UpdateCometParam(String paramName, CometParam newCometParam)
+        {
+            CometParam currentCometParam;
+            if (CometParams.TryGetValue(paramName, out currentCometParam))
+            {
+                CometParams[paramName] = newCometParam;
+            }
+            else
+            {
+                CometParams.Add(paramName, newCometParam);
+            }
         }
 
         private bool AddVarModsToStrCollection(ref StringCollection varMods)
