@@ -58,7 +58,7 @@ namespace CometUI
             UpdateCometParamsFromSettings(settings);
         }
 
-        public bool GetSettingsFromCometParams(ref Settings cometSettings)
+        public bool GetSettingsFromCometParams(Settings cometSettings)
         {
             String paramValueStr;
 
