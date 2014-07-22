@@ -85,6 +85,20 @@ namespace CometUI.SettingsUI
                 Parent.SettingsChanged = true;
             }
 
+            var digestMassRangeMin = (double) digestMassRangeMinTextBox.DecimalValue;
+            if (!digestMassRangeMin.Equals(Settings.Default.digestMassRangeMin))
+            {
+                Settings.Default.digestMassRangeMin = digestMassRangeMin;
+                Parent.SettingsChanged = true;
+            }
+
+            var digestMassRangeMax = (double)digestMassRangeMaxTextBox.DecimalValue;
+            if (!digestMassRangeMax.Equals(Settings.Default.digestMassRangeMax))
+            {
+                Settings.Default.digestMassRangeMax = digestMassRangeMax;
+                Parent.SettingsChanged = true;
+            }
+
             return true;
         }
 
@@ -109,6 +123,11 @@ namespace CometUI.SettingsUI
 
             searchEnzymeCombo.SelectedIndex = SearchEnzymeCurrentSelectedIndex;
             sampleEnzymeCombo.SelectedIndex = SampleEnzymeCurrentSelectedIndex;
+
+            digestMassRangeMinTextBox.Text = 
+                Settings.Default.digestMassRangeMin.ToString(CultureInfo.InvariantCulture);
+            digestMassRangeMaxTextBox.Text = 
+                Settings.Default.digestMassRangeMax.ToString(CultureInfo.InvariantCulture);
         }
 
         private void UpdateEnzymeInfo()

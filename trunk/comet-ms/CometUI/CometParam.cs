@@ -184,6 +184,14 @@ namespace CometUI
             }
             cometSettings.EnzymeTermini = enzymeTermini;
 
+            DoubleRange digestMassRange;
+            if (!GetCometParamValue("digest_mass_range", out digestMassRange, out paramValueStr))
+            {
+                return false;
+            }
+            cometSettings.digestMassRangeMin = digestMassRange.Start;
+            cometSettings.digestMassRangeMax = digestMassRange.End;
+
             double precursorMassTol;
             if (!GetCometParamValue("peptide_mass_tolerance", out precursorMassTol, out paramValueStr))
             {
@@ -601,6 +609,15 @@ namespace CometUI
                              new TypedCometParam<int>(CometParamType.Int,
                                                       enzymeTermini.ToString(CultureInfo.InvariantCulture),
                                                       enzymeTermini));
+
+            var digestMassRange = new DoubleRange(settings.digestMassRangeMin,
+                                   settings.digestMassRangeMax);
+            string digestMassRangeString = digestMassRange.Start.ToString(CultureInfo.InvariantCulture)
+                                          + " " + digestMassRange.End.ToString(CultureInfo.InvariantCulture);
+            UpdateCometParam("digest_mass_range",
+                             new TypedCometParam<DoubleRange>(CometParamType.DoubleRange,
+                                                              digestMassRangeString,
+                                                              digestMassRange));
 
             var precursorMassTol = settings.PrecursorMassTolerance;
             UpdateCometParam("peptide_mass_tolerance",

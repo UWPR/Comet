@@ -864,5 +864,29 @@ namespace CometUI.Properties {
                 this["UseSparseMatrix"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("600")]
+        public double digestMassRangeMin {
+            get {
+                return ((double)(this["digestMassRangeMin"]));
+            }
+            set {
+                this["digestMassRangeMin"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5000")]
+        public double digestMassRangeMax {
+            get {
+                return ((double)(this["digestMassRangeMax"]));
+            }
+            set {
+                this["digestMassRangeMax"] = value;
+            }
+        }
     }
 }

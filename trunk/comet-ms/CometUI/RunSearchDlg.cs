@@ -298,7 +298,7 @@ namespace CometUI
                 return false;
             }
 
-            if (!ConfigureVariableMiscSettings(searchMgr))
+            if (!ConfigureMiscSettings(searchMgr))
             {
                 return false;
             }
@@ -489,6 +489,18 @@ namespace CometUI
                 SearchStatusMessage = "Could not set the num_enzyme_termini parameter.";
                 return false;
             }
+
+            var digestMassMin = Settings.Default.digestMassRangeMin;
+            var digestMassMax = Settings.Default.digestMassRangeMax;
+            var digestMassRange = new DoubleRangeWrapper(digestMassMin, digestMassMax);
+            string digestMassRangeString = digestMassMin.ToString(CultureInfo.InvariantCulture)
+                                          + " " + digestMassMax.ToString(CultureInfo.InvariantCulture);
+            if (!searchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange))
+            {
+                SearchStatusMessage = "Could not set the digest_mass_range parameter.";
+                return false;
+            }
+
 
             return true;
         }
@@ -770,7 +782,7 @@ namespace CometUI
             return true;
         }
 
-        private bool ConfigureVariableMiscSettings(CometSearchManagerWrapper searchMgr)
+        private bool ConfigureMiscSettings(CometSearchManagerWrapper searchMgr)
         {
             // Set the mzXML-specific miscellaneous settings
             var mzxmlScanRangeMin = Settings.Default.mzxmlScanRangeMin;

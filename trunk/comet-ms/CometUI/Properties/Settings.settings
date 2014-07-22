@@ -250,5 +250,11 @@
     <Setting Name="UseSparseMatrix" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="digestMassRangeMin" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">600</Value>
+    </Setting>
+    <Setting Name="digestMassRangeMax" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">5000</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
