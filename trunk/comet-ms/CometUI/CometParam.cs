@@ -1230,7 +1230,7 @@ namespace CometUI
 
         private bool AddVarModsToStrCollection(ref StringCollection varMods)
         {
-            for (int modNum = 0; modNum < MaxNumVarMods; modNum++)
+            for (int modNum = 1; modNum <= MaxNumVarMods; modNum++)
             {
                 string paramName = "variable_mod" + modNum;
                 VarMod varMod;
