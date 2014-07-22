@@ -1378,7 +1378,7 @@ namespace CometUI
                 return false;
             }
 
-            return false;
+            return true;
         }
 
         private bool AddStaticModToStrCollection(String modName, ref StringCollection strCollection)
