@@ -114,6 +114,13 @@ namespace CometUI
             }
             cometSettings.OutputFormatTextFile = outputTextFile == 1;
 
+            int outputSqtToStdout;
+            if (!GetCometParamValue("output_sqtstream", out outputSqtToStdout, out paramValueStr))
+            {
+                return false;
+            }
+            cometSettings.OutputFormatSqtToStandardOutput = outputSqtToStdout == 1;
+
             int outputSqtFile;
             if (!GetCometParamValue("output_sqtfile", out outputSqtFile, out paramValueStr))
             {
@@ -550,6 +557,12 @@ namespace CometUI
                                                       outputTextFile.ToString(CultureInfo.InvariantCulture),
                                                       outputTextFile));
 
+            var outputSqtToStdout = settings.OutputFormatSqtToStandardOutput ? 1 : 0;
+            UpdateCometParam("output_sqtstream",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      outputSqtToStdout.ToString(CultureInfo.InvariantCulture),
+                                                      outputSqtToStdout));
+            
             var outputSqtFile = settings.OutputFormatSqtFile ? 1 : 0;
             UpdateCometParam("output_sqtfile",
                              new TypedCometParam<int>(CometParamType.Int,

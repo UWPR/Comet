@@ -44,6 +44,12 @@ namespace CometUI.SettingsUI
                 Parent.SettingsChanged = true;
             }
 
+            if (sqtToStdoutCheckBox.Checked != Settings.Default.OutputFormatSqtToStandardOutput)
+            {
+                Settings.Default.OutputFormatSqtToStandardOutput = sqtToStdoutCheckBox.Checked;
+                Parent.SettingsChanged = true;
+            }
+
             if (sqtCheckBox.Checked != Settings.Default.OutputFormatSqtFile)
             {
                 Settings.Default.OutputFormatSqtFile = sqtCheckBox.Checked;
@@ -90,6 +96,7 @@ namespace CometUI.SettingsUI
             pinXMLCheckBox.Checked = Settings.Default.OutputFormatPinXML;
             outFileCheckBox.Checked = Settings.Default.OutputFormatOutFiles;
             textCheckBox.Checked = Settings.Default.OutputFormatTextFile;
+            sqtToStdoutCheckBox.Checked = Settings.Default.OutputFormatSqtToStandardOutput;
             sqtCheckBox.Checked = Settings.Default.OutputFormatSqtFile;
 
             sqtExpectScoreCheckBox.Checked = Settings.Default.PrintExpectScoreInPlaceOfSP;

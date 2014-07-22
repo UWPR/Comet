@@ -39,6 +39,7 @@
             this.outShowFragmentIonsCheckBox = new System.Windows.Forms.CheckBox();
             this.label1 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.sqtToStdoutCheckBox = new System.Windows.Forms.CheckBox();
             this.outSkipReSearchingCheckBox = new System.Windows.Forms.CheckBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             ((System.ComponentModel.ISupportInitialize)(this.numOutputLinesSpinner)).BeginInit();
@@ -50,7 +51,7 @@
             // 
             this.sqtExpectScoreCheckBox.AutoSize = true;
             this.sqtExpectScoreCheckBox.Enabled = false;
-            this.sqtExpectScoreCheckBox.Location = new System.Drawing.Point(38, 122);
+            this.sqtExpectScoreCheckBox.Location = new System.Drawing.Point(38, 145);
             this.sqtExpectScoreCheckBox.Name = "sqtExpectScoreCheckBox";
             this.sqtExpectScoreCheckBox.Size = new System.Drawing.Size(180, 17);
             this.sqtExpectScoreCheckBox.TabIndex = 5;
@@ -77,7 +78,7 @@
             // outFileCheckBox
             // 
             this.outFileCheckBox.AutoSize = true;
-            this.outFileCheckBox.Location = new System.Drawing.Point(21, 145);
+            this.outFileCheckBox.Location = new System.Drawing.Point(21, 168);
             this.outFileCheckBox.Name = "outFileCheckBox";
             this.outFileCheckBox.Size = new System.Drawing.Size(109, 17);
             this.outFileCheckBox.TabIndex = 6;
@@ -108,7 +109,7 @@
             // sqtCheckBox
             // 
             this.sqtCheckBox.AutoSize = true;
-            this.sqtCheckBox.Location = new System.Drawing.Point(21, 103);
+            this.sqtCheckBox.Location = new System.Drawing.Point(21, 126);
             this.sqtCheckBox.Name = "sqtCheckBox";
             this.sqtCheckBox.Size = new System.Drawing.Size(111, 17);
             this.sqtCheckBox.TabIndex = 4;
@@ -130,7 +131,7 @@
             // 
             this.outExpectScoreCheckBox.AutoSize = true;
             this.outExpectScoreCheckBox.Enabled = false;
-            this.outExpectScoreCheckBox.Location = new System.Drawing.Point(38, 164);
+            this.outExpectScoreCheckBox.Location = new System.Drawing.Point(38, 187);
             this.outExpectScoreCheckBox.Name = "outExpectScoreCheckBox";
             this.outExpectScoreCheckBox.Size = new System.Drawing.Size(180, 17);
             this.outExpectScoreCheckBox.TabIndex = 7;
@@ -141,7 +142,7 @@
             // 
             this.outShowFragmentIonsCheckBox.AutoSize = true;
             this.outShowFragmentIonsCheckBox.Enabled = false;
-            this.outShowFragmentIonsCheckBox.Location = new System.Drawing.Point(38, 183);
+            this.outShowFragmentIonsCheckBox.Location = new System.Drawing.Point(38, 206);
             this.outShowFragmentIonsCheckBox.Name = "outShowFragmentIonsCheckBox";
             this.outShowFragmentIonsCheckBox.Size = new System.Drawing.Size(119, 17);
             this.outShowFragmentIonsCheckBox.TabIndex = 8;
@@ -159,6 +160,7 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.sqtToStdoutCheckBox);
             this.groupBox1.Controls.Add(this.outSkipReSearchingCheckBox);
             this.groupBox1.Controls.Add(this.pepXMLCheckBox);
             this.groupBox1.Controls.Add(this.pinXMLCheckBox);
@@ -170,16 +172,26 @@
             this.groupBox1.Controls.Add(this.sqtExpectScoreCheckBox);
             this.groupBox1.Location = new System.Drawing.Point(22, 21);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(225, 251);
+            this.groupBox1.Size = new System.Drawing.Size(225, 267);
             this.groupBox1.TabIndex = 42;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Output Formats";
+            // 
+            // sqtToStdoutCheckBox
+            // 
+            this.sqtToStdoutCheckBox.AutoSize = true;
+            this.sqtToStdoutCheckBox.Location = new System.Drawing.Point(21, 103);
+            this.sqtToStdoutCheckBox.Name = "sqtToStdoutCheckBox";
+            this.sqtToStdoutCheckBox.Size = new System.Drawing.Size(165, 17);
+            this.sqtToStdoutCheckBox.TabIndex = 10;
+            this.sqtToStdoutCheckBox.Text = "Write SQT to standard output";
+            this.sqtToStdoutCheckBox.UseVisualStyleBackColor = true;
             // 
             // outSkipReSearchingCheckBox
             // 
             this.outSkipReSearchingCheckBox.AutoSize = true;
             this.outSkipReSearchingCheckBox.Enabled = false;
-            this.outSkipReSearchingCheckBox.Location = new System.Drawing.Point(38, 202);
+            this.outSkipReSearchingCheckBox.Location = new System.Drawing.Point(38, 225);
             this.outSkipReSearchingCheckBox.Name = "outSkipReSearchingCheckBox";
             this.outSkipReSearchingCheckBox.Size = new System.Drawing.Size(108, 17);
             this.outSkipReSearchingCheckBox.TabIndex = 9;
@@ -192,7 +204,7 @@
             this.groupBox2.Controls.Add(this.label1);
             this.groupBox2.Location = new System.Drawing.Point(274, 21);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(225, 251);
+            this.groupBox2.Size = new System.Drawing.Size(225, 267);
             this.groupBox2.TabIndex = 43;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Options";
@@ -229,5 +241,6 @@
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.CheckBox outSkipReSearchingCheckBox;
+        private System.Windows.Forms.CheckBox sqtToStdoutCheckBox;
     }
 }

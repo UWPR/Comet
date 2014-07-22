@@ -256,5 +256,8 @@
     <Setting Name="digestMassRangeMax" Type="System.Double" Scope="User">
       <Value Profile="(Default)">5000</Value>
     </Setting>
+    <Setting Name="OutputFormatSqtToStandardOutput" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

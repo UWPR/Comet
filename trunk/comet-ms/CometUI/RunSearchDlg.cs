@@ -415,6 +415,13 @@ namespace CometUI
                 return false;
             }
 
+            var outputSqtToStdout = Settings.Default.OutputFormatSqtToStandardOutput ? 1 : 0;
+            if (!searchMgr.SetParam("output_sqtstream", outputSqtToStdout.ToString(CultureInfo.InvariantCulture), outputSqtToStdout))
+            {
+                SearchStatusMessage = "Could not set the output_sqtstream parameter.";
+                return false;
+            }
+
             var outputSqtFile = Settings.Default.OutputFormatSqtFile ? 1 : 0;
             if (!searchMgr.SetParam("output_sqtfile", outputSqtFile.ToString(CultureInfo.InvariantCulture), outputSqtFile))
             {

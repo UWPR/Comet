@@ -888,5 +888,17 @@ namespace CometUI.Properties {
                 this["digestMassRangeMax"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool OutputFormatSqtToStandardOutput {
+            get {
+                return ((bool)(this["OutputFormatSqtToStandardOutput"]));
+            }
+            set {
+                this["OutputFormatSqtToStandardOutput"] = value;
+            }
+        }
     }
 }
