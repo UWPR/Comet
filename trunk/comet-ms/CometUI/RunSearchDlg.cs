@@ -648,8 +648,9 @@ namespace CometUI
             foreach (var item in Settings.Default.StaticMods)
             {
                 string[] staticMods = item.Split(',');
-                string paramName = CometParamsMap.GetStaticModParamName(staticMods[1]);
-                if (String.Empty == paramName)
+                string paramName;
+                String aaName;
+                if (!CometParamsMap.GetStaticModParamInfo(staticMods[1], out paramName, out aaName))
                 {
                     return false;
                 }
