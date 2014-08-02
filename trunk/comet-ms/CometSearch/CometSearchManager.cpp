@@ -36,12 +36,15 @@
 #define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
 #endif
 
+#undef PERF_DEBUG
+
 std::vector<Query*>           g_pvQuery;
 std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
 Mutex                         g_preprocessMemoryPoolMutex;
+Mutex                         g_searchMemoryPoolMutex;
 CometStatus                   g_cometStatus;
 
 /******************************************************************************
@@ -470,7 +473,11 @@ CometSearchManager::CometSearchManager()
    // Initialize the mutexes we'll use to protect global data.
    Threading::CreateMutex(&g_pvQueryMutex);
 
+   // Initialize the mutex we'll use to protect the preprocess memory pool
    Threading::CreateMutex(&g_preprocessMemoryPoolMutex);
+
+   // Initialize the mutex we'll use to protect the search memory pool
+   Threading::CreateMutex(&g_searchMemoryPoolMutex);
 
    // Initialize the Comet version
    SetParam("# comet_version ", comet_version, comet_version);
@@ -481,7 +488,11 @@ CometSearchManager::~CometSearchManager()
    // Destroy the mutex we used to protect g_pvQuery.
    Threading::DestroyMutex(g_pvQueryMutex);
 
+   // Destroy the mutex we used to protect the preprocess memory pool
    Threading::DestroyMutex(g_preprocessMemoryPoolMutex);
+
+   // Destroy the mutex we used to protect the search memory pool
+   Threading::DestroyMutex(g_searchMemoryPoolMutex);
 
    // Clean up the input files vector
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
@@ -1630,6 +1641,9 @@ bool CometSearchManager::DoSearch()
       //MH: Allocate memory shared by threads during spectral processing.
       CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
 
+      // Allocate memory shared by threads during search
+      CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+
       if (bSucceeded)
       {
          // For file access using MSToolkit.
@@ -1648,10 +1662,31 @@ bool CometSearchManager::DoSearch()
          {
             iBatchNum++;
 
+#ifdef PERF_DEBUG
+            time_t tTotalSearchStartTime;
+            time_t tTotalSearchEndTime;
+            time_t tLoadAndPreprocessSpectraStartTime;
+            time_t tLoadAndPreprocessSpectraEndTime;
+            time_t tRunSearchStartTime;
+            time_t tRunSearchEndTime;
+            time_t tPostAnalysisStartTime;
+            time_t tPostAnalysisEndTime;
+
+            char szTimeBuffer[32];
+            szTimeBuffer[0] = '\0';
+#endif
+
             // Load and preprocess all the spectra.
             if (!g_staticParams.options.bOutputSqtStream)
             {
                logout(" - Load and process input spectra\n");
+
+#ifdef PERF_DEBUG
+               time(&tLoadAndPreprocessSpectraStartTime);
+               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraStartTime));
+               logout(" - Start LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+#endif
+
                fflush(stdout);
             }
 
@@ -1664,6 +1699,18 @@ bool CometSearchManager::DoSearch()
             {
                break;
             }
+
+#ifdef PERF_DEBUG
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               time(&tLoadAndPreprocessSpectraEndTime);
+               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraEndTime));
+               logout(" - End LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               int iElapsedTime=(int)difftime(tLoadAndPreprocessSpectraEndTime, tLoadAndPreprocessSpectraStartTime);
+               logout(" - Time spent in LoadAndPreprocessSpectra:  %d seconds\n", iElapsedTime);
+               fflush(stdout);
+            }
+#endif
 
             if (g_pvQuery.empty())
                break; // no search to run
@@ -1685,6 +1732,16 @@ bool CometSearchManager::DoSearch()
             g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
             g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
+#ifdef PERF_DEBUG
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               time(&tRunSearchStartTime);
+               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchStartTime));
+               logout(" - Start RunSearch:  %s\n", szTimeBuffer);
+               fflush(stdout);
+            }
+#endif
+
             // Now that spectra are loaded to memory and sorted, do search.
             bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
             if (!bSucceeded)
@@ -1692,12 +1749,41 @@ bool CometSearchManager::DoSearch()
                goto cleanup_results;
             }
 
+#ifdef PERF_DEBUG
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               time(&tRunSearchEndTime);
+               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchEndTime));
+               logout(" - End RunSearch:  %s\n", szTimeBuffer);
+               int iElapsedTime=(int)difftime(tRunSearchEndTime, tRunSearchStartTime);
+               logout(" - Time spent in RunSearch:  %d seconds\n", iElapsedTime);
+
+               time(&tPostAnalysisStartTime);
+               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisStartTime));
+               logout(" - Start PostAnalysis:  %s\n", szTimeBuffer);
+
+               fflush(stdout);
+            }
+#endif
+
             // Sort each entry by xcorr, calculate E-values, etc.
             bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
             if (!bSucceeded)
             {
                goto cleanup_results;
             }
+
+#ifdef PERF_DEBUG
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               time(&tPostAnalysisEndTime);
+               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisEndTime));
+               logout(" - End PostAnalysis:  %s\n", szTimeBuffer);
+               int iElapsedTime=(int)difftime(tPostAnalysisEndTime, tPostAnalysisStartTime);
+               logout(" - Time spent in PostAnalysis:  %d seconds\n", iElapsedTime);
+               fflush(stdout);
+            }
+#endif
 
             // Sort g_pvQuery vector by scan.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
@@ -1758,9 +1844,16 @@ bool CometSearchManager::DoSearch()
 
             if (!g_staticParams.options.bOutputSqtStream)
             {
+#ifdef PERF_DEBUG
+               time_t tStartTimeSave = tStartTime;
+#endif
                time(&tStartTime);
                strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
                logout(" Search end:    %s\n\n", g_staticParams.szDate);
+#ifdef PERF_DEBUG
+               int iElapsedTime=(int)difftime(tStartTime, tStartTimeSave);
+               logout(" - Total search time:  %d seconds\n", iElapsedTime);
+#endif
             }
 
             if (NULL != fpout_pepxml)
@@ -1782,6 +1875,9 @@ bool CometSearchManager::DoSearch()
 
       //MH: Deallocate spectral processing memory.
       CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
+
+      // Deallocate search memory
+      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
       if (NULL != fpout_pepxml)
       {

@@ -19,6 +19,8 @@
 #include "ThreadPool.h"
 #include "CometStatus.h"
 
+bool *CometSearch::_pbSearchMemoryPool;
+bool **CometSearch::_ppbDuplFragmentArr;
 
 CometSearch::CometSearch()
 {
@@ -34,6 +36,58 @@ CometSearch::~CometSearch()
 {
 }
 
+
+bool CometSearch::AllocateMemory(int maxNumThreads)
+{
+   int i;
+
+   // Must be equal to largest possible array
+   int iArraySize = (int)((g_staticParams.options.dHighPeptideMass + 100.0) * g_staticParams.dInverseBinWidth);
+
+   // Initally mark all arrays as available (i.e. false == not in use)
+   _pbSearchMemoryPool = new bool[maxNumThreads];
+   for (i=0; i < maxNumThreads; i++)
+   {
+      _pbSearchMemoryPool[i] = false;
+   }
+
+   // Allocate array
+   _ppbDuplFragmentArr = new bool*[maxNumThreads];
+   for (i=0; i < maxNumThreads; i++)
+   {
+      try
+      {
+         _ppbDuplFragmentArr[i] = new bool[iArraySize];
+      }
+      catch (std::bad_alloc& ba)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetError(true, strErrorMsg);      
+         logerr("%s\n\n", szErrorMsg);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+bool CometSearch::DeallocateMemory(int maxNumThreads)
+{
+   int i;
+
+   delete [] _pbSearchMemoryPool;
+
+   for (i=0; i<maxNumThreads; i++)
+   {
+      delete [] _ppbDuplFragmentArr[i];
+   }
+
+   delete [] _ppbDuplFragmentArr;
+
+   return true;
+}
 
 bool CometSearch::RunSearch(int minNumThreads,
                             int maxNumThreads)
@@ -181,24 +235,51 @@ bool CometSearch::RunSearch(int minNumThreads,
 
 void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData)
 {
+   // Grab available array from shared memory pool.
+   int i;
+   Threading::LockMutex(g_searchMemoryPoolMutex);
+   for (i=0; i < g_staticParams.options.iNumThreads; i++) 
+   {
+      if (!_pbSearchMemoryPool[i])
+      {
+         _pbSearchMemoryPool[i] = true;
+         break;
+      }
+   }
+   Threading::UnlockMutex(g_searchMemoryPoolMutex);
+   
+   // Fail-safe to stop if memory isn't available for the next thread.
+   // Needs better capture and return?
+   if (i == g_staticParams.options.iNumThreads)
+   {
+      printf("Error with memory pool.\n");
+      exit(1);
+   }
+
+   // Give memory manager access to the thread.
+   pSearchThreadData->pbSearchMemoryPool = &_pbSearchMemoryPool[i];
+
    CometSearch sqSearch; 
    // DoSearch now returs true/false, but we already log errors and set
    // the global error variable before we get here, so no need to check
    // the return value here.
-   sqSearch.DoSearch(pSearchThreadData->dbEntry);
+   sqSearch.DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
    delete pSearchThreadData;
    pSearchThreadData = NULL;
 }
 
 
-bool CometSearch::DoSearch(sDBEntry dbe)
+bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 {
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
       _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
 
-      if (!SearchForPeptides((char *)dbe.strSeq.c_str(), (char *)dbe.strName.c_str(), 0))
+      if (!SearchForPeptides((char *)dbe.strSeq.c_str(), 
+                             (char *)dbe.strName.c_str(), 
+                             0,
+                             pbDuplFragment))
       {
          return false;
       }
@@ -207,7 +288,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
       {
          _proteinInfo.iProteinSeqLength -= 1;
 
-         if (!SearchForPeptides((char *)dbe.strSeq.c_str()+1, (char *)dbe.strName.c_str(), 1))
+         if (!SearchForPeptides((char *)dbe.strSeq.c_str()+1, 
+                                (char *)dbe.strName.c_str(), 
+                                1,
+                                pbDuplFragment))
          {
             return false;
          }
@@ -232,7 +316,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
             return false;
          }
 
-         if (!SearchForPeptides(_proteinInfo.pszProteinSeq, (char *)dbe.strName.c_str(), 0))
+         if (!SearchForPeptides(_proteinInfo.pszProteinSeq, 
+                                (char *)dbe.strName.c_str(), 
+                                0,
+                                pbDuplFragment))
          {
             return false;
          }
@@ -248,7 +335,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
                return false;
             }
 
-            if (!SearchForPeptides(_proteinInfo.pszProteinSeq, (char *)dbe.strName.c_str(), 0))
+            if (!SearchForPeptides(_proteinInfo.pszProteinSeq, 
+                                   (char *)dbe.strName.c_str(), 
+                                   0,
+                                   pbDuplFragment))
             {
                return false;
             }
@@ -314,7 +404,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
                   return false;
                }
 
-               if (!SearchForPeptides(_proteinInfo.pszProteinSeq, (char *)dbe.strName.c_str(), 0))
+               if (!SearchForPeptides(_proteinInfo.pszProteinSeq, 
+                                      (char *)dbe.strName.c_str(), 
+                                      0,
+                                      pbDuplFragment))
                {
                   return false;
                }
@@ -339,7 +432,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
                return false;
             }
 
-            if (!SearchForPeptides(_proteinInfo.pszProteinSeq, (char *)dbe.strName.c_str(), 0))
+            if (!SearchForPeptides(_proteinInfo.pszProteinSeq, 
+                                   (char *)dbe.strName.c_str(), 
+                                   0,
+                                   pbDuplFragment))
             {
                return false;
             }
@@ -357,7 +453,8 @@ bool CometSearch::DoSearch(sDBEntry dbe)
 // Compare MSMS data to peptide with szProteinSeq from the input database.
 bool CometSearch::SearchForPeptides(char *szProteinSeq,
                                     char *szProteinName,
-                                    bool bNtermPeptideOnly)
+                                    bool bNtermPeptideOnly, 
+                                    bool *pbDuplFragment)
 {
    int iLenPeptide = 0;
    int iStartPos = 0; 
@@ -422,7 +519,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                   // Calculate ion series just once to compare against all relevant query spectra.
                   if (bFirstTimeThroughLoopForPeptide)
                   {
-                     bool *pbDuplFragment;
                      int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
 
                      bFirstTimeThroughLoopForPeptide = false;
@@ -449,20 +545,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      }
 
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                     try
-                     {
-                        pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
-                     }
-                     catch (std::bad_alloc& ba)
-                     {
-                        char szErrorMsg[256];
-                        sprintf(szErrorMsg, " Error - new pbDuplFragments; iWhichQuery = %d. bad_alloc: %s.", iWhichQuery, ba.what());
-                        string strErrorMsg(szErrorMsg);
-                        g_cometStatus.SetError(true, strErrorMsg);      
-                        logerr("%s\n\n", szErrorMsg);
-                        return false;
-                     }
-
                      for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                      {
                         for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -603,9 +685,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                            }
                         }
                      }
-
-                     delete[] pbDuplFragment;
-                     pbDuplFragment = NULL;
                   }
 
                   char pcVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
@@ -667,7 +746,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
 
             if (TotalVarModCount(varModCounts, varModCounts[VMOD_C_INDEX], varModCounts[VMOD_N_INDEX]) > 0)
             {
-               if (!VarModSearch(szProteinSeq, szProteinName, varModCounts, iStartPos, iEndPos))
+               if (!VarModSearch(szProteinSeq, szProteinName, varModCounts, iStartPos, iEndPos, pbDuplFragment))
                {
                   return false;
                }
@@ -1617,7 +1696,8 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                char *szProteinName,
                                int varModCounts[],
                                int iStartPos,
-                               int iEndPos)
+                               int iEndPos,
+                               bool *pbDuplFragment)
 {
    int i,
        i1,
@@ -1790,7 +1870,7 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
    
                                           _varModInfo.dCalcPepMass = dTmpCalcMass;
    
-                                          if (!Permute1(szProteinSeq, iWhichQuery))
+                                          if (!Permute1(szProteinSeq, iWhichQuery, pbDuplFragment))
                                           {
                                              return false;
                                           }
@@ -1830,7 +1910,8 @@ double CometSearch::TotalVarModMass(int *pVarModCounts,
 
 
 bool CometSearch::Permute1(char *szProteinSeq,
-                           int iWhichQuery)
+                           int iWhichQuery, 
+                           bool *pbDuplFragment)
 {
    if (_varModInfo.varModStatList[VMOD_1_INDEX].iMatchVarModCt > 0)
    {
@@ -1857,7 +1938,7 @@ bool CometSearch::Permute1(char *szProteinSeq,
          i++;
       }
 
-      Permute2(szProteinSeq, iWhichQuery);
+      Permute2(szProteinSeq, iWhichQuery, pbDuplFragment);
 
       while (!twiddle(&x, &y, &z, p1))
       {
@@ -1867,7 +1948,7 @@ bool CometSearch::Permute1(char *szProteinSeq,
          for (i=0; i != N1; i++)
             _varModInfo.varModStatList[VMOD_1_INDEX].iVarModSites[i] = (b1[i] ? 1 : 0);
 
-         if (!Permute2(szProteinSeq, iWhichQuery))
+         if (!Permute2(szProteinSeq, iWhichQuery, pbDuplFragment))
          {
             return false;
          }
@@ -1875,7 +1956,7 @@ bool CometSearch::Permute1(char *szProteinSeq,
    }
    else
    {
-      if (!Permute2(szProteinSeq, iWhichQuery))
+      if (!Permute2(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -1886,7 +1967,8 @@ bool CometSearch::Permute1(char *szProteinSeq,
 
 
 bool CometSearch::Permute2(char *szProteinSeq,
-                           int iWhichQuery)
+                           int iWhichQuery, 
+                           bool *pbDuplFragment)
 {
    if (_varModInfo.varModStatList[VMOD_2_INDEX].iMatchVarModCt > 0)
    {
@@ -1913,7 +1995,7 @@ bool CometSearch::Permute2(char *szProteinSeq,
          i++;
       }
 
-      if (!Permute3(szProteinSeq, iWhichQuery))
+      if (!Permute3(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -1926,7 +2008,7 @@ bool CometSearch::Permute2(char *szProteinSeq,
          for (i=0; i != N2; i++)
             _varModInfo.varModStatList[VMOD_2_INDEX].iVarModSites[i] = (b2[i] ? 2 : 0);
 
-         if (!Permute3(szProteinSeq, iWhichQuery))
+         if (!Permute3(szProteinSeq, iWhichQuery, pbDuplFragment))
          {
             return false;
          }
@@ -1934,7 +2016,7 @@ bool CometSearch::Permute2(char *szProteinSeq,
    }
    else
    {
-      if (!Permute3(szProteinSeq, iWhichQuery))
+      if (!Permute3(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -1945,7 +2027,8 @@ bool CometSearch::Permute2(char *szProteinSeq,
 
 
 bool CometSearch::Permute3(char *szProteinSeq,
-                           int iWhichQuery)
+                           int iWhichQuery, 
+                           bool *pbDuplFragment)
 {
    if (_varModInfo.varModStatList[VMOD_3_INDEX].iMatchVarModCt > 0)
    {
@@ -1972,7 +2055,7 @@ bool CometSearch::Permute3(char *szProteinSeq,
          i++;
       }
 
-      if (!Permute4(szProteinSeq, iWhichQuery))
+      if (!Permute4(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -1985,7 +2068,7 @@ bool CometSearch::Permute3(char *szProteinSeq,
          for (i=0; i != N3; i++)
             _varModInfo.varModStatList[VMOD_3_INDEX].iVarModSites[i] = (b3[i] ? 3 : 0);
 
-         if (!Permute4(szProteinSeq, iWhichQuery))
+         if (!Permute4(szProteinSeq, iWhichQuery, pbDuplFragment))
          {
             return false;
          }
@@ -1993,7 +2076,7 @@ bool CometSearch::Permute3(char *szProteinSeq,
    }
    else
    {
-      if (!Permute4(szProteinSeq, iWhichQuery))
+      if (!Permute4(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -2004,7 +2087,8 @@ bool CometSearch::Permute3(char *szProteinSeq,
 
 
 bool CometSearch::Permute4(char *szProteinSeq,
-                           int iWhichQuery)
+                           int iWhichQuery, 
+                           bool *pbDuplFragment)
 {
    if (_varModInfo.varModStatList[VMOD_4_INDEX].iMatchVarModCt > 0)
    {
@@ -2031,7 +2115,7 @@ bool CometSearch::Permute4(char *szProteinSeq,
          i++;
       }
 
-      if (!Permute5(szProteinSeq, iWhichQuery))
+      if (!Permute5(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -2044,7 +2128,7 @@ bool CometSearch::Permute4(char *szProteinSeq,
          for (i=0; i != N4; i++)
             _varModInfo.varModStatList[VMOD_4_INDEX].iVarModSites[i] = (b4[i] ? 4 : 0);
 
-         if (!Permute5(szProteinSeq, iWhichQuery))
+         if (!Permute5(szProteinSeq, iWhichQuery, pbDuplFragment))
          {
             return false;
          }
@@ -2052,7 +2136,7 @@ bool CometSearch::Permute4(char *szProteinSeq,
    }
    else
    {
-      if (!Permute5(szProteinSeq, iWhichQuery))
+      if (!Permute5(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -2063,7 +2147,8 @@ bool CometSearch::Permute4(char *szProteinSeq,
 
 
 bool CometSearch::Permute5(char *szProteinSeq,
-                           int iWhichQuery)
+                           int iWhichQuery, 
+                           bool *pbDuplFragment)
 {
    if (_varModInfo.varModStatList[VMOD_5_INDEX].iMatchVarModCt > 0)
    {
@@ -2090,7 +2175,7 @@ bool CometSearch::Permute5(char *szProteinSeq,
          i++;
       }
 
-      if (!Permute6(szProteinSeq, iWhichQuery))
+      if (!Permute6(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -2103,7 +2188,7 @@ bool CometSearch::Permute5(char *szProteinSeq,
          for (i=0; i != N5; i++)
             _varModInfo.varModStatList[VMOD_5_INDEX].iVarModSites[i] = (b5[i] ? 5 : 0);
 
-         if (!Permute6(szProteinSeq, iWhichQuery))
+         if (!Permute6(szProteinSeq, iWhichQuery, pbDuplFragment))
          {
             return false;
          }
@@ -2111,7 +2196,7 @@ bool CometSearch::Permute5(char *szProteinSeq,
    }
    else
    {
-      if (!Permute6(szProteinSeq, iWhichQuery))
+      if (!Permute6(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -2122,7 +2207,8 @@ bool CometSearch::Permute5(char *szProteinSeq,
 
 
 bool CometSearch::Permute6(char *szProteinSeq,
-                           int iWhichQuery)
+                           int iWhichQuery, 
+                           bool *pbDuplFragment)
 {
    if (_varModInfo.varModStatList[VMOD_6_INDEX].iMatchVarModCt > 0)
    {
@@ -2149,7 +2235,7 @@ bool CometSearch::Permute6(char *szProteinSeq,
          i++;
       }
 
-      if (!CalcVarModIons(szProteinSeq, iWhichQuery))
+      if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -2162,7 +2248,7 @@ bool CometSearch::Permute6(char *szProteinSeq,
          for (i=0; i != N6; i++)
             _varModInfo.varModStatList[VMOD_6_INDEX].iVarModSites[i] = (b6[i] ? 6 : 0);
 
-         if (!CalcVarModIons(szProteinSeq, iWhichQuery))
+         if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
          {
             return false;
          }
@@ -2170,7 +2256,7 @@ bool CometSearch::Permute6(char *szProteinSeq,
    }
    else
    {
-      if (!CalcVarModIons(szProteinSeq, iWhichQuery))
+      if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
       {
          return false;
       }
@@ -2305,7 +2391,8 @@ void CometSearch::inittwiddle(int m, int n, int *p)
 
 
 bool CometSearch::CalcVarModIons(char *szProteinSeq,
-                                 int iWhichQuery)
+                                 int iWhichQuery, 
+                                 bool *pbDuplFragment)
 {
    int iLenPeptide = 0;
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];
@@ -2341,8 +2428,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
          // Calculate ion series just once to compare against all relevant query spectra
          if (bFirstTimeThroughLoopForPeptide)
          {
-            bool *pbDuplFragment;
-
             bFirstTimeThroughLoopForPeptide = false;
 
             int i;
@@ -2417,20 +2502,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
 
             // now get the set of binned fragment ions once for all matching peptides
-            try
-            {
-               pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
-            }
-            catch (std::bad_alloc& ba)
-            {
-               char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - new pbDuplFragments; iWhichQuery = %d. bad_alloc: %s.", iWhichQuery, ba.what());
-               string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetError(true, strErrorMsg);
-               logerr("%s\n\n", szErrorMsg);
-               return false;
-            }
-
             for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
             {
                for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -2607,9 +2678,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   }
                }
             }
-
-            delete[] pbDuplFragment;
-            pbDuplFragment = NULL;
          }
 
          XcorrScore(szProteinSeq, _proteinInfo.szProteinName, _varModInfo.iStartPos, _varModInfo.iEndPos, true,
