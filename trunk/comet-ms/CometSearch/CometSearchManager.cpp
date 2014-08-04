@@ -23,7 +23,7 @@
 #include "CometWriteSqt.h"
 #include "CometWriteTxt.h"
 #include "CometWritePepXML.h"
-#include "CometWritePinXML.h"
+#include "CometWritePercolator.h"
 #include "Threading.h"
 #include "ThreadPool.h"
 #include "CometDataInternal.h"
@@ -406,7 +406,7 @@ static bool ValidateOutputFormat()
          && !g_staticParams.options.bOutputSqtFile
          && !g_staticParams.options.bOutputTxtFile
          && !g_staticParams.options.bOutputPepXMLFile
-         && !g_staticParams.options.bOutputPinXMLFile
+         && !g_staticParams.options.bOutputPercolatorFile
          && !g_staticParams.options.bOutputOutFiles)
    {
       string strError = " Please specify at least one output format.";
@@ -644,7 +644,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("output_pepxmlfile", g_staticParams.options.bOutputPepXMLFile);
 
-   GetParamValue("output_pinxmlfile", g_staticParams.options.bOutputPinXMLFile);
+   GetParamValue("output_percolatorfile", g_staticParams.options.bOutputPercolatorFile);
 
    GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
 
@@ -1141,18 +1141,6 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
-   if (g_staticParams.options.bOutputPinXMLFile
-         && g_staticParams.options.iDecoySearch == 0)
-   {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - parameter \"output_pinxml = 1\" requires \"decoy_search = 1\" or \"decoy_search = 2\" ");
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetError(true, strErrorMsg);
-      logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr("%s\n\n", szErrorMsg);
-      return false;
-   }
-
    if (!g_staticParams.options.bOutputOutFiles)
    {
       g_staticParams.options.bSkipAlreadyDone = 0;
@@ -1436,7 +1424,7 @@ bool CometSearchManager::DoSearch()
       FILE *fpoutd_sqt=NULL;
       FILE *fpout_pepxml=NULL;
       FILE *fpoutd_pepxml=NULL;
-      FILE *fpout_pinxml=NULL;
+      FILE *fpout_percolator=NULL;
       FILE *fpout_txt=NULL;
       FILE *fpoutd_txt=NULL;
 
@@ -1444,7 +1432,7 @@ bool CometSearchManager::DoSearch()
       char szOutputDecoySQT[SIZE_FILE];
       char szOutputPepXML[SIZE_FILE];
       char szOutputDecoyPepXML[SIZE_FILE];
-      char szOutputPinXML[SIZE_FILE];
+      char szOutputPercolator[SIZE_FILE];
       char szOutputTxt[SIZE_FILE];
       char szOutputDecoyTxt[SIZE_FILE];
 
@@ -1612,17 +1600,17 @@ bool CometSearchManager::DoSearch()
          }
       }
 
-      if (bSucceeded && g_staticParams.options.bOutputPinXMLFile)
+      if (bSucceeded && g_staticParams.options.bOutputPercolatorFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputPinXML, "%s%s.pin.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputPercolator, "%s%s.tsv", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
          else
-            sprintf(szOutputPinXML, "%s%s.%d-%d.pin.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputPercolator, "%s%s.%d-%d.tsv", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 
-         if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
+         if ((fpout_percolator = fopen(szOutputPercolator, "w")) == NULL)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPinXML);
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPercolator);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetError(true, strErrorMsg);
             logerr("%s\n\n", szErrorMsg);
@@ -1634,7 +1622,7 @@ bool CometSearchManager::DoSearch()
             // We need knowledge of max charge state in all searches
             // here in order to write the featureDescription header
 
-            CometWritePinXML::WritePinXMLHeader(fpout_pinxml);
+            CometWritePercolator::WritePercolatorHeader(fpout_percolator);
          }
       }
 
@@ -1805,9 +1793,9 @@ bool CometSearchManager::DoSearch()
             if (g_staticParams.options.bOutputPepXMLFile)
                CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml);
 
-            if (g_staticParams.options.bOutputPinXMLFile)
+            if (g_staticParams.options.bOutputPercolatorFile)
             {
-               bSucceeded = CometWritePinXML::WritePinXML(fpout_pinxml);
+               bSucceeded = CometWritePercolator::WritePercolator(fpout_percolator);
                if (!bSucceeded)
                {
                   goto cleanup_results;
@@ -1865,11 +1853,6 @@ bool CometSearchManager::DoSearch()
             {
                CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
             }
-
-            if (NULL != fpout_pinxml)
-            {
-               CometWritePinXML::WritePinXMLEndTags(fpout_pinxml);
-            }
          }
       }
 
@@ -1891,10 +1874,10 @@ bool CometSearchManager::DoSearch()
          fpoutd_pepxml = NULL;
       }
 
-      if (NULL != fpout_pinxml)
+      if (NULL != fpout_percolator)
       {
-         fclose(fpout_pinxml);
-         fpout_pinxml = NULL;
+         fclose(fpout_percolator);
+         fpout_percolator = NULL;
       }
 
       if (NULL != fpout_sqt)

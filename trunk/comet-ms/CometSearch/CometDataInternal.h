@@ -95,7 +95,7 @@ struct Options             // output parameters
    int bOutputSqtFile;
    int bOutputTxtFile;
    int bOutputPepXMLFile;
-   int bOutputPinXMLFile;
+   int bOutputPercolatorFile;
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
@@ -135,7 +135,7 @@ struct Options             // output parameters
       bOutputSqtFile = a.bOutputSqtFile;
       bOutputTxtFile = a.bOutputTxtFile;
       bOutputPepXMLFile = a.bOutputPepXMLFile;
-      bOutputPinXMLFile = a.bOutputPinXMLFile;
+      bOutputPercolatorFile = a.bOutputPercolatorFile;
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
@@ -522,7 +522,7 @@ struct StaticParams
       options.bOutputSqtFile = 0;
       options.bOutputTxtFile = 0;
       options.bOutputPepXMLFile = 1;
-      options.bOutputPinXMLFile = 0;
+      options.bOutputPercolatorFile = 0;
       options.bOutputOutFiles = 0;
 
       options.bSkipAlreadyDone = 0;

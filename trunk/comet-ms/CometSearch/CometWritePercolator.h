@@ -14,25 +14,24 @@
    limitations under the License.
 */
 
-#ifndef _COMETWRITEPEPXML
-#define _COMETWRITEPEPXML_
+#ifndef _COMETWRITEPERCOLATOR_
+#define _COMETWRITEPERCOLATOR_
 
 
-class CometWritePinXML
+class CometWritePercolator
 {
 public:
-   CometWritePinXML();
-   ~CometWritePinXML();
-   static void WritePinXMLHeader(FILE *fpout);
-   static bool WritePinXML(FILE *fpout);
-   static void WritePinXMLEndTags(FILE *fpout);
+   CometWritePercolator();
+   ~CometWritePercolator();
+   static void WritePercolatorHeader(FILE *fpout);
+   static bool WritePercolator(FILE *fpout);
 
 
 private:
    static bool PrintResults(int iWhichQuery,
                             FILE *fpOut,
                             bool bDecoy);
-   static void PrintPinXMLSearchHit(int iWhichQuery,
+   static void PrintPercolatorSearchHit(int iWhichQuery,
                                     int iWhichResult,
                                     bool bDecoy,
                                     Results *pOutput,
