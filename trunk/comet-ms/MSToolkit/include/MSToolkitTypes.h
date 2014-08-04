@@ -88,6 +88,7 @@ struct MSScanInfo {
 		rTime=IIT=BPI=0.0f;
 		TIC=BPM=0.0;
 		convA=convB=convC=convD=convE=convI=0.0;
+    mzCount=0;
 	}
 	~MSScanInfo(){
 		if(mz!=NULL) delete [] mz;

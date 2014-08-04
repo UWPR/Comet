@@ -1904,7 +1904,10 @@ void MSReader::readSpecHeader(FILE *fileIn, MSScanInfo &ms){
 			ms.mz[i]=d;
 		}
 	} else {
-		fread(&ms.mz,8,1,fileIn);
+    if(ms.mz!=NULL) delete [] ms.mz;
+    ms.mzCount=1;
+    ms.mz = new double[ms.mzCount];
+		fread(&ms.mz[0],8,1,fileIn);
 	}
   fread(&ms.rTime,4,1,fileIn);
 
