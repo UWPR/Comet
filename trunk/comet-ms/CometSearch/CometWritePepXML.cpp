@@ -361,11 +361,9 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-#ifdef _WIN32
-   if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL)
-#else
-   if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
-#endif
+   // look for either \ or / separator so valid for Windows or Linux
+   if ((pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL
+         && (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
       pStr = g_staticParams.inputFile.szBaseName;
    else
       pStr++;  // skip separation character
