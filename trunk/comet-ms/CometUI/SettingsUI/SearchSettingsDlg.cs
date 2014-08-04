@@ -79,6 +79,12 @@ namespace CometUI.SettingsUI
             miscTabPage.Controls.Add(MiscSettingsControl);
         }
 
+        public void SaveSearchSettings()
+        {
+            Settings.Default.Save();
+            SettingsChanged = false;
+        }
+
         public static bool ConvertStrToDouble(string strValue, out double doubleValueOut)
         {
             var doubleValue = 0.0;

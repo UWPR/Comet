@@ -50,7 +50,7 @@ namespace CometUI
                     Resources.CometUI_CometUIFormClosing_Search_Settings_Changed, 
                     MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
                 {
-                    SaveSearchSettings();
+                    SearchSettingsDlg.SaveSearchSettings();
                 }
             }
 
@@ -94,13 +94,8 @@ namespace CometUI
                     Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings,
                     MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
             {
-                SaveSearchSettings();
+                SearchSettingsDlg.SaveSearchSettings();
             }
-        }
-
-        private void SaveSearchSettings()
-        {
-            Settings.Default.Save();
         }
 
         private void SearchSettingsImportToolStripMenuItemClick(object sender, EventArgs e)
