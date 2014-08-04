@@ -30,12 +30,6 @@
 #include "CometSearchManager.h"
 #include "CometStatus.h"
 
-#ifdef _WIN32
-#define STRCMP_IGNORE_CASE(a,b) _strcmpi(a,b)
-#else 
-#define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
-#endif
-
 #undef PERF_DEBUG
 
 std::vector<Query*>           g_pvQuery;

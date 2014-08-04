@@ -72,12 +72,32 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // Get msModel + msManufacturer from mzXML. Easy way to get from mzML too?
    ReadInstrument(szManufacturer, szModel);
 
+   // The msms_run_summary base_name must be the base name to mzXML input.
+   // This might not be the case with -N command line option.
+   // So get base name from g_staticParams.inputFile.szFileName here to be sure
+   char *pStr;
+   char szRunSummaryBaseName[SIZE_FILE];         // base name of szInputFile
+   char szRunSummaryResolvedPath[SIZE_FILE];     // resolved path of szInputFile
+   int  iLen = strlen(g_staticParams.inputFile.szFileName);
+   strcpy(szRunSummaryBaseName, g_staticParams.inputFile.szFileName);
+   if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
+      *pStr = '\0';
+
+   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+   {
+      if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
+         *pStr = '\0';
+   }
+
 #ifdef _WIN32
    char resolvedPathBaseName[SIZE_FILE];
    _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, SIZE_FILE);
+   _fullpath(szRunSummaryResolvedPath, g_staticParams.inputFile.szBaseName, SIZE_FILE);
 #else
    char resolvedPathBaseName[PATH_MAX];
    realpath(g_staticParams.inputFile.szBaseName, resolvedPathBaseName);
+   realpath(szRunSummaryBaseName, szRunSummaryResolvedPath);
 #endif
 
    // Write out pepXML header.
@@ -89,13 +109,11 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v117.xsd\" ");
    fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", resolvedPathBaseName);
 
-   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", resolvedPathBaseName);
+   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", szRunSummaryResolvedPath);
    fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
    fprintf(fpout, "msModel=\"%s\" ", szModel);
 
    // Grab file extension from file name
-   char *pStr;
-
    if ( (pStr = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
    {
       char szErrorMsg[256];

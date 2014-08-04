@@ -24,12 +24,14 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <errno.h>
+#define STRCMP_IGNORE_CASE(a,b) _strcmpi(a,b)
 #else
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <pthread.h>
+#define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
 #endif
 
 using namespace std;
