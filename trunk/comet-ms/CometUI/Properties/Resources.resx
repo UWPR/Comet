@@ -268,4 +268,10 @@
   <data name="AboutDlg_SetAboutText_Comet_UI_provides_a_graphical_user_interface_to_run_Comet_searches__set_and_save_search_parameters__and_import_and_export_the_parameters_">
     <value xml:space="preserve">Comet UI provides a graphical user interface to run Comet searches, set and save search parameters, and import and export the parameters.</value>
   </data>
+  <data name="CometUI_CometUIFormClosing_You_have_modified_the_search_settings__Would_you_like_to_save_the_changes_before_you_exit_">
+    <value xml:space="preserve">You have modified the search settings. Would you like to save the changes before you exit?</value>
+  </data>
+  <data name="CometUI_CometUIFormClosing_Search_Settings_Changed">
+    <value xml:space="preserve">Search Settings Changed</value>
+  </data>
 </root>

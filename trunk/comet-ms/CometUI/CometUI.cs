@@ -10,6 +10,11 @@ namespace CometUI
     {
         public Dictionary<String, CometParam> CometParams = new Dictionary<string, CometParam>();
 
+        private SearchSettingsDlg _searchSettingsDlg;
+        private SearchSettingsDlg SearchSettingsDlg
+        {
+            get { return _searchSettingsDlg ?? (_searchSettingsDlg = new SearchSettingsDlg()); }
+        }
         private readonly List<RunSearchBackgroundWorker> _runSearchWorkers = 
             new List<RunSearchBackgroundWorker>();
 
@@ -20,9 +25,9 @@ namespace CometUI
 
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
         {
-            var searchSettingsDlg = new SearchSettingsDlg();
-            if (DialogResult.OK == searchSettingsDlg.ShowDialog())
+            if (DialogResult.OK == SearchSettingsDlg.ShowDialog())
             {
+                // Todo: do we need to do something here?
             }
         }
 
@@ -39,6 +44,17 @@ namespace CometUI
 
         private void CometUIFormClosing(object sender, FormClosingEventArgs e)
         {
+            if (SearchSettingsDlg.SettingsChanged)
+            {
+                if (MessageBox.Show(Resources.CometUI_CometUIFormClosing_You_have_modified_the_search_settings__Would_you_like_to_save_the_changes_before_you_exit_, 
+                    Resources.CometUI_CometUIFormClosing_Search_Settings_Changed, 
+                    MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
+                {
+                    SaveSearchSettings();
+                }
+            }
+
+
             WorkerThreadsCleanupTimer.Stop();
             WorkerThreadsCleanupTimer.Enabled = false;
 
@@ -75,11 +91,16 @@ namespace CometUI
         private void SaveSearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
         {
             if (MessageBox.Show(Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_,
-                                Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings,
-                                MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
+                    Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings,
+                    MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
             {
-                Settings.Default.Save();
+                SaveSearchSettings();
             }
+        }
+
+        private void SaveSearchSettings()
+        {
+            Settings.Default.Save();
         }
 
         private void SearchSettingsImportToolStripMenuItemClick(object sender, EventArgs e)
