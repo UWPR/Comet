@@ -61,6 +61,16 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Comet UI provides a graphical user interface to run Comet searches, set and save search parameters, and import and export the parameters..
+        /// </summary>
+        internal static string AboutDlg_SetAboutText_Comet_UI_provides_a_graphical_user_interface_to_run_Comet_searches__set_and_save_search_parameters__and_import_and_export_the_parameters_ {
+            get {
+                return ResourceManager.GetString("AboutDlg_SetAboutText_Comet_UI_provides_a_graphical_user_interface_to_run_Comet_s" +
+                        "earches__set_and_save_search_parameters__and_import_and_export_the_parameters_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         internal static System.Drawing.Bitmap comet {

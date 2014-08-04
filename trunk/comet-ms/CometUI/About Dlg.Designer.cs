@@ -38,14 +38,11 @@
             this.labelCometEngineVersion = new System.Windows.Forms.Label();
             this.labelCometUIVersion = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
-            this.label8 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
-            this.linkLabel1 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelUWPR = new System.Windows.Forms.LinkLabel();
             this.btnOK = new System.Windows.Forms.Button();
             this.label10 = new System.Windows.Forms.Label();
+            this.textBoxAboutComet = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -86,7 +83,7 @@
             this.lineShape1.BorderColor = System.Drawing.SystemColors.ActiveCaption;
             this.lineShape1.Name = "lineShape1";
             this.lineShape1.X1 = 25;
-            this.lineShape1.X2 = 395;
+            this.lineShape1.X2 = 409;
             this.lineShape1.Y1 = 81;
             this.lineShape1.Y2 = 81;
             // 
@@ -140,71 +137,31 @@
             this.label4.TabIndex = 7;
             this.label4.Text = "Copyright ©  2013";
             // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label5.Location = new System.Drawing.Point(36, 89);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(322, 14);
-            this.label5.TabIndex = 8;
-            this.label5.Text = "Comet UI gives users the ability to run comet";
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label6.Location = new System.Drawing.Point(36, 103);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(322, 14);
-            this.label6.TabIndex = 9;
-            this.label6.Text = "searches, set and save search parameters, and";
-            // 
-            // label7
-            // 
-            this.label7.AutoSize = true;
-            this.label7.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label7.Location = new System.Drawing.Point(36, 117);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(343, 14);
-            this.label7.TabIndex = 10;
-            this.label7.Text = "import and export parameters, all in one simple,";
-            // 
-            // label8
-            // 
-            this.label8.AutoSize = true;
-            this.label8.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label8.Location = new System.Drawing.Point(36, 131);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(203, 14);
-            this.label8.TabIndex = 11;
-            this.label8.Text = "easy to use, user interface.";
-            // 
             // label9
             // 
             this.label9.AutoSize = true;
             this.label9.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label9.Location = new System.Drawing.Point(36, 263);
+            this.label9.Location = new System.Drawing.Point(36, 257);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(343, 14);
             this.label9.TabIndex = 12;
             this.label9.Text = "All contact information and more can be found at";
             // 
-            // linkLabel1
+            // linkLabelUWPR
             // 
-            this.linkLabel1.AutoSize = true;
-            this.linkLabel1.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.linkLabel1.Location = new System.Drawing.Point(37, 277);
-            this.linkLabel1.Name = "linkLabel1";
-            this.linkLabel1.Size = new System.Drawing.Size(294, 14);
-            this.linkLabel1.TabIndex = 13;
-            this.linkLabel1.TabStop = true;
-            this.linkLabel1.Text = "http://proteomicsresource.washington.edu/";
-            this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabel1LinkClicked);
+            this.linkLabelUWPR.AutoSize = true;
+            this.linkLabelUWPR.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.linkLabelUWPR.Location = new System.Drawing.Point(37, 271);
+            this.linkLabelUWPR.Name = "linkLabelUWPR";
+            this.linkLabelUWPR.Size = new System.Drawing.Size(294, 14);
+            this.linkLabelUWPR.TabIndex = 13;
+            this.linkLabelUWPR.TabStop = true;
+            this.linkLabelUWPR.Text = "http://proteomicsresource.washington.edu/";
+            this.linkLabelUWPR.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabelUWPRLinkClicked);
             // 
             // btnOK
             // 
-            this.btnOK.Location = new System.Drawing.Point(164, 310);
+            this.btnOK.Location = new System.Drawing.Point(335, 310);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(75, 23);
             this.btnOK.TabIndex = 14;
@@ -222,19 +179,30 @@
             this.label10.TabIndex = 15;
             this.label10.Text = "Copyright ©  2012";
             // 
+            // textBoxAboutComet
+            // 
+            this.textBoxAboutComet.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.textBoxAboutComet.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.textBoxAboutComet.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.textBoxAboutComet.Location = new System.Drawing.Point(39, 95);
+            this.textBoxAboutComet.Multiline = true;
+            this.textBoxAboutComet.Name = "textBoxAboutComet";
+            this.textBoxAboutComet.ReadOnly = true;
+            this.textBoxAboutComet.ShortcutsEnabled = false;
+            this.textBoxAboutComet.Size = new System.Drawing.Size(370, 62);
+            this.textBoxAboutComet.TabIndex = 16;
+            this.textBoxAboutComet.TabStop = false;
+            // 
             // AboutDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(433, 345);
+            this.Controls.Add(this.textBoxAboutComet);
             this.Controls.Add(this.label10);
             this.Controls.Add(this.btnOK);
-            this.Controls.Add(this.linkLabel1);
+            this.Controls.Add(this.linkLabelUWPR);
             this.Controls.Add(this.label9);
-            this.Controls.Add(this.label8);
-            this.Controls.Add(this.label7);
-            this.Controls.Add(this.label6);
-            this.Controls.Add(this.label5);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.labelCometUIVersion);
             this.Controls.Add(this.labelCometEngineVersion);
@@ -243,11 +211,12 @@
             this.Controls.Add(this.label1);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.shapeContainer1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
             this.Name = "AboutDlg";
             this.Text = "About Comet";
-            this.Load += new System.EventHandler(this.AboutDlgLoad);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -265,13 +234,10 @@
         private System.Windows.Forms.Label labelCometEngineVersion;
         private System.Windows.Forms.Label labelCometUIVersion;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label8;
         private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.LinkLabel linkLabel1;
+        private System.Windows.Forms.LinkLabel linkLabelUWPR;
         private System.Windows.Forms.Button btnOK;
         private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.TextBox textBoxAboutComet;
     }
 }
