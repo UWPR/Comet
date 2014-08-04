@@ -45,7 +45,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxName.Location = new System.Drawing.Point(15, 36);
             this.textBoxName.Name = "textBoxName";
-            this.textBoxName.Size = new System.Drawing.Size(331, 20);
+            this.textBoxName.Size = new System.Drawing.Size(352, 20);
             this.textBoxName.TabIndex = 10;
             this.textBoxName.TextChanged += new System.EventHandler(this.TextBoxNameTextChanged);
             // 
@@ -56,7 +56,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxPath.Location = new System.Drawing.Point(15, 86);
             this.textBoxPath.Name = "textBoxPath";
-            this.textBoxPath.Size = new System.Drawing.Size(331, 20);
+            this.textBoxPath.Size = new System.Drawing.Size(352, 20);
             this.textBoxPath.TabIndex = 11;
             this.textBoxPath.TextChanged += new System.EventHandler(this.TextBoxPathTextChanged);
             // 
@@ -110,7 +110,7 @@
             // btnExportPath
             // 
             this.btnExportPath.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.btnExportPath.Location = new System.Drawing.Point(373, 83);
+            this.btnExportPath.Location = new System.Drawing.Point(373, 84);
             this.btnExportPath.Name = "btnExportPath";
             this.btnExportPath.Size = new System.Drawing.Size(75, 23);
             this.btnExportPath.TabIndex = 9;
@@ -130,7 +130,9 @@
             this.Controls.Add(this.label1);
             this.Controls.Add(this.textBoxPath);
             this.Controls.Add(this.textBoxName);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MaximizeBox = false;
             this.Name = "ExportParamsDlg";
             this.Text = "Export Search Settings";
             this.ResumeLayout(false);
