@@ -39,9 +39,6 @@
     <ClInclude Include="CometWritePepXML.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CometWritePinXML.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CometWriteSqt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -69,6 +66,9 @@
     <ClInclude Include="CometStatus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CometWritePercolator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CometMassSpecUtils.cpp">
@@ -92,9 +92,6 @@
     <ClCompile Include="CometWritePepXML.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CometWritePinXML.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="CometWriteSqt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -105,6 +102,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CometInterfaces.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CometWritePercolator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
