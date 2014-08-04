@@ -93,7 +93,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 #ifdef _WIN32
    char resolvedPathBaseName[SIZE_FILE];
    _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, SIZE_FILE);
-   _fullpath(szRunSummaryResolvedPath, g_staticParams.inputFile.szBaseName, SIZE_FILE);
+   _fullpath(szRunSummaryResolvedPath, szRunSummaryBaseName, SIZE_FILE);
 #else
    char resolvedPathBaseName[PATH_MAX];
    realpath(g_staticParams.inputFile.szBaseName, resolvedPathBaseName);

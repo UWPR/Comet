@@ -66,6 +66,7 @@ bool CometWritePercolator::WritePercolator(FILE *fpout)
    return true;
 }
 
+
 void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
 {
    // Write header line
