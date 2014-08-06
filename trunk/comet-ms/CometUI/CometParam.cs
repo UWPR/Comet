@@ -54,16 +54,16 @@ namespace CometUI
         public CometParamsMap()
         {
             CometParams = new Dictionary<string, CometParam>();
-            UpdateCometParamsFromSettings(Settings.Default);
+            UpdateCometParamsFromSettings(CometUI.SearchSettings);
         }
 
-        public CometParamsMap(Settings settings)
+        public CometParamsMap(SearchSettings settings)
         {
             CometParams = new Dictionary<string, CometParam>();
             UpdateCometParamsFromSettings(settings);
         }
 
-        public bool GetSettingsFromCometParams(Settings cometSettings)
+        public bool GetSettingsFromCometParams(SearchSettings cometSettings)
         {
             String paramValueStr;
 
@@ -518,7 +518,7 @@ namespace CometUI
             return true;
         }
 
-        public bool UpdateCometParamsFromSettings(Settings settings)
+        public bool UpdateCometParamsFromSettings(SearchSettings settings)
         {
             var dbName = settings.ProteomeDatabaseFile;
             if (!UpdateCometParam("database_name", 

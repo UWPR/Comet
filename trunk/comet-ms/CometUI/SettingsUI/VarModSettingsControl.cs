@@ -28,44 +28,44 @@ namespace CometUI.SettingsUI
         public bool VerifyAndUpdateSettings()
         {
             VarMods = VarModsDataGridViewToStringCollection();
-            if (!VarMods.Equals(Settings.Default.VariableMods))
+            if (!VarMods.Equals(CometUI.SearchSettings.VariableMods))
             {
-                Settings.Default.VariableMods = VarMods;
+                CometUI.SearchSettings.VariableMods = VarMods;
                 Parent.SettingsChanged = true;
             }
 
             var variableNTerminus = (double) variableNTerminusTextBox.DecimalValue;
-            if (!variableNTerminus.Equals(Settings.Default.VariableNTerminus))
+            if (!variableNTerminus.Equals(CometUI.SearchSettings.VariableNTerminus))
             {
-                Settings.Default.VariableNTerminus = variableNTerminus;
+                CometUI.SearchSettings.VariableNTerminus = variableNTerminus;
                 Parent.SettingsChanged = true;
             }
 
             var variableCTerminus = (double) variableCTerminusTextBox.DecimalValue;
-            if (!variableCTerminus.Equals(Settings.Default.VariableCTerminus))
+            if (!variableCTerminus.Equals(CometUI.SearchSettings.VariableCTerminus))
             {
-                Settings.Default.VariableCTerminus = variableCTerminus;
+                CometUI.SearchSettings.VariableCTerminus = variableCTerminus;
                 Parent.SettingsChanged = true;
             }
 
             int variableNTerminusDist = variableNTerminusDistTextBox.IntValue;
-            if (!variableNTerminusDist.Equals(Settings.Default.VariableNTermDistance))
+            if (!variableNTerminusDist.Equals(CometUI.SearchSettings.VariableNTermDistance))
             {
-                Settings.Default.VariableNTermDistance = variableNTerminusDist;
+                CometUI.SearchSettings.VariableNTermDistance = variableNTerminusDist;
                 Parent.SettingsChanged = true;
             }
 
             int variableCTerminusDist = variableCTerminusDistTextBox.IntValue;
-            if (!variableCTerminusDist.Equals(Settings.Default.VariableCTermDistance))
+            if (!variableCTerminusDist.Equals(CometUI.SearchSettings.VariableCTermDistance))
             {
-                Settings.Default.VariableCTermDistance = variableCTerminusDist;
+                CometUI.SearchSettings.VariableCTermDistance = variableCTerminusDist;
                 Parent.SettingsChanged = true;
             }
 
             int maxModsInPeptide = (int)maxModsInPeptideTextBox.Value;
-            if (!maxModsInPeptide.Equals(Settings.Default.MaxVarModsInPeptide))
+            if (!maxModsInPeptide.Equals(CometUI.SearchSettings.MaxVarModsInPeptide))
             {
-                Settings.Default.MaxVarModsInPeptide = maxModsInPeptide;
+                CometUI.SearchSettings.MaxVarModsInPeptide = maxModsInPeptide;
                 Parent.SettingsChanged = true;
             }
 
@@ -75,17 +75,17 @@ namespace CometUI.SettingsUI
         private void InitializeFromDefaultSettings()
         {
             VarMods = new StringCollection();
-            foreach (var item in Settings.Default.VariableMods)
+            foreach (var item in CometUI.SearchSettings.VariableMods)
             {
                 VarMods.Add(item);
             }
 
-            variableNTerminusTextBox.Text = Settings.Default.VariableNTerminus.ToString(CultureInfo.InvariantCulture);
-            variableCTerminusTextBox.Text = Settings.Default.VariableCTerminus.ToString(CultureInfo.InvariantCulture);
-            variableNTerminusDistTextBox.Text = Settings.Default.VariableNTermDistance.ToString(CultureInfo.InvariantCulture);
-            variableCTerminusDistTextBox.Text = Settings.Default.VariableCTermDistance.ToString(CultureInfo.InvariantCulture);
+            variableNTerminusTextBox.Text = CometUI.SearchSettings.VariableNTerminus.ToString(CultureInfo.InvariantCulture);
+            variableCTerminusTextBox.Text = CometUI.SearchSettings.VariableCTerminus.ToString(CultureInfo.InvariantCulture);
+            variableNTerminusDistTextBox.Text = CometUI.SearchSettings.VariableNTermDistance.ToString(CultureInfo.InvariantCulture);
+            variableCTerminusDistTextBox.Text = CometUI.SearchSettings.VariableCTermDistance.ToString(CultureInfo.InvariantCulture);
 
-            maxModsInPeptideTextBox.Text = Settings.Default.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);            
+            maxModsInPeptideTextBox.Text = CometUI.SearchSettings.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);            
         }
 
         private StringCollection VarModsDataGridViewToStringCollection()

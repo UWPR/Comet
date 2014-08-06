@@ -27,7 +27,7 @@ namespace CometUI
         {
             var filesList = new List<string>();
             var inputFilesChecked = new List<bool>();
-            foreach (var item in Settings.Default.InputFiles)
+            foreach (var item in CometUI.SearchSettings.InputFiles)
             {
                 string[] row = item.Split(',');
                 filesList.Add(row[0]);
@@ -40,7 +40,7 @@ namespace CometUI
                 inputFilesList.SetItemChecked(i, inputFilesChecked[i]);
             }
 
-            proteomeDbFileCombo.Text = Settings.Default.ProteomeDatabaseFile;
+            proteomeDbFileCombo.Text = CometUI.SearchSettings.ProteomeDatabaseFile;
         }
 
         private string[] _inputFiles = new string[0];
@@ -333,8 +333,8 @@ namespace CometUI
                 inputFileInfo.set_InputType(inputType);
                 if (inputType == InputType.MZXML)
                 {
-                    inputFileInfo.set_FirstScan(Settings.Default.mzxmlScanRangeMin);
-                    inputFileInfo.set_LastScan(Settings.Default.mzxmlScanRangeMax);
+                    inputFileInfo.set_FirstScan(CometUI.SearchSettings.mzxmlScanRangeMin);
+                    inputFileInfo.set_LastScan(CometUI.SearchSettings.mzxmlScanRangeMax);
                 }
                 else
                 {
@@ -360,7 +360,7 @@ namespace CometUI
         private bool ConfigureInputSettings(CometSearchManagerWrapper searchMgr)
         {
             // Set up the proteome database
-            var dbFileName = Settings.Default.ProteomeDatabaseFile;
+            var dbFileName = CometUI.SearchSettings.ProteomeDatabaseFile;
             if (!searchMgr.SetParam("database_name", dbFileName, dbFileName))
             {
                 SearchStatusMessage = "Could not set the database_name parameter.";
@@ -368,21 +368,21 @@ namespace CometUI
             }
 
             // Set up the target vs. decoy parameters
-            var searchType = Settings.Default.SearchType;
+            var searchType = CometUI.SearchSettings.SearchType;
             if (!searchMgr.SetParam("decoy_search", searchType.ToString(CultureInfo.InvariantCulture), searchType))
             {
                 SearchStatusMessage = "Could not set the decoy_search parameter.";
                 return false;
             }
 
-            var decoyPrefix = Settings.Default.DecoyPrefix;
+            var decoyPrefix = CometUI.SearchSettings.DecoyPrefix;
             if (!searchMgr.SetParam("decoy_prefix", decoyPrefix, decoyPrefix))
             {
                 SearchStatusMessage = "Could not set the decoy_prefix parameter.";
                 return false;
             }
 
-            var nucleotideReadingFrame = Settings.Default.NucleotideReadingFrame;
+            var nucleotideReadingFrame = CometUI.SearchSettings.NucleotideReadingFrame;
             if (!searchMgr.SetParam("nucleotide_reading_frame", nucleotideReadingFrame.ToString(CultureInfo.InvariantCulture), nucleotideReadingFrame))
             {
                 SearchStatusMessage = "Could not set the nucleotide_reading_frame parameter.";
@@ -394,70 +394,70 @@ namespace CometUI
 
         private bool ConfigureOutputSettings(CometSearchManagerWrapper searchMgr)
         {
-            var outputPepXMLFile = Settings.Default.OutputFormatPepXML ? 1 : 0;
+            var outputPepXMLFile = CometUI.SearchSettings.OutputFormatPepXML ? 1 : 0;
             if (!searchMgr.SetParam("output_pepxmlfile", outputPepXMLFile.ToString(CultureInfo.InvariantCulture), outputPepXMLFile))
             {
                 SearchStatusMessage = "Could not set the output_pepxmlfile parameter.";
                 return false;
             }
 
-            var outputPinXMLFile = Settings.Default.OutputFormatPinXML ? 1 : 0;
+            var outputPinXMLFile = CometUI.SearchSettings.OutputFormatPinXML ? 1 : 0;
             if (!searchMgr.SetParam("output_pinxmlfile", outputPinXMLFile.ToString(CultureInfo.InvariantCulture), outputPinXMLFile))
             {
                 SearchStatusMessage = "Could not set the output_pinxmlfile parameter.";
                 return false;
             }
 
-            var outputTextFile = Settings.Default.OutputFormatTextFile ? 1 : 0;
+            var outputTextFile = CometUI.SearchSettings.OutputFormatTextFile ? 1 : 0;
             if (!searchMgr.SetParam("output_txtfile", outputTextFile.ToString(CultureInfo.InvariantCulture), outputTextFile))
             {
                 SearchStatusMessage = "Could not set the output_txtfile parameter.";
                 return false;
             }
 
-            var outputSqtToStdout = Settings.Default.OutputFormatSqtToStandardOutput ? 1 : 0;
+            var outputSqtToStdout = CometUI.SearchSettings.OutputFormatSqtToStandardOutput ? 1 : 0;
             if (!searchMgr.SetParam("output_sqtstream", outputSqtToStdout.ToString(CultureInfo.InvariantCulture), outputSqtToStdout))
             {
                 SearchStatusMessage = "Could not set the output_sqtstream parameter.";
                 return false;
             }
 
-            var outputSqtFile = Settings.Default.OutputFormatSqtFile ? 1 : 0;
+            var outputSqtFile = CometUI.SearchSettings.OutputFormatSqtFile ? 1 : 0;
             if (!searchMgr.SetParam("output_sqtfile", outputSqtFile.ToString(CultureInfo.InvariantCulture), outputSqtFile))
             {
                 SearchStatusMessage = "Could not set the output_sqtfile parameter.";
                 return false;
             }
 
-            var outputOutFile = Settings.Default.OutputFormatOutFiles ? 1 : 0;
+            var outputOutFile = CometUI.SearchSettings.OutputFormatOutFiles ? 1 : 0;
             if (!searchMgr.SetParam("output_outfiles", outputOutFile.ToString(CultureInfo.InvariantCulture), outputOutFile))
             {
                 SearchStatusMessage = "Could not set the output_outfiles parameter.";
                 return false;
             }
 
-            var printExpectScore = Settings.Default.PrintExpectScoreInPlaceOfSP ? 1 : 0;
+            var printExpectScore = CometUI.SearchSettings.PrintExpectScoreInPlaceOfSP ? 1 : 0;
             if (!searchMgr.SetParam("print_expect_score", printExpectScore.ToString(CultureInfo.InvariantCulture), printExpectScore))
             {
                 SearchStatusMessage = "Could not set the print_expect_score parameter.";
                 return false;
             }
 
-            var showFragmentIons = Settings.Default.OutputFormatShowFragmentIons ? 1 : 0;
+            var showFragmentIons = CometUI.SearchSettings.OutputFormatShowFragmentIons ? 1 : 0;
             if (!searchMgr.SetParam("show_fragment_ions", showFragmentIons.ToString(CultureInfo.InvariantCulture), showFragmentIons))
             {
                 SearchStatusMessage = "Could not set the show_fragment_ions parameter.";
                 return false;
             }
 
-            var skipResearching = Settings.Default.OutputFormatSkipReSearching ? 1 : 0;
+            var skipResearching = CometUI.SearchSettings.OutputFormatSkipReSearching ? 1 : 0;
             if (!searchMgr.SetParam("skip_researching", skipResearching.ToString(CultureInfo.InvariantCulture), skipResearching))
             {
                 SearchStatusMessage = "Could not set the skip_researching parameter.";
                 return false;
             }
 
-            var numOutputLines = Settings.Default.NumOutputLines;
+            var numOutputLines = CometUI.SearchSettings.NumOutputLines;
             if (!searchMgr.SetParam("num_output_lines", numOutputLines.ToString(CultureInfo.InvariantCulture), numOutputLines))
             {
                 SearchStatusMessage = "Could not set the num_output_lines parameter.";
@@ -469,36 +469,36 @@ namespace CometUI
 
         private bool ConfigureEnzymeSettings(CometSearchManagerWrapper searchMgr)
         {
-            var searchEnzymeNumber = Settings.Default.SearchEnzymeNumber;
+            var searchEnzymeNumber = CometUI.SearchSettings.SearchEnzymeNumber;
             if (!searchMgr.SetParam("search_enzyme_number", searchEnzymeNumber.ToString(CultureInfo.InvariantCulture), searchEnzymeNumber))
             {
                 SearchStatusMessage = "Could not set the search_enzyme_number parameter.";
                 return false;
             }
 
-            var sampleEnzymeNumber = Settings.Default.SampleEnzymeNumber;
+            var sampleEnzymeNumber = CometUI.SearchSettings.SampleEnzymeNumber;
             if (!searchMgr.SetParam("sample_enzyme_number", sampleEnzymeNumber.ToString(CultureInfo.InvariantCulture), sampleEnzymeNumber))
             {
                 SearchStatusMessage = "Could not set the sample_enzyme_number parameter.";
                 return false;
             }
 
-            var allowedMissedCleavages = Settings.Default.AllowedMissedCleavages;
+            var allowedMissedCleavages = CometUI.SearchSettings.AllowedMissedCleavages;
             if (!searchMgr.SetParam("allowed_missed_cleavage", allowedMissedCleavages.ToString(CultureInfo.InvariantCulture), allowedMissedCleavages))
             {
                 SearchStatusMessage = "Could not set the allowed_missed_cleavage parameter.";
                 return false;
             }
 
-            var enzymeTermini = Settings.Default.EnzymeTermini;
+            var enzymeTermini = CometUI.SearchSettings.EnzymeTermini;
             if (!searchMgr.SetParam("num_enzyme_termini", enzymeTermini.ToString(CultureInfo.InvariantCulture), enzymeTermini))
             {
                 SearchStatusMessage = "Could not set the num_enzyme_termini parameter.";
                 return false;
             }
 
-            var digestMassMin = Settings.Default.digestMassRangeMin;
-            var digestMassMax = Settings.Default.digestMassRangeMax;
+            var digestMassMin = CometUI.SearchSettings.digestMassRangeMin;
+            var digestMassMax = CometUI.SearchSettings.digestMassRangeMax;
             var digestMassRange = new DoubleRangeWrapper(digestMassMin, digestMassMax);
             string digestMassRangeString = digestMassMin.ToString(CultureInfo.InvariantCulture)
                                           + " " + digestMassMax.ToString(CultureInfo.InvariantCulture);
@@ -516,35 +516,35 @@ namespace CometUI
         {
             // Configure precursor mass settings
             
-            var precursorMassTol = Settings.Default.PrecursorMassTolerance;
+            var precursorMassTol = CometUI.SearchSettings.PrecursorMassTolerance;
             if (!searchMgr.SetParam("peptide_mass_tolerance", precursorMassTol.ToString(CultureInfo.InvariantCulture), precursorMassTol))
             {
                 SearchStatusMessage = "Could not set the peptide_mass_tolerance parameter.";
                 return false;
             }
 
-            var precursorMassUnit = Settings.Default.PrecursorMassUnit;
+            var precursorMassUnit = CometUI.SearchSettings.PrecursorMassUnit;
             if (!searchMgr.SetParam("peptide_mass_units", precursorMassUnit.ToString(CultureInfo.InvariantCulture), precursorMassUnit))
             {
                 SearchStatusMessage = "Could not set the peptide_mass_units parameter.";
                 return false;
             }
 
-            var precursorMassType = Settings.Default.PrecursorMassType;
+            var precursorMassType = CometUI.SearchSettings.PrecursorMassType;
             if (!searchMgr.SetParam("mass_type_parent", precursorMassType.ToString(CultureInfo.InvariantCulture), precursorMassType))
             {
                 SearchStatusMessage = "Could not set the mass_type_parent parameter.";
                 return false;
             }
 
-            var precursorTolType = Settings.Default.PrecursorToleranceType;
+            var precursorTolType = CometUI.SearchSettings.PrecursorToleranceType;
             if (!searchMgr.SetParam("precursor_tolerance_type", precursorTolType.ToString(CultureInfo.InvariantCulture), precursorTolType))
             {
                 SearchStatusMessage = "Could not set the precursor_tolerance_type parameter.";
                 return false;
             }
 
-            var isotopeError = Settings.Default.PrecursorIsotopeError;
+            var isotopeError = CometUI.SearchSettings.PrecursorIsotopeError;
             if (!searchMgr.SetParam("isotope_error", isotopeError.ToString(CultureInfo.InvariantCulture), isotopeError))
             {
                 SearchStatusMessage = "Could not set the isotope_error parameter.";
@@ -554,28 +554,28 @@ namespace CometUI
             
             // Configure fragment mass settings
             
-            var fragmentBinSize = Settings.Default.FragmentBinSize;
+            var fragmentBinSize = CometUI.SearchSettings.FragmentBinSize;
             if (!searchMgr.SetParam("fragment_bin_tol", fragmentBinSize.ToString(CultureInfo.InvariantCulture), fragmentBinSize))
             {
                 SearchStatusMessage = "Could not set the fragment_bin_tol parameter.";
                 return false;
             }
 
-            var fragmentBinOffset = Settings.Default.FragmentBinOffset;
+            var fragmentBinOffset = CometUI.SearchSettings.FragmentBinOffset;
             if (!searchMgr.SetParam("fragment_bin_offset", fragmentBinOffset.ToString(CultureInfo.InvariantCulture), fragmentBinOffset))
             {
                 SearchStatusMessage = "Could not set the fragment_bin_offset parameter.";
                 return false;
             }
 
-            var fragmentMassType = Settings.Default.FragmentMassType;
+            var fragmentMassType = CometUI.SearchSettings.FragmentMassType;
             if (!searchMgr.SetParam("mass_type_fragment", fragmentMassType.ToString(CultureInfo.InvariantCulture), fragmentMassType))
             {
                 SearchStatusMessage = "Could not set the mass_type_fragment parameter.";
                 return false;
             }
 
-            var useSparseMatrix = Settings.Default.UseSparseMatrix ? 1 : 0;
+            var useSparseMatrix = CometUI.SearchSettings.UseSparseMatrix ? 1 : 0;
             if (!searchMgr.SetParam("use_sparse_matrix", useSparseMatrix.ToString(CultureInfo.InvariantCulture), useSparseMatrix))
             {
                 SearchStatusMessage = "Could not set the use_sparse_matrix parameter.";
@@ -584,56 +584,56 @@ namespace CometUI
 
             // Configure fragment ions
 
-            var useAIons = Settings.Default.UseAIons ? 1 : 0;
+            var useAIons = CometUI.SearchSettings.UseAIons ? 1 : 0;
             if (!searchMgr.SetParam("use_A_ions", useAIons.ToString(CultureInfo.InvariantCulture), useAIons))
             {
                 SearchStatusMessage = "Could not set the use_A_ions parameter.";
                 return false;
             }
 
-            var useBIons = Settings.Default.UseBIons ? 1 : 0;
+            var useBIons = CometUI.SearchSettings.UseBIons ? 1 : 0;
             if (!searchMgr.SetParam("use_B_ions", useBIons.ToString(CultureInfo.InvariantCulture), useBIons))
             {
                 SearchStatusMessage = "Could not set the use_B_ions parameter.";
                 return false;
             }
 
-            var useCIons = Settings.Default.UseCIons ? 1 : 0;
+            var useCIons = CometUI.SearchSettings.UseCIons ? 1 : 0;
             if (!searchMgr.SetParam("use_C_ions", useCIons.ToString(CultureInfo.InvariantCulture), useCIons))
             {
                 SearchStatusMessage = "Could not set the use_C_ions parameter.";
                 return false;
             }
 
-            var useXIons = Settings.Default.UseXIons ? 1 : 0;
+            var useXIons = CometUI.SearchSettings.UseXIons ? 1 : 0;
             if (!searchMgr.SetParam("use_X_ions", useXIons.ToString(CultureInfo.InvariantCulture), useXIons))
             {
                 SearchStatusMessage = "Could not set the use_X_ions parameter.";
                 return false;
             }
 
-            var useYIons = Settings.Default.UseYIons ? 1 : 0;
+            var useYIons = CometUI.SearchSettings.UseYIons ? 1 : 0;
             if (!searchMgr.SetParam("use_Y_ions", useXIons.ToString(CultureInfo.InvariantCulture), useYIons))
             {
                 SearchStatusMessage = "Could not set the use_Y_ions parameter.";
                 return false;
             }
 
-            var useZIons = Settings.Default.UseZIons ? 1 : 0;
+            var useZIons = CometUI.SearchSettings.UseZIons ? 1 : 0;
             if (!searchMgr.SetParam("use_Z_ions", useZIons.ToString(CultureInfo.InvariantCulture), useZIons))
             {
                 SearchStatusMessage = "Could not set the use_Z_ions parameter.";
                 return false;
             }
 
-            var useFlankIons = Settings.Default.TheoreticalFragmentIons ? 1 : 0;
+            var useFlankIons = CometUI.SearchSettings.TheoreticalFragmentIons ? 1 : 0;
             if (!searchMgr.SetParam("theoretical_fragment_ions", useFlankIons.ToString(CultureInfo.InvariantCulture), useFlankIons))
             {
                 SearchStatusMessage = "Could not set the theoretical_fragment_ions parameter.";
                 return false;
             }
 
-            var useNLIons = Settings.Default.UseNLIons ? 1 : 0;
+            var useNLIons = CometUI.SearchSettings.UseNLIons ? 1 : 0;
             if (!searchMgr.SetParam("use_NL_ions", useNLIons.ToString(CultureInfo.InvariantCulture), useNLIons))
             {
                 SearchStatusMessage = "Could not set the use_NL_ions parameter.";
@@ -645,7 +645,7 @@ namespace CometUI
 
         private bool ConfigureStaticModSettings(CometSearchManagerWrapper searchMgr)
         {
-            foreach (var item in Settings.Default.StaticMods)
+            foreach (var item in CometUI.SearchSettings.StaticMods)
             {
                 string[] staticMods = item.Split(',');
                 string paramName;
@@ -673,28 +673,28 @@ namespace CometUI
                 }
             }
 
-            var cTermPeptideMass = Settings.Default.StaticModCTermPeptide;
+            var cTermPeptideMass = CometUI.SearchSettings.StaticModCTermPeptide;
             if (!searchMgr.SetParam("add_Cterm_peptide", cTermPeptideMass.ToString(CultureInfo.InvariantCulture), cTermPeptideMass))
             {
                 SearchStatusMessage = "Could not set the add_Cterm_peptide parameter.";
                 return false;
             }
 
-            var nTermPeptideMass = Settings.Default.StaticModNTermPeptide;
+            var nTermPeptideMass = CometUI.SearchSettings.StaticModNTermPeptide;
             if (!searchMgr.SetParam("add_Nterm_peptide", nTermPeptideMass.ToString(CultureInfo.InvariantCulture), nTermPeptideMass))
             {
                 SearchStatusMessage = "Could not set the add_Nterm_peptide parameter.";
                 return false;
             }
 
-            var cTermProteinMass = Settings.Default.StaticModCTermProtein;
+            var cTermProteinMass = CometUI.SearchSettings.StaticModCTermProtein;
             if (!searchMgr.SetParam("add_Cterm_protein", cTermProteinMass.ToString(CultureInfo.InvariantCulture), cTermProteinMass))
             {
                 SearchStatusMessage = "Could not set the add_Cterm_protein parameter.";
                 return false;
             }
 
-            var nTermProteinMass = Settings.Default.StaticModNTermProtein;
+            var nTermProteinMass = CometUI.SearchSettings.StaticModNTermProtein;
             if (!searchMgr.SetParam("add_Nterm_protein", nTermProteinMass.ToString(CultureInfo.InvariantCulture), nTermProteinMass))
             {
                 SearchStatusMessage = "Could not set the add_Nterm_protein parameter.";
@@ -707,7 +707,7 @@ namespace CometUI
         private bool ConfigureVariableModSettings(CometSearchManagerWrapper searchMgr)
         {
             int modNum = 0;
-            foreach (var item in Settings.Default.VariableMods)
+            foreach (var item in CometUI.SearchSettings.VariableMods)
             {
                 modNum++;
                 string paramName = "variable_mod" + modNum;
@@ -752,35 +752,35 @@ namespace CometUI
                 }
             }
 
-            var varCTerminus = Settings.Default.VariableCTerminus;
+            var varCTerminus = CometUI.SearchSettings.VariableCTerminus;
             if (!searchMgr.SetParam("variable_C_terminus", varCTerminus.ToString(CultureInfo.InvariantCulture), varCTerminus))
             {
                 SearchStatusMessage = "Could not set the variable_C_terminus parameter.";
                 return false;
             }
 
-            var varCTerminusDist = Settings.Default.VariableCTermDistance;
+            var varCTerminusDist = CometUI.SearchSettings.VariableCTermDistance;
             if (!searchMgr.SetParam("variable_C_terminus_distance", varCTerminusDist.ToString(CultureInfo.InvariantCulture), varCTerminusDist))
             {
                 SearchStatusMessage = "Could not set the variable_C_terminus_distance parameter.";
                 return false;
             }
 
-            var varNTerminus = Settings.Default.VariableNTerminus;
+            var varNTerminus = CometUI.SearchSettings.VariableNTerminus;
             if (!searchMgr.SetParam("variable_N_terminus", varNTerminus.ToString(CultureInfo.InvariantCulture), varNTerminus))
             {
                 SearchStatusMessage = "Could not set the variable_N_terminus parameter.";
                 return false;
             }
 
-            var varNTerminusDist = Settings.Default.VariableNTermDistance;
+            var varNTerminusDist = CometUI.SearchSettings.VariableNTermDistance;
             if (!searchMgr.SetParam("variable_N_terminus_distance", varNTerminusDist.ToString(CultureInfo.InvariantCulture), varNTerminusDist))
             {
                 SearchStatusMessage = "Could not set the variable_N_terminus_distance parameter.";
                 return false;
             }
 
-            var maxVarModsInPeptide = Settings.Default.MaxVarModsInPeptide;
+            var maxVarModsInPeptide = CometUI.SearchSettings.MaxVarModsInPeptide;
             if (!searchMgr.SetParam("max_variable_mods_in_peptide", maxVarModsInPeptide.ToString(CultureInfo.InvariantCulture), maxVarModsInPeptide))
             {
                 SearchStatusMessage = "Could not set the max_variable_mods_in_peptide parameter.";
@@ -793,8 +793,8 @@ namespace CometUI
         private bool ConfigureMiscSettings(CometSearchManagerWrapper searchMgr)
         {
             // Set the mzXML-specific miscellaneous settings
-            var mzxmlScanRangeMin = Settings.Default.mzxmlScanRangeMin;
-            var mzxmlScanRangeMax = Settings.Default.mzxmlScanRangeMax;
+            var mzxmlScanRangeMin = CometUI.SearchSettings.mzxmlScanRangeMin;
+            var mzxmlScanRangeMax = CometUI.SearchSettings.mzxmlScanRangeMax;
             var mzxmlScanRange = new IntRangeWrapper(mzxmlScanRangeMin, mzxmlScanRangeMax);
             string mzxmlScanRangeString = mzxmlScanRangeMin.ToString(CultureInfo.InvariantCulture)
                                           + " " + mzxmlScanRangeMax.ToString(CultureInfo.InvariantCulture);
@@ -804,8 +804,8 @@ namespace CometUI
                 return false;
             }
 
-            var mzxmlPrecursorChargeMin = Settings.Default.mzxmlPrecursorChargeRangeMin;
-            var mzxmlPrecursorChargeMax = Settings.Default.mzxmlPrecursorChargeRangeMax;
+            var mzxmlPrecursorChargeMin = CometUI.SearchSettings.mzxmlPrecursorChargeRangeMin;
+            var mzxmlPrecursorChargeMax = CometUI.SearchSettings.mzxmlPrecursorChargeRangeMax;
             var mzxmlPrecursorChargeRange = new IntRangeWrapper(mzxmlPrecursorChargeMin, mzxmlPrecursorChargeMax);
             string mzxmlPrecursorChargeRageString = mzxmlPrecursorChargeMin.ToString(CultureInfo.InvariantCulture)
                                                     + " " + mzxmlPrecursorChargeMax.ToString(CultureInfo.InvariantCulture);
@@ -815,14 +815,14 @@ namespace CometUI
                 return false;
             }
 
-            var mzxmlMSLevel = Settings.Default.mzxmlMsLevel;
+            var mzxmlMSLevel = CometUI.SearchSettings.mzxmlMsLevel;
             if (!searchMgr.SetParam("ms_level", mzxmlMSLevel.ToString(CultureInfo.InvariantCulture), mzxmlMSLevel))
             {
                 SearchStatusMessage = "Could not set the ms_level parameter.";
                 return false;
             }
 
-            var mzxmlActivationMethod = Settings.Default.mzxmlActivationMethod;
+            var mzxmlActivationMethod = CometUI.SearchSettings.mzxmlActivationMethod;
             if (!searchMgr.SetParam("activation_method", mzxmlActivationMethod, mzxmlActivationMethod))
             {
                 SearchStatusMessage = "Could not set the activation_method parameter.";
@@ -830,36 +830,36 @@ namespace CometUI
             }
 
             // Set the spectral processing-specific miscellaneous settings
-            var minPeaks = Settings.Default.spectralProcessingMinPeaks;
+            var minPeaks = CometUI.SearchSettings.spectralProcessingMinPeaks;
             if (!searchMgr.SetParam("minimum_peaks", minPeaks.ToString(CultureInfo.InvariantCulture), minPeaks))
             {
                 SearchStatusMessage = "Could not set the minimum_peaks parameter.";
                 return false;
             }
 
-            var minIntensity = Settings.Default.spectralProcessingMinIntensity;
+            var minIntensity = CometUI.SearchSettings.spectralProcessingMinIntensity;
             if (!searchMgr.SetParam("minimum_intensity", minIntensity.ToString(CultureInfo.InvariantCulture), minIntensity))
             {
                 SearchStatusMessage = "Could not set the minimum_intensity parameter.";
                 return false;
             }
 
-            var removePrecursorTol = Settings.Default.spectralProcessingRemovePrecursorTol;
+            var removePrecursorTol = CometUI.SearchSettings.spectralProcessingRemovePrecursorTol;
             if (!searchMgr.SetParam("remove_precursor_tolerance", removePrecursorTol.ToString(CultureInfo.InvariantCulture), removePrecursorTol))
             {
                 SearchStatusMessage = "Could not set the remove_precursor_tolerance parameter.";
                 return false;
             }
 
-            var removePrecursorPeak = Settings.Default.spectralProcessingRemovePrecursorPeak;
+            var removePrecursorPeak = CometUI.SearchSettings.spectralProcessingRemovePrecursorPeak;
             if (!searchMgr.SetParam("remove_precursor_peak", removePrecursorPeak.ToString(CultureInfo.InvariantCulture), removePrecursorPeak))
             {
                 SearchStatusMessage = "Could not set the remove_precursor_peak parameter.";
                 return false;
             }
 
-            var clearMzMin = Settings.Default.spectralProcessingClearMzMin;
-            var clearMzMax = Settings.Default.spectralProcessingClearMzMax;
+            var clearMzMin = CometUI.SearchSettings.spectralProcessingClearMzMin;
+            var clearMzMax = CometUI.SearchSettings.spectralProcessingClearMzMax;
             var clearMzRange = new DoubleRangeWrapper(clearMzMin, clearMzMax);
             string clearMzRangeString = clearMzMin.ToString(CultureInfo.InvariantCulture)
                                           + " " + clearMzMax.ToString(CultureInfo.InvariantCulture);
@@ -870,42 +870,42 @@ namespace CometUI
             }
 
             // Configure the rest of the miscellaneous parameters
-            var spectrumBatchSize = Settings.Default.SpectrumBatchSize;
+            var spectrumBatchSize = CometUI.SearchSettings.SpectrumBatchSize;
             if (!searchMgr.SetParam("spectrum_batch_size", spectrumBatchSize.ToString(CultureInfo.InvariantCulture), spectrumBatchSize))
             {
                 SearchStatusMessage = "Could not set the spectrum_batch_size parameter.";
                 return false;
             }
 
-            var numThreads = Settings.Default.NumThreads;
+            var numThreads = CometUI.SearchSettings.NumThreads;
             if (!searchMgr.SetParam("num_threads", numThreads.ToString(CultureInfo.InvariantCulture), numThreads))
             {
                 SearchStatusMessage = "Could not set the num_threads parameter.";
                 return false;
             }
 
-            var numResults = Settings.Default.NumResults;
+            var numResults = CometUI.SearchSettings.NumResults;
             if (!searchMgr.SetParam("num_results", numResults.ToString(CultureInfo.InvariantCulture), numResults))
             {
                 SearchStatusMessage = "Could not set the num_results parameter.";
                 return false;
             }
 
-            var maxFragmentCharge = Settings.Default.MaxFragmentCharge;
+            var maxFragmentCharge = CometUI.SearchSettings.MaxFragmentCharge;
             if (!searchMgr.SetParam("max_fragment_charge", maxFragmentCharge.ToString(CultureInfo.InvariantCulture), maxFragmentCharge))
             {
                 SearchStatusMessage = "Could not set the max_fragment_charge parameter.";
                 return false;
             }
 
-            var maxPrecursorCharge = Settings.Default.MaxPrecursorCharge;
+            var maxPrecursorCharge = CometUI.SearchSettings.MaxPrecursorCharge;
             if (!searchMgr.SetParam("max_precursor_charge", maxPrecursorCharge.ToString(CultureInfo.InvariantCulture), maxPrecursorCharge))
             {
                 SearchStatusMessage = "Could not set the max_precursor_charge parameter.";
                 return false;
             }
 
-            var clipNTermMethionine = Settings.Default.ClipNTermMethionine ? 1 : 0;
+            var clipNTermMethionine = CometUI.SearchSettings.ClipNTermMethionine ? 1 : 0;
             if (!searchMgr.SetParam("clip_nterm_methionine", clipNTermMethionine.ToString(CultureInfo.InvariantCulture), clipNTermMethionine))
             {
                 SearchStatusMessage = "Could not set the clip_nterm_methionine parameter.";
@@ -945,11 +945,11 @@ namespace CometUI
 
         private void ProteomeDbFileNameChanged()
         {
-            if (File.Exists(proteomeDbFileCombo.Text) && !String.Equals(proteomeDbFileCombo.Text, Settings.Default.ProteomeDatabaseFile))
+            if (File.Exists(proteomeDbFileCombo.Text) && !String.Equals(proteomeDbFileCombo.Text, CometUI.SearchSettings.ProteomeDatabaseFile))
             {
                 if (DialogResult.OK == MessageBox.Show(Resources.RunSearchDlg_ProteomeDbFileNameChanged_Would_you_like_to_update_the_proteome_database_file_name_in_the_search_settings_with_the_one_you_have_specified_here_, Resources.RunSearchDlg_ProteomeDbFileNameChanged_Run_Search, MessageBoxButtons.OKCancel, MessageBoxIcon.Question))
                 {
-                    Settings.Default.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
+                    CometUI.SearchSettings.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
                 }
             }
 

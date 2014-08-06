@@ -25,37 +25,37 @@ namespace CometUI.SettingsUI
         public bool VerifyAndUpdateSettings()
         {
             StaticMods = StaticModsDataGridViewToStringCollection();
-            if (!StaticMods.Equals(Settings.Default.StaticMods))
+            if (!StaticMods.Equals(CometUI.SearchSettings.StaticMods))
             {
-                Settings.Default.StaticMods = StaticMods;
+                CometUI.SearchSettings.StaticMods = StaticMods;
                 Parent.SettingsChanged = true;
             }
 
             var staticNTermPeptide = (double) staticNTermPeptideTextBox.DecimalValue;
-            if (!staticNTermPeptide.Equals(Settings.Default.StaticModNTermPeptide))
+            if (!staticNTermPeptide.Equals(CometUI.SearchSettings.StaticModNTermPeptide))
             {
-                Settings.Default.StaticModNTermPeptide = staticNTermPeptide;
+                CometUI.SearchSettings.StaticModNTermPeptide = staticNTermPeptide;
                 Parent.SettingsChanged = true;
             }
 
             var staticCTermPeptide = (double) staticCTermPeptideTextBox.DecimalValue;
-            if (!staticCTermPeptide.Equals(Settings.Default.StaticModCTermPeptide))
+            if (!staticCTermPeptide.Equals(CometUI.SearchSettings.StaticModCTermPeptide))
             {
-                Settings.Default.StaticModCTermPeptide = staticCTermPeptide;
+                CometUI.SearchSettings.StaticModCTermPeptide = staticCTermPeptide;
                 Parent.SettingsChanged = true;
             }
 
             var staticNTermProtein = (double)staticNTermProteinTextBox.DecimalValue;
-            if (!staticNTermProtein.Equals(Settings.Default.StaticModNTermProtein))
+            if (!staticNTermProtein.Equals(CometUI.SearchSettings.StaticModNTermProtein))
             {
-                Settings.Default.StaticModNTermProtein = staticNTermProtein;
+                CometUI.SearchSettings.StaticModNTermProtein = staticNTermProtein;
                 Parent.SettingsChanged = true;
             }
 
             var staticCTermProtein = (double) staticCTermProteinTextBox.DecimalValue;
-            if (!staticCTermProtein.Equals(Settings.Default.StaticModCTermProtein))
+            if (!staticCTermProtein.Equals(CometUI.SearchSettings.StaticModCTermProtein))
             {
-                Settings.Default.StaticModCTermProtein = staticCTermProtein;
+                CometUI.SearchSettings.StaticModCTermProtein = staticCTermProtein;
                 Parent.SettingsChanged = true;
             }
 
@@ -90,15 +90,15 @@ namespace CometUI.SettingsUI
         private void InitializeFromDefaultSettings()
         {
             StaticMods = new StringCollection();
-            foreach (var item in Settings.Default.StaticMods)
+            foreach (var item in CometUI.SearchSettings.StaticMods)
             {
                 StaticMods.Add(item);
             }
 
-            staticNTermPeptideTextBox.Text = Settings.Default.StaticModNTermPeptide.ToString(CultureInfo.InvariantCulture);
-            staticCTermPeptideTextBox.Text = Settings.Default.StaticModCTermPeptide.ToString(CultureInfo.InvariantCulture);
-            staticNTermProteinTextBox.Text = Settings.Default.StaticModNTermProtein.ToString(CultureInfo.InvariantCulture);
-            staticCTermProteinTextBox.Text = Settings.Default.StaticModCTermProtein.ToString(CultureInfo.InvariantCulture);
+            staticNTermPeptideTextBox.Text = CometUI.SearchSettings.StaticModNTermPeptide.ToString(CultureInfo.InvariantCulture);
+            staticCTermPeptideTextBox.Text = CometUI.SearchSettings.StaticModCTermPeptide.ToString(CultureInfo.InvariantCulture);
+            staticNTermProteinTextBox.Text = CometUI.SearchSettings.StaticModNTermProtein.ToString(CultureInfo.InvariantCulture);
+            staticCTermProteinTextBox.Text = CometUI.SearchSettings.StaticModCTermProtein.ToString(CultureInfo.InvariantCulture);
         }
 
         private void UpdateStatidModsDataGridView()

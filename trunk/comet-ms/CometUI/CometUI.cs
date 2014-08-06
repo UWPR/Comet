@@ -8,7 +8,7 @@ namespace CometUI
 {
     public partial class CometUI : Form
     {
-        public Dictionary<String, CometParam> CometParams = new Dictionary<string, CometParam>();
+        public static SearchSettings SearchSettings { get; set; }
 
         private SearchSettingsDlg _searchSettingsDlg;
         private SearchSettingsDlg SearchSettingsDlg
@@ -21,6 +21,8 @@ namespace CometUI
         public CometUI()
         {
             InitializeComponent();
+
+            SearchSettings = SearchSettings.Default;
         }
 
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)

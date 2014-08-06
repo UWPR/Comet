@@ -117,6 +117,11 @@
     <Compile Include="ImportParamsDlg.Designer.cs">
       <DependentUpon>ImportParamsDlg.cs</DependentUpon>
     </Compile>
+    <Compile Include="Properties\SearchSettings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>SearchSettings.settings</DependentUpon>
+    </Compile>
     <Compile Include="RunSearchBackgroundWorker.cs" />
     <Compile Include="RunSearchDlg.cs">
       <SubType>Form</SubType>
@@ -241,6 +246,10 @@
     <None Include="app.config" />
     <None Include="Properties\DataSources\CometUI.Properties.Settings.datasource" />
     <None Include="Properties\DataSources\EnzymeSettingsControl.datasource" />
+    <None Include="Properties\SearchSettings.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>SearchSettings.Designer.cs</LastGenOutput>
+    </None>
     <None Include="Properties\Settings.settings">
       <Generator>PublicSettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

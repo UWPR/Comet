@@ -44,22 +44,22 @@ namespace CometUI.SettingsUI
 
         public bool VerifyAndUpdateSettings()
         {
-            if (Settings.Default.SearchEnzymeNumber != SearchEnzymeCurrentSelectedIndex)
+            if (CometUI.SearchSettings.SearchEnzymeNumber != SearchEnzymeCurrentSelectedIndex)
             {
-                Settings.Default.SearchEnzymeNumber = SearchEnzymeCurrentSelectedIndex;
+                CometUI.SearchSettings.SearchEnzymeNumber = SearchEnzymeCurrentSelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
-            if (Settings.Default.SampleEnzymeNumber != SampleEnzymeCurrentSelectedIndex)
+            if (CometUI.SearchSettings.SampleEnzymeNumber != SampleEnzymeCurrentSelectedIndex)
             {
-                Settings.Default.SampleEnzymeNumber = SampleEnzymeCurrentSelectedIndex;
+                CometUI.SearchSettings.SampleEnzymeNumber = SampleEnzymeCurrentSelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
             var allowedMissedCleavages = missedCleavagesCombo.SelectedIndex;
-            if (Settings.Default.AllowedMissedCleavages != allowedMissedCleavages)
+            if (CometUI.SearchSettings.AllowedMissedCleavages != allowedMissedCleavages)
             {
-                Settings.Default.AllowedMissedCleavages = allowedMissedCleavages;
+                CometUI.SearchSettings.AllowedMissedCleavages = allowedMissedCleavages;
                 Parent.SettingsChanged = true;
             }
 
@@ -69,9 +69,9 @@ namespace CometUI.SettingsUI
             {
                 if (_enzymeTermini[key].Equals(enzymeTerminiCombo.SelectedItem.ToString()))
                 {
-                    if (Settings.Default.EnzymeTermini != key)
+                    if (CometUI.SearchSettings.EnzymeTermini != key)
                     {
-                        Settings.Default.EnzymeTermini = key;
+                        CometUI.SearchSettings.EnzymeTermini = key;
                         Parent.SettingsChanged = true;
                     }
 
@@ -81,21 +81,21 @@ namespace CometUI.SettingsUI
 
             if (EnzymeInfoDlg.EnzymeInfoChanged)
             {
-                Settings.Default.EnzymeInfo = EnzymeInfo;
+                CometUI.SearchSettings.EnzymeInfo = EnzymeInfo;
                 Parent.SettingsChanged = true;
             }
 
             var digestMassRangeMin = (double) digestMassRangeMinTextBox.DecimalValue;
-            if (!digestMassRangeMin.Equals(Settings.Default.digestMassRangeMin))
+            if (!digestMassRangeMin.Equals(CometUI.SearchSettings.digestMassRangeMin))
             {
-                Settings.Default.digestMassRangeMin = digestMassRangeMin;
+                CometUI.SearchSettings.digestMassRangeMin = digestMassRangeMin;
                 Parent.SettingsChanged = true;
             }
 
             var digestMassRangeMax = (double)digestMassRangeMaxTextBox.DecimalValue;
-            if (!digestMassRangeMax.Equals(Settings.Default.digestMassRangeMax))
+            if (!digestMassRangeMax.Equals(CometUI.SearchSettings.digestMassRangeMax))
             {
-                Settings.Default.digestMassRangeMax = digestMassRangeMax;
+                CometUI.SearchSettings.digestMassRangeMax = digestMassRangeMax;
                 Parent.SettingsChanged = true;
             }
 
@@ -104,30 +104,30 @@ namespace CometUI.SettingsUI
 
         private void InitializeFromDefaultSettings()
         {
-            enzymeTerminiCombo.SelectedItem = _enzymeTermini[Settings.Default.EnzymeTermini];
+            enzymeTerminiCombo.SelectedItem = _enzymeTermini[CometUI.SearchSettings.EnzymeTermini];
 
             // For this particular combo, index == value of allowed missed cleavages
-            missedCleavagesCombo.SelectedItem = Settings.Default.AllowedMissedCleavages.ToString(CultureInfo.InvariantCulture);
+            missedCleavagesCombo.SelectedItem = CometUI.SearchSettings.AllowedMissedCleavages.ToString(CultureInfo.InvariantCulture);
 
 
             EnzymeInfo = new StringCollection();
-            foreach (var item in Settings.Default.EnzymeInfo)
+            foreach (var item in CometUI.SearchSettings.EnzymeInfo)
             {
                 EnzymeInfo.Add(item);
             }
 
             UpdateEnzymeInfo();
 
-            SearchEnzymeCurrentSelectedIndex = Settings.Default.SearchEnzymeNumber;
-            SampleEnzymeCurrentSelectedIndex = Settings.Default.SampleEnzymeNumber;
+            SearchEnzymeCurrentSelectedIndex = CometUI.SearchSettings.SearchEnzymeNumber;
+            SampleEnzymeCurrentSelectedIndex = CometUI.SearchSettings.SampleEnzymeNumber;
 
             searchEnzymeCombo.SelectedIndex = SearchEnzymeCurrentSelectedIndex;
             sampleEnzymeCombo.SelectedIndex = SampleEnzymeCurrentSelectedIndex;
 
             digestMassRangeMinTextBox.Text = 
-                Settings.Default.digestMassRangeMin.ToString(CultureInfo.InvariantCulture);
+                CometUI.SearchSettings.digestMassRangeMin.ToString(CultureInfo.InvariantCulture);
             digestMassRangeMaxTextBox.Text = 
-                Settings.Default.digestMassRangeMax.ToString(CultureInfo.InvariantCulture);
+                CometUI.SearchSettings.digestMassRangeMax.ToString(CultureInfo.InvariantCulture);
         }
 
         private void UpdateEnzymeInfo()

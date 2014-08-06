@@ -36,67 +36,67 @@ namespace CometUI.SettingsUI
             // mzXML settings
 
             var scanRangeMin = mzxmlScanRangeMinTextBox.IntValue;
-            if (scanRangeMin != Settings.Default.mzxmlScanRangeMin)
+            if (scanRangeMin != CometUI.SearchSettings.mzxmlScanRangeMin)
             {
-                Settings.Default.mzxmlScanRangeMin = scanRangeMin;
+                CometUI.SearchSettings.mzxmlScanRangeMin = scanRangeMin;
                 Parent.SettingsChanged = true;
             }
 
             var scanRangeMax = mzxmlScanRangeMaxTextBox.IntValue;
-            if (scanRangeMax != Settings.Default.mzxmlScanRangeMax)
+            if (scanRangeMax != CometUI.SearchSettings.mzxmlScanRangeMax)
             {
-                Settings.Default.mzxmlScanRangeMax = scanRangeMax;
+                CometUI.SearchSettings.mzxmlScanRangeMax = scanRangeMax;
                 Parent.SettingsChanged = true;
             }
 
             var precursorChargeMin = mzxmlPrecursorChargeMinTextBox.IntValue;
-            if (precursorChargeMin != Settings.Default.mzxmlPrecursorChargeRangeMin)
+            if (precursorChargeMin != CometUI.SearchSettings.mzxmlPrecursorChargeRangeMin)
             {
-                Settings.Default.mzxmlPrecursorChargeRangeMin = precursorChargeMin;
+                CometUI.SearchSettings.mzxmlPrecursorChargeRangeMin = precursorChargeMin;
                 Parent.SettingsChanged = true;
             }
 
             var precursorChargeMax = mzxmlPrecursorChargeMaxTextBox.IntValue;
-            if (precursorChargeMax != Settings.Default.mzxmlPrecursorChargeRangeMax)
+            if (precursorChargeMax != CometUI.SearchSettings.mzxmlPrecursorChargeRangeMax)
             {
-                Settings.Default.mzxmlPrecursorChargeRangeMax = precursorChargeMax;
+                CometUI.SearchSettings.mzxmlPrecursorChargeRangeMax = precursorChargeMax;
                 Parent.SettingsChanged = true;
             }
 
             var mzLevel = Int32.Parse(mzxmlMsLevelCombo.SelectedItem.ToString());
-            if (mzLevel != Settings.Default.mzxmlMsLevel)
+            if (mzLevel != CometUI.SearchSettings.mzxmlMsLevel)
             {
-                Settings.Default.mzxmlMsLevel = mzLevel;
+                CometUI.SearchSettings.mzxmlMsLevel = mzLevel;
                 Parent.SettingsChanged = true;
             }
 
             var activationLevel = mzxmlActivationLevelCombo.SelectedItem.ToString();
-            if (!activationLevel.Equals(Settings.Default.mzxmlActivationMethod))
+            if (!activationLevel.Equals(CometUI.SearchSettings.mzxmlActivationMethod))
             {
-                Settings.Default.mzxmlActivationMethod = activationLevel;
+                CometUI.SearchSettings.mzxmlActivationMethod = activationLevel;
                 Parent.SettingsChanged = true;
             }
 
             // Spectral processing settings
 
             var minPeaks = spectralProcessingMinPeaksTextBox.IntValue;
-            if (minPeaks != Settings.Default.spectralProcessingMinPeaks)
+            if (minPeaks != CometUI.SearchSettings.spectralProcessingMinPeaks)
             {
-                Settings.Default.spectralProcessingMinPeaks = minPeaks;
+                CometUI.SearchSettings.spectralProcessingMinPeaks = minPeaks;
                 Parent.SettingsChanged = true;
             }
 
             var minIntensity = (double)spectralProcessingMinIntensityTextBox.DecimalValue;
-            if (!minIntensity.Equals(Settings.Default.spectralProcessingMinIntensity))
+            if (!minIntensity.Equals(CometUI.SearchSettings.spectralProcessingMinIntensity))
             {
-                Settings.Default.spectralProcessingMinIntensity = minIntensity;
+                CometUI.SearchSettings.spectralProcessingMinIntensity = minIntensity;
                 Parent.SettingsChanged = true;
             }
 
             var precursorRemovalTol = (double) spectralProcessingPrecursorRemovalTolTextBox.DecimalValue;
-            if (!precursorRemovalTol.Equals(Settings.Default.spectralProcessingRemovePrecursorTol))
+            if (!precursorRemovalTol.Equals(CometUI.SearchSettings.spectralProcessingRemovePrecursorTol))
             {
-                Settings.Default.spectralProcessingRemovePrecursorTol = precursorRemovalTol;
+                CometUI.SearchSettings.spectralProcessingRemovePrecursorTol = precursorRemovalTol;
                 Parent.SettingsChanged = true;
             }
 
@@ -106,9 +106,9 @@ namespace CometUI.SettingsUI
             {
                 if (_removePrecursorPeak[key].Equals(spectralProcessingRemovePrecursorPeakCombo.SelectedItem.ToString()))
                 {
-                    if (Settings.Default.spectralProcessingRemovePrecursorPeak != key)
+                    if (CometUI.SearchSettings.spectralProcessingRemovePrecursorPeak != key)
                     {
-                        Settings.Default.spectralProcessingRemovePrecursorPeak = key;
+                        CometUI.SearchSettings.spectralProcessingRemovePrecursorPeak = key;
                         Parent.SettingsChanged = true;
                     }
 
@@ -117,58 +117,58 @@ namespace CometUI.SettingsUI
             }
 
             var clearMzMin = (double) spectralProcessingClearMZRangeMinTextBox.DecimalValue;
-            if (!clearMzMin.Equals(Settings.Default.spectralProcessingClearMzMin))
+            if (!clearMzMin.Equals(CometUI.SearchSettings.spectralProcessingClearMzMin))
             {
-                Settings.Default.spectralProcessingClearMzMin = clearMzMin;
+                CometUI.SearchSettings.spectralProcessingClearMzMin = clearMzMin;
                 Parent.SettingsChanged = true;
             }
 
             var clearMzMax = (double)spectralProcessingClearMZRangeMaxTextBox.DecimalValue;
-            if (!clearMzMax.Equals(Settings.Default.spectralProcessingClearMzMax))
+            if (!clearMzMax.Equals(CometUI.SearchSettings.spectralProcessingClearMzMax))
             {
-                Settings.Default.spectralProcessingClearMzMax = clearMzMax;
+                CometUI.SearchSettings.spectralProcessingClearMzMax = clearMzMax;
                 Parent.SettingsChanged = true;
             }
 
             // Other settings
             var spectrumBatchSize = spectrumBatchSizeTextBox.IntValue;
-            if (!spectrumBatchSize.Equals(Settings.Default.SpectrumBatchSize))
+            if (!spectrumBatchSize.Equals(CometUI.SearchSettings.SpectrumBatchSize))
             {
-                Settings.Default.SpectrumBatchSize = spectrumBatchSize;
+                CometUI.SearchSettings.SpectrumBatchSize = spectrumBatchSize;
                 Parent.SettingsChanged = true;
             }
 
             var numThreads = Int32.Parse(numThreadsCombo.SelectedItem.ToString());
-            if (numThreads != Settings.Default.NumThreads)
+            if (numThreads != CometUI.SearchSettings.NumThreads)
             {
-                Settings.Default.NumThreads = numThreads;
+                CometUI.SearchSettings.NumThreads = numThreads;
                 Parent.SettingsChanged = true;
             }
 
             var numResults = numResultsTextBox.IntValue;
-            if (!numResults.Equals(Settings.Default.NumResults))
+            if (!numResults.Equals(CometUI.SearchSettings.NumResults))
             {
-                Settings.Default.NumResults = numResults;
+                CometUI.SearchSettings.NumResults = numResults;
                 Parent.SettingsChanged = true;
             }
 
             var maxFragmentCharge = Int32.Parse(maxFragmentChargeCombo.SelectedItem.ToString());
-            if (maxFragmentCharge != Settings.Default.MaxFragmentCharge)
+            if (maxFragmentCharge != CometUI.SearchSettings.MaxFragmentCharge)
             {
-                Settings.Default.MaxFragmentCharge = maxFragmentCharge;
+                CometUI.SearchSettings.MaxFragmentCharge = maxFragmentCharge;
                 Parent.SettingsChanged = true;
             }
 
             var maxPrecursorCharge = Int32.Parse(maxPrecursorChargeCombo.SelectedItem.ToString());
-            if (maxPrecursorCharge != Settings.Default.MaxPrecursorCharge)
+            if (maxPrecursorCharge != CometUI.SearchSettings.MaxPrecursorCharge)
             {
-                Settings.Default.MaxPrecursorCharge = maxPrecursorCharge;
+                CometUI.SearchSettings.MaxPrecursorCharge = maxPrecursorCharge;
                 Parent.SettingsChanged = true;
             }
 
-            if (clipNTermMethionineCheckBox.Checked != Settings.Default.ClipNTermMethionine)
+            if (clipNTermMethionineCheckBox.Checked != CometUI.SearchSettings.ClipNTermMethionine)
             {
-                Settings.Default.ClipNTermMethionine = clipNTermMethionineCheckBox.Checked;
+                CometUI.SearchSettings.ClipNTermMethionine = clipNTermMethionineCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
@@ -177,34 +177,34 @@ namespace CometUI.SettingsUI
 
         private void InitializeFromDefaultSettings()
         {
-            numThreadsCombo.SelectedItem = Settings.Default.NumThreads.ToString(CultureInfo.InvariantCulture);
+            numThreadsCombo.SelectedItem = CometUI.SearchSettings.NumThreads.ToString(CultureInfo.InvariantCulture);
 
-            spectrumBatchSizeTextBox.Text = Settings.Default.SpectrumBatchSize.ToString(CultureInfo.InvariantCulture);
+            spectrumBatchSizeTextBox.Text = CometUI.SearchSettings.SpectrumBatchSize.ToString(CultureInfo.InvariantCulture);
 
-            numResultsTextBox.Text = Settings.Default.NumResults.ToString(CultureInfo.InvariantCulture);
+            numResultsTextBox.Text = CometUI.SearchSettings.NumResults.ToString(CultureInfo.InvariantCulture);
 
-            maxFragmentChargeCombo.SelectedItem = Settings.Default.MaxFragmentCharge.ToString(CultureInfo.InvariantCulture);
+            maxFragmentChargeCombo.SelectedItem = CometUI.SearchSettings.MaxFragmentCharge.ToString(CultureInfo.InvariantCulture);
 
-            maxPrecursorChargeCombo.SelectedItem = Settings.Default.MaxPrecursorCharge.ToString(CultureInfo.InvariantCulture);
+            maxPrecursorChargeCombo.SelectedItem = CometUI.SearchSettings.MaxPrecursorCharge.ToString(CultureInfo.InvariantCulture);
 
-            clipNTermMethionineCheckBox.Checked = Settings.Default.ClipNTermMethionine;
+            clipNTermMethionineCheckBox.Checked = CometUI.SearchSettings.ClipNTermMethionine;
 
-            mzxmlScanRangeMinTextBox.Text = Settings.Default.mzxmlScanRangeMin.ToString(CultureInfo.InvariantCulture);
-            mzxmlScanRangeMaxTextBox.Text = Settings.Default.mzxmlScanRangeMax.ToString(CultureInfo.InvariantCulture);
-            mzxmlPrecursorChargeMinTextBox.Text = Settings.Default.mzxmlPrecursorChargeRangeMin.ToString(CultureInfo.InvariantCulture);
-            mzxmlPrecursorChargeMaxTextBox.Text = Settings.Default.mzxmlPrecursorChargeRangeMax.ToString(CultureInfo.InvariantCulture);
-            mzxmlMsLevelCombo.SelectedItem = Settings.Default.mzxmlMsLevel.ToString(CultureInfo.InvariantCulture);
-            mzxmlActivationLevelCombo.SelectedItem = Settings.Default.mzxmlActivationMethod;
+            mzxmlScanRangeMinTextBox.Text = CometUI.SearchSettings.mzxmlScanRangeMin.ToString(CultureInfo.InvariantCulture);
+            mzxmlScanRangeMaxTextBox.Text = CometUI.SearchSettings.mzxmlScanRangeMax.ToString(CultureInfo.InvariantCulture);
+            mzxmlPrecursorChargeMinTextBox.Text = CometUI.SearchSettings.mzxmlPrecursorChargeRangeMin.ToString(CultureInfo.InvariantCulture);
+            mzxmlPrecursorChargeMaxTextBox.Text = CometUI.SearchSettings.mzxmlPrecursorChargeRangeMax.ToString(CultureInfo.InvariantCulture);
+            mzxmlMsLevelCombo.SelectedItem = CometUI.SearchSettings.mzxmlMsLevel.ToString(CultureInfo.InvariantCulture);
+            mzxmlActivationLevelCombo.SelectedItem = CometUI.SearchSettings.mzxmlActivationMethod;
 
-            spectralProcessingMinPeaksTextBox.Text = Settings.Default.spectralProcessingMinPeaks.ToString(CultureInfo.InvariantCulture);
-            spectralProcessingMinIntensityTextBox.Text = Settings.Default.spectralProcessingMinIntensity.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingMinPeaksTextBox.Text = CometUI.SearchSettings.spectralProcessingMinPeaks.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingMinIntensityTextBox.Text = CometUI.SearchSettings.spectralProcessingMinIntensity.ToString(CultureInfo.InvariantCulture);
             spectralProcessingPrecursorRemovalTolTextBox.Text =
-                Settings.Default.spectralProcessingRemovePrecursorTol.ToString(CultureInfo.InvariantCulture);
-            spectralProcessingClearMZRangeMinTextBox.Text = Settings.Default.spectralProcessingClearMzMin.ToString(CultureInfo.InvariantCulture);
-            spectralProcessingClearMZRangeMaxTextBox.Text = Settings.Default.spectralProcessingClearMzMax.ToString(CultureInfo.InvariantCulture);
+                CometUI.SearchSettings.spectralProcessingRemovePrecursorTol.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingClearMZRangeMinTextBox.Text = CometUI.SearchSettings.spectralProcessingClearMzMin.ToString(CultureInfo.InvariantCulture);
+            spectralProcessingClearMZRangeMaxTextBox.Text = CometUI.SearchSettings.spectralProcessingClearMzMax.ToString(CultureInfo.InvariantCulture);
             
             spectralProcessingRemovePrecursorPeakCombo.SelectedItem =
-                _removePrecursorPeak[Settings.Default.spectralProcessingRemovePrecursorPeak];
+                _removePrecursorPeak[CometUI.SearchSettings.spectralProcessingRemovePrecursorPeak];
         }
     }
 }

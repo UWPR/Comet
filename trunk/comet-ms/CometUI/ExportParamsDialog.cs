@@ -71,7 +71,7 @@ namespace CometUI
                 }
             }
 
-            var paramsMap = new CometParamsMap(Settings.Default);
+            var paramsMap = new CometParamsMap(CometUI.SearchSettings);
             Dictionary<string, CometParam> map = paramsMap.CometParams;
 
             var dbNameParam = map["database_name"];

@@ -81,7 +81,7 @@ namespace CometUI.SettingsUI
 
         public void SaveSearchSettings()
         {
-            Settings.Default.Save();
+            CometUI.SearchSettings.Save();
             SettingsChanged = false;
         }
 

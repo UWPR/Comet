@@ -56,7 +56,7 @@ namespace CometUI.SettingsUI
 
         public bool VerifyAndUpdateSettings()
         {
-            if (!String.Equals(Settings.Default.ProteomeDatabaseFile, proteomeDbFileCombo.Text))
+            if (!String.Equals(CometUI.SearchSettings.ProteomeDatabaseFile, proteomeDbFileCombo.Text))
             {
                 if (String.Empty != proteomeDbFileCombo.Text)
                 {
@@ -68,7 +68,7 @@ namespace CometUI.SettingsUI
                         return false;
                     }
 
-                    Settings.Default.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
+                    CometUI.SearchSettings.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
                     Parent.SettingsChanged = true;
                 }
                 else
@@ -77,24 +77,24 @@ namespace CometUI.SettingsUI
                     if (DialogResult.OK == MessageBox.Show(msg, Resources.InputSettingsControl_VerifyAndSaveSettings_Search_Settings,
                                     MessageBoxButtons.OKCancel, MessageBoxIcon.Warning))
                     {
-                        Settings.Default.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
+                        CometUI.SearchSettings.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
                         Parent.SettingsChanged = true;
                     }
                 }
             }
 
-            if (Settings.Default.IsProteinDB != radioButtonProtein.Checked)
+            if (CometUI.SearchSettings.IsProteinDB != radioButtonProtein.Checked)
             {
-                Settings.Default.IsProteinDB = radioButtonProtein.Checked;
+                CometUI.SearchSettings.IsProteinDB = radioButtonProtein.Checked;
                 Parent.SettingsChanged = true;
             }
 
             if (radioButtonNucleotide.Checked)
             {
                 var nucleotideReadingFrame = Convert.ToInt32(comboBoxReadingFrame.SelectedItem);
-                if (nucleotideReadingFrame != Settings.Default.NucleotideReadingFrame)
+                if (nucleotideReadingFrame != CometUI.SearchSettings.NucleotideReadingFrame)
                 {
-                    Settings.Default.NucleotideReadingFrame = nucleotideReadingFrame;
+                    CometUI.SearchSettings.NucleotideReadingFrame = nucleotideReadingFrame;
                     Parent.SettingsChanged = true;
                 }
             }
@@ -113,16 +113,16 @@ namespace CometUI.SettingsUI
                 searchType = SearchType.SearchTypeTarget;
             }
 
-            if (searchType != (SearchType)Settings.Default.SearchType)
+            if (searchType != (SearchType)CometUI.SearchSettings.SearchType)
             {
-                Settings.Default.SearchType = (int)searchType;
+                CometUI.SearchSettings.SearchType = (int)searchType;
                 Parent.SettingsChanged = true;
             }
 
             if ((radioButtonDecoyOne.Checked || radioButtonDecoyTwo.Checked) &&
-                !textBoxDecoyPrefix.Text.Equals(Settings.Default.DecoyPrefix))
+                !textBoxDecoyPrefix.Text.Equals(CometUI.SearchSettings.DecoyPrefix))
             {
-                Settings.Default.DecoyPrefix = textBoxDecoyPrefix.Text;
+                CometUI.SearchSettings.DecoyPrefix = textBoxDecoyPrefix.Text;
                 Parent.SettingsChanged = true;
             }
 
@@ -131,10 +131,10 @@ namespace CometUI.SettingsUI
 
         private void InitializeFromDefaultSettings()
         {
-            proteomeDbFileCombo.Text = Settings.Default.ProteomeDatabaseFile;
+            proteomeDbFileCombo.Text = CometUI.SearchSettings.ProteomeDatabaseFile;
 
-            comboBoxReadingFrame.Text = Settings.Default.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
-            if (Settings.Default.IsProteinDB)
+            comboBoxReadingFrame.Text = CometUI.SearchSettings.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
+            if (CometUI.SearchSettings.IsProteinDB)
             {
                 radioButtonProtein.Checked = true;
             }
@@ -143,7 +143,7 @@ namespace CometUI.SettingsUI
                 radioButtonNucleotide.Checked = true;
             }
 
-            switch ((SearchType)Settings.Default.SearchType)
+            switch ((SearchType)CometUI.SearchSettings.SearchType)
             {
                 case SearchType.SearchTypeDecoyOne:
                     radioButtonDecoyOne.Checked = true;
@@ -159,7 +159,7 @@ namespace CometUI.SettingsUI
                     break;
             }
 
-            textBoxDecoyPrefix.Text = Settings.Default.DecoyPrefix;
+            textBoxDecoyPrefix.Text = CometUI.SearchSettings.DecoyPrefix;
         }
 
         private void BtnBrowseProteomeDbFileClick(object sender, EventArgs e)
