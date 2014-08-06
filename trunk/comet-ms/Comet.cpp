@@ -90,6 +90,7 @@ void Usage(char *pszCmd)
    exit(1);
 }
 
+
 void SetOptions(char *arg,
       char *szParamsFile,
       bool *bPrintParams,
@@ -165,6 +166,7 @@ void SetOptions(char *arg,
    }
 }
 
+
 // Reads comet.params parameter file.
 void LoadParameters(char *pszParamsFile,
       ICometSearchManager *pSearchMgr)
@@ -207,10 +209,10 @@ void LoadParameters(char *pszParamsFile,
       {
          sscanf(szParamBuf, "%*s %*s %128s", szVersion);
          // Major version number must match to current binary
-         if (strstr(comet_version, szVersion) || strstr(szVersion, "2013.02"))
+         if (strstr(comet_version, szVersion))
          {
             bValidParamsFile = true;
-			pSearchMgr->SetParam("# comet_version ", szVersion, szVersion);
+            pSearchMgr->SetParam("# comet_version ", szVersion, szVersion);
             break;
          }
       }
@@ -1067,6 +1069,7 @@ void LoadParameters(char *pszParamsFile,
    pSearchMgr->SetParam("[COMET_ENZYME_INFO]", enzymeInfoStrVal, enzymeInformation);
 
 } // LoadParameters
+
 
 // Parses the command line and determines the type of analysis to perform.
 bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSearchMgr)

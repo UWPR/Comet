@@ -959,6 +959,17 @@ bool CometSearchManager::InitializeStaticParams()
       g_staticParams.options.iNumThreads = sysinfo.dwNumberOfProcessors;
 #else
       g_staticParams.options.iNumThreads = sysconf( _SC_NPROCESSORS_ONLN );
+
+      // if set, use the environment variable NSLOTS which is defined in the qsub command
+      const char * nSlots = ::getenv("NSLOTS");
+      if (nSlots != NULL)
+      {
+         int detectedThreads = atoi(nSlots);
+         if (detectedThreads > 0)
+         {
+            g_staticParams.options.iNumThreads = detectedThreads;
+         }
+      }
 #endif
       if (g_staticParams.options.iNumThreads < 1 || g_staticParams.options.iNumThreads > MAX_THREADS)
          g_staticParams.options.iNumThreads = 2;  // Default to 2 threads.
