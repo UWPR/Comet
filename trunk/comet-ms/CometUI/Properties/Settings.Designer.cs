@@ -22,17 +22,5 @@ namespace CometUI.Properties {
                 return defaultInstance;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Default")]
-        public string SearchSettingProfile {
-            get {
-                return ((string)(this["SearchSettingProfile"]));
-            }
-            set {
-                this["SearchSettingProfile"] = value;
-            }
-        }
     }
 }

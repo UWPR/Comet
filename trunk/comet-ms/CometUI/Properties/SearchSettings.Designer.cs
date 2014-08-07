@@ -900,17 +900,5 @@ namespace CometUI.Properties {
                 this["OutputFormatSqtToStandardOutput"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Hello")]
-        public string Test {
-            get {
-                return ((string)(this["Test"]));
-            }
-            set {
-                this["Test"] = value;
-            }
-        }
     }
 }

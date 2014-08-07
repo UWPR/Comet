@@ -10,9 +10,6 @@ namespace CometUI
     {
         public static SearchSettings SearchSettings { get; set; }
 
-        private readonly Dictionary<String, SearchSettings> _searchSettingsMap = new Dictionary<string, SearchSettings>();
-        public Dictionary<String, SearchSettings> SearchSettingsMap { get { return _searchSettingsMap; } }
- 
         private SearchSettingsDlg _searchSettingsDlg;
         private SearchSettingsDlg SearchSettingsDlg
         {
@@ -25,9 +22,7 @@ namespace CometUI
         {
             InitializeComponent();
 
-            _searchSettingsMap.Add("Default", SearchSettings.Default);
-
-            SearchSettings = _searchSettingsMap[Settings.Default.SearchSettingProfile];
+            SearchSettings = SearchSettings.Default;
         }
 
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
