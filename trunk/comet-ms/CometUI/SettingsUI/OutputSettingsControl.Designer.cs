@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.sqtExpectScoreCheckBox = new System.Windows.Forms.CheckBox();
             this.numOutputLinesSpinner = new System.Windows.Forms.NumericUpDown();
             this.outFileCheckBox = new System.Windows.Forms.CheckBox();
@@ -42,6 +43,7 @@
             this.sqtToStdoutCheckBox = new System.Windows.Forms.CheckBox();
             this.outSkipReSearchingCheckBox = new System.Windows.Forms.CheckBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.outputSettingsToolTip = new System.Windows.Forms.ToolTip(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.numOutputLinesSpinner)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -157,6 +159,8 @@
             this.label1.Size = new System.Drawing.Size(89, 13);
             this.label1.TabIndex = 41;
             this.label1.Text = "Num output lines:";
+            this.outputSettingsToolTip.SetToolTip(this.label1, "The number of search result hits (peptides) that are reported for each spectrum q" +
+        "uery.");
             // 
             // groupBox1
             // 
@@ -242,5 +246,6 @@
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.CheckBox outSkipReSearchingCheckBox;
         private System.Windows.Forms.CheckBox sqtToStdoutCheckBox;
+        private System.Windows.Forms.ToolTip outputSettingsToolTip;
     }
 }

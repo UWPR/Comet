@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SearchSettingsDlg));
             this.btnOK = new System.Windows.Forms.Button();
             this.mainSplitContainer = new System.Windows.Forms.SplitContainer();
@@ -40,6 +41,7 @@
             this.varModsTabPage = new System.Windows.Forms.TabPage();
             this.miscTabPage = new System.Windows.Forms.TabPage();
             this.btnCancel = new System.Windows.Forms.Button();
+            this.searchSettingsToolTip = new System.Windows.Forms.ToolTip(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).BeginInit();
             this.mainSplitContainer.Panel1.SuspendLayout();
             this.mainSplitContainer.Panel2.SuspendLayout();
@@ -209,6 +211,7 @@
         private System.Windows.Forms.TabPage outputTabPage;
         private System.Windows.Forms.TabPage staticModsTabPage;
         private System.Windows.Forms.Button btnCancel;
+        private System.Windows.Forms.ToolTip searchSettingsToolTip;
     }
 }
 

@@ -31,6 +31,7 @@ namespace CometUI.SettingsUI
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.numThreadsCombo = new System.Windows.Forms.ComboBox();
             this.searchEnzymeLabel = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
@@ -69,6 +70,7 @@ namespace CometUI.SettingsUI
             this.label5 = new System.Windows.Forms.Label();
             this.spectrumBatchSizeTextBox = new NumericTextBox();
             this.numResultsTextBox = new NumericTextBox();
+            this.miscSettingsToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.mzXMLGroupBox.SuspendLayout();
             this.spectralProcessingGroupBox.SuspendLayout();
             this.SuspendLayout();
@@ -127,6 +129,9 @@ namespace CometUI.SettingsUI
             this.searchEnzymeLabel.Size = new System.Drawing.Size(74, 13);
             this.searchEnzymeLabel.TabIndex = 3;
             this.searchEnzymeLabel.Text = "Num Threads:";
+            this.miscSettingsToolTip.SetToolTip(this.searchEnzymeLabel, "The number of processing threads that will be spawned for a search. When a value " +
+        "of \"0\" is specified, the number of threads is set to the same value as the numbe" +
+        "r of CPU cores available. ");
             // 
             // label1
             // 
@@ -136,6 +141,9 @@ namespace CometUI.SettingsUI
             this.label1.Size = new System.Drawing.Size(109, 13);
             this.label1.TabIndex = 8;
             this.label1.Text = "Spectrum Batch Size:";
+            this.miscSettingsToolTip.SetToolTip(this.label1, "When this parameter is set to a non-zero value, say 5000, this causes Comet to lo" +
+        "ad and search about 5000 spectra at a time, looping through sets of 5000 spectra" +
+        " until all data have been analyzed. ");
             // 
             // label2
             // 
@@ -145,6 +153,7 @@ namespace CometUI.SettingsUI
             this.label2.Size = new System.Drawing.Size(70, 13);
             this.label2.TabIndex = 10;
             this.label2.Text = "Num Results:";
+            this.miscSettingsToolTip.SetToolTip(this.label2, "Controls the number of peptide search results that are stored internally.");
             // 
             // label3
             // 
@@ -224,6 +233,8 @@ namespace CometUI.SettingsUI
             this.label6.Size = new System.Drawing.Size(70, 13);
             this.label6.TabIndex = 20;
             this.label6.Text = "Scan Range:";
+            this.miscSettingsToolTip.SetToolTip(this.label6, "When non-zero, only spectra within (and inclusive of) the specified scan range wi" +
+        "ll be searched. ");
             // 
             // label7
             // 
@@ -242,6 +253,7 @@ namespace CometUI.SettingsUI
             this.label8.Size = new System.Drawing.Size(92, 13);
             this.label8.TabIndex = 22;
             this.label8.Text = "Precursor Charge:";
+            this.miscSettingsToolTip.SetToolTip(this.label8, "Precursor charge range to search.");
             // 
             // label9
             // 
@@ -401,6 +413,8 @@ namespace CometUI.SettingsUI
             this.label16.Size = new System.Drawing.Size(90, 13);
             this.label16.TabIndex = 30;
             this.label16.Text = "Clear m/z Range:";
+            this.miscSettingsToolTip.SetToolTip(this.label16, "Intended for iTRAQ/TMT type data where one might want to remove the reporter ion " +
+        "signals in the MS/MS spectra prior to searching.");
             // 
             // spectralProcessingClearMZRangeMaxTextBox
             // 
@@ -449,6 +463,8 @@ namespace CometUI.SettingsUI
             this.label15.Size = new System.Drawing.Size(126, 13);
             this.label15.TabIndex = 28;
             this.label15.Text = "Remove Precursor Peak:";
+            this.miscSettingsToolTip.SetToolTip(this.label15, "Specify whether to exclude/remove any precursor signals from the input MS/MS spec" +
+        "trum.");
             // 
             // spectralProcessingPrecursorRemovalTolTextBox
             // 
@@ -467,6 +483,8 @@ namespace CometUI.SettingsUI
             this.label14.Size = new System.Drawing.Size(118, 13);
             this.label14.TabIndex = 26;
             this.label14.Text = "Precursor Removal Tol:";
+            this.miscSettingsToolTip.SetToolTip(this.label14, "The mass tolerance around each precursor m/z that would be removed when the \"Remo" +
+        "ve Precursor Peak\" option is invoked.");
             // 
             // label13
             // 
@@ -487,6 +505,7 @@ namespace CometUI.SettingsUI
             this.label12.Size = new System.Drawing.Size(69, 13);
             this.label12.TabIndex = 24;
             this.label12.Text = "Min Intensity:";
+            this.miscSettingsToolTip.SetToolTip(this.label12, "Minimum intensity value for input peaks.");
             // 
             // spectralProcessingMinIntensityTextBox
             // 
@@ -505,6 +524,8 @@ namespace CometUI.SettingsUI
             this.label5.Size = new System.Drawing.Size(60, 13);
             this.label5.TabIndex = 22;
             this.label5.Text = "Min Peaks:";
+            this.miscSettingsToolTip.SetToolTip(this.label5, "The minimum number of m/z-intensity pairs that must be present in a spectrum befo" +
+        "re it is searched");
             // 
             // spectrumBatchSizeTextBox
             // 
@@ -592,5 +613,6 @@ namespace CometUI.SettingsUI
         private NumericTextBox spectrumBatchSizeTextBox;
         private NumericTextBox numResultsTextBox;
         private NumericTextBox spectralProcessingMinPeaksTextBox;
+        private System.Windows.Forms.ToolTip miscSettingsToolTip;
     }
 }

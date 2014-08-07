@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.btnBrowseProteomeDbFile = new System.Windows.Forms.Button();
             this.panelProteinNucleotide = new System.Windows.Forms.Panel();
             this.panelNucleotideReadingFrame = new System.Windows.Forms.Panel();
@@ -44,6 +45,7 @@
             this.labelDecoyPrefix = new System.Windows.Forms.Label();
             this.protDbLabel = new System.Windows.Forms.Label();
             this.proteomeDbFileCombo = new System.Windows.Forms.ComboBox();
+            this.inputSettingsToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.panelProteinNucleotide.SuspendLayout();
             this.panelNucleotideReadingFrame.SuspendLayout();
             this.panelTargetDecoy.SuspendLayout();
@@ -111,6 +113,7 @@
             this.labelReadingFrame.Size = new System.Drawing.Size(82, 13);
             this.labelReadingFrame.TabIndex = 0;
             this.labelReadingFrame.Text = "Reading Frame:";
+            this.inputSettingsToolTip.SetToolTip(this.labelReadingFrame, "Specify which sets of reading frames are translated.");
             // 
             // radioButtonProtein
             // 
@@ -122,6 +125,7 @@
             this.radioButtonProtein.TabIndex = 12;
             this.radioButtonProtein.TabStop = true;
             this.radioButtonProtein.Text = "Protein";
+            this.inputSettingsToolTip.SetToolTip(this.radioButtonProtein, "Search protein sequence database.");
             this.radioButtonProtein.UseVisualStyleBackColor = true;
             // 
             // radioButtonNucleotide
@@ -133,6 +137,7 @@
             this.radioButtonNucleotide.TabIndex = 13;
             this.radioButtonNucleotide.TabStop = true;
             this.radioButtonNucleotide.Text = "Nucleotide";
+            this.inputSettingsToolTip.SetToolTip(this.radioButtonNucleotide, "Search nucleotide sequence database.");
             this.radioButtonNucleotide.UseVisualStyleBackColor = true;
             this.radioButtonNucleotide.CheckedChanged += new System.EventHandler(this.RadioButtonNucleotideCheckedChanged);
             // 
@@ -159,6 +164,7 @@
             this.radioButtonTarget.TabIndex = 6;
             this.radioButtonTarget.TabStop = true;
             this.radioButtonTarget.Text = "Target";
+            this.inputSettingsToolTip.SetToolTip(this.radioButtonTarget, "No decoy search. ");
             this.radioButtonTarget.UseVisualStyleBackColor = true;
             // 
             // radioButtonDecoyOne
@@ -169,6 +175,7 @@
             this.radioButtonDecoyOne.Size = new System.Drawing.Size(65, 17);
             this.radioButtonDecoyOne.TabIndex = 7;
             this.radioButtonDecoyOne.Text = "Decoy 1";
+            this.inputSettingsToolTip.SetToolTip(this.radioButtonDecoyOne, "Concatenated decoy search.");
             this.radioButtonDecoyOne.UseVisualStyleBackColor = true;
             this.radioButtonDecoyOne.CheckedChanged += new System.EventHandler(this.RadioButtonDecoyOneCheckedChanged);
             // 
@@ -181,6 +188,7 @@
             this.radioButtonDecoyTwo.TabIndex = 12;
             this.radioButtonDecoyTwo.TabStop = true;
             this.radioButtonDecoyTwo.Text = "Decoy 2";
+            this.inputSettingsToolTip.SetToolTip(this.radioButtonDecoyTwo, "Separate decoy search.");
             this.radioButtonDecoyTwo.UseVisualStyleBackColor = true;
             this.radioButtonDecoyTwo.CheckedChanged += new System.EventHandler(this.RadioButtonDecoyTwoCheckedChanged);
             // 
@@ -209,6 +217,8 @@
             this.labelDecoyPrefix.Size = new System.Drawing.Size(70, 13);
             this.labelDecoyPrefix.TabIndex = 0;
             this.labelDecoyPrefix.Text = "Decoy Prefix:";
+            this.inputSettingsToolTip.SetToolTip(this.labelDecoyPrefix, "The prefix string that is pre-pended to the protein identifier and reported for d" +
+        "ecoy hits. ");
             // 
             // protDbLabel
             // 
@@ -219,6 +229,7 @@
             this.protDbLabel.Size = new System.Drawing.Size(139, 13);
             this.protDbLabel.TabIndex = 38;
             this.protDbLabel.Text = "&Proteome Database (.fasta):";
+            this.inputSettingsToolTip.SetToolTip(this.protDbLabel, "A full or relative path to the sequence database, in FASTA format, to search.");
             // 
             // proteomeDbFileCombo
             // 
@@ -278,5 +289,6 @@
         private System.Windows.Forms.Label labelDecoyPrefix;
         private System.Windows.Forms.Label protDbLabel;
         private System.Windows.Forms.ComboBox proteomeDbFileCombo;
+        private System.Windows.Forms.ToolTip inputSettingsToolTip;
     }
 }
