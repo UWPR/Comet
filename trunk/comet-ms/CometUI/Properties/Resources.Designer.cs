@@ -304,6 +304,16 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cancellation request has been sent, but the background proces may continue running until the request has been processed..
+        /// </summary>
+        internal static string ProgressDlg_ProgressDlgClosing_Cancellation_request_has_been_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed_ {
+            get {
+                return ResourceManager.GetString("ProgressDlg_ProgressDlgClosing_Cancellation_request_has_been_sent__but_the_backgr" +
+                        "ound_proces_may_continue_running_until_the_request_has_been_processed_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cancellation request sent, but the background proces may continue running for a while. If you want to continue to receive progress status, please click Cancel. Otherwise, click OK.
         /// </summary>
         internal static string ProgressDlg_VerifyCancel_Cancellation_request_sent__but_the_background_proces_may_continue_running_for_a_while__If_you_want_to_continue_to_receive_progress_status__please_click_Cancel__Otherwise__click_OK {
@@ -311,6 +321,17 @@ namespace CometUI.Properties {
                 return ResourceManager.GetString("ProgressDlg_VerifyCancel_Cancellation_request_sent__but_the_background_proces_may" +
                         "_continue_running_for_a_while__If_you_want_to_continue_to_receive_progress_statu" +
                         "s__please_click_Cancel__Otherwise__click_OK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cancellation request will be sent, but the background proces may continue running until the request has been processed. Click Cancel to continue receiving progress status. Otherwise, please click OK..
+        /// </summary>
+        internal static string ProgressDlg_VerifyCancel_Cancellation_request_will_be_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed__Click_Cancel_to_continue_receiving_progress_status__Otherwise__please_click_OK_ {
+            get {
+                return ResourceManager.GetString("ProgressDlg_VerifyCancel_Cancellation_request_will_be_sent__but_the_background_pr" +
+                        "oces_may_continue_running_until_the_request_has_been_processed__Click_Cancel_to_" +
+                        "continue_receiving_progress_status__Otherwise__please_click_OK_", resourceCulture);
             }
         }
         

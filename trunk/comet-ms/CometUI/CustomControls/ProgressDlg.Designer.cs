@@ -1,4 +1,4 @@
-﻿namespace CometUI.CommonControls
+﻿namespace CometUI.CustomControls
 {
     partial class ProgressDlg
     {

@@ -274,4 +274,10 @@
   <data name="CometUI_CometUIFormClosing_Search_Settings_Changed">
     <value xml:space="preserve">Search Settings Changed</value>
   </data>
+  <data name="ProgressDlg_ProgressDlgClosing_Cancellation_request_has_been_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed_">
+    <value xml:space="preserve">Cancellation request has been sent, but the background proces may continue running until the request has been processed.</value>
+  </data>
+  <data name="ProgressDlg_VerifyCancel_Cancellation_request_will_be_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed__Click_Cancel_to_continue_receiving_progress_status__Otherwise__please_click_OK_">
+    <value xml:space="preserve">Cancellation request will be sent, but the background proces may continue running until the request has been processed. Click Cancel to continue receiving progress status. Otherwise, please click OK.</value>
+  </data>
 </root>

@@ -1,8 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Windows.Forms;
+using CometUI.Properties;
 
-namespace CometUI.CommonControls
+namespace CometUI.CustomControls
 {
     public partial class ProgressDlg : Form
     {
@@ -35,7 +36,7 @@ namespace CometUI.CommonControls
         {
             _backgroundWorker.CancelAsync();
             MessageBox.Show(
-                "Cancellation request has been sent, but the background proces may continue running until the request has been processed.",
+                Resources.ProgressDlg_ProgressDlgClosing_Cancellation_request_has_been_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed_,
                 Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
@@ -49,7 +50,7 @@ namespace CometUI.CommonControls
 
         private bool VerifyCancel()
         {
-            if (DialogResult.OK == MessageBox.Show("Cancellation request will be sent, but the background proces may continue running until the request has been processed. Click Cancel to continue receiving progress status. Otherwise, please click OK.", Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Information))
+            if (DialogResult.OK == MessageBox.Show(Resources.ProgressDlg_VerifyCancel_Cancellation_request_will_be_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed__Click_Cancel_to_continue_receiving_progress_status__Otherwise__please_click_OK_, Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Information))
             {
                 return true;
             }

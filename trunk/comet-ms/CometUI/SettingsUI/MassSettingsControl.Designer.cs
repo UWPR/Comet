@@ -1,5 +1,4 @@
-﻿using CometUI.CommonControls;
-using CometUI.CustomControls;
+﻿using CometUI.CustomControls;
 
 namespace CometUI.SettingsUI
 {

@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Threading;
 using System.Windows.Forms;
-using CometUI.CommonControls;
+using CometUI.CustomControls;
 using CometUI.Properties;
 
 namespace CometUI
