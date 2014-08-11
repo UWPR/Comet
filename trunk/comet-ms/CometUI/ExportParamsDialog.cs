@@ -83,9 +83,9 @@ namespace CometUI
             }
 
             var cometParamsWriter = new CometParamsWriter(FilePath);
-            if (!cometParamsWriter.WriteCometParamsFile(paramsMap))
+            if (!cometParamsWriter.WriteParamsFile(paramsMap))
             {
-                MessageBox.Show(Resources.ExportParamsDlg_ExportCometParams_Failed_to_generate_the_params_file_,
+                MessageBox.Show(Resources.ExportParamsDlg_ExportCometParams_Failed_to_generate_the_params_file_ + cometParamsWriter.ErrorMessage,
                                 Resources.ExportParamsDlg_BtnExportClick_Export_Search_Settings,
                                 MessageBoxButtons.OK, MessageBoxIcon.Error);
                 cometParamsWriter.Close();

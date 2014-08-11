@@ -281,6 +281,6 @@
     <value xml:space="preserve">Cancellation request will be sent, but the background proces may continue running until the request has been processed. Click Cancel to continue receiving progress status. Otherwise, please click OK.</value>
   </data>
   <data name="ExportParamsDlg_ExportCometParams_Failed_to_generate_the_params_file_">
-    <value xml:space="preserve">Failed to generate the params file.</value>
+    <value xml:space="preserve">Failed to generate the params file. </value>
   </data>
 </root>

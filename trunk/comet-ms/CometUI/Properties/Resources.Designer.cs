@@ -222,7 +222,7 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Failed to generate the params file..
+        ///   Looks up a localized string similar to Failed to generate the params file. .
         /// </summary>
         internal static string ExportParamsDlg_ExportCometParams_Failed_to_generate_the_params_file_ {
             get {

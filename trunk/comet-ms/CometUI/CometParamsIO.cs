@@ -12,14 +12,32 @@ namespace CometUI
             _cometParamsReader = new StreamReader(fileName);
         }
 
-        public String ReadLine()
-        {
-            return _cometParamsReader.ReadLine();
-        }
+        //public bool ReadParamsFile()
+        //{
+        //}
+
+        //private bool IsVersionLine(String line)
+        //{
+        //}
+
+        //private bool IsValidVersion()
+        //{
+
+        //}
+
+        //private bool IsCommentLine(String line)
+        //{
+            
+        //}
 
         public void Close()
         {
             _cometParamsReader.Close();
+        }
+
+        private String ReadLine()
+        {
+            return _cometParamsReader.ReadLine();
         }
     }
 
@@ -27,12 +45,14 @@ namespace CometUI
     {
         private readonly StreamWriter _cometParamsWriter;
 
+        public String ErrorMessage { get; private set; }
+
         public CometParamsWriter(String outputFileName)
         {
             _cometParamsWriter = new StreamWriter(outputFileName);
         }
 
-        public bool WriteCometParamsFile(CometParamsMap paramsMap)
+        public bool WriteParamsFile(CometParamsMap paramsMap)
         {
             if (!WriteHeader())
             {
@@ -63,8 +83,10 @@ namespace CometUI
         {
             var searchManager = new CometSearchManagerWrapper();
             String cometVersion = String.Empty;
-            if (!searchManager.GetParamValue("# comet_version ", ref cometVersion))
+            if (searchManager.GetParamValue("# comet_version ", ref cometVersion))
             {
+                ErrorMessage =
+                    "Unable to get the Comet version. Cannot create a params file without a valid Comet version.";
                 return false;
             }
             WriteLine("# comet_version " + cometVersion);
