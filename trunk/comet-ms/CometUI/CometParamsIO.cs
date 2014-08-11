@@ -7,37 +7,85 @@ namespace CometUI
     class CometParamsReader
     {
         private readonly StreamReader _cometParamsReader;
+
+        public String ErrorMessage { get; private set; }
+
         public CometParamsReader(String fileName)
         {
             _cometParamsReader = new StreamReader(fileName);
         }
 
-        //public bool ReadParamsFile()
-        //{
-        //}
-
-        //private bool IsVersionLine(String line)
-        //{
-        //}
-
-        //private bool IsValidVersion()
-        //{
-
-        //}
-
-        //private bool IsCommentLine(String line)
-        //{
-            
-        //}
-
-        public void Close()
+        public bool ReadParamsFile(CometParamsMap paramsMap)
         {
-            _cometParamsReader.Close();
+            string line;
+            while ((line = ReadLine()) != null)
+            {
+                if (IsBlankLine(line))
+                {
+                    continue;
+                }
+
+                if (IsCommentLine(line))
+                {
+                    if (ContainsVersionInfo(line))
+                    {
+                        if (!IsValidVersion(line))
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+
+            }
+
+            return true;
         }
 
         private String ReadLine()
         {
             return _cometParamsReader.ReadLine();
+        }
+
+        private bool IsBlankLine(String line)
+        {
+            return String.Empty == line;
+        }
+
+        private bool ContainsVersionInfo(String line)
+        {
+            return line.StartsWith("# comet_version ");
+        }
+
+        private bool IsValidVersion(String line)
+        {
+            // Todo: Think of a better way to do this, this will break easily if the version line changes in the future
+            const int versionIndex = 16;
+            String version = line.Substring(versionIndex);
+
+            var searchManager = new CometSearchManagerWrapper();
+            String cometVersion = String.Empty;
+            if (searchManager.GetParamValue("# comet_version ", ref cometVersion))
+            {
+                ErrorMessage =
+                    "Unable to get the Comet version. Cannot validate the version of the input file.";
+                return false;
+            }
+
+            return version.Equals(cometVersion);
+        }
+
+        private bool IsCommentLine(String line)
+        {
+            return line.StartsWith("#");
+        }
+
+        public void Close()
+        {
+            _cometParamsReader.Close();
         }
     }
 
@@ -83,7 +131,7 @@ namespace CometUI
         {
             var searchManager = new CometSearchManagerWrapper();
             String cometVersion = String.Empty;
-            if (searchManager.GetParamValue("# comet_version ", ref cometVersion))
+            if (!searchManager.GetParamValue("# comet_version ", ref cometVersion))
             {
                 ErrorMessage =
                     "Unable to get the Comet version. Cannot create a params file without a valid Comet version.";
