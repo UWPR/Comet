@@ -139,7 +139,7 @@
     <value>Error updating Output settings.</value>
   </data>
   <data name="ExportParamsDlg_BtnExportClick_You_have_not_specified_a_proteome_database_name_in_the_Input_Settings_The_params_file_you_are_about_to_create_will_leave_the_database_name_field_blank" xml:space="preserve">
-    <value>You have not specified a proteome database name in the Input Settings. The params file you are about to create will leave the 'database_name' field blank. Click Ok to continue with no "database_name", or Cancel to abort save.</value>
+    <value>You have not specified a proteome database name in the Input Settings. The params file you are about to create will leave the 'database_name' field blank. Click Ok to continue with no "database_name", or Cancel to abort.</value>
   </data>
   <data name="SearchSettingsDlg_Search_Settings" xml:space="preserve">
     <value>Search Settings</value>
@@ -279,5 +279,8 @@
   </data>
   <data name="ProgressDlg_VerifyCancel_Cancellation_request_will_be_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed__Click_Cancel_to_continue_receiving_progress_status__Otherwise__please_click_OK_">
     <value xml:space="preserve">Cancellation request will be sent, but the background proces may continue running until the request has been processed. Click Cancel to continue receiving progress status. Otherwise, please click OK.</value>
+  </data>
+  <data name="ExportParamsDlg_ExportCometParams_Failed_to_generate_the_params_file_">
+    <value xml:space="preserve">Failed to generate the params file.</value>
   </data>
 </root>

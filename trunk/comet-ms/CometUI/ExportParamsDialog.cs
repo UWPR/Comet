@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 using CometUI.Properties;
-using CometWrapper;
 
 namespace CometUI
 {
@@ -72,10 +70,8 @@ namespace CometUI
             }
 
             var paramsMap = new CometParamsMap(CometUI.SearchSettings);
-            Dictionary<string, CometParam> map = paramsMap.CometParams;
-
-            var dbNameParam = map["database_name"];
-            if (String.IsNullOrEmpty(dbNameParam.Value))
+            
+            if (!CheckProteomeDatabaseFile(paramsMap))
             {
                 // Show message indicating absence of "database_name" in params file
                 if (DialogResult.OK != MessageBox.Show(Resources.ExportParamsDlg_BtnExportClick_You_have_not_specified_a_proteome_database_name_in_the_Input_Settings_The_params_file_you_are_about_to_create_will_leave_the_database_name_field_blank,
@@ -86,64 +82,30 @@ namespace CometUI
                 }
             }
 
-            using (var sw = new StreamWriter(FilePath))
+            var cometParamsWriter = new CometParamsWriter(FilePath);
+            if (!cometParamsWriter.WriteCometParamsFile(paramsMap))
             {
-                var searchManager = new CometSearchManagerWrapper();
-                String cometVersion = String.Empty;
-                if (!searchManager.GetParamValue("# comet_version ", ref cometVersion))
-                {
-                    MessageBox.Show(Resources.ExportParamsDlg_BtnExportClick_Unable_to_get_the_Comet_version__Settings_cannot_be_exported_without_a_valid_Comet_version,
-                        Resources.ExportParamsDlg_BtnExportClick_Error, MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                    return false;
-                }
-
-                // write the version to the params file here
-                sw.WriteLine("# comet_version " + cometVersion);
-
-                foreach (var pair in map)
-                {
-                    if (pair.Key == "[COMET_ENZYME_INFO]")
-                    {
-                        WriteEnzymeInfoParam(sw, pair.Key, pair.Value.Value);
-                    }
-                    else
-                    {
-                        sw.WriteLine(pair.Key + " = " + pair.Value.Value);
-                    }
-                }
-
-                sw.Flush();
+                MessageBox.Show(Resources.ExportParamsDlg_ExportCometParams_Failed_to_generate_the_params_file_,
+                                Resources.ExportParamsDlg_BtnExportClick_Export_Search_Settings,
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                cometParamsWriter.Close();
+                return false;
             }
-            
+
+            cometParamsWriter.Close();
             return true;
-        }
-
-        private void WriteEnzymeInfoParam(StreamWriter sw, String paramName, String paramStrValue)
-        {
-            sw.WriteLine(paramName);
-            String enzymeInfoStr = paramStrValue.Replace(Environment.NewLine, "\n");
-            String[] enzymeInfoLines = enzymeInfoStr.Split('\n');
-            foreach (var line in enzymeInfoLines)
-            {
-                if (!String.IsNullOrEmpty(line))
-                {
-                    String[] enzymeInfoRows = line.Split(',');
-                    string enzymeInfoFormattedRow = enzymeInfoRows[0] + ".";
-                    for (int i = 1; i < enzymeInfoRows.Length; i++)
-                    {
-                        enzymeInfoFormattedRow += " " + enzymeInfoRows[i];
-                    }
-
-                    sw.WriteLine(enzymeInfoFormattedRow);
-                }
-            }
         }
 
         private bool IsValidFileName(String fileName)
         {
             char[] invalidFileNameChars = Path.GetInvalidFileNameChars();
             return fileName.IndexOfAny(invalidFileNameChars) == -1;
+        }
+
+        private bool CheckProteomeDatabaseFile(CometParamsMap paramsMap)
+        {
+            var dbNameParam = paramsMap.CometParams["database_name"];
+            return !String.IsNullOrEmpty(dbNameParam.Value);
         }
 
         private void ExportTextChange()

@@ -39,7 +39,7 @@
             // btnCancel
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnCancel.Location = new System.Drawing.Point(381, 88);
+            this.btnCancel.Location = new System.Drawing.Point(381, 90);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 103;
@@ -83,7 +83,7 @@
             // 
             this.btnImport.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnImport.Enabled = false;
-            this.btnImport.Location = new System.Drawing.Point(300, 88);
+            this.btnImport.Location = new System.Drawing.Point(300, 90);
             this.btnImport.Name = "btnImport";
             this.btnImport.Size = new System.Drawing.Size(75, 23);
             this.btnImport.TabIndex = 102;
@@ -95,7 +95,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(465, 123);
+            this.ClientSize = new System.Drawing.Size(465, 125);
             this.Controls.Add(this.btnImport);
             this.Controls.Add(this.btnBrowseParams);
             this.Controls.Add(this.paramsDbLabel);

@@ -93,6 +93,7 @@
       <DependentUpon>About Dlg.cs</DependentUpon>
     </Compile>
     <Compile Include="CometParam.cs" />
+    <Compile Include="CometParamsIO.cs" />
     <Compile Include="CometUI.cs">
       <SubType>Form</SubType>
     </Compile>
