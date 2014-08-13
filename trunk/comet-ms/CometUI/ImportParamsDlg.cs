@@ -59,7 +59,8 @@ namespace CometUI
             }
             else
             {
-                MessageBox.Show(Resources.ImportParamsDlg_BtnImportClick_Import_failed_, Resources.ImportParamsDlg_BtnImportClick_Import_Search_Settings, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ImportParamsDlg_BtnImportClick_Import_failed_ + cometParamsReader.ErrorMessage, Resources.ImportParamsDlg_BtnImportClick_Import_Search_Settings, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DialogResult = DialogResult.Cancel;
             }
         }
 

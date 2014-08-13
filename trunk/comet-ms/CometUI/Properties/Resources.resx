@@ -284,7 +284,7 @@
     <value xml:space="preserve">Failed to generate the params file. </value>
   </data>
   <data name="ImportParamsDlg_BtnImportClick_Import_failed_">
-    <value xml:space="preserve">Import failed.</value>
+    <value xml:space="preserve">Import failed. </value>
   </data>
   <data name="ImportParamsDlg_BtnImportClick_Import_Search_Settings">
     <value xml:space="preserve">Import Search Settings</value>

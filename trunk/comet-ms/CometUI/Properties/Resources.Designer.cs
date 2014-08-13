@@ -277,7 +277,7 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Import failed..
+        ///   Looks up a localized string similar to Import failed. .
         /// </summary>
         internal static string ImportParamsDlg_BtnImportClick_Import_failed_ {
             get {
