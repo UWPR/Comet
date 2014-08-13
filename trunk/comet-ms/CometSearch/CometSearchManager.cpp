@@ -1365,6 +1365,13 @@ void CometSearchManager::GetErrorMessage(string &strErrorMsg)
    g_cometStatus.GetErrorMsg(strErrorMsg);
 }
 
+bool CometSearchManager::IsValidCometVersion(const string &version)
+{
+    // Major version number must match to current binary
+    const char *pszCometVersion = version.c_str();
+    return strstr(comet_version, pszCometVersion) || strstr(pszCometVersion, "2013.02");
+}
+
 bool CometSearchManager::DoSearch()
 {
    if (!InitializeStaticParams())

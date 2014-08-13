@@ -332,3 +332,15 @@ bool CometSearchManagerWrapper::GetErrorMessage(System::String^% strErrorMsg)
 
     return true;
 }
+
+bool CometSearchManagerWrapper::ValidateCometVersion(String^ version, bool% isValid)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdVersion = marshal_as<std::string>(version);
+    isValid = _pSearchMgr->IsValidCometVersion(stdVersion);
+    return true;
+}

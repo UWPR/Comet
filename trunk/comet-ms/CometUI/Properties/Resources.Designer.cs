@@ -268,6 +268,33 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Import completed successfully..
+        /// </summary>
+        internal static string ImportParamsDlg_BtnImportClick_Import_completed_successfully_ {
+            get {
+                return ResourceManager.GetString("ImportParamsDlg_BtnImportClick_Import_completed_successfully_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import failed..
+        /// </summary>
+        internal static string ImportParamsDlg_BtnImportClick_Import_failed_ {
+            get {
+                return ResourceManager.GetString("ImportParamsDlg_BtnImportClick_Import_failed_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import Search Settings.
+        /// </summary>
+        internal static string ImportParamsDlg_BtnImportClick_Import_Search_Settings {
+            get {
+                return ResourceManager.GetString("ImportParamsDlg_BtnImportClick_Import_Search_Settings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error.
         /// </summary>
         internal static string InputFilesControl_AddInputFiles_Error {

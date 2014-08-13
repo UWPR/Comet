@@ -283,4 +283,13 @@
   <data name="ExportParamsDlg_ExportCometParams_Failed_to_generate_the_params_file_">
     <value xml:space="preserve">Failed to generate the params file. </value>
   </data>
+  <data name="ImportParamsDlg_BtnImportClick_Import_failed_">
+    <value xml:space="preserve">Import failed.</value>
+  </data>
+  <data name="ImportParamsDlg_BtnImportClick_Import_Search_Settings">
+    <value xml:space="preserve">Import Search Settings</value>
+  </data>
+  <data name="ImportParamsDlg_BtnImportClick_Import_completed_successfully_">
+    <value xml:space="preserve">Import completed successfully.</value>
+  </data>
 </root>

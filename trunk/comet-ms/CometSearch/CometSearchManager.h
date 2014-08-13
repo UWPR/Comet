@@ -49,6 +49,7 @@ public:
    virtual void SetParam(const string &name, const string &strValue, const EnzymeInfo &value);
    virtual bool GetParamValue(const string &name, EnzymeInfo &value);   
    virtual void GetErrorMessage(string &strErrorMsg);
+   virtual bool IsValidCometVersion(const string &version);
 
 
 private:

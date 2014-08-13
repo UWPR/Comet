@@ -37,7 +37,8 @@ namespace CometWrapper {
         bool GetParamValue(String^ name, VarModsWrapper^% value);
         bool SetParam(String^ name, String^ strValue, EnzymeInfoWrapper^ value);
         bool GetParamValue(String^ name, EnzymeInfoWrapper^% value);
-        bool GetErrorMessage(System::String^% strErrorMsg);
+        bool GetErrorMessage(String^% strErrorMsg);
+        bool ValidateCometVersion(String^ version, bool% isValid);
 
     private:
         ICometSearchManager *_pSearchMgr;

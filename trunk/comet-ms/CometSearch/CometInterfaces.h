@@ -46,6 +46,7 @@ public:
       virtual void SetParam(const string &name, const string &strValue, const EnzymeInfo &value) = 0;
       virtual bool GetParamValue(const string &name, EnzymeInfo &value) = 0;
       virtual void GetErrorMessage(string &strErrorMsg) = 0;
+      virtual bool IsValidCometVersion(const string &version) = 0;
    };
 
    ICometSearchManager *GetCometSearchManager();

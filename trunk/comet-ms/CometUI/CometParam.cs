@@ -1490,19 +1490,7 @@ namespace CometUI
                     return false;
                 }
 
-                String[] varModItems = paramValueStr.Split(' ');
-                if (varModItems.Length < NumVarModFieldsInSettings)
-                {
-                    return false;
-                }
-
-                // We want to save it in settings as the "<residue>,<mass diff>,<binary search>,<max mods>"
-                // It comes to us in paramValueStr as "<mass diff> <residue> <binary search> <max mods>"
-                var varModsRow = varModItems[1] + "," 
-                    + varModItems[0] + "," 
-                    + varModItems[2] + "," 
-                    + varModItems[3]; 
-                varMods.Add(varModsRow);
+                varMods.Add(paramValueStr);
             }
 
             return true;
@@ -1738,7 +1726,7 @@ namespace CometUI
             }
 
             int maxMods;
-            if (!int.TryParse(varModStrValues[2], out maxMods))
+            if (!int.TryParse(varModStrValues[3], out maxMods))
             {
                 return null;
             }
@@ -1756,12 +1744,15 @@ namespace CometUI
             String[] rows = modifiedStrValue.Split('\n');
             foreach (var row in rows)
             {
-                var newRow = row.Replace('.', ' ');
-                char[] duplicateChars = { ' ' };
-                newRow = RemoveDuplicateChars(newRow, duplicateChars);
-                newRow = newRow.Replace(' ', ',');
-                strCollectionParam.Add(newRow);
-                newStrValue += newRow + Environment.NewLine;
+                if (String.Empty != row)
+                {
+                    var newRow = row.Replace('.', ' ');
+                    char[] duplicateChars = {' '};
+                    newRow = RemoveDuplicateChars(newRow, duplicateChars);
+                    newRow = newRow.Replace(' ', ',');
+                    strCollectionParam.Add(newRow);
+                    newStrValue += newRow + Environment.NewLine;
+                }
             }
             return new TypedCometParam<StringCollection>(CometParamType.StrCollection, newStrValue, strCollectionParam);
         }

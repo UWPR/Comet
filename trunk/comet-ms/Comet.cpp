@@ -208,8 +208,8 @@ void LoadParameters(char *pszParamsFile,
       if (!strncmp(szParamBuf, "# comet_version ", 16))
       {
          sscanf(szParamBuf, "%*s %*s %128s", szVersion);
-         // Major version number must match to current binary
-         if (strstr(comet_version, szVersion))
+
+         if (pSearchMgr->IsValidCometVersion(string(szVersion)))
          {
             bValidParamsFile = true;
             pSearchMgr->SetParam("# comet_version ", szVersion, szVersion);

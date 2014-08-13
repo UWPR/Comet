@@ -20,6 +20,7 @@ namespace CometUI
             string line;
             while ((line = ReadLine()) != null)
             {
+                // Skip past the blank lines
                 if (IsBlankLine(line))
                 {
                     continue;
@@ -27,27 +28,46 @@ namespace CometUI
 
                 if (IsCommentLine(line))
                 {
-                    if (ContainsVersionInfo(line))
+                    // We only care about a comment line if it contains version
+                    // info, in which case, we make sure the version is valid.
+                    if (ContainsVersionInfo(line) && !IsValidVersion(line))
                     {
-                        if (!IsValidVersion(line))
-                        {
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        continue;
+                        ErrorMessage = "The params file version is not compatible with this version of Comet.";
+                        return false;
                     }
                 }
+                else if (IsEnzymeInfoLine(line))
+                {
+                    // We should now be in the enzyme info sectio, which
+                    // is always at the very end of the file.
+                    if (!ReadEnzymeInfo(line, paramsMap))
+                    {
+                        ErrorMessage = "Failed to read [COMET_ENZYME_INFO] from the params file.";
+                        return false;
+                    }
 
+                    //// Ezyme info is always the last thing in a Comet params file, 
+                    //// so we are now at the end of the file.
+                    //break;
+                }
+                else
+                {
+                    // If it's not a blank line, or a comment line, or the 
+                    // enzyme info line, it must be a regular parameters line
+                    if (!ReadParamLine(line, paramsMap))
+                    {
+                        ErrorMessage = "Failed to read a parameter from the params file.";
+                        return false;
+                    }
+                }
             }
 
             return true;
         }
 
-        private String ReadLine()
+        public void Close()
         {
-            return _cometParamsReader.ReadLine();
+            _cometParamsReader.Close();
         }
 
         private bool IsBlankLine(String line)
@@ -62,30 +82,94 @@ namespace CometUI
 
         private bool IsValidVersion(String line)
         {
-            // Todo: Think of a better way to do this, this will break easily if the version line changes in the future
             const int versionIndex = 16;
             String version = line.Substring(versionIndex);
-
+            
             var searchManager = new CometSearchManagerWrapper();
-            String cometVersion = String.Empty;
-            if (searchManager.GetParamValue("# comet_version ", ref cometVersion))
+            bool isValid = false;
+            if (!searchManager.ValidateCometVersion(version, ref isValid))
             {
                 ErrorMessage =
-                    "Unable to get the Comet version. Cannot validate the version of the input file.";
+                    "Error validating the Comet version.";
                 return false;
             }
 
-            return version.Equals(cometVersion);
+            if (!isValid)
+            {
+                ErrorMessage =
+                    "The version of the input params file is not compatible with this version of Comet.";
+                return false;
+            }
+
+            return true;
         }
 
         private bool IsCommentLine(String line)
         {
-            return line.StartsWith("#");
+            String lineWithoutLeadingWhitSpaces = line.TrimStart();
+            return lineWithoutLeadingWhitSpaces.StartsWith("#");
         }
 
-        public void Close()
+        private bool IsEnzymeInfoLine(String line)
         {
-            _cometParamsReader.Close();
+            return line.Contains("[COMET_ENZYME_INFO]");
+        }
+
+        private bool ReadEnzymeInfo(String line, CometParamsMap paramsMap)
+        {
+            String enzymeInfoName = line;
+            String enzymeInfoValue = String.Empty;
+            while ((line = ReadLine()) != null && !IsBlankLine(line))
+            {
+                enzymeInfoValue += line + Environment.NewLine;
+            }
+
+            if (!paramsMap.SetCometParam(enzymeInfoName, enzymeInfoValue))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ReadParamLine(String line, CometParamsMap paramsMap)
+        {
+            // Remove the comment from the end of the line
+            int indexOfComment = line.IndexOf('#');
+            if (-1 != indexOfComment)
+            {
+                line = line.Remove(indexOfComment);
+            }
+
+            // Trim off the extra white spaces at the end
+            line = line.TrimEnd();
+
+            if (String.Empty == line)
+            {
+                return false;
+            }
+
+            // We should now be left with only one equal sign, with the
+            // parameter name on the left, and the value on the right.
+            string[] paramItems = line.Split('=');
+            if (paramItems.Length != 2)
+            {
+                return false;
+            }
+
+            string name = paramItems[0].Trim();
+            string value = paramItems[1].Trim();
+            if (!paramsMap.SetCometParam(name, value))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private String ReadLine()
+        {
+            return _cometParamsReader.ReadLine();
         }
     }
 
@@ -104,6 +188,7 @@ namespace CometUI
         {
             if (!WriteHeader())
             {
+                ErrorMessage = "Unable to get the Comet version. Cannot create a params file without a valid Comet version.";
                 return false;
             }
 
@@ -133,8 +218,6 @@ namespace CometUI
             String cometVersion = String.Empty;
             if (!searchManager.GetParamValue("# comet_version ", ref cometVersion))
             {
-                ErrorMessage =
-                    "Unable to get the Comet version. Cannot create a params file without a valid Comet version.";
                 return false;
             }
             WriteLine("# comet_version " + cometVersion);
