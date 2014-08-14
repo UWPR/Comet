@@ -70,11 +70,14 @@ namespace CometUI
 
         private void WorkerThreadsCleanupTimerTick(object sender, EventArgs e)
         {
-            foreach (var worker in _runSearchWorkers)
+            if (_runSearchWorkers.Count > 0)
             {
-                if (!worker.IsBusy())
+                foreach (var worker in _runSearchWorkers)
                 {
-                    _runSearchWorkers.Remove(worker);
+                    if (!worker.IsBusy())
+                    {
+                        _runSearchWorkers.Remove(worker);
+                    }
                 }
             }
         }
