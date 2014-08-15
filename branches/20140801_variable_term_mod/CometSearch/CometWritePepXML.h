@@ -27,9 +27,9 @@ public:
    static bool WritePepXMLHeader(FILE *fpout,
                                  CometSearchManager &searchMgr);
 
-   static void WriteVariableModN(FILE *fpout,
-                                 CometSearchManager &searchMgr,
-                                 string varModName);
+   static void WriteVariableMod(FILE *fpout,
+                                CometSearchManager &searchMgr,
+                                string varModName);
 
    static void WriteAddAminoAcid(FILE *fpout,
                                  CometSearchManager &searchMgr,

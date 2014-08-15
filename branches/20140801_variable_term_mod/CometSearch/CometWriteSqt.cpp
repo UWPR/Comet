@@ -106,12 +106,6 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
       }
    }
 
-   if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0))
-      fprintf(fpout, "H\tDiffMod\tnt]=%+0.6f\n", g_staticParams.variableModParameters.dVarModMassN);
-
-   if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0))
-      fprintf(fpout, "H\tDiffMod\tct[=%+0.6f\n", g_staticParams.variableModParameters.dVarModMassC);
-
    char *pStr;
    while ((pStr = strrchr(g_staticParams.szMod, '='))!=NULL)
    {
@@ -127,8 +121,6 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
    fprintf(fpout, "H\n");
    
-// fprintf(fpout, "H\tCometParams\tcomet_version = %s\n", comet_version);
-
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
    for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
    {
@@ -268,15 +260,14 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
          pOutput[iWhichResult].iMatchedIons, 
          pOutput[iWhichResult].iTotalIons);
 
-   sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[0]);
+   sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
    {
-      sprintf(szBuf+strlen(szBuf), "]");
+      sprintf(szBuf+strlen(szBuf), "n%c",
+            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
    }
-   else
-      sprintf(szBuf+strlen(szBuf), ".");
 
    // Print peptide sequence.
    for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
@@ -292,14 +283,13 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
+         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
    {
-      sprintf(szBuf+strlen(szBuf), "[");
+      sprintf(szBuf+strlen(szBuf), "c%c",
+            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
    }
-   else
-      sprintf(szBuf+strlen(szBuf), ".");
 
-   sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[1]);
+   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
 
    if (g_staticParams.options.bOutputSqtStream)
    {

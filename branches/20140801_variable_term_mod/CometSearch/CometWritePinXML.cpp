@@ -71,6 +71,7 @@ bool CometWritePinXML::WritePinXML(FILE *fpout)
    return true;
 }
 
+
 void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
 {
    char szEnzyme[48];
@@ -130,11 +131,13 @@ void CometWritePinXML::WritePinXMLHeader(FILE *fpout)
    fflush(fpout);
 }
 
+
 void CometWritePinXML::WritePinXMLEndTags(FILE *fpout)
 {
    fprintf(fpout, "</experiment>\n");
    fflush(fpout);
 }
+
 
 bool CometWritePinXML::PrintResults(int iWhichQuery,
                                     FILE *fpout,
@@ -334,6 +337,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
    }
 
    // terminal variable mods
+/*
    if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0)
          && (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] != 0))  // nterm
    {
@@ -349,6 +353,7 @@ void CometWritePinXML::PrintPinXMLSearchHit(int iWhichQuery,
       fprintf(fpout, "    <uniMod accession=\"%d\" />\n", 13); // some random number for N-term variable mod
       fprintf(fpout, "   </modification>\n");
    }
+*/
 
    int i;
 

@@ -822,12 +822,11 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
       char *pStr;
       FILE *fpcheck;
 
-#ifdef _WIN32
-      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL)
-#else
-      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
-#endif
+      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL
+            && (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
+      {
          pStr = g_staticParams.inputFile.szBaseName;
+      }
       else
          *pStr++;
 

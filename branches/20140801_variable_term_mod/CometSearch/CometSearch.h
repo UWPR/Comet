@@ -83,16 +83,18 @@ private:
                              int iStartPos, 
                              int iEndPos); 
    void SubtractVarMods(int *piVarModCounts,
-                        int character);
+                        int cResidue,
+                        int iResiduePosition);
    void CountVarMods(int *piVarModCounts,
-                     int character);
+                     int cResidue,
+                     int iResiduePosition);
    void CountBinaryModN(int *piVarModCounts,
                          int iStartPos);
    void CountBinaryModC(int *piVarModCounts,
                          int iEndPos);
-   int  TotalVarModCount(int varModCounts[],
-                         int iCVarModCount,
-                         int iNVarModCount);
+   bool HasVariableMod(int varModCounts[],
+                       int iCVarModCount,
+                       int iNVarModCount);
    int WithinMassTolerance(double dCalcPepMass,
                            char *szProteinSeq,
                            int iStartPos,
@@ -151,21 +153,11 @@ private:
                      int varModCounts[],
                      int iStartPos,
                      int iEndPos);
-   double TotalVarModMass(int *pVarModCounts,
-                          int iCVarModCount,
-                          int iNVarModCount);
-   bool Permute1(char *szProteinSeq, 
-                 int iWhichQuery);
-   bool Permute2(char *szProteinSeq,
-                 int iWhichQuery);
-   bool Permute3(char *szProteinSeq,
-                 int iWhichQuery);
-   bool Permute4(char *szProteinSeq,
-                 int iWhichQuery);
-   bool Permute5(char *szProteinSeq,
-                 int iWhichQuery);
-   bool Permute6(char *szProteinSeq,
-                 int iWhichQuery);
+   double TotalVarModMass(int *pVarModCounts);
+   bool PermuteMods(char *szProteinSeq, 
+                 int iWhichQuery,
+                 int iPepLenPlus2,
+                 int iWhichMod);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool CalcVarModIons(char *szProteinSeq,
@@ -210,14 +202,12 @@ private:
    {
        int iTotVarModCt;
        int iMatchVarModCt;
-       int iVarModSites[MAX_PEPTIDE_LEN];
+       int iVarModSites[MAX_PEPTIDE_LEN+2];  // last 2 positions are for n- and c-term
    };
     
    struct VarModInfo
    {
        VarModStat varModStatList[VMODS];
-       int        iNumVarModSiteN;
-       int        iNumVarModSiteC;
        int        iStartPos;     // The start position of the peptide sequence
        int        iEndPos;       // The end position of the peptide sequence
        double     dCalcPepMass;  // Mass of peptide with mods

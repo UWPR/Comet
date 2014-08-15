@@ -23,7 +23,7 @@
 #include "CometWriteSqt.h"
 #include "CometWriteTxt.h"
 #include "CometWritePepXML.h"
-#include "CometWritePinXML.h"
+#include "CometWritePercolator.h"
 #include "Threading.h"
 #include "ThreadPool.h"
 #include "CometDataInternal.h"
@@ -307,7 +307,7 @@ static bool compareByScanNumber(Query const* a, Query const* b)
 
 static void CalcRunTime(time_t tStartTime)
 {
-   char szTimeBuf[512];
+   char szOutFileTimeString[512];
    time_t tEndTime;
    int iTmp;
 
@@ -316,20 +316,20 @@ static void CalcRunTime(time_t tStartTime)
    int iElapseTime=(int)difftime(tEndTime, tStartTime);
 
    // Print out header/search info.
-   sprintf(szTimeBuf, "%s,", g_staticParams.szDate);
+   sprintf(szOutFileTimeString, "%s,", g_staticParams.szDate);
    if ( (iTmp = (int)(iElapseTime/3600) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d hr.", iTmp);
+      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d hr.", iTmp);
    if ( (iTmp = (int)((iElapseTime-(int)(iElapseTime/3600)*3600)/60) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d min.", iTmp);
+      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d min.", iTmp);
    if ( (iTmp = (int)((iElapseTime-((int)(iElapseTime/3600))*3600)%60) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d sec.", iTmp);
+      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d sec.", iTmp);
    if (iElapseTime == 0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " 0 sec.");
-   sprintf(szTimeBuf+strlen(szTimeBuf), " on %s", g_staticParams.szHostName);
+      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " 0 sec.");
+   sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " on %s", g_staticParams.szHostName);
 
    g_staticParams.iElapseTime = iElapseTime;
-   strncpy(g_staticParams.szTimeBuf, szTimeBuf, 256);
-   g_staticParams.szTimeBuf[255]='\0';
+   strncpy(g_staticParams.szOutFileTimeString, szOutFileTimeString, 256);
+   g_staticParams.szOutFileTimeString[255]='\0';
 }
 
 static void PrintParameters()
@@ -471,9 +471,6 @@ CometSearchManager::CometSearchManager()
    Threading::CreateMutex(&g_pvQueryMutex);
 
    Threading::CreateMutex(&g_preprocessMemoryPoolMutex);
-
-   // Initialize the Comet version
-   SetParam("# comet_version ", comet_version, comet_version);
 }
 
 CometSearchManager::~CometSearchManager()
@@ -567,6 +564,12 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("variable_mod6", g_staticParams.variableModParameters.varModList[VMOD_6_INDEX]);
 
+   GetParamValue("variable_mod7", g_staticParams.variableModParameters.varModList[VMOD_7_INDEX]);
+
+   GetParamValue("variable_mod8", g_staticParams.variableModParameters.varModList[VMOD_8_INDEX]);
+
+   GetParamValue("variable_mod9", g_staticParams.variableModParameters.varModList[VMOD_9_INDEX]);
+
    if (GetParamValue("max_variable_mods_in_peptide", iIntData))
    {
       if (iIntData > 0)
@@ -638,14 +641,6 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
 
    GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
-
-   GetParamValue("variable_C_terminus", g_staticParams.variableModParameters.dVarModMassC);
-
-   GetParamValue("variable_N_terminus", g_staticParams.variableModParameters.dVarModMassN);
-
-   GetParamValue("variable_C_terminus_distance", g_staticParams.variableModParameters.iVarModCtermDistance);
-
-   GetParamValue("variable_N_terminus_distance", g_staticParams.variableModParameters.iVarModNtermDistance);
 
    GetParamValue("add_Cterm_peptide", g_staticParams.staticModifications.dAddCterminusPeptide);
 
@@ -1026,20 +1021,6 @@ bool CometSearchManager::InitializeStaticParams()
                g_staticParams.variableModParameters.varModList[i].dVarModMass);
          g_staticParams.variableModParameters.bVarModSearch = 1;
       }
-   }
-
-   if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0))
-   {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(nt] %+0.6f) ", 
-            g_staticParams.variableModParameters.dVarModMassN);       // FIX determine .out file header string for this?
-      g_staticParams.variableModParameters.bVarModSearch = 1;
-   }
-
-   if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0))
-   {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(ct[ %+0.6f) ", 
-            g_staticParams.variableModParameters.dVarModMassC);
-      g_staticParams.variableModParameters.bVarModSearch = 1;
    }
 
    // Do Sp scoring after search based on how many lines to print out.
@@ -1604,9 +1585,9 @@ bool CometSearchManager::DoSearch()
       if (bSucceeded && g_staticParams.options.bOutputPinXMLFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputPinXML, "%s%s.pin.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputPinXML, "%s%s.tsv", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
          else
-            sprintf(szOutputPinXML, "%s%s.%d-%d.pin.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputPinXML, "%s%s.%d-%d.tsv", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 
          if ((fpout_pinxml = fopen(szOutputPinXML, "w")) == NULL)
          {
@@ -1623,7 +1604,7 @@ bool CometSearchManager::DoSearch()
             // We need knowledge of max charge state in all searches
             // here in order to write the featureDescription header
 
-            CometWritePinXML::WritePinXMLHeader(fpout_pinxml);
+            CometWritePercolator::WritePercolatorHeader(fpout_pinxml);
          }
       }
 
@@ -1721,7 +1702,7 @@ bool CometSearchManager::DoSearch()
 
             if (g_staticParams.options.bOutputPinXMLFile)
             {
-               bSucceeded = CometWritePinXML::WritePinXML(fpout_pinxml);
+               bSucceeded = CometWritePercolator::WritePercolator(fpout_pinxml);
                if (!bSucceeded)
                {
                   goto cleanup_results;
@@ -1775,7 +1756,7 @@ bool CometSearchManager::DoSearch()
 
             if (NULL != fpout_pinxml)
             {
-               CometWritePinXML::WritePinXMLEndTags(fpout_pinxml);
+               CometWritePercolator::WritePercolatorEndTags(fpout_pinxml);
             }
          }
       }
