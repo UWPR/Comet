@@ -39,7 +39,7 @@
     <ClInclude Include="CometWritePepXML.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CometWritePinXML.h">
+    <ClInclude Include="CometWritePercolator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CometWriteSqt.h">
@@ -92,7 +92,7 @@
     <ClCompile Include="CometWritePepXML.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CometWritePinXML.cpp">
+    <ClCompile Include="CometWritePercolator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CometWriteSqt.cpp">

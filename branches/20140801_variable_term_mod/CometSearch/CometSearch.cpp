@@ -1408,18 +1408,11 @@ void CometSearch::StorePeptide(int iWhichQuery,
          {
             memset(pQuery->_pResults[siLowestSpScoreIndex].pcVarModSites,
                   0, _iSizepcVarModSites);
-printf("*** no mods\n");
          }
          else
          {
             memcpy(pQuery->_pResults[siLowestSpScoreIndex].pcVarModSites,
                   pcVarModSites, _iSizepcVarModSites);
-
-printf("*** mods:  ");
-for (int x=0; x<iLenPeptide+2; x++)
-   printf("%d", pQuery->_pResults[siLowestSpScoreIndex].pcVarModSites[x]);
-printf("\n");
-
          }
       }
 

@@ -92,7 +92,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    // user decides to not replace Sp score with E-values
    if (g_staticParams.options.bPrintExpectScore
          || g_staticParams.options.bOutputPepXMLFile
-         || g_staticParams.options.bOutputPinXMLFile
+         || g_staticParams.options.bOutputPercolatorFile
          || g_staticParams.options.bOutputTxtFile)
    {
 
