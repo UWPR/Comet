@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Windows.Forms;
 using CometUI.Properties;
 using CometUI.SettingsUI;
@@ -15,8 +14,6 @@ namespace CometUI
         {
             get { return _searchSettingsDlg ?? (_searchSettingsDlg = new SearchSettingsDlg()); }
         }
-        private readonly List<RunSearchBackgroundWorker> _runSearchWorkers = 
-            new List<RunSearchBackgroundWorker>();
 
         public CometUI()
         {
@@ -38,9 +35,9 @@ namespace CometUI
             var runSearchDlg = new RunSearchDlg(this);
             if (DialogResult.OK == runSearchDlg.ShowDialog())
             {
-                var runSearchWorker = new RunSearchBackgroundWorker();
-                runSearchWorker.DoWork(runSearchDlg);
-                _runSearchWorkers.Add(runSearchWorker);
+                var cometSearch = new CometSearch(runSearchDlg.InputFiles);
+                var runSearchWorker = new RunSearchBackgroundWorker(cometSearch);
+                runSearchWorker.DoWork();
             }
         }
 
@@ -50,42 +47,11 @@ namespace CometUI
             {
                 if (MessageBox.Show(Resources.CometUI_CometUIFormClosing_You_have_modified_the_search_settings__Would_you_like_to_save_the_changes_before_you_exit_, 
                     Resources.CometUI_CometUIFormClosing_Search_Settings_Changed, 
-                    MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.OK)
                 {
                     SearchSettingsDlg.SaveSearchSettings();
                 }
             }
-
-
-            WorkerThreadsCleanupTimer.Stop();
-            WorkerThreadsCleanupTimer.Enabled = false;
-
-            foreach (var worker in _runSearchWorkers)
-            {
-                worker.CancelAsync();
-            }
-
-            _runSearchWorkers.Clear();
-        }
-
-        private void WorkerThreadsCleanupTimerTick(object sender, EventArgs e)
-        {
-            if (_runSearchWorkers.Count > 0)
-            {
-                foreach (var worker in _runSearchWorkers)
-                {
-                    if (!worker.IsBusy())
-                    {
-                        _runSearchWorkers.Remove(worker);
-                    }
-                }
-            }
-        }
-
-        private void CometUILoad(object sender, EventArgs e)
-        {
-            WorkerThreadsCleanupTimer.Enabled = true;
-            WorkerThreadsCleanupTimer.Start();
         }
 
         private void ExitToolStripMenuItemClick(object sender, EventArgs e)

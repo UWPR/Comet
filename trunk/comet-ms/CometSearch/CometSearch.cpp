@@ -64,7 +64,7 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -113,7 +113,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       char szErrorMsg[256];
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".", g_staticParams.databaseInfo.szDatabase); 
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetError(true, strErrorMsg);      
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
       return false;
    }
@@ -145,7 +145,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       {
          string strError = " Error - database file, expecting definition line here.";
          string strFormatError = strError + "\n";
-         g_cometStatus.SetError(true, strError);
+         g_cometStatus.SetStatus(CometResult_Failed, strError);
          logerr(strFormatError.c_str());
          fgets(szBuf, SIZE_BUF, fptr);
          logerr(" %c%s", iTmpCh, szBuf);
@@ -194,11 +194,9 @@ bool CometSearch::RunSearch(int minNumThreads,
       SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
       pSearchThreadPool->Launch(pSearchThreadData);
 
-      bool bError = false;
-      g_cometStatus.GetError(bError);
-      if (bError)
+      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+      if (!bSucceeded)
       {
-         bSucceeded = false;
          break;
       }
    }
@@ -213,12 +211,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    // while we were waiting for the threads.
    if (bSucceeded)
    {
-      bool bError = false;
-      g_cometStatus.GetError(bError);
-      if (bError)
-      {
-         bSucceeded = false;
-      }
+      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
    }
 
    fclose(fptr);
@@ -365,7 +358,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             char szErrorMsg[256];
             sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.", seqSize, ba.what());
             string strErrorMsg(szErrorMsg);
-            g_cometStatus.SetError(true, strErrorMsg);      
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
             return false;
          }
@@ -701,9 +694,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                }
                else
                {
-                  bool bError = false;
-                  g_cometStatus.GetError(bError);
-                  if (bError)
+                  if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
                   {
                      return false;
                   }
@@ -970,7 +961,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          char szErrorMsg[256];
          sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!", g_staticParams.tolerances.iIsotopeError);
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -1009,7 +1000,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
  the sequence into multiple, overlapping, smaller entries.", ii); 
                   
                string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetError(true, strErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr("%s\n\n", szErrorMsg);
                return false;
             }
@@ -1044,7 +1035,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
  the sequence into multiple, overlapping, smaller entries.", ii); 
                   
                string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetError(true, strErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr("%s\n\n", szErrorMsg);
                return false;
             }
@@ -2692,9 +2683,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
       }
       else
       {
-         bool bError = false;
-         g_cometStatus.GetError(bError);
-         if (bError)
+         if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
          {
             return false;
          }

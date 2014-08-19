@@ -28,7 +28,6 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CometUI));
             this.mainMenuStrip = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -49,7 +48,6 @@
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpAboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
-            this.WorkerThreadsCleanupTimer = new System.Windows.Forms.Timer(this.components);
             this.mainMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -189,7 +187,7 @@
             // helpAboutToolStripMenuItem
             // 
             this.helpAboutToolStripMenuItem.Name = "helpAboutToolStripMenuItem";
-            this.helpAboutToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.helpAboutToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.helpAboutToolStripMenuItem.Text = "&About Comet";
             this.helpAboutToolStripMenuItem.Click += new System.EventHandler(this.HelpAboutToolStripMenuItemClick);
             // 
@@ -200,11 +198,6 @@
             this.mainStatusStrip.Size = new System.Drawing.Size(734, 22);
             this.mainStatusStrip.TabIndex = 1;
             this.mainStatusStrip.Text = "statusStrip1";
-            // 
-            // WorkerThreadsCleanupTimer
-            // 
-            this.WorkerThreadsCleanupTimer.Interval = 60000;
-            this.WorkerThreadsCleanupTimer.Tick += new System.EventHandler(this.WorkerThreadsCleanupTimerTick);
             // 
             // CometUI
             // 
@@ -218,7 +211,6 @@
             this.Name = "CometUI";
             this.Text = "Comet";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.CometUIFormClosing);
-            this.Load += new System.EventHandler(this.CometUILoad);
             this.mainMenuStrip.ResumeLayout(false);
             this.mainMenuStrip.PerformLayout();
             this.ResumeLayout(false);
@@ -245,7 +237,6 @@
         private System.Windows.Forms.ToolStripMenuItem searchSettingsToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem searchSettingsToolStripMenuItem2;
         private System.Windows.Forms.ToolStripMenuItem saveSearchSettingsToolStripMenuItem;
-        private System.Windows.Forms.Timer WorkerThreadsCleanupTimer;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
     }

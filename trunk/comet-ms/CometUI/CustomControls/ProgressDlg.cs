@@ -8,6 +8,7 @@ namespace CometUI.CustomControls
     public partial class ProgressDlg : Form
     {
         readonly BackgroundWorker _backgroundWorker;
+
         public ProgressDlg(BackgroundWorker backgroundWorker)
         {
             InitializeComponent();
@@ -34,10 +35,12 @@ namespace CometUI.CustomControls
 
         private void ProgressDlgClosing(object sender, FormClosingEventArgs e)
         {
+            Cancel();
+        }
+
+        public virtual void Cancel()
+        {
             _backgroundWorker.CancelAsync();
-            MessageBox.Show(
-                Resources.ProgressDlg_ProgressDlgClosing_Cancellation_request_has_been_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed_,
-                Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void CancelButtonClick(object sender, EventArgs e)
@@ -50,7 +53,7 @@ namespace CometUI.CustomControls
 
         private bool VerifyCancel()
         {
-            if (DialogResult.OK == MessageBox.Show(Resources.ProgressDlg_VerifyCancel_Cancellation_request_will_be_sent__but_the_background_proces_may_continue_running_until_the_request_has_been_processed__Click_Cancel_to_continue_receiving_progress_status__Otherwise__please_click_OK_, Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Information))
+            if (DialogResult.OK == MessageBox.Show(Resources.ProgressDlg_VerifyCancel_Are_you_sure_you_want_to_cancel_the_operation_, Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Information))
             {
                 return true;
             }

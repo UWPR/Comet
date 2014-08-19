@@ -319,20 +319,6 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, EnzymeInfoWr
     return true;
 }
 
-bool CometSearchManagerWrapper::GetErrorMessage(System::String^% strErrorMsg)
-{
-    if (!_pSearchMgr)
-    {
-        return false;
-    }
-
-    std::string stdStrErrorMsg;
-    _pSearchMgr->GetErrorMessage(stdStrErrorMsg);
-    strErrorMsg = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStrErrorMsg.c_str())))); 
-
-    return true;
-}
-
 bool CometSearchManagerWrapper::ValidateCometVersion(String^ version, bool% isValid)
 {
     if (!_pSearchMgr)
@@ -342,5 +328,63 @@ bool CometSearchManagerWrapper::ValidateCometVersion(String^ version, bool% isVa
 
     std::string stdVersion = marshal_as<std::string>(version);
     isValid = _pSearchMgr->IsValidCometVersion(stdVersion);
+    return true;
+}
+
+bool CometSearchManagerWrapper::IsSearchError(bool% bError)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    bError = _pSearchMgr->IsSearchError();
+    return true;
+}
+
+bool CometSearchManagerWrapper::GetStatusMessage(System::String^% strStatusMsg)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStrStatusMsg;
+    _pSearchMgr->GetStatusMessage(stdStrStatusMsg);
+    strStatusMsg = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStrStatusMsg.c_str())))); 
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::CancelSearch()
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    _pSearchMgr->CancelSearch();
+    return true;
+}
+
+bool CometSearchManagerWrapper::IsCancelSearch(bool% bCancel)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    bCancel = _pSearchMgr->IsCancelSearch();
+    return true;
+}
+
+bool CometSearchManagerWrapper::ResetSearchStatus()
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    _pSearchMgr->ResetSearchStatus();
     return true;
 }

@@ -2,8 +2,6 @@
 using System.ComponentModel;
 using System.Threading;
 using System.Windows.Forms;
-using CometUI.CustomControls;
-using CometUI.Properties;
 
 namespace CometUI
 {
@@ -11,10 +9,10 @@ namespace CometUI
     {
         private readonly BackgroundWorker _runSearchBackgroundWorker = new BackgroundWorker();
         private readonly AutoResetEvent _runSearchResetEvent = new AutoResetEvent(false);
-        readonly ProgressDlg _progressDialog;
-        RunSearchDlg _runSearchDlg;
+        readonly RunSearchProgressDlg _progressDialog;
+        private CometSearch CometSearch { get; set; }
 
-        public RunSearchBackgroundWorker()
+        public RunSearchBackgroundWorker(CometSearch cometSearch)
         {
             _runSearchBackgroundWorker.WorkerSupportsCancellation = true;
             _runSearchBackgroundWorker.WorkerReportsProgress = true;
@@ -22,18 +20,16 @@ namespace CometUI
             _runSearchBackgroundWorker.ProgressChanged += RunSearchBackgroundWorkerProgressChanged;
             _runSearchBackgroundWorker.RunWorkerCompleted += RunSearchBackgroundWorkerRunWorkerCompleted;
 
-            _runSearchDlg = null;
-
-            _progressDialog = new ProgressDlg(_runSearchBackgroundWorker);
+            CometSearch = cometSearch;
+            _progressDialog = new RunSearchProgressDlg(CometSearch, _runSearchBackgroundWorker);
         }
 
-        public void DoWork(RunSearchDlg runSearchDlg)
+        public void DoWork()
         {
-            _runSearchDlg = runSearchDlg;
             _runSearchResetEvent.Reset();
             if (!_runSearchBackgroundWorker.IsBusy)
             {
-                _runSearchBackgroundWorker.RunWorkerAsync(runSearchDlg);
+                _runSearchBackgroundWorker.RunWorkerAsync(CometSearch);
                 _progressDialog.UpdateTitleText("Search Progress");
                 _progressDialog.UpdateStatusText("Running search...");
                 _progressDialog.Show();
@@ -42,6 +38,7 @@ namespace CometUI
 
         public void CancelAsync()
         {
+            CometSearch.CancelSearch();
             if (_runSearchBackgroundWorker.IsBusy)
             {
                 _runSearchBackgroundWorker.CancelAsync();
@@ -54,30 +51,38 @@ namespace CometUI
             return _runSearchBackgroundWorker.IsBusy;
         }
 
-
         private void RunSearchBackgroundWorkerDoWork(object sender, DoWorkEventArgs e)
         {
-            var runSearchDlg = e.Argument as RunSearchDlg;
-            if (_runSearchDlg != null)
+            var cometSearch = e.Argument as CometSearch;
+            if (cometSearch != null)
             {
-                _runSearchDlg.RunSearch();
+                if (!cometSearch.RunSearch())
+                {
+                    if (cometSearch.IsCancel())
+                    {
+                        cometSearch.ResetCancel();
+                    }
+                }
 
                 _runSearchBackgroundWorker.ReportProgress(1);
 
                 if (_runSearchBackgroundWorker.CancellationPending)
                 {
-                    // What to do here?
+                    e.Cancel = true;
                 }
 
-                e.Result = runSearchDlg;
+                e.Result = cometSearch;
             }
         }
 
         private void RunSearchBackgroundWorkerProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            // This will become useful if we can get search to send us status
-            // updates
-            const string statusText = "Running search...";
+            String statusText = "Running search...";
+            String statusMsg = String.Empty;
+            if (CometSearch.GetStatusMessage(statusMsg))
+            {
+                statusText = statusMsg;
+            }
             _progressDialog.UpdateStatusText(statusText);
         }
 
@@ -89,20 +94,24 @@ namespace CometUI
             MessageBoxIcon msgIcon = MessageBoxIcon.None;
             try
             {
-                var runSearchDlg = e.Result as RunSearchDlg;
-                if (runSearchDlg != null)
+                var cometSearch = e.Result as CometSearch;
+                if (cometSearch != null)
                 {
-                    if (!e.Cancelled && runSearchDlg.SearchSucceeded)
+                    if (!e.Cancelled && CometSearch.SearchSucceeded)
                     {
                         msgIcon = MessageBoxIcon.Information;
+                    }
+                    else if (e.Cancelled)
+                    {
+                        msgIcon = MessageBoxIcon.Warning;
+                        cometSearch.ResetCancel();
                     }
                     else
                     {
                         msgIcon = MessageBoxIcon.Error;
                     }
 
-                    msg += runSearchDlg.SearchStatusMessage;
-
+                    msg += CometSearch.SearchStatusMessage;
                 }
             }
             catch (Exception exception)
@@ -111,12 +120,8 @@ namespace CometUI
                 msgIcon = MessageBoxIcon.Error;
             }
 
-            if (!e.Cancelled)
-            {
-                MessageBox.Show(msg, Resources.RunSearchBackgroundWorker_RunSearchBackgroundWorkerRunWorkerCompleted_Run_Search_Completed, MessageBoxButtons.OK, msgIcon);
-            }
+            MessageBox.Show(msg, "Run Search", MessageBoxButtons.OK, msgIcon);
 
-            _runSearchDlg = null;
             _runSearchResetEvent.Set();
         }
     }

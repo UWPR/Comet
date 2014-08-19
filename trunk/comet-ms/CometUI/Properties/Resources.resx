@@ -292,4 +292,7 @@
   <data name="ImportParamsDlg_BtnImportClick_Import_completed_successfully_">
     <value xml:space="preserve">Import completed successfully.</value>
   </data>
+  <data name="ProgressDlg_VerifyCancel_Are_you_sure_you_want_to_cancel_the_operation_">
+    <value xml:space="preserve">Are you sure you want to cancel the operation?</value>
+  </data>
 </root>

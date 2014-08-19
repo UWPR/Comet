@@ -94,6 +94,7 @@
     </Compile>
     <Compile Include="CometParam.cs" />
     <Compile Include="CometParamsIO.cs" />
+    <Compile Include="CometSearch.cs" />
     <Compile Include="CometUI.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -129,6 +130,12 @@
     </Compile>
     <Compile Include="RunSearchDlg.Designer.cs">
       <DependentUpon>RunSearchDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RunSearchProgressDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RunSearchProgressDlg.Designer.cs">
+      <DependentUpon>RunSearchProgressDlg.cs</DependentUpon>
     </Compile>
     <Compile Include="SettingsUI\InputSettingsControl.Designer.cs">
       <DependentUpon>InputSettingsControl.cs</DependentUpon>

@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="ProteomeDatabaseFile" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
+      <Value Profile="(Default)"> </Value>
     </Setting>
     <Setting Name="NucleotideReadingFrame" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1</Value>
