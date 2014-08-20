@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="ProteomeDatabaseFile" Type="System.String" Scope="User">
-      <Value Profile="(Default)"> </Value>
+      <Value Profile="(Default)" />
     </Setting>
     <Setting Name="NucleotideReadingFrame" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1</Value>
@@ -96,7 +96,7 @@
     <Setting Name="OutputFormatPepXML" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
-    <Setting Name="OutputFormatPinXML" Type="System.Boolean" Scope="User">
+    <Setting Name="OutputFormatPercolator" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="OutputFormatOutFiles" Type="System.Boolean" Scope="User">

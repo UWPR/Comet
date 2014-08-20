@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Threading;
 using System.Windows.Forms;
+using CometUI.Properties;
 
 namespace CometUI
 {
@@ -30,7 +31,7 @@ namespace CometUI
             if (!_runSearchBackgroundWorker.IsBusy)
             {
                 _runSearchBackgroundWorker.RunWorkerAsync(CometSearch);
-                _progressDialog.UpdateTitleText("Search Progress");
+                _progressDialog.TitleText = "Search Progress";
                 _progressDialog.UpdateStatusText("Running search...");
                 _progressDialog.Show();
             }
@@ -77,13 +78,7 @@ namespace CometUI
 
         private void RunSearchBackgroundWorkerProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            String statusText = "Running search...";
-            String statusMsg = String.Empty;
-            if (CometSearch.GetStatusMessage(statusMsg))
-            {
-                statusText = statusMsg;
-            }
-            _progressDialog.UpdateStatusText(statusText);
+            _progressDialog.UpdateStatusText("Running search...");
         }
 
         private void RunSearchBackgroundWorkerRunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -120,7 +115,7 @@ namespace CometUI
                 msgIcon = MessageBoxIcon.Error;
             }
 
-            MessageBox.Show(msg, "Run Search", MessageBoxButtons.OK, msgIcon);
+            MessageBox.Show(msg, Resources.RunSearchBackgroundWorker_RunSearchBackgroundWorkerRunWorkerCompleted_Run_Search, MessageBoxButtons.OK, msgIcon);
 
             _runSearchResetEvent.Set();
         }

@@ -363,12 +363,12 @@ namespace CometUI.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool OutputFormatPinXML {
+        public bool OutputFormatPercolator {
             get {
-                return ((bool)(this["OutputFormatPinXML"]));
+                return ((bool)(this["OutputFormatPercolator"]));
             }
             set {
-                this["OutputFormatPinXML"] = value;
+                this["OutputFormatPercolator"] = value;
             }
         }
         

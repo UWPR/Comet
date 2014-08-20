@@ -25,9 +25,9 @@ namespace CometUI.SettingsUI
                 Parent.SettingsChanged = true;
             }
 
-            if (pinXMLCheckBox.Checked != CometUI.SearchSettings.OutputFormatPinXML)
+            if (percolatorCheckBox.Checked != CometUI.SearchSettings.OutputFormatPercolator)
             {
-                CometUI.SearchSettings.OutputFormatPinXML = pinXMLCheckBox.Checked;
+                CometUI.SearchSettings.OutputFormatPercolator = percolatorCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
@@ -92,7 +92,7 @@ namespace CometUI.SettingsUI
         private void InitializeFromDefaultSettings()
         {
             pepXMLCheckBox.Checked = CometUI.SearchSettings.OutputFormatPepXML;
-            pinXMLCheckBox.Checked = CometUI.SearchSettings.OutputFormatPinXML;
+            percolatorCheckBox.Checked = CometUI.SearchSettings.OutputFormatPercolator;
             outFileCheckBox.Checked = CometUI.SearchSettings.OutputFormatOutFiles;
             textCheckBox.Checked = CometUI.SearchSettings.OutputFormatTextFile;
             sqtToStdoutCheckBox.Checked = CometUI.SearchSettings.OutputFormatSqtToStandardOutput;

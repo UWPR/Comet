@@ -86,7 +86,7 @@ namespace CometUI
             return true;
         }
 
-        public bool GetStatusMessage(String statusMsg)
+        public bool GetStatusMessage(ref String statusMsg)
         {
             if (!SearchMgr.GetStatusMessage(ref statusMsg))
             {
@@ -223,10 +223,10 @@ namespace CometUI
                 return false;
             }
 
-            var outputPinXMLFile = CometUI.SearchSettings.OutputFormatPinXML ? 1 : 0;
-            if (!SearchMgr.SetParam("output_pinxmlfile", outputPinXMLFile.ToString(CultureInfo.InvariantCulture), outputPinXMLFile))
+            var outputPercolatorFile = CometUI.SearchSettings.OutputFormatPercolator ? 1 : 0;
+            if (!SearchMgr.SetParam("output_percolatorfile", outputPercolatorFile.ToString(CultureInfo.InvariantCulture), outputPercolatorFile))
             {
-                SearchStatusMessage = "Could not set the output_pinxmlfile parameter.";
+                SearchStatusMessage = "Could not set the output_percolatorfile parameter.";
                 return false;
             }
 

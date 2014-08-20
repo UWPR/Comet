@@ -34,6 +34,7 @@
             this.ProgressBar = new System.Windows.Forms.ProgressBar();
             this.CancelButton = new System.Windows.Forms.Button();
             this.ProgressDlgToolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.progressStatusMessageTimer = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
             // StatusText
@@ -66,6 +67,11 @@
             this.CancelButton.UseVisualStyleBackColor = true;
             this.CancelButton.Click += new System.EventHandler(this.CancelButtonClick);
             // 
+            // progressStatusMessageTimer
+            // 
+            this.progressStatusMessageTimer.Interval = 500;
+            this.progressStatusMessageTimer.Tick += new System.EventHandler(this.ProgressStatusMessageTimerTick);
+            // 
             // ProgressDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -91,6 +97,7 @@
         private System.Windows.Forms.ProgressBar ProgressBar;
         private new System.Windows.Forms.Button CancelButton;
         private System.Windows.Forms.ToolTip ProgressDlgToolTip;
+        private System.Windows.Forms.Timer progressStatusMessageTimer;
 
 
 

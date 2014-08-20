@@ -105,12 +105,12 @@ namespace CometUI
             }
             cometSettings.OutputFormatPepXML = outputPepXMLFile == 1;
 
-            int outputPinXMLFile;
-            if (!GetCometParamValue("output_pinxmlfile", out outputPinXMLFile, out paramValueStr))
+            int outputPercolatorFile;
+            if (!GetCometParamValue("output_percolatorfile", out outputPercolatorFile, out paramValueStr))
             {
                 return false;
             }
-            cometSettings.OutputFormatPinXML = outputPinXMLFile == 1;
+            cometSettings.OutputFormatPercolator = outputPercolatorFile == 1;
 
             int outputTextFile;
             if (!GetCometParamValue("output_txtfile", out outputTextFile, out paramValueStr))
@@ -565,11 +565,11 @@ namespace CometUI
                 return false;
             }
 
-            var outputPinXMLFile = settings.OutputFormatPinXML ? 1 : 0;
-            if (!UpdateCometParam("output_pinxmlfile",
+            var outputPercolatorFile = settings.OutputFormatPercolator ? 1 : 0;
+            if (!UpdateCometParam("output_percolatorfile",
                              new TypedCometParam<int>(CometParamType.Int,
-                                                      outputPinXMLFile.ToString(CultureInfo.InvariantCulture),
-                                                      outputPinXMLFile)))
+                                                      outputPercolatorFile.ToString(CultureInfo.InvariantCulture),
+                                                      outputPercolatorFile)))
             {
                 return false;
             }

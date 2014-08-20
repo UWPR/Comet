@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using CometUI.CustomControls;
 
 namespace CometUI
@@ -18,6 +14,19 @@ namespace CometUI
             InitializeComponent();
 
             CometSearch = cometSearch;
+        }
+
+        protected override void UpdateStatusText()
+        {
+            String newStatusText = "Running search...";
+            String statusMsg = String.Empty;
+            if (CometSearch.GetStatusMessage(ref statusMsg) && !String.IsNullOrEmpty(statusMsg))
+            {
+                newStatusText = statusMsg;
+            }
+
+            StatusMessage = newStatusText;
+            base.UpdateStatusText();
         }
 
         public override void Cancel()

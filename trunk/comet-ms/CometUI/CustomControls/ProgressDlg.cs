@@ -16,11 +16,16 @@ namespace CometUI.CustomControls
             StatusText.Text = String.Empty;
             ProgressBar.Value = 1;
             ProgressBar.Visible = true;
+
+            progressStatusMessageTimer.Start();
         }
 
-        public void AllowCancel(bool allow)
+        protected String StatusMessage { get; set; }
+
+        public String TitleText
         {
-            CancelButton.Enabled = allow;
+            get { return Text; }
+            set { Text = value; }
         }
 
         public void UpdateStatusText(String statusText)
@@ -28,19 +33,25 @@ namespace CometUI.CustomControls
             StatusText.Text = statusText;
         }
 
-        public void UpdateTitleText(String titleText)
+        public void AllowCancel(bool allow)
         {
-            Text = titleText;
-        }
-
-        private void ProgressDlgClosing(object sender, FormClosingEventArgs e)
-        {
-            Cancel();
+            CancelButton.Enabled = allow;
         }
 
         public virtual void Cancel()
         {
             _backgroundWorker.CancelAsync();
+        }
+
+        protected virtual void UpdateStatusText()
+        {
+            StatusText.Text = StatusMessage;
+        }
+
+        private void ProgressDlgClosing(object sender, FormClosingEventArgs e)
+        {
+            progressStatusMessageTimer.Stop();
+            Cancel();
         }
 
         private void CancelButtonClick(object sender, EventArgs e)
@@ -64,6 +75,11 @@ namespace CometUI.CustomControls
         private void StatusTextMouseHover(object sender, EventArgs e)
         {
             ProgressDlgToolTip.Show(StatusText.Text, StatusText);
+        }
+
+        private void ProgressStatusMessageTimerTick(object sender, EventArgs e)
+        {
+            UpdateStatusText();
         }
     }
 }

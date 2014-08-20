@@ -32,7 +32,7 @@
             this.sqtExpectScoreCheckBox = new System.Windows.Forms.CheckBox();
             this.numOutputLinesSpinner = new System.Windows.Forms.NumericUpDown();
             this.outFileCheckBox = new System.Windows.Forms.CheckBox();
-            this.pinXMLCheckBox = new System.Windows.Forms.CheckBox();
+            this.percolatorCheckBox = new System.Windows.Forms.CheckBox();
             this.pepXMLCheckBox = new System.Windows.Forms.CheckBox();
             this.sqtCheckBox = new System.Windows.Forms.CheckBox();
             this.textCheckBox = new System.Windows.Forms.CheckBox();
@@ -88,15 +88,15 @@
             this.outFileCheckBox.UseVisualStyleBackColor = true;
             this.outFileCheckBox.CheckedChanged += new System.EventHandler(this.OutFileCheckBoxCheckedChanged);
             // 
-            // pinXMLCheckBox
+            // percolatorCheckBox
             // 
-            this.pinXMLCheckBox.AutoSize = true;
-            this.pinXMLCheckBox.Location = new System.Drawing.Point(21, 57);
-            this.pinXMLCheckBox.Name = "pinXMLCheckBox";
-            this.pinXMLCheckBox.Size = new System.Drawing.Size(125, 17);
-            this.pinXMLCheckBox.TabIndex = 2;
-            this.pinXMLCheckBox.Text = "Generate pinXML file";
-            this.pinXMLCheckBox.UseVisualStyleBackColor = true;
+            this.percolatorCheckBox.AutoSize = true;
+            this.percolatorCheckBox.Location = new System.Drawing.Point(21, 57);
+            this.percolatorCheckBox.Name = "percolatorCheckBox";
+            this.percolatorCheckBox.Size = new System.Drawing.Size(136, 17);
+            this.percolatorCheckBox.TabIndex = 2;
+            this.percolatorCheckBox.Text = "Generate percolator file";
+            this.percolatorCheckBox.UseVisualStyleBackColor = true;
             // 
             // pepXMLCheckBox
             // 
@@ -167,7 +167,7 @@
             this.groupBox1.Controls.Add(this.sqtToStdoutCheckBox);
             this.groupBox1.Controls.Add(this.outSkipReSearchingCheckBox);
             this.groupBox1.Controls.Add(this.pepXMLCheckBox);
-            this.groupBox1.Controls.Add(this.pinXMLCheckBox);
+            this.groupBox1.Controls.Add(this.percolatorCheckBox);
             this.groupBox1.Controls.Add(this.outShowFragmentIonsCheckBox);
             this.groupBox1.Controls.Add(this.textCheckBox);
             this.groupBox1.Controls.Add(this.outExpectScoreCheckBox);
@@ -235,7 +235,7 @@
         private System.Windows.Forms.CheckBox sqtExpectScoreCheckBox;
         private System.Windows.Forms.NumericUpDown numOutputLinesSpinner;
         private System.Windows.Forms.CheckBox outFileCheckBox;
-        private System.Windows.Forms.CheckBox pinXMLCheckBox;
+        private System.Windows.Forms.CheckBox percolatorCheckBox;
         private System.Windows.Forms.CheckBox pepXMLCheckBox;
         private System.Windows.Forms.CheckBox sqtCheckBox;
         private System.Windows.Forms.CheckBox textCheckBox;
