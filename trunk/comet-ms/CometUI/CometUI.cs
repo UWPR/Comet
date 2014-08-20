@@ -47,7 +47,7 @@ namespace CometUI
             {
                 if (MessageBox.Show(Resources.CometUI_CometUIFormClosing_You_have_modified_the_search_settings__Would_you_like_to_save_the_changes_before_you_exit_, 
                     Resources.CometUI_CometUIFormClosing_Search_Settings_Changed, 
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.OK)
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                 {
                     SearchSettingsDlg.SaveSearchSettings();
                 }

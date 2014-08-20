@@ -298,4 +298,7 @@
   <data name="RunSearchBackgroundWorker_RunSearchBackgroundWorkerRunWorkerCompleted_Run_Search">
     <value xml:space="preserve">Run Search</value>
   </data>
+  <data name="RunSearchProgressDlg_VerifyCancel_Are_you_sure_you_want_to_cancel_search_">
+    <value xml:space="preserve">Are you sure you want to cancel search?</value>
+  </data>
 </root>

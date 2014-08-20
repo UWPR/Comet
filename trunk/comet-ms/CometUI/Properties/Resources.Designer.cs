@@ -437,6 +437,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to cancel search?.
+        /// </summary>
+        internal static string RunSearchProgressDlg_VerifyCancel_Are_you_sure_you_want_to_cancel_search_ {
+            get {
+                return ResourceManager.GetString("RunSearchProgressDlg_VerifyCancel_Are_you_sure_you_want_to_cancel_search_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Could not update all search settings..
         /// </summary>
         internal static string SearchSettingsDlg_BtnOKClick_Could_not_update_all_search_settings_ {

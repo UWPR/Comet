@@ -1,6 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Windows.Forms;
 using CometUI.CustomControls;
+using CometUI.Properties;
 
 namespace CometUI
 {
@@ -14,6 +16,8 @@ namespace CometUI
             InitializeComponent();
 
             CometSearch = cometSearch;
+
+            UseStatusTextTimer = true;
         }
 
         protected override void UpdateStatusText()
@@ -27,6 +31,16 @@ namespace CometUI
 
             StatusMessage = newStatusText;
             base.UpdateStatusText();
+        }
+
+        protected override bool VerifyCancel()
+        {
+            if (DialogResult.Yes == MessageBox.Show(Resources.RunSearchProgressDlg_VerifyCancel_Are_you_sure_you_want_to_cancel_search_, Text, MessageBoxButtons.YesNo, MessageBoxIcon.Information))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         public override void Cancel()
