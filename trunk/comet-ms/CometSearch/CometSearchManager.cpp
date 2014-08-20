@@ -1720,14 +1720,16 @@ bool CometSearchManager::DoSearch()
 
             g_cometStatus.SetStatusMsg(string("Loading and processing input spectra..."));
 
+            // IMPORTANT: From this point onwards, because we've loaded some
+            // spectra, we MUST "goto cleanup_results" befor exiting the loop, 
+            // or we will create a memory leak!
             bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
                 g_staticParams.options.iNumThreads,  // min # threads
                 g_staticParams.options.iNumThreads); // max # threads
-
             if (!bSucceeded)
             {
-               break;
+               goto cleanup_results;
             }
 
 #ifdef PERF_DEBUG
@@ -1774,7 +1776,9 @@ bool CometSearchManager::DoSearch()
                fflush(stdout);
             }
 #endif
-            if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+     
+            bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+            if (!bSucceeded)
             {
                 goto cleanup_results;
             }
@@ -1805,7 +1809,8 @@ bool CometSearchManager::DoSearch()
             }
 #endif
 
-            if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+            bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+            if (!bSucceeded)
             {
                 goto cleanup_results;
             }

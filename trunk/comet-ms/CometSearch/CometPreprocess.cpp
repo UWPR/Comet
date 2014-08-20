@@ -265,7 +265,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    int j;
    struct msdata pTmpSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
-   bool succeeded = true;
 
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
@@ -302,8 +301,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
-      succeeded = false;
-      goto cleanup;
+      return false;
    }
    
    if (g_staticParams.ionInformation.bUseNeutralLoss
@@ -322,8 +320,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
-         succeeded = false;
-         goto cleanup;
+         return false;
       }
    }
 
@@ -419,8 +416,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
-         succeeded = false;
-         goto cleanup;
+         return false;
       }
 
       pScoring->pSparseFastXcorrData[0].bin=0;
@@ -459,8 +455,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
-            succeeded = false;
-            goto cleanup;
+            return false;
          }
 
          pScoring->pSparseFastXcorrDataNL[0].bin=0;
@@ -491,14 +486,12 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    {
       if (!Smooth(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpSmoothedSpectrum))
       {
-         succeeded = false;
-         goto cleanup;
+         return false;
       }
 
       if (!PeakExtract(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpPeakExtracted))
       {
-         succeeded = false;
-         goto cleanup;
+         return false;
       }
    }
 
@@ -531,8 +524,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
-         succeeded = false;
-         goto cleanup;
+         return false;
       }
 
       pScoring->iSpScoreData=0;
@@ -559,8 +551,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
-         succeeded = false;
-         goto cleanup;
+         return false;
       }
 
       // note that pTmpSpData[].dIon values are already BIN'd
@@ -568,44 +559,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          pScoring->pfSpScoreData[(int)(pTmpSpData[i].dIon)] = (float) pTmpSpData[i].dIntensity;
    }
 
-cleanup:
-   if (NULL != pScoring->pfFastXcorrData)
-   {
-       delete[] pScoring->pfFastXcorrData;
-       pScoring->pfFastXcorrData = NULL;
-   }
-
-   if (NULL != pScoring->pfFastXcorrDataNL)
-   {
-       delete [] pScoring->pfFastXcorrDataNL;
-       pScoring->pfFastXcorrDataNL = NULL;
-   }
-   
-   if (NULL != pScoring->pSparseFastXcorrData)
-   {
-       delete[] pScoring->pSparseFastXcorrData;
-       pScoring->pSparseFastXcorrData = NULL;
-   }
-   
-   if (NULL != pScoring->pSparseFastXcorrDataNL)
-   {
-       delete[] pScoring->pSparseFastXcorrDataNL;
-       pScoring->pSparseFastXcorrDataNL = NULL;
-   }
-   
-   if (NULL != pScoring->pSparseSpScoreData)
-   {
-       delete[] pScoring->pSparseSpScoreData;
-       pScoring->pSparseSpScoreData = NULL;
-   }
-   
-   if (NULL != pScoring->pfSpScoreData)
-   {
-       delete[] pScoring->pfSpScoreData;
-       pScoring->pfSpScoreData = NULL;
-   }
-
-   return succeeded;
+   return true;
 }
 
 
