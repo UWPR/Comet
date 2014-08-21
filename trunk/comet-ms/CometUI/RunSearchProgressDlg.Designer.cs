@@ -1,4 +1,6 @@
-﻿namespace CometUI
+﻿using System.Windows.Forms;
+
+namespace CometUI
 {
     partial class RunSearchProgressDlg
     {
@@ -32,5 +34,7 @@
         }
 
         #endregion
+
+        private System.Windows.Forms.Timer progressStatusMessageTimer = new Timer();
     }
 }

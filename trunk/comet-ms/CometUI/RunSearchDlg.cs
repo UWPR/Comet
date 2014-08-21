@@ -18,6 +18,10 @@ namespace CometUI
         {
             InitializeComponent();
 
+            InitializeFromDefaultSettings();
+
+            UpdateButtons(inputFilesList.CheckedItems.Count);
+
             Parent = parent;
         }
 
@@ -105,36 +109,25 @@ namespace CometUI
 
         private void InitializeFromDefaultSettings()
         {
-            var filesList = new List<string>();
-            var inputFilesChecked = new List<bool>();
-            foreach (var item in CometUI.SearchSettings.InputFiles)
+            if (null != CometUI.RunSearchSettings.InputFiles)
             {
-                string[] row = item.Split(',');
-                filesList.Add(row[0]);
-                inputFilesChecked.Add(row[1].Equals("1"));
-            }
+                var filesList = new List<string>();
+                var inputFilesChecked = new List<bool>();
+                foreach (var item in CometUI.RunSearchSettings.InputFiles)
+                {
+                    string[] row = item.Split(',');
+                    filesList.Add(row[0]);
+                    inputFilesChecked.Add(row[1].Equals("1"));
+                }
 
-            InputFiles = filesList.ToArray();
-            for (int i = 0; i < inputFilesList.Items.Count; i++)
-            {
-                inputFilesList.SetItemChecked(i, inputFilesChecked[i]);
+                InputFiles = filesList.ToArray();
+                for (int i = 0; i < inputFilesList.Items.Count; i++)
+                {
+                    inputFilesList.SetItemChecked(i, inputFilesChecked[i]);
+                }
             }
 
             proteomeDbFileCombo.Text = CometUI.SearchSettings.ProteomeDatabaseFile;
-        }
-
-        private void SaveInputFilesToSettings()
-        {
-            var inputFiles = new StringCollection();
-            for (int i=0; i < inputFilesList.Items.Count; i++)
-            {
-                String inputFileInfo = InputFiles[i];
-                inputFileInfo += ",";
-                inputFileInfo += inputFilesList.GetItemChecked(i) ? "1" : "0";
-                inputFiles.Add(inputFileInfo);
-            }
-
-            CometUI.SearchSettings.InputFiles = inputFiles;
         }
 
         private void BtnSettingsClick(object sender, EventArgs e)
@@ -152,7 +145,6 @@ namespace CometUI
 
         private void BtnCancelClick(object sender, EventArgs e)
         {
-            SaveInputFilesToSettings();
             DialogResult = DialogResult.Cancel;
         }
 
@@ -229,13 +221,17 @@ namespace CometUI
                 checkedItemsCount -= 1;
             }
 
+            UpdateButtons(checkedItemsCount);
+        }
+
+        private void UpdateButtons(int checkedItemsCount)
+        {
             btnRemInputFile.Enabled = checkedItemsCount > 0;
             btnRunSearch.Enabled = checkedItemsCount > 0 && File.Exists(proteomeDbFileCombo.Text);
         }
 
         private void BtnRunSearchClick(object sender, EventArgs e)
         {
-            SaveInputFilesToSettings();
             DialogResult = DialogResult.OK;
         }
 
@@ -288,6 +284,28 @@ namespace CometUI
         private void RunSearchDlgLoad(object sender, EventArgs e)
         {
             InitializeFromDefaultSettings();
+            UpdateButtons(inputFilesList.CheckedItems.Count);
         }
+
+        private void RunSearchDlgFormClosing(object sender, FormClosingEventArgs e)
+        {
+            SaveInputFilesToSettings();
+        }
+
+        private void SaveInputFilesToSettings()
+        {
+            var inputFiles = new StringCollection();
+            for (int i = 0; i < inputFilesList.Items.Count; i++)
+            {
+                String inputFileInfo = InputFiles[i];
+                inputFileInfo += ",";
+                inputFileInfo += inputFilesList.GetItemChecked(i) ? "1" : "0";
+                inputFiles.Add(inputFileInfo);
+            }
+
+            CometUI.RunSearchSettings.InputFiles = inputFiles;
+            CometUI.RunSearchSettings.Save();
+        }
+
     }
 }

@@ -15,22 +15,13 @@ namespace CometUI
         {
             InitializeComponent();
 
+            progressStatusMessageTimer.Interval = 10;
+            progressStatusMessageTimer.Tick += ProgressStatusMessageTimerTick;
+            progressStatusMessageTimer.Start();
+
+            FormClosing += RunSearchProgressDlgClosing;
+
             CometSearch = cometSearch;
-
-            UseStatusTextTimer = true;
-        }
-
-        protected override void UpdateStatusText()
-        {
-            String newStatusText = "Running search...";
-            String statusMsg = String.Empty;
-            if (CometSearch.GetStatusMessage(ref statusMsg) && !String.IsNullOrEmpty(statusMsg))
-            {
-                newStatusText = statusMsg;
-            }
-
-            StatusMessage = newStatusText;
-            base.UpdateStatusText();
         }
 
         protected override bool VerifyCancel()
@@ -47,6 +38,28 @@ namespace CometUI
         {
             CometSearch.CancelSearch();
             base.Cancel();
+        }
+
+        private void ProgressStatusMessageTimerTick(object sender, EventArgs e)
+        {
+            UpdateStatusText();
+        }
+
+        private void UpdateStatusText()
+        {
+            String newStatusText = "Running search...";
+            String statusMsg = String.Empty;
+            if (CometSearch.GetStatusMessage(ref statusMsg) && !String.IsNullOrEmpty(statusMsg))
+            {
+                newStatusText = statusMsg;
+            }
+
+            UpdateStatusText(newStatusText);
+        }
+
+        private void RunSearchProgressDlgClosing(object sender, FormClosingEventArgs e)
+        {
+            progressStatusMessageTimer.Stop();
         }
     }
 }

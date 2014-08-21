@@ -8,6 +8,7 @@ namespace CometUI
     public partial class CometUI : Form
     {
         public static SearchSettings SearchSettings { get; set; }
+        public static RunSearchSettings RunSearchSettings { get; set; }
 
         private SearchSettingsDlg _searchSettingsDlg;
         private SearchSettingsDlg SearchSettingsDlg
@@ -20,6 +21,8 @@ namespace CometUI
             InitializeComponent();
 
             SearchSettings = SearchSettings.Default;
+
+            RunSearchSettings = RunSearchSettings.Default;
         }
 
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
