@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -18,8 +19,6 @@ namespace CometUI
             InitializeComponent();
 
             Parent = parent;
-
-            InitializeFromDefaultSettings();
         }
 
         public string[] InputFiles
@@ -124,6 +123,20 @@ namespace CometUI
             proteomeDbFileCombo.Text = CometUI.SearchSettings.ProteomeDatabaseFile;
         }
 
+        private void SaveInputFilesToSettings()
+        {
+            var inputFiles = new StringCollection();
+            for (int i=0; i < inputFilesList.Items.Count; i++)
+            {
+                String inputFileInfo = InputFiles[i];
+                inputFileInfo += ",";
+                inputFileInfo += inputFilesList.GetItemChecked(i) ? "1" : "0";
+                inputFiles.Add(inputFileInfo);
+            }
+
+            CometUI.SearchSettings.InputFiles = inputFiles;
+        }
+
         private void BtnSettingsClick(object sender, EventArgs e)
         {
             OpenSettingsDialog();
@@ -139,6 +152,7 @@ namespace CometUI
 
         private void BtnCancelClick(object sender, EventArgs e)
         {
+            SaveInputFilesToSettings();
             DialogResult = DialogResult.Cancel;
         }
 
@@ -221,6 +235,7 @@ namespace CometUI
 
         private void BtnRunSearchClick(object sender, EventArgs e)
         {
+            SaveInputFilesToSettings();
             DialogResult = DialogResult.OK;
         }
 
@@ -268,6 +283,11 @@ namespace CometUI
         private void ProteomeDbFileComboSelectedIndexChanged(object sender, EventArgs e)
         {
             ProteomeDbFileNameChanged();
+        }
+
+        private void RunSearchDlgLoad(object sender, EventArgs e)
+        {
+            InitializeFromDefaultSettings();
         }
     }
 }

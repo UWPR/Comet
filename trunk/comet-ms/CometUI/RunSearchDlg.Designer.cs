@@ -176,6 +176,7 @@
             this.MaximizeBox = false;
             this.Name = "RunSearchDlg";
             this.Text = "Run Search";
+            this.Load += new System.EventHandler(this.RunSearchDlgLoad);
             this.ResumeLayout(false);
             this.PerformLayout();
 
