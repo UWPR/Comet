@@ -175,6 +175,7 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.Name = "RunSearchDlg";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Run Search";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.RunSearchDlgFormClosing);
             this.Load += new System.EventHandler(this.RunSearchDlgLoad);
