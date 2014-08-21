@@ -43,6 +43,7 @@ namespace CometUI.CustomControls
         {
             if (VerifyCancel())
             {
+                Cancel();
                 Close();
             }
         }
@@ -60,11 +61,6 @@ namespace CometUI.CustomControls
         private void StatusTextMouseHover(object sender, EventArgs e)
         {
             ProgressDlgToolTip.Show(StatusText.Text, StatusText);
-        }
-
-        private void ProgressDlgFormClosing(object sender, FormClosingEventArgs e)
-        {
-            Cancel();
         }
     }
 }

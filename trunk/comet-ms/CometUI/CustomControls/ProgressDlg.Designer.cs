@@ -80,7 +80,6 @@
             this.Name = "ProgressDlg";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Progress";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ProgressDlgFormClosing);
             this.ResumeLayout(false);
 
         }
