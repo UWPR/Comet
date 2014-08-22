@@ -71,7 +71,7 @@ public:
       Threading::UnlockMutex(_statusCheckMutex);
    }
 
-   void SetStatus(CometResult result, std::string &strStatusMsg)
+   void SetStatus(CometResult result, const std::string &strStatusMsg)
    {
       Threading::LockMutex(_statusCheckMutex);
       _cometResult = result;
@@ -86,7 +86,7 @@ public:
       Threading::UnlockMutex(_statusCheckMutex);
    }
 
-   void SetStatusMsg(std::string &strStatusMsg)
+   void SetStatusMsg(const std::string &strStatusMsg)
    {
       Threading::LockMutex(_statusCheckMutex);
       _strStatusMessage = strStatusMsg;
