@@ -865,11 +865,6 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
          * pScoring->_pepMassInfo.dExpPepMass / 1000000.0;
    }
 
-   if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-   {
-      pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
-   }
-
    if (g_staticParams.tolerances.iIsotopeError == 0)
    {
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass

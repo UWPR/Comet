@@ -380,8 +380,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
       if (g_staticParams.variableModParameters.bVarModSearch) 
       {
          CountVarMods(piVarModCounts, szProteinSeq[iEndPos], iEndPos);
-//       CountBinaryModN(piVarModCounts, iStartPos);
-//       CountBinaryModC(piVarModCounts, iEndPos);
       }
    }
 
@@ -639,11 +637,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
       {
          iEndPos++;
 
-/*
-         if (g_staticParams.variableModParameters.bVarModSearch) 
-            CountBinaryModC(&piVarModCounts[0], iEndPos);
-*/
-
          if (iEndPos < _proteinInfo.iProteinSeqLength)
          {
             dCalcPepMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iEndPos]];
@@ -685,9 +678,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
          if (iStartPos == 0)
             dCalcPepMass -= g_staticParams.staticModifications.dAddNterminusProtein;
          iStartPos++;          // Increment start of peptide.
-
-//       if (g_staticParams.variableModParameters.bVarModSearch) 
-//          CountBinaryModN(piVarModCounts, iStartPos);
 
          // Peptide is still potentially larger than input mass so need to delete AA from the end.
          while (dCalcPepMass >= g_massRange.dMinMass && iEndPos > iStartPos)
@@ -840,7 +830,6 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
                                  double dCalcPepMass)
 {
    Query* pQuery = g_pvQuery.at(iWhichQuery);
-
 
    if ((dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus)
          && (dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus))
@@ -1617,6 +1606,8 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
       {
+         // if there's no distance contraint and an n- or c-term mod is specified
+         // then return true because every peptide will have an n- or c-term
          if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
          {
             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
@@ -1626,32 +1617,39 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
                return true;
             }
          }
-         if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)
+         else
          {
-            // a distance contraint limiting terminal mod to n-terminus
-            if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
-                  && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+            // if n-term distance constraint is specified, make sure first residue for n-term
+            // mod or last residue for c-term mod are within distance constraint
+            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)
             {
-               return true;
+               // a distance contraint limiting terminal mod to n-terminus
+               if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
+                     && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+               {
+                  return true;
+               }
+               if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
+                     && iEndPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+               {
+                  return true;
+               }
             }
-            if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
-                  && iEndPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+            // if c-cterm distance constraint specified, must make sure terminal mods are
+            // at the end within the distance constraint
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)
             {
-               return true;
-            }
-         }
-         if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)
-         {
-            // a distance contraint limiting terminal mod to c-terminus
-            if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
-                  && iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
-            {
-               return true;
-            }
-            if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
-                  && iEndPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
-            {
-               return true;
+               // a distance contraint limiting terminal mod to c-terminus
+               if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
+                     && iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+               {
+                  return true;
+               }
+               if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
+                     && iEndPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+               {
+                  return true;
+               }
             }
          }
       }

@@ -88,10 +88,6 @@ private:
    void CountVarMods(int *piVarModCounts,
                      int cResidue,
                      int iResiduePosition);
-   void CountBinaryModN(int *piVarModCounts,
-                         int iStartPos);
-   void CountBinaryModC(int *piVarModCounts,
-                         int iEndPos);
    bool HasVariableMod(int varModCounts[],
                        int iCVarModCount,
                        int iNVarModCount);

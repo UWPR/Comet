@@ -596,13 +596,6 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%lf", dDoubleParam);
             pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, dDoubleParam);
          }
-         else if (!strcmp(szParamName, "precursor_tolerance_type"))
-         {
-            sscanf(szParamVal, "%d", &iIntParam);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%d", iIntParam);
-            pSearchMgr->SetParam("precursor_tolerance_type", szParamStringVal, iIntParam);
-         }
          else if (!strcmp(szParamName, "peptide_mass_units"))
          {
             sscanf(szParamVal, "%d", &iIntParam);
@@ -1355,7 +1348,6 @@ peptide_mass_tolerance = 3.00\n\
 peptide_mass_units = 0                 # 0=amu, 1=mmu, 2=ppm\n\
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\
-precursor_tolerance_type = 0           # 0=MH+ (default), 1=precursor m/z\n\
 isotope_error = 0                      # 0=off, 1=on -1/0/1/2/3 (standard C13 error), 2= -8/-4/0/4/8 (for +4/+8 labeling)\n\
 \n\
 #\n\
