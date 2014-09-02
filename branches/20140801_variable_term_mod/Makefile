@@ -8,6 +8,9 @@ DEPS = CometSearch/CometData.h CometSearch/CometPreprocess.h CometSearch/CometWr
 
 LIBPATHS = -L$(MSTOOLKIT) -L$(COMETSEARCH)
 LIBS = -lcometsearch -lmstoolkitlite -lm -lpthread
+ifdef MSYSTEM
+   LIBS += -lws2_32
+endif
 
 comet.exe: $(OBJS)
 	cd MSToolkit ; make ; cd ../CometSearch; make
