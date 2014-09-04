@@ -124,10 +124,9 @@ public:
          return ThreadPool<T>::Die;
       }
 
-      // Has there been an error? If so, we need to kill the thread.
-      bool bError = false;
-      g_cometStatus.GetError(bError);
-      if (bError)
+      // Has there been an error, or has search been cancelled? 
+      // If so, we need to kill the thread.
+      if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
       {
          _numCurrThreads--;
          Threading::UnlockMutex(_poolAccessMutex);

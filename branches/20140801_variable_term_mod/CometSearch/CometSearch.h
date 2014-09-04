@@ -23,6 +23,8 @@
 struct SearchThreadData
 {
    sDBEntry dbEntry;
+   bool *pbSearchMemoryPool;
+
 
    SearchThreadData()
    {
@@ -33,6 +35,19 @@ struct SearchThreadData
       dbEntry.strName = dbEntry_in.strName;
       dbEntry.strSeq = dbEntry_in.strSeq;
    }
+
+   ~SearchThreadData()
+   {
+      // Mark that the memory is no longer in use. 
+      // DO NOT FREE MEMORY HERE. Just release pointer.
+      Threading::LockMutex(g_searchMemoryPoolMutex);
+
+      if(pbSearchMemoryPool!=NULL)
+         *pbSearchMemoryPool=false;
+      pbSearchMemoryPool=NULL;
+
+      Threading::UnlockMutex(g_searchMemoryPoolMutex);
+   }
 };
 
 class CometSearch
@@ -41,47 +56,20 @@ public:
    CometSearch();
    ~CometSearch();
 
+   // Manages memory in the search memory pool
+   static bool AllocateMemory(int maxNumThreads);
+   static bool DeallocateMemory(int maxNumThreads);
+
    static bool RunSearch(int minNumThreads, int maxNumThreads);
    static void SearchThreadProc(SearchThreadData *pSearchThreadData);
-   bool DoSearch(sDBEntry dbe);
+   bool DoSearch(sDBEntry dbe, bool *pbDuplFragment);
     
 private:
     
-   // Initializations and preprocessing in prepraration for search
-   bool Initialize(Spectrum *pSpectrum);
-   void AdjustMassTolerances();
-   void CalcMatchedPeaksMasses();
-
-   void PrintSearchParams();
-
-   // qsort functions - they need to be static
-   static int QsortMatchedPeaksCompare(const void *p0, const void *p1);
-   static int QsortByIon(const void *p0, const void *p1);
-   static int QsortSpScore(const void *p0, const void *p1);
-   static int QsortCorr(const void *p0, const void *p1);
-    
-
    // Core search functions
-   void IndexSearchRec(int var,
-                       double winA,
-                       double winB);
-   void IndexSearch(double winA,
-                    double winB);
-   void ReadPeptideIndex(int winA,
-                         int winB,
-                         sDBTable &First,
-                         sDBTable &Last);
-   void SearchInBuffer(int bufSize, FILE *fptr);
-   bool CheckEnzymeSpecific(char *szProteinSeq,
-                            int iStartPos,
-                            int iEndPos);
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
-   void SearchForPeptides_MH(char *szProteinSeq, 
-                             char *szProteinName, 
-                             int iStartPos, 
-                             int iEndPos); 
    void SubtractVarMods(int *piVarModCounts,
                         int cResidue,
                         int iResiduePosition);
@@ -110,8 +98,6 @@ private:
                            int iEndPos);
    bool CheckMassMatch(int iWhichQuery,
                        double dCalcPepMass);
-   bool CheckMatchedPeaks(int iTmpCharge,
-                          int iLenPeptide);
    double GetFragmentIonMass(int iWhichIonSeries,
                              int i,
                              int ctCharge,
@@ -135,34 +121,27 @@ private:
                      char *szProteinName,
                      bool bStoreSeparateDecoy,
                      char *pcVarModSites);
-   void StoreDecoyPeptide(int iWhichQuery,
-                          int iStartPos,
-                          int iEndPos,
-                          bool bFoundVariableMod,
-                          int iMatchedFragmentIonCt,
-                          char *szProteinSeq,
-                          double dCalcPepMass,
-                          double dScoreSp,
-                          char *szProteinName);
    bool VarModSearch(char *szProteinSeq,
                      char *szProteinName,
                      int varModCounts[],
                      int iStartPos,
-                     int iEndPos);
+                     int iEndPos,
+                     bool *pbDuplFragment);
    double TotalVarModMass(int *pVarModCounts);
    bool PermuteMods(char *szProteinSeq, 
                  int iWhichQuery,
                  int iPepLenPlus2,
-                 int iWhichMod);
+                 int iWhichMod,
+                 bool *pbDuplFragments);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool CalcVarModIons(char *szProteinSeq,
-                       int iWhichQuery);
-   void ResetIndexTable();
-   void FullDBSearch();
+                       int iWhichQuery,
+                       bool *pbDuplFragments);
    bool SearchForPeptides(char *szProteinSeq,
                           char *szProteinName,
-                          bool bNtermPeptideOnly);
+                          bool bNtermPeptideOnly,
+                          bool *pbDuplFragment);
    bool TranslateNA2AA(int *frame,
                        int iDirection,
                        char *sDNASequence);
@@ -171,8 +150,6 @@ private:
               char *sDNASequence);
 
    // Processing results
-   void SortResults(struct Results *_pResults,
-                    bool bDecoy);
    void CalculateEvalue(struct Results *_pResults);
    void GenerateXcorrDecoys(struct Results *_pResults,
                             bool bDecoy);
@@ -247,7 +224,6 @@ private:
       double   dTotalIntensity;         
    };
 
-   char               *_pszSearchedWin;
    double             _pdAAforward[MAX_PEPTIDE_LEN];      // Stores fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAreverse[MAX_PEPTIDE_LEN];      // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAforwardDecoy[MAX_PEPTIDE_LEN]; // Stores fragment ion fragment ladder calc.; sum AA masses including mods
@@ -255,10 +231,12 @@ private:
    int                _iSizepcVarModSites;
    VarModInfo         _varModInfo;
    ProteinInfo        _proteinInfo;       
-   MatchedPeaksStruct *_pMatchedPeaks;
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
+
+   static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
+   static bool **_ppbDuplFragmentArr;      // Number of arrays equals number of threads
 };
 
 #endif // _COMETSEARCH_H_

@@ -49,11 +49,9 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
       PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
       pPostAnalysisThreadPool->Launch(pThreadData);
 
-      bool bError = false;
-      g_cometStatus.GetError(bError);
-      if (bError)
+      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+      if (!bSucceeded)
       {
-         bSucceeded = false;
          break;
       }
    }
@@ -68,12 +66,7 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
    // while we were waiting for the threads.
    if (bSucceeded)
    {
-      bool bError = false;
-      g_cometStatus.GetError(bError);
-      if (bError)
-      {
-         bSucceeded = false;
-      }
+      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
    }
 
    return bSucceeded;
@@ -697,7 +690,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                            ctCharge);
                   
                      string strErrorMsg(szErrorMsg);
-                     g_cometStatus.SetError(true, strErrorMsg);      
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                      logerr("\n Comet version \"%s\"\n\n", comet_version);
                      logerr("%s\n\n", szErrorMsg);
                      return false;
@@ -721,7 +714,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                            ctCharge);
                   
                      string strErrorMsg(szErrorMsg);
-                     g_cometStatus.SetError(true, strErrorMsg);      
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                      logerr("\n Comet version \"%s\"\n\n", comet_version);
                      logerr("%s\n\n", szErrorMsg);
                      return false;

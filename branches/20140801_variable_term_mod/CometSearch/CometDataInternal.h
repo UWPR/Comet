@@ -483,7 +483,7 @@ struct StaticParams
       variableModParameters.cModCode[5] = '$';
       variableModParameters.cModCode[6] = '%';
       variableModParameters.cModCode[7] = '!';
-      variableModParameters.cModCode[8] = '%';
+      variableModParameters.cModCode[8] = '+';
       variableModParameters.cModCode[9] = '&';
 
       variableModParameters.iMaxVarModPerPeptide = 10;
@@ -666,7 +666,11 @@ struct Query
 
       pSparseSpScoreData = NULL;
       pSparseFastXcorrData = NULL;
-      pSparseFastXcorrDataNL= NULL;           // pfFastXcorrData with NH3, H2O contributions
+      pSparseFastXcorrDataNL= NULL;          // pfFastXcorrData with NH3, H2O contributions
+
+      pfSpScoreData = NULL;
+      pfFastXcorrData = NULL;
+      pfFastXcorrDataNL = NULL;              // pfFastXcorrData with NH3, H2O contributions
 
       _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;
@@ -740,6 +744,7 @@ extern vector <Query*>         g_pvQuery;
 extern vector <InputFileInfo*> g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
+extern Mutex                   g_searchMemoryPoolMutex;
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {

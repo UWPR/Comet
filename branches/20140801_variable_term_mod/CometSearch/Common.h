@@ -24,12 +24,14 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <errno.h>
+#define STRCMP_IGNORE_CASE(a,b) _strcmpi(a,b)
 #else
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <pthread.h>
+#define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
 #endif
 
 using namespace std;
@@ -43,7 +45,7 @@ using namespace std;
 #include <iostream>
 #endif
 
-#define comet_version   "alpha2014.02 rev. 0"
+#define comet_version   "2014.02 rev. 0beta"
 #define copyright "(c) University of Washington"
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is

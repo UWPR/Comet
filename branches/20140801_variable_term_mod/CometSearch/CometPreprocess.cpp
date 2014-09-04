@@ -200,9 +200,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    delete pPreprocessThreadPool;
    pPreprocessThreadPool = NULL;
 
-   bool bError = false;
-   g_cometStatus.GetError(bError);
-   bool bSucceeded = !bError;
+   bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
    
    return bSucceeded;
 }
@@ -301,7 +299,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       char szErrorMsg[256];
       sprintf(szErrorMsg,  " Error - new(pfFastXcorrData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetError(true, strErrorMsg);      
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
       return false;
    }
@@ -320,7 +318,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pfFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -416,7 +414,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrData[%d]). bad_alloc: %s.", pScoring->iFastXcorrData, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -455,7 +453,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             char szErrorMsg[256];
             sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
             string strErrorMsg(szErrorMsg);
-            g_cometStatus.SetError(true, strErrorMsg);      
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
             return false;
          }
@@ -524,7 +522,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pScoring->pSparseSpScoreData[%d]). bad_alloc: %s.", pScoring->iSpScoreData, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -551,7 +549,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -627,11 +625,14 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
                                 int iReaderLastScan,
                                 int iNumSpectraLoaded)
 {
-   bool bError = false;
-   g_cometStatus.GetError(bError);
-   if (bError)
+   if (g_cometStatus.IsError())
    {
       return true;
+   }
+
+   if (g_cometStatus.IsCancel())
+   {
+       return true;
    }
 
    if (iAnalysisType == AnalysisType_SpecificScan)
@@ -894,7 +895,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       char szErrorMsg[256];
       sprintf(szErrorMsg,  " Error - iIsotopeError=%d",  g_staticParams.tolerances.iIsotopeError);
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetError(true, strErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr("%s\n\n", szErrorMsg);
       return false;
    }
@@ -1286,7 +1287,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pdTmpRawData[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -1305,7 +1306,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pdTmpFastXcorrData[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -1324,7 +1325,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pdTmpCorrelationData[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -1343,7 +1344,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pdTmpSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -1362,7 +1363,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(pdTmpSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }

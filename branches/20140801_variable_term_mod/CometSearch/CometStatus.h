@@ -20,13 +20,20 @@
 #include "Common.h"
 #include "Threading.h"
 
+enum CometResult 
+{
+    CometResult_Succeeded = 0,
+    CometResult_Failed,
+    CometResult_Cancelled
+};
+
 class CometStatus
 {
 public:
    CometStatus()
    {
-      _bError = false;
-      _strErrorMessage = "";
+       _cometResult = CometResult_Succeeded;
+      _strStatusMessage = "";
 
       Threading::CreateMutex(&_statusCheckMutex);
    }
@@ -36,45 +43,87 @@ public:
       Threading::DestroyMutex(_statusCheckMutex);
    }
 
-   void GetError(bool &bError)
+   CometResult GetStatus()
+   {
+      CometResult result;
+      Threading::LockMutex(_statusCheckMutex);
+      result = _cometResult;
+      Threading::UnlockMutex(_statusCheckMutex);
+
+      return result;
+   }
+
+   CometResult GetStatus(std::string& strStatusMsg)
+   {
+      CometResult result;
+      Threading::LockMutex(_statusCheckMutex);
+      result = _cometResult;
+      strStatusMsg = _strStatusMessage;
+      Threading::UnlockMutex(_statusCheckMutex);
+
+      return result;
+   }
+
+   void SetStatus(CometResult result)
    {
       Threading::LockMutex(_statusCheckMutex);
-      bError = _bError;
+      _cometResult = result;
       Threading::UnlockMutex(_statusCheckMutex);
    }
 
-   void SetError(bool bError)
+   void SetStatus(CometResult result, const std::string &strStatusMsg)
    {
       Threading::LockMutex(_statusCheckMutex);
-      _bError = bError;
+      _cometResult = result;
+      _strStatusMessage = strStatusMsg;
       Threading::UnlockMutex(_statusCheckMutex);
    }
 
-   void SetError(bool bError, std::string& strErrorMsg)
+   void GetStatusMsg(std::string& strStatusMsg)
    {
       Threading::LockMutex(_statusCheckMutex);
-      _bError = bError;
-      _strErrorMessage = strErrorMsg;
+      strStatusMsg = _strStatusMessage;
       Threading::UnlockMutex(_statusCheckMutex);
    }
 
-   void GetErrorMsg(std::string& strErrorMsg)
+   void SetStatusMsg(const std::string &strStatusMsg)
    {
       Threading::LockMutex(_statusCheckMutex);
-      strErrorMsg = _strErrorMessage;
+      _strStatusMessage = strStatusMsg;
       Threading::UnlockMutex(_statusCheckMutex);
    }
 
-   void SetErrorMsg(std::string &strErrorMsg)
+   void ResetStatus()
    {
       Threading::LockMutex(_statusCheckMutex);
-      _strErrorMessage = strErrorMsg;
+      _cometResult = CometResult_Succeeded;
+      _strStatusMessage = "";
       Threading::UnlockMutex(_statusCheckMutex);
+   }
+
+   bool IsError()
+   {
+      bool bError;
+      Threading::LockMutex(_statusCheckMutex);
+      bError = _cometResult == CometResult_Failed;
+      Threading::UnlockMutex(_statusCheckMutex);
+
+      return bError;
+   }
+
+   bool IsCancel()
+   {
+      bool bCancelled;
+      Threading::LockMutex(_statusCheckMutex);
+      bCancelled = _cometResult == CometResult_Cancelled;
+      Threading::UnlockMutex(_statusCheckMutex);
+
+      return bCancelled;
    }
 
 private:
-   bool _bError;
-   std::string _strErrorMessage;
+   CometResult _cometResult;
+   std::string _strStatusMessage;
    Mutex _statusCheckMutex;
 };
 

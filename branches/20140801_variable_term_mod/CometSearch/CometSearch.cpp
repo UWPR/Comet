@@ -19,6 +19,8 @@
 #include "ThreadPool.h"
 #include "CometStatus.h"
 
+bool *CometSearch::_pbSearchMemoryPool;
+bool **CometSearch::_ppbDuplFragmentArr;
 
 CometSearch::CometSearch()
 {
@@ -32,6 +34,60 @@ CometSearch::CometSearch()
 
 CometSearch::~CometSearch()
 {
+}
+
+
+bool CometSearch::AllocateMemory(int maxNumThreads)
+{
+   int i;
+
+   // Must be equal to largest possible array
+   int iArraySize = (int)((g_staticParams.options.dHighPeptideMass + 100.0) * g_staticParams.dInverseBinWidth);
+
+   // Initally mark all arrays as available (i.e. false == not in use)
+   _pbSearchMemoryPool = new bool[maxNumThreads];
+   for (i=0; i < maxNumThreads; i++)
+   {
+      _pbSearchMemoryPool[i] = false;
+   }
+
+   // Allocate array
+   _ppbDuplFragmentArr = new bool*[maxNumThreads];
+   for (i=0; i < maxNumThreads; i++)
+   {
+      try
+      {
+         _ppbDuplFragmentArr[i] = new bool[iArraySize];
+      }
+      catch (std::bad_alloc& ba)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr("%s\n\n", szErrorMsg);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+
+bool CometSearch::DeallocateMemory(int maxNumThreads)
+{
+   int i;
+
+   delete [] _pbSearchMemoryPool;
+
+   for (i=0; i<maxNumThreads; i++)
+   {
+      delete [] _ppbDuplFragmentArr[i];
+   }
+
+   delete [] _ppbDuplFragmentArr;
+
+   return true;
 }
 
 
@@ -59,7 +115,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       char szErrorMsg[256];
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".", g_staticParams.databaseInfo.szDatabase); 
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetError(true, strErrorMsg);      
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
       return false;
    }
@@ -91,7 +147,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       {
          string strError = " Error - database file, expecting definition line here.";
          string strFormatError = strError + "\n";
-         g_cometStatus.SetError(true, strError);
+         g_cometStatus.SetStatus(CometResult_Failed, strError);
          logerr(strFormatError.c_str());
          fgets(szBuf, SIZE_BUF, fptr);
          logerr(" %c%s", iTmpCh, szBuf);
@@ -140,11 +196,9 @@ bool CometSearch::RunSearch(int minNumThreads,
       SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
       pSearchThreadPool->Launch(pSearchThreadData);
 
-      bool bError = false;
-      g_cometStatus.GetError(bError);
-      if (bError)
+      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+      if (!bSucceeded)
       {
-         bSucceeded = false;
          break;
       }
    }
@@ -159,12 +213,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    // while we were waiting for the threads.
    if (bSucceeded)
    {
-      bool bError = false;
-      g_cometStatus.GetError(bError);
-      if (bError)
-      {
-         bSucceeded = false;
-      }
+      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
    }
 
    fclose(fptr);
@@ -181,24 +230,51 @@ bool CometSearch::RunSearch(int minNumThreads,
 
 void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData)
 {
-   CometSearch sqSearch; 
-   // DoSearch now returns true/false, but we already log errors and set
+   // Grab available array from shared memory pool.
+   int i;
+   Threading::LockMutex(g_searchMemoryPoolMutex);
+   for (i=0; i < g_staticParams.options.iNumThreads; i++)
+   {
+      if (!_pbSearchMemoryPool[i])
+      {
+         _pbSearchMemoryPool[i] = true;
+         break;
+      }
+   }
+   Threading::UnlockMutex(g_searchMemoryPoolMutex);
+
+   // Fail-safe to stop if memory isn't available for the next thread.
+   // Needs better capture and return?
+   if (i == g_staticParams.options.iNumThreads)
+   {
+      printf("Error with memory pool.\n");
+      exit(1);
+   }
+
+   // Give memory manager access to the thread.
+   pSearchThreadData->pbSearchMemoryPool = &_pbSearchMemoryPool[i];
+
+   CometSearch sqSearch;
+   // DoSearch now returs true/false, but we already log errors and set
    // the global error variable before we get here, so no need to check
    // the return value here.
-   sqSearch.DoSearch(pSearchThreadData->dbEntry);
+   sqSearch.DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
    delete pSearchThreadData;
    pSearchThreadData = NULL;
 }
 
 
-bool CometSearch::DoSearch(sDBEntry dbe)
+bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 {
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
       _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
 
-      if (!SearchForPeptides((char *)dbe.strSeq.c_str(), (char *)dbe.strName.c_str(), 0))
+      if (!SearchForPeptides((char *)dbe.strSeq.c_str(),
+                             (char *)dbe.strName.c_str(),
+                             0,
+                             pbDuplFragment))
       {
          return false;
       }
@@ -207,7 +283,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
       {
          _proteinInfo.iProteinSeqLength -= 1;
 
-         if (!SearchForPeptides((char *)dbe.strSeq.c_str()+1, (char *)dbe.strName.c_str(), 1))
+         if (!SearchForPeptides((char *)dbe.strSeq.c_str()+1,
+                                (char *)dbe.strName.c_str(),
+                                1,
+                                pbDuplFragment))
          {
             return false;
          }
@@ -232,7 +311,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
             return false;
          }
 
-         if (!SearchForPeptides(_proteinInfo.pszProteinSeq, (char *)dbe.strName.c_str(), 0))
+         if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
+                                (char *)dbe.strName.c_str(),
+                                0,
+                                pbDuplFragment))
          {
             return false;
          }
@@ -248,7 +330,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
                return false;
             }
 
-            if (!SearchForPeptides(_proteinInfo.pszProteinSeq, (char *)dbe.strName.c_str(), 0))
+            if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
+                                   (char *)dbe.strName.c_str(),
+                                   0,
+                                   pbDuplFragment))
             {
                return false;
             }
@@ -275,7 +360,7 @@ bool CometSearch::DoSearch(sDBEntry dbe)
             char szErrorMsg[256];
             sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.", seqSize, ba.what());
             string strErrorMsg(szErrorMsg);
-            g_cometStatus.SetError(true, strErrorMsg);      
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
             return false;
          }
@@ -314,7 +399,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
                   return false;
                }
 
-               if (!SearchForPeptides(_proteinInfo.pszProteinSeq, (char *)dbe.strName.c_str(), 0))
+               if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
+                                      (char *)dbe.strName.c_str(),
+                                      0,
+                                      pbDuplFragment))
                {
                   return false;
                }
@@ -339,7 +427,10 @@ bool CometSearch::DoSearch(sDBEntry dbe)
                return false;
             }
 
-            if (!SearchForPeptides(_proteinInfo.pszProteinSeq, (char *)dbe.strName.c_str(), 0))
+            if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
+                                   (char *)dbe.strName.c_str(),
+                                   0,
+                                   pbDuplFragment))
             {
                return false;
             }
@@ -357,7 +448,8 @@ bool CometSearch::DoSearch(sDBEntry dbe)
 // Compare MSMS data to peptide with szProteinSeq from the input database.
 bool CometSearch::SearchForPeptides(char *szProteinSeq,
                                     char *szProteinName,
-                                    bool bNtermPeptideOnly)
+                                    bool bNtermPeptideOnly,
+                                    bool *pbDuplFragment)
 {
    int iLenPeptide = 0;
    int iStartPos = 0; 
@@ -420,7 +512,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                   // Calculate ion series just once to compare against all relevant query spectra.
                   if (bFirstTimeThroughLoopForPeptide)
                   {
-                     bool *pbDuplFragment;
                      int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
 
                      bFirstTimeThroughLoopForPeptide = false;
@@ -447,20 +538,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                      }
 
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                     try
-                     {
-                        pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
-                     }
-                     catch (std::bad_alloc& ba)
-                     {
-                        char szErrorMsg[256];
-                        sprintf(szErrorMsg, " Error - new pbDuplFragments; iWhichQuery = %d. bad_alloc: %s.", iWhichQuery, ba.what());
-                        string strErrorMsg(szErrorMsg);
-                        g_cometStatus.SetError(true, strErrorMsg);      
-                        logerr("%s\n\n", szErrorMsg);
-                        return false;
-                     }
-
                      for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                      {
                         for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -601,9 +678,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                            }
                         }
                      }
-
-                     delete[] pbDuplFragment;
-                     pbDuplFragment = NULL;
                   }
 
                   char pcVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
@@ -620,9 +694,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                }
                else
                {
-                  bool bError = false;
-                  g_cometStatus.GetError(bError);
-                  if (bError)
+                  if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
                   {
                      return false;
                   }
@@ -662,7 +734,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
 
             if (HasVariableMod(piVarModCounts, iStartPos, iEndPos))
             {
-               if (!VarModSearch(szProteinSeq, szProteinName, piVarModCounts, iStartPos, iEndPos))
+               if (!VarModSearch(szProteinSeq, szProteinName, piVarModCounts, iStartPos, iEndPos, pbDuplFragment))
                {
                   return false;
                }
@@ -882,7 +954,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          char szErrorMsg[256];
          sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!", g_staticParams.tolerances.iIsotopeError);
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
@@ -921,7 +993,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
  the sequence into multiple, overlapping, smaller entries.", ii); 
                   
                string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetError(true, strErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr("%s\n\n", szErrorMsg);
                return false;
             }
@@ -956,7 +1028,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
  the sequence into multiple, overlapping, smaller entries.", ii); 
                   
                string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetError(true, strErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr("%s\n\n", szErrorMsg);
                return false;
             }
@@ -1663,7 +1735,8 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                char *szProteinName,
                                int piVarModCounts[],
                                int iStartPos,
-                               int iEndPos)
+                               int iEndPos,
+                               bool *pbDuplFragment)
 {
    int i,
        i1,
@@ -1965,7 +2038,7 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                              _varModInfo.dCalcPepMass = dCalcPepMass;
 
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-                                             if (!PermuteMods(szProteinSeq, iWhichQuery, iTmpEnd-iStartPos+3 , 1))
+                                             if (!PermuteMods(szProteinSeq, iWhichQuery, iTmpEnd-iStartPos+3 , 1, pbDuplFragment))
                                              {
                                                 return false;
                                              }
@@ -2011,7 +2084,8 @@ double CometSearch::TotalVarModMass(int *pVarModCounts)
 bool CometSearch::PermuteMods(char *szProteinSeq,
                               int iWhichQuery,
                               int iLen2,
-                              int iWhichMod)
+                              int iWhichMod,
+                              bool *pbDuplFragment)
 {
    int iModIndex;
 
@@ -2049,7 +2123,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - in CometSearch::PermuteMods, iWhichIndex=%d (valid range 1 to 9)", iWhichMod);
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetError(true, strErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr("%s\n\n", szErrorMsg);
          return false;
    }
@@ -2082,12 +2156,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
       if (iWhichMod == 10)  //FIX was '== 9' but I think this should be 10 here
       {
-         if (!CalcVarModIons(szProteinSeq, iWhichQuery))
+         if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1, pbDuplFragment))
             return false;
       }
 
@@ -2101,12 +2175,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
          if (iWhichMod == 9)
          {
-            if (!CalcVarModIons(szProteinSeq, iWhichQuery))
+            if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
                return false;
          }
          else
          {
-            if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1))
+            if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1, pbDuplFragment))
                return false;
          }
       }
@@ -2115,12 +2189,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
    {
       if (iWhichMod == 9)
       {
-         if (!CalcVarModIons(szProteinSeq, iWhichQuery))
+         if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1, pbDuplFragment))
             return false;
       }
    }
@@ -2254,7 +2328,8 @@ void CometSearch::inittwiddle(int m, int n, int *p)
 
 
 bool CometSearch::CalcVarModIons(char *szProteinSeq,
-                                 int iWhichQuery)
+                                 int iWhichQuery,
+                                 bool *pbDuplFragment)
 {
    int iLenPeptide = 0;
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];
@@ -2291,8 +2366,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
          // Calculate ion series just once to compare against all relevant query spectra
          if (bFirstTimeThroughLoopForPeptide)
          {
-            bool *pbDuplFragment;
-
             bFirstTimeThroughLoopForPeptide = false;
 
             int i;
@@ -2396,19 +2469,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
 
             // now get the set of binned fragment ions once for all matching peptides
-            try
-            {
-               pbDuplFragment = new bool[g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize];
-            }
-            catch (std::bad_alloc& ba)
-            {
-               char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - new pbDuplFragments; iWhichQuery = %d. bad_alloc: %s.", iWhichQuery, ba.what());
-               string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetError(true, strErrorMsg);
-               logerr("%s\n\n", szErrorMsg);
-               return false;
-            }
 
             // initialize pbDuplFragment here
             for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
@@ -2422,7 +2482,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
             }
 
-            // set pbDuplFragment[bin] to true for reach fragment ion bin
+            // set pbDuplFragment[bin] to true for each fragment ion bin
             for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
             {
                for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -2587,6 +2647,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
 
                // now get the set of binned fragment ions once for all matching decoy peptides
+
+               // initialize pbDuplFragment here
                for (ctCharge = 1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                {
                   for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -2623,9 +2685,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   }
                }
             }
-
-            delete[] pbDuplFragment;
-            pbDuplFragment = NULL;
          }
 
          XcorrScore(szProteinSeq, _proteinInfo.szProteinName, _varModInfo.iStartPos, _varModInfo.iEndPos, true,
@@ -2640,9 +2699,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
       }
       else
       {
-         bool bError = false;
-         g_cometStatus.GetError(bError);
-         if (bError)
+         if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
          {
             return false;
          }
