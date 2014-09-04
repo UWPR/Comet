@@ -2038,7 +2038,7 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                              _varModInfo.dCalcPepMass = dCalcPepMass;
 
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-                                             if (!PermuteMods(szProteinSeq, iWhichQuery, iTmpEnd-iStartPos+3 , 1, pbDuplFragment))
+                                             if (!PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment))
                                              {
                                                 return false;
                                              }
@@ -2083,7 +2083,6 @@ double CometSearch::TotalVarModMass(int *pVarModCounts)
 
 bool CometSearch::PermuteMods(char *szProteinSeq,
                               int iWhichQuery,
-                              int iLen2,
                               int iWhichMod,
                               bool *pbDuplFragment)
 {
@@ -2119,7 +2118,6 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          iModIndex = VMOD_9_INDEX;
          break;
       default:
-// FIX ... I have no clue how this behaves ... when does the error message get caught??
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - in CometSearch::PermuteMods, iWhichIndex=%d (valid range 1 to 9)", iWhichMod);
          string strErrorMsg(szErrorMsg);
@@ -2128,11 +2126,10 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          return false;
    }
 
-//FIX add logic to not iterate through last two position if no variable terminal mods are specified
    if (_varModInfo.varModStatList[iModIndex].iMatchVarModCt > 0)
    {
-      int b[iLen2];
-      int p[iLen2 + 2];  // p array needs to be 2 larger than b
+      int b[MAX_PEPTIDE_LEN_P2];
+      int p[MAX_PEPTIDE_LEN_P2 + 2];  // p array needs to be 2 larger than b
 
       int i, x, y, z;
 
@@ -2154,14 +2151,14 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          i++;
       }
 
-      if (iWhichMod == 10)  //FIX was '== 9' but I think this should be 10 here
+      if (iWhichMod == 9)
       {
          if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1, pbDuplFragment))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment))
             return false;
       }
 
@@ -2180,7 +2177,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          }
          else
          {
-            if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1, pbDuplFragment))
+            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment))
                return false;
          }
       }
@@ -2194,7 +2191,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iLen2, iWhichMod+1, pbDuplFragment))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment))
             return false;
       }
    }

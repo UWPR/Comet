@@ -130,7 +130,6 @@ private:
    double TotalVarModMass(int *pVarModCounts);
    bool PermuteMods(char *szProteinSeq, 
                  int iWhichQuery,
-                 int iPepLenPlus2,
                  int iWhichMod,
                  bool *pbDuplFragments);
    int  twiddle( int *x, int *y, int *z, int *p);
