@@ -10,6 +10,8 @@ namespace CometUI
         public static SearchSettings SearchSettings { get; set; }
         public static RunSearchSettings RunSearchSettings { get; set; }
 
+        private bool OptionsPanelShown { get; set; }
+
         private SearchSettingsDlg _searchSettingsDlg;
         private SearchSettingsDlg SearchSettingsDlg
         {
@@ -23,6 +25,24 @@ namespace CometUI
             SearchSettings = SearchSettings.Default;
 
             RunSearchSettings = RunSearchSettings.Default;
+
+            HideViewOptionsPanel();
+        }
+
+        private void ShowViewOptionsPanel()
+        {
+            showHideOptionsLabel.Text = "Hide options";
+            showOptionsPanel.Visible = true;
+            hideOptionsGroupBox.Visible = false;
+            OptionsPanelShown = true;
+        }
+
+        private void HideViewOptionsPanel()
+        {
+            showHideOptionsLabel.Text = "Show options";
+            showOptionsPanel.Visible = false;
+            hideOptionsGroupBox.Visible = true;
+            OptionsPanelShown = false;
         }
 
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
@@ -93,6 +113,18 @@ namespace CometUI
         {
             var aboutDlg = new AboutDlg();
             aboutDlg.ShowDialog();
+        }
+
+        private void ShowHideOptionsBtnClick(object sender, EventArgs e)
+        {
+            if (OptionsPanelShown)
+            {
+                HideViewOptionsPanel();
+            }
+            else
+            {
+                ShowViewOptionsPanel();
+            }
         }
     }
 }
