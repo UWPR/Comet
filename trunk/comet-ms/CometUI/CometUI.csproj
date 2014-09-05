@@ -119,6 +119,7 @@
     <Compile Include="ImportParamsDlg.Designer.cs">
       <DependentUpon>ImportParamsDlg.cs</DependentUpon>
     </Compile>
+    <Compile Include="PepXMLReader.cs" />
     <Compile Include="Properties\SearchSettings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>

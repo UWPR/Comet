@@ -48,7 +48,19 @@
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpAboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
+            this.viewResultsMainSplitContainer = new System.Windows.Forms.SplitContainer();
+            this.viewOptionsTab = new System.Windows.Forms.TabControl();
+            this.summaryTabPage = new System.Windows.Forms.TabPage();
+            this.displayOptionsTabPage = new System.Windows.Forms.TabPage();
+            this.pickColumnsTabPage = new System.Windows.Forms.TabPage();
+            this.filteringOptionsTabPage = new System.Windows.Forms.TabPage();
+            this.otherActionsTabPage = new System.Windows.Forms.TabPage();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.mainMenuStrip.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.viewResultsMainSplitContainer)).BeginInit();
+            this.viewResultsMainSplitContainer.Panel1.SuspendLayout();
+            this.viewResultsMainSplitContainer.SuspendLayout();
+            this.viewOptionsTab.SuspendLayout();
             this.SuspendLayout();
             // 
             // mainMenuStrip
@@ -199,11 +211,97 @@
             this.mainStatusStrip.TabIndex = 1;
             this.mainStatusStrip.Text = "statusStrip1";
             // 
+            // viewResultsMainSplitContainer
+            // 
+            this.viewResultsMainSplitContainer.Location = new System.Drawing.Point(0, 55);
+            this.viewResultsMainSplitContainer.Name = "viewResultsMainSplitContainer";
+            this.viewResultsMainSplitContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            // 
+            // viewResultsMainSplitContainer.Panel1
+            // 
+            this.viewResultsMainSplitContainer.Panel1.Controls.Add(this.viewOptionsTab);
+            this.viewResultsMainSplitContainer.Size = new System.Drawing.Size(734, 435);
+            this.viewResultsMainSplitContainer.SplitterDistance = 151;
+            this.viewResultsMainSplitContainer.TabIndex = 2;
+            // 
+            // viewOptionsTab
+            // 
+            this.viewOptionsTab.Controls.Add(this.summaryTabPage);
+            this.viewOptionsTab.Controls.Add(this.displayOptionsTabPage);
+            this.viewOptionsTab.Controls.Add(this.pickColumnsTabPage);
+            this.viewOptionsTab.Controls.Add(this.filteringOptionsTabPage);
+            this.viewOptionsTab.Controls.Add(this.otherActionsTabPage);
+            this.viewOptionsTab.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.viewOptionsTab.Location = new System.Drawing.Point(0, 0);
+            this.viewOptionsTab.Name = "viewOptionsTab";
+            this.viewOptionsTab.SelectedIndex = 0;
+            this.viewOptionsTab.Size = new System.Drawing.Size(734, 151);
+            this.viewOptionsTab.TabIndex = 0;
+            // 
+            // summaryTabPage
+            // 
+            this.summaryTabPage.Location = new System.Drawing.Point(4, 22);
+            this.summaryTabPage.Name = "summaryTabPage";
+            this.summaryTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.summaryTabPage.Size = new System.Drawing.Size(726, 136);
+            this.summaryTabPage.TabIndex = 0;
+            this.summaryTabPage.Text = "Summary";
+            this.summaryTabPage.UseVisualStyleBackColor = true;
+            // 
+            // displayOptionsTabPage
+            // 
+            this.displayOptionsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.displayOptionsTabPage.Name = "displayOptionsTabPage";
+            this.displayOptionsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.displayOptionsTabPage.Size = new System.Drawing.Size(726, 136);
+            this.displayOptionsTabPage.TabIndex = 1;
+            this.displayOptionsTabPage.Text = "Display Options";
+            this.displayOptionsTabPage.UseVisualStyleBackColor = true;
+            // 
+            // pickColumnsTabPage
+            // 
+            this.pickColumnsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.pickColumnsTabPage.Name = "pickColumnsTabPage";
+            this.pickColumnsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.pickColumnsTabPage.Size = new System.Drawing.Size(726, 136);
+            this.pickColumnsTabPage.TabIndex = 2;
+            this.pickColumnsTabPage.Text = "Pick Columns";
+            this.pickColumnsTabPage.UseVisualStyleBackColor = true;
+            // 
+            // filteringOptionsTabPage
+            // 
+            this.filteringOptionsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.filteringOptionsTabPage.Name = "filteringOptionsTabPage";
+            this.filteringOptionsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.filteringOptionsTabPage.Size = new System.Drawing.Size(726, 136);
+            this.filteringOptionsTabPage.TabIndex = 3;
+            this.filteringOptionsTabPage.Text = "Filtering Options";
+            this.filteringOptionsTabPage.UseVisualStyleBackColor = true;
+            // 
+            // otherActionsTabPage
+            // 
+            this.otherActionsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.otherActionsTabPage.Name = "otherActionsTabPage";
+            this.otherActionsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.otherActionsTabPage.Size = new System.Drawing.Size(726, 125);
+            this.otherActionsTabPage.TabIndex = 4;
+            this.otherActionsTabPage.Text = "Other Actions";
+            this.otherActionsTabPage.UseVisualStyleBackColor = true;
+            // 
+            // panel1
+            // 
+            this.panel1.Location = new System.Drawing.Point(0, 28);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(734, 27);
+            this.panel1.TabIndex = 3;
+            // 
             // CometUI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(734, 512);
+            this.Controls.Add(this.panel1);
+            this.Controls.Add(this.viewResultsMainSplitContainer);
             this.Controls.Add(this.mainStatusStrip);
             this.Controls.Add(this.mainMenuStrip);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -213,6 +311,10 @@
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.CometUIFormClosing);
             this.mainMenuStrip.ResumeLayout(false);
             this.mainMenuStrip.PerformLayout();
+            this.viewResultsMainSplitContainer.Panel1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.viewResultsMainSplitContainer)).EndInit();
+            this.viewResultsMainSplitContainer.ResumeLayout(false);
+            this.viewOptionsTab.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -239,5 +341,13 @@
         private System.Windows.Forms.ToolStripMenuItem saveSearchSettingsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
+        private System.Windows.Forms.SplitContainer viewResultsMainSplitContainer;
+        private System.Windows.Forms.TabControl viewOptionsTab;
+        private System.Windows.Forms.TabPage summaryTabPage;
+        private System.Windows.Forms.TabPage displayOptionsTabPage;
+        private System.Windows.Forms.TabPage pickColumnsTabPage;
+        private System.Windows.Forms.TabPage filteringOptionsTabPage;
+        private System.Windows.Forms.TabPage otherActionsTabPage;
+        private System.Windows.Forms.Panel panel1;
     }
 }
