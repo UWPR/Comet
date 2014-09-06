@@ -484,7 +484,7 @@ struct StaticParams
       variableModParameters.cModCode[6] = '%';
       variableModParameters.cModCode[7] = '!';
       variableModParameters.cModCode[8] = '+';
-      variableModParameters.cModCode[9] = '&';
+//    variableModParameters.cModCode[9] = '&';
 
       variableModParameters.iMaxVarModPerPeptide = 10;
 
