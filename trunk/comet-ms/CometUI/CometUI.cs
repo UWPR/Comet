@@ -48,6 +48,12 @@ namespace CometUI
             OptionsPanelShown = false;
             resultsListPanel.Location = resultsListPanelFull.Location;
             resultsListPanel.Size = resultsListPanelFull.Size;
+            linkLabelPage9.Hide();
+            pageNumbersPanel.Width -= linkLabelPage9.Width;
+            linkLabelPage10.Hide();
+            pageNumbersPanel.Width -= linkLabelPage10.Width;
+            pageNavPanel.Refresh();
+
         }
 
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
