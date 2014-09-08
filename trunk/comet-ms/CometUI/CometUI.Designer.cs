@@ -309,6 +309,8 @@
             // 
             // hideOptionsGroupBox
             // 
+            this.hideOptionsGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.hideOptionsGroupBox.Location = new System.Drawing.Point(110, 36);
             this.hideOptionsGroupBox.Name = "hideOptionsGroupBox";
             this.hideOptionsGroupBox.Size = new System.Drawing.Size(589, 5);
