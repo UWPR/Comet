@@ -54,14 +54,23 @@
             this.pickColumnsTabPage = new System.Windows.Forms.TabPage();
             this.filteringOptionsTabPage = new System.Windows.Forms.TabPage();
             this.otherActionsTabPage = new System.Windows.Forms.TabPage();
-            this.panel3 = new System.Windows.Forms.Panel();
             this.showHideOptionsBtn = new System.Windows.Forms.Button();
             this.showHideOptionsLabel = new System.Windows.Forms.Label();
             this.hideOptionsGroupBox = new System.Windows.Forms.GroupBox();
             this.showOptionsPanel = new System.Windows.Forms.Panel();
+            this.resultsListPanel = new System.Windows.Forms.Panel();
+            this.resultsListView = new System.Windows.Forms.ListView();
+            this.LeftVennScoreCol = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.LeftVennSequenceCol = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.LeftVennScanNumCol = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.LeftVennPepMass2Col = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.LeftVennPepMass3Col = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.resultsListPanelNormal = new System.Windows.Forms.Panel();
+            this.resultsListPanelFull = new System.Windows.Forms.Panel();
             this.mainMenuStrip.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.showOptionsPanel.SuspendLayout();
+            this.resultsListPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // mainMenuStrip
@@ -214,6 +223,9 @@
             // 
             // viewOptionsTab
             // 
+            this.viewOptionsTab.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.viewOptionsTab.Controls.Add(this.summaryTabPage);
             this.viewOptionsTab.Controls.Add(this.displayOptionsTabPage);
             this.viewOptionsTab.Controls.Add(this.pickColumnsTabPage);
@@ -222,7 +234,7 @@
             this.viewOptionsTab.Location = new System.Drawing.Point(26, 3);
             this.viewOptionsTab.Name = "viewOptionsTab";
             this.viewOptionsTab.SelectedIndex = 0;
-            this.viewOptionsTab.Size = new System.Drawing.Size(649, 172);
+            this.viewOptionsTab.Size = new System.Drawing.Size(661, 172);
             this.viewOptionsTab.TabIndex = 0;
             // 
             // summaryTabPage
@@ -230,7 +242,7 @@
             this.summaryTabPage.Location = new System.Drawing.Point(4, 22);
             this.summaryTabPage.Name = "summaryTabPage";
             this.summaryTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.summaryTabPage.Size = new System.Drawing.Size(641, 146);
+            this.summaryTabPage.Size = new System.Drawing.Size(653, 146);
             this.summaryTabPage.TabIndex = 0;
             this.summaryTabPage.Text = "Summary";
             this.summaryTabPage.UseVisualStyleBackColor = true;
@@ -240,7 +252,7 @@
             this.displayOptionsTabPage.Location = new System.Drawing.Point(4, 22);
             this.displayOptionsTabPage.Name = "displayOptionsTabPage";
             this.displayOptionsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.displayOptionsTabPage.Size = new System.Drawing.Size(672, 100);
+            this.displayOptionsTabPage.Size = new System.Drawing.Size(653, 146);
             this.displayOptionsTabPage.TabIndex = 1;
             this.displayOptionsTabPage.Text = "Display Options";
             this.displayOptionsTabPage.UseVisualStyleBackColor = true;
@@ -250,7 +262,7 @@
             this.pickColumnsTabPage.Location = new System.Drawing.Point(4, 22);
             this.pickColumnsTabPage.Name = "pickColumnsTabPage";
             this.pickColumnsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.pickColumnsTabPage.Size = new System.Drawing.Size(672, 100);
+            this.pickColumnsTabPage.Size = new System.Drawing.Size(653, 146);
             this.pickColumnsTabPage.TabIndex = 2;
             this.pickColumnsTabPage.Text = "Pick Columns";
             this.pickColumnsTabPage.UseVisualStyleBackColor = true;
@@ -260,7 +272,7 @@
             this.filteringOptionsTabPage.Location = new System.Drawing.Point(4, 22);
             this.filteringOptionsTabPage.Name = "filteringOptionsTabPage";
             this.filteringOptionsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.filteringOptionsTabPage.Size = new System.Drawing.Size(672, 100);
+            this.filteringOptionsTabPage.Size = new System.Drawing.Size(653, 146);
             this.filteringOptionsTabPage.TabIndex = 3;
             this.filteringOptionsTabPage.Text = "Filtering Options";
             this.filteringOptionsTabPage.UseVisualStyleBackColor = true;
@@ -270,17 +282,10 @@
             this.otherActionsTabPage.Location = new System.Drawing.Point(4, 22);
             this.otherActionsTabPage.Name = "otherActionsTabPage";
             this.otherActionsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.otherActionsTabPage.Size = new System.Drawing.Size(672, 100);
+            this.otherActionsTabPage.Size = new System.Drawing.Size(653, 146);
             this.otherActionsTabPage.TabIndex = 4;
             this.otherActionsTabPage.Text = "Other Actions";
             this.otherActionsTabPage.UseVisualStyleBackColor = true;
-            // 
-            // panel3
-            // 
-            this.panel3.Location = new System.Drawing.Point(12, 260);
-            this.panel3.Name = "panel3";
-            this.panel3.Size = new System.Drawing.Size(710, 215);
-            this.panel3.TabIndex = 5;
             // 
             // showHideOptionsBtn
             // 
@@ -312,11 +317,84 @@
             // 
             // showOptionsPanel
             // 
+            this.showOptionsPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.showOptionsPanel.Controls.Add(this.viewOptionsTab);
             this.showOptionsPanel.Location = new System.Drawing.Point(12, 55);
             this.showOptionsPanel.Name = "showOptionsPanel";
             this.showOptionsPanel.Size = new System.Drawing.Size(710, 180);
             this.showOptionsPanel.TabIndex = 6;
+            // 
+            // resultsListPanel
+            // 
+            this.resultsListPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.resultsListPanel.Controls.Add(this.resultsListView);
+            this.resultsListPanel.Location = new System.Drawing.Point(12, 241);
+            this.resultsListPanel.Name = "resultsListPanel";
+            this.resultsListPanel.Size = new System.Drawing.Size(710, 246);
+            this.resultsListPanel.TabIndex = 7;
+            // 
+            // resultsListView
+            // 
+            this.resultsListView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.resultsListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.LeftVennScoreCol,
+            this.LeftVennSequenceCol,
+            this.LeftVennScanNumCol,
+            this.LeftVennPepMass2Col,
+            this.LeftVennPepMass3Col});
+            this.resultsListView.FullRowSelect = true;
+            this.resultsListView.GridLines = true;
+            this.resultsListView.Location = new System.Drawing.Point(26, 9);
+            this.resultsListView.Name = "resultsListView";
+            this.resultsListView.Size = new System.Drawing.Size(661, 223);
+            this.resultsListView.TabIndex = 9;
+            this.resultsListView.UseCompatibleStateImageBehavior = false;
+            this.resultsListView.View = System.Windows.Forms.View.Details;
+            // 
+            // LeftVennScoreCol
+            // 
+            this.LeftVennScoreCol.Width = 75;
+            // 
+            // LeftVennSequenceCol
+            // 
+            this.LeftVennSequenceCol.Width = 102;
+            // 
+            // LeftVennScanNumCol
+            // 
+            this.LeftVennScanNumCol.Width = 67;
+            // 
+            // LeftVennPepMass2Col
+            // 
+            this.LeftVennPepMass2Col.Width = 68;
+            // 
+            // LeftVennPepMass3Col
+            // 
+            this.LeftVennPepMass3Col.Width = 65;
+            // 
+            // resultsListPanelNormal
+            // 
+            this.resultsListPanelNormal.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.resultsListPanelNormal.Location = new System.Drawing.Point(12, 241);
+            this.resultsListPanelNormal.Name = "resultsListPanelNormal";
+            this.resultsListPanelNormal.Size = new System.Drawing.Size(710, 246);
+            this.resultsListPanelNormal.TabIndex = 10;
+            // 
+            // resultsListPanelFull
+            // 
+            this.resultsListPanelFull.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.resultsListPanelFull.Location = new System.Drawing.Point(12, 53);
+            this.resultsListPanelFull.Name = "resultsListPanelFull";
+            this.resultsListPanelFull.Size = new System.Drawing.Size(710, 434);
+            this.resultsListPanelFull.TabIndex = 0;
             // 
             // CometUI
             // 
@@ -324,12 +402,14 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(734, 512);
             this.Controls.Add(this.showOptionsPanel);
+            this.Controls.Add(this.resultsListPanel);
             this.Controls.Add(this.hideOptionsGroupBox);
             this.Controls.Add(this.showHideOptionsLabel);
             this.Controls.Add(this.showHideOptionsBtn);
-            this.Controls.Add(this.panel3);
             this.Controls.Add(this.mainStatusStrip);
             this.Controls.Add(this.mainMenuStrip);
+            this.Controls.Add(this.resultsListPanelFull);
+            this.Controls.Add(this.resultsListPanelNormal);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.mainMenuStrip;
             this.Name = "CometUI";
@@ -339,6 +419,7 @@
             this.mainMenuStrip.PerformLayout();
             this.viewOptionsTab.ResumeLayout(false);
             this.showOptionsPanel.ResumeLayout(false);
+            this.resultsListPanel.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -371,10 +452,18 @@
         private System.Windows.Forms.TabPage pickColumnsTabPage;
         private System.Windows.Forms.TabPage filteringOptionsTabPage;
         private System.Windows.Forms.TabPage otherActionsTabPage;
-        private System.Windows.Forms.Panel panel3;
         private System.Windows.Forms.Button showHideOptionsBtn;
         private System.Windows.Forms.Label showHideOptionsLabel;
         private System.Windows.Forms.GroupBox hideOptionsGroupBox;
         private System.Windows.Forms.Panel showOptionsPanel;
+        private System.Windows.Forms.Panel resultsListPanel;
+        private System.Windows.Forms.ListView resultsListView;
+        private System.Windows.Forms.ColumnHeader LeftVennScoreCol;
+        private System.Windows.Forms.ColumnHeader LeftVennSequenceCol;
+        private System.Windows.Forms.ColumnHeader LeftVennScanNumCol;
+        private System.Windows.Forms.ColumnHeader LeftVennPepMass2Col;
+        private System.Windows.Forms.ColumnHeader LeftVennPepMass3Col;
+        private System.Windows.Forms.Panel resultsListPanelNormal;
+        private System.Windows.Forms.Panel resultsListPanelFull;
     }
 }

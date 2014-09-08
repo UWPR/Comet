@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing;
 using System.Windows.Forms;
 using CometUI.Properties;
 using CometUI.SettingsUI;
@@ -35,6 +36,8 @@ namespace CometUI
             showOptionsPanel.Visible = true;
             hideOptionsGroupBox.Visible = false;
             OptionsPanelShown = true;
+            resultsListPanel.Location = resultsListPanelNormal.Location;
+            resultsListPanel.Size = resultsListPanelNormal.Size;
         }
 
         private void HideViewOptionsPanel()
@@ -43,6 +46,8 @@ namespace CometUI
             showOptionsPanel.Visible = false;
             hideOptionsGroupBox.Visible = true;
             OptionsPanelShown = false;
+            resultsListPanel.Location = resultsListPanelFull.Location;
+            resultsListPanel.Size = resultsListPanelFull.Size;
         }
 
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
