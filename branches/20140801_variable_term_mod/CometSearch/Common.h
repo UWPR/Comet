@@ -45,7 +45,7 @@ using namespace std;
 #include <iostream>
 #endif
 
-#define comet_version   "2014.02 rev. 0beta"
+#define comet_version   "2014.02 rev. 0"
 #define copyright "(c) University of Washington"
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
