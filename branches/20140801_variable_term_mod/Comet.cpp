@@ -1358,7 +1358,7 @@ num_enzyme_termini = 2                 # valid values are 1 (semi-digested), 2 (
 allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n\
 \n\
 #\n\
-# Up to 6 variable modifications are supported\n\
+# Up to 9 variable modifications are supported\n\
 # format:  <mass> <residues> <0=variable/1=binary> <max_mods_per_peptide> <term_distance> <n/c-term>\n\
 #     e.g. 79.966331 STY 0 3\n\
 #\n\
