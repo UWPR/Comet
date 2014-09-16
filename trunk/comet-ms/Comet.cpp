@@ -90,7 +90,6 @@ void Usage(char *pszCmd)
    exit(1);
 }
 
-
 void SetOptions(char *arg,
       char *szParamsFile,
       bool *bPrintParams,
@@ -166,7 +165,6 @@ void SetOptions(char *arg,
    }
 }
 
-
 // Reads comet.params parameter file.
 void LoadParameters(char *pszParamsFile,
       ICometSearchManager *pSearchMgr)
@@ -190,7 +188,6 @@ void LoadParameters(char *pszParamsFile,
    VarMods varModsParam;
    IntRange intRangeParam;
    DoubleRange doubleRangeParam;
-   string strParamValue;
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
@@ -391,101 +388,28 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("use_sparse_matrix", szParamStringVal, iIntParam);
          }
-         else if (!strcmp(szParamName, "variable_mod1"))
+         // FIX: should really be more careful here and check the range of the variable
+         // mod is within allowed i.e. no variable_mod95
+         // Otherwise this else-if code will parse in all variable mods
+         else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
          {
             varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d %d %d",
                   &varModsParam.dVarModMass,
                   varModsParam.szVarModChar,
                   &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod);
+                  &varModsParam.iMaxNumVarModAAPerMod,
+                  &varModsParam.iVarModTermDistance,
+                  &varModsParam.iWhichTerm);
             szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d",
+            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
                   varModsParam.dVarModMass,
                   varModsParam.szVarModChar,
                   varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod);
-            pSearchMgr->SetParam("variable_mod1", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod2"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod);
-            pSearchMgr->SetParam("variable_mod2", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod3"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod);
-            pSearchMgr->SetParam("variable_mod3", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod4"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod);
-            pSearchMgr->SetParam("variable_mod4", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod5"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod);
-            pSearchMgr->SetParam("variable_mod5", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod6"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod);
-            pSearchMgr->SetParam("variable_mod6", szParamStringVal, varModsParam);
+                  varModsParam.iMaxNumVarModAAPerMod,
+                  varModsParam.iVarModTermDistance,
+                  varModsParam.iWhichTerm);
+            pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
          }
          else if (!strcmp(szParamName, "max_variable_mods_in_peptide"))
          {
@@ -514,13 +438,6 @@ void LoadParameters(char *pszParamsFile,
             szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%lf", dDoubleParam);
             pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, dDoubleParam);
-         }
-         else if (!strcmp(szParamName, "precursor_tolerance_type"))
-         {
-            sscanf(szParamVal, "%d", &iIntParam);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%d", iIntParam);
-            pSearchMgr->SetParam("precursor_tolerance_type", szParamStringVal, iIntParam);
          }
          else if (!strcmp(szParamName, "peptide_mass_units"))
          {
@@ -1070,7 +987,6 @@ void LoadParameters(char *pszParamsFile,
 
 } // LoadParameters
 
-
 // Parses the command line and determines the type of analysis to perform.
 bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSearchMgr)
 {
@@ -1275,7 +1191,6 @@ peptide_mass_tolerance = 3.00\n\
 peptide_mass_units = 0                 # 0=amu, 1=mmu, 2=ppm\n\
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\
-precursor_tolerance_type = 0           # 0=MH+ (default), 1=precursor m/z\n\
 isotope_error = 0                      # 0=off, 1=on -1/0/1/2/3 (standard C13 error), 2= -8/-4/0/4/8 (for +4/+8 labeling)\n\
 \n\
 #\n\
@@ -1286,16 +1201,19 @@ num_enzyme_termini = 2                 # valid values are 1 (semi-digested), 2 (
 allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n\
 \n\
 #\n\
-# Up to 6 variable modifications are supported\n\
-# format:  <mass> <residues> <0=variable/1=binary> <max mods per a peptide>\n\
-#     e.g. 79.966331 STY 0 3\n\
+# Up to 9 variable modifications are supported\n\
+# format:  <mass> <residues> <0=variable/1=binary> <max_mods_per_peptide> <term_distance> <n/c-term>\n\
+#     e.g. 79.966331 STY 0 3 -1 0\n\
 #\n\
-variable_mod1 = 15.9949 M 0 3\n\
-variable_mod2 = 0.0 X 0 3\n\
-variable_mod3 = 0.0 X 0 3\n\
-variable_mod4 = 0.0 X 0 3\n\
-variable_mod5 = 0.0 X 0 3\n\
-variable_mod6 = 0.0 X 0 3\n\
+variable_mod01 = 15.9949 M 0 3 -1 0\n\
+variable_mod02 = 0.0 X 0 3 -1 0\n\
+variable_mod03 = 0.0 X 0 3 -1 0\n\
+variable_mod04 = 0.0 X 0 3 -1 0\n\
+variable_mod05 = 0.0 X 0 3 -1 0\n\
+variable_mod06 = 0.0 X 0 3 -1 0\n\
+variable_mod07 = 0.0 X 0 3 -1 0\n\
+variable_mod08 = 0.0 X 0 3 -1 0\n\
+variable_mod09 = 0.0 X 0 3 -1 0\n\
 max_variable_mods_in_peptide = 5\n\
 \n\
 #\n\
@@ -1323,7 +1241,7 @@ output_sqtstream = 0                   # 0=no, 1=yes  write sqt to standard outp
 output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
 output_txtfile = 0                     # 0=no, 1=yes  write tab-delimited txt file\n\
 output_pepxmlfile = 1                  # 0=no, 1=yes  write pep.xml file\n\
-output_percolatorfile = 0              # 0=no, 1=yes  write Percolator input file\n\
+output_percolatorfile = 0              # 0=no, 1=yes  write Percolator tab-delimited input file\n\
 output_outfiles = 0                    # 0=no, 1=yes  write .out files\n\
 print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
 num_output_lines = 5                   # num peptide results to show\n\
@@ -1357,12 +1275,12 @@ fprintf(fp,
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
 spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
-output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML\n\
+output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\
 \n\
 #\n\
 # spectral processing\n\
 #\n\
-minimum_peaks = 10                     # required minimum number of peaks in spectrum to search\n");
+minimum_peaks = 10                     # required minimum number of peaks in spectrum to search (default 10)\n");
 
 fprintf(fp,
 "minimum_intensity = 0                  # minimum intensity value to read in\n\
@@ -1373,11 +1291,6 @@ clear_mz_range = 0.0 0.0               # for iTRAQ/TMT type data; will clear out
 #\n\
 # additional modifications\n\
 #\n\
-\n\
-variable_C_terminus = 0.0\n\
-variable_N_terminus = 0.0\n\
-variable_C_terminus_distance = -1      # -1=all peptides, 0=protein terminus, 1-N = maximum offset from C-terminus\n\
-variable_N_terminus_distance = -1      # -1=all peptides, 0=protein terminus, 1-N = maximum offset from N-terminus\n\
 \n\
 add_Cterm_peptide = 0.0\n\
 add_Nterm_peptide = 0.0\n\

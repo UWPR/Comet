@@ -37,18 +37,18 @@ class CometSearchManager;
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
-#define DECOY_SIZE                  500      // minimum # of decoys to have for e-value calculation
+#define DECOY_SIZE                  1000     // minimum # of decoys to have for e-value calculation
 
-#define VMODS                       6
-#define VMODS_ALL                   VMODS + 2
+#define VMODS                       9
 #define VMOD_1_INDEX                0
 #define VMOD_2_INDEX                1
 #define VMOD_3_INDEX                2
 #define VMOD_4_INDEX                3
 #define VMOD_5_INDEX                4
 #define VMOD_6_INDEX                5
-#define VMOD_N_INDEX                6
-#define VMOD_C_INDEX                7
+#define VMOD_7_INDEX                6
+#define VMOD_8_INDEX                7
+#define VMOD_9_INDEX                8
 
 #define ENZYME_SINGLE_TERMINI       1
 #define ENZYME_DOUBLE_TERMINI       2
@@ -290,21 +290,13 @@ struct PrecalcMasses
 struct VarModParams
 {
    int     bVarModSearch; 
-   double  dVarModMassN;
-   double  dVarModMassC;
-   int     iVarModNtermDistance;
-   int     iVarModCtermDistance;
    int     iMaxVarModPerPeptide;
    VarMods varModList[VMODS];
-   char    cModCode[VMODS];
+   char    cModCode[VMODS];          // mod characters
 
    VarModParams& operator=(VarModParams& a) 
    {
       bVarModSearch = a.bVarModSearch;
-      dVarModMassN = a.dVarModMassN;
-      dVarModMassC = a.dVarModMassC;
-      iVarModNtermDistance = a.iVarModNtermDistance;
-      iVarModCtermDistance = a.iVarModCtermDistance;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
 
       for (int i = 0; i < VMODS; i++)
@@ -356,7 +348,6 @@ struct MassUtil
 struct ToleranceParams
 {
    int    iMassToleranceUnits;    // 0=ppm, 1=da (default)
-   int    iMassToleranceType;     // 0=MH+ (default), 1=precursor m/z
    int    iIsotopeError;
    double dInputTolerance;        // tolerance from param file
    double dFragmentBinSize;
@@ -366,7 +357,6 @@ struct ToleranceParams
    ToleranceParams& operator=(ToleranceParams& a) 
    {
       iMassToleranceUnits = a.iMassToleranceUnits;
-      iMassToleranceType = a.iMassToleranceType;
       iIsotopeError = a.iIsotopeError;
       dInputTolerance = a.dInputTolerance;
       dFragmentBinSize = a.dFragmentBinSize;
@@ -419,7 +409,7 @@ struct IonInfo
 struct StaticParams
 {
    char            szHostName[SIZE_FILE];
-   char            szTimeBuf[256];
+   char            szOutFileTimeString[256];
    char            szIonSeries[256];   // used for .out files
    char            szDisplayLine[256]; // used for .out files
    char            szMod[512];         // used for .out files
@@ -481,6 +471,8 @@ struct StaticParams
          variableModParameters.varModList[i].bBinaryMod = 0;
          variableModParameters.varModList[i].dVarModMass = 0.0;
          variableModParameters.varModList[i].szVarModChar[0] = '\0';
+         variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
+         variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
       }
 
       variableModParameters.cModCode[0] = '*';
@@ -489,13 +481,12 @@ struct StaticParams
       variableModParameters.cModCode[3] = '^';
       variableModParameters.cModCode[4] = '~';
       variableModParameters.cModCode[5] = '$';
+      variableModParameters.cModCode[6] = '%';
+      variableModParameters.cModCode[7] = '!';
+      variableModParameters.cModCode[8] = '+';
+//    variableModParameters.cModCode[9] = '&';
 
       variableModParameters.iMaxVarModPerPeptide = 10;
-      variableModParameters.iVarModNtermDistance = -1;
-      variableModParameters.iVarModCtermDistance = -1;
-
-      variableModParameters.dVarModMassC = 0.0;
-      variableModParameters.dVarModMassN = 0.0;
 
       ionInformation.bUseNeutralLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
@@ -556,7 +547,6 @@ struct StaticParams
       staticModifications.dAddNterminusProtein = 0.0;
 
       tolerances.iMassToleranceUnits = 0;
-      tolerances.iMassToleranceType = 0;
       tolerances.iIsotopeError = 0;
       tolerances.dInputTolerance = 1.0;                     // peptide_mass_tolerance
       tolerances.dFragmentBinSize = 1.0005;
@@ -567,7 +557,7 @@ struct StaticParams
    StaticParams& operator=(StaticParams& a) 
    { 
       strcpy(szHostName, a.szHostName);
-      strcpy(szTimeBuf, a.szTimeBuf);
+      strcpy(szOutFileTimeString, a.szOutFileTimeString);
       strcpy(szIonSeries, a.szIonSeries);
       strcpy(szDisplayLine, a.szDisplayLine);
       strcpy(szMod, a.szMod);
@@ -676,11 +666,11 @@ struct Query
 
       pSparseSpScoreData = NULL;
       pSparseFastXcorrData = NULL;
-      pSparseFastXcorrDataNL= NULL;           // pfFastXcorrData with NH3, H2O contributions
+      pSparseFastXcorrDataNL= NULL;          // pfFastXcorrData with NH3, H2O contributions
 
       pfSpScoreData = NULL;
       pfFastXcorrData = NULL;
-      pfFastXcorrDataNL = NULL;  // pfFastXcorrData with NH3, H2O contributions
+      pfFastXcorrDataNL = NULL;              // pfFastXcorrData with NH3, H2O contributions
 
       _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;

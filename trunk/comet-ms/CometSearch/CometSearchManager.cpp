@@ -304,7 +304,7 @@ static bool compareByScanNumber(Query const* a, Query const* b)
 
 static void CalcRunTime(time_t tStartTime)
 {
-   char szTimeBuf[512];
+   char szOutFileTimeString[512];
    time_t tEndTime;
    int iTmp;
 
@@ -313,20 +313,20 @@ static void CalcRunTime(time_t tStartTime)
    int iElapseTime=(int)difftime(tEndTime, tStartTime);
 
    // Print out header/search info.
-   sprintf(szTimeBuf, "%s,", g_staticParams.szDate);
+   sprintf(szOutFileTimeString, "%s,", g_staticParams.szDate);
    if ( (iTmp = (int)(iElapseTime/3600) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d hr.", iTmp);
+      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d hr.", iTmp);
    if ( (iTmp = (int)((iElapseTime-(int)(iElapseTime/3600)*3600)/60) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d min.", iTmp);
+      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d min.", iTmp);
    if ( (iTmp = (int)((iElapseTime-((int)(iElapseTime/3600))*3600)%60) )>0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " %d sec.", iTmp);
+      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d sec.", iTmp);
    if (iElapseTime == 0)
-      sprintf(szTimeBuf+strlen(szTimeBuf), " 0 sec.");
-   sprintf(szTimeBuf+strlen(szTimeBuf), " on %s", g_staticParams.szHostName);
+      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " 0 sec.");
+   sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " on %s", g_staticParams.szHostName);
 
    g_staticParams.iElapseTime = iElapseTime;
-   strncpy(g_staticParams.szTimeBuf, szTimeBuf, 256);
-   g_staticParams.szTimeBuf[255]='\0';
+   strncpy(g_staticParams.szOutFileTimeString, szOutFileTimeString, 256);
+   g_staticParams.szOutFileTimeString[255]='\0';
 }
 
 static void PrintParameters()
@@ -382,13 +382,12 @@ static void PrintParameters()
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
       strcpy(szPeak, "PEAK1");
 
-   sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
+   sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s",
          g_staticParams.options.iNumPeptideOutputLines,
          szRemovePrecursor,
          szReadingFrame,
          szPeak,
          szUnits,
-         (g_staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
          szIsotope,
          szDecoy,
          (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
@@ -560,17 +559,23 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("use_sparse_matrix", g_staticParams.options.bSparseMatrix);
 
-   GetParamValue("variable_mod1", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
+   GetParamValue("variable_mod01", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
 
-   GetParamValue("variable_mod2", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
+   GetParamValue("variable_mod02", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
 
-   GetParamValue("variable_mod3", g_staticParams.variableModParameters.varModList[VMOD_3_INDEX]);
+   GetParamValue("variable_mod03", g_staticParams.variableModParameters.varModList[VMOD_3_INDEX]);
 
-   GetParamValue("variable_mod4", g_staticParams.variableModParameters.varModList[VMOD_4_INDEX]);
+   GetParamValue("variable_mod04", g_staticParams.variableModParameters.varModList[VMOD_4_INDEX]);
    
-   GetParamValue("variable_mod5", g_staticParams.variableModParameters.varModList[VMOD_5_INDEX]);
+   GetParamValue("variable_mod05", g_staticParams.variableModParameters.varModList[VMOD_5_INDEX]);
 
-   GetParamValue("variable_mod6", g_staticParams.variableModParameters.varModList[VMOD_6_INDEX]);
+   GetParamValue("variable_mod06", g_staticParams.variableModParameters.varModList[VMOD_6_INDEX]);
+
+   GetParamValue("variable_mod07", g_staticParams.variableModParameters.varModList[VMOD_7_INDEX]);
+
+   GetParamValue("variable_mod08", g_staticParams.variableModParameters.varModList[VMOD_8_INDEX]);
+
+   GetParamValue("variable_mod09", g_staticParams.variableModParameters.varModList[VMOD_9_INDEX]);
 
    if (GetParamValue("max_variable_mods_in_peptide", iIntData))
    {
@@ -589,13 +594,6 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
 
    GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerance);
-
-   GetParamValue("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
-   if ((g_staticParams.tolerances.iMassToleranceType < 0)
-         || (g_staticParams.tolerances.iMassToleranceType > 1))
-   {
-      g_staticParams.tolerances.iMassToleranceType = 0;
-   }
 
    GetParamValue("peptide_mass_units", g_staticParams.tolerances.iMassToleranceUnits);
    if ((g_staticParams.tolerances.iMassToleranceUnits < 0)
@@ -643,14 +641,6 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
 
    GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
-
-   GetParamValue("variable_C_terminus", g_staticParams.variableModParameters.dVarModMassC);
-
-   GetParamValue("variable_N_terminus", g_staticParams.variableModParameters.dVarModMassN);
-
-   GetParamValue("variable_C_terminus_distance", g_staticParams.variableModParameters.iVarModCtermDistance);
-
-   GetParamValue("variable_N_terminus_distance", g_staticParams.variableModParameters.iVarModNtermDistance);
 
    GetParamValue("add_Cterm_peptide", g_staticParams.staticModifications.dAddCterminusPeptide);
 
@@ -1042,20 +1032,6 @@ bool CometSearchManager::InitializeStaticParams()
                g_staticParams.variableModParameters.varModList[i].dVarModMass);
          g_staticParams.variableModParameters.bVarModSearch = 1;
       }
-   }
-
-   if (!isEqual(g_staticParams.variableModParameters.dVarModMassN, 0.0))
-   {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(nt] %+0.6f) ", 
-            g_staticParams.variableModParameters.dVarModMassN);       // FIX determine .out file header string for this?
-      g_staticParams.variableModParameters.bVarModSearch = 1;
-   }
-
-   if (!isEqual(g_staticParams.variableModParameters.dVarModMassC, 0.0))
-   {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(ct[ %+0.6f) ", 
-            g_staticParams.variableModParameters.dVarModMassC);
-      g_staticParams.variableModParameters.bVarModSearch = 1;
    }
 
    // Do Sp scoring after search based on how many lines to print out.
@@ -1721,7 +1697,7 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Loading and processing input spectra..."));
 
             // IMPORTANT: From this point onwards, because we've loaded some
-            // spectra, we MUST "goto cleanup_results" befor exiting the loop, 
+            // spectra, we MUST "goto cleanup_results" before exiting the loop, 
             // or we will create a memory leak!
             bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,

@@ -25,6 +25,7 @@ struct SearchThreadData
    sDBEntry dbEntry;
    bool *pbSearchMemoryPool;
 
+
    SearchThreadData()
    {
    }
@@ -44,7 +45,7 @@ struct SearchThreadData
       if(pbSearchMemoryPool!=NULL)
          *pbSearchMemoryPool=false;
       pbSearchMemoryPool=NULL;
-      
+
       Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
 };
@@ -64,22 +65,20 @@ public:
    bool DoSearch(sDBEntry dbe, bool *pbDuplFragment);
     
 private:
-   
+    
    // Core search functions
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
    void SubtractVarMods(int *piVarModCounts,
-                        int character);
+                        int cResidue,
+                        int iResiduePosition);
    void CountVarMods(int *piVarModCounts,
-                     int character);
-   void CountBinaryModN(int *piVarModCounts,
-                         int iStartPos);
-   void CountBinaryModC(int *piVarModCounts,
-                         int iEndPos);
-   int  TotalVarModCount(int varModCounts[],
-                         int iCVarModCount,
-                         int iNVarModCount);
+                     int cResidue,
+                     int iResiduePosition);
+   bool HasVariableMod(int varModCounts[],
+                       int iCVarModCount,
+                       int iNVarModCount);
    int WithinMassTolerance(double dCalcPepMass,
                            char *szProteinSeq,
                            int iStartPos,
@@ -126,34 +125,18 @@ private:
                      char *szProteinName,
                      int varModCounts[],
                      int iStartPos,
-                     int iEndPos, 
+                     int iEndPos,
                      bool *pbDuplFragment);
-   double TotalVarModMass(int *pVarModCounts,
-                          int iCVarModCount,
-                          int iNVarModCount);
-   bool Permute1(char *szProteinSeq, 
-                 int iWhichQuery, 
-                 bool *pbDuplFragment);
-   bool Permute2(char *szProteinSeq,
-                 int iWhichQuery, 
-                 bool *pbDuplFragment);
-   bool Permute3(char *szProteinSeq,
-                 int iWhichQuery, 
-                 bool *pbDuplFragment);
-   bool Permute4(char *szProteinSeq,
-                 int iWhichQuery, 
-                 bool *pbDuplFragment);
-   bool Permute5(char *szProteinSeq,
-                 int iWhichQuery, 
-                 bool *pbDuplFragment);
-   bool Permute6(char *szProteinSeq,
-                 int iWhichQuery, 
-                 bool *pbDuplFragment);
+   double TotalVarModMass(int *pVarModCounts);
+   bool PermuteMods(char *szProteinSeq, 
+                 int iWhichQuery,
+                 int iWhichMod,
+                 bool *pbDuplFragments);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool CalcVarModIons(char *szProteinSeq,
-                       int iWhichQuery, 
-                       bool *pbDuplFragment);
+                       int iWhichQuery,
+                       bool *pbDuplFragments);
    bool SearchForPeptides(char *szProteinSeq,
                           char *szProteinName,
                           bool bNtermPeptideOnly,
@@ -191,14 +174,12 @@ private:
    {
        int iTotVarModCt;
        int iMatchVarModCt;
-       int iVarModSites[MAX_PEPTIDE_LEN];
+       int iVarModSites[MAX_PEPTIDE_LEN+2];  // last 2 positions are for n- and c-term
    };
     
    struct VarModInfo
    {
        VarModStat varModStatList[VMODS];
-       int        iNumVarModSiteN;
-       int        iNumVarModSiteC;
        int        iStartPos;     // The start position of the peptide sequence
        int        iEndPos;       // The end position of the peptide sequence
        double     dCalcPepMass;  // Mass of peptide with mods
@@ -248,7 +229,7 @@ private:
    double             _pdAAreverseDecoy[MAX_PEPTIDE_LEN]; // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
    int                _iSizepcVarModSites;
    VarModInfo         _varModInfo;
-   ProteinInfo        _proteinInfo;
+   ProteinInfo        _proteinInfo;       
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];

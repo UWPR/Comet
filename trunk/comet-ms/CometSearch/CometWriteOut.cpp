@@ -178,7 +178,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iChargeState);
    sprintf(szBuf+strlen(szBuf), " Comet version %s\n", comet_version);
    sprintf(szBuf+strlen(szBuf), " %s\n", copyright);
-   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szTimeBuf);
+   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szOutFileTimeString);
    sprintf(szBuf+strlen(szBuf), " %s\n", szMassLine);
    sprintf(szBuf+strlen(szBuf), " %s\n", szStatsBuf);
    sprintf(szBuf+strlen(szBuf), " %s\n", szDbLine);
@@ -469,15 +469,14 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    }
    sprintf(szBuf+strlen(szBuf), "  ");
 
-   sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[0]);
+   sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
    {
-      sprintf(szBuf+strlen(szBuf), "]");
+      sprintf(szBuf+strlen(szBuf),
+            "n%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
    }
-   else
-      sprintf(szBuf+strlen(szBuf), ".");
 
    // Print peptide sequence.
    for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
@@ -493,14 +492,13 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
+         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
    {
-      sprintf(szBuf+strlen(szBuf), "[");
+      sprintf(szBuf+strlen(szBuf),
+            "c%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
    }
-   else
-      sprintf(szBuf+strlen(szBuf), ".");
 
-   sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPrevNextAA[1]);
+   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
 
    fprintf(fpout, "%s\n", szBuf);
 }
@@ -531,13 +529,13 @@ void CometWriteOut::PrintIons(int iWhichQuery,
    if (g_staticParams.variableModParameters.bVarModSearch
          && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
    {
-      dBion += g_staticParams.variableModParameters.dVarModMassN;
+      dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide]-1].dVarModMass;
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
          && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
    {
-      dYion += g_staticParams.variableModParameters.dVarModMassC;
+      dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide+1]-1].dVarModMass;
    }
 
    // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
@@ -550,13 +548,6 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 
       if (g_staticParams.variableModParameters.bVarModSearch)
          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[i]-1].dVarModMass;
-
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && (i == pQuery->_pResults[0].iLenPeptide -1)
-            && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
-      {
-         dBion += g_staticParams.variableModParameters.dVarModMassC;
-      }
 
       if (g_staticParams.variableModParameters.bVarModSearch)
          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[iPos]-1].dVarModMass;

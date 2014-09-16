@@ -59,7 +59,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    int iFirstScanInRange = 0;
    int iTmpCount = 0;
    Spectrum mstSpectrum;           // For holding spectrum.
-   
+
    g_massRange.iMaxFragmentCharge = 0;
    g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
    g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
@@ -201,7 +201,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    pPreprocessThreadPool = NULL;
 
    bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-   
+
    return bSucceeded;
 }
 
@@ -223,7 +223,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
       }
    }
    Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
-   
+
    //MH: Fail-safe to stop if memory isn't available for the next thread.
    //Needs better capture and return?
    if (i==g_staticParams.options.iNumThreads)
@@ -303,7 +303,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       logerr("%s\n\n", szErrorMsg);
       return false;
    }
-   
+
    if (g_staticParams.ionInformation.bUseNeutralLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
@@ -584,7 +584,7 @@ void CometPreprocess::PreloadIons(MSReader &mstReader,
 bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
 {
    bool bSearchSpectrum = true;
-  
+
    // Check possible activation method filter.
    if (strcmp(g_staticParams.options.szActivationMethod, "ALL")!=0 && (act != mstNA))
    {
@@ -697,8 +697,14 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    // WARNING: only good up to charge state 3
    if (spec.sizeZ() == 0 || g_staticParams.options.bOverrideCharge)
    {
-      // Use +1 or +2/+3 rule.
-      if (g_staticParams.options.iStartCharge == 0)
+      if (g_staticParams.options.bOverrideCharge)
+      {
+         for (z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
+         {
+            spec.addZState(z,spec.getMZ()*z-(z-1)*PROTON_MASS);
+         }
+      }
+      else // Use +1 or +2/+3 rule.
       {
          int i=0;
          double dSumBelow = 0.0;
@@ -730,13 +736,6 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             spec.addZState(z,spec.getMZ()*z-(z-1)*PROTON_MASS);
          }
       }
-      else
-      {
-         for (z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
-         {
-            spec.addZState(z,spec.getMZ()*z-(z-1)*PROTON_MASS);
-         }
-      }
    }
 
    // Set our boundaries for multiple z lines.
@@ -748,58 +747,63 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       int iPrecursorCharge = spec.atZ(z).z;  // I need this before iChargeState gets assigned.
       double dMass = spec.atZ(z).mz;
 
-      if (CheckExistOutFile(iPrecursorCharge, iScanNumber)
-            && (isEqual(g_staticParams.options.dLowPeptideMass, 0.0)
-               || ((dMass >= g_staticParams.options.dLowPeptideMass)
-                  && (dMass <= g_staticParams.options.dHighPeptideMass)))
-            && iPrecursorCharge <= g_staticParams.options.iMaxPrecursorCharge)
+      if (!g_staticParams.options.bOverrideCharge
+            || (iPrecursorCharge>=g_staticParams.options.iStartCharge
+               && iPrecursorCharge<=g_staticParams.options.iEndCharge ) )
       {
-         Query *pScoring = new Query();
-
-         pScoring->_pepMassInfo.dExpPepMass = dMass;
-         pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + 100.0) * g_staticParams.dInverseBinWidth);
-         pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
-         pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
-         pScoring->_spectrumInfoInternal.dRTime = 60.0*spec.getRTime();;
-         pScoring->_spectrumInfoInternal.iScanNumber = iScanNumber;
-
-         if (iPrecursorCharge == 1)
-            pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;
-         else
+         if (CheckExistOutFile(iPrecursorCharge, iScanNumber)
+               && (isEqual(g_staticParams.options.dLowPeptideMass, 0.0)
+                  || ((dMass >= g_staticParams.options.dLowPeptideMass)
+                     && (dMass <= g_staticParams.options.dHighPeptideMass)))
+               && iPrecursorCharge <= g_staticParams.options.iMaxPrecursorCharge)
          {
-            pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
+            Query *pScoring = new Query();
 
-            if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
-               pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
+            pScoring->_pepMassInfo.dExpPepMass = dMass;
+            pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + 100.0) * g_staticParams.dInverseBinWidth);
+            pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
+            pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
+            pScoring->_spectrumInfoInternal.dRTime = 60.0*spec.getRTime();;
+            pScoring->_spectrumInfoInternal.iScanNumber = iScanNumber;
+
+            if (iPrecursorCharge == 1)
+               pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;
+            else
+            {
+               pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
+
+               if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
+                  pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
+            }
+
+            Threading::LockMutex(_maxChargeMutex);
+
+            // g_massRange.iMaxFragmentCharge is global maximum fragment ion charge across all spectra.
+            if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_massRange.iMaxFragmentCharge)
+            {
+               g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
+            }
+
+            Threading::UnlockMutex(_maxChargeMutex);
+
+            if (!AdjustMassTol(pScoring))
+            {
+               return false;
+            }
+
+            // Populate pdCorrelation data.
+            // NOTE: there must be a good way of doing this just once per spectrum instead
+            //       of repeating for each charge state.
+            if (!Preprocess(pScoring, spec, pdTmpRawData, pdTmpFastXcorrData,
+                     pdTmpCorrelationData, pdTmpSmoothedSpectrum, pdTmpPeakExtracted))
+            {
+               return false;
+            }
+
+            Threading::LockMutex(g_pvQueryMutex);
+            g_pvQuery.push_back(pScoring);
+            Threading::UnlockMutex(g_pvQueryMutex);
          }
-
-         Threading::LockMutex(_maxChargeMutex);
-
-         // g_massRange.iMaxFragmentCharge is global maximum fragment ion charge across all spectra.
-         if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_massRange.iMaxFragmentCharge)
-         {
-            g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
-         }
-
-         Threading::UnlockMutex(_maxChargeMutex);
-
-         if (!AdjustMassTol(pScoring))
-         {
-            return false;
-         }
-
-         // Populate pdCorrelation data.
-         // NOTE: there must be a good way of doing this just once per spectrum instead
-         //       of repeating for each charge state.
-         if (!Preprocess(pScoring, spec, pdTmpRawData, pdTmpFastXcorrData,
-                  pdTmpCorrelationData, pdTmpSmoothedSpectrum, pdTmpPeakExtracted))
-         {
-            return false;
-         }
-
-         Threading::LockMutex(g_pvQueryMutex);
-         g_pvQuery.push_back(pScoring);
-         Threading::UnlockMutex(g_pvQueryMutex);
       }
    }
 
@@ -817,18 +821,18 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
          && g_staticParams.options.bSkipAlreadyDone
          && !g_staticParams.options.bOutputSqtStream
          && !g_staticParams.options.bOutputSqtFile
-         && !g_staticParams.options.bOutputPepXMLFile)
+         && !g_staticParams.options.bOutputPepXMLFile
+         && !g_staticParams.options.bOutputPercolatorFile)
    {
       char szOutputFileName[SIZE_FILE];
       char *pStr;
       FILE *fpcheck;
 
-#ifdef _WIN32
-      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL)
-#else
-      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
-#endif
+      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL
+            && (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
+      {
          pStr = g_staticParams.inputFile.szBaseName;
+      }
       else
          *pStr++;
 
@@ -865,11 +869,6 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    {
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance
          * pScoring->_pepMassInfo.dExpPepMass / 1000000.0;
-   }
-
-   if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-   {
-      pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
    }
 
    if (g_staticParams.tolerances.iIsotopeError == 0)

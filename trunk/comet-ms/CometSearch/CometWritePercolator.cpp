@@ -271,7 +271,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
 
    szModPep[0]='\0';
 
-   if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+   if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
    {
       sprintf(szModPep+strlen(szModPep), "n[%0.1f]",
             g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass
@@ -290,7 +290,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       }
    }
 
-   if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
+   if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
    {
       sprintf(szModPep+strlen(szModPep), "c[%0.1f]",
            g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass

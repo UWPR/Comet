@@ -52,7 +52,7 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
       bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
       if (!bSucceeded)
       {
-          break;
+         break;
       }
    }
 
@@ -66,7 +66,7 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
    // while we were waiting for the threads.
    if (bSucceeded)
    {
-       bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
    }
 
    return bSucceeded;
@@ -96,6 +96,8 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
       }
    }
 
+   // FIX ... need to do something with bSucceeded otherwise no point in having it
+ 
    delete pThreadData;
    pThreadData = NULL;
 }
@@ -191,15 +193,15 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
       if (g_staticParams.variableModParameters.bVarModSearch
-            && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide] == 1))
+            && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide] > 0))
       {
-         dBion += g_staticParams.variableModParameters.dVarModMassN;
+         dBion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[pOutput[i].iLenPeptide]-1].dVarModMass;
       }
 
       if (g_staticParams.variableModParameters.bVarModSearch
-            && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide + 1] == 1))
+            && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide + 1] > 0))
       {
-         dYion += g_staticParams.variableModParameters.dVarModMassC;
+         dYion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[pOutput[i].iLenPeptide+1]-1].dVarModMass;
       }
 
       for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
@@ -221,12 +223,15 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[ii]>0)
             dBion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[ii]-1].dVarModMass;
 
+/*
+FIX:  what is this code??
          if (g_staticParams.variableModParameters.bVarModSearch
                && (ii == pOutput[i].iLenPeptide -1)
                && (pOutput[i].pcVarModSites[pOutput[0].iLenPeptide + 1] == 1))
          {
             dBion += g_staticParams.variableModParameters.dVarModMassC;
          }
+*/
 
          if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[iPos]>0)
             dYion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[iPos]-1].dVarModMass;
@@ -709,7 +714,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                            ctCharge);
                   
                      string strErrorMsg(szErrorMsg);
-                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                      logerr("\n Comet version \"%s\"\n\n", comet_version);
                      logerr("%s\n\n", szErrorMsg);
                      return false;
