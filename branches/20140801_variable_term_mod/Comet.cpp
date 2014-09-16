@@ -1432,12 +1432,12 @@ fprintf(fp,
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
 spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
-output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML\n\
+output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\
 \n\
 #\n\
 # spectral processing\n\
 #\n\
-minimum_peaks = 10                     # required minimum number of peaks in spectrum to search\n");
+minimum_peaks = 10                     # required minimum number of peaks in spectrum to search (default 10)\n");
 
 fprintf(fp,
 "minimum_intensity = 0                  # minimum intensity value to read in\n\

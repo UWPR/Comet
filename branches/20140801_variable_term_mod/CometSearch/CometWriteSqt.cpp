@@ -107,11 +107,17 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    }
 
    char *pStr;
-   while ((pStr = strrchr(g_staticParams.szMod, '='))!=NULL)
+
+   // Since this process of parsing the static mods out is destructive, do it to copy
+   // in case decoy search output is needed which uses same string
+   char szMod[512];
+   strcpy(szMod, g_staticParams.szMod);
+   while ((pStr = strrchr(szMod, '='))!=NULL)
    {
       char szTmp[48];
+
       while (*pStr != ' ')
-         (*pStr)--;
+         *pStr--;
       sscanf(pStr+1, "%47s", szTmp);
 
       fprintf(fpout, "H\tStaticMod\t%s\n", szTmp);
