@@ -14,7 +14,7 @@ peptide_mass_tolerance = 20.00
 peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses
-precursor_tolerance_type = 1           # 0=MH+ (default), 1=precursor m/z
+precursor_tolerance_type = 0           # 0=MH+ (default), 1=precursor m/z
 isotope_error = 1                      # 0=off, 1=on -1/0/1/2/3 (standard C13 error), 2= -8/-4/0/4/8 (for +4/+8 labeling)
 
 #
@@ -41,9 +41,9 @@ max_variable_mods_in_peptide = 5
 # fragment ions
 #
 # ion trap ms/ms:  1.0005 tolerance, 0.4 offset (mono masses), theoretical_fragment_ions = 1
-# high res ms/ms:    0.05 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0
+# high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0
 #
-fragment_bin_tol = 0.05                # binning to use on fragment ions
+fragment_bin_tol = 0.02                # binning to use on fragment ions
 fragment_bin_offset = 0.0              # offset position to start the binning (0.0 to 1.0)
 theoretical_fragment_ions = 0          # 0=use flanking peaks, 1=M peak only
 use_A_ions = 0
@@ -76,6 +76,7 @@ sample_enzyme_number = 1               # Sample enzyme which is possibly differe
 #
 scan_range = 0 0                       # start and scan scan range to search; 0 as 1st entry ignores parameter
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override mzXML charge; 0 as 1st entry ignores parameter
+override_charge = 0                    # 0=no, 1=yes to override existing precursor charge states with precursor_charge parameter
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3
 activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, PQD, HCD, IRMPD
 

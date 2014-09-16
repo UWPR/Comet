@@ -4,7 +4,52 @@
          <h1>Comet release 2014.01</h1>
                               
             <ul>
+               <b>release 2014.01 rev. 1 (2014.01.1), release date 2014/06/03</b>
+               <li>Known issue:  when using "<a href="/parameters/parameters_201401/precursor_tolerance_type.php">precursor_tolerance_type = 1</a>"
+                   to specify the tolerance is applied on the precursor m/z peak,
+                   Comet has been errantly calculating the mass tolerance on the
+                   deconvoluted peptide mass and then additionally scaling this
+                   tolerance by the charge state.  This inflates the precursor
+                   tolerance by N-fold where N is the precursor charge state (so a
+                   10 ppm tolerance ends up being 20 ppm for 2+ precursors and
+                   30 ppm for 3+ precursors).  The fix is to always specify
+                   "<a href="/parameters/parameters_201401/precursor_tolerance_type.php">precursor_tolerance_type = 0</a>".
+                   This parameter will be deprecated in the next release.
+               <li>Known issue:  using custom amino acids (B, J, U, X, Z) fails.
+               <li>Known issue:  high-res ms/ms searches (using small
+                   "<a href="/parameters/parameters_201401/fragment_bin_tol.php">fragment_bin_tol</a>"
+                   values) are ~2x slower than 2014.01.0 due to an unnecessary array
+                   initialization that was added in this maintenance release.
+               <li>Known issue:  Using -N&lt;name&gt; command line option adds full
+                   path to "spectrum" attribute in Windows.
+               <li>Known issue:  Using -N&lt;name&gt; command line option, the pep.xml
+                   "base_name" attribute has full path to the output file instead of
+                   to the input file.
+               <li>Re-use temporary arrays during spectral preprocessing for better memory
+                   management running under Windows, implemented by M. Hoopmann.
+               <li>New parameter
+                   "<a href="/parameters/parameters_201401/override_charge.php">override_charge</a>" 
+                   instructs Comet to override the listed precursor charge state in the input
+                   file with that specified by the
+                   "<a href="/parameters/parameters_201401/charge_range.php">charge_range</a>" 
+                   parameter, implemented by D. Shteynberg.
+               <li>Update MSToolkit to version r68 to support non-consecutive mzXML scans.
+               <li>Bug fix: synchronize normal and sparse matrix xcorr scores when decoys are
+                   generated to fill in the xcorr distribution for the expectation score
+                   calculation, reported by D. Tabb.
+               <li>Bug fix: buffer overflow issue on some linux distributions when retrieving
+                   host name, reported by K. Tamura.
+               <li>Bug fix: close spawned threads, reported by M. Riffle.
+               <li>Bug fix: corrected "sample_enzyme" reporting in pep.xml output, reported
+                   by L. Mendoza.
+               <li>Bug fix: remove extra tab in txt output, reported by A. Kertesz-Farkas.
+               <li>Bug fix: output file name gets mangled when .out files are used and the
+                   input is specified using a full path, reported by C. Hoogland.
+
+            </ul>
+            <ul>
                <b>release 2014.01 rev. 0 (2014.01.0), release date 2014/03/25</b>
+               <li>Known issue: the sample_enzyme information in pep.xml output is completely broken.
                <li>Known issue: there is a memory leak in the program. Avoid invoking
                    Comet with a ton of input files on the command line.
                <li>Known issue: report of inconsistent results using
@@ -61,7 +106,7 @@
             <p>Documentation for parameters for release 2014.01
             <a href="/parameters/parameters_201401/">can be found here</a>.
 
-            <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> link.
+            <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 
       </div>
    </div>

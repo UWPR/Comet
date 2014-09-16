@@ -1,4 +1,4 @@
-# comet_version 2014.01 rev. 0
+# comet_version 2014.01 rev. 1
 # Comet MS/MS search engine parameters file.
 # Everything following the '#' symbol is treated as a comment.
 
@@ -76,6 +76,7 @@ sample_enzyme_number = 1               # Sample enzyme which is possibly differe
 #
 scan_range = 0 0                       # start and scan scan range to search; 0 as 1st entry ignores parameter
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override mzXML charge; 0 as 1st entry ignores parameter
+override_charge = 0                    # 0=no, 1=yes to override existing precursor charge states with precursor_charge parameter
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3
 activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, PQD, HCD, IRMPD
 

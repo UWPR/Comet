@@ -3,6 +3,7 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
+               <li><a href="/release/release_201402/">Release 2014.02, 2014/09/16</a></li>
                <li><a href="/release/release_201401/">Release 2014.01, 2014/03/25</a></li>
                <li><a href="/release/release_201302/">Release 2013.02, 2013/10/18</a></li>
                <li><a href="/release/release_201301/">Release 2013.01, 2013/06/05</a></li>
@@ -16,9 +17,12 @@
          <p>Comet is currently or soon-to-be integrated into the following software projects:
          <ul>
             <li><a target="new" href="http://chorusproject.org">Chorus</a>
-            <li><a target="new" href="http://noble.gs.washington.edu/proj/crux/">Crux</a>
+            <li><a target="new" href="http://cruxtoolkit.sourceforge.net/">Crux</a>
+            <li><a target="new" href="https://registry.hub.docker.com/u/hexabio/comet/">Docker</a>
             <li><a target="new" href="http://www.labkey.org">LabKey</a>
+            <li><a target="new" href="http://www.bioprocess.org/massypup/">MASSyPup</a>
             <li><a target="new" href="http://pcarvalho.com/patternlab/">PatternLab</a>
+            <li><a target="new" href="http://prohitsms.com/">ProHits</a>
             <li><a target="new" href="http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP">Trans-Proteomic Pipeline (TPP)</a>
          </ul>
 

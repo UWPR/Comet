@@ -10,6 +10,11 @@
 
          <h2>Comet parameter: precursor_tolerance_type</h2>
 
+         <p><b>08/22/2014 NOTE:  always set this parameter to 0!
+         <br>There is a bug in it's implementation and it turns out
+         that this parameter is not needed at all.
+         <br>This parameter will be deprecated in the next release.</b></p>
+
          <ul>
          <li>This parameter controls how the <a href="peptide_mass_tolerance.php">peptide_mass_tolerance</a>
          parameter is applied.  That tolerance can be applied to the singly charged peptide mass or it can

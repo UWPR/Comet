@@ -1146,6 +1146,31 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
       </div>
       <div class="post hr">
 
+         <h2>Comet parameter: override_charge</h2>
+
+         <ul>
+         <li>This parameter specifies the whether to override existing precursor
+         charge state information when present in the input files
+         with the charge range specified by the
+         "<a href="precursor_charge.php">precursor_charge</a>" parameter.
+         <li>Valid values are 0 and 1.
+         <li>To keep any known charge state values in the input files,
+         set the value to 0.
+         <li>To ignore any known charge values in the input files and instead
+         use the charge state range specified by the
+         "<a href="precursor_charge.php">precursor_charge</a>" parameter,
+         set the value to 1.
+         <li>The default value is "0" if this parameter is missing.
+         <li>This parameter was implemented in version 2014.01 rev. 1.
+         </ul>
+
+         <p>Example:
+         <br><tt>override_charge = 0</tt>
+         <br><tt>override_charge = 1</tt>
+
+      </div>
+      <div class="post hr">
+
          <h2>Comet parameter: peptide_mass_tolerance</h2>
 
          <ul>

@@ -16,6 +16,9 @@
                <p>We appear to have Windows memory management issues.  This is limited to Windows and
                   is not an issue for Linux.  Avoid specifying multiple
                   input files to Comet when run under windows i.e. do not run "<tt>comet.exe *.mzXML</tt>".
+                  This issue has been mitigated a bit in version 2014.01 rev. 1 but it's still good
+                  practice to not specify a lot of input files on the command line.  This problem is
+                  mitigated even more with version 2014.02 rev. 0.
 
                <p>Instead, create a wrapper script batch program which is just a text file with a ".bat"
                   file extension.  Name it something like "runcomet.bat" with the contents as below
@@ -24,7 +27,10 @@
                   search all input files as opposed to one instance of Comet to search all input
                   files.
 
-               <p>Contents of runcomet.bat: &nbsp; <tt>for %%A in (%*) do {comet.exe %%A}</tt>
+               <p>Contents of runcomet.bat (you can save-link to file): &nbsp; <a href="runcomet.bat"><tt>for %%A in (%*) do ( comet.exe %%A )</tt></a>
+
+               <p>Specify the full path to the comet.exe binary in the batch file if it does not
+                  reside in the same directory as the command is being executed.
 
             </div>
             <div class="post hr">
@@ -37,9 +43,9 @@
                   <li><tt>comet.exe input.ms2</tt>
                </ul>
 
-               <p>Note specifying the scan range to search on the command line, 2nd example above,
+               <p>Note that specifying the scan range to search on the command line, 2nd example above,
                   works only for mzXML and mzML input files.  One can also specify searching a specific
-                  scan range using the "<a href="/parameters/scan_range.php">scan_range</a>" parameter in the comet.params file.
+                  scan range using the "<a href="/parameters/parameters_201402/scan_range.php">scan_range</a>" parameter in the comet.params file.
             </div>
             <div class="post hr">
                <p>To create a comet.params file, run the following command and rename the create
@@ -52,18 +58,18 @@
             <div class="post hr">
                <p>For low-res ms/ms spectra, try the following settings:
                <ul>
-                  <li><a href="/parameters/parameters_201401/fragment_bin_tol.php">fragment_bin_tol</a> = 1.0005
-                  <li><a href="/parameters/parameters_201401/fragment_bin_offset.php">fragment_bin_offset</a> = 0.4
-                  <li><a href="/parameters/parameters_201401/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 1
-                  <li><a href="/parameters/parameters_201401/spectrum_batch_size.php">spectrum_batch_size</a> = 0
+                  <li><a href="/parameters/parameters_201402/fragment_bin_tol.php">fragment_bin_tol</a> = 1.0005
+                  <li><a href="/parameters/parameters_201402/fragment_bin_offset.php">fragment_bin_offset</a> = 0.4
+                  <li><a href="/parameters/parameters_201402/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 1
+                  <li><a href="/parameters/parameters_201402/spectrum_batch_size.php">spectrum_batch_size</a> = 0
                </ul>
 
                <p>For high-res ms/ms spectra, try the following settings:
                <ul>
-                  <li><a href="/parameters/parameters_201401/fragment_bin_tol.php">fragment_bin_tol</a> = 0.05
-                  <li><a href="/parameters/parameters_201401/fragment_bin_offset.php">fragment_bin_offset</a> = 0.0
-                  <li><a href="/parameters/parameters_201401/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 0
-                  <li><a href="/parameters/parameters_201401/spectrum_batch_size.php">spectrum_batch_size</a> = 5000 (depending on available RAM)
+                  <li><a href="/parameters/parameters_201402/fragment_bin_tol.php">fragment_bin_tol</a> = 0.02
+                  <li><a href="/parameters/parameters_201402/fragment_bin_offset.php">fragment_bin_offset</a> = 0.0
+                  <li><a href="/parameters/parameters_201402/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 0
+                  <li><a href="/parameters/parameters_201402/spectrum_batch_size.php">spectrum_batch_size</a> = 5000 (depending on available RAM)
                </ul>
             </div>
 
@@ -75,24 +81,42 @@
                   all spectra to be loaded and searched at once).
                <p>So for high-res ms/ms, I typically set:
                <ul>
-                  <li><a href="/parameters/parameters_201401/use_sparse_matrix.php">use_sparse_matrix</a> = 0
-                  <li><a href="/parameters/parameters_201401/spectrum_batch_size.php">spectrum_batch_size</a> = 5000
+                  <li><a href="/parameters/parameters_201402/use_sparse_matrix.php">use_sparse_matrix</a> = 0
+                  <li><a href="/parameters/parameters_201402/spectrum_batch_size.php">spectrum_batch_size</a> = 5000
                </ul>
                <p>as opposed to
                <ul>
-                  <li><a href="/parameters/parameters_201401/use_sparse_matrix.php">use_sparse_matrix</a> = 1
-                  <li><a href="/parameters/parameters_201401/spectrum_batch_size.php">spectrum_batch_size</a> = 0
+                  <li><a href="/parameters/parameters_201402/use_sparse_matrix.php">use_sparse_matrix</a> = 1
+                  <li><a href="/parameters/parameters_201402/spectrum_batch_size.php">spectrum_batch_size</a> = 0
                </ul>
             </div>
 
             <div class="post hr">
                <p>To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
-               <br>Example version 2014.01 comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
+               <br>Example version 2014.02 comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
                <ul>
-                  <li><a href="/parameters/parameters_201401/comet.params.low-low">comet.params.low-low</a> - low res MS1 and low res MS2 e.g. ion trap
-                  <li><a href="/parameters/parameters_201401/comet.params.high-low">comet.params.high-low</a> - high res MS1 and low res MS2 e.g. LTQ-Orbitrap
-                  <li><a href="/parameters/parameters_201401/comet.params.high-high">comet.params.high-high</a> - high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
+                  <li><a href="/parameters/parameters_201402/comet.params.low-low">comet.params.low-low</a> - low res MS1 and low res MS2 e.g. ion trap
+                  <li><a href="/parameters/parameters_201402/comet.params.high-low">comet.params.high-low</a> - high res MS1 and low res MS2 e.g. LTQ-Orbitrap
+                  <li><a href="/parameters/parameters_201402/comet.params.high-high">comet.params.high-high</a> - high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
                </ul>
+            </div>
+
+            <div class="post hr">
+               <p>Here's an example of how Comet scales with increasing core count using an 8-core (16 hyperthreads)
+                  machine:
+<pre>
+# threads  runtime   scaling compared to baseline
+-------------------------------------------------
+    2        5:17       1.0 (baseline)
+    4        2:41       0.98
+    8        1:28       0.90
+   12        1:18       0.68
+   16        1:14       0.54
+ </pre>
+
+               <p>At least through 8 cores, the searches scale fairly linearly.  Hyperthreaded cores don't
+                  add much.  I have correspondence from a user that the scaling starts to plateau at 8 cores
+                  (although I do believe this to be search parameter dependent).
             </div>
 
       </div>

@@ -78,6 +78,7 @@
          <ul>
          <li><a href="scan_range.php">scan_range</a></li>
          <li><a href="precursor_charge.php">precursor_charge</a></li>
+         <li><a href="override_charge.php">override_charge</a> <font color="red">*</font></li>
          <li><a href="ms_level.php">ms_level</a></li>
          <li><a href="activation_method.php">activation_method</a></li>
          </ul>
