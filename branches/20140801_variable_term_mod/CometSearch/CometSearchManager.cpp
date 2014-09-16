@@ -559,23 +559,23 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("use_sparse_matrix", g_staticParams.options.bSparseMatrix);
 
-   GetParamValue("variable_mod1", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
+   GetParamValue("variable_mod01", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
 
-   GetParamValue("variable_mod2", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
+   GetParamValue("variable_mod02", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
 
-   GetParamValue("variable_mod3", g_staticParams.variableModParameters.varModList[VMOD_3_INDEX]);
+   GetParamValue("variable_mod03", g_staticParams.variableModParameters.varModList[VMOD_3_INDEX]);
 
-   GetParamValue("variable_mod4", g_staticParams.variableModParameters.varModList[VMOD_4_INDEX]);
+   GetParamValue("variable_mod04", g_staticParams.variableModParameters.varModList[VMOD_4_INDEX]);
    
-   GetParamValue("variable_mod5", g_staticParams.variableModParameters.varModList[VMOD_5_INDEX]);
+   GetParamValue("variable_mod05", g_staticParams.variableModParameters.varModList[VMOD_5_INDEX]);
 
-   GetParamValue("variable_mod6", g_staticParams.variableModParameters.varModList[VMOD_6_INDEX]);
+   GetParamValue("variable_mod06", g_staticParams.variableModParameters.varModList[VMOD_6_INDEX]);
 
-   GetParamValue("variable_mod7", g_staticParams.variableModParameters.varModList[VMOD_7_INDEX]);
+   GetParamValue("variable_mod07", g_staticParams.variableModParameters.varModList[VMOD_7_INDEX]);
 
-   GetParamValue("variable_mod8", g_staticParams.variableModParameters.varModList[VMOD_8_INDEX]);
+   GetParamValue("variable_mod08", g_staticParams.variableModParameters.varModList[VMOD_8_INDEX]);
 
-   GetParamValue("variable_mod9", g_staticParams.variableModParameters.varModList[VMOD_9_INDEX]);
+   GetParamValue("variable_mod09", g_staticParams.variableModParameters.varModList[VMOD_9_INDEX]);
 
    if (GetParamValue("max_variable_mods_in_peptide", iIntData))
    {

@@ -162,15 +162,15 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    // Write out properly encoded mods
    
-   WriteVariableMod(fpout, searchMgr, "variable_mod1");
-   WriteVariableMod(fpout, searchMgr, "variable_mod2");
-   WriteVariableMod(fpout, searchMgr, "variable_mod3");
-   WriteVariableMod(fpout, searchMgr, "variable_mod4");
-   WriteVariableMod(fpout, searchMgr, "variable_mod5");
-   WriteVariableMod(fpout, searchMgr, "variable_mod6");
-   WriteVariableMod(fpout, searchMgr, "variable_mod7");
-   WriteVariableMod(fpout, searchMgr, "variable_mod8");
-   WriteVariableMod(fpout, searchMgr, "variable_mod9");
+   WriteVariableMod(fpout, searchMgr, "variable_mod01");
+   WriteVariableMod(fpout, searchMgr, "variable_mod02");
+   WriteVariableMod(fpout, searchMgr, "variable_mod03");
+   WriteVariableMod(fpout, searchMgr, "variable_mod04");
+   WriteVariableMod(fpout, searchMgr, "variable_mod05");
+   WriteVariableMod(fpout, searchMgr, "variable_mod06");
+   WriteVariableMod(fpout, searchMgr, "variable_mod07");
+   WriteVariableMod(fpout, searchMgr, "variable_mod08");
+   WriteVariableMod(fpout, searchMgr, "variable_mod09");
 
 
    double dMass = 0.0;

@@ -388,7 +388,10 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("use_sparse_matrix", szParamStringVal, iIntParam);
          }
-         else if (!strcmp(szParamName, "variable_mod1"))
+         // FIX: should really be more careful here and check the range of the variable
+         // mod is within allowed i.e. no variable_mod95
+         // Otherwise this else-if code will parse in all variable mods
+         else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
          {
             varModsParam.szVarModChar[0] = '\0';
             sscanf(szParamVal, "%lf %20s %d %d %d %d",
@@ -406,167 +409,7 @@ void LoadParameters(char *pszParamsFile,
                   varModsParam.iMaxNumVarModAAPerMod,
                   varModsParam.iVarModTermDistance,
                   varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod1", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod2"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod,
-                  &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod,
-                  varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod2", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod3"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod,
-                  &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod,
-                  varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod3", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod4"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod,
-                  &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod,
-                  varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod4", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod5"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod,
-                  &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod,
-                  varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod5", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod6"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod,
-                  &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod,
-                  varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod6", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod7"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod,
-                  &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod,
-                  varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod7", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod8"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod,
-                  &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod,
-                  varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod8", szParamStringVal, varModsParam);
-         }
-         else if (!strcmp(szParamName, "variable_mod9"))
-         {
-            varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
-                  &varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  &varModsParam.bBinaryMod,
-                  &varModsParam.iMaxNumVarModAAPerMod,
-                  &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
-                  varModsParam.dVarModMass,
-                  varModsParam.szVarModChar,
-                  varModsParam.bBinaryMod,
-                  varModsParam.iMaxNumVarModAAPerMod,
-                  varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
-            pSearchMgr->SetParam("variable_mod9", szParamStringVal, varModsParam);
+            pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
          }
          else if (!strcmp(szParamName, "max_variable_mods_in_peptide"))
          {
@@ -1362,15 +1205,15 @@ allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n
 # format:  <mass> <residues> <0=variable/1=binary> <max_mods_per_peptide> <term_distance> <n/c-term>\n\
 #     e.g. 79.966331 STY 0 3 -1 0\n\
 #\n\
-variable_mod1 = 15.9949 M 0 3 -1 0\n\
-variable_mod2 = 0.0 X 0 3 -1 0\n\
-variable_mod3 = 0.0 X 0 3 -1 0\n\
-variable_mod4 = 0.0 X 0 3 -1 0\n\
-variable_mod5 = 0.0 X 0 3 -1 0\n\
-variable_mod6 = 0.0 X 0 3 -1 0\n\
-variable_mod7 = 0.0 X 0 3 -1 0\n\
-variable_mod8 = 0.0 X 0 3 -1 0\n\
-variable_mod9 = 0.0 X 0 3 -1 0\n\
+variable_mod01 = 15.9949 M 0 3 -1 0\n\
+variable_mod02 = 0.0 X 0 3 -1 0\n\
+variable_mod03 = 0.0 X 0 3 -1 0\n\
+variable_mod04 = 0.0 X 0 3 -1 0\n\
+variable_mod05 = 0.0 X 0 3 -1 0\n\
+variable_mod06 = 0.0 X 0 3 -1 0\n\
+variable_mod07 = 0.0 X 0 3 -1 0\n\
+variable_mod08 = 0.0 X 0 3 -1 0\n\
+variable_mod09 = 0.0 X 0 3 -1 0\n\
 max_variable_mods_in_peptide = 5\n\
 \n\
 #\n\
