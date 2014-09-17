@@ -359,13 +359,6 @@ namespace CometUI
                 return false;
             }
 
-            var precursorTolType = CometUI.SearchSettings.PrecursorToleranceType;
-            if (!SearchMgr.SetParam("precursor_tolerance_type", precursorTolType.ToString(CultureInfo.InvariantCulture), precursorTolType))
-            {
-                SearchStatusMessage = "Could not set the precursor_tolerance_type parameter.";
-                return false;
-            }
-
             var isotopeError = CometUI.SearchSettings.PrecursorIsotopeError;
             if (!SearchMgr.SetParam("isotope_error", isotopeError.ToString(CultureInfo.InvariantCulture), isotopeError))
             {

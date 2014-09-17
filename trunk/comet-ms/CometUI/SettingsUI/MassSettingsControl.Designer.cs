@@ -45,11 +45,9 @@ namespace CometUI.SettingsUI
             this.precursorIsotopeErrorCombo = new System.Windows.Forms.ComboBox();
             this.precursorMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label3 = new System.Windows.Forms.Label();
-            this.precursorTolTypeCombo = new System.Windows.Forms.ComboBox();
             this.precursorMassUnitCombo = new System.Windows.Forms.ComboBox();
             this.label6 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.useNLCheckBox = new System.Windows.Forms.CheckBox();
             this.flankCheckBox = new System.Windows.Forms.CheckBox();
@@ -173,11 +171,9 @@ namespace CometUI.SettingsUI
             this.precursorGroupBox.Controls.Add(this.precursorIsotopeErrorCombo);
             this.precursorGroupBox.Controls.Add(this.precursorMassTypeCombo);
             this.precursorGroupBox.Controls.Add(this.label3);
-            this.precursorGroupBox.Controls.Add(this.precursorTolTypeCombo);
             this.precursorGroupBox.Controls.Add(this.precursorMassUnitCombo);
             this.precursorGroupBox.Controls.Add(this.label6);
             this.precursorGroupBox.Controls.Add(this.label5);
-            this.precursorGroupBox.Controls.Add(this.label4);
             this.precursorGroupBox.Controls.Add(this.label2);
             this.precursorGroupBox.Controls.Add(this.label1);
             this.precursorGroupBox.Location = new System.Drawing.Point(21, 17);
@@ -203,7 +199,7 @@ namespace CometUI.SettingsUI
             this.precursorIsotopeErrorCombo.Items.AddRange(new object[] {
             "no C13",
             "C13 offsets"});
-            this.precursorIsotopeErrorCombo.Location = new System.Drawing.Point(16, 162);
+            this.precursorIsotopeErrorCombo.Location = new System.Drawing.Point(133, 104);
             this.precursorIsotopeErrorCombo.Name = "precursorIsotopeErrorCombo";
             this.precursorIsotopeErrorCombo.Size = new System.Drawing.Size(83, 21);
             this.precursorIsotopeErrorCombo.TabIndex = 5;
@@ -229,18 +225,6 @@ namespace CometUI.SettingsUI
             this.label3.TabIndex = 30;
             this.label3.Text = "Mass Unit:";
             // 
-            // precursorTolTypeCombo
-            // 
-            this.precursorTolTypeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.precursorTolTypeCombo.FormattingEnabled = true;
-            this.precursorTolTypeCombo.Items.AddRange(new object[] {
-            "MH+",
-            "M/Z"});
-            this.precursorTolTypeCombo.Location = new System.Drawing.Point(133, 104);
-            this.precursorTolTypeCombo.Name = "precursorTolTypeCombo";
-            this.precursorTolTypeCombo.Size = new System.Drawing.Size(83, 21);
-            this.precursorTolTypeCombo.TabIndex = 4;
-            // 
             // precursorMassUnitCombo
             // 
             this.precursorMassUnitCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
@@ -257,7 +241,7 @@ namespace CometUI.SettingsUI
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(13, 146);
+            this.label6.Location = new System.Drawing.Point(130, 88);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(70, 13);
             this.label6.TabIndex = 27;
@@ -271,15 +255,6 @@ namespace CometUI.SettingsUI
             this.label5.Size = new System.Drawing.Size(62, 13);
             this.label5.TabIndex = 26;
             this.label5.Text = "Mass Type:";
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(130, 88);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(52, 13);
-            this.label4.TabIndex = 25;
-            this.label4.Text = "Tol Type:";
             // 
             // groupBox1
             // 
@@ -404,11 +379,9 @@ namespace CometUI.SettingsUI
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.GroupBox precursorGroupBox;
         private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.ComboBox precursorMassUnitCombo;
-        private System.Windows.Forms.ComboBox precursorTolTypeCombo;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.ComboBox precursorMassTypeCombo;
         private System.Windows.Forms.ComboBox precursorIsotopeErrorCombo;

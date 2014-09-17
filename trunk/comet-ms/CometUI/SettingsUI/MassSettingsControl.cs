@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using System.Windows.Forms;
-using CometUI.Properties;
 
 namespace CometUI.SettingsUI
 {
@@ -30,12 +29,6 @@ namespace CometUI.SettingsUI
             if (!CometUI.SearchSettings.PrecursorMassUnit.Equals(precursorMassUnitCombo.SelectedItem))
             {
                 CometUI.SearchSettings.PrecursorMassUnit = precursorMassUnitCombo.SelectedIndex;
-                Parent.SettingsChanged = true;
-            }
-
-            if (!CometUI.SearchSettings.PrecursorToleranceType.Equals(precursorTolTypeCombo.SelectedItem))
-            {
-                CometUI.SearchSettings.PrecursorToleranceType = precursorTolTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
@@ -135,7 +128,6 @@ namespace CometUI.SettingsUI
             // Set up defaults for the precursor mass settings
             precursorMassTolTextBox.Text = CometUI.SearchSettings.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
             precursorMassUnitCombo.SelectedIndex = CometUI.SearchSettings.PrecursorMassUnit;
-            precursorTolTypeCombo.SelectedIndex = CometUI.SearchSettings.PrecursorToleranceType;
             precursorMassTypeCombo.SelectedIndex = CometUI.SearchSettings.PrecursorMassType;
             precursorIsotopeErrorCombo.SelectedIndex = CometUI.SearchSettings.PrecursorIsotopeError;
 

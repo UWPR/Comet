@@ -225,13 +225,6 @@ namespace CometUI
             }
             cometSettings.PrecursorMassType = precursorMassType;
 
-            int precursorTolType;
-            if (!GetCometParamValue("precursor_tolerance_type", out precursorTolType, out paramValueStr))
-            {
-                return false;
-            }
-            cometSettings.PrecursorToleranceType = precursorTolType;
-
             int isotopeError;
             if (!GetCometParamValue("isotope_error", out isotopeError, out paramValueStr))
             {
@@ -717,15 +710,6 @@ namespace CometUI
                              new TypedCometParam<int>(CometParamType.Int,
                                                          precursorMassType.ToString(CultureInfo.InvariantCulture),
                                                          precursorMassType)))
-            {
-                return false;
-            }
-
-            var precursorTolType = settings.PrecursorToleranceType;
-            if (!UpdateCometParam("precursor_tolerance_type",
-                             new TypedCometParam<int>(CometParamType.Int,
-                                                         precursorTolType.ToString(CultureInfo.InvariantCulture),
-                                                         precursorTolType)))
             {
                 return false;
             }
