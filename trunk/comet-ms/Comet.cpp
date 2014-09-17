@@ -548,34 +548,6 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("skip_researching", szParamStringVal, iIntParam);
          }
-         else if (!strcmp(szParamName, "variable_C_terminus"))
-         {
-            sscanf(szParamVal, "%lf", &dDoubleParam);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf", dDoubleParam);
-            pSearchMgr->SetParam("variable_C_terminus", szParamStringVal, dDoubleParam);
-         }
-         else if (!strcmp(szParamName, "variable_N_terminus"))
-         {
-            sscanf(szParamVal, "%lf", &dDoubleParam);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf", dDoubleParam);
-            pSearchMgr->SetParam("variable_N_terminus", szParamStringVal, dDoubleParam);
-         }
-         else if (!strcmp(szParamName, "variable_C_terminus_distance"))
-         {
-            sscanf(szParamVal, "%d", &iIntParam);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%d", iIntParam);
-            pSearchMgr->SetParam("variable_C_terminus_distance", szParamStringVal, iIntParam);
-         }
-         else if (!strcmp(szParamName, "variable_N_terminus_distance"))
-         {
-            sscanf(szParamVal, "%d", &iIntParam);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%d", iIntParam);
-            pSearchMgr->SetParam("variable_N_terminus_distance", szParamStringVal, iIntParam);
-         }
          else if (!strcmp(szParamName, "add_Cterm_peptide"))
          {
             sscanf(szParamVal, "%lf", &dDoubleParam);
