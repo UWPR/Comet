@@ -60,8 +60,21 @@
             this.showOptionsPanel = new System.Windows.Forms.Panel();
             this.resultsListPanel = new System.Windows.Forms.Panel();
             this.pageNavPanel = new System.Windows.Forms.Panel();
-            this.linkLabelPage10 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelFirstPage = new System.Windows.Forms.LinkLabel();
+            this.linkLabelLastPage = new System.Windows.Forms.LinkLabel();
+            this.pageNumbersPanel = new System.Windows.Forms.Panel();
+            this.linkLabelPage6 = new System.Windows.Forms.LinkLabel();
             this.linkLabelPage9 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPage8 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPage10 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPage7 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPage1 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPage2 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPage5 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPage3 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPage4 = new System.Windows.Forms.LinkLabel();
+            this.linkLabelNextPage = new System.Windows.Forms.LinkLabel();
+            this.linkLabelPreviousPage = new System.Windows.Forms.LinkLabel();
             this.resultsListView = new System.Windows.Forms.ListView();
             this.LeftVennScoreCol = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.LeftVennSequenceCol = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -70,19 +83,6 @@
             this.LeftVennPepMass3Col = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.resultsListPanelNormal = new System.Windows.Forms.Panel();
             this.resultsListPanelFull = new System.Windows.Forms.Panel();
-            this.linkLabelPage1 = new System.Windows.Forms.LinkLabel();
-            this.linkLabelPage2 = new System.Windows.Forms.LinkLabel();
-            this.linkLabelPage3 = new System.Windows.Forms.LinkLabel();
-            this.linkLabelPage4 = new System.Windows.Forms.LinkLabel();
-            this.linkLabelPage5 = new System.Windows.Forms.LinkLabel();
-            this.linkLabelPage6 = new System.Windows.Forms.LinkLabel();
-            this.linkLabelPage7 = new System.Windows.Forms.LinkLabel();
-            this.linkLabelPage8 = new System.Windows.Forms.LinkLabel();
-            this.linkLabelPreviousPage = new System.Windows.Forms.LinkLabel();
-            this.linkLabelNextPage = new System.Windows.Forms.LinkLabel();
-            this.pageNumbersPanel = new System.Windows.Forms.Panel();
-            this.linkLabelLastPage = new System.Windows.Forms.LinkLabel();
-            this.linkLabelFirstPage = new System.Windows.Forms.LinkLabel();
             this.mainMenuStrip.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.showOptionsPanel.SuspendLayout();
@@ -252,7 +252,7 @@
             this.viewOptionsTab.Location = new System.Drawing.Point(26, 3);
             this.viewOptionsTab.Name = "viewOptionsTab";
             this.viewOptionsTab.SelectedIndex = 0;
-            this.viewOptionsTab.Size = new System.Drawing.Size(661, 172);
+            this.viewOptionsTab.Size = new System.Drawing.Size(661, 153);
             this.viewOptionsTab.TabIndex = 0;
             // 
             // summaryTabPage
@@ -260,7 +260,7 @@
             this.summaryTabPage.Location = new System.Drawing.Point(4, 22);
             this.summaryTabPage.Name = "summaryTabPage";
             this.summaryTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.summaryTabPage.Size = new System.Drawing.Size(653, 146);
+            this.summaryTabPage.Size = new System.Drawing.Size(653, 127);
             this.summaryTabPage.TabIndex = 0;
             this.summaryTabPage.Text = "Summary";
             this.summaryTabPage.UseVisualStyleBackColor = true;
@@ -308,7 +308,7 @@
             // showHideOptionsBtn
             // 
             this.showHideOptionsBtn.Font = new System.Drawing.Font("Verdana", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.showHideOptionsBtn.Location = new System.Drawing.Point(12, 27);
+            this.showHideOptionsBtn.Location = new System.Drawing.Point(12, 39);
             this.showHideOptionsBtn.Name = "showHideOptionsBtn";
             this.showHideOptionsBtn.Size = new System.Drawing.Size(20, 20);
             this.showHideOptionsBtn.TabIndex = 0;
@@ -319,7 +319,7 @@
             // showHideOptionsLabel
             // 
             this.showHideOptionsLabel.AutoSize = true;
-            this.showHideOptionsLabel.Location = new System.Drawing.Point(35, 31);
+            this.showHideOptionsLabel.Location = new System.Drawing.Point(35, 43);
             this.showHideOptionsLabel.Name = "showHideOptionsLabel";
             this.showHideOptionsLabel.Size = new System.Drawing.Size(69, 13);
             this.showHideOptionsLabel.TabIndex = 1;
@@ -329,7 +329,7 @@
             // 
             this.hideOptionsGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.hideOptionsGroupBox.Location = new System.Drawing.Point(110, 36);
+            this.hideOptionsGroupBox.Location = new System.Drawing.Point(110, 48);
             this.hideOptionsGroupBox.Name = "hideOptionsGroupBox";
             this.hideOptionsGroupBox.Size = new System.Drawing.Size(589, 5);
             this.hideOptionsGroupBox.TabIndex = 0;
@@ -340,9 +340,9 @@
             this.showOptionsPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.showOptionsPanel.Controls.Add(this.viewOptionsTab);
-            this.showOptionsPanel.Location = new System.Drawing.Point(12, 55);
+            this.showOptionsPanel.Location = new System.Drawing.Point(12, 71);
             this.showOptionsPanel.Name = "showOptionsPanel";
-            this.showOptionsPanel.Size = new System.Drawing.Size(710, 180);
+            this.showOptionsPanel.Size = new System.Drawing.Size(710, 161);
             this.showOptionsPanel.TabIndex = 6;
             // 
             // resultsListPanel
@@ -352,9 +352,9 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.resultsListPanel.Controls.Add(this.pageNavPanel);
             this.resultsListPanel.Controls.Add(this.resultsListView);
-            this.resultsListPanel.Location = new System.Drawing.Point(12, 241);
+            this.resultsListPanel.Location = new System.Drawing.Point(12, 257);
             this.resultsListPanel.Name = "resultsListPanel";
-            this.resultsListPanel.Size = new System.Drawing.Size(710, 246);
+            this.resultsListPanel.Size = new System.Drawing.Size(710, 227);
             this.resultsListPanel.TabIndex = 7;
             // 
             // pageNavPanel
@@ -366,10 +366,79 @@
             this.pageNavPanel.Controls.Add(this.pageNumbersPanel);
             this.pageNavPanel.Controls.Add(this.linkLabelNextPage);
             this.pageNavPanel.Controls.Add(this.linkLabelPreviousPage);
-            this.pageNavPanel.Location = new System.Drawing.Point(26, 216);
+            this.pageNavPanel.Location = new System.Drawing.Point(26, 197);
             this.pageNavPanel.Name = "pageNavPanel";
             this.pageNavPanel.Size = new System.Drawing.Size(428, 20);
             this.pageNavPanel.TabIndex = 12;
+            // 
+            // linkLabelFirstPage
+            // 
+            this.linkLabelFirstPage.AutoSize = true;
+            this.linkLabelFirstPage.Location = new System.Drawing.Point(3, 6);
+            this.linkLabelFirstPage.Name = "linkLabelFirstPage";
+            this.linkLabelFirstPage.Size = new System.Drawing.Size(26, 13);
+            this.linkLabelFirstPage.TabIndex = 26;
+            this.linkLabelFirstPage.TabStop = true;
+            this.linkLabelFirstPage.Text = "First";
+            // 
+            // linkLabelLastPage
+            // 
+            this.linkLabelLastPage.AutoSize = true;
+            this.linkLabelLastPage.Location = new System.Drawing.Point(398, 6);
+            this.linkLabelLastPage.Name = "linkLabelLastPage";
+            this.linkLabelLastPage.Size = new System.Drawing.Size(27, 13);
+            this.linkLabelLastPage.TabIndex = 25;
+            this.linkLabelLastPage.TabStop = true;
+            this.linkLabelLastPage.Text = "Last";
+            // 
+            // pageNumbersPanel
+            // 
+            this.pageNumbersPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.pageNumbersPanel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage6);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage9);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage8);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage10);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage7);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage1);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage2);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage5);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage3);
+            this.pageNumbersPanel.Controls.Add(this.linkLabelPage4);
+            this.pageNumbersPanel.Location = new System.Drawing.Point(93, 5);
+            this.pageNumbersPanel.Name = "pageNumbersPanel";
+            this.pageNumbersPanel.Size = new System.Drawing.Size(255, 19);
+            this.pageNumbersPanel.TabIndex = 13;
+            // 
+            // linkLabelPage6
+            // 
+            this.linkLabelPage6.AutoSize = true;
+            this.linkLabelPage6.Location = new System.Drawing.Point(129, 1);
+            this.linkLabelPage6.Name = "linkLabelPage6";
+            this.linkLabelPage6.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage6.TabIndex = 20;
+            this.linkLabelPage6.TabStop = true;
+            this.linkLabelPage6.Text = "16";
+            // 
+            // linkLabelPage9
+            // 
+            this.linkLabelPage9.AutoSize = true;
+            this.linkLabelPage9.Location = new System.Drawing.Point(204, 1);
+            this.linkLabelPage9.Name = "linkLabelPage9";
+            this.linkLabelPage9.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage9.TabIndex = 13;
+            this.linkLabelPage9.TabStop = true;
+            this.linkLabelPage9.Text = "19";
+            // 
+            // linkLabelPage8
+            // 
+            this.linkLabelPage8.AutoSize = true;
+            this.linkLabelPage8.Location = new System.Drawing.Point(179, 1);
+            this.linkLabelPage8.Name = "linkLabelPage8";
+            this.linkLabelPage8.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage8.TabIndex = 22;
+            this.linkLabelPage8.TabStop = true;
+            this.linkLabelPage8.Text = "18";
             // 
             // linkLabelPage10
             // 
@@ -381,15 +450,85 @@
             this.linkLabelPage10.TabStop = true;
             this.linkLabelPage10.Text = "20";
             // 
-            // linkLabelPage9
+            // linkLabelPage7
             // 
-            this.linkLabelPage9.AutoSize = true;
-            this.linkLabelPage9.Location = new System.Drawing.Point(204, 1);
-            this.linkLabelPage9.Name = "linkLabelPage9";
-            this.linkLabelPage9.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage9.TabIndex = 13;
-            this.linkLabelPage9.TabStop = true;
-            this.linkLabelPage9.Text = "19";
+            this.linkLabelPage7.AutoSize = true;
+            this.linkLabelPage7.Location = new System.Drawing.Point(154, 1);
+            this.linkLabelPage7.Name = "linkLabelPage7";
+            this.linkLabelPage7.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage7.TabIndex = 21;
+            this.linkLabelPage7.TabStop = true;
+            this.linkLabelPage7.Text = "17";
+            // 
+            // linkLabelPage1
+            // 
+            this.linkLabelPage1.AutoSize = true;
+            this.linkLabelPage1.Location = new System.Drawing.Point(4, 1);
+            this.linkLabelPage1.Name = "linkLabelPage1";
+            this.linkLabelPage1.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage1.TabIndex = 15;
+            this.linkLabelPage1.TabStop = true;
+            this.linkLabelPage1.Text = "11";
+            // 
+            // linkLabelPage2
+            // 
+            this.linkLabelPage2.AutoSize = true;
+            this.linkLabelPage2.Location = new System.Drawing.Point(29, 1);
+            this.linkLabelPage2.Name = "linkLabelPage2";
+            this.linkLabelPage2.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage2.TabIndex = 16;
+            this.linkLabelPage2.TabStop = true;
+            this.linkLabelPage2.Text = "12";
+            // 
+            // linkLabelPage5
+            // 
+            this.linkLabelPage5.AutoSize = true;
+            this.linkLabelPage5.Location = new System.Drawing.Point(104, 1);
+            this.linkLabelPage5.Name = "linkLabelPage5";
+            this.linkLabelPage5.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage5.TabIndex = 19;
+            this.linkLabelPage5.TabStop = true;
+            this.linkLabelPage5.Text = "15";
+            // 
+            // linkLabelPage3
+            // 
+            this.linkLabelPage3.AutoSize = true;
+            this.linkLabelPage3.Location = new System.Drawing.Point(54, 1);
+            this.linkLabelPage3.Name = "linkLabelPage3";
+            this.linkLabelPage3.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage3.TabIndex = 17;
+            this.linkLabelPage3.TabStop = true;
+            this.linkLabelPage3.Text = "13";
+            // 
+            // linkLabelPage4
+            // 
+            this.linkLabelPage4.AutoSize = true;
+            this.linkLabelPage4.Location = new System.Drawing.Point(79, 1);
+            this.linkLabelPage4.Name = "linkLabelPage4";
+            this.linkLabelPage4.Size = new System.Drawing.Size(19, 13);
+            this.linkLabelPage4.TabIndex = 18;
+            this.linkLabelPage4.TabStop = true;
+            this.linkLabelPage4.Text = "14";
+            // 
+            // linkLabelNextPage
+            // 
+            this.linkLabelNextPage.AutoSize = true;
+            this.linkLabelNextPage.Location = new System.Drawing.Point(354, 6);
+            this.linkLabelNextPage.Name = "linkLabelNextPage";
+            this.linkLabelNextPage.Size = new System.Drawing.Size(38, 13);
+            this.linkLabelNextPage.TabIndex = 24;
+            this.linkLabelNextPage.TabStop = true;
+            this.linkLabelNextPage.Text = "Next >";
+            // 
+            // linkLabelPreviousPage
+            // 
+            this.linkLabelPreviousPage.AutoSize = true;
+            this.linkLabelPreviousPage.Location = new System.Drawing.Point(35, 6);
+            this.linkLabelPreviousPage.Name = "linkLabelPreviousPage";
+            this.linkLabelPreviousPage.Size = new System.Drawing.Size(57, 13);
+            this.linkLabelPreviousPage.TabIndex = 23;
+            this.linkLabelPreviousPage.TabStop = true;
+            this.linkLabelPreviousPage.Text = "< Previous";
             // 
             // resultsListView
             // 
@@ -404,9 +543,9 @@
             this.LeftVennPepMass3Col});
             this.resultsListView.FullRowSelect = true;
             this.resultsListView.GridLines = true;
-            this.resultsListView.Location = new System.Drawing.Point(26, 9);
+            this.resultsListView.Location = new System.Drawing.Point(26, 7);
             this.resultsListView.Name = "resultsListView";
-            this.resultsListView.Size = new System.Drawing.Size(661, 199);
+            this.resultsListView.Size = new System.Drawing.Size(661, 180);
             this.resultsListView.TabIndex = 9;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
             this.resultsListView.View = System.Windows.Forms.View.Details;
@@ -446,151 +585,10 @@
             this.resultsListPanelFull.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.resultsListPanelFull.Location = new System.Drawing.Point(12, 53);
+            this.resultsListPanelFull.Location = new System.Drawing.Point(12, 69);
             this.resultsListPanelFull.Name = "resultsListPanelFull";
-            this.resultsListPanelFull.Size = new System.Drawing.Size(710, 434);
+            this.resultsListPanelFull.Size = new System.Drawing.Size(710, 415);
             this.resultsListPanelFull.TabIndex = 0;
-            // 
-            // linkLabelPage1
-            // 
-            this.linkLabelPage1.AutoSize = true;
-            this.linkLabelPage1.Location = new System.Drawing.Point(4, 1);
-            this.linkLabelPage1.Name = "linkLabelPage1";
-            this.linkLabelPage1.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage1.TabIndex = 15;
-            this.linkLabelPage1.TabStop = true;
-            this.linkLabelPage1.Text = "11";
-            // 
-            // linkLabelPage2
-            // 
-            this.linkLabelPage2.AutoSize = true;
-            this.linkLabelPage2.Location = new System.Drawing.Point(29, 1);
-            this.linkLabelPage2.Name = "linkLabelPage2";
-            this.linkLabelPage2.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage2.TabIndex = 16;
-            this.linkLabelPage2.TabStop = true;
-            this.linkLabelPage2.Text = "12";
-            // 
-            // linkLabelPage3
-            // 
-            this.linkLabelPage3.AutoSize = true;
-            this.linkLabelPage3.Location = new System.Drawing.Point(54, 1);
-            this.linkLabelPage3.Name = "linkLabelPage3";
-            this.linkLabelPage3.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage3.TabIndex = 17;
-            this.linkLabelPage3.TabStop = true;
-            this.linkLabelPage3.Text = "13";
-            // 
-            // linkLabelPage4
-            // 
-            this.linkLabelPage4.AutoSize = true;
-            this.linkLabelPage4.Location = new System.Drawing.Point(79, 1);
-            this.linkLabelPage4.Name = "linkLabelPage4";
-            this.linkLabelPage4.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage4.TabIndex = 18;
-            this.linkLabelPage4.TabStop = true;
-            this.linkLabelPage4.Text = "14";
-            // 
-            // linkLabelPage5
-            // 
-            this.linkLabelPage5.AutoSize = true;
-            this.linkLabelPage5.Location = new System.Drawing.Point(104, 1);
-            this.linkLabelPage5.Name = "linkLabelPage5";
-            this.linkLabelPage5.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage5.TabIndex = 19;
-            this.linkLabelPage5.TabStop = true;
-            this.linkLabelPage5.Text = "15";
-            // 
-            // linkLabelPage6
-            // 
-            this.linkLabelPage6.AutoSize = true;
-            this.linkLabelPage6.Location = new System.Drawing.Point(129, 1);
-            this.linkLabelPage6.Name = "linkLabelPage6";
-            this.linkLabelPage6.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage6.TabIndex = 20;
-            this.linkLabelPage6.TabStop = true;
-            this.linkLabelPage6.Text = "16";
-            // 
-            // linkLabelPage7
-            // 
-            this.linkLabelPage7.AutoSize = true;
-            this.linkLabelPage7.Location = new System.Drawing.Point(154, 1);
-            this.linkLabelPage7.Name = "linkLabelPage7";
-            this.linkLabelPage7.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage7.TabIndex = 21;
-            this.linkLabelPage7.TabStop = true;
-            this.linkLabelPage7.Text = "17";
-            // 
-            // linkLabelPage8
-            // 
-            this.linkLabelPage8.AutoSize = true;
-            this.linkLabelPage8.Location = new System.Drawing.Point(179, 1);
-            this.linkLabelPage8.Name = "linkLabelPage8";
-            this.linkLabelPage8.Size = new System.Drawing.Size(19, 13);
-            this.linkLabelPage8.TabIndex = 22;
-            this.linkLabelPage8.TabStop = true;
-            this.linkLabelPage8.Text = "18";
-            // 
-            // linkLabelPreviousPage
-            // 
-            this.linkLabelPreviousPage.AutoSize = true;
-            this.linkLabelPreviousPage.Location = new System.Drawing.Point(35, 6);
-            this.linkLabelPreviousPage.Name = "linkLabelPreviousPage";
-            this.linkLabelPreviousPage.Size = new System.Drawing.Size(57, 13);
-            this.linkLabelPreviousPage.TabIndex = 23;
-            this.linkLabelPreviousPage.TabStop = true;
-            this.linkLabelPreviousPage.Text = "< Previous";
-            // 
-            // linkLabelNextPage
-            // 
-            this.linkLabelNextPage.AutoSize = true;
-            this.linkLabelNextPage.Location = new System.Drawing.Point(354, 6);
-            this.linkLabelNextPage.Name = "linkLabelNextPage";
-            this.linkLabelNextPage.Size = new System.Drawing.Size(38, 13);
-            this.linkLabelNextPage.TabIndex = 24;
-            this.linkLabelNextPage.TabStop = true;
-            this.linkLabelNextPage.Text = "Next >";
-            // 
-            // pageNumbersPanel
-            // 
-            this.pageNumbersPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.pageNumbersPanel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage6);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage9);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage8);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage10);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage7);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage1);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage2);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage5);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage3);
-            this.pageNumbersPanel.Controls.Add(this.linkLabelPage4);
-            this.pageNumbersPanel.Location = new System.Drawing.Point(93, 5);
-            this.pageNumbersPanel.Name = "pageNumbersPanel";
-            this.pageNumbersPanel.Size = new System.Drawing.Size(255, 19);
-            this.pageNumbersPanel.TabIndex = 13;
-            // 
-            // linkLabelLastPage
-            // 
-            this.linkLabelLastPage.AutoSize = true;
-            this.linkLabelLastPage.Location = new System.Drawing.Point(398, 6);
-            this.linkLabelLastPage.Name = "linkLabelLastPage";
-            this.linkLabelLastPage.Size = new System.Drawing.Size(27, 13);
-            this.linkLabelLastPage.TabIndex = 25;
-            this.linkLabelLastPage.TabStop = true;
-            this.linkLabelLastPage.Text = "Last";
-            // 
-            // linkLabelFirstPage
-            // 
-            this.linkLabelFirstPage.AutoSize = true;
-            this.linkLabelFirstPage.Location = new System.Drawing.Point(3, 6);
-            this.linkLabelFirstPage.Name = "linkLabelFirstPage";
-            this.linkLabelFirstPage.Size = new System.Drawing.Size(26, 13);
-            this.linkLabelFirstPage.TabIndex = 26;
-            this.linkLabelFirstPage.TabStop = true;
-            this.linkLabelFirstPage.Text = "First";
             // 
             // CometUI
             // 
