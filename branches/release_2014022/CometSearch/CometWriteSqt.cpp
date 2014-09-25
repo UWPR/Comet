@@ -116,9 +116,13 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    {
       char szTmp[48];
 
-      while (*pStr != ' ')
+      while (*pStr != ' ' && pStr!=szMod)
          *pStr--;
-      sscanf(pStr+1, "%47s", szTmp);
+
+      if (pStr==szMod)
+         sscanf(pStr, "%47s", szTmp);
+      else
+         sscanf(pStr+1, "%47s", szTmp); // skip the space
 
       fprintf(fpout, "H\tStaticMod\t%s\n", szTmp);
 
