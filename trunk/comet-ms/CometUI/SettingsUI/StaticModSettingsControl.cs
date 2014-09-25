@@ -25,13 +25,17 @@ namespace CometUI.SettingsUI
         public bool VerifyAndUpdateSettings()
         {
             StaticMods = StaticModsDataGridViewToStringCollection();
-            if (!StaticMods.Equals(CometUI.SearchSettings.StaticMods))
+            for (int i = 0; i < StaticMods.Count; i++ )
             {
-                CometUI.SearchSettings.StaticMods = StaticMods;
-                Parent.SettingsChanged = true;
+                if (!StaticMods[i].Equals(CometUI.SearchSettings.StaticMods[i]))
+                {
+                    CometUI.SearchSettings.StaticMods = StaticMods;
+                    Parent.SettingsChanged = true;
+                    break;
+                }
             }
 
-            var staticNTermPeptide = (double) staticNTermPeptideTextBox.DecimalValue;
+            var staticNTermPeptide = (double)staticNTermPeptideTextBox.DecimalValue;
             if (!staticNTermPeptide.Equals(CometUI.SearchSettings.StaticModNTermPeptide))
             {
                 CometUI.SearchSettings.StaticModNTermPeptide = staticNTermPeptide;

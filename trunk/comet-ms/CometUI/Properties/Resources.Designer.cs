@@ -573,6 +573,24 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Invalid Terminus Distance.
+        /// </summary>
+        internal static string VarModSettingsControl_ValidateTermDistCellEdit_Invalid_Terminus_Distance {
+            get {
+                return ResourceManager.GetString("VarModSettingsControl_ValidateTermDistCellEdit_Invalid_Terminus_Distance", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please enter a decimal number..
+        /// </summary>
+        internal static string VarModSettingsControl_ValidateTermDistCellEdit_Please_enter_a_decimal_number_ {
+            get {
+                return ResourceManager.GetString("VarModSettingsControl_ValidateTermDistCellEdit_Please_enter_a_decimal_number_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Invalid Mass Diff.
         /// </summary>
         internal static string VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Mass_Diff {

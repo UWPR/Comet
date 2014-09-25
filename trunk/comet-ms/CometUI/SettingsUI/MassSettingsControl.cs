@@ -26,19 +26,19 @@ namespace CometUI.SettingsUI
                 Parent.SettingsChanged = true;
             }
 
-            if (!CometUI.SearchSettings.PrecursorMassUnit.Equals(precursorMassUnitCombo.SelectedItem))
+            if (CometUI.SearchSettings.PrecursorMassUnit != precursorMassUnitCombo.SelectedIndex)
             {
                 CometUI.SearchSettings.PrecursorMassUnit = precursorMassUnitCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
-            if (!CometUI.SearchSettings.PrecursorMassType.Equals(precursorMassTypeCombo.SelectedItem))
+            if (CometUI.SearchSettings.PrecursorMassType != precursorMassTypeCombo.SelectedIndex)
             {
                 CometUI.SearchSettings.PrecursorMassType = precursorMassTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
-            if (!CometUI.SearchSettings.PrecursorIsotopeError.Equals(precursorIsotopeErrorCombo.SelectedItem))
+            if (CometUI.SearchSettings.PrecursorIsotopeError != precursorIsotopeErrorCombo.SelectedIndex)
             {
                 CometUI.SearchSettings.PrecursorIsotopeError = precursorIsotopeErrorCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
@@ -59,7 +59,7 @@ namespace CometUI.SettingsUI
                 Parent.SettingsChanged = true;
             }
 
-            if (!CometUI.SearchSettings.FragmentMassType.Equals(fragmentMassTypeCombo.SelectedItem))
+            if (CometUI.SearchSettings.FragmentMassType != fragmentMassTypeCombo.SelectedIndex)
             {
                 CometUI.SearchSettings.FragmentMassType = fragmentMassTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;

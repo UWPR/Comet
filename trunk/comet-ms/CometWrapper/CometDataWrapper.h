@@ -104,6 +104,12 @@ namespace CometWrapper {
         int get_MaxNumVarModAAPerMod() {return _pVarMods->iMaxNumVarModAAPerMod;}
         void set_MaxNumVarModAAPerMod(int iMaxNumVarModAAPerMod) {_pVarMods->iMaxNumVarModAAPerMod = iMaxNumVarModAAPerMod;}
 
+        int get_VarModTermDistance() {return _pVarMods->iVarModTermDistance;}
+        void set_VarModTermDistance(int iVarModTermDistance) {_pVarMods->iVarModTermDistance = iVarModTermDistance;}
+
+        int get_WhichTerm() {return _pVarMods->iWhichTerm;}
+        void set_WhichTerm(int iWhichTerm) {_pVarMods->iWhichTerm = iWhichTerm;}
+
         int get_VarModMass() {return _pVarMods->dVarModMass;}
         void set_VarModMass(double dVarModMass) {_pVarMods->dVarModMass = dVarModMass;}
 

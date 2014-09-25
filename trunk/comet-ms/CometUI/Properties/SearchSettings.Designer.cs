@@ -436,12 +436,15 @@ namespace CometUI.Properties {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute(@"<?xml version=""1.0"" encoding=""utf-16""?>
 <ArrayOfString xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
-  <string>M,15.9949,0,3</string>
-  <string>X,0.0,0,3</string>
-  <string>X,0.0,0,3</string>
-  <string>X,0.0,0,3</string>
-  <string>X,0.0,0,3</string>
-  <string>X,0.0,0,3 </string>
+  <string>15.9949,M,0,3,-1,0</string>
+  <string>0.0,X,0,3,-1,0</string>
+  <string>0.0,X,0,3,-1,0</string>
+  <string>0.0,X,0,3,-1,0</string>
+  <string>0.0,X,0,3,-1,0</string>
+  <string>0.0,X,0,3,-1,0</string>
+  <string>0.0,X,0,3,-1,0</string>
+  <string>0.0,X,0,3,-1,0</string>
+  <string>0.0,X,0,3,-1,0</string>
 </ArrayOfString>")]
         public global::System.Collections.Specialized.StringCollection VariableMods {
             get {
@@ -449,54 +452,6 @@ namespace CometUI.Properties {
             }
             set {
                 this["VariableMods"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public double VariableCTerminus {
-            get {
-                return ((double)(this["VariableCTerminus"]));
-            }
-            set {
-                this["VariableCTerminus"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public double VariableNTerminus {
-            get {
-                return ((double)(this["VariableNTerminus"]));
-            }
-            set {
-                this["VariableNTerminus"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public int VariableCTermDistance {
-            get {
-                return ((int)(this["VariableCTermDistance"]));
-            }
-            set {
-                this["VariableCTermDistance"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public int VariableNTermDistance {
-            get {
-                return ((int)(this["VariableNTermDistance"]));
-            }
-            set {
-                this["VariableNTermDistance"] = value;
             }
         }
         

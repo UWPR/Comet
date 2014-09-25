@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
 using CometUI.Properties;
+using CometUI.SettingsUI;
 
 namespace CometUI
 {
@@ -45,9 +46,17 @@ namespace CometUI
 
     public class CometParamsMap
     {
-        private const int MaxNumVarMods = 6;
-        private const int NumVarModFieldsInSettings = 4;
+        private const int MaxNumVarMods = 9;
+        private const int NumVarModFieldsInSettings = 6;
         private const int NumStaticModFieldsInSettings = 3;
+
+
+        public const int VarModsColMassDiff = 0;
+        public const int VarModsColResidue = 1;
+        public const int VarModsColBinaryMod = 2;
+        public const int VarModsColMaxMods = 3;
+        public const int VarModsColTermDist = 4;
+        public const int VarModsColWhichTerm = 5;
 
         public Dictionary<string, CometParam> CometParams { get; private set; }
 
@@ -357,34 +366,6 @@ namespace CometUI
                 return false;
             }
             cometSettings.VariableMods = varModsStrCollection;
-
-            double varCTerminus;
-            if (!GetCometParamValue("variable_C_terminus", out varCTerminus, out paramValueStr))
-            {
-                return false;
-            }
-            cometSettings.VariableCTerminus = varCTerminus;
-
-            int varCTerminusDist;
-            if (!GetCometParamValue("variable_C_terminus_distance", out varCTerminusDist, out paramValueStr))
-            {
-                return false;
-            }
-            cometSettings.VariableCTermDistance = varCTerminusDist;
-
-            double varNTerminus;
-            if (!GetCometParamValue("variable_N_terminus", out varNTerminus, out paramValueStr))
-            {
-                return false;
-            }
-            cometSettings.VariableNTerminus = varNTerminus;
-
-            int varNTerminusDist;
-            if (!GetCometParamValue("variable_N_terminus_distance", out varNTerminusDist, out paramValueStr))
-            {
-                return false;
-            }
-            cometSettings.VariableNTermDistance = varNTerminusDist;
 
             int maxVarModsInPeptide;
             if (!GetCometParamValue("max_variable_mods_in_peptide", out maxVarModsInPeptide, out paramValueStr))
@@ -897,20 +878,24 @@ namespace CometUI
             foreach (var item in settings.VariableMods)
             {
                 modNum++;
-                string paramName = "variable_mod" + modNum;
+                string paramName = "variable_mod0" + modNum;
                 string[] varModsStr = item.Split(',');
                 if (varModsStr.Length < NumVarModFieldsInSettings)
                 {
                     return false;
                 }
-                var varMods = new VarMod(Convert.ToDouble(varModsStr[1]),   // mass diff
-                                          varModsStr[0],                    // residue
-                                          Convert.ToInt32(varModsStr[2]),   // binary mod
-                                          Convert.ToInt32(varModsStr[3]));  // max mods
+                var varMods = new VarMod(Convert.ToDouble(varModsStr[VarModsColMassDiff]),
+                                          varModsStr[VarModsColResidue],
+                                          Convert.ToInt32(varModsStr[VarModsColBinaryMod]),
+                                          Convert.ToInt32(varModsStr[VarModsColMaxMods]),
+                                          Convert.ToInt32(varModsStr[VarModsColTermDist]),
+                                          Convert.ToInt32(varModsStr[VarModsColWhichTerm]));
                 var varModsStrValue = varMods.VarModMass + " " 
                     + varMods.VarModChar + " " 
                     + varMods.BinaryMod + " " 
-                    + varMods.MaxNumVarModAAPerMod;
+                    + varMods.MaxNumVarModAAPerMod + " "
+                    + varMods.VarModTermDistance + " "
+                    + varMods.WhichTerm;
                 if (!UpdateCometParam(paramName,
                                  new TypedCometParam<VarMod>(CometParamType.VarMod,
                                                              varModsStrValue,
@@ -919,42 +904,6 @@ namespace CometUI
                     return false;
                 }
 
-            }
-
-            var varCTerminus = settings.VariableCTerminus;
-            if (!UpdateCometParam("variable_C_terminus",
-                             new TypedCometParam<double>(CometParamType.Double,
-                                            varCTerminus.ToString(CultureInfo.InvariantCulture),
-                                            varCTerminus)))
-            {
-                return false;
-            }
-
-            var varCTerminusDist = settings.VariableCTermDistance;
-            if (!UpdateCometParam("variable_C_terminus_distance",
-                             new TypedCometParam<int>(CometParamType.Int,
-                                                      varCTerminusDist.ToString(CultureInfo.InvariantCulture),
-                                                      varCTerminusDist)))
-            {
-                return false;
-            }
-
-            var varNTerminus = settings.VariableNTerminus;
-            if (!UpdateCometParam("variable_N_terminus",
-                             new TypedCometParam<double>(CometParamType.Double,
-                                            varNTerminus.ToString(CultureInfo.InvariantCulture),
-                                            varNTerminus)))
-            {
-                return false;
-            }
-
-            var varNTerminusDist = settings.VariableNTermDistance;
-            if (!UpdateCometParam("variable_N_terminus_distance",
-                            new TypedCometParam<int>(CometParamType.Int,
-                                                     varNTerminusDist.ToString(CultureInfo.InvariantCulture),
-                                                     varNTerminusDist)))
-            {
-                return false;
             }
 
             var maxVarModsInPeptide = settings.MaxVarModsInPeptide;
@@ -1180,7 +1129,7 @@ namespace CometUI
                 return false;
             }
 
-            var typedParam = param as TypedCometParam<String>;
+            var typedParam = param as TypedCometParam<string>;
             if (null == typedParam)
             {
                 return false;
@@ -1297,7 +1246,7 @@ namespace CometUI
                     cometParam = ParseCometDoubleParam(strValue);
                     break;
                 case CometParamType.String:
-                    cometParam = new TypedCometParam<String>(paramType, strValue, strValue);
+                    cometParam = new TypedCometParam<string>(paramType, strValue, strValue);
                     break;
                 case CometParamType.IntRange:
                     cometParam = ParseCometIntRangeParam(strValue);
@@ -1466,7 +1415,7 @@ namespace CometUI
         {
             for (int modNum = 1; modNum <= MaxNumVarMods; modNum++)
             {
-                string paramName = "variable_mod" + modNum;
+                string paramName = "variable_mod0" + modNum;
                 VarMod varMod;
                 String paramValueStr;
                 if (!GetCometParamValue(paramName, out varMod, out paramValueStr))
@@ -1638,7 +1587,7 @@ namespace CometUI
         private CometParam ParseCometIntParam(String strValue)
         {
             int intValue;
-            if (!int.TryParse(strValue, out intValue))
+            if (!Int32.TryParse(strValue, out intValue))
             {
                 return null;
             }
@@ -1648,7 +1597,7 @@ namespace CometUI
         private CometParam ParseCometDoubleParam(String strValue)
         {
             double doubleValue;
-            if (!double.TryParse(strValue, out doubleValue))
+            if (!Double.TryParse(strValue, out doubleValue))
             {
                 return null;
             }
@@ -1663,7 +1612,7 @@ namespace CometUI
                 return null;
             }
             int minIntVal, maxIntVal;
-            if (!int.TryParse(intStrValues[0], out minIntVal) || !int.TryParse(intStrValues[1], out maxIntVal))
+            if (!Int32.TryParse(intStrValues[0], out minIntVal) || !Int32.TryParse(intStrValues[1], out maxIntVal))
             {
                 return null;
             }
@@ -1679,7 +1628,7 @@ namespace CometUI
             }
 
             double minDoubleVal, maxDoubleVal;
-            if (!double.TryParse(doubleStrValues[0], out minDoubleVal) || !double.TryParse(doubleStrValues[1], out maxDoubleVal))
+            if (!Double.TryParse(doubleStrValues[0], out minDoubleVal) || !Double.TryParse(doubleStrValues[1], out maxDoubleVal))
             {
                 return null;
             }
@@ -1696,28 +1645,41 @@ namespace CometUI
             }
 
             double mass;
-            if (!double.TryParse(varModStrValues[0], out mass))
+            if (!Double.TryParse(varModStrValues[VarModsColMassDiff], out mass))
             {
                 return null;
             }
 
-            var varModChar = varModStrValues[1];
+            var varModChar = varModStrValues[VarModsColResidue];
 
             int binaryMod;
-            if (!int.TryParse(varModStrValues[2], out binaryMod))
+            if (!Int32.TryParse(varModStrValues[VarModsColBinaryMod], out binaryMod))
             {
                 return null;
             }
 
             int maxMods;
-            if (!int.TryParse(varModStrValues[3], out maxMods))
+            if (!Int32.TryParse(varModStrValues[VarModsColMaxMods], out maxMods))
+            {
+                return null;
+            }
+
+            int termDist;
+            if (!Int32.TryParse(varModStrValues[VarModsColTermDist], out termDist))
+            {
+                return null;
+            }
+
+            int whichTerm;
+            if (!Int32.TryParse(varModStrValues[VarModsColWhichTerm], out whichTerm))
             {
                 return null;
             }
 
             var newStrValue = strValue.Replace(' ', ',');
 
-            return new TypedCometParam<VarMod>(CometParamType.VarMod, newStrValue, new VarMod(mass, varModChar, binaryMod, maxMods));
+            return new TypedCometParam<VarMod>(CometParamType.VarMod, newStrValue, 
+                new VarMod(mass, varModChar, binaryMod, maxMods, termDist, whichTerm));
         }
 
         private CometParam ParseCometStringCollectionParam(String strValue)
@@ -1743,15 +1705,16 @@ namespace CometUI
 
         private string RemoveDuplicateChars(string src, char[] dupes)
         {
-            return string.Join(" ", src.Split(dupes, StringSplitOptions.RemoveEmptyEntries));
+            return String.Join(" ", src.Split(dupes, StringSplitOptions.RemoveEmptyEntries));
         }
-
     }
 
     public class VarMod
     {
         public int BinaryMod { get; set; }
         public int MaxNumVarModAAPerMod { get; set; }
+        public int VarModTermDistance { get; set; }
+        public int WhichTerm { get; set; }
         public double VarModMass { get; set; }
         public String VarModChar { get; set; }
 
@@ -1759,16 +1722,22 @@ namespace CometUI
         {
             BinaryMod = 0;
             MaxNumVarModAAPerMod = 0;
+            VarModTermDistance = 0;
+            WhichTerm = 0;
             VarModMass = 0.0;
             VarModChar = String.Empty;
         }
 
-        public VarMod(double varModMass, String varModChar, int binaryMod, int maxNumVarModPerMod)
+        public VarMod(double varModMass, String varModChar, 
+            int binaryMod, int maxNumVarModPerMod,
+            int varModTermDist, int whichTerm)
         {
             VarModChar = varModChar;
             VarModMass = varModMass;
             BinaryMod = binaryMod;
             MaxNumVarModAAPerMod = maxNumVarModPerMod;
+            VarModTermDistance = varModTermDist;
+            WhichTerm = whichTerm;
         }
     }
 

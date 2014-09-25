@@ -301,4 +301,10 @@
   <data name="RunSearchProgressDlg_VerifyCancel_Are_you_sure_you_want_to_cancel_search_">
     <value xml:space="preserve">Are you sure you want to cancel search?</value>
   </data>
+  <data name="VarModSettingsControl_ValidateTermDistCellEdit_Please_enter_a_decimal_number_">
+    <value xml:space="preserve">Please enter a decimal number.</value>
+  </data>
+  <data name="VarModSettingsControl_ValidateTermDistCellEdit_Invalid_Terminus_Distance">
+    <value xml:space="preserve">Invalid Terminus Distance</value>
+  </data>
 </root>

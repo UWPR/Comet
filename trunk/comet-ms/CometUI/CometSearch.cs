@@ -525,14 +525,13 @@ namespace CometUI
             foreach (var item in CometUI.SearchSettings.VariableMods)
             {
                 modNum++;
-                string paramName = "variable_mod" + modNum;
+                string paramName = "variable_mod0" + modNum;
                 string[] varMods = item.Split(',');
                 var varModsWrapper = new VarModsWrapper();
-                varModsWrapper.set_VarModChar(varMods[0]);
-
+                varModsWrapper.set_VarModChar(varMods[CometParamsMap.VarModsColResidue]);
                 try
                 {
-                    varModsWrapper.set_VarModMass(Convert.ToDouble(varMods[1]));
+                    varModsWrapper.set_VarModMass(Convert.ToDouble(varMods[CometParamsMap.VarModsColMassDiff]));
                 }
                 catch (Exception e)
                 {
@@ -542,21 +541,41 @@ namespace CometUI
 
                 try
                 {
-                    varModsWrapper.set_BinaryMod(Convert.ToInt32(varMods[2]));
+                    varModsWrapper.set_BinaryMod(Convert.ToInt32(varMods[CometParamsMap.VarModsColBinaryMod]));
                 }
                 catch (Exception e)
                 {
-                    SearchStatusMessage = e.Message + "\nInvalid Binary Mod value for " + paramName + ".";
+                    SearchStatusMessage = e.Message + "\nInvalid Bin Mod value for " + paramName + ".";
                     return false;
                 }
 
                 try
                 {
-                    varModsWrapper.set_MaxNumVarModAAPerMod(Convert.ToInt32(varMods[3]));
+                    varModsWrapper.set_MaxNumVarModAAPerMod(Convert.ToInt32(varMods[CometParamsMap.VarModsColMaxMods]));
                 }
                 catch (Exception e)
                 {
                     SearchStatusMessage = e.Message + "\nInvalid Max Mods value for " + paramName + ".";
+                    return false;
+                }
+
+                try
+                {
+                    varModsWrapper.set_VarModTermDistance(Convert.ToInt32(varMods[CometParamsMap.VarModsColTermDist]));
+                }
+                catch (Exception e)
+                {
+                    SearchStatusMessage = e.Message + "\nInvalid Term Dist value for " + paramName + ".";
+                    return false;
+                }
+
+                try
+                {
+                    varModsWrapper.set_WhichTerm(Convert.ToInt32(varMods[CometParamsMap.VarModsColWhichTerm]));
+                }
+                catch (Exception e)
+                {
+                    SearchStatusMessage = e.Message + "\nInvalid Which Term value for " + paramName + ".";
                     return false;
                 }
 
@@ -565,34 +584,6 @@ namespace CometUI
                     SearchStatusMessage = "Could not set the " + paramName + " parameter.";
                     return false;
                 }
-            }
-
-            var varCTerminus = CometUI.SearchSettings.VariableCTerminus;
-            if (!SearchMgr.SetParam("variable_C_terminus", varCTerminus.ToString(CultureInfo.InvariantCulture), varCTerminus))
-            {
-                SearchStatusMessage = "Could not set the variable_C_terminus parameter.";
-                return false;
-            }
-
-            var varCTerminusDist = CometUI.SearchSettings.VariableCTermDistance;
-            if (!SearchMgr.SetParam("variable_C_terminus_distance", varCTerminusDist.ToString(CultureInfo.InvariantCulture), varCTerminusDist))
-            {
-                SearchStatusMessage = "Could not set the variable_C_terminus_distance parameter.";
-                return false;
-            }
-
-            var varNTerminus = CometUI.SearchSettings.VariableNTerminus;
-            if (!SearchMgr.SetParam("variable_N_terminus", varNTerminus.ToString(CultureInfo.InvariantCulture), varNTerminus))
-            {
-                SearchStatusMessage = "Could not set the variable_N_terminus parameter.";
-                return false;
-            }
-
-            var varNTerminusDist = CometUI.SearchSettings.VariableNTermDistance;
-            if (!SearchMgr.SetParam("variable_N_terminus_distance", varNTerminusDist.ToString(CultureInfo.InvariantCulture), varNTerminusDist))
-            {
-                SearchStatusMessage = "Could not set the variable_N_terminus_distance parameter.";
-                return false;
             }
 
             var maxVarModsInPeptide = CometUI.SearchSettings.MaxVarModsInPeptide;

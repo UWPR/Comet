@@ -117,25 +117,16 @@
     <Setting Name="VariableMods" Type="System.Collections.Specialized.StringCollection" Scope="User">
       <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
-  &lt;string&gt;M,15.9949,0,3&lt;/string&gt;
-  &lt;string&gt;X,0.0,0,3&lt;/string&gt;
-  &lt;string&gt;X,0.0,0,3&lt;/string&gt;
-  &lt;string&gt;X,0.0,0,3&lt;/string&gt;
-  &lt;string&gt;X,0.0,0,3&lt;/string&gt;
-  &lt;string&gt;X,0.0,0,3 &lt;/string&gt;
+  &lt;string&gt;15.9949,M,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>
-    </Setting>
-    <Setting Name="VariableCTerminus" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="VariableNTerminus" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="VariableCTermDistance" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="VariableNTermDistance" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="MaxVarModsInPeptide" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">5</Value>

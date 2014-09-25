@@ -28,38 +28,14 @@ namespace CometUI.SettingsUI
         public bool VerifyAndUpdateSettings()
         {
             VarMods = VarModsDataGridViewToStringCollection();
-            if (!VarMods.Equals(CometUI.SearchSettings.VariableMods))
+            for (int i = 0; i < VarMods.Count; i++ )
             {
-                CometUI.SearchSettings.VariableMods = VarMods;
-                Parent.SettingsChanged = true;
-            }
-
-            var variableNTerminus = (double) variableNTerminusTextBox.DecimalValue;
-            if (!variableNTerminus.Equals(CometUI.SearchSettings.VariableNTerminus))
-            {
-                CometUI.SearchSettings.VariableNTerminus = variableNTerminus;
-                Parent.SettingsChanged = true;
-            }
-
-            var variableCTerminus = (double) variableCTerminusTextBox.DecimalValue;
-            if (!variableCTerminus.Equals(CometUI.SearchSettings.VariableCTerminus))
-            {
-                CometUI.SearchSettings.VariableCTerminus = variableCTerminus;
-                Parent.SettingsChanged = true;
-            }
-
-            int variableNTerminusDist = variableNTerminusDistTextBox.IntValue;
-            if (!variableNTerminusDist.Equals(CometUI.SearchSettings.VariableNTermDistance))
-            {
-                CometUI.SearchSettings.VariableNTermDistance = variableNTerminusDist;
-                Parent.SettingsChanged = true;
-            }
-
-            int variableCTerminusDist = variableCTerminusDistTextBox.IntValue;
-            if (!variableCTerminusDist.Equals(CometUI.SearchSettings.VariableCTermDistance))
-            {
-                CometUI.SearchSettings.VariableCTermDistance = variableCTerminusDist;
-                Parent.SettingsChanged = true;
+                if (!VarMods[i].Equals(CometUI.SearchSettings.VariableMods[i]))
+                {
+                    Parent.SettingsChanged = true;
+                    CometUI.SearchSettings.VariableMods = VarMods;
+                    break;
+                }
             }
 
             int maxModsInPeptide = (int)maxModsInPeptideTextBox.Value;
@@ -79,11 +55,6 @@ namespace CometUI.SettingsUI
             {
                 VarMods.Add(item);
             }
-
-            variableNTerminusTextBox.Text = CometUI.SearchSettings.VariableNTerminus.ToString(CultureInfo.InvariantCulture);
-            variableCTerminusTextBox.Text = CometUI.SearchSettings.VariableCTerminus.ToString(CultureInfo.InvariantCulture);
-            variableNTerminusDistTextBox.Text = CometUI.SearchSettings.VariableNTermDistance.ToString(CultureInfo.InvariantCulture);
-            variableCTerminusDistTextBox.Text = CometUI.SearchSettings.VariableCTermDistance.ToString(CultureInfo.InvariantCulture);
 
             maxModsInPeptideTextBox.Text = CometUI.SearchSettings.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);            
         }
@@ -105,17 +76,27 @@ namespace CometUI.SettingsUI
                         {
                             row += ",";
                         }
+                        continue;
                     }
-                    else
+
+                    var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
+                    if (null != checkBoxCell)
                     {
-                        var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
-                        if (null != checkBoxCell)
+                        row += (bool)checkBoxCell.Value ? "1" : "0";
+                        if (colIndex != dataGridViewRow.Cells.Count - 1)
                         {
-                            row += (bool)checkBoxCell.Value ? "1" : "0";
-                            if (colIndex != dataGridViewRow.Cells.Count - 1)
-                            {
-                                row += ",";
-                            }
+                            row += ",";
+                        }
+                        continue;
+                    }
+
+                    var dropDownCell = dataGridViewRow.Cells[colIndex] as DataGridViewComboBoxCell;
+                    if (null != dropDownCell)
+                    {
+                        row += dropDownCell.Value;
+                        if (colIndex != dataGridViewRow.Cells.Count - 1)
+                        {
+                            row += ",";
                         }
                     }
                 }
@@ -136,12 +117,20 @@ namespace CometUI.SettingsUI
                 for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
                 {
                     string cellColTitle = dataGridViewRow.Cells[colIndex].OwningColumn.HeaderText;
-                    if (cellColTitle.Equals("Binary Mod"))
+                    if (cellColTitle.Equals("Bin Mod"))
                     {
                         var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
                         if (null != checkBoxCell)
                         {
                             checkBoxCell.Value = varModsCells[colIndex].Equals("1");
+                        }
+                    }
+                    else if (cellColTitle.Equals("Which Term"))
+                    {
+                        var dropDownCell = dataGridViewRow.Cells[colIndex] as DataGridViewComboBoxCell;
+                        if (null != dropDownCell)
+                        {
+                            dropDownCell.Value = varModsCells[colIndex];
                         }
                     }
                     else
@@ -161,64 +150,101 @@ namespace CometUI.SettingsUI
             var cell = varModsDataGridView.Rows[e.RowIndex].Cells[e.ColumnIndex];
             if (cell.OwningColumn.HeaderText.Equals("Residue"))
             {
-                var textBoxCell = cell as DataGridViewTextBoxCell;
-                if (textBoxCell != null)
+                ValidateResidueCellEdit(cell);
+            }
+            else if (cell.OwningColumn.HeaderText.Equals("Mass Diff"))
+            {
+                ValidateMassDiffCellEdit(cell);
+            }
+            else if (cell.OwningColumn.HeaderText.Equals("Max Mods"))
+            {
+                ValidateMaxModsCellEdit(cell);
+            }
+            else if (cell.OwningColumn.HeaderText.Equals("Term Dist"))
+            {
+                ValidateTermDistCellEdit(cell);
+            }
+        }
+
+        private void ValidateResidueCellEdit(DataGridViewCell cell)
+        {
+            var textBoxCell = cell as DataGridViewTextBoxCell;
+            if (textBoxCell != null)
+            {
+                if (!textBoxCell.Value.ToString().ToUpper().Equals("X"))
                 {
-                    if (!textBoxCell.Value.ToString().ToUpper().Equals("X"))
+                    char[] residue = textBoxCell.Value.ToString().ToUpper().ToCharArray();
+                    foreach (var aa in residue)
                     {
-                        char[] residue = textBoxCell.Value.ToString().ToUpper().ToCharArray();
-                        foreach (var aa in residue)
+                        if (!AminoAcids.Contains(aa.ToString(CultureInfo.InvariantCulture)))
                         {
-                            if (!AminoAcids.Contains(aa.ToString(CultureInfo.InvariantCulture)))
-                            {
-                                MessageBox.Show(this,
-                                                Resources.
-                                                    VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_residue_,
-                                                Resources.
-                                                    VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue,
-                                                MessageBoxButtons.OKCancel);
-                                cell.Value = "X";
-                            }
+                            MessageBox.Show(this,
+                                            Resources.
+                                                VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_residue_,
+                                            Resources.
+                                                VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Residue,
+                                            MessageBoxButtons.OKCancel);
+                            cell.Value = "X";
                         }
                     }
                 }
             }
-            else if (cell.OwningColumn.HeaderText.Equals("Mass Diff"))
+        }
+
+        private void ValidateMassDiffCellEdit(DataGridViewCell cell)
+        {
+            var textBoxCell = cell as DataGridViewTextBoxCell;
+            if (textBoxCell != null)
             {
-                var textBoxCell = cell as DataGridViewTextBoxCell;
-                if (textBoxCell != null)
+                string strValue = textBoxCell.Value.ToString();
+                double massDiff;
+                if (!SearchSettingsDlg.ConvertStrToDouble(strValue, out massDiff))
                 {
-                    string strValue = textBoxCell.Value.ToString();
-                    double massDiff;
-                    if (!SearchSettingsDlg.ConvertStrToDouble(strValue, out massDiff))
-                    {
-                        MessageBox.Show(this,
-                                        Resources.
-                                            VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_,
-                                        Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Mass_Diff,
-                                        MessageBoxButtons.OKCancel);
-                        cell.Value = "0.0";
-                    }
+                    MessageBox.Show(this,
+                                    Resources.
+                                        VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_for_the_mass_difference_,
+                                    Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Mass_Diff,
+                                    MessageBoxButtons.OKCancel);
+                    cell.Value = "0.0";
                 }
             }
-            else if (cell.OwningColumn.HeaderText.Equals("Max Mods"))
+        }
+
+        private void ValidateMaxModsCellEdit(DataGridViewCell cell)
+        {
+            // Do we want to make this a combo box drop-down?
+            var textBoxCell = cell as DataGridViewTextBoxCell;
+            if (textBoxCell != null)
             {
-                // Do we want to make this a combo box drop-down?
-                var textBoxCell = cell as DataGridViewTextBoxCell;
-                if (textBoxCell != null)
+                string strValue = textBoxCell.Value.ToString();
+                int maxMods;
+                if (!SearchSettingsDlg.ConvertStrToInt32(strValue, out maxMods))
                 {
-                    string strValue = textBoxCell.Value.ToString();
-                    int maxMods;
-                    if (!SearchSettingsDlg.ConvertStrToInt32(strValue, out maxMods))
-                    {
-                        MessageBox.Show(this, Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_between_0_and_64_, Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods, MessageBoxButtons.OKCancel);
-                        cell.Value = "3";
-                    }
-                    
-                    if (maxMods > 64)
-                    {
-                        throw new ArgumentException();
-                    }
+                    MessageBox.Show(this, Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_number_between_0_and_64_, Resources.VarModSettingsControl_VarModsDataGridViewCellEndEdit_Invalid_Max_Mods, MessageBoxButtons.OKCancel);
+                    cell.Value = "3";
+                }
+
+                if (maxMods > 64)
+                {
+                    throw new ArgumentException();
+                }
+            }
+        }
+
+        private void ValidateTermDistCellEdit(DataGridViewCell cell)
+        {
+            var textBoxCell = cell as DataGridViewTextBoxCell;
+            if (textBoxCell != null)
+            {
+                string strValue = textBoxCell.Value.ToString();
+                int maxMods;
+                if (!SearchSettingsDlg.ConvertStrToInt32(strValue, out maxMods))
+                {
+                    MessageBox.Show(this,
+                                    Resources.VarModSettingsControl_ValidateTermDistCellEdit_Please_enter_a_decimal_number_,
+                                    Resources.VarModSettingsControl_ValidateTermDistCellEdit_Invalid_Terminus_Distance,
+                                    MessageBoxButtons.OKCancel);
+                    cell.Value = "-1";
                 }
             }
         }
