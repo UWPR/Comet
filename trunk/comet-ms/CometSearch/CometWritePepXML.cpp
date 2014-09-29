@@ -161,7 +161,6 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
           || (g_staticParams.options.iEnzymeTermini == ENZYME_C_TERMINI))?1:0);
 
    // Write out properly encoded mods
-   
    WriteVariableMod(fpout, searchMgr, "variable_mod01");
    WriteVariableMod(fpout, searchMgr, "variable_mod02");
    WriteVariableMod(fpout, searchMgr, "variable_mod03");
@@ -171,7 +170,6 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    WriteVariableMod(fpout, searchMgr, "variable_mod07");
    WriteVariableMod(fpout, searchMgr, "variable_mod08");
    WriteVariableMod(fpout, searchMgr, "variable_mod09");
-
 
    double dMass = 0.0;
    if (searchMgr.GetParamValue("add_Cterm_peptide", dMass))
@@ -264,23 +262,23 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
    if (searchMgr.GetParamValue(varModName, varModsParam))
    {
       char cSymbol = '-';
-      if (varModName[12]=='1')
+      if (varModName[13]=='1')
          cSymbol = g_staticParams.variableModParameters.cModCode[0];
-      else if (varModName[12]=='2')
+      else if (varModName[13]=='2')
          cSymbol = g_staticParams.variableModParameters.cModCode[1];
-      else if (varModName[12]=='3')
+      else if (varModName[13]=='3')
          cSymbol = g_staticParams.variableModParameters.cModCode[2];
-      else if (varModName[12]=='4')
+      else if (varModName[13]=='4')
          cSymbol = g_staticParams.variableModParameters.cModCode[3];
-      else if (varModName[12]=='5')
+      else if (varModName[13]=='5')
          cSymbol = g_staticParams.variableModParameters.cModCode[4];
-      else if (varModName[12]=='6')
+      else if (varModName[13]=='6')
          cSymbol = g_staticParams.variableModParameters.cModCode[5];
-      else if (varModName[12]=='7')
+      else if (varModName[13]=='7')
          cSymbol = g_staticParams.variableModParameters.cModCode[6];
-      else if (varModName[12]=='8')
+      else if (varModName[13]=='8')
          cSymbol = g_staticParams.variableModParameters.cModCode[7];
-      else if (varModName[12]=='9')
+      else if (varModName[13]=='9')
          cSymbol = g_staticParams.variableModParameters.cModCode[8];
 
       if (cSymbol != '-' && !isEqual(varModsParam.dVarModMass, 0.0))
