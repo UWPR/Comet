@@ -11,13 +11,13 @@ namespace CometUI
         public static SearchSettings SearchSettings { get; set; }
         public static RunSearchSettings RunSearchSettings { get; set; }
 
-        private bool OptionsPanelShown { get; set; }
-
         private SearchSettingsDlg _searchSettingsDlg;
         private SearchSettingsDlg SearchSettingsDlg
         {
             get { return _searchSettingsDlg ?? (_searchSettingsDlg = new SearchSettingsDlg()); }
         }
+
+        private ViewSearchResultsControl ViewSearchResultsControl { get; set; }
 
         public CometUI()
         {
@@ -27,33 +27,34 @@ namespace CometUI
 
             RunSearchSettings = RunSearchSettings.Default;
 
-            HideViewOptionsPanel();
+            ViewSearchResultsControl = new ViewSearchResultsControl(this)
+            {
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
+                Location = new Point(10, 5)
+            };
+
+            viewSearchResultsPanel.Controls.Add(ViewSearchResultsControl);
         }
 
-        private void ShowViewOptionsPanel()
+        public static string ShowOpenPepXMLFile()
         {
-            showHideOptionsLabel.Text = "Hide options";
-            showOptionsPanel.Visible = true;
-            hideOptionsGroupBox.Visible = false;
-            OptionsPanelShown = true;
-            resultsListPanel.Location = resultsListPanelNormal.Location;
-            resultsListPanel.Size = resultsListPanelNormal.Size;
-        }
+            const string filter = "PepXML file (*.pep.xml)|*.pep.xml";
+            var fdlg = new OpenFileDialog
+            {
+                Title = Resources.CometUI_ShowOpenPepXMLFile_Open_PepXML_File,
+                InitialDirectory = @".",
+                Filter = filter,
+                FilterIndex = 1,
+                Multiselect = false,
+                RestoreDirectory = true
+            };
 
-        private void HideViewOptionsPanel()
-        {
-            showHideOptionsLabel.Text = "Show options";
-            showOptionsPanel.Visible = false;
-            hideOptionsGroupBox.Visible = true;
-            OptionsPanelShown = false;
-            resultsListPanel.Location = resultsListPanelFull.Location;
-            resultsListPanel.Size = resultsListPanelFull.Size;
-            linkLabelPage9.Hide();
-            pageNumbersPanel.Width -= linkLabelPage9.Width;
-            linkLabelPage10.Hide();
-            pageNumbersPanel.Width -= linkLabelPage10.Width;
-            pageNavPanel.Refresh();
+            if (fdlg.ShowDialog() == DialogResult.OK)
+            {
+                return fdlg.FileName;
+            }
 
+            return null;
         }
 
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
@@ -126,16 +127,9 @@ namespace CometUI
             aboutDlg.ShowDialog();
         }
 
-        private void ShowHideOptionsBtnClick(object sender, EventArgs e)
+        private void OpenToolStripMenuItemClick(object sender, EventArgs e)
         {
-            if (OptionsPanelShown)
-            {
-                HideViewOptionsPanel();
-            }
-            else
-            {
-                ShowViewOptionsPanel();
-            }
+            ViewSearchResultsControl.UpdateViewSearchResults(ShowOpenPepXMLFile());
         }
     }
 }

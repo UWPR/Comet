@@ -307,4 +307,13 @@
   <data name="VarModSettingsControl_ValidateTermDistCellEdit_Invalid_Terminus_Distance">
     <value xml:space="preserve">Invalid Terminus Distance</value>
   </data>
+  <data name="CometUI_ShowOpenPepXMLFile_Open_PepXML_File">
+    <value xml:space="preserve">Open PepXML File</value>
+  </data>
+  <data name="ViewSearchResultsControl_ShowViewOptionsPanel_Hide_options">
+    <value xml:space="preserve">Hide options</value>
+  </data>
+  <data name="ViewSearchResultsControl_HideViewOptionsPanel_Show_options">
+    <value xml:space="preserve">Show options</value>
+  </data>
 </root>

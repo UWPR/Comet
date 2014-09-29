@@ -119,6 +119,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Open PepXML File.
+        /// </summary>
+        internal static string CometUI_ShowOpenPepXMLFile_Open_PepXML_File {
+            get {
+                return ResourceManager.GetString("CometUI_ShowOpenPepXMLFile_Open_PepXML_File", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error.
         /// </summary>
         internal static string CometUI_Title_Error {
@@ -644,6 +653,24 @@ namespace CometUI.Properties {
             get {
                 return ResourceManager.GetString("VarModSettingsControl_VarModsDataGridViewCellEndEdit_Please_enter_a_valid_residue" +
                         "_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show options.
+        /// </summary>
+        internal static string ViewSearchResultsControl_HideViewOptionsPanel_Show_options {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_HideViewOptionsPanel_Show_options", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hide options.
+        /// </summary>
+        internal static string ViewSearchResultsControl_ShowViewOptionsPanel_Hide_options {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_ShowViewOptionsPanel_Hide_options", resourceCulture);
             }
         }
     }

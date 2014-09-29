@@ -202,6 +202,24 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ViewResultsDisplayOptions.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewResultsDisplayOptions.Designer.cs">
+      <DependentUpon>ViewResultsDisplayOptions.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResultsSummaryOptionsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewResultsSummaryOptionsControl.Designer.cs">
+      <DependentUpon>ViewResultsSummaryOptionsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewSearchResultsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewSearchResultsControl.Designer.cs">
+      <DependentUpon>ViewSearchResultsControl.cs</DependentUpon>
+    </Compile>
     <EmbeddedResource Include="About Dlg.resx">
       <DependentUpon>About Dlg.cs</DependentUpon>
     </EmbeddedResource>
@@ -257,6 +275,15 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="ViewResultsDisplayOptions.resx">
+      <DependentUpon>ViewResultsDisplayOptions.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ViewResultsSummaryOptionsControl.resx">
+      <DependentUpon>ViewResultsSummaryOptionsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ViewSearchResultsControl.resx">
+      <DependentUpon>ViewSearchResultsControl.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="app.config" />
     <None Include="Properties\DataSources\CometUI.Properties.Settings.datasource" />
     <None Include="Properties\DataSources\EnzymeSettingsControl.datasource" />
