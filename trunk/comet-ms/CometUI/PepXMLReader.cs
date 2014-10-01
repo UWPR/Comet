@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Windows.Forms;
+using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -9,58 +9,26 @@ namespace CometUI
 {
     public class PepXMLReader
     {
-        public bool Read(String file)
+        private String FileName { get; set; }
+
+        public PepXMLReader(String fileName)
         {
-            if (!File.Exists(file))
-            {
-                return false;
-            }
-
-            var reader = new XmlTextReader(file);
-            reader.MoveToContent();
-
-            //IEnumerable<XElement> elements = ReadElement(reader, "sample_enzyme");
-            //foreach (var xElement in elements)
-            //{
-            //    IEnumerable<XAttribute> attributes = xElement.Attributes();
-            //    foreach (var attribute in attributes)
-            //    {
-            //        MessageBox.Show(attribute.Name + " = " + attribute.Value);
-            //    }
-
-            //    var children = xElement.Elements();
-            //    foreach (var element in children)
-            //    {
-            //        IEnumerable<XAttribute> subElementAttributes = element.Attributes();
-            //        foreach (var subElementAttribute in subElementAttributes)
-            //        {
-            //            MessageBox.Show(subElementAttribute.Name + " = " + subElementAttribute.Value);
-            //        }
-            //    }
-            //}
-
-
-            IEnumerable<XElement> elements = ReadElement(reader, "search_hit");
-            foreach (var element in elements)
-            {
-                if ((int)element.Attribute("hit_rank") == 1)
-                {
-                    IEnumerable<XElement> firstHitElements = element.Elements();
-                    foreach (var firstHitElement in firstHitElements)
-                    {
-                        IEnumerable<XAttribute> attributes = firstHitElement.Attributes();
-                        //foreach (var attribute in attributes)
-                        //{
-                        //    MessageBox.Show(attribute.Name + " = " + attribute.Value);
-                        //}
-                    }
-                }
-            }
-            
-            return true;
+            FileName = fileName;
         }
 
-        static IEnumerable<XElement> ReadElement(XmlTextReader reader, String elementName)
+        public IEnumerable<XElement> ReadElements(String elementName)
+        {
+            if ((String.Empty == FileName) || !File.Exists(FileName))
+            {
+                return null;
+            }
+
+            var reader = new XmlTextReader(FileName);
+            reader.MoveToContent();
+            return ReadElements(reader, elementName);
+        }
+
+        private static IEnumerable<XElement> ReadElements(XmlTextReader reader, String elementName)
         {
             while (reader.Read())
             {
@@ -76,6 +44,17 @@ namespace CometUI
                         break;
                 }
             }
+        }
+
+        public IEnumerable<XAttribute> ReadAttributes(IEnumerable<XElement> elements, String attributeName)
+        {
+            return elements.Select(element => element.Attribute(attributeName)).Where(attribute => null != attribute);
+        }
+
+        public XAttribute ReadFirstAttribute(IEnumerable<XElement> elements, String attributeName)
+        {
+            IEnumerable<XAttribute> attributes = ReadAttributes(elements, attributeName);
+            return attributes.First();
         }
     }
 }

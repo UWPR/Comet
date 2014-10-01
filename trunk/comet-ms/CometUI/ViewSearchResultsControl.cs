@@ -8,7 +8,7 @@ namespace CometUI
     public partial class ViewSearchResultsControl : UserControl
     {
         public String ResultsPepXMLFile { get; set; }
-
+        
         private CometUI CometUI { get; set; }
         private bool OptionsPanelShown { get; set; }
         private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
