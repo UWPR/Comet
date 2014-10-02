@@ -51,36 +51,51 @@ namespace CometUI
                 // Create a reader for the results file
                 var pepXMLReader = new PepXMLReader(resultsFile);
                 
+                //// Read the digest enzyme name
+                //IEnumerable<XElement> sampleEzymeElements = pepXMLReader.ReadElements("sample_enzyme");
+                //XAttribute firstEnzymeName = pepXMLReader.ReadFirstAttribute(sampleEzymeElements, "name");
+                //if (null != firstEnzymeName)
+                //{
+                //    searchSummary += (String)firstEnzymeName;
+                //}
+
                 // Read the digest enzyme name
-                IEnumerable<XElement> sampleEzymeElements = pepXMLReader.ReadElements("sample_enzyme");
-                XAttribute firstEnzymeName = pepXMLReader.ReadFirstAttribute(sampleEzymeElements, "name");
+                XElement sampleEzymeElement = pepXMLReader.ReadFirstElement("sample_enzyme");
+                XAttribute firstEnzymeName = pepXMLReader.ReadFirstAttribute(sampleEzymeElement, "name");
                 if (null != firstEnzymeName)
                 {
                     searchSummary += (String)firstEnzymeName;
                 }
+
                 searchSummary += " digest, ";
 
+                //// Read the search engine name
+                //IEnumerable<XElement> searchSummaryElements = pepXMLReader.ReadElements("search_summary");
+                //XAttribute firstSearchEngine = pepXMLReader.ReadFirstAttribute(searchSummaryElements, "search_engine");
+                //if (null != firstSearchEngine)
+                //{
+                //    searchSummary += (String)firstSearchEngine;
+                //}
                 // Read the search engine name
-                IEnumerable<XElement> searchSummaryElements = pepXMLReader.ReadElements("search_summary");
-                XAttribute firstSearchEngine = pepXMLReader.ReadFirstAttribute(searchSummaryElements, "search_engine");
+                XElement searchSummaryElement = pepXMLReader.ReadFirstElement("search_summary");
+                XAttribute firstSearchEngine = pepXMLReader.ReadFirstAttribute(searchSummaryElement, "search_engine");
                 if (null != firstSearchEngine)
                 {
                     searchSummary += (String)firstSearchEngine;
                 }
+
                 searchSummary += " search engine, ";
 
                 // Read the quantitation tool name, if there is one.
                 searchSummary += "quantitation: ";
                 String quantitationTool = "[none]";
                 IEnumerable<XElement> analysisSummaryElements = pepXMLReader.ReadElements("analysis_summary").ToList();
-                if (analysisSummaryElements.Any())
+                foreach (var element in analysisSummaryElements)
                 {
-                    IEnumerable<XAttribute> analysisAttributes = pepXMLReader.ReadAttributes(analysisSummaryElements,
-                                                                                             "analysis");
-
-                    foreach (var attribute in analysisAttributes)
+                    XAttribute analysisAttribute = pepXMLReader.ReadFirstAttribute(element, "analysis");
+                    if (null != analysisAttribute)
                     {
-                        var analysis = (String) attribute;
+                        var analysis = (String)analysisAttribute;
                         if ((String.Empty != analysis) && IsQuantitationTool(analysis.ToLower()))
                         {
                             quantitationTool = analysis;
