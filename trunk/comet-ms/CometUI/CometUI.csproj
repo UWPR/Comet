@@ -202,11 +202,11 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ViewResultsDisplayOptions.cs">
+    <Compile Include="ViewResultsDisplayOptionsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="ViewResultsDisplayOptions.Designer.cs">
-      <DependentUpon>ViewResultsDisplayOptions.cs</DependentUpon>
+    <Compile Include="ViewResultsDisplayOptionsControl.Designer.cs">
+      <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="ViewResultsSummaryOptionsControl.cs">
       <SubType>UserControl</SubType>
@@ -275,8 +275,8 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
-    <EmbeddedResource Include="ViewResultsDisplayOptions.resx">
-      <DependentUpon>ViewResultsDisplayOptions.cs</DependentUpon>
+    <EmbeddedResource Include="ViewResultsDisplayOptionsControl.resx">
+      <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ViewResultsSummaryOptionsControl.resx">
       <DependentUpon>ViewResultsSummaryOptionsControl.cs</DependentUpon>
