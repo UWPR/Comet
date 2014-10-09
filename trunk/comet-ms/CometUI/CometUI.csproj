@@ -130,17 +130,17 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>RunSearchSettings.settings</DependentUpon>
     </Compile>
-    <Compile Include="RunSearchBackgroundWorker.cs" />
-    <Compile Include="RunSearchDlg.cs">
+    <Compile Include="RunSearch\RunSearchBackgroundWorker.cs" />
+    <Compile Include="RunSearch\RunSearchDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="RunSearchDlg.Designer.cs">
+    <Compile Include="RunSearch\RunSearchDlg.Designer.cs">
       <DependentUpon>RunSearchDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearchProgressDlg.cs">
+    <Compile Include="RunSearch\RunSearchProgressDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="RunSearchProgressDlg.Designer.cs">
+    <Compile Include="RunSearch\RunSearchProgressDlg.Designer.cs">
       <DependentUpon>RunSearchProgressDlg.cs</DependentUpon>
     </Compile>
     <Compile Include="SettingsUI\InputSettingsControl.Designer.cs">
@@ -202,22 +202,22 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ViewResultsDisplayOptionsControl.cs">
+    <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="ViewResultsDisplayOptionsControl.Designer.cs">
+    <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.Designer.cs">
       <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="ViewResultsSummaryOptionsControl.cs">
+    <Compile Include="ViewResults\ViewResultsSummaryOptionsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="ViewResultsSummaryOptionsControl.Designer.cs">
+    <Compile Include="ViewResults\ViewResultsSummaryOptionsControl.Designer.cs">
       <DependentUpon>ViewResultsSummaryOptionsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="ViewSearchResultsControl.cs">
+    <Compile Include="ViewResults\ViewSearchResultsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="ViewSearchResultsControl.Designer.cs">
+    <Compile Include="ViewResults\ViewSearchResultsControl.Designer.cs">
       <DependentUpon>ViewSearchResultsControl.cs</DependentUpon>
     </Compile>
     <EmbeddedResource Include="About Dlg.resx">
@@ -235,7 +235,7 @@
     <EmbeddedResource Include="ImportParamsDlg.resx">
       <DependentUpon>ImportParamsDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearchDlg.resx">
+    <EmbeddedResource Include="RunSearch\RunSearchDlg.resx">
       <DependentUpon>RunSearchDlg.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="SettingsUI\MiscSettingsControl.resx">
@@ -275,13 +275,13 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
-    <EmbeddedResource Include="ViewResultsDisplayOptionsControl.resx">
+    <EmbeddedResource Include="ViewResults\ViewResultsDisplayOptionsControl.resx">
       <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ViewResultsSummaryOptionsControl.resx">
+    <EmbeddedResource Include="ViewResults\ViewResultsSummaryOptionsControl.resx">
       <DependentUpon>ViewResultsSummaryOptionsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ViewSearchResultsControl.resx">
+    <EmbeddedResource Include="ViewResults\ViewSearchResultsControl.resx">
       <DependentUpon>ViewSearchResultsControl.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="app.config" />
