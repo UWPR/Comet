@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using CometUI.Properties;
 
-namespace CometUI
+namespace CometUI.ViewResults
 {
     public partial class ViewSearchResultsControl : UserControl
     {

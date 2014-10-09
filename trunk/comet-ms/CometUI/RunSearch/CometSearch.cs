@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using CometWrapper;
 
-namespace CometUI
+namespace CometUI.RunSearch
 {
     public class CometSearch
     {

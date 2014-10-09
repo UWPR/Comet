@@ -4,7 +4,7 @@ using System.Threading;
 using System.Windows.Forms;
 using CometUI.Properties;
 
-namespace CometUI
+namespace CometUI.RunSearch
 {
     class RunSearchBackgroundWorker
     {

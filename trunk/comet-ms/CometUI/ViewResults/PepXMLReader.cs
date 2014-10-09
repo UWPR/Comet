@@ -5,7 +5,7 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace CometUI
+namespace CometUI.ViewResults
 {
     public class PepXMLReader
     {

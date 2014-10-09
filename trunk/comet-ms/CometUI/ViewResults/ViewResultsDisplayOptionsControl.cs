@@ -1,6 +1,6 @@
 ﻿using System.Windows.Forms;
 
-namespace CometUI
+namespace CometUI.ViewResults
 {
     public partial class ViewResultsDisplayOptionsControl : UserControl
     {

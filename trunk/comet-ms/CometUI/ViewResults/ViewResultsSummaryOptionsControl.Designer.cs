@@ -1,4 +1,4 @@
-﻿namespace CometUI
+﻿namespace CometUI.ViewResults
 {
     partial class ViewResultsSummaryOptionsControl
     {

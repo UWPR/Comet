@@ -7,7 +7,7 @@ using System.Windows.Forms;
 using CometUI.Properties;
 using CometUI.SettingsUI;
 
-namespace CometUI
+namespace CometUI.RunSearch
 {
     public partial class RunSearchDlg : Form
     {

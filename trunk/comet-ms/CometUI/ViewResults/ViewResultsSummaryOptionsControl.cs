@@ -5,7 +5,7 @@ using System.Linq;
 using System.Windows.Forms;
 using System.Xml.Linq;
 
-namespace CometUI
+namespace CometUI.ViewResults
 {
     public partial class ViewResultsSummaryOptionsControl : UserControl
     {

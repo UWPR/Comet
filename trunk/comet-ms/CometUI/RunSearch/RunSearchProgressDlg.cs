@@ -4,7 +4,7 @@ using System.Windows.Forms;
 using CometUI.CustomControls;
 using CometUI.Properties;
 
-namespace CometUI
+namespace CometUI.RunSearch
 {
     public partial class RunSearchProgressDlg : ProgressDlg
     {

@@ -94,7 +94,7 @@
     </Compile>
     <Compile Include="CometParam.cs" />
     <Compile Include="CometParamsIO.cs" />
-    <Compile Include="CometSearch.cs" />
+    <Compile Include="RunSearch\CometSearch.cs" />
     <Compile Include="CometUI.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -119,7 +119,7 @@
     <Compile Include="ImportParamsDlg.Designer.cs">
       <DependentUpon>ImportParamsDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="PepXMLReader.cs" />
+    <Compile Include="ViewResults\PepXMLReader.cs" />
     <Compile Include="Properties\SearchSettings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
