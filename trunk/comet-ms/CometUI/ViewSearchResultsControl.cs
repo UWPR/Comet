@@ -12,6 +12,7 @@ namespace CometUI
         private CometUI CometUI { get; set; }
         private bool OptionsPanelShown { get; set; }
         private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
+        private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -24,8 +25,15 @@ namespace CometUI
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
                 Location = new Point(0, 0)
             };
-
             summaryTabPage.Controls.Add(ViewResultsSummaryOptionsControl);
+
+
+            ViewResultsDisplayOptionsControl = new ViewResultsDisplayOptionsControl
+                                                   {
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
+                Location = new Point(0, 0)
+            };
+            displayOptionsTabPage.Controls.Add(ViewResultsDisplayOptionsControl);
 
             ShowViewOptionsPanel();
 
@@ -40,6 +48,7 @@ namespace CometUI
             OptionsPanelShown = true;
             resultsListPanel.Location = resultsListPanelNormal.Location;
             resultsListPanel.Size = resultsListPanelNormal.Size;
+            showHideOptionsBtn.Text = Resources.ViewSearchResultsControl_ShowViewOptionsPanel__;
         }
 
         private void HideViewOptionsPanel()
@@ -50,12 +59,7 @@ namespace CometUI
             OptionsPanelShown = false;
             resultsListPanel.Location = resultsListPanelFull.Location;
             resultsListPanel.Size = resultsListPanelFull.Size;
-            linkLabelPage9.Hide();
-            pageNumbersPanel.Width -= linkLabelPage9.Width;
-            linkLabelPage10.Hide();
-            pageNumbersPanel.Width -= linkLabelPage10.Width;
-            pageNavPanel.Refresh();
-
+            showHideOptionsBtn.Text = Resources.ViewSearchResultsControl_HideViewOptionsPanel__;
         }
 
         private void ShowHideOptionsBtnClick(object sender, EventArgs e)

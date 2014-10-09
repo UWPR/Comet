@@ -657,11 +657,29 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to +.
+        /// </summary>
+        internal static string ViewSearchResultsControl_HideViewOptionsPanel__ {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_HideViewOptionsPanel__", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Show options.
         /// </summary>
         internal static string ViewSearchResultsControl_HideViewOptionsPanel_Show_options {
             get {
                 return ResourceManager.GetString("ViewSearchResultsControl_HideViewOptionsPanel_Show_options", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -.
+        /// </summary>
+        internal static string ViewSearchResultsControl_ShowViewOptionsPanel__ {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_ShowViewOptionsPanel__", resourceCulture);
             }
         }
         

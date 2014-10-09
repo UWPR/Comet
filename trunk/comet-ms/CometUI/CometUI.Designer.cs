@@ -212,7 +212,7 @@
             // 
             // mainStatusStrip
             // 
-            this.mainStatusStrip.Location = new System.Drawing.Point(0, 490);
+            this.mainStatusStrip.Location = new System.Drawing.Point(0, 740);
             this.mainStatusStrip.Name = "mainStatusStrip";
             this.mainStatusStrip.Size = new System.Drawing.Size(734, 22);
             this.mainStatusStrip.TabIndex = 1;
@@ -223,14 +223,14 @@
             this.viewSearchResultsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.viewSearchResultsPanel.Location = new System.Drawing.Point(0, 24);
             this.viewSearchResultsPanel.Name = "viewSearchResultsPanel";
-            this.viewSearchResultsPanel.Size = new System.Drawing.Size(734, 466);
+            this.viewSearchResultsPanel.Size = new System.Drawing.Size(734, 716);
             this.viewSearchResultsPanel.TabIndex = 2;
             // 
             // CometUI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(734, 512);
+            this.ClientSize = new System.Drawing.Size(734, 762);
             this.Controls.Add(this.viewSearchResultsPanel);
             this.Controls.Add(this.mainStatusStrip);
             this.Controls.Add(this.mainMenuStrip);

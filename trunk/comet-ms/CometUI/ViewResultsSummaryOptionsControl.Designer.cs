@@ -38,7 +38,7 @@
             // btnBrowsePepXMLFile
             // 
             this.btnBrowsePepXMLFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowsePepXMLFile.Location = new System.Drawing.Point(566, 15);
+            this.btnBrowsePepXMLFile.Location = new System.Drawing.Point(566, 20);
             this.btnBrowsePepXMLFile.Name = "btnBrowsePepXMLFile";
             this.btnBrowsePepXMLFile.Size = new System.Drawing.Size(75, 23);
             this.btnBrowsePepXMLFile.TabIndex = 42;
@@ -54,16 +54,16 @@
             this.pepXMLFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
             this.pepXMLFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
             this.pepXMLFileCombo.FormattingEnabled = true;
-            this.pepXMLFileCombo.Location = new System.Drawing.Point(90, 15);
+            this.pepXMLFileCombo.Location = new System.Drawing.Point(93, 20);
             this.pepXMLFileCombo.Name = "pepXMLFileCombo";
-            this.pepXMLFileCombo.Size = new System.Drawing.Size(470, 23);
+            this.pepXMLFileCombo.Size = new System.Drawing.Size(467, 23);
             this.pepXMLFileCombo.TabIndex = 41;
             // 
             // pepXMLFileLabel
             // 
             this.pepXMLFileLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.pepXMLFileLabel.AutoSize = true;
-            this.pepXMLFileLabel.Location = new System.Drawing.Point(15, 20);
+            this.pepXMLFileLabel.Location = new System.Drawing.Point(18, 25);
             this.pepXMLFileLabel.Name = "pepXMLFileLabel";
             this.pepXMLFileLabel.Size = new System.Drawing.Size(69, 13);
             this.pepXMLFileLabel.TabIndex = 43;
@@ -72,7 +72,7 @@
             // btnUpdateResults
             // 
             this.btnUpdateResults.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnUpdateResults.Location = new System.Drawing.Point(566, 92);
+            this.btnUpdateResults.Location = new System.Drawing.Point(566, 200);
             this.btnUpdateResults.Name = "btnUpdateResults";
             this.btnUpdateResults.Size = new System.Drawing.Size(75, 23);
             this.btnUpdateResults.TabIndex = 44;
@@ -99,7 +99,7 @@
             this.Controls.Add(this.btnBrowsePepXMLFile);
             this.Controls.Add(this.pepXMLFileCombo);
             this.Name = "ViewResultsSummaryOptionsControl";
-            this.Size = new System.Drawing.Size(653, 127);
+            this.Size = new System.Drawing.Size(653, 240);
             this.ResumeLayout(false);
             this.PerformLayout();
 

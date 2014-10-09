@@ -316,4 +316,10 @@
   <data name="ViewSearchResultsControl_HideViewOptionsPanel_Show_options">
     <value xml:space="preserve">Show options</value>
   </data>
+  <data name="ViewSearchResultsControl_ShowViewOptionsPanel__">
+    <value xml:space="preserve">-</value>
+  </data>
+  <data name="ViewSearchResultsControl_HideViewOptionsPanel__">
+    <value xml:space="preserve">+</value>
+  </data>
 </root>
