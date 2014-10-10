@@ -138,7 +138,7 @@
             "xpress"});
             this.showColumnsListBox.Location = new System.Drawing.Point(339, 45);
             this.showColumnsListBox.Name = "showColumnsListBox";
-            this.showColumnsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiSimple;
+            this.showColumnsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
             this.showColumnsListBox.Size = new System.Drawing.Size(205, 121);
             this.showColumnsListBox.TabIndex = 1;
             // 
@@ -170,7 +170,7 @@
             "fval"});
             this.hiddenColumnsListBox.Location = new System.Drawing.Point(26, 45);
             this.hiddenColumnsListBox.Name = "hiddenColumnsListBox";
-            this.hiddenColumnsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiSimple;
+            this.hiddenColumnsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
             this.hiddenColumnsListBox.Size = new System.Drawing.Size(205, 121);
             this.hiddenColumnsListBox.TabIndex = 0;
             // 
