@@ -10,5 +10,10 @@ namespace CometUI.ViewResults
 
             rowsPerPageCombo.SelectedIndex = 2;
         }
+
+        private void BtnUpdateResultsClick(object sender, System.EventArgs e)
+        {
+
+        }
     }
 }

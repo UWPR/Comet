@@ -13,6 +13,7 @@ namespace CometUI.ViewResults
         private bool OptionsPanelShown { get; set; }
         private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
+        private ViewResultsPickColumnsControl ViewResultsPickColumnsControl { get; set; }    
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -34,6 +35,13 @@ namespace CometUI.ViewResults
                 Location = new Point(0, 0)
             };
             displayOptionsTabPage.Controls.Add(ViewResultsDisplayOptionsControl);
+
+            ViewResultsPickColumnsControl = new ViewResultsPickColumnsControl
+            {
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
+                Location = new Point(0, 0)
+            };
+            pickColumnsTabPage.Controls.Add(ViewResultsPickColumnsControl);
 
             ShowViewOptionsPanel();
 

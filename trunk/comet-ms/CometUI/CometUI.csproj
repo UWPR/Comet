@@ -208,6 +208,12 @@
     <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.Designer.cs">
       <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="ViewResults\ViewResultsPickColumnsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsPickColumnsControl.Designer.cs">
+      <DependentUpon>ViewResultsPickColumnsControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="ViewResults\ViewResultsSummaryOptionsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -277,6 +283,9 @@
     </Compile>
     <EmbeddedResource Include="ViewResults\ViewResultsDisplayOptionsControl.resx">
       <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ViewResults\ViewResultsPickColumnsControl.resx">
+      <DependentUpon>ViewResultsPickColumnsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ViewResults\ViewResultsSummaryOptionsControl.resx">
       <DependentUpon>ViewResultsSummaryOptionsControl.cs</DependentUpon>
