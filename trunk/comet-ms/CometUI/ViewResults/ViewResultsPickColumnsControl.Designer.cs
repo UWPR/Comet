@@ -141,6 +141,7 @@
             this.showColumnsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
             this.showColumnsListBox.Size = new System.Drawing.Size(205, 121);
             this.showColumnsListBox.TabIndex = 1;
+            this.showColumnsListBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.ShowColumnsListBoxKeyUp);
             // 
             // hiddenColumnsListBox
             // 
@@ -173,6 +174,7 @@
             this.hiddenColumnsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
             this.hiddenColumnsListBox.Size = new System.Drawing.Size(205, 121);
             this.hiddenColumnsListBox.TabIndex = 0;
+            this.hiddenColumnsListBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.HiddenColumnsListBoxKeyUp);
             // 
             // ViewResultsPickColumnsControl
             // 

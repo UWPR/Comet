@@ -9,6 +9,25 @@ namespace CometUI.ViewResults
             InitializeComponent();
         }
 
-        // Todo: add support for Ctrl+A to select all the items in the lists
+        private void HiddenColumnsListBoxKeyUp(object sender, KeyEventArgs e)
+        {
+            SelectAllListBoxItems(hiddenColumnsListBox, e);
+        }
+
+        private void ShowColumnsListBoxKeyUp(object sender, KeyEventArgs e)
+        {
+            SelectAllListBoxItems(showColumnsListBox, e);
+        }
+
+        private static void SelectAllListBoxItems(ListBox list, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.A && e.Control)
+            {
+                for (int i = 0; i < list.Items.Count; i++)
+                {
+                    list.SetSelected(i, true);
+                }
+            }
+        }
     }
 }
