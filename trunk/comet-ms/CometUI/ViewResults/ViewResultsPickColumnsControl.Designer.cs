@@ -126,16 +126,6 @@
             // showColumnsListBox
             // 
             this.showColumnsListBox.FormattingEnabled = true;
-            this.showColumnsListBox.Items.AddRange(new object[] {
-            "probability",
-            "spectrum",
-            "start_scan",
-            "spscore",
-            "ions2",
-            "peptide",
-            "protein",
-            "calc_neutral_pep_mass",
-            "xpress"});
             this.showColumnsListBox.Location = new System.Drawing.Point(339, 45);
             this.showColumnsListBox.Name = "showColumnsListBox";
             this.showColumnsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
@@ -146,29 +136,6 @@
             // hiddenColumnsListBox
             // 
             this.hiddenColumnsListBox.FormattingEnabled = true;
-            this.hiddenColumnsListBox.Items.AddRange(new object[] {
-            "index",
-            "assumed_charge",
-            "precursor_neutral_mass",
-            "MZratio",
-            "protein_descr",
-            "pl",
-            "retention_time_sec",
-            "compensation_voltage",
-            "precursor_intensity",
-            "collision_energy",
-            "ppm",
-            "xcorr",
-            "deltacn",
-            "deltacnstar",
-            "sprank",
-            "ions",
-            "num_tol_term",
-            "num_missed_cleavages",
-            "massdiff",
-            "light_area",
-            "heavy_area",
-            "fval"});
             this.hiddenColumnsListBox.Location = new System.Drawing.Point(26, 45);
             this.hiddenColumnsListBox.Name = "hiddenColumnsListBox";
             this.hiddenColumnsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
