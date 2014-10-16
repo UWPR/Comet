@@ -1,4 +1,6 @@
-﻿using System.Windows.Forms;
+﻿using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace CometUI.ViewResults
 {
@@ -11,24 +13,63 @@ namespace CometUI.ViewResults
 
         private void MoveUp(ListBox listBox)
         {
-            int selectedIndex = listBox.SelectedIndex;
-            if (selectedIndex > 0 & selectedIndex != -1)
+            var selectedIndices = listBox.SelectedIndices;
+            if (selectedIndices.Count > 0)
             {
-                listBox.Items.Insert(selectedIndex - 1, listBox.Items[selectedIndex]);
-                listBox.Items.RemoveAt(selectedIndex + 1);
-                listBox.SelectedIndex = selectedIndex - 1;
+                var insertIndex = selectedIndices[0];
+                var insertItems = new List<String>();
+                if (insertIndex > 0)
+                {
+                    foreach (int index in selectedIndices)
+                    {
+                        var item = listBox.Items[index] as String;
+                        insertItems.Add(item);
+                    }
+
+                    for (int i = 0; i < insertItems.Count; i++)
+                    {
+                        listBox.Items.Remove(insertItems[i]);
+                    }
+
+                    for (int i = 0; i < insertItems.Count; i++)
+                    {
+                        listBox.Items.Insert(insertIndex - 1, insertItems[insertItems.Count - i - 1]);
+                    }
+
+                    listBox.SelectedIndex = insertIndex - 1;
+                }
             }
         }
 
         private void MoveDown(ListBox listBox)
         {
-            int selectedIndex = listBox.SelectedIndex;
-            if (selectedIndex < listBox.Items.Count - 1 & selectedIndex != -1)
+            var selectedIndices = listBox.SelectedIndices;
+            if (selectedIndices.Count > 0)
             {
-                listBox.Items.Insert(selectedIndex + 2, listBox.Items[selectedIndex]);
-                listBox.Items.RemoveAt(selectedIndex);
-                listBox.SelectedIndex = selectedIndex + 1;
+                int insertIndex = selectedIndices[0];
+                int lastSelectedIndex = selectedIndices[selectedIndices.Count - 1];
+                if (lastSelectedIndex != (listBox.Items.Count -1))
+                {
+                    var insertItems = new List<String>();
 
+                    foreach (int index in selectedIndices)
+                    {
+                        var item = listBox.Items[index] as String;
+                        insertItems.Add(item);
+                    }
+
+                    for (int i = 0; i < insertItems.Count; i++)
+                    {
+                        listBox.Items.Remove(insertItems[i]);
+                    }
+
+                    for (int i = 0; i < insertItems.Count; i++)
+                    {
+                        listBox.Items.Insert(insertIndex + 1, insertItems[insertItems.Count - i - 1]);
+                    }
+                }
+
+                listBox.SelectedIndex = insertIndex + 1;
             }
         }
 
@@ -53,12 +94,12 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void BtnMoveUpClick(object sender, System.EventArgs e)
+        private void BtnMoveUpClick(object sender, EventArgs e)
         {
             MoveUp(showColumnsListBox);
         }
 
-        private void BtnMoveDownClick(object sender, System.EventArgs e)
+        private void BtnMoveDownClick(object sender, EventArgs e)
         {
             MoveDown(showColumnsListBox);
         }
