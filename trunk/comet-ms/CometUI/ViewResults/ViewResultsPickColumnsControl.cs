@@ -103,5 +103,30 @@ namespace CometUI.ViewResults
         {
             MoveDown(showColumnsListBox);
         }
+
+        private void BtnMoveToHideColumnsClick(object sender, EventArgs e)
+        {
+            MoveSelectedListBoxItems(showColumnsListBox, hiddenColumnsListBox);
+        }
+
+        private void BtnMoveToShowColumnsClick(object sender, EventArgs e)
+        {
+            MoveSelectedListBoxItems(hiddenColumnsListBox, showColumnsListBox);
+        }
+
+        private void MoveSelectedListBoxItems(ListBox fromListBox, ListBox toListBox)
+        {
+            var selectedItems = new List<String>();
+            foreach (var item in fromListBox.SelectedItems)
+            {
+                toListBox.Items.Add(item);
+                selectedItems.Add(item.ToString());
+            }
+
+            foreach (var item in selectedItems)
+            {
+                fromListBox.Items.Remove(item);
+            }
+        }
     }
 }

@@ -87,6 +87,7 @@
             this.btnMoveToShowColumns.TabIndex = 49;
             this.btnMoveToShowColumns.Text = ">>";
             this.btnMoveToShowColumns.UseVisualStyleBackColor = true;
+            this.btnMoveToShowColumns.Click += new System.EventHandler(this.BtnMoveToShowColumnsClick);
             // 
             // btnMoveToHideColumns
             // 
@@ -96,6 +97,7 @@
             this.btnMoveToHideColumns.TabIndex = 48;
             this.btnMoveToHideColumns.Text = "<<";
             this.btnMoveToHideColumns.UseVisualStyleBackColor = true;
+            this.btnMoveToHideColumns.Click += new System.EventHandler(this.BtnMoveToHideColumnsClick);
             // 
             // label1
             // 
