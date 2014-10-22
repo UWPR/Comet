@@ -81,8 +81,11 @@ namespace CometUI.Search.SearchSettings
 
         public void SaveSearchSettings()
         {
-            CometUI.SearchSettings.Save();
-            SettingsChanged = false;
+            if (SettingsChanged)
+            {
+                CometUI.SearchSettings.Save();
+                SettingsChanged = false;
+            }
         }
 
         public static bool ConvertStrToDouble(string strValue, out double doubleValueOut)

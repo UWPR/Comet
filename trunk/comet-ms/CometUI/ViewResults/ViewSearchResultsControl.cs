@@ -23,6 +23,8 @@ namespace CometUI.ViewResults
 
             CometUI = parent;
 
+            SettingsChanged = false;
+
             ViewResultsSummaryOptionsControl = new ViewResultsSummaryOptionsControl(this)
                                                    {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
@@ -31,7 +33,7 @@ namespace CometUI.ViewResults
             summaryTabPage.Controls.Add(ViewResultsSummaryOptionsControl);
 
 
-            ViewResultsDisplayOptionsControl = new ViewResultsDisplayOptionsControl
+            ViewResultsDisplayOptionsControl = new ViewResultsDisplayOptionsControl(this)
                                                    {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
                 Location = new Point(0, 0)
@@ -62,8 +64,11 @@ namespace CometUI.ViewResults
 
         public void SaveViewResultsSettings()
         {
-            CometUI.ViewResultsSettings.Save();
-            SettingsChanged = false;
+            if (SettingsChanged)
+            {
+                CometUI.ViewResultsSettings.Save();
+                SettingsChanged = false;
+            }
         }
 
         private void InitializeFromDefaultSettings()
