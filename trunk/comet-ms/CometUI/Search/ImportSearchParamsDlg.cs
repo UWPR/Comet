@@ -5,9 +5,9 @@ using CometUI.Properties;
 
 namespace CometUI
 {
-    public partial class ImportParamsDlg : Form
+    public partial class ImportSearchParamsDlg : Form
     {
-        public ImportParamsDlg()
+        public ImportSearchParamsDlg()
         {
             InitializeComponent();
         }

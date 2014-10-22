@@ -94,7 +94,7 @@
     </Compile>
     <Compile Include="CometParam.cs" />
     <Compile Include="CometParamsIO.cs" />
-    <Compile Include="RunSearch\CometSearch.cs" />
+    <Compile Include="Search\CometSearch.cs" />
     <Compile Include="CometUI.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -107,17 +107,17 @@
     <Compile Include="CustomControls\ProgressDlg.designer.cs">
       <DependentUpon>ProgressDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="ExportParamsDialog.cs">
+    <Compile Include="Search\ExportSearchParamsDialog.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ExportParamsDialog.Designer.cs">
-      <DependentUpon>ExportParamsDialog.cs</DependentUpon>
+    <Compile Include="Search\ExportSearchParamsDialog.Designer.cs">
+      <DependentUpon>ExportSearchParamsDialog.cs</DependentUpon>
     </Compile>
-    <Compile Include="ImportParamsDlg.cs">
+    <Compile Include="Search\ImportSearchParamsDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ImportParamsDlg.Designer.cs">
-      <DependentUpon>ImportParamsDlg.cs</DependentUpon>
+    <Compile Include="Search\ImportSearchParamsDlg.Designer.cs">
+      <DependentUpon>ImportSearchParamsDlg.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\ViewResultsSettings.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -135,74 +135,74 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>RunSearchSettings.settings</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\RunSearchBackgroundWorker.cs" />
-    <Compile Include="RunSearch\RunSearchDlg.cs">
+    <Compile Include="Search\RunSearchBackgroundWorker.cs" />
+    <Compile Include="Search\RunSearchDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="RunSearch\RunSearchDlg.Designer.cs">
+    <Compile Include="Search\RunSearchDlg.Designer.cs">
       <DependentUpon>RunSearchDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\RunSearchProgressDlg.cs">
+    <Compile Include="Search\RunSearchProgressDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="RunSearch\RunSearchProgressDlg.Designer.cs">
+    <Compile Include="Search\RunSearchProgressDlg.Designer.cs">
       <DependentUpon>RunSearchProgressDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\InputSettingsControl.Designer.cs">
+    <Compile Include="Search\SearchSettings\InputSettingsControl.Designer.cs">
       <DependentUpon>InputSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\MiscSettingsControl.cs">
+    <Compile Include="Search\SearchSettings\MiscSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\MiscSettingsControl.Designer.cs">
+    <Compile Include="Search\SearchSettings\MiscSettingsControl.Designer.cs">
       <DependentUpon>MiscSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="CustomControls\NumericTextBox.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\StaticModSettingsControl.cs">
+    <Compile Include="Search\SearchSettings\StaticModSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\StaticModSettingsControl.Designer.cs">
+    <Compile Include="Search\SearchSettings\StaticModSettingsControl.Designer.cs">
       <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\EnzymeInfoDlg.cs">
+    <Compile Include="Search\SearchSettings\EnzymeInfoDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\EnzymeInfoDlg.Designer.cs">
+    <Compile Include="Search\SearchSettings\EnzymeInfoDlg.Designer.cs">
       <DependentUpon>EnzymeInfoDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\EnzymeSettingsControl.cs">
+    <Compile Include="Search\SearchSettings\EnzymeSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\EnzymeSettingsControl.Designer.cs">
+    <Compile Include="Search\SearchSettings\EnzymeSettingsControl.Designer.cs">
       <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\InputSettingsControl.cs">
+    <Compile Include="Search\SearchSettings\InputSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\SearchSettingsDlg.cs">
+    <Compile Include="Search\SearchSettings\SearchSettingsDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\SearchSettingsDlg.Designer.cs">
+    <Compile Include="Search\SearchSettings\SearchSettingsDlg.Designer.cs">
       <DependentUpon>SearchSettingsDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\MassSettingsControl.cs">
+    <Compile Include="Search\SearchSettings\MassSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\MassSettingsControl.Designer.cs">
+    <Compile Include="Search\SearchSettings\MassSettingsControl.Designer.cs">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\VarModSettingsControl.cs">
+    <Compile Include="Search\SearchSettings\VarModSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\VarModSettingsControl.Designer.cs">
+    <Compile Include="Search\SearchSettings\VarModSettingsControl.Designer.cs">
       <DependentUpon>VarModSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\OutputSettingsControl.cs">
+    <Compile Include="Search\SearchSettings\OutputSettingsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="RunSearch\SearchSettings\OutputSettingsControl.Designer.cs">
+    <Compile Include="Search\SearchSettings\OutputSettingsControl.Designer.cs">
       <DependentUpon>OutputSettingsControl.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
@@ -240,40 +240,40 @@
     <EmbeddedResource Include="CustomControls\ProgressDlg.resx">
       <DependentUpon>ProgressDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ExportParamsDialog.resx">
-      <DependentUpon>ExportParamsDialog.cs</DependentUpon>
+    <EmbeddedResource Include="Search\ExportSearchParamsDialog.resx">
+      <DependentUpon>ExportSearchParamsDialog.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ImportParamsDlg.resx">
-      <DependentUpon>ImportParamsDlg.cs</DependentUpon>
+    <EmbeddedResource Include="Search\ImportSearchParamsDlg.resx">
+      <DependentUpon>ImportSearchParamsDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\RunSearchDlg.resx">
+    <EmbeddedResource Include="Search\RunSearchDlg.resx">
       <DependentUpon>RunSearchDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\MiscSettingsControl.resx">
+    <EmbeddedResource Include="Search\SearchSettings\MiscSettingsControl.resx">
       <DependentUpon>MiscSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\StaticModSettingsControl.resx">
+    <EmbeddedResource Include="Search\SearchSettings\StaticModSettingsControl.resx">
       <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\EnzymeInfoDlg.resx">
+    <EmbeddedResource Include="Search\SearchSettings\EnzymeInfoDlg.resx">
       <DependentUpon>EnzymeInfoDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\EnzymeSettingsControl.resx">
+    <EmbeddedResource Include="Search\SearchSettings\EnzymeSettingsControl.resx">
       <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\InputSettingsControl.resx">
+    <EmbeddedResource Include="Search\SearchSettings\InputSettingsControl.resx">
       <DependentUpon>InputSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\SearchSettingsDlg.resx">
+    <EmbeddedResource Include="Search\SearchSettings\SearchSettingsDlg.resx">
       <DependentUpon>SearchSettingsDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\MassSettingsControl.resx">
+    <EmbeddedResource Include="Search\SearchSettings\MassSettingsControl.resx">
       <DependentUpon>MassSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\VarModSettingsControl.resx">
+    <EmbeddedResource Include="Search\SearchSettings\VarModSettingsControl.resx">
       <DependentUpon>VarModSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="RunSearch\SearchSettings\OutputSettingsControl.resx">
+    <EmbeddedResource Include="Search\SearchSettings\OutputSettingsControl.resx">
       <DependentUpon>OutputSettingsControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">

@@ -109,7 +109,7 @@ namespace CometUI
 
         private void SearchSettingsImportToolStripMenuItemClick(object sender, EventArgs e)
         {
-            var importParamsDlg = new ImportParamsDlg();
+            var importParamsDlg = new ImportSearchParamsDlg();
             importParamsDlg.ShowDialog();
         }
 

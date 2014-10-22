@@ -1,6 +1,6 @@
 ﻿namespace CometUI
 {
-    partial class ImportParamsDlg
+    partial class ImportSearchParamsDlg
     {
         /// <summary>
         /// Required designer variable.
@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ImportParamsDlg));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ImportSearchParamsDlg));
             this.btnCancel = new System.Windows.Forms.Button();
             this.paramsFileCombo = new System.Windows.Forms.ComboBox();
             this.btnBrowseParams = new System.Windows.Forms.Button();
