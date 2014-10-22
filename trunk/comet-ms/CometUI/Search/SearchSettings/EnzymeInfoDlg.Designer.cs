@@ -1,4 +1,4 @@
-﻿namespace CometUI.SettingsUI
+﻿namespace CometUI.Search.SearchSettings
 {
     partial class EnzymeInfoDlg
     {

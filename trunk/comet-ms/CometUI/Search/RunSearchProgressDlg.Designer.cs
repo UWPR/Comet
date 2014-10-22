@@ -1,6 +1,6 @@
 ﻿using System.Windows.Forms;
 
-namespace CometUI.RunSearch
+namespace CometUI.Search
 {
     partial class RunSearchProgressDlg
     {

@@ -3,7 +3,7 @@ using System.IO;
 using System.Windows.Forms;
 using CometUI.Properties;
 
-namespace CometUI
+namespace CometUI.Search
 {
     public partial class ImportSearchParamsDlg : Form
     {

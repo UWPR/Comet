@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
-using CometUI.Properties;
 
-namespace CometUI.SettingsUI
+namespace CometUI.Search.SearchSettings
 {
     public partial class MiscSettingsControl : UserControl
     {

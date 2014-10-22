@@ -2,10 +2,9 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
-using CometUI.Properties;
 using System.Collections.Specialized;
 
-namespace CometUI.SettingsUI
+namespace CometUI.Search.SearchSettings
 {
     public partial class EnzymeSettingsControl : UserControl
     {

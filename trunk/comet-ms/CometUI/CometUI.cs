@@ -2,8 +2,8 @@
 using System.Drawing;
 using System.Windows.Forms;
 using CometUI.Properties;
-using CometUI.RunSearch;
-using CometUI.SettingsUI;
+using CometUI.Search;
+using CometUI.Search.SearchSettings;
 using CometUI.ViewResults;
 
 namespace CometUI

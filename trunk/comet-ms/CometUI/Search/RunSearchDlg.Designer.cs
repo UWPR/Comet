@@ -1,4 +1,4 @@
-﻿namespace CometUI.RunSearch
+﻿namespace CometUI.Search
 {
     partial class RunSearchDlg
     {

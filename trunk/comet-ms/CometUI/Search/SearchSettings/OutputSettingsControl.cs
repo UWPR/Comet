@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.Windows.Forms;
 
-namespace CometUI.SettingsUI
+namespace CometUI.Search.SearchSettings
 {
     public partial class OutputSettingsControl : UserControl
     {

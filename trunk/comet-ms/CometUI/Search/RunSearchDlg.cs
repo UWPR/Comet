@@ -5,9 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using CometUI.Properties;
-using CometUI.SettingsUI;
+using CometUI.Search.SearchSettings;
 
-namespace CometUI.RunSearch
+namespace CometUI.Search
 {
     public partial class RunSearchDlg : Form
     {

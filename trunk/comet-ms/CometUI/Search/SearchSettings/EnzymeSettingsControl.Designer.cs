@@ -1,6 +1,6 @@
 ﻿using CometUI.CustomControls;
 
-namespace CometUI.SettingsUI
+namespace CometUI.Search.SearchSettings
 {
     partial class EnzymeSettingsControl
     {

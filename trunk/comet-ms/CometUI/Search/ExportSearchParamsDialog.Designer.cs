@@ -1,4 +1,4 @@
-﻿namespace CometUI
+﻿namespace CometUI.Search
 {
     partial class ExportParamsDlg
     {

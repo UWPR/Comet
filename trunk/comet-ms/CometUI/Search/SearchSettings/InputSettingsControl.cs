@@ -4,7 +4,7 @@ using System.Windows.Forms;
 using System.IO;
 using CometUI.Properties;
 
-namespace CometUI.SettingsUI
+namespace CometUI.Search.SearchSettings
 {
     public partial class InputSettingsControl : UserControl
     {

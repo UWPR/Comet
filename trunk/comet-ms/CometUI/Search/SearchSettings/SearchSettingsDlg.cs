@@ -3,7 +3,7 @@ using System.Windows.Forms;
 using CometUI.Properties;
 using System.Drawing;
 
-namespace CometUI.SettingsUI
+namespace CometUI.Search.SearchSettings
 {
     public partial class SearchSettingsDlg : Form
     {
