@@ -30,6 +30,8 @@ namespace CometUI
 
             RunSearchSettings = RunSearchSettings.Default;
 
+            ViewResultsSettings = ViewResultsSettings.Default;
+
             ViewSearchResultsControl = new ViewSearchResultsControl(this)
             {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
@@ -133,6 +135,16 @@ namespace CometUI
         private void OpenToolStripMenuItemClick(object sender, EventArgs e)
         {
             ViewSearchResultsControl.UpdateViewSearchResults(ShowOpenPepXMLFile());
+        }
+
+        private void ViewResultsSettingsToolStripMenuItemClick(object sender, EventArgs e)
+        {
+            if (MessageBox.Show(Resources.CometUI_ViewResultsSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_, 
+                Resources.CometUI_ViewResultsSettingsToolStripMenuItemClick_Save_View_Results_Settings,
+                MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
+            {
+                ViewSearchResultsControl.SaveViewResultsSettings();
+            }
         }
     }
 }

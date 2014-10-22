@@ -52,6 +52,7 @@
             this.LeftVennPepMass3Col = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
             this.viewSearchResultsPanel = new System.Windows.Forms.Panel();
+            this.viewResultsSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -128,7 +129,8 @@
             // saveCurrentToolStripMenuItem
             // 
             this.saveCurrentToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.saveSearchSettingsToolStripMenuItem});
+            this.saveSearchSettingsToolStripMenuItem,
+            this.viewResultsSettingsToolStripMenuItem});
             this.saveCurrentToolStripMenuItem.Name = "saveCurrentToolStripMenuItem";
             this.saveCurrentToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
             this.saveCurrentToolStripMenuItem.Text = "&Save Current";
@@ -136,7 +138,7 @@
             // saveSearchSettingsToolStripMenuItem
             // 
             this.saveSearchSettingsToolStripMenuItem.Name = "saveSearchSettingsToolStripMenuItem";
-            this.saveSearchSettingsToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.saveSearchSettingsToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
             this.saveSearchSettingsToolStripMenuItem.Text = "&Search Settings";
             this.saveSearchSettingsToolStripMenuItem.Click += new System.EventHandler(this.SaveSearchSettingsToolStripMenuItemClick);
             // 
@@ -226,6 +228,13 @@
             this.viewSearchResultsPanel.Size = new System.Drawing.Size(734, 716);
             this.viewSearchResultsPanel.TabIndex = 2;
             // 
+            // viewResultsSettingsToolStripMenuItem
+            // 
+            this.viewResultsSettingsToolStripMenuItem.Name = "viewResultsSettingsToolStripMenuItem";
+            this.viewResultsSettingsToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
+            this.viewResultsSettingsToolStripMenuItem.Text = "&View Results Settings";
+            this.viewResultsSettingsToolStripMenuItem.Click += new System.EventHandler(this.ViewResultsSettingsToolStripMenuItemClick);
+            // 
             // CometUI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -271,5 +280,6 @@
         private System.Windows.Forms.ColumnHeader LeftVennPepMass3Col;
         private System.Windows.Forms.StatusStrip mainStatusStrip;
         private System.Windows.Forms.Panel viewSearchResultsPanel;
+        private System.Windows.Forms.ToolStripMenuItem viewResultsSettingsToolStripMenuItem;
     }
 }

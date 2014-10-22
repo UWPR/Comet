@@ -145,5 +145,17 @@ namespace CometUI.Properties {
                 this["DisplayOptionsSortAscending"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ShowOptions {
+            get {
+                return ((bool)(this["ShowOptions"]));
+            }
+            set {
+                this["ShowOptions"] = value;
+            }
+        }
     }
 }

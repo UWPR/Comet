@@ -8,6 +8,8 @@ namespace CometUI.ViewResults
     public partial class ViewSearchResultsControl : UserControl
     {
         public String ResultsPepXMLFile { get; set; }
+
+        public bool SettingsChanged { get; set; }
         
         private CometUI CometUI { get; set; }
         private bool OptionsPanelShown { get; set; }
@@ -43,9 +45,37 @@ namespace CometUI.ViewResults
             };
             pickColumnsTabPage.Controls.Add(ViewResultsPickColumnsControl);
 
-            ShowViewOptionsPanel();
+            InitializeFromDefaultSettings();
 
             UpdateViewSearchResults(String.Empty);
+        }
+
+        public void UpdateViewSearchResults(String resultsPepXMLFile)
+        {
+            if (null != resultsPepXMLFile)
+            {
+                ResultsPepXMLFile = resultsPepXMLFile;
+                ShowResultsListPanel(String.Empty != ResultsPepXMLFile);
+                ViewResultsSummaryOptionsControl.UpdateSummaryOptions();
+            }
+        }
+
+        public void SaveViewResultsSettings()
+        {
+            CometUI.ViewResultsSettings.Save();
+            SettingsChanged = false;
+        }
+
+        private void InitializeFromDefaultSettings()
+        {
+            if (CometUI.ViewResultsSettings.ShowOptions)
+            {
+                ShowViewOptionsPanel();
+            }
+            else
+            {
+                HideViewOptionsPanel();
+            }
         }
 
         private void ShowViewOptionsPanel()
@@ -72,13 +102,17 @@ namespace CometUI.ViewResults
 
         private void ShowHideOptionsBtnClick(object sender, EventArgs e)
         {
+            SettingsChanged = true;
+            
             if (OptionsPanelShown)
             {
                 HideViewOptionsPanel();
+                CometUI.ViewResultsSettings.ShowOptions = false;
             }
             else
             {
                 ShowViewOptionsPanel();
+                CometUI.ViewResultsSettings.ShowOptions = true;
             }
         }
 
@@ -91,16 +125,6 @@ namespace CometUI.ViewResults
             else
             {
                 resultsListPanel.Hide();
-            }
-        }
-
-        public void UpdateViewSearchResults(String resultsPepXMLFile)
-        {
-            if (null != resultsPepXMLFile)
-            {
-                ResultsPepXMLFile = resultsPepXMLFile;
-                ShowResultsListPanel(String.Empty != ResultsPepXMLFile);
-                ViewResultsSummaryOptionsControl.UpdateSummaryOptions();
             }
         }
     }

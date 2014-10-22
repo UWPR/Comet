@@ -137,6 +137,25 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to overwrite the current settings?.
+        /// </summary>
+        internal static string CometUI_ViewResultsSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_ {
+            get {
+                return ResourceManager.GetString("CometUI_ViewResultsSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwr" +
+                        "ite_the_current_settings_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Save View Results Settings.
+        /// </summary>
+        internal static string CometUI_ViewResultsSettingsToolStripMenuItemClick_Save_View_Results_Settings {
+            get {
+                return ResourceManager.GetString("CometUI_ViewResultsSettingsToolStripMenuItemClick_Save_View_Results_Settings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to  already exists in this folder. Would you like to replace it?.
         /// </summary>
         internal static string ExportParamsDlg_BtnExportClick__already_exists_in_this_folder__Would_you_like_to_replace_it_ {

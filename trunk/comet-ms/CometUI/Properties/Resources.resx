@@ -322,4 +322,10 @@
   <data name="ViewSearchResultsControl_HideViewOptionsPanel__">
     <value xml:space="preserve">+</value>
   </data>
+  <data name="CometUI_ViewResultsSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_">
+    <value xml:space="preserve">Are you sure you want to overwrite the current settings?</value>
+  </data>
+  <data name="CometUI_ViewResultsSettingsToolStripMenuItemClick_Save_View_Results_Settings">
+    <value xml:space="preserve">Save View Results Settings</value>
+  </data>
 </root>
