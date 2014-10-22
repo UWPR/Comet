@@ -12,6 +12,7 @@ namespace CometUI
     {
         public static SearchSettings SearchSettings { get; set; }
         public static RunSearchSettings RunSearchSettings { get; set; }
+        public static ViewResultsSettings ViewResultsSettings { get; set; }
 
         private SearchSettingsDlg _searchSettingsDlg;
         private SearchSettingsDlg SearchSettingsDlg

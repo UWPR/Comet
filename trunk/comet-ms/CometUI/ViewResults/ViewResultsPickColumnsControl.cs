@@ -128,5 +128,10 @@ namespace CometUI.ViewResults
                 fromListBox.Items.Remove(item);
             }
         }
+
+        private void BtnUpdateResultsClick(object sender, EventArgs e)
+        {
+
+        }
     }
 }

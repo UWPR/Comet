@@ -126,6 +126,7 @@
             this.btnUpdateResults.TabIndex = 45;
             this.btnUpdateResults.Text = "&Update";
             this.btnUpdateResults.UseVisualStyleBackColor = true;
+            this.btnUpdateResults.Click += new System.EventHandler(this.BtnUpdateResultsClick);
             // 
             // showColumnsListBox
             // 
