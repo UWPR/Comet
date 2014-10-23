@@ -75,6 +75,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "%s\n", g_staticParams.databaseInfo.szDatabase);
 
    fprintf(fpout, "scan\t");
+   fprintf(fpout, "num\t");
    fprintf(fpout, "charge\t");
    fprintf(fpout, "exp_neutral_mass\t");
    fprintf(fpout, "calc_neutral_mass\t");
@@ -102,19 +103,11 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
    if ((!bDecoy && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
          || (bDecoy && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
    {
-      char szBuf[SIZE_BUF];
-
       Query* pQuery = g_pvQuery.at(iWhichQuery);
 
       int charge = pQuery->_spectrumInfoInternal.iChargeState;
       double spectrum_neutral_mass = pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS;
       double spectrum_mz = (spectrum_neutral_mass + charge*PROTON_MASS) / (double)charge;
-
-      sprintf(szBuf, "%d\t%d\t%0.6f\t%0.6f\t",
-            pQuery->_spectrumInfoInternal.iScanNumber, 
-            pQuery->_spectrumInfoInternal.iChargeState,
-            spectrum_mz,
-            spectrum_neutral_mass);
 
       Results *pOutput;
       unsigned long num_matches;
@@ -136,8 +129,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
             continue;
 
-         fprintf(fpout, "%s", szBuf);
-
          double dDeltaCn;
 
          if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr >= 0.0)
@@ -147,44 +138,35 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          else
             dDeltaCn = 0.0;
 
-         fprintf(fpout,
-               "%0.4f\t"
-               "%0.4f\t"
-               "%0.4f\t"
-               "%d\t"
-               "%0.4f\t"
-               "%lu\t"
-               "%d\t"
-               "%d\t"
-               "%lu\t",
-                  pOutput[iWhichResult].dPepMass - PROTON_MASS,
-                  dDeltaCn,
-                  pOutput[iWhichResult].fScoreSp,
-                  pOutput[iWhichResult].iRankSp,
-                  pOutput[iWhichResult].fXcorr,
-                  iWhichResult + 1,                  // assuming want index starting at 1
-                  pOutput[iWhichResult].iMatchedIons, 
-                  pOutput[iWhichResult].iTotalIons,
-                  num_matches);
+         fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
+         fprintf(fpout, "%d\t",  pQuery->_spectrumInfoInternal.iChargeState);
+         fprintf(fpout, "%0.6f\t",  spectrum_mz);
+         fprintf(fpout, "%0.6f\t", spectrum_neutral_mass);
+         fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
+         fprintf(fpout, "%0.4f\t", dDeltaCn);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fScoreSp);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].iRankSp);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
+         fprintf(fpout, "%lu\t", iWhichResult + 1);                 // assuming want index starting at 1
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].iMatchedIons);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].iTotalIons);
+         fprintf(fpout, "%lu\t", num_matches);
 
-         char szBuf2[SIZE_BUF];
-         szBuf2[0] = '\0';
-            
          //Print out peptide and give mass for variable mods.
          if (g_staticParams.variableModParameters.bVarModSearch
                && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
          {
-            sprintf(szBuf2, "n[%0.4f]",
+            fprintf(fpout, "n[%0.4f]",
                   g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass);
          }
 
          for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
          {
-            sprintf(szBuf2+strlen(szBuf2), "%c", pOutput[iWhichResult].szPeptide[i]);
+            fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
             if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].pcVarModSites[i] > 0)
             {
-               sprintf(szBuf2+strlen(szBuf2), "[%0.4f]",
+               fprintf(fpout, "[%0.4f]",
                      g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
             }
          }
@@ -192,13 +174,12 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          if (g_staticParams.variableModParameters.bVarModSearch
                && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
          {
-            sprintf(szBuf2+strlen(szBuf2), "c[0.4%f]", 
+            fprintf(fpout, "c[0.4%f]", 
                   g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass);
          }
 
-         fprintf(fpout, "%s\t", szBuf2);
          // Print protein reference/accession.
-         fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
+         fprintf(fpout, "\t%s\t", pOutput[iWhichResult].szProtein);
          // Cleavage type
          fprintf(fpout, "%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
          // e-value
@@ -212,108 +193,96 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
                                  FILE *fpout)
 {
-   char szBuf[SIZE_BUF];
-
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
-
-   sprintf(szBuf, "%d\t%d\t%0.6f\t",
-         pQuery->_spectrumInfoInternal.iScanNumber, 
-         pQuery->_spectrumInfoInternal.iChargeState, 
-         pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
-
-   fprintf(fpout, "%s", szBuf);
-
-   Results *pOutput;
-
-   if (bDecoy)
-      pOutput = pQuery->_pDecoys;
-   else
-      pOutput = pQuery->_pResults;
-
-   if (pOutput[0].fXcorr > XCORR_CUTOFF)
-      PrintTxtLine(0, pOutput, fpout);  // print top hit only right now
-   else
-      fprintf(fpout, "\n");
-}
-#endif
-
-#ifdef CRUX
-void CometWriteTxt::PrintTxtLine(int iWhichResult,
-                                 Results *pOutput,
-                                 FILE *fpout)
-{
-}
-#else
-void CometWriteTxt::PrintTxtLine(int iWhichResult,
-                                 Results *pOutput,
-                                 FILE *fpout)
-{
-   int  i;
-   char szBuf[SIZE_BUF];
-
-   double dDeltaCn;
-
-   if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr >= 0.0)
-      dDeltaCn = 1.0 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;
-   else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr < 0.0)
-      dDeltaCn = 1.0;
-   else
-      dDeltaCn = 0.0;
-
-   sprintf(szBuf, "%0.6f\t%0.2E\t%0.4f\t%0.4f\t%0.1f\t%d\t%d",
-         pOutput[iWhichResult].dPepMass - PROTON_MASS,
-         pOutput[iWhichResult].dExpect,
-         pOutput[iWhichResult].fXcorr,
-         dDeltaCn,
-         pOutput[iWhichResult].fScoreSp,
-         pOutput[iWhichResult].iMatchedIons, 
-         pOutput[iWhichResult].iTotalIons);
-
-   fprintf(fpout, "%s\t", szBuf);
-
-   // Print plain peptide
-   fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
-
-   // Print peptide sequence
-   sprintf(szBuf, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
-
-   if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+   if ((!bDecoy && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
+         || (bDecoy && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
    {
-      sprintf(szBuf+strlen(szBuf), "n%c",
-            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
-   }
+      Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
-   {
-      sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
-
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+      Results *pOutput;
+      unsigned long num_matches;
+      if (bDecoy)
       {
-         sprintf(szBuf+strlen(szBuf), "%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         pOutput = pQuery->_pDecoys;
+         num_matches = pQuery->_uliNumMatchedDecoyPeptides;
+      }
+      else
+      {
+         pOutput = pQuery->_pResults;
+         num_matches = pQuery->_uliNumMatchedPeptides;
+      }
+      
+      size_t iNumPrintLines = min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches);
+
+      for (size_t iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+      {
+         if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
+            continue;
+
+         double dDeltaCn;
+
+         if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr >= 0.0)
+            dDeltaCn = 1.0 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;
+         else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr < 0.0)
+            dDeltaCn = 1.0;
+         else
+            dDeltaCn = 0.0;
+
+         fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
+         fprintf(fpout, "%lu\t", iWhichResult+1);
+         fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iChargeState);
+         fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
+         fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
+         fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpect);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
+         fprintf(fpout, "%0.4f\t", dDeltaCn);
+         fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].iMatchedIons);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].iTotalIons);
+
+         // Print plain peptide
+         fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
+
+         // Print peptide sequence
+         fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
+
+         if (g_staticParams.variableModParameters.bVarModSearch
+               && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         {
+            fprintf(fpout, "n[%0.1f]",
+                  g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass);
+         }
+
+         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+         {
+            fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
+
+            if (g_staticParams.variableModParameters.bVarModSearch
+                  && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+            {
+               fprintf(fpout, "[%0.1f]",
+                     g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
+            }
+         }
+
+         if (g_staticParams.variableModParameters.bVarModSearch
+               && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
+         {
+            fprintf(fpout, "c[0.1%f]", 
+                  g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass);
+         }
+
+         fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
+
+         fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[0]);
+         fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
+
+         // Print protein reference/accession.
+         fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
+
+         fprintf(fpout, "%d", pOutput[iWhichResult].iDuplicateCount); 
+
+         fprintf(fpout, "\n");
       }
    }
-
-   if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
-   {
-      sprintf(szBuf+strlen(szBuf), "c%c",
-            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
-   }
-
-   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
-
-   fprintf(fpout, "%s\t", szBuf);
-
-   fprintf(fpout, "%c\t%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
-
-   // Print protein reference/accession.
-   fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
-
-   fprintf(fpout, "%d", pOutput[iWhichResult].iDuplicateCount); 
-
-   fprintf(fpout, "\n");
 }
 #endif
