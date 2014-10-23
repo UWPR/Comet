@@ -40,7 +40,7 @@ namespace CometUI.ViewResults
             };
             displayOptionsTabPage.Controls.Add(ViewResultsDisplayOptionsControl);
 
-            ViewResultsPickColumnsControl = new ViewResultsPickColumnsControl
+            ViewResultsPickColumnsControl = new ViewResultsPickColumnsControl(this)
             {
                 Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right),
                 Location = new Point(0, 0)

@@ -92,6 +92,18 @@ namespace CometUI
                     SearchSettingsDlg.SaveSearchSettings();
                 }
             }
+
+            if (ViewSearchResultsControl.SettingsChanged)
+            {
+                if (MessageBox.Show(
+                    Resources.
+                        CometUI_ViewResultsSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_,
+                    Resources.CometUI_ViewResultsSettingsToolStripMenuItemClick_Save_View_Results_Settings,
+                    MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
+                {
+                    ViewSearchResultsControl.SaveViewResultsSettings();
+                }
+            }
         }
 
         private void ExitToolStripMenuItemClick(object sender, EventArgs e)

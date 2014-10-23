@@ -1,14 +1,87 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Windows.Forms;
 
 namespace CometUI.ViewResults
 {
     public partial class ViewResultsPickColumnsControl : UserControl
     {
-        public ViewResultsPickColumnsControl()
+        private ViewSearchResultsControl ViewSearchResultsControl { get; set; }
+
+        public ViewResultsPickColumnsControl(ViewSearchResultsControl parent)
         {
             InitializeComponent();
+
+            ViewSearchResultsControl = parent;
+
+            InitializeFromDefaultSettings();
+        }
+
+        private void InitializeFromDefaultSettings()
+        {
+            foreach (var item in CometUI.ViewResultsSettings.PickColumnsHideList)
+            {
+                hiddenColumnsListBox.Items.Add(item);
+            }
+
+            foreach (var item in CometUI.ViewResultsSettings.PickColumnsShowList)
+            {
+                showColumnsListBox.Items.Add(item);
+            }
+        }
+
+        private void VerifyAndUpdateHideColumnsSetting()
+        {
+            var currentHiddenColumnsStringCollection = ListBoxToStringCollection(hiddenColumnsListBox);
+            if (HasPickColumnsListChanged(currentHiddenColumnsStringCollection, CometUI.ViewResultsSettings.PickColumnsHideList))
+            {
+                CometUI.ViewResultsSettings.PickColumnsHideList = currentHiddenColumnsStringCollection;
+                ViewSearchResultsControl.SettingsChanged = true;
+            }
+        }
+
+        private void VerifyAndUpdateShowColumnsSetting()
+        {
+            var currentShowColumnsStringCollection = ListBoxToStringCollection(showColumnsListBox);
+            if (HasPickColumnsListChanged(currentShowColumnsStringCollection, CometUI.ViewResultsSettings.PickColumnsShowList))
+            {
+                CometUI.ViewResultsSettings.PickColumnsShowList = currentShowColumnsStringCollection;
+                ViewSearchResultsControl.SettingsChanged = true;
+            }
+        }
+
+        private bool HasPickColumnsListChanged(StringCollection currentList, StringCollection listInSettings)
+        {
+            var settingsChanged = false;
+            if (currentList.Count != listInSettings.Count)
+            {
+                settingsChanged = true;
+            }
+            else
+            {
+                for (int i = 0; i < currentList.Count; i++)
+                {
+                    if (!currentList[i].Equals(listInSettings[i]))
+                    {
+                        settingsChanged = true;
+                        break;
+                    }
+                }
+            }
+
+            return settingsChanged;
+        }
+
+        private StringCollection ListBoxToStringCollection(ListBox listBox)
+        {
+            var strCollection = new StringCollection();
+            foreach (var item in listBox.Items)
+            {
+                strCollection.Add(item.ToString());
+            }
+
+            return strCollection;
         }
 
         private void MoveUp(ListBox listBox)
@@ -131,7 +204,17 @@ namespace CometUI.ViewResults
 
         private void BtnUpdateResultsClick(object sender, EventArgs e)
         {
+            
+        }
 
+        private void HiddenColumnsListBoxSelectedIndexChanged(object sender, EventArgs e)
+        {
+            VerifyAndUpdateHideColumnsSetting();
+        }
+
+        private void ShowColumnsListBoxSelectedIndexChanged(object sender, EventArgs e)
+        {
+            VerifyAndUpdateShowColumnsSetting();
         }
     }
 }

@@ -105,6 +105,7 @@
             this.columnHeadersRegularRadioButton.TabStop = true;
             this.columnHeadersRegularRadioButton.Text = "Regular";
             this.columnHeadersRegularRadioButton.UseVisualStyleBackColor = true;
+            this.columnHeadersRegularRadioButton.CheckedChanged += new System.EventHandler(this.ColumnHeadersRegularRadioButtonCheckedChanged);
             // 
             // columnHeadersCondensedRadioButton
             // 
@@ -116,6 +117,7 @@
             this.columnHeadersCondensedRadioButton.TabStop = true;
             this.columnHeadersCondensedRadioButton.Text = "Condensed";
             this.columnHeadersCondensedRadioButton.UseVisualStyleBackColor = true;
+            this.columnHeadersCondensedRadioButton.CheckedChanged += new System.EventHandler(this.ColumnHeadersCondensedRadioButtonCheckedChanged);
             // 
             // multipleProteinHitsRadioButtonsPanel
             // 
@@ -136,6 +138,7 @@
             this.multipleProteinHitsTopHitRadioButton.TabStop = true;
             this.multipleProteinHitsTopHitRadioButton.Text = "Top hit only";
             this.multipleProteinHitsTopHitRadioButton.UseVisualStyleBackColor = true;
+            this.multipleProteinHitsTopHitRadioButton.CheckedChanged += new System.EventHandler(this.MultipleProteinHitsTopHitRadioButtonCheckedChanged);
             // 
             // multipleProteinHitsAllHitsRadioButton
             // 
@@ -147,6 +150,7 @@
             this.multipleProteinHitsAllHitsRadioButton.TabStop = true;
             this.multipleProteinHitsAllHitsRadioButton.Text = "List of all hits";
             this.multipleProteinHitsAllHitsRadioButton.UseVisualStyleBackColor = true;
+            this.multipleProteinHitsAllHitsRadioButton.CheckedChanged += new System.EventHandler(this.MultipleProteinHitsAllHitsRadioButtonCheckedChanged);
             // 
             // highlightSpectrumTextBox
             // 
@@ -205,6 +209,7 @@
             this.highlightPeptideIncludeModCheckBox.TabIndex = 45;
             this.highlightPeptideIncludeModCheckBox.Text = "Include modification (subscript) text";
             this.highlightPeptideIncludeModCheckBox.UseVisualStyleBackColor = true;
+            this.highlightPeptideIncludeModCheckBox.CheckedChanged += new System.EventHandler(this.HighlightPeptideIncludeModCheckBoxCheckedChanged);
             // 
             // highlightProteinLabel
             // 
@@ -241,6 +246,7 @@
             this.rowsPerPageCombo.Name = "rowsPerPageCombo";
             this.rowsPerPageCombo.Size = new System.Drawing.Size(87, 21);
             this.rowsPerPageCombo.TabIndex = 40;
+            this.rowsPerPageCombo.SelectedIndexChanged += new System.EventHandler(this.RowsPerPageComboSelectedIndexChanged);
             // 
             // rowsPerPageLabel
             // 

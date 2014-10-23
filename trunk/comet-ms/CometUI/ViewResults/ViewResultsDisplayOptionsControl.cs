@@ -44,10 +44,15 @@ namespace CometUI.ViewResults
 
         private void BtnUpdateResultsClick(object sender, System.EventArgs e)
         {
-            VerifyAndUpdateSettings();
+            
         }
 
-        private void VerifyAndUpdateSettings()
+        private void RowsPerPageComboSelectedIndexChanged(object sender, System.EventArgs e)
+        {
+            VerifyAndUpdateRowsPerPageSetting();
+        }
+
+        private void VerifyAndUpdateRowsPerPageSetting()
         {
             if (
                 !rowsPerPageCombo.SelectedItem.Equals(
@@ -56,7 +61,15 @@ namespace CometUI.ViewResults
                 CometUI.ViewResultsSettings.DisplayOptionsRowsPerPage = int.Parse(rowsPerPageCombo.SelectedItem.ToString());
                 ViewSearchResultsControl.SettingsChanged = true;
             }
+        }
 
+        private void HighlightPeptideIncludeModCheckBoxCheckedChanged(object sender, System.EventArgs e)
+        {
+            VerifyAndUpdateHighlightPeptideIncludeModSetting();
+        }
+
+        private void VerifyAndUpdateHighlightPeptideIncludeModSetting()
+        {
             if (highlightPeptideIncludeModCheckBox.Checked !=
                 CometUI.ViewResultsSettings.DisplayOptionsInlcudeModsWhenHighlightingPeptides)
             {
@@ -64,22 +77,48 @@ namespace CometUI.ViewResults
                     highlightPeptideIncludeModCheckBox.Checked;
                 ViewSearchResultsControl.SettingsChanged = true;
             }
+        }
 
-            if (multipleProteinHitsTopHitRadioButton.Checked != 
+        private void MultipleProteinHitsTopHitRadioButtonCheckedChanged(object sender, System.EventArgs e)
+        {
+            VerifyAndUpdateMultipleProteinHitsTopHitSetting();
+        }
+
+        private void MultipleProteinHitsAllHitsRadioButtonCheckedChanged(object sender, System.EventArgs e)
+        {
+            VerifyAndUpdateMultipleProteinHitsTopHitSetting();
+        }
+
+        private void VerifyAndUpdateMultipleProteinHitsTopHitSetting()
+        {
+            if (multipleProteinHitsTopHitRadioButton.Checked !=
                 CometUI.ViewResultsSettings.DisplayOptionsOnlyTopProteinHit)
             {
                 CometUI.ViewResultsSettings.DisplayOptionsOnlyTopProteinHit =
                     multipleProteinHitsTopHitRadioButton.Checked;
                 ViewSearchResultsControl.SettingsChanged = true;
             }
+        }
 
-            if (columnHeadersCondensedRadioButton.Checked != 
+        private void ColumnHeadersRegularRadioButtonCheckedChanged(object sender, System.EventArgs e)
+        {
+            VerifyAndUpdateColumnHeaderCondensedSetting();
+        }
+
+        private void ColumnHeadersCondensedRadioButtonCheckedChanged(object sender, System.EventArgs e)
+        {
+            VerifyAndUpdateColumnHeaderCondensedSetting();
+        }
+
+        private void VerifyAndUpdateColumnHeaderCondensedSetting()
+        {
+            if (columnHeadersCondensedRadioButton.Checked !=
                 CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
             {
                 CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders =
                     columnHeadersCondensedRadioButton.Checked;
                 ViewSearchResultsControl.SettingsChanged = true;
-            }
+            } 
         }
     }
 }
