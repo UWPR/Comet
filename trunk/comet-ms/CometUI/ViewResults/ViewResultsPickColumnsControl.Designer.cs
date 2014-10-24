@@ -81,7 +81,7 @@
             // 
             // btnMoveToShowColumns
             // 
-            this.btnMoveToShowColumns.Location = new System.Drawing.Point(247, 84);
+            this.btnMoveToShowColumns.Location = new System.Drawing.Point(247, 45);
             this.btnMoveToShowColumns.Name = "btnMoveToShowColumns";
             this.btnMoveToShowColumns.Size = new System.Drawing.Size(75, 23);
             this.btnMoveToShowColumns.TabIndex = 49;
@@ -91,7 +91,7 @@
             // 
             // btnMoveToHideColumns
             // 
-            this.btnMoveToHideColumns.Location = new System.Drawing.Point(247, 45);
+            this.btnMoveToHideColumns.Location = new System.Drawing.Point(247, 84);
             this.btnMoveToHideColumns.Name = "btnMoveToHideColumns";
             this.btnMoveToHideColumns.Size = new System.Drawing.Size(75, 23);
             this.btnMoveToHideColumns.TabIndex = 48;
