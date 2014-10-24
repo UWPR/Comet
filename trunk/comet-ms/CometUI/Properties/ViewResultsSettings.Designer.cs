@@ -92,7 +92,7 @@ namespace CometUI.Properties {
   <string>precursor_neutral_mass</string>
   <string>MZratio</string>
   <string>protein_descr</string>
-  <string>pl</string>
+  <string>pI</string>
   <string>retention_time_sec</string>
   <string>compensation_voltage</string>
   <string>precursor_intensity</string>

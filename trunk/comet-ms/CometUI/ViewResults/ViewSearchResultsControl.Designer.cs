@@ -37,9 +37,6 @@
             this.otherActionsTabPage = new System.Windows.Forms.TabPage();
             this.resultsListPanel = new System.Windows.Forms.Panel();
             this.resultsListView = new System.Windows.Forms.ListView();
-            this.LeftVennSequenceCol = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.LeftVennScanNumCol = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.LeftVennPepMass2Col = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.hideOptionsGroupBox = new System.Windows.Forms.GroupBox();
             this.showHideOptionsLabel = new System.Windows.Forms.Label();
             this.showHideOptionsBtn = new System.Windows.Forms.Button();
@@ -91,7 +88,7 @@
             this.displayOptionsTabPage.Location = new System.Drawing.Point(4, 22);
             this.displayOptionsTabPage.Name = "displayOptionsTabPage";
             this.displayOptionsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.displayOptionsTabPage.Size = new System.Drawing.Size(653, 216);
+            this.displayOptionsTabPage.Size = new System.Drawing.Size(661, 236);
             this.displayOptionsTabPage.TabIndex = 1;
             this.displayOptionsTabPage.Text = "Display Options";
             this.displayOptionsTabPage.UseVisualStyleBackColor = true;
@@ -101,7 +98,7 @@
             this.pickColumnsTabPage.Location = new System.Drawing.Point(4, 22);
             this.pickColumnsTabPage.Name = "pickColumnsTabPage";
             this.pickColumnsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.pickColumnsTabPage.Size = new System.Drawing.Size(653, 216);
+            this.pickColumnsTabPage.Size = new System.Drawing.Size(661, 236);
             this.pickColumnsTabPage.TabIndex = 2;
             this.pickColumnsTabPage.Text = "Pick Columns";
             this.pickColumnsTabPage.UseVisualStyleBackColor = true;
@@ -111,7 +108,7 @@
             this.filteringOptionsTabPage.Location = new System.Drawing.Point(4, 22);
             this.filteringOptionsTabPage.Name = "filteringOptionsTabPage";
             this.filteringOptionsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.filteringOptionsTabPage.Size = new System.Drawing.Size(653, 216);
+            this.filteringOptionsTabPage.Size = new System.Drawing.Size(661, 236);
             this.filteringOptionsTabPage.TabIndex = 3;
             this.filteringOptionsTabPage.Text = "Filtering Options";
             this.filteringOptionsTabPage.UseVisualStyleBackColor = true;
@@ -121,7 +118,7 @@
             this.otherActionsTabPage.Location = new System.Drawing.Point(4, 22);
             this.otherActionsTabPage.Name = "otherActionsTabPage";
             this.otherActionsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.otherActionsTabPage.Size = new System.Drawing.Size(653, 216);
+            this.otherActionsTabPage.Size = new System.Drawing.Size(661, 236);
             this.otherActionsTabPage.TabIndex = 4;
             this.otherActionsTabPage.Text = "Other Actions";
             this.otherActionsTabPage.UseVisualStyleBackColor = true;
@@ -142,10 +139,6 @@
             this.resultsListView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.resultsListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.LeftVennSequenceCol,
-            this.LeftVennScanNumCol,
-            this.LeftVennPepMass2Col});
             this.resultsListView.FullRowSelect = true;
             this.resultsListView.GridLines = true;
             this.resultsListView.Location = new System.Drawing.Point(18, 7);
@@ -154,18 +147,6 @@
             this.resultsListView.TabIndex = 9;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
             this.resultsListView.View = System.Windows.Forms.View.Details;
-            // 
-            // LeftVennSequenceCol
-            // 
-            this.LeftVennSequenceCol.Width = 102;
-            // 
-            // LeftVennScanNumCol
-            // 
-            this.LeftVennScanNumCol.Width = 67;
-            // 
-            // LeftVennPepMass2Col
-            // 
-            this.LeftVennPepMass2Col.Width = 68;
             // 
             // hideOptionsGroupBox
             // 
@@ -249,9 +230,6 @@
         private System.Windows.Forms.TabPage otherActionsTabPage;
         private System.Windows.Forms.Panel resultsListPanel;
         private System.Windows.Forms.ListView resultsListView;
-        private System.Windows.Forms.ColumnHeader LeftVennSequenceCol;
-        private System.Windows.Forms.ColumnHeader LeftVennScanNumCol;
-        private System.Windows.Forms.ColumnHeader LeftVennPepMass2Col;
         private System.Windows.Forms.GroupBox hideOptionsGroupBox;
         private System.Windows.Forms.Label showHideOptionsLabel;
         private System.Windows.Forms.Button showHideOptionsBtn;

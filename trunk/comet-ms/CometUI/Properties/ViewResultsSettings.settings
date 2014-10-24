@@ -25,7 +25,7 @@
   &lt;string&gt;precursor_neutral_mass&lt;/string&gt;
   &lt;string&gt;MZratio&lt;/string&gt;
   &lt;string&gt;protein_descr&lt;/string&gt;
-  &lt;string&gt;pl&lt;/string&gt;
+  &lt;string&gt;pI&lt;/string&gt;
   &lt;string&gt;retention_time_sec&lt;/string&gt;
   &lt;string&gt;compensation_voltage&lt;/string&gt;
   &lt;string&gt;precursor_intensity&lt;/string&gt;
