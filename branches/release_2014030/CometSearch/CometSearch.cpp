@@ -62,7 +62,9 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s\n", iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Search ran out of memory. Look into \"spectrum_batch_size\" and \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr("%s\n\n", szErrorMsg);
@@ -358,7 +360,9 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          catch (std::bad_alloc& ba)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.", seqSize, ba.what());
+            sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s\n", seqSize, ba.what());
+            sprintf(szErrorMsg+strlen(szErrorMsg), "Search ran out of memory. Look into \"spectrum_batch_size\" and \"use_sparse_matrix\"\n");
+            sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);

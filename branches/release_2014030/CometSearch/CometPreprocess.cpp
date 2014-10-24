@@ -297,7 +297,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    catch (std::bad_alloc& ba)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pfFastXcorrData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
+      sprintf(szErrorMsg,  " Error - new(pfFastXcorrData[%d]). bad_alloc: %s.\n", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
+      sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+      sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
       logerr("%s\n\n", szErrorMsg);
@@ -316,7 +318,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pfFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pfFastXcorrDataNL[%d]). bad_alloc: %s.\n", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -412,7 +416,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrData[%d]). bad_alloc: %s.", pScoring->iFastXcorrData, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrData[%d]). bad_alloc: %s\n", pScoring->iFastXcorrData, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -451,7 +457,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          catch (std::bad_alloc& ba)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
+            sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrDataNL[%d]). bad_alloc: %s\n", pScoring->iFastXcorrDataNL, ba.what());
+            sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+            sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
@@ -520,7 +528,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseSpScoreData[%d]). bad_alloc: %s.", pScoring->iSpScoreData, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseSpScoreData[%d]). bad_alloc: %s\n", pScoring->iSpScoreData, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -547,7 +557,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]). bad_alloc: %s\n", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1290,7 +1302,9 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpRawData[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpRawData[%d]). bad_alloc: %s\n", iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1309,7 +1323,9 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpFastXcorrData[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpFastXcorrData[%d]). bad_alloc: %s\n", iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1328,7 +1344,9 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpCorrelationData[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpCorrelationData[%d]). bad_alloc: %s\n", iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1347,7 +1365,9 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpSmoothedSpectrum[%d]). bad_alloc: %s\n", iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
@@ -1366,7 +1386,9 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpSmoothedSpectrum[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpSmoothedSpectrum[%d]). bad_alloc: %s\n", iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
