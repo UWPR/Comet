@@ -90,12 +90,31 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to View Results Settings Changed.
+        /// </summary>
+        internal static string CometUI_CometUIFormClosing_View_Results_Settings_Changed {
+            get {
+                return ResourceManager.GetString("CometUI_CometUIFormClosing_View_Results_Settings_Changed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to You have modified the search settings. Would you like to save the changes before you exit?.
         /// </summary>
         internal static string CometUI_CometUIFormClosing_You_have_modified_the_search_settings__Would_you_like_to_save_the_changes_before_you_exit_ {
             get {
                 return ResourceManager.GetString("CometUI_CometUIFormClosing_You_have_modified_the_search_settings__Would_you_like_" +
                         "to_save_the_changes_before_you_exit_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You have modified the view results settings. Would you like to save the changes before you exit?.
+        /// </summary>
+        internal static string CometUI_CometUIFormClosing_You_have_modified_the_view_results_settings__Would_you_like_to_save_the_changes_before_you_exit_ {
+            get {
+                return ResourceManager.GetString("CometUI_CometUIFormClosing_You_have_modified_the_view_results_settings__Would_you" +
+                        "_like_to_save_the_changes_before_you_exit_", resourceCulture);
             }
         }
         

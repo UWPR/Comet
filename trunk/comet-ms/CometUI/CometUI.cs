@@ -96,9 +96,8 @@ namespace CometUI
             if (ViewSearchResultsControl.SettingsChanged)
             {
                 if (MessageBox.Show(
-                    Resources.
-                        CometUI_ViewResultsSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_,
-                    Resources.CometUI_ViewResultsSettingsToolStripMenuItemClick_Save_View_Results_Settings,
+                    Resources.CometUI_CometUIFormClosing_You_have_modified_the_view_results_settings__Would_you_like_to_save_the_changes_before_you_exit_,
+                    Resources.CometUI_CometUIFormClosing_View_Results_Settings_Changed,
                     MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
                 {
                     ViewSearchResultsControl.SaveViewResultsSettings();

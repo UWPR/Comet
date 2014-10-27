@@ -328,4 +328,10 @@
   <data name="CometUI_ViewResultsSettingsToolStripMenuItemClick_Save_View_Results_Settings">
     <value xml:space="preserve">Save View Results Settings</value>
   </data>
+  <data name="CometUI_CometUIFormClosing_You_have_modified_the_view_results_settings__Would_you_like_to_save_the_changes_before_you_exit_">
+    <value xml:space="preserve">You have modified the view results settings. Would you like to save the changes before you exit?</value>
+  </data>
+  <data name="CometUI_CometUIFormClosing_View_Results_Settings_Changed">
+    <value xml:space="preserve">View Results Settings Changed</value>
+  </data>
 </root>
