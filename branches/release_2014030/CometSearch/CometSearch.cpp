@@ -94,7 +94,9 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 
 
 bool CometSearch::RunSearch(int minNumThreads,
-                            int maxNumThreads)
+                            int maxNumThreads,
+                            int iPercentStart,
+                            int iPercentEnd)
 {
    bool bSucceeded = true;
    sDBEntry dbe;
@@ -127,6 +129,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    rewind(fptr);
 
    // Load database entry header.
+   lCurrPos=ftell(fptr);
    iTmpCh = getc(fptr);
 
    if (!g_staticParams.options.bOutputSqtStream)
@@ -188,7 +191,10 @@ bool CometSearch::RunSearch(int minNumThreads,
             && !(g_staticParams.databaseInfo.iTotalNumProteins%200))
       {
          lCurrPos = ftell(fptr);
-         logout("%3d%%", (int)(100.0 * (double)lCurrPos/(double)lEndPos));
+
+         // go from iPercentStart to iPercentEnd, scaled by lCurrPos/iEndPos
+         logout("%3d%%", (int)(((double)(iPercentStart + (iPercentEnd-iPercentStart)*(double)lCurrPos/(double)lEndPos) ))); 
+
          fflush(stdout);
          logout("\b\b\b\b");
       }
@@ -222,7 +228,8 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      logout(" 100%%\n");
+      logout("%3d%%\n", iPercentEnd);
+
       fflush(stdout);
    }
 

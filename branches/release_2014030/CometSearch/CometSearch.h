@@ -59,8 +59,10 @@ public:
    // Manages memory in the search memory pool
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
-
-   static bool RunSearch(int minNumThreads, int maxNumThreads);
+   static bool RunSearch(int minNumThreads,
+                         int maxNumThreads,
+                         int iPercentStart,
+                         int iPercentEnd);
    static void SearchThreadProc(SearchThreadData *pSearchThreadData);
    bool DoSearch(sDBEntry dbe, bool *pbDuplFragment);
     

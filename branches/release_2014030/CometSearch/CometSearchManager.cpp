@@ -1421,6 +1421,8 @@ bool CometSearchManager::DoSearch()
 
       int iFirstScan = g_staticParams.inputFile.iFirstScan;             // First scan to search specified by user.
       int iLastScan = g_staticParams.inputFile.iLastScan;               // Last scan to search specified by user.
+      int iPercentStart = 0;                                            // percentage within input file for start scan of batch
+      int iPercentEnd = 0;                                              // percentage within input file for end scan of batch
       int iAnalysisType = g_staticParams.inputFile.iAnalysisType;       // 1=dta (retired),
                                                                         // 2=specific scan,
                                                                         // 3=specific scan + charge,
@@ -1683,7 +1685,7 @@ bool CometSearchManager::DoSearch()
             // Load and preprocess all the spectra.
             if (!g_staticParams.options.bOutputSqtStream)
             {
-               logout(" - Load and process input spectra\n");
+               logout(" - Load and process input spectra");
 
 #ifdef PERF_DEBUG
                time(&tLoadAndPreprocessSpectraStartTime);
@@ -1707,6 +1709,9 @@ bool CometSearchManager::DoSearch()
             {
                goto cleanup_results;
             }
+
+            iPercentStart = iPercentEnd;
+            iPercentEnd = mstReader.getPercent();
 
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
@@ -1732,9 +1737,9 @@ bool CometSearchManager::DoSearch()
             }
 
             char szStatusMsg[256];
-            sprintf(szStatusMsg, "Number of mass-charge spectra loaded: %d", (int)g_pvQuery.size());
+            sprintf(szStatusMsg, ": %d", (int)g_pvQuery.size());
             if (!g_staticParams.options.bOutputSqtStream)
-               logout(" - %s\n", szStatusMsg);
+               logout("%s\n", szStatusMsg);
             g_cometStatus.SetStatusMsg(string(szStatusMsg));
 
             // Sort g_pvQuery vector by dExpPepMass.
@@ -1762,7 +1767,9 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Running search..."));
 
             // Now that spectra are loaded to memory and sorted, do search.
-            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads,
+                  iPercentStart, iPercentEnd);
+
             if (!bSucceeded)
             {
                goto cleanup_results;
@@ -1816,9 +1823,6 @@ bool CometSearchManager::DoSearch()
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
             CalcRunTime(tStartTime);
-
-            if (!g_staticParams.options.bOutputSqtStream)
-               logout(" - Write output\n");
 
             if (g_staticParams.options.bOutputOutFiles)
             {
