@@ -878,27 +878,22 @@ namespace CometUI
             {
                 modNum++;
                 string paramName = "variable_mod0" + modNum;
-                string[] varModsStr = item.Split(',');
-                if (varModsStr.Length < NumVarModFieldsInSettings)
+                var varMod = GetVarModFromString(item);
+                if (null == varMod)
                 {
                     return false;
                 }
-                var varMods = new VarMod(Convert.ToDouble(varModsStr[VarModsColMassDiff]),
-                                          varModsStr[VarModsColResidue],
-                                          Convert.ToInt32(varModsStr[VarModsColBinaryMod]),
-                                          Convert.ToInt32(varModsStr[VarModsColMaxMods]),
-                                          Convert.ToInt32(varModsStr[VarModsColTermDist]),
-                                          Convert.ToInt32(varModsStr[VarModsColWhichTerm]));
-                var varModsStrValue = varMods.VarModMass + " " 
-                    + varMods.VarModChar + " " 
-                    + varMods.BinaryMod + " " 
-                    + varMods.MaxNumVarModAAPerMod + " "
-                    + varMods.VarModTermDistance + " "
-                    + varMods.WhichTerm;
+               
+                var varModsStrValue = varMod.VarModMass + " " 
+                    + varMod.VarModChar + " " 
+                    + varMod.BinaryMod + " " 
+                    + varMod.MaxNumVarModAAPerMod + " "
+                    + varMod.VarModTermDistance + " "
+                    + varMod.WhichTerm;
                 if (!UpdateCometParam(paramName,
                                  new TypedCometParam<VarMod>(CometParamType.VarMod,
                                                              varModsStrValue,
-                                                             varMods)))
+                                                             varMod)))
                 {
                     return false;
                 }
@@ -1071,6 +1066,22 @@ namespace CometUI
             }
 
             return true;
+        }
+
+        public static VarMod GetVarModFromString(String varModString)
+        {
+            string[] varModsStrArray = varModString.Split(',');
+            if (varModsStrArray.Length < NumVarModFieldsInSettings)
+            {
+                return null;
+            }
+
+            return new VarMod(Convert.ToDouble(varModsStrArray[VarModsColMassDiff]),
+                                      varModsStrArray[VarModsColResidue],
+                                      Convert.ToInt32(varModsStrArray[VarModsColBinaryMod]),
+                                      Convert.ToInt32(varModsStrArray[VarModsColMaxMods]),
+                                      Convert.ToInt32(varModsStrArray[VarModsColTermDist]),
+                                      Convert.ToInt32(varModsStrArray[VarModsColWhichTerm]));
         }
 
         public bool GetCometParamValue(String name, out int value, out String strValue)
@@ -1720,11 +1731,11 @@ namespace CometUI
         public VarMod()
         {
             BinaryMod = 0;
-            MaxNumVarModAAPerMod = 0;
-            VarModTermDistance = 0;
+            MaxNumVarModAAPerMod = 3;
+            VarModTermDistance = -1;
             WhichTerm = 0;
             VarModMass = 0.0;
-            VarModChar = String.Empty;
+            VarModChar = "X";
         }
 
         public VarMod(double varModMass, String varModChar, 

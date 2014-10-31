@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows.Forms;
@@ -8,10 +9,31 @@ namespace CometUI.Search.SearchSettings
 {
     public partial class VarModSettingsControl : UserControl
     {
+        class NamedVarMod
+        {
+            public String Name { get; set; }
+            public VarMod VarModInfo { get; set; }
+
+            //public NamedVarMod()
+            //{
+            //    Name = String.Empty;
+            //    VarModInfo = new VarMod(0.0, "X", 0, 3, -1, 0);
+            //}
+
+            public NamedVarMod(String displayName, VarMod varModInfo)
+            {
+                Name = displayName;
+                VarModInfo = varModInfo;
+            }
+        }
+
         public StringCollection VarMods { get; set; }
+
         private new SearchSettingsDlg Parent { get; set; }
+        private List<NamedVarMod> NamedVarModsList { get; set; }
 
         private const string AminoAcids = "GASPVTCLINDQKEMOHFRYW";
+        private const int MaxNumVarMods = 9;
 
 
         public VarModSettingsControl(SearchSettingsDlg parent)
@@ -19,31 +41,37 @@ namespace CometUI.Search.SearchSettings
             InitializeComponent();
 
             Parent = parent;
-                 
+
+            NamedVarModsList = new List<NamedVarMod>();
+
             InitializeFromDefaultSettings();
 
-            UpdateVarModsDataGridView();
+            UpdateVarModsListBox();
+
+            UpdateVarModsListBoxButtons();
+
+            //UpdateVarModsDataGridView();
         }
 
         public bool VerifyAndUpdateSettings()
         {
-            VarMods = VarModsDataGridViewToStringCollection();
-            for (int i = 0; i < VarMods.Count; i++ )
-            {
-                if (!VarMods[i].Equals(CometUI.SearchSettings.VariableMods[i]))
-                {
-                    Parent.SettingsChanged = true;
-                    CometUI.SearchSettings.VariableMods = VarMods;
-                    break;
-                }
-            }
+            //VarMods = VarModsDataGridViewToStringCollection();
+            //for (int i = 0; i < VarMods.Count; i++ )
+            //{
+            //    if (!VarMods[i].Equals(CometUI.SearchSettings.VariableMods[i]))
+            //    {
+            //        Parent.SettingsChanged = true;
+            //        CometUI.SearchSettings.VariableMods = VarMods;
+            //        break;
+            //    }
+            //}
 
-            int maxModsInPeptide = (int)maxModsInPeptideTextBox.Value;
-            if (!maxModsInPeptide.Equals(CometUI.SearchSettings.MaxVarModsInPeptide))
-            {
-                CometUI.SearchSettings.MaxVarModsInPeptide = maxModsInPeptide;
-                Parent.SettingsChanged = true;
-            }
+            //int maxModsInPeptide = (int)maxModsInPeptideTextBox.Value;
+            //if (!maxModsInPeptide.Equals(CometUI.SearchSettings.MaxVarModsInPeptide))
+            //{
+            //    CometUI.SearchSettings.MaxVarModsInPeptide = maxModsInPeptide;
+            //    Parent.SettingsChanged = true;
+            //}
 
             return true;
         }
@@ -51,120 +79,175 @@ namespace CometUI.Search.SearchSettings
         private void InitializeFromDefaultSettings()
         {
             VarMods = new StringCollection();
+            int varModNum = 0;
             foreach (var item in CometUI.SearchSettings.VariableMods)
             {
+                varModNum++;
+
                 VarMods.Add(item);
+
+                var varMod = CometParamsMap.GetVarModFromString(item);
+                if (null != varMod)
+                {
+                    var varModName = GetVarModName(varMod);
+                    NamedVarModsList.Add(new NamedVarMod(varModName, varMod));
+                }
             }
 
             maxModsInPeptideTextBox.Text = CometUI.SearchSettings.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);            
         }
 
-        private StringCollection VarModsDataGridViewToStringCollection()
+        private String GetVarModName(VarMod varMod)
         {
-            var strCollection = new StringCollection();
-            for (int rowIndex = 0; rowIndex < varModsDataGridView.Rows.Count; rowIndex++)
-            {
-                var dataGridViewRow = varModsDataGridView.Rows[rowIndex];
-                string row = String.Empty;
-                for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
-                {
-                    var textBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewTextBoxCell;
-                    if (null != textBoxCell)
-                    {
-                        row += textBoxCell.Value;
-                        if (colIndex != dataGridViewRow.Cells.Count - 1)
-                        {
-                            row += ",";
-                        }
-                        continue;
-                    }
-
-                    var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
-                    if (null != checkBoxCell)
-                    {
-                        row += (bool)checkBoxCell.Value ? "1" : "0";
-                        if (colIndex != dataGridViewRow.Cells.Count - 1)
-                        {
-                            row += ",";
-                        }
-                        continue;
-                    }
-
-                    var dropDownCell = dataGridViewRow.Cells[colIndex] as DataGridViewComboBoxCell;
-                    if (null != dropDownCell)
-                    {
-                        row += dropDownCell.Value;
-                        if (colIndex != dataGridViewRow.Cells.Count - 1)
-                        {
-                            row += ",";
-                        }
-                    }
-                }
-                strCollection.Add(row);
-            }
-
-            return strCollection;
+            return varMod.VarModChar + " (" + varMod.VarModMass + ")";
         }
 
-        private void UpdateVarModsDataGridView()
+        private void UpdateVarModsListBox(int selectIndex = 0)
         {
-            varModsDataGridView.Rows.Add(VarMods.Count);
-            for (int rowIndex = 0; rowIndex < VarMods.Count; rowIndex++)
+            varModsListBox.BeginUpdate();
+            varModsListBox.Items.Clear();
+            foreach (var item in NamedVarModsList)
             {
-                var varModsRow = VarMods[rowIndex];
-                string[] varModsCells = varModsRow.Split(',');
-                var dataGridViewRow = varModsDataGridView.Rows[rowIndex];
-                for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
+                if (IsValidResidue(item.VarModInfo.VarModChar))
                 {
-                    string cellColTitle = dataGridViewRow.Cells[colIndex].OwningColumn.HeaderText;
-                    if (cellColTitle.Equals("Bin Mod"))
-                    {
-                        var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
-                        if (null != checkBoxCell)
-                        {
-                            checkBoxCell.Value = varModsCells[colIndex].Equals("1");
-                        }
-                    }
-                    else if (cellColTitle.Equals("Which Term"))
-                    {
-                        var dropDownCell = dataGridViewRow.Cells[colIndex] as DataGridViewComboBoxCell;
-                        if (null != dropDownCell)
-                        {
-                            dropDownCell.Value = varModsCells[colIndex];
-                        }
-                    }
-                    else
-                    {
-                        var textBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewTextBoxCell;
-                        if (null != textBoxCell)
-                        {
-                            textBoxCell.Value = varModsCells[colIndex];
-                        }
-                    }
+                    varModsListBox.Items.Add(item.Name);
                 }
             }
+
+            if (varModsListBox.Items.Count > 0)
+            {
+                varModsListBox.SelectedIndex = selectIndex;
+            }
+
+            varModsListBox.EndUpdate();
         }
 
-        private void VarModsDataGridViewCellEndEdit(object sender, DataGridViewCellEventArgs e)
+        private void UpdateVarModsListBoxButtons()
         {
-            var cell = varModsDataGridView.Rows[e.RowIndex].Cells[e.ColumnIndex];
-            if (cell.OwningColumn.HeaderText.Equals("Residue"))
-            {
-                ValidateResidueCellEdit(cell);
-            }
-            else if (cell.OwningColumn.HeaderText.Equals("Mass Diff"))
-            {
-                ValidateMassDiffCellEdit(cell);
-            }
-            else if (cell.OwningColumn.HeaderText.Equals("Max Mods"))
-            {
-                ValidateMaxModsCellEdit(cell);
-            }
-            else if (cell.OwningColumn.HeaderText.Equals("Term Dist"))
-            {
-                ValidateTermDistCellEdit(cell);
-            }
+            addVarModBtn.Enabled = varModsListBox.Items.Count <= MaxNumVarMods;
+            editVarModBtn.Enabled = -1 != varModsListBox.SelectedIndex;
+            removeVarModBtn.Enabled = editVarModBtn.Enabled;
         }
+
+        private static bool IsValidResidue(String residue)
+        {
+            foreach (var character in residue)
+            {
+                if (!AminoAcids.Contains(character.ToString(CultureInfo.InvariantCulture).ToUpper()))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        //private StringCollection VarModsDataGridViewToStringCollection()
+        //{
+        //    var strCollection = new StringCollection();
+        //    for (int rowIndex = 0; rowIndex < varModsDataGridView.Rows.Count; rowIndex++)
+        //    {
+        //        var dataGridViewRow = varModsDataGridView.Rows[rowIndex];
+        //        string row = String.Empty;
+        //        for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
+        //        {
+        //            var textBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewTextBoxCell;
+        //            if (null != textBoxCell)
+        //            {
+        //                row += textBoxCell.Value;
+        //                if (colIndex != dataGridViewRow.Cells.Count - 1)
+        //                {
+        //                    row += ",";
+        //                }
+        //                continue;
+        //            }
+
+        //            var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
+        //            if (null != checkBoxCell)
+        //            {
+        //                row += (bool)checkBoxCell.Value ? "1" : "0";
+        //                if (colIndex != dataGridViewRow.Cells.Count - 1)
+        //                {
+        //                    row += ",";
+        //                }
+        //                continue;
+        //            }
+
+        //            var dropDownCell = dataGridViewRow.Cells[colIndex] as DataGridViewComboBoxCell;
+        //            if (null != dropDownCell)
+        //            {
+        //                row += dropDownCell.Value;
+        //                if (colIndex != dataGridViewRow.Cells.Count - 1)
+        //                {
+        //                    row += ",";
+        //                }
+        //            }
+        //        }
+        //        strCollection.Add(row);
+        //    }
+
+        //    return strCollection;
+        //}
+
+        //private void UpdateVarModsDataGridView()
+        //{
+        //    varModsDataGridView.Rows.Add(VarMods.Count);
+        //    for (int rowIndex = 0; rowIndex < VarMods.Count; rowIndex++)
+        //    {
+        //        var varModsRow = VarMods[rowIndex];
+        //        string[] varModsCells = varModsRow.Split(',');
+        //        var dataGridViewRow = varModsDataGridView.Rows[rowIndex];
+        //        for (int colIndex = 0; colIndex < dataGridViewRow.Cells.Count; colIndex++)
+        //        {
+        //            string cellColTitle = dataGridViewRow.Cells[colIndex].OwningColumn.HeaderText;
+        //            if (cellColTitle.Equals("Bin Mod"))
+        //            {
+        //                var checkBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewCheckBoxCell;
+        //                if (null != checkBoxCell)
+        //                {
+        //                    checkBoxCell.Value = varModsCells[colIndex].Equals("1");
+        //                }
+        //            }
+        //            else if (cellColTitle.Equals("Which Term"))
+        //            {
+        //                var dropDownCell = dataGridViewRow.Cells[colIndex] as DataGridViewComboBoxCell;
+        //                if (null != dropDownCell)
+        //                {
+        //                    dropDownCell.Value = varModsCells[colIndex];
+        //                }
+        //            }
+        //            else
+        //            {
+        //                var textBoxCell = dataGridViewRow.Cells[colIndex] as DataGridViewTextBoxCell;
+        //                if (null != textBoxCell)
+        //                {
+        //                    textBoxCell.Value = varModsCells[colIndex];
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
+
+        //private void VarModsDataGridViewCellEndEdit(object sender, DataGridViewCellEventArgs e)
+        //{
+        //    var cell = varModsDataGridView.Rows[e.RowIndex].Cells[e.ColumnIndex];
+        //    if (cell.OwningColumn.HeaderText.Equals("Residue"))
+        //    {
+        //        ValidateResidueCellEdit(cell);
+        //    }
+        //    else if (cell.OwningColumn.HeaderText.Equals("Mass Diff"))
+        //    {
+        //        ValidateMassDiffCellEdit(cell);
+        //    }
+        //    else if (cell.OwningColumn.HeaderText.Equals("Max Mods"))
+        //    {
+        //        ValidateMaxModsCellEdit(cell);
+        //    }
+        //    else if (cell.OwningColumn.HeaderText.Equals("Term Dist"))
+        //    {
+        //        ValidateTermDistCellEdit(cell);
+        //    }
+        //}
 
         private void ValidateResidueCellEdit(DataGridViewCell cell)
         {
@@ -247,6 +330,27 @@ namespace CometUI.Search.SearchSettings
                     cell.Value = "-1";
                 }
             }
+        }
+
+        private void RemoveVarModBtnClick(object sender, EventArgs e)
+        {
+            RemoveVarMod();
+        }
+
+        private void RemoveVarMod()
+        {
+            var modName = varModsListBox.SelectedItem;
+            for (int i = 0; i < NamedVarModsList.Count; i++)
+            {
+                if (modName.Equals(NamedVarModsList[i].Name))
+                {
+                    NamedVarModsList[i].VarModInfo = new VarMod(0.0, "X", 0, 3, -1, 0);
+                    NamedVarModsList[i].Name = GetVarModName(NamedVarModsList[i].VarModInfo);
+                    break;
+                }
+            }
+            
+            UpdateVarModsListBox();
         }
     }
 }
