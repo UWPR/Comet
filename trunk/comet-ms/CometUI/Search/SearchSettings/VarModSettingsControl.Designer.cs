@@ -41,7 +41,7 @@
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(23, 228);
+            this.label6.Location = new System.Drawing.Point(23, 219);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(107, 13);
             this.label6.TabIndex = 15;
@@ -49,7 +49,7 @@
             // 
             // maxModsInPeptideTextBox
             // 
-            this.maxModsInPeptideTextBox.Location = new System.Drawing.Point(26, 244);
+            this.maxModsInPeptideTextBox.Location = new System.Drawing.Point(26, 235);
             this.maxModsInPeptideTextBox.Maximum = new decimal(new int[] {
             20,
             0,
@@ -64,7 +64,7 @@
             this.varModsListBox.FormattingEnabled = true;
             this.varModsListBox.Location = new System.Drawing.Point(26, 53);
             this.varModsListBox.Name = "varModsListBox";
-            this.varModsListBox.Size = new System.Drawing.Size(382, 147);
+            this.varModsListBox.Size = new System.Drawing.Size(382, 134);
             this.varModsListBox.TabIndex = 33;
             // 
             // label1
@@ -78,25 +78,27 @@
             // 
             // addVarModBtn
             // 
-            this.addVarModBtn.Location = new System.Drawing.Point(414, 53);
+            this.addVarModBtn.Location = new System.Drawing.Point(427, 53);
             this.addVarModBtn.Name = "addVarModBtn";
             this.addVarModBtn.Size = new System.Drawing.Size(75, 23);
             this.addVarModBtn.TabIndex = 35;
             this.addVarModBtn.Text = "&Add";
             this.addVarModBtn.UseVisualStyleBackColor = true;
+            this.addVarModBtn.Click += new System.EventHandler(this.AddVarModBtnClick);
             // 
             // editVarModBtn
             // 
-            this.editVarModBtn.Location = new System.Drawing.Point(414, 82);
+            this.editVarModBtn.Location = new System.Drawing.Point(427, 82);
             this.editVarModBtn.Name = "editVarModBtn";
             this.editVarModBtn.Size = new System.Drawing.Size(75, 23);
             this.editVarModBtn.TabIndex = 36;
             this.editVarModBtn.Text = "&Edit";
             this.editVarModBtn.UseVisualStyleBackColor = true;
+            this.editVarModBtn.Click += new System.EventHandler(this.EditVarModBtnClick);
             // 
             // removeVarModBtn
             // 
-            this.removeVarModBtn.Location = new System.Drawing.Point(414, 111);
+            this.removeVarModBtn.Location = new System.Drawing.Point(427, 111);
             this.removeVarModBtn.Name = "removeVarModBtn";
             this.removeVarModBtn.Size = new System.Drawing.Size(75, 23);
             this.removeVarModBtn.TabIndex = 37;

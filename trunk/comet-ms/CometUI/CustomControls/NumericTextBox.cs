@@ -29,8 +29,9 @@ namespace CometUI.CustomControls
             {
                 // Digits are OK
             }
-            else if ((keyInput.Equals(decimalSeparator) && AllowDecimal) || keyInput.Equals(groupSeparator) ||
-             keyInput.Equals(negativeSign))
+            else if ((keyInput.Equals(decimalSeparator) && AllowDecimal) || 
+                (keyInput.Equals(groupSeparator) && AllowGroupSeparator) ||
+                (keyInput.Equals(negativeSign) && AllowNegative))
             {
                 // Decimal separator is OK
             }
@@ -72,6 +73,8 @@ namespace CometUI.CustomControls
 
         public bool AllowSpace { get; set; }
         public bool AllowDecimal { get; set; }
+        public bool AllowNegative { get; set; }
+        public bool AllowGroupSeparator { get; set; }
     }
 
 }
