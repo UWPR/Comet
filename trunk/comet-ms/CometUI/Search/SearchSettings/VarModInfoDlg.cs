@@ -6,13 +6,6 @@ namespace CometUI.Search.SearchSettings
 {
     public partial class VarModInfoDlg : Form
     {
-        public String Title { set { Text = value; } }
-
-        private String VarModName { get; set; }
-        private int NamedVarModsListIndex { get; set; }
-
-        private VarModSettingsControl VarModSettingsControl { get; set; }
-        
         public VarModInfoDlg(VarModSettingsControl varModSettingsControl, String varModName = null)
         {
             InitializeComponent();
@@ -26,6 +19,12 @@ namespace CometUI.Search.SearchSettings
             
             UpdateOKButton();
         }
+
+        public String Title { set { Text = value; } }
+        public int NamedVarModsListIndex { get; private set; }
+
+        private String VarModName { get; set; }
+        private VarModSettingsControl VarModSettingsControl { get; set; }
 
         private void InitializeWhichTermCombo()
         {

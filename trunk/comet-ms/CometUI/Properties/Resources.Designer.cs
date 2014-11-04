@@ -620,6 +620,25 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Add Variable Mod.
+        /// </summary>
+        internal static string VarModSettingsControl_AddVarModBtnClick_Add_Variable_Mod {
+            get {
+                return ResourceManager.GetString("VarModSettingsControl_AddVarModBtnClick_Add_Variable_Mod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You have reached the maximum number of variable mods allowed..
+        /// </summary>
+        internal static string VarModSettingsControl_AddVarModBtnClick_You_have_reached_the_maximum_number_of_variable_mods_allowed_ {
+            get {
+                return ResourceManager.GetString("VarModSettingsControl_AddVarModBtnClick_You_have_reached_the_maximum_number_of_va" +
+                        "riable_mods_allowed_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Invalid Terminus Distance.
         /// </summary>
         internal static string VarModSettingsControl_ValidateTermDistCellEdit_Invalid_Terminus_Distance {

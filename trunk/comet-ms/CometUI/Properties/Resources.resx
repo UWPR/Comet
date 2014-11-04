@@ -334,4 +334,10 @@
   <data name="CometUI_CometUIFormClosing_View_Results_Settings_Changed">
     <value xml:space="preserve">View Results Settings Changed</value>
   </data>
+  <data name="VarModSettingsControl_AddVarModBtnClick_You_have_reached_the_maximum_number_of_variable_mods_allowed_">
+    <value xml:space="preserve">You have reached the maximum number of variable mods allowed.</value>
+  </data>
+  <data name="VarModSettingsControl_AddVarModBtnClick_Add_Variable_Mod">
+    <value xml:space="preserve">Add Variable Mod</value>
+  </data>
 </root>
