@@ -30,6 +30,7 @@ namespace CometUI.Search.SearchSettings
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.varModInfoDlgMainSplitContainer = new System.Windows.Forms.SplitContainer();
             this.maxModsNumericTextBox = new NumericTextBox();
             this.massDiffNumericTextBox = new NumericTextBox();
@@ -44,6 +45,7 @@ namespace CometUI.Search.SearchSettings
             this.residueTextBox = new System.Windows.Forms.TextBox();
             this.okBtn = new System.Windows.Forms.Button();
             this.cancelBtn = new System.Windows.Forms.Button();
+            this.varModInfoDlgToolTip = new System.Windows.Forms.ToolTip(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.varModInfoDlgMainSplitContainer)).BeginInit();
             this.varModInfoDlgMainSplitContainer.Panel1.SuspendLayout();
             this.varModInfoDlgMainSplitContainer.Panel2.SuspendLayout();
@@ -84,31 +86,42 @@ namespace CometUI.Search.SearchSettings
             // maxModsNumericTextBox
             // 
             this.maxModsNumericTextBox.AllowDecimal = false;
+            this.maxModsNumericTextBox.AllowGroupSeparator = false;
+            this.maxModsNumericTextBox.AllowNegative = false;
             this.maxModsNumericTextBox.AllowSpace = false;
             this.maxModsNumericTextBox.Location = new System.Drawing.Point(89, 110);
             this.maxModsNumericTextBox.Name = "maxModsNumericTextBox";
             this.maxModsNumericTextBox.Size = new System.Drawing.Size(120, 20);
             this.maxModsNumericTextBox.TabIndex = 3;
+            this.varModInfoDlgToolTip.SetToolTip(this.maxModsNumericTextBox, "An integer specifying the maximum number of modified residues possible in a pepti" +
+        "de for this modification.");
             this.maxModsNumericTextBox.TextChanged += new System.EventHandler(this.MaxModsNumericTextBoxTextChanged);
             // 
             // massDiffNumericTextBox
             // 
             this.massDiffNumericTextBox.AllowDecimal = true;
+            this.massDiffNumericTextBox.AllowGroupSeparator = false;
+            this.massDiffNumericTextBox.AllowNegative = false;
             this.massDiffNumericTextBox.AllowSpace = false;
             this.massDiffNumericTextBox.Location = new System.Drawing.Point(89, 70);
             this.massDiffNumericTextBox.Name = "massDiffNumericTextBox";
             this.massDiffNumericTextBox.Size = new System.Drawing.Size(120, 20);
             this.massDiffNumericTextBox.TabIndex = 2;
+            this.varModInfoDlgToolTip.SetToolTip(this.massDiffNumericTextBox, "A decimal value specifying the modification mass difference.");
             this.massDiffNumericTextBox.TextChanged += new System.EventHandler(this.MassDiffNumericTextBoxTextChanged);
             // 
             // termDistNumericTextBox
             // 
             this.termDistNumericTextBox.AllowDecimal = false;
+            this.termDistNumericTextBox.AllowGroupSeparator = false;
+            this.termDistNumericTextBox.AllowNegative = false;
             this.termDistNumericTextBox.AllowSpace = false;
             this.termDistNumericTextBox.Location = new System.Drawing.Point(328, 29);
             this.termDistNumericTextBox.Name = "termDistNumericTextBox";
             this.termDistNumericTextBox.Size = new System.Drawing.Size(120, 20);
             this.termDistNumericTextBox.TabIndex = 5;
+            this.varModInfoDlgToolTip.SetToolTip(this.termDistNumericTextBox, "The distance the modification is applied to from the respective terminus. Leave t" +
+        "his blank for no distance constraint.");
             this.termDistNumericTextBox.TextChanged += new System.EventHandler(this.TermDistNumericTextBoxTextChanged);
             // 
             // termDistLabel
@@ -128,6 +141,8 @@ namespace CometUI.Search.SearchSettings
             this.whichTermCombo.Name = "whichTermCombo";
             this.whichTermCombo.Size = new System.Drawing.Size(120, 21);
             this.whichTermCombo.TabIndex = 6;
+            this.varModInfoDlgToolTip.SetToolTip(this.whichTermCombo, "The terminus the distance constraint is applied to (N-terminus or C-terminus). Th" +
+        "is is only valid if a distance constraint is specified.");
             this.whichTermCombo.SelectedIndexChanged += new System.EventHandler(this.WhichTermComboSelectedIndexChanged);
             // 
             // whichTermLabel
@@ -182,6 +197,7 @@ namespace CometUI.Search.SearchSettings
             this.residueTextBox.Name = "residueTextBox";
             this.residueTextBox.Size = new System.Drawing.Size(120, 20);
             this.residueTextBox.TabIndex = 1;
+            this.varModInfoDlgToolTip.SetToolTip(this.residueTextBox, "The residue(s) that the modifications will be applied to.");
             this.residueTextBox.TextChanged += new System.EventHandler(this.ResidueTextBoxTextChanged);
             this.residueTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.ResidueTextBoxKeyPress);
             // 
@@ -239,5 +255,6 @@ namespace CometUI.Search.SearchSettings
         private System.Windows.Forms.Button cancelBtn;
         private CustomControls.NumericTextBox massDiffNumericTextBox;
         private CustomControls.NumericTextBox maxModsNumericTextBox;
+        private System.Windows.Forms.ToolTip varModInfoDlgToolTip;
     }
 }

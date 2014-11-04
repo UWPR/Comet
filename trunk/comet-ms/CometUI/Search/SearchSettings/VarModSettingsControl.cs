@@ -23,9 +23,9 @@ namespace CometUI.Search.SearchSettings
 
         public StringCollection VarMods { get; set; }
         public List<NamedVarMod> NamedVarModsList { get; set; }
+        public const string AminoAcids = "GASPVTCLINDQKEMOHFRYW";
 
         private new SearchSettingsDlg Parent { get; set; }
-        private const string AminoAcids = "GASPVTCLINDQKEMOHFRYW";
         private const int MaxNumVarMods = 9;
 
 
