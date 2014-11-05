@@ -21,12 +21,11 @@ namespace CometUI.Search.SearchSettings
             }
         }
 
-        public StringCollection VarMods { get; set; }
+        //public StringCollection VarMods { get; set; }
         public List<NamedVarMod> NamedVarModsList { get; set; }
         public const string AminoAcids = "GASPVTCLINDQKEMOHFRYW";
 
         private new SearchSettingsDlg Parent { get; set; }
-        private const int MaxNumVarMods = 9;
 
 
         public VarModSettingsControl(SearchSettingsDlg parent)
@@ -46,25 +45,51 @@ namespace CometUI.Search.SearchSettings
 
         public bool VerifyAndUpdateSettings()
         {
-            //VarMods = VarModsDataGridViewToStringCollection();
-            //for (int i = 0; i < VarMods.Count; i++ )
-            //{
-            //    if (!VarMods[i].Equals(CometUI.SearchSettings.VariableMods[i]))
-            //    {
-            //        Parent.SettingsChanged = true;
-            //        CometUI.SearchSettings.VariableMods = VarMods;
-            //        break;
-            //    }
-            //}
-
-            //int maxModsInPeptide = (int)maxModsInPeptideTextBox.Value;
-            //if (!maxModsInPeptide.Equals(CometUI.SearchSettings.MaxVarModsInPeptide))
-            //{
-            //    CometUI.SearchSettings.MaxVarModsInPeptide = maxModsInPeptide;
-            //    Parent.SettingsChanged = true;
-            //}
-
+            VerifyAndUpdateVarModsList();
+            VerifyAndUpdateMaxModsInPeptide();
             return true;
+        }
+
+        private void VerifyAndUpdateVarModsList()
+        {
+            var varModsChanged = false;
+            var varModsStrCollection = new StringCollection();
+            for (int i = 0; i < NamedVarModsList.Count; i++)
+            {
+                String varModInfoStr = GetVarModStr(NamedVarModsList[i].VarModInfo);
+                varModsStrCollection.Add(varModInfoStr);
+                if (!varModInfoStr.Equals(CometUI.SearchSettings.VariableMods[i]))
+                {
+                    varModsChanged = true;
+                }
+            }
+
+            if (varModsChanged)
+            {
+                Parent.SettingsChanged = true;
+                CometUI.SearchSettings.VariableMods = varModsStrCollection;
+            }
+        }
+
+        private void VerifyAndUpdateMaxModsInPeptide()
+        {
+            var maxModsInPeptide = (int)maxModsInPeptideTextBox.Value;
+            if (!maxModsInPeptide.Equals(CometUI.SearchSettings.MaxVarModsInPeptide))
+            {
+                CometUI.SearchSettings.MaxVarModsInPeptide = maxModsInPeptide;
+                Parent.SettingsChanged = true;
+            }
+        }
+
+        private String GetVarModStr(VarMod varMod)
+        {
+            String varModStr = varMod.VarModMass + ","
+                               + varMod.VarModChar + ","
+                               + varMod.BinaryMod + ","
+                               + varMod.MaxNumVarModAAPerMod + ","
+                               + varMod.VarModTermDistance + ","
+                               + varMod.WhichTerm;
+            return varModStr;
         }
 
         public static bool IsValidAA(char aa)
@@ -79,14 +104,8 @@ namespace CometUI.Search.SearchSettings
 
         private void InitializeFromDefaultSettings()
         {
-            VarMods = new StringCollection();
-            int varModNum = 0;
             foreach (var item in CometUI.SearchSettings.VariableMods)
             {
-                varModNum++;
-
-                VarMods.Add(item);
-
                 var varMod = CometParamsMap.GetVarModFromString(item);
                 if (null != varMod)
                 {
@@ -129,7 +148,7 @@ namespace CometUI.Search.SearchSettings
 
         private void UpdateVarModsListBoxButtons()
         {
-            addVarModBtn.Enabled = varModsListBox.Items.Count < MaxNumVarMods;
+            addVarModBtn.Enabled = varModsListBox.Items.Count < CometParamsMap.MaxNumVarMods;
             editVarModBtn.Enabled = -1 != varModsListBox.SelectedIndex;
             removeVarModBtn.Enabled = editVarModBtn.Enabled;
         }
@@ -175,7 +194,7 @@ namespace CometUI.Search.SearchSettings
             {
                 var selectedItem = NamedVarModsList[varModInfoDlg.NamedVarModsListIndex].Name;
                 UpdateVarModsListBox(selectedItem);
-                if (varModsListBox.Items.Count >= MaxNumVarMods)
+                if (varModsListBox.Items.Count >= CometParamsMap.MaxNumVarMods)
                 {
                     MessageBox.Show(Resources.VarModSettingsControl_AddVarModBtnClick_You_have_reached_the_maximum_number_of_variable_mods_allowed_, 
                         Resources.VarModSettingsControl_AddVarModBtnClick_Add_Variable_Mod,

@@ -45,7 +45,7 @@ namespace CometUI
 
     public class CometParamsMap
     {
-        private const int MaxNumVarMods = 9;
+        public const int MaxNumVarMods = 9;
         private const int NumVarModFieldsInSettings = 6;
         private const int NumStaticModFieldsInSettings = 3;
 
