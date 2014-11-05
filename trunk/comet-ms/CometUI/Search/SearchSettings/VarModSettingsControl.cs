@@ -21,7 +21,6 @@ namespace CometUI.Search.SearchSettings
             }
         }
 
-        //public StringCollection VarMods { get; set; }
         public List<NamedVarMod> NamedVarModsList { get; set; }
         public const string AminoAcids = "GASPVTCLINDQKEMOHFRYW";
 

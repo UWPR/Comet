@@ -213,6 +213,11 @@
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Options";
             // 
+            // outputSettingsToolTip
+            // 
+            this.outputSettingsToolTip.AutomaticDelay = 400;
+            this.outputSettingsToolTip.IsBalloon = true;
+            // 
             // OutputSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);

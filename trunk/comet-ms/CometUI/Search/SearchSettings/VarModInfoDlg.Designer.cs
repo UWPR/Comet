@@ -132,6 +132,8 @@ namespace CometUI.Search.SearchSettings
             this.termDistLabel.Size = new System.Drawing.Size(55, 13);
             this.termDistLabel.TabIndex = 21;
             this.termDistLabel.Text = "Term Dist:";
+            this.varModInfoDlgToolTip.SetToolTip(this.termDistLabel, "The distance the modification is applied to from the respective terminus. Leave t" +
+        "his blank for no distance constraint.");
             // 
             // whichTermCombo
             // 
@@ -153,6 +155,8 @@ namespace CometUI.Search.SearchSettings
             this.whichTermLabel.Size = new System.Drawing.Size(68, 13);
             this.whichTermLabel.TabIndex = 19;
             this.whichTermLabel.Text = "Which Term:";
+            this.varModInfoDlgToolTip.SetToolTip(this.whichTermLabel, "The terminus the distance constraint is applied to (N-terminus or C-terminus). Th" +
+        "is is only valid if a distance constraint is specified.");
             // 
             // maxModsLabel
             // 
@@ -162,6 +166,8 @@ namespace CometUI.Search.SearchSettings
             this.maxModsLabel.Size = new System.Drawing.Size(59, 13);
             this.maxModsLabel.TabIndex = 18;
             this.maxModsLabel.Text = "Max Mods:";
+            this.varModInfoDlgToolTip.SetToolTip(this.maxModsLabel, "An integer specifying the maximum number of modified residues possible in a pepti" +
+        "de for this modification.");
             // 
             // isBinaryModCheckBox
             // 
@@ -181,6 +187,7 @@ namespace CometUI.Search.SearchSettings
             this.massDiffLabel.Size = new System.Drawing.Size(54, 13);
             this.massDiffLabel.TabIndex = 14;
             this.massDiffLabel.Text = "Mass Diff:";
+            this.varModInfoDlgToolTip.SetToolTip(this.massDiffLabel, "A decimal value specifying the modification mass difference.");
             // 
             // residueLabel
             // 
@@ -190,6 +197,7 @@ namespace CometUI.Search.SearchSettings
             this.residueLabel.Size = new System.Drawing.Size(49, 13);
             this.residueLabel.TabIndex = 13;
             this.residueLabel.Text = "Residue:";
+            this.varModInfoDlgToolTip.SetToolTip(this.residueLabel, "The residue(s) that the modifications will be applied to.");
             // 
             // residueTextBox
             // 
@@ -221,6 +229,11 @@ namespace CometUI.Search.SearchSettings
             this.cancelBtn.UseVisualStyleBackColor = true;
             this.cancelBtn.Click += new System.EventHandler(this.CancelBtnClick);
             // 
+            // varModInfoDlgToolTip
+            // 
+            this.varModInfoDlgToolTip.AutomaticDelay = 400;
+            this.varModInfoDlgToolTip.IsBalloon = true;
+            // 
             // VarModInfoDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -242,7 +255,7 @@ namespace CometUI.Search.SearchSettings
         #endregion
 
         private System.Windows.Forms.SplitContainer varModInfoDlgMainSplitContainer;
-        private CustomControls.NumericTextBox termDistNumericTextBox;
+        private NumericTextBox termDistNumericTextBox;
         private System.Windows.Forms.Label termDistLabel;
         private System.Windows.Forms.ComboBox whichTermCombo;
         private System.Windows.Forms.Label whichTermLabel;
@@ -253,8 +266,8 @@ namespace CometUI.Search.SearchSettings
         private System.Windows.Forms.TextBox residueTextBox;
         private System.Windows.Forms.Button okBtn;
         private System.Windows.Forms.Button cancelBtn;
-        private CustomControls.NumericTextBox massDiffNumericTextBox;
-        private CustomControls.NumericTextBox maxModsNumericTextBox;
+        private NumericTextBox massDiffNumericTextBox;
+        private NumericTextBox maxModsNumericTextBox;
         private System.Windows.Forms.ToolTip varModInfoDlgToolTip;
     }
 }

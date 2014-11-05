@@ -246,6 +246,11 @@
             this.proteomeDbFileCombo.SelectedIndexChanged += new System.EventHandler(this.ProteomeDbFileComboSelectedIndexChanged);
             this.proteomeDbFileCombo.TextUpdate += new System.EventHandler(this.ProteomeDbFileComboTextUpdate);
             // 
+            // inputSettingsToolTip
+            // 
+            this.inputSettingsToolTip.AutomaticDelay = 400;
+            this.inputSettingsToolTip.IsBalloon = true;
+            // 
             // InputSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);

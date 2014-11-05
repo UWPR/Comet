@@ -201,9 +201,9 @@ namespace CometUI.Search.SearchSettings
         private System.Windows.Forms.Label allowedMissedCleavagesLabel;
         private System.Windows.Forms.ComboBox missedCleavagesCombo;
         private System.Windows.Forms.Label digestMassRangeLabel;
-        private CustomControls.NumericTextBox digestMassRangeMaxTextBox;
+        private NumericTextBox digestMassRangeMaxTextBox;
         private System.Windows.Forms.Label label17;
-        private CustomControls.NumericTextBox digestMassRangeMinTextBox;
+        private NumericTextBox digestMassRangeMinTextBox;
 
     }
 }

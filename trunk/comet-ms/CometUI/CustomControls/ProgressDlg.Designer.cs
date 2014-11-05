@@ -66,6 +66,11 @@
             this.CancelButton.UseVisualStyleBackColor = true;
             this.CancelButton.Click += new System.EventHandler(this.CancelButtonClick);
             // 
+            // ProgressDlgToolTip
+            // 
+            this.ProgressDlgToolTip.AutomaticDelay = 400;
+            this.ProgressDlgToolTip.IsBalloon = true;
+            // 
             // ProgressDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);

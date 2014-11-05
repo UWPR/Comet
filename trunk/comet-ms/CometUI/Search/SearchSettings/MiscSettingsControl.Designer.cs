@@ -340,6 +340,8 @@ namespace CometUI.Search.SearchSettings
             // mzxmlPrecursorChargeMaxTextBox
             // 
             this.mzxmlPrecursorChargeMaxTextBox.AllowDecimal = false;
+            this.mzxmlPrecursorChargeMaxTextBox.AllowGroupSeparator = false;
+            this.mzxmlPrecursorChargeMaxTextBox.AllowNegative = false;
             this.mzxmlPrecursorChargeMaxTextBox.AllowSpace = false;
             this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(123, 100);
             this.mzxmlPrecursorChargeMaxTextBox.Name = "mzxmlPrecursorChargeMaxTextBox";
@@ -349,6 +351,8 @@ namespace CometUI.Search.SearchSettings
             // mzxmlPrecursorChargeMinTextBox
             // 
             this.mzxmlPrecursorChargeMinTextBox.AllowDecimal = false;
+            this.mzxmlPrecursorChargeMinTextBox.AllowGroupSeparator = false;
+            this.mzxmlPrecursorChargeMinTextBox.AllowNegative = false;
             this.mzxmlPrecursorChargeMinTextBox.AllowSpace = false;
             this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(18, 100);
             this.mzxmlPrecursorChargeMinTextBox.Name = "mzxmlPrecursorChargeMinTextBox";
@@ -358,6 +362,8 @@ namespace CometUI.Search.SearchSettings
             // mzxmlScanRangeMaxTextBox
             // 
             this.mzxmlScanRangeMaxTextBox.AllowDecimal = false;
+            this.mzxmlScanRangeMaxTextBox.AllowGroupSeparator = false;
+            this.mzxmlScanRangeMaxTextBox.AllowNegative = false;
             this.mzxmlScanRangeMaxTextBox.AllowSpace = false;
             this.mzxmlScanRangeMaxTextBox.Location = new System.Drawing.Point(123, 45);
             this.mzxmlScanRangeMaxTextBox.Name = "mzxmlScanRangeMaxTextBox";
@@ -367,6 +373,8 @@ namespace CometUI.Search.SearchSettings
             // mzxmlScanRangeMinTextBox
             // 
             this.mzxmlScanRangeMinTextBox.AllowDecimal = false;
+            this.mzxmlScanRangeMinTextBox.AllowGroupSeparator = false;
+            this.mzxmlScanRangeMinTextBox.AllowNegative = false;
             this.mzxmlScanRangeMinTextBox.AllowSpace = false;
             this.mzxmlScanRangeMinTextBox.Location = new System.Drawing.Point(18, 46);
             this.mzxmlScanRangeMinTextBox.Name = "mzxmlScanRangeMinTextBox";
@@ -398,6 +406,8 @@ namespace CometUI.Search.SearchSettings
             // spectralProcessingMinPeaksTextBox
             // 
             this.spectralProcessingMinPeaksTextBox.AllowDecimal = false;
+            this.spectralProcessingMinPeaksTextBox.AllowGroupSeparator = false;
+            this.spectralProcessingMinPeaksTextBox.AllowNegative = false;
             this.spectralProcessingMinPeaksTextBox.AllowSpace = false;
             this.spectralProcessingMinPeaksTextBox.Location = new System.Drawing.Point(20, 45);
             this.spectralProcessingMinPeaksTextBox.Name = "spectralProcessingMinPeaksTextBox";
@@ -418,6 +428,8 @@ namespace CometUI.Search.SearchSettings
             // spectralProcessingClearMZRangeMaxTextBox
             // 
             this.spectralProcessingClearMZRangeMaxTextBox.AllowDecimal = true;
+            this.spectralProcessingClearMZRangeMaxTextBox.AllowGroupSeparator = false;
+            this.spectralProcessingClearMZRangeMaxTextBox.AllowNegative = false;
             this.spectralProcessingClearMZRangeMaxTextBox.AllowSpace = false;
             this.spectralProcessingClearMZRangeMaxTextBox.Location = new System.Drawing.Point(135, 172);
             this.spectralProcessingClearMZRangeMaxTextBox.Name = "spectralProcessingClearMZRangeMaxTextBox";
@@ -436,6 +448,8 @@ namespace CometUI.Search.SearchSettings
             // spectralProcessingClearMZRangeMinTextBox
             // 
             this.spectralProcessingClearMZRangeMinTextBox.AllowDecimal = true;
+            this.spectralProcessingClearMZRangeMinTextBox.AllowGroupSeparator = false;
+            this.spectralProcessingClearMZRangeMinTextBox.AllowNegative = false;
             this.spectralProcessingClearMZRangeMinTextBox.AllowSpace = false;
             this.spectralProcessingClearMZRangeMinTextBox.Location = new System.Drawing.Point(20, 172);
             this.spectralProcessingClearMZRangeMinTextBox.Name = "spectralProcessingClearMZRangeMinTextBox";
@@ -468,6 +482,8 @@ namespace CometUI.Search.SearchSettings
             // spectralProcessingPrecursorRemovalTolTextBox
             // 
             this.spectralProcessingPrecursorRemovalTolTextBox.AllowDecimal = true;
+            this.spectralProcessingPrecursorRemovalTolTextBox.AllowGroupSeparator = false;
+            this.spectralProcessingPrecursorRemovalTolTextBox.AllowNegative = false;
             this.spectralProcessingPrecursorRemovalTolTextBox.AllowSpace = false;
             this.spectralProcessingPrecursorRemovalTolTextBox.Location = new System.Drawing.Point(149, 82);
             this.spectralProcessingPrecursorRemovalTolTextBox.Name = "spectralProcessingPrecursorRemovalTolTextBox";
@@ -509,6 +525,8 @@ namespace CometUI.Search.SearchSettings
             // spectralProcessingMinIntensityTextBox
             // 
             this.spectralProcessingMinIntensityTextBox.AllowDecimal = true;
+            this.spectralProcessingMinIntensityTextBox.AllowGroupSeparator = false;
+            this.spectralProcessingMinIntensityTextBox.AllowNegative = false;
             this.spectralProcessingMinIntensityTextBox.AllowSpace = false;
             this.spectralProcessingMinIntensityTextBox.Location = new System.Drawing.Point(135, 46);
             this.spectralProcessingMinIntensityTextBox.Name = "spectralProcessingMinIntensityTextBox";
@@ -529,6 +547,8 @@ namespace CometUI.Search.SearchSettings
             // spectrumBatchSizeTextBox
             // 
             this.spectrumBatchSizeTextBox.AllowDecimal = false;
+            this.spectrumBatchSizeTextBox.AllowGroupSeparator = false;
+            this.spectrumBatchSizeTextBox.AllowNegative = false;
             this.spectrumBatchSizeTextBox.AllowSpace = false;
             this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 287);
             this.spectrumBatchSizeTextBox.Name = "spectrumBatchSizeTextBox";
@@ -538,11 +558,18 @@ namespace CometUI.Search.SearchSettings
             // numResultsTextBox
             // 
             this.numResultsTextBox.AllowDecimal = false;
+            this.numResultsTextBox.AllowGroupSeparator = false;
+            this.numResultsTextBox.AllowNegative = false;
             this.numResultsTextBox.AllowSpace = false;
             this.numResultsTextBox.Location = new System.Drawing.Point(126, 339);
             this.numResultsTextBox.Name = "numResultsTextBox";
             this.numResultsTextBox.Size = new System.Drawing.Size(67, 20);
             this.numResultsTextBox.TabIndex = 15;
+            // 
+            // miscSettingsToolTip
+            // 
+            this.miscSettingsToolTip.AutomaticDelay = 400;
+            this.miscSettingsToolTip.IsBalloon = true;
             // 
             // MiscSettingsControl
             // 

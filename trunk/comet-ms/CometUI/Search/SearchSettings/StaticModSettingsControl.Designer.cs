@@ -91,6 +91,8 @@ namespace CometUI.Search.SearchSettings
             // staticCTermPeptideTextBox
             // 
             this.staticCTermPeptideTextBox.AllowDecimal = true;
+            this.staticCTermPeptideTextBox.AllowGroupSeparator = false;
+            this.staticCTermPeptideTextBox.AllowNegative = false;
             this.staticCTermPeptideTextBox.AllowSpace = false;
             this.staticCTermPeptideTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticCTermPeptideTextBox.Location = new System.Drawing.Point(128, 372);
@@ -121,6 +123,8 @@ namespace CometUI.Search.SearchSettings
             // staticNTermPeptideTextBox
             // 
             this.staticNTermPeptideTextBox.AllowDecimal = true;
+            this.staticNTermPeptideTextBox.AllowGroupSeparator = false;
+            this.staticNTermPeptideTextBox.AllowNegative = false;
             this.staticNTermPeptideTextBox.AllowSpace = false;
             this.staticNTermPeptideTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticNTermPeptideTextBox.Location = new System.Drawing.Point(128, 346);
@@ -131,6 +135,8 @@ namespace CometUI.Search.SearchSettings
             // staticCTermProteinTextBox
             // 
             this.staticCTermProteinTextBox.AllowDecimal = true;
+            this.staticCTermProteinTextBox.AllowGroupSeparator = false;
+            this.staticCTermProteinTextBox.AllowNegative = false;
             this.staticCTermProteinTextBox.AllowSpace = false;
             this.staticCTermProteinTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticCTermProteinTextBox.Location = new System.Drawing.Point(372, 372);
@@ -161,6 +167,8 @@ namespace CometUI.Search.SearchSettings
             // staticNTermProteinTextBox
             // 
             this.staticNTermProteinTextBox.AllowDecimal = true;
+            this.staticNTermProteinTextBox.AllowGroupSeparator = false;
+            this.staticNTermProteinTextBox.AllowNegative = false;
             this.staticNTermProteinTextBox.AllowSpace = false;
             this.staticNTermProteinTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.staticNTermProteinTextBox.Location = new System.Drawing.Point(372, 345);

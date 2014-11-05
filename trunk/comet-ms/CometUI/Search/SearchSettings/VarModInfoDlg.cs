@@ -36,45 +36,59 @@ namespace CometUI.Search.SearchSettings
 
         private void InitializeVarModInfo()
         {
-            if (!String.IsNullOrEmpty(VarModName))
+            if (String.IsNullOrEmpty(VarModName))
             {
-                for (int i = 0; i < VarModSettingsControl.NamedVarModsList.Count; i++)
-                {
-                    var varMod = VarModSettingsControl.NamedVarModsList[i];
-                    if (VarModName.Equals(varMod.Name))
-                    {
-                        // Save the index of the mod in the list so we can
-                        // edit it later
-                        NamedVarModsListIndex = i;
-                        
-                        residueTextBox.Text = varMod.VarModInfo.VarModChar;
-                        massDiffNumericTextBox.Text = varMod.VarModInfo.VarModMass.ToString(CultureInfo.InvariantCulture);
-                        maxModsNumericTextBox.Text =
-                            varMod.VarModInfo.MaxNumVarModAAPerMod.ToString(CultureInfo.InvariantCulture);
-                        isBinaryModCheckBox.Checked = varMod.VarModInfo.BinaryMod == 1;
-                        int varModTermDist = varMod.VarModInfo.VarModTermDistance;
-                        if (varModTermDist > -1)
-                        {
-                            termDistNumericTextBox.Text =
-                                varMod.VarModInfo.VarModTermDistance.ToString(CultureInfo.InvariantCulture);
-                            whichTermCombo.SelectedIndex = varMod.VarModInfo.WhichTerm;
-                        }
-
-                        break;
-                    }
-                }
+                // If no VarModName was passed in, the user is trying to add
+                // a new variable mod.
+                InitializeAsAddVarMod();
             }
             else
             {
-                for (int i = 0; i < VarModSettingsControl.NamedVarModsList.Count; i++)
+                // If a VarModName was passed in, the user is trying to edit
+                // and existing variable mod.
+                InitializeAsEditVarMod();
+            }
+        }
+
+        private void InitializeAsAddVarMod()
+        {
+            for (int i = 0; i < VarModSettingsControl.NamedVarModsList.Count; i++)
+            {
+                // Grab the index of the first unused var mod item in the
+                // list so we can save the new var mod in it
+                var varMod = VarModSettingsControl.NamedVarModsList[i];
+                if (varMod.VarModInfo.VarModChar.Equals("X"))
                 {
-                    // Grab the index of the first unused var mod item in the
-                    // list so we can save the new var mod in it
-                    var varMod = VarModSettingsControl.NamedVarModsList[i];
-                    if (varMod.VarModInfo.VarModChar.Equals("X"))
+                    NamedVarModsListIndex = i;
+                }
+            }
+        }
+
+        private void InitializeAsEditVarMod()
+        {
+            for (int i = 0; i < VarModSettingsControl.NamedVarModsList.Count; i++)
+            {
+                var varMod = VarModSettingsControl.NamedVarModsList[i];
+                if (VarModName.Equals(varMod.Name))
+                {
+                    // Save the index of the mod in the list so we can
+                    // edit it later
+                    NamedVarModsListIndex = i;
+
+                    residueTextBox.Text = varMod.VarModInfo.VarModChar;
+                    massDiffNumericTextBox.Text = varMod.VarModInfo.VarModMass.ToString(CultureInfo.InvariantCulture);
+                    maxModsNumericTextBox.Text =
+                        varMod.VarModInfo.MaxNumVarModAAPerMod.ToString(CultureInfo.InvariantCulture);
+                    isBinaryModCheckBox.Checked = varMod.VarModInfo.BinaryMod == 1;
+                    int varModTermDist = varMod.VarModInfo.VarModTermDistance;
+                    if (varModTermDist > -1)
                     {
-                        NamedVarModsListIndex = i;
+                        termDistNumericTextBox.Text =
+                            varMod.VarModInfo.VarModTermDistance.ToString(CultureInfo.InvariantCulture);
+                        whichTermCombo.SelectedIndex = varMod.VarModInfo.WhichTerm;
                     }
+
+                    break;
                 }
             }
         }
@@ -141,12 +155,6 @@ namespace CometUI.Search.SearchSettings
             DialogResult = DialogResult.OK;
         }
 
-        private void TermDistNumericTextBoxTextChanged(object sender, EventArgs e)
-        {
-            whichTermCombo.Enabled = !String.IsNullOrEmpty(termDistNumericTextBox.Text);
-            UpdateOKButton();
-        }
-
         private void ResidueTextBoxKeyPress(object sender, KeyPressEventArgs e)
         {
             if (VarModSettingsControl.IsValidAA(e.KeyChar))
@@ -161,6 +169,16 @@ namespace CometUI.Search.SearchSettings
             {
                 e.Handled = true;
             }
+        }
+
+        private void TermDistNumericTextBoxTextChanged(object sender, EventArgs e)
+        {
+            whichTermCombo.Enabled = !String.IsNullOrEmpty(termDistNumericTextBox.Text);
+            if (whichTermCombo.Enabled)
+            {
+                varModInfoDlgToolTip.Show("Please specify which terminus the distance constraint should be applied to (N-term or C-term).", this, whichTermCombo.Location, 5000);
+            }
+            UpdateOKButton();
         }
 
         private void WhichTermComboSelectedIndexChanged(object sender, EventArgs e)
