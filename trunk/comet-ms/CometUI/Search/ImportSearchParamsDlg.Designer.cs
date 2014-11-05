@@ -34,6 +34,7 @@
             this.btnBrowseParams = new System.Windows.Forms.Button();
             this.paramsDbLabel = new System.Windows.Forms.Label();
             this.btnImport = new System.Windows.Forms.Button();
+            this.btnSettings = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnCancel
@@ -91,18 +92,31 @@
             this.btnImport.UseVisualStyleBackColor = true;
             this.btnImport.Click += new System.EventHandler(this.BtnImportClick);
             // 
-            // ImportParamsDlg
+            // btnSettings
+            // 
+            this.btnSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnSettings.Location = new System.Drawing.Point(219, 90);
+            this.btnSettings.Name = "btnSettings";
+            this.btnSettings.Size = new System.Drawing.Size(75, 23);
+            this.btnSettings.TabIndex = 104;
+            this.btnSettings.Text = "&Settings...";
+            this.btnSettings.UseVisualStyleBackColor = true;
+            this.btnSettings.Click += new System.EventHandler(this.BtnSettingsClick);
+            // 
+            // ImportSearchParamsDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(465, 125);
+            this.Controls.Add(this.btnSettings);
             this.Controls.Add(this.btnImport);
             this.Controls.Add(this.btnBrowseParams);
             this.Controls.Add(this.paramsDbLabel);
             this.Controls.Add(this.paramsFileCombo);
             this.Controls.Add(this.btnCancel);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Name = "ImportParamsDlg";
+            this.Name = "ImportSearchParamsDlg";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Import Search Settings";
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -116,5 +130,6 @@
         private System.Windows.Forms.Button btnBrowseParams;
         private System.Windows.Forms.Label paramsDbLabel;
         private System.Windows.Forms.Button btnImport;
+        private System.Windows.Forms.Button btnSettings;
     }
 }

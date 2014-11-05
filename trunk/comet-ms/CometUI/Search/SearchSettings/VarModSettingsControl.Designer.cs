@@ -82,7 +82,7 @@
             this.addVarModBtn.Name = "addVarModBtn";
             this.addVarModBtn.Size = new System.Drawing.Size(75, 23);
             this.addVarModBtn.TabIndex = 35;
-            this.addVarModBtn.Text = "&Add";
+            this.addVarModBtn.Text = "&Add...";
             this.addVarModBtn.UseVisualStyleBackColor = true;
             this.addVarModBtn.Click += new System.EventHandler(this.AddVarModBtnClick);
             // 
@@ -92,7 +92,7 @@
             this.editVarModBtn.Name = "editVarModBtn";
             this.editVarModBtn.Size = new System.Drawing.Size(75, 23);
             this.editVarModBtn.TabIndex = 36;
-            this.editVarModBtn.Text = "&Edit";
+            this.editVarModBtn.Text = "&Edit...";
             this.editVarModBtn.UseVisualStyleBackColor = true;
             this.editVarModBtn.Click += new System.EventHandler(this.EditVarModBtnClick);
             // 

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows.Forms;
 using CometUI.Properties;
+using CometUI.Search.SearchSettings;
 
 namespace CometUI.Search
 {
@@ -124,6 +125,14 @@ namespace CometUI.Search
         private void TextBoxPathTextChanged(object sender, EventArgs e)
         {
             ExportTextChange();
+        }
+
+        private void BtnSettingsClick(object sender, EventArgs e)
+        {
+            var searchSettingsDlg = new SearchSettingsDlg();
+            if (DialogResult.OK == searchSettingsDlg.ShowDialog())
+            {
+            }
         }
     }
 }

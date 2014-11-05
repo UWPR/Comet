@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows.Forms;
 using CometUI.Properties;
+using CometUI.Search.SearchSettings;
 
 namespace CometUI.Search
 {
@@ -78,6 +79,14 @@ namespace CometUI.Search
         private void ParamsFileComboTextChanged(object sender, EventArgs e)
         {
             ParamsTextChanged();
+        }
+
+        private void BtnSettingsClick(object sender, EventArgs e)
+        {
+            var searchSettingsDlg = new SearchSettingsDlg();
+            if (DialogResult.OK == searchSettingsDlg.ShowDialog())
+            {
+            }
         }
     }
 }

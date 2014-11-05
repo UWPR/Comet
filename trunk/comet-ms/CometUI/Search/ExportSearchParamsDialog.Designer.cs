@@ -36,6 +36,7 @@
             this.btnExport = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.btnExportPath = new System.Windows.Forms.Button();
+            this.btnSettings = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // textBoxName
@@ -118,11 +119,23 @@
             this.btnExportPath.UseVisualStyleBackColor = true;
             this.btnExportPath.Click += new System.EventHandler(this.BtnExportPathClick);
             // 
+            // btnSettings
+            // 
+            this.btnSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnSettings.Location = new System.Drawing.Point(211, 140);
+            this.btnSettings.Name = "btnSettings";
+            this.btnSettings.Size = new System.Drawing.Size(75, 23);
+            this.btnSettings.TabIndex = 12;
+            this.btnSettings.Text = "&Settings...";
+            this.btnSettings.UseVisualStyleBackColor = true;
+            this.btnSettings.Click += new System.EventHandler(this.BtnSettingsClick);
+            // 
             // ExportParamsDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(460, 175);
+            this.Controls.Add(this.btnSettings);
             this.Controls.Add(this.btnExportPath);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnExport);
@@ -134,6 +147,7 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.Name = "ExportParamsDlg";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Export Search Settings";
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -149,5 +163,6 @@
         private System.Windows.Forms.Button btnExport;
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnExportPath;
+        private System.Windows.Forms.Button btnSettings;
     }
 }
