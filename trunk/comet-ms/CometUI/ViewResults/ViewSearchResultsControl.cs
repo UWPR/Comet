@@ -224,28 +224,38 @@ namespace CometUI.ViewResults
     //_columnHeadersMap.Add("protein", "PROTEIN");
     //_columnHeadersMap.Add("xpress", "XPRESS");
 
-    public partial class SearchResult
+    public class SearchResult
     {
-        public SearchResultType Type { get; set; }
+        private Dictionary<String, SearchResultField> Fields { get; set; }  
         
-        public SearchResult(SearchResultType type)
+        SearchResult()
+        {
+            Fields = new Dictionary<string, SearchResultField>();
+        }
+    }
+
+    public class SearchResultField
+    {
+        public SearchResultFieldType Type { get; set; }
+
+        public SearchResultField(SearchResultFieldType type)
         {
             Type = type;
         }
     }
 
-    public class TypedSearchResult<T> : SearchResult
+    public class TypedSearchResultField<T> : SearchResultField
     {
         public new T Value { get; set; }
 
-        public TypedSearchResult(SearchResultType type, T value)
+        public TypedSearchResultField(SearchResultFieldType type, T value)
             : base(type)
         {
             Value = value;
         }
     }
 
-    public enum SearchResultType
+    public enum SearchResultFieldType
     {
         Unknown = 0,
         Int,
