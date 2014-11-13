@@ -162,7 +162,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
          iTotalScans++;
       }
-      else if (g_staticParams.inputFile.iInputType != InputType_MZXML)
+      else if (IsValidInputType(g_staticParams.inputFile.iInputType))
       {
          _bDoneProcessingAllSpectra = true;
          break;
@@ -617,7 +617,6 @@ bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
    return bSearchSpectrum;
 }
 
-
 bool CometPreprocess::CheckExit(int iAnalysisType,
                                 int iScanNum, 
                                 int iTotalScans, 
@@ -654,7 +653,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    }
 
    if (iAnalysisType == AnalysisType_EntireFile
-         && g_staticParams.inputFile.iInputType == InputType_MZXML
+         && /*g_staticParams.inputFile.iInputType == InputType_MZXML*/IsValidInputType(g_staticParams.inputFile.iInputType)
          && iScanNum == 0)
    {
       _bDoneProcessingAllSpectra = true;
@@ -664,7 +663,8 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    // Horrible way to exit as this typically requires a quick cycle through
    // while loop but not sure what else to do when getScanNumber() returns 0
    // for non MS/MS scans.
-   if (g_staticParams.inputFile.iInputType == InputType_MZXML && iTotalScans > iReaderLastScan)
+   if (/*g_staticParams.inputFile.iInputType == InputType_MZXML*/ IsValidInputType(g_staticParams.inputFile.iInputType) 
+       && iTotalScans > iReaderLastScan)
    {
       _bDoneProcessingAllSpectra = true;
       return true;
@@ -1401,4 +1401,10 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
    delete [] ppdTmpPeakExtractedArr;
 
    return true;
+}
+
+bool CometPreprocess::IsValidInputType(int inputType)
+{
+   return g_staticParams.inputFile.iInputType == InputType_MZXML ||
+          g_staticParams.inputFile.iInputType == InputType_RAW;
 }

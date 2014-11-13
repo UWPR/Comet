@@ -454,14 +454,24 @@ bool MSReader::findSpectrum(int i){
 }
 
 int MSReader::getLastScan(){
-  if(rampFileIn!=NULL){
-    return (rampLastScan);
+  switch(lastFileFormat){
+    case mzXML:
+    case mzML:
+    case mzXMLgz:
+    case mzMLgz:
+      if(rampFileIn!=NULL) return (rampLastScan);
+      break;
+    case raw:
+      #ifdef _MSC_VER
+      if(cRAW.getStatus()) return cRAW.getScanCount();
+      #endif
+      break;
+    default:
+      #ifndef _NOSQLITE
+      if(db != 0)return lastScanNumber;
+      #endif
+      break;
   }
-  #ifndef _NOSQLITE
-  if(db != 0){
-    return lastScanNumber;
-  }
-  #endif
   return -1;
 }
 

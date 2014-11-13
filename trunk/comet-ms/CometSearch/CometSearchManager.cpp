@@ -66,6 +66,27 @@ static void GetHostName()
       *pStr = '\0';
 }
 
+static InputType GetInputType(const char *pszFileName)
+{
+   int iLen = strlen(pszFileName);
+
+   if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 6, ".mzXML")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".mzML")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".mz5")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 9, ".mzXML.gz")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 8, ".mzML.gz"))
+
+   {
+      return InputType_MZXML;
+   }
+   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".raw"))
+   {
+      return InputType_RAW;
+   }
+
+   return InputType_UNKNOWN;
+}
+
 static bool UpdateInputFile(InputFileInfo *pFileInfo)
 {
    bool bUpdateBaseName = false;
@@ -80,17 +101,12 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
    g_staticParams.inputFile = *pFileInfo;
 
-   int iLen = strlen(g_staticParams.inputFile.szFileName);
-
-   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 6, ".mzXML")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 5, ".mzML")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 4, ".mz5")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
-
+   g_staticParams.inputFile.iInputType = GetInputType(g_staticParams.inputFile.szFileName);
+   if (InputType_UNKNOWN == g_staticParams.inputFile.iInputType)
    {
-      g_staticParams.inputFile.iInputType = InputType_MZXML;
-   } 
+       return false;
+   }
+   int iLen = strlen(g_staticParams.inputFile.szFileName);
 
    // per request, perform quick check to validate file still exists
    // to avoid creating stub output files in these cases.

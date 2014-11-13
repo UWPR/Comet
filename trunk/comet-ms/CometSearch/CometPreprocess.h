@@ -128,6 +128,7 @@ private:
    static int QsortByIon(const void *p0,
                          const void *p1);
    static void StairStep(struct msdata *pTmpSpData);
+   static bool IsValidInputType(int inputType);
 
 
    // Private member variables
