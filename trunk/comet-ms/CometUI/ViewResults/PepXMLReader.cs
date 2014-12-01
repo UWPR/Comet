@@ -90,14 +90,34 @@ namespace CometUI.ViewResults
 
         public XAttribute ReadFirstAttribute(IEnumerable<XElement> elements, String attributeName)
         {
+            XAttribute attribute;
             IEnumerable<XAttribute> attributes = ReadAttributes(elements, attributeName);
-            return attributes.First();
+            try
+            {
+                attribute = attributes.First();
+            }
+            catch (Exception)
+            {
+                attribute = null;
+            }
+
+            return attribute;
         }
 
         public XAttribute ReadFirstAttribute(XElement element, String attributeName)
         {
+            XAttribute attribute;
             IEnumerable<XAttribute> attributes = ReadAttributes(element, attributeName);
-            return attributes.First();
+            try
+            {
+                attribute = attributes.First();
+            }
+            catch (Exception)
+            {
+                attribute = null;
+            }
+
+            return attribute;
         }
 
         public IEnumerable<XAttribute> ReadAttributes(IEnumerable<XElement> elements, String attributeName)

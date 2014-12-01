@@ -27,13 +27,12 @@
   &lt;string&gt;protein_descr&lt;/string&gt;
   &lt;string&gt;pI&lt;/string&gt;
   &lt;string&gt;retention_time_sec&lt;/string&gt;
-  &lt;string&gt;compensation_voltage&lt;/string&gt;
   &lt;string&gt;precursor_intensity&lt;/string&gt;
-  &lt;string&gt;collision_energy&lt;/string&gt;
   &lt;string&gt;ppm&lt;/string&gt;
   &lt;string&gt;xcorr&lt;/string&gt;
   &lt;string&gt;deltacn&lt;/string&gt;
   &lt;string&gt;deltacnstar&lt;/string&gt;
+  &lt;string&gt;expect&lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>
     </Setting>
     <Setting Name="PickColumnsShowList" Type="System.Collections.Specialized.StringCollection" Scope="User">

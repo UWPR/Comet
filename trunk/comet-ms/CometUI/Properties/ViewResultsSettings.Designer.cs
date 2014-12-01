@@ -94,13 +94,12 @@ namespace CometUI.Properties {
   <string>protein_descr</string>
   <string>pI</string>
   <string>retention_time_sec</string>
-  <string>compensation_voltage</string>
   <string>precursor_intensity</string>
-  <string>collision_energy</string>
   <string>ppm</string>
   <string>xcorr</string>
   <string>deltacn</string>
   <string>deltacnstar</string>
+  <string>expect</string>
 </ArrayOfString>")]
         public global::System.Collections.Specialized.StringCollection PickColumnsHideList {
             get {
