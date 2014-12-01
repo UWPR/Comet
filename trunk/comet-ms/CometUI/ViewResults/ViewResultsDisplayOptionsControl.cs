@@ -23,15 +23,6 @@ namespace CometUI.ViewResults
             highlightPeptideIncludeModCheckBox.Checked =
                 CometUI.ViewResultsSettings.DisplayOptionsInlcudeModsWhenHighlightingPeptides;
 
-            if (CometUI.ViewResultsSettings.DisplayOptionsOnlyTopProteinHit)
-            {
-                multipleProteinHitsTopHitRadioButton.Checked = true;
-            }
-            else
-            {
-                multipleProteinHitsAllHitsRadioButton.Checked = true;
-            }
-
             if (CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
             {
                 columnHeadersCondensedRadioButton.Checked = true;
@@ -75,27 +66,6 @@ namespace CometUI.ViewResults
             {
                 CometUI.ViewResultsSettings.DisplayOptionsInlcudeModsWhenHighlightingPeptides =
                     highlightPeptideIncludeModCheckBox.Checked;
-                ViewSearchResultsControl.SettingsChanged = true;
-            }
-        }
-
-        private void MultipleProteinHitsTopHitRadioButtonCheckedChanged(object sender, System.EventArgs e)
-        {
-            VerifyAndUpdateMultipleProteinHitsTopHitSetting();
-        }
-
-        private void MultipleProteinHitsAllHitsRadioButtonCheckedChanged(object sender, System.EventArgs e)
-        {
-            VerifyAndUpdateMultipleProteinHitsTopHitSetting();
-        }
-
-        private void VerifyAndUpdateMultipleProteinHitsTopHitSetting()
-        {
-            if (multipleProteinHitsTopHitRadioButton.Checked !=
-                CometUI.ViewResultsSettings.DisplayOptionsOnlyTopProteinHit)
-            {
-                CometUI.ViewResultsSettings.DisplayOptionsOnlyTopProteinHit =
-                    multipleProteinHitsTopHitRadioButton.Checked;
                 ViewSearchResultsControl.SettingsChanged = true;
             }
         }

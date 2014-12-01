@@ -71,7 +71,7 @@ namespace CometUI.ViewResults
                 ShowResultsListPanel(String.Empty != ResultsPepXMLFile);
                 ViewResultsSummaryOptionsControl.UpdateSummaryOptions();
                 UpdateColumnHeaders();
-                //UpdateSearchResultsList();
+                UpdateSearchResultsList();
             }
         }
 
@@ -164,38 +164,42 @@ namespace CometUI.ViewResults
                             return false;
                         }
 
-                        XAttribute proteinAttribute = pepXMLReader.ReadFirstAttribute(searchHitElement, "protein");
-                        if (null == proteinAttribute)
-                        {
-                            return false;
-                        }
-                        var proteinName = (String)proteinAttribute;
 
-                        XAttribute peptidePrevAAAttribute = pepXMLReader.ReadFirstAttribute(searchHitElement, "peptide_prev_aa");
-                        if (null == peptidePrevAAAttribute)
-                        {
-                            return false;
-                        }
-                        var prevAA = (String)peptidePrevAAAttribute;
+                        // Todo: need to create a LIST of proteins for cases where we have multiple proteins
+                        // Then, set up a scenario where when the user hovers with the mouse over the protein
+                        // name, pop up a box with a list of all the proteins.
+                        //XAttribute proteinAttribute = pepXMLReader.ReadFirstAttribute(searchHitElement, "protein");
+                        //if (null == proteinAttribute)
+                        //{
+                        //    return false;
+                        //}
+                        //var proteinName = (String)proteinAttribute;
 
-                        XAttribute peptideNextAAAttribute = pepXMLReader.ReadFirstAttribute(searchHitElement, "peptide_next_aa");
-                        if (null == peptideNextAAAttribute)
-                        {
-                            return false;
-                        }
-                        var nextAA = (String)peptideNextAAAttribute;
+                        //XAttribute peptidePrevAAAttribute = pepXMLReader.ReadFirstAttribute(searchHitElement, "peptide_prev_aa");
+                        //if (null == peptidePrevAAAttribute)
+                        //{
+                        //    return false;
+                        //}
+                        //var prevAA = (String)peptidePrevAAAttribute;
 
-                        var proteinDescr = String.Empty;
-                        XAttribute proteinDescrAttribute = pepXMLReader.ReadFirstAttribute(searchHitElement, "protein_descr");
-                        if (null != proteinDescrAttribute)
-                        {
-                            proteinDescr = (String)proteinDescrAttribute;
-                        }
+                        //XAttribute peptideNextAAAttribute = pepXMLReader.ReadFirstAttribute(searchHitElement, "peptide_next_aa");
+                        //if (null == peptideNextAAAttribute)
+                        //{
+                        //    return false;
+                        //}
+                        //var nextAA = (String)peptideNextAAAttribute;
 
-                        var proteinResultField =
-                            new TypedSearchResultField<ProteinInfo>(new ProteinInfo(proteinName, proteinDescr, prevAA,
-                                                                                    nextAA));
-                        result.Fields.Add("protein", proteinResultField);
+                        //var proteinDescr = String.Empty;
+                        //XAttribute proteinDescrAttribute = pepXMLReader.ReadFirstAttribute(searchHitElement, "protein_descr");
+                        //if (null != proteinDescrAttribute)
+                        //{
+                        //    proteinDescr = (String)proteinDescrAttribute;
+                        //}
+
+                        //var proteinResultField =
+                        //    new TypedSearchResultField<ProteinInfo>(new ProteinInfo(proteinName, proteinDescr, prevAA,
+                        //                                                            nextAA));
+                        //result.Fields.Add("protein", proteinResultField);
 
                         IEnumerable<XElement> searchScoreElements = searchHitElement.Descendants();
                         foreach (var searchScoreElement in searchScoreElements)

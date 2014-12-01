@@ -33,14 +33,10 @@
             this.columnHeadersRadioButtonsPanel = new System.Windows.Forms.Panel();
             this.columnHeadersRegularRadioButton = new System.Windows.Forms.RadioButton();
             this.columnHeadersCondensedRadioButton = new System.Windows.Forms.RadioButton();
-            this.multipleProteinHitsRadioButtonsPanel = new System.Windows.Forms.Panel();
-            this.multipleProteinHitsTopHitRadioButton = new System.Windows.Forms.RadioButton();
-            this.multipleProteinHitsAllHitsRadioButton = new System.Windows.Forms.RadioButton();
             this.highlightSpectrumTextBox = new System.Windows.Forms.TextBox();
             this.highlightProteinTextBox = new System.Windows.Forms.TextBox();
             this.highlightPeptideTextBox = new System.Windows.Forms.TextBox();
             this.columnHeadersLabel = new System.Windows.Forms.Label();
-            this.multipleProteinHitsLabel = new System.Windows.Forms.Label();
             this.highlightSpectrumLabel = new System.Windows.Forms.Label();
             this.highlightPeptideIncludeModCheckBox = new System.Windows.Forms.CheckBox();
             this.highlightProteinLabel = new System.Windows.Forms.Label();
@@ -49,7 +45,6 @@
             this.rowsPerPageLabel = new System.Windows.Forms.Label();
             this.displayOptionsMainPanel.SuspendLayout();
             this.columnHeadersRadioButtonsPanel.SuspendLayout();
-            this.multipleProteinHitsRadioButtonsPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // displayOptionsMainPanel
@@ -57,12 +52,10 @@
             this.displayOptionsMainPanel.AutoScroll = true;
             this.displayOptionsMainPanel.Controls.Add(this.btnUpdateResults);
             this.displayOptionsMainPanel.Controls.Add(this.columnHeadersRadioButtonsPanel);
-            this.displayOptionsMainPanel.Controls.Add(this.multipleProteinHitsRadioButtonsPanel);
             this.displayOptionsMainPanel.Controls.Add(this.highlightSpectrumTextBox);
             this.displayOptionsMainPanel.Controls.Add(this.highlightProteinTextBox);
             this.displayOptionsMainPanel.Controls.Add(this.highlightPeptideTextBox);
             this.displayOptionsMainPanel.Controls.Add(this.columnHeadersLabel);
-            this.displayOptionsMainPanel.Controls.Add(this.multipleProteinHitsLabel);
             this.displayOptionsMainPanel.Controls.Add(this.highlightSpectrumLabel);
             this.displayOptionsMainPanel.Controls.Add(this.highlightPeptideIncludeModCheckBox);
             this.displayOptionsMainPanel.Controls.Add(this.highlightProteinLabel);
@@ -90,7 +83,7 @@
             // 
             this.columnHeadersRadioButtonsPanel.Controls.Add(this.columnHeadersRegularRadioButton);
             this.columnHeadersRadioButtonsPanel.Controls.Add(this.columnHeadersCondensedRadioButton);
-            this.columnHeadersRadioButtonsPanel.Location = new System.Drawing.Point(176, 196);
+            this.columnHeadersRadioButtonsPanel.Location = new System.Drawing.Point(176, 163);
             this.columnHeadersRadioButtonsPanel.Name = "columnHeadersRadioButtonsPanel";
             this.columnHeadersRadioButtonsPanel.Size = new System.Drawing.Size(244, 21);
             this.columnHeadersRadioButtonsPanel.TabIndex = 58;
@@ -119,39 +112,6 @@
             this.columnHeadersCondensedRadioButton.UseVisualStyleBackColor = true;
             this.columnHeadersCondensedRadioButton.CheckedChanged += new System.EventHandler(this.ColumnHeadersCondensedRadioButtonCheckedChanged);
             // 
-            // multipleProteinHitsRadioButtonsPanel
-            // 
-            this.multipleProteinHitsRadioButtonsPanel.Controls.Add(this.multipleProteinHitsTopHitRadioButton);
-            this.multipleProteinHitsRadioButtonsPanel.Controls.Add(this.multipleProteinHitsAllHitsRadioButton);
-            this.multipleProteinHitsRadioButtonsPanel.Location = new System.Drawing.Point(176, 164);
-            this.multipleProteinHitsRadioButtonsPanel.Name = "multipleProteinHitsRadioButtonsPanel";
-            this.multipleProteinHitsRadioButtonsPanel.Size = new System.Drawing.Size(244, 23);
-            this.multipleProteinHitsRadioButtonsPanel.TabIndex = 57;
-            // 
-            // multipleProteinHitsTopHitRadioButton
-            // 
-            this.multipleProteinHitsTopHitRadioButton.AutoSize = true;
-            this.multipleProteinHitsTopHitRadioButton.Location = new System.Drawing.Point(3, 3);
-            this.multipleProteinHitsTopHitRadioButton.Name = "multipleProteinHitsTopHitRadioButton";
-            this.multipleProteinHitsTopHitRadioButton.Size = new System.Drawing.Size(80, 17);
-            this.multipleProteinHitsTopHitRadioButton.TabIndex = 49;
-            this.multipleProteinHitsTopHitRadioButton.TabStop = true;
-            this.multipleProteinHitsTopHitRadioButton.Text = "Top hit only";
-            this.multipleProteinHitsTopHitRadioButton.UseVisualStyleBackColor = true;
-            this.multipleProteinHitsTopHitRadioButton.CheckedChanged += new System.EventHandler(this.MultipleProteinHitsTopHitRadioButtonCheckedChanged);
-            // 
-            // multipleProteinHitsAllHitsRadioButton
-            // 
-            this.multipleProteinHitsAllHitsRadioButton.AutoSize = true;
-            this.multipleProteinHitsAllHitsRadioButton.Location = new System.Drawing.Point(127, 3);
-            this.multipleProteinHitsAllHitsRadioButton.Name = "multipleProteinHitsAllHitsRadioButton";
-            this.multipleProteinHitsAllHitsRadioButton.Size = new System.Drawing.Size(85, 17);
-            this.multipleProteinHitsAllHitsRadioButton.TabIndex = 50;
-            this.multipleProteinHitsAllHitsRadioButton.TabStop = true;
-            this.multipleProteinHitsAllHitsRadioButton.Text = "List of all hits";
-            this.multipleProteinHitsAllHitsRadioButton.UseVisualStyleBackColor = true;
-            this.multipleProteinHitsAllHitsRadioButton.CheckedChanged += new System.EventHandler(this.MultipleProteinHitsAllHitsRadioButtonCheckedChanged);
-            // 
             // highlightSpectrumTextBox
             // 
             this.highlightSpectrumTextBox.Location = new System.Drawing.Point(176, 127);
@@ -176,20 +136,11 @@
             // columnHeadersLabel
             // 
             this.columnHeadersLabel.AutoSize = true;
-            this.columnHeadersLabel.Location = new System.Drawing.Point(18, 203);
+            this.columnHeadersLabel.Location = new System.Drawing.Point(18, 170);
             this.columnHeadersLabel.Name = "columnHeadersLabel";
             this.columnHeadersLabel.Size = new System.Drawing.Size(86, 13);
             this.columnHeadersLabel.TabIndex = 51;
             this.columnHeadersLabel.Text = "Column headers:";
-            // 
-            // multipleProteinHitsLabel
-            // 
-            this.multipleProteinHitsLabel.AutoSize = true;
-            this.multipleProteinHitsLabel.Location = new System.Drawing.Point(18, 169);
-            this.multipleProteinHitsLabel.Name = "multipleProteinHitsLabel";
-            this.multipleProteinHitsLabel.Size = new System.Drawing.Size(100, 13);
-            this.multipleProteinHitsLabel.TabIndex = 48;
-            this.multipleProteinHitsLabel.Text = "Multiple protein hits:";
             // 
             // highlightSpectrumLabel
             // 
@@ -268,8 +219,6 @@
             this.displayOptionsMainPanel.PerformLayout();
             this.columnHeadersRadioButtonsPanel.ResumeLayout(false);
             this.columnHeadersRadioButtonsPanel.PerformLayout();
-            this.multipleProteinHitsRadioButtonsPanel.ResumeLayout(false);
-            this.multipleProteinHitsRadioButtonsPanel.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -283,16 +232,12 @@
         private System.Windows.Forms.ComboBox rowsPerPageCombo;
         private System.Windows.Forms.Label rowsPerPageLabel;
         private System.Windows.Forms.Label highlightSpectrumLabel;
-        private System.Windows.Forms.Label multipleProteinHitsLabel;
-        private System.Windows.Forms.RadioButton multipleProteinHitsAllHitsRadioButton;
-        private System.Windows.Forms.RadioButton multipleProteinHitsTopHitRadioButton;
         private System.Windows.Forms.Label columnHeadersLabel;
         private System.Windows.Forms.RadioButton columnHeadersCondensedRadioButton;
         private System.Windows.Forms.RadioButton columnHeadersRegularRadioButton;
         private System.Windows.Forms.TextBox highlightProteinTextBox;
         private System.Windows.Forms.TextBox highlightPeptideTextBox;
         private System.Windows.Forms.TextBox highlightSpectrumTextBox;
-        private System.Windows.Forms.Panel multipleProteinHitsRadioButtonsPanel;
         private System.Windows.Forms.Panel columnHeadersRadioButtonsPanel;
         private System.Windows.Forms.Button btnUpdateResults;
 

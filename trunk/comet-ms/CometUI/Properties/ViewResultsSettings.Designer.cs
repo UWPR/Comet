@@ -62,18 +62,6 @@ namespace CometUI.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool DisplayOptionsOnlyTopProteinHit {
-            get {
-                return ((bool)(this["DisplayOptionsOnlyTopProteinHit"]));
-            }
-            set {
-                this["DisplayOptionsOnlyTopProteinHit"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool DisplayOptionsCondensedColumnHeaders {
             get {
                 return ((bool)(this["DisplayOptionsCondensedColumnHeaders"]));

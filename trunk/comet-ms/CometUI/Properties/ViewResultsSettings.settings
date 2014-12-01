@@ -11,9 +11,6 @@
     <Setting Name="DisplayOptionsInlcudeModsWhenHighlightingPeptides" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="DisplayOptionsOnlyTopProteinHit" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
     <Setting Name="DisplayOptionsCondensedColumnHeaders" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
