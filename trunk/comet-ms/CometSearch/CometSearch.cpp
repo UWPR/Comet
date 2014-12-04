@@ -1184,7 +1184,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    bool bUseNLPeaks = false;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   struct SparseMatrix *pSparseFastXcorrData;  // use this if bSparseMatrix
+   float **ppSparseFastXcorrData;  // use this if bSparseMatrix
    float *pFastXcorrData;                      // use this if not using SparseMatrix
 
    dXcorr = 0.0;
@@ -1205,28 +1205,29 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
          if (ctCharge == 1 && bUseNLPeaks)
          {
-            pSparseFastXcorrData = pQuery->pSparseFastXcorrDataNL;
+            ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrDataNL;
             pFastXcorrData = pQuery->pfFastXcorrDataNL;
          }
          else
          {
-            pSparseFastXcorrData = pQuery->pSparseFastXcorrData;
+            ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
             pFastXcorrData = pQuery->pfFastXcorrData;
          }
 
          if (g_staticParams.options.bSparseMatrix)
          {
-            //MH: ratchet through pfFastXcorrData
-            //This assumes fragment ions are in order...
-            int xx=0;
+            int bin,x,y;
             for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
             {
-               if(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)==0)
+               //MH: newer sparse matrix converts bin to sparse matrix bin
+               bin = *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen);
+               x = bin / 10;
+               if(ppSparseFastXcorrData[x]==NULL) 
                   continue;
-               while( *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) >=  (unsigned)pSparseFastXcorrData[xx].bin)
-                  xx++;
-               dXcorr += pSparseFastXcorrData[xx-1].fIntensity;
+               y = bin - (x*10);
+               dXcorr += ppSparseFastXcorrData[x][y];
             }
+            
          }
          else
          {

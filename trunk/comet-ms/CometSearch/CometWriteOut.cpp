@@ -627,33 +627,8 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 float CometWriteOut::FindSpScore(Query *pQuery,
                                  int bin)
 {
-   int lower;
-   int mid;
-   int upper;
-   int sz=pQuery->iSpScoreData;
-
-   mid=sz/2;
-   lower=0;
-   upper=sz;
-
-   while (pQuery->pSparseSpScoreData[mid].bin!=bin)
-   {
-      if (lower>=upper) 
-         return 0.0f;
-
-      if (bin<pQuery->pSparseSpScoreData[mid].bin)
-      {
-         upper=mid-1;
-         mid=(lower+upper)/2;
-      } 
-      else 
-      {
-         lower=mid+1;
-         mid=(lower+upper)/2;
-      }
-
-      if (mid==sz) 
-         return 0.0f;
-   }
-   return pQuery->pSparseSpScoreData[mid].fIntensity;
+   int x = bin / 10;
+   if(pQuery->ppfSparseSpScoreData[x] == NULL) return 0.0f;
+   int y = bin - (x*10);
+   return pQuery->ppfSparseSpScoreData[x][y];
 }

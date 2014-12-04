@@ -262,7 +262,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                                  double *pdTmpPeakExtracted)
 {
    int i;
-   int j;
+   int x;
+   int y;
    struct msdata pTmpSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
 
@@ -330,8 +331,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    // Make fast xcorr spectrum.
    double dSum=0.0;
-   pScoring->iFastXcorrData=1;
-   pScoring->iFastXcorrDataNL=1;
 
    dSum=0.0;
    for (i=0; i<75; i++)
@@ -358,16 +357,12 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          int iTmp;
 
          iTmp = i-1;
-         pScoring->pfFastXcorrData[i] += (float) (pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+         pScoring->pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
 
          iTmp = i+1;
          if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
-            pScoring->pfFastXcorrData[i] += (float) (pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5;
+            pScoring->pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
       }
-
-      //MH: Count number of sparse entries needed
-      if (g_staticParams.options.bSparseMatrix && i>0 && !isEqual(pScoring->pfFastXcorrData[i], pScoring->pfFastXcorrData[i-1]))
-         pScoring->iFastXcorrData++;
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
       if (g_staticParams.ionInformation.bUseNeutralLoss
@@ -382,102 +377,124 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          iTmp = i-g_staticParams.precalcMasses.iMinus17;
          if (iTmp>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)(pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2;
+            pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
          }
 
          iTmp = i-g_staticParams.precalcMasses.iMinus18;
          if (iTmp>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)(pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2;
+            pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
          }
 
-         //MH: Count number of sparse entries needed
-         if (g_staticParams.options.bSparseMatrix && i>0 && !isEqual(pScoring->pfFastXcorrDataNL[i], pScoring->pfFastXcorrDataNL[i-1]))
-            pScoring->iFastXcorrDataNL++;
       }
    }
 
    // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
    if (g_staticParams.options.bSparseMatrix)
    {
-      //MH: Add one more slot for the last bin
-      pScoring->iFastXcorrData++;
-      pScoring->iFastXcorrDataNL++;
-
-      //MH: Fill sparse matrix
-      try
-      {
-         pScoring->pSparseFastXcorrData = new SparseMatrix[pScoring->iFastXcorrData]();
-      }
-      catch (std::bad_alloc& ba)
-      {
-         char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrData[%d]). bad_alloc: %s.", pScoring->iFastXcorrData, ba.what());
-         string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
-         logerr("%s\n\n", szErrorMsg);
-         return false;
-      }
-
-      pScoring->pSparseFastXcorrData[0].bin=0;
-      pScoring->pSparseFastXcorrData[0].fIntensity=0;
-
-      j=1;
-      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
-      {
-         if (!isEqual(pScoring->pfFastXcorrData[i], pScoring->pfFastXcorrData[i-1]))
-         {
-            pScoring->pSparseFastXcorrData[j].bin = i;
-            pScoring->pSparseFastXcorrData[j++].fIntensity = pScoring->pfFastXcorrData[i];
-         }
-      }
-
-      pScoring->pSparseFastXcorrData[j].bin=i;
-      pScoring->pSparseFastXcorrData[j].fIntensity=0;
-
-      delete[] pScoring->pfFastXcorrData;
-      pScoring->pfFastXcorrData = NULL;
-
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
       if (g_staticParams.ionInformation.bUseNeutralLoss
             && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
+         pScoring->iFastXcorrDataNL=pScoring->_spectrumInfoInternal.iArraySize/10+1;
+
          try
          {
-            pScoring->pSparseFastXcorrDataNL = new SparseMatrix[pScoring->iFastXcorrDataNL]();
+            pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataNL]();
          }
          catch (std::bad_alloc& ba)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - new(pScoring->pSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
+            sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
             logerr("%s\n\n", szErrorMsg);
             return false;
          }
 
-         pScoring->pSparseFastXcorrDataNL[0].bin=0;
-         pScoring->pSparseFastXcorrDataNL[0].fIntensity=0;
-
-         j=1;
          for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
          {
-            if (!isEqual(pScoring->pfFastXcorrDataNL[i], pScoring->pfFastXcorrDataNL[i-1]))
+            if(pScoring->pfFastXcorrDataNL[i]>FLOAT_ZERO || pScoring->pfFastXcorrDataNL[i]<-FLOAT_ZERO)
             {
-               pScoring->pSparseFastXcorrDataNL[j].bin = i;
-               pScoring->pSparseFastXcorrDataNL[j].fIntensity = pScoring->pfFastXcorrDataNL[i];
-               j++;
+               x=i/10;
+               if(pScoring->ppfSparseFastXcorrDataNL[x]==NULL) 
+               {
+                  try 
+                  {
+                     pScoring->ppfSparseFastXcorrDataNL[x] = new float[10]();
+                  }
+                  catch (std::bad_alloc& ba)
+                  {
+                     char szErrorMsg[256];
+                     sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d][10]). bad_alloc: %s.", x, ba.what());
+                     string strErrorMsg(szErrorMsg);
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+                     logerr("%s\n\n", szErrorMsg);
+                     return false;
+                  }
+                  for(y=0;y<10;y++)
+                     pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
+               }
+               y=i-(x*10);
+               pScoring->ppfSparseFastXcorrDataNL[x][y] = pScoring->pfFastXcorrDataNL[i];
             }
          }
 
-         pScoring->pSparseFastXcorrDataNL[j].bin=i;
-         pScoring->pSparseFastXcorrDataNL[j].fIntensity=0;
-
          delete[] pScoring->pfFastXcorrDataNL;
          pScoring->pfFastXcorrDataNL = NULL;
+
       }
+
+      pScoring->iFastXcorrData=pScoring->_spectrumInfoInternal.iArraySize/10+1;
+
+      //MH: Fill sparse matrix
+      try
+      {
+         pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrData]();
+      }
+      catch (std::bad_alloc& ba)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d]). bad_alloc: %s.", pScoring->iFastXcorrData, ba.what());
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         logerr("%s\n\n", szErrorMsg);
+         return false;
+      }
+
+      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+      {
+         if(pScoring->pfFastXcorrData[i]>FLOAT_ZERO || pScoring->pfFastXcorrData[i]<-FLOAT_ZERO)
+         {
+            x=i/10;
+            if(pScoring->ppfSparseFastXcorrData[x]==NULL) 
+            {
+               try 
+               {
+                  pScoring->ppfSparseFastXcorrData[x] = new float[10]();
+               }
+               catch (std::bad_alloc& ba)
+               {
+                  char szErrorMsg[256];
+                  sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d][10]). bad_alloc: %s.", x, ba.what());
+                  string strErrorMsg(szErrorMsg);
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+                  logerr("%s\n\n", szErrorMsg);
+                  return false;
+               }
+               for(y=0;y<10;y++)
+                  pScoring->ppfSparseFastXcorrData[x][y]=0;
+            }
+            y=i-(x*10);
+            pScoring->ppfSparseFastXcorrData[x][y] = pScoring->pfFastXcorrData[i];
+         }
+      }
+
+      delete[] pScoring->pfFastXcorrData;
+      pScoring->pfFastXcorrData = NULL;
+      
    }
 
    // Create data for sp scoring.
@@ -508,55 +525,73 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Modify for Sp data.
    StairStep(pTmpSpData);
 
+   try
+   {
+      pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+   }
+   catch (std::bad_alloc& ba)
+   {
+      char szErrorMsg[256];
+      sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+      logerr("%s\n\n", szErrorMsg);
+      return false;
+   }
+
+   // note that pTmpSpData[].dIon values are already BIN'd
+   for (i=0; i<NUM_SP_IONS; i++)
+      pScoring->pfSpScoreData[(int)(pTmpSpData[i].dIon)] = (float) pTmpSpData[i].dIntensity;
+
    if (g_staticParams.options.bSparseMatrix)
    {
-      // MH: Fill sparse matrix for SpScore - Note that we allocate max number of sp ions,
-      // but will use less than this amount.
+      // MH: Fill sparse matrix for SpScore
+      pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / 10 + 1;
 
       try
       {
-         pScoring->pSparseSpScoreData = new SparseMatrix[NUM_SP_IONS]();
+         pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pScoring->pSparseSpScoreData[%d]). bad_alloc: %s.", pScoring->iSpScoreData, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseSpScoreData[%d]). bad_alloc: %s.", pScoring->iSpScoreData, ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
          logerr("%s\n\n", szErrorMsg);
          return false;
       }
 
-      pScoring->iSpScoreData=0;
-      for (i=0; i<NUM_SP_IONS; i++)
+      for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
       {
-         if ((float)pTmpSpData[i].dIntensity > FLOAT_ZERO)
+         if(pScoring->pfSpScoreData[i] > FLOAT_ZERO)
          {
-            pScoring->pSparseSpScoreData[pScoring->iSpScoreData].bin = (int)(pTmpSpData[i].dIon);
-            pScoring->pSparseSpScoreData[pScoring->iSpScoreData].fIntensity = (float) pTmpSpData[i].dIntensity;
-            pScoring->iSpScoreData++;
+            x=i/10;
+            if(pScoring->ppfSparseSpScoreData[x]==NULL) 
+            {
+               try 
+               {
+                  pScoring->ppfSparseSpScoreData[x] = new float[10]();
+               }
+               catch (std::bad_alloc& ba)
+               {
+                  char szErrorMsg[256];
+                  sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseSpScoreData[%d][10]). bad_alloc: %s.", x, ba.what());
+                  string strErrorMsg(szErrorMsg);
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+                  logerr("%s\n\n", szErrorMsg);
+                  return false;
+               }
+               for(y=0;y<10;y++)
+                  pScoring->ppfSparseSpScoreData[x][y]=0;
+            }
+            y=i-(x*10);
+            pScoring->ppfSparseSpScoreData[x][y] = pScoring->pfSpScoreData[i];
          }
       }
-   }
-   else
-   {
-      try
-      {
-         pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-      }
-      catch (std::bad_alloc& ba)
-      {
-         char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]). bad_alloc: %s.", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
-         string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
-         logerr("%s\n\n", szErrorMsg);
-         return false;
-      }
 
-      // note that pTmpSpData[].dIon values are already BIN'd
-      for (i=0; i<NUM_SP_IONS; i++)
-         pScoring->pfSpScoreData[(int)(pTmpSpData[i].dIon)] = (float) pTmpSpData[i].dIntensity;
+      delete[] pScoring->pfSpScoreData;
+      pScoring->pfSpScoreData = NULL;
    }
 
    return true;
