@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using System.Xml.Linq;
+using CometUI.Properties;
 
 namespace CometUI.ViewResults
 {
@@ -42,57 +41,59 @@ namespace CometUI.ViewResults
 
         private void UpdateSearchSummaryLabel()
         {
-            // If there is no results file, the search summary display is blank
-            String searchSummary = String.Empty;
-
             String resultsFile = ViewSearchResultsControl.ResultsPepXMLFile;
-            if (String.Empty != resultsFile)
+            if (String.Empty == resultsFile)
             {
-                // Create a reader for the results file
-                var pepXMLReader = new PepXMLReader(resultsFile);
-                
-                // Read the digest enzyme name
-                XElement sampleEzymeElement = pepXMLReader.ReadFirstElement("sample_enzyme");
-                XAttribute firstEnzymeName = pepXMLReader.ReadFirstAttribute(sampleEzymeElement, "name");
-                if (null != firstEnzymeName)
-                {
-                    searchSummary += (String)firstEnzymeName;
-                }
-
-                searchSummary += " digest, ";
-
-                // Read the search engine name
-                XElement searchSummaryElement = pepXMLReader.ReadFirstElement("search_summary");
-                XAttribute firstSearchEngine = pepXMLReader.ReadFirstAttribute(searchSummaryElement, "search_engine");
-                if (null != firstSearchEngine)
-                {
-                    searchSummary += (String)firstSearchEngine;
-                }
-
-                searchSummary += " search engine, ";
-
-                // Read the quantitation tool name, if there is one.
-                searchSummary += "quantitation: ";
-                String quantitationTool = "[none]";
-                IEnumerable<XElement> analysisSummaryElements = pepXMLReader.ReadElements("analysis_summary").ToList();
-                foreach (var element in analysisSummaryElements)
-                {
-                    XAttribute analysisAttribute = pepXMLReader.ReadFirstAttribute(element, "analysis");
-                    if (null != analysisAttribute)
-                    {
-                        var analysis = (String)analysisAttribute;
-                        if ((String.Empty != analysis) && IsQuantitationTool(analysis.ToLower()))
-                        {
-                            quantitationTool = analysis;
-                        }
-                    }
-                }
-                
-                searchSummary += quantitationTool;
+                // If there is no results file, clear the search summary display
+                searchResultsSummaryLabel.Text = String.Empty;
+                return;
             }
 
+            var searchSummary = String.Empty;
+            PepXMLReader pepXMLReader;
+            // Create a reader for the results file
+            try
+            {
+                pepXMLReader = new PepXMLReader(resultsFile);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(Resources.ViewResultsSummaryOptionsControl_UpdateSearchSummaryLabel_Could_not_read_the_results_pep_xml_file__ + e.Message, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            searchSummary += pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/sample_enzyme", "name");
+            searchSummary += " digest, ";
+
+            searchSummary += pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary", "search_engine");
+            searchSummary += " search engine, ";
+
+            // Read the quantitation tool name, if there is one.
+            var quantitationTool = GetQuantitationTool(pepXMLReader);
+            if (quantitationTool.Equals(String.Empty))
+            {
+                quantitationTool = "[none]";
+            }
+            searchSummary += "quantitation: " + quantitationTool;
+            
             // Display the search summary
-            searchSummaryLabel.Text = searchSummary;
+            searchResultsSummaryLabel.Text = searchSummary;
+        }
+
+        private String GetQuantitationTool(PepXMLReader pepXMLReader)
+        {
+            String quantitationTool = String.Empty;
+            var analysisSummaryNodeIterator = pepXMLReader.ReadNodes("/msms_pipeline_analysis/analysis_summary");
+            while (analysisSummaryNodeIterator.MoveNext())
+            {
+                var analysis = pepXMLReader.ReadAttribute(analysisSummaryNodeIterator.Current, "analysis");
+                if ((String.Empty != analysis) && IsQuantitationTool(analysis.ToLower()))
+                {
+                    quantitationTool = analysis;
+                }
+            }
+
+            return quantitationTool;
         }
 
         private bool IsQuantitationTool(String toolName)

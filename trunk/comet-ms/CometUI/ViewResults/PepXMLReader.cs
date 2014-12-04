@@ -1,133 +1,73 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Xml;
-using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace CometUI.ViewResults
 {
     public class PepXMLReader
     {
         private String FileName { get; set; }
+        private XPathDocument PepXmlXPathDoc { get; set; }
+        private XPathNavigator PepXmlXPathNav { get; set; }
+        private XmlNamespaceManager PepXmlNamespaceMgr { get; set; }
 
+        // This constructor will throw an exception if there is an 
+        // error, such as invalid file name. The caller needs to
+        // handle the exception.
         public PepXMLReader(String fileName)
         {
             FileName = fileName;
+            CreateDocNavigator();
         }
 
-        public IEnumerable<XElement> ReadElements(String elementName)
+        private void CreateDocNavigator()
         {
-            var reader = CreateXmlReader();
-            if (null == reader)
+            PepXmlXPathDoc = new XPathDocument(FileName);
+            PepXmlXPathNav = PepXmlXPathDoc.CreateNavigator();
+
+            // Create prefix<->namespace mappings 
+            if (PepXmlXPathNav.NameTable != null)
             {
-                return null;
+                PepXmlNamespaceMgr = new XmlNamespaceManager(PepXmlXPathNav.NameTable);
+                PepXmlNamespaceMgr.AddNamespace("pepXML", "http://regis-web.systemsbiology.net/pepXML");
+                //int spectraCount = (int)(double)PepXmlXPathNav.Evaluate(("count(/pepXML:msms_pipeline_analysis/pepXML:msms_run_summary/pepXML:spectrum_query)"), nsMgr);
+                //MessageBox.Show(spectraCount.ToString());
             }
-
-            return ReadElements(reader, elementName);
         }
 
-        private XmlTextReader CreateXmlReader()
+        public XPathNodeIterator ReadNodes(String name)
         {
-            if ((String.Empty == FileName) || !File.Exists(FileName))
+            String fullName = String.Empty;
+            String[] nodeNames = name.Split('/');
+            foreach (var nodeName in nodeNames)
             {
-                return null;
-            }
-
-            var reader = new XmlTextReader(FileName);
-            reader.MoveToContent();
-            return reader;
-        }
-
-        public XElement ReadFirstElement(String elementName)
-        {
-            var reader = CreateXmlReader();
-            if (null == reader)
-            {
-                return null;
-            }
-
-            return ReadFirstElement(reader, elementName);
-        }
-
-        private XElement ReadFirstElement(XmlTextReader reader, String elementName)
-        {
-            while (reader.Read())
-            {
-                switch (reader.NodeType)
+                if (!nodeName.Equals(String.Empty))
                 {
-                    case XmlNodeType.Element:
-                        if (reader.Name == elementName)
-                        {
-                            var el = XElement.ReadFrom(reader) as XElement;
-                            if (el != null)
-                                return el;
-                        }
-                        break;
+                    fullName += "/" + "pepXML:" + nodeName;
                 }
             }
 
-            return null;
+            return PepXmlXPathNav.Select(fullName, PepXmlNamespaceMgr);
         }
 
-        private static IEnumerable<XElement> ReadElements(XmlTextReader reader, String elementName)
+        public XPathNavigator ReadFirstMatchingNode(String name)
         {
-            while (reader.Read())
-            {
-                switch (reader.NodeType)
-                {
-                    case XmlNodeType.Element:
-                        if (reader.Name == elementName)
-                        {
-                            var el = XElement.ReadFrom(reader) as XElement;
-                            if (el != null)
-                                yield return el;
-                        }
-                        break;
-                }
-            }
+            var iterator = ReadNodes(name);
+            iterator.MoveNext();
+            return iterator.Current;
         }
 
-        public XAttribute ReadFirstAttribute(IEnumerable<XElement> elements, String attributeName)
+        public String ReadAttribute(XPathNavigator nodeNav, String attributeName)
         {
-            XAttribute attribute;
-            IEnumerable<XAttribute> attributes = ReadAttributes(elements, attributeName);
-            try
-            {
-                attribute = attributes.First();
-            }
-            catch (Exception)
-            {
-                attribute = null;
-            }
+            return nodeNav.GetAttribute(attributeName, String.Empty);
+        }
 
+        public String ReadAttributeFromFirstMatchingNode(String nodeName, String attributeName)
+        {
+            String attribute = String.Empty;
+            var nodeNav = ReadFirstMatchingNode(nodeName);
+            attribute += ReadAttribute(nodeNav, attributeName);
             return attribute;
-        }
-
-        public XAttribute ReadFirstAttribute(XElement element, String attributeName)
-        {
-            XAttribute attribute;
-            IEnumerable<XAttribute> attributes = ReadAttributes(element, attributeName);
-            try
-            {
-                attribute = attributes.First();
-            }
-            catch (Exception)
-            {
-                attribute = null;
-            }
-
-            return attribute;
-        }
-
-        public IEnumerable<XAttribute> ReadAttributes(IEnumerable<XElement> elements, String attributeName)
-        {
-            return elements.Select(element => element.Attribute(attributeName)).Where(attribute => null != attribute);
-        }
-
-        public IEnumerable<XAttribute> ReadAttributes(XElement element, String attributeName)
-        {
-            return element.Attributes().Where(attribute => attribute.Name == attributeName);
         }
     }
 }

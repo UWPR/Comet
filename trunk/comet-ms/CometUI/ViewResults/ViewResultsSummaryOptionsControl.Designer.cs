@@ -32,8 +32,8 @@
             this.pepXMLFileCombo = new System.Windows.Forms.ComboBox();
             this.pepXMLFileLabel = new System.Windows.Forms.Label();
             this.btnUpdateResults = new System.Windows.Forms.Button();
-            this.searchSummaryLabel = new System.Windows.Forms.Label();
             this.viewResultsSummaryMainPanel = new System.Windows.Forms.Panel();
+            this.searchResultsSummaryLabel = new System.Windows.Forms.Label();
             this.viewResultsSummaryMainPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -82,17 +82,9 @@
             this.btnUpdateResults.UseVisualStyleBackColor = true;
             this.btnUpdateResults.Click += new System.EventHandler(this.BtnUpdateResultsClick);
             // 
-            // searchSummaryLabel
-            // 
-            this.searchSummaryLabel.AutoSize = true;
-            this.searchSummaryLabel.Location = new System.Drawing.Point(18, 66);
-            this.searchSummaryLabel.Name = "searchSummaryLabel";
-            this.searchSummaryLabel.Size = new System.Drawing.Size(37, 13);
-            this.searchSummaryLabel.TabIndex = 45;
-            this.searchSummaryLabel.Text = "          ";
-            // 
             // viewResultsSummaryMainPanel
             // 
+            this.viewResultsSummaryMainPanel.Controls.Add(this.searchResultsSummaryLabel);
             this.viewResultsSummaryMainPanel.Controls.Add(this.btnUpdateResults);
             this.viewResultsSummaryMainPanel.Controls.Add(this.btnBrowsePepXMLFile);
             this.viewResultsSummaryMainPanel.Controls.Add(this.pepXMLFileLabel);
@@ -103,18 +95,25 @@
             this.viewResultsSummaryMainPanel.Size = new System.Drawing.Size(653, 230);
             this.viewResultsSummaryMainPanel.TabIndex = 46;
             // 
+            // searchResultsSummaryLabel
+            // 
+            this.searchResultsSummaryLabel.AutoSize = true;
+            this.searchResultsSummaryLabel.Location = new System.Drawing.Point(18, 122);
+            this.searchResultsSummaryLabel.Name = "searchResultsSummaryLabel";
+            this.searchResultsSummaryLabel.Size = new System.Drawing.Size(35, 13);
+            this.searchResultsSummaryLabel.TabIndex = 45;
+            this.searchResultsSummaryLabel.Text = "label1";
+            // 
             // ViewResultsSummaryOptionsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.viewResultsSummaryMainPanel);
-            this.Controls.Add(this.searchSummaryLabel);
             this.Name = "ViewResultsSummaryOptionsControl";
             this.Size = new System.Drawing.Size(653, 230);
             this.viewResultsSummaryMainPanel.ResumeLayout(false);
             this.viewResultsSummaryMainPanel.PerformLayout();
             this.ResumeLayout(false);
-            this.PerformLayout();
 
         }
 
@@ -124,7 +123,7 @@
         private System.Windows.Forms.ComboBox pepXMLFileCombo;
         private System.Windows.Forms.Label pepXMLFileLabel;
         private System.Windows.Forms.Button btnUpdateResults;
-        private System.Windows.Forms.Label searchSummaryLabel;
         private System.Windows.Forms.Panel viewResultsSummaryMainPanel;
+        private System.Windows.Forms.Label searchResultsSummaryLabel;
     }
 }

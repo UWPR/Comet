@@ -714,6 +714,25 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to View Results.
+        /// </summary>
+        internal static string ViewResults_View_Results_Title {
+            get {
+                return ResourceManager.GetString("ViewResults_View_Results_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not read the results pep.xml file. .
+        /// </summary>
+        internal static string ViewResultsSummaryOptionsControl_UpdateSearchSummaryLabel_Could_not_read_the_results_pep_xml_file__ {
+            get {
+                return ResourceManager.GetString("ViewResultsSummaryOptionsControl_UpdateSearchSummaryLabel_Could_not_read_the_resu" +
+                        "lts_pep_xml_file__", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to +.
         /// </summary>
         internal static string ViewSearchResultsControl_HideViewOptionsPanel__ {
@@ -746,6 +765,16 @@ namespace CometUI.Properties {
         internal static string ViewSearchResultsControl_ShowViewOptionsPanel_Hide_options {
             get {
                 return ResourceManager.GetString("ViewSearchResultsControl_ShowViewOptionsPanel_Hide_options", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not read the results pep.xml file. .
+        /// </summary>
+        internal static string ViewSearchResultsControl_UpdateSearchResultsList_Could_not_read_the_results_pep_xml_file__ {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_UpdateSearchResultsList_Could_not_read_the_results_pep_x" +
+                        "ml_file__", resourceCulture);
             }
         }
     }

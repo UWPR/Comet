@@ -340,4 +340,13 @@
   <data name="VarModSettingsControl_AddVarModBtnClick_Add_Variable_Mod">
     <value xml:space="preserve">Add Variable Mod</value>
   </data>
+  <data name="ViewResultsSummaryOptionsControl_UpdateSearchSummaryLabel_Could_not_read_the_results_pep_xml_file__">
+    <value xml:space="preserve">Could not read the results pep.xml file. </value>
+  </data>
+  <data name="ViewResults_View_Results_Title">
+    <value xml:space="preserve">View Results</value>
+  </data>
+  <data name="ViewSearchResultsControl_UpdateSearchResultsList_Could_not_read_the_results_pep_xml_file__">
+    <value xml:space="preserve">Could not read the results pep.xml file. </value>
+  </data>
 </root>
