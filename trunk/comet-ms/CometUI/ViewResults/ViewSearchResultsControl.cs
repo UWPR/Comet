@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
-using System.Xml.Linq;
+using System.Xml.XPath;
 using CometUI.Properties;
 
 namespace CometUI.ViewResults
@@ -13,6 +12,8 @@ namespace CometUI.ViewResults
         public String ResultsPepXMLFile { get; set; }
 
         public bool SettingsChanged { get; set; }
+
+        public String ErrorMessage { get; private set; }
         
         private CometUI CometUI { get; set; }
         private bool OptionsPanelShown { get; set; }
@@ -65,13 +66,24 @@ namespace CometUI.ViewResults
 
         public void UpdateViewSearchResults(String resultsPepXMLFile)
         {
+            ErrorMessage = String.Empty;
             if (null != resultsPepXMLFile)
             {
                 ResultsPepXMLFile = resultsPepXMLFile;
                 ShowResultsListPanel(String.Empty != ResultsPepXMLFile);
-                ViewResultsSummaryOptionsControl.UpdateSummaryOptions();
                 UpdateColumnHeaders();
-                UpdateSearchResultsList();
+
+                if (!ViewResultsSummaryOptionsControl.UpdateSummaryOptions())
+                {
+                    MessageBox.Show(ViewResultsSummaryOptionsControl.ErrorMessage, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                }
+                
+                if (!UpdateSearchResultsList())
+                {
+                    MessageBox.Show(ErrorMessage, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                }
             }
         }
 
@@ -110,13 +122,13 @@ namespace CometUI.ViewResults
             resultsListView.EndUpdate();
         }
 
-        private void UpdateSearchResultsList()
+        private bool UpdateSearchResultsList()
         {
             String resultsFile = ResultsPepXMLFile;
             if (String.Empty == resultsFile)
             {
                 SearchResults.Clear();
-                return;
+                return true;
             }
 
             // Create a reader for the results file
@@ -127,15 +139,71 @@ namespace CometUI.ViewResults
             }
             catch (Exception e)
             {
-                MessageBox.Show(Resources.ViewSearchResultsControl_UpdateSearchResultsList_Could_not_read_the_results_pep_xml_file__ + e.Message, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                ErrorMessage = Resources.ViewSearchResultsControl_UpdateSearchResultsList_Could_not_read_the_results_pep_xml_file__ + e.Message;
+                return false;
             }
 
-            ReadResults(pepXMLReader);
+            if (!ReadResults(pepXMLReader))
+            {
+                ErrorMessage = "Could not update the search results list. " + ErrorMessage;
+                return false;
+            }
+
+            return true;
         }
 
-        private void ReadResults(PepXMLReader pepXMLReader)
+        private bool ReadResults(PepXMLReader pepXMLReader)
         {
+            var spectrumQueryNodes = pepXMLReader.ReadNodes("/msms_pipeline_analysis/msms_run_summary/spectrum_query");
+            while (spectrumQueryNodes.MoveNext())
+            {
+                var spectrumQueryNavigator = spectrumQueryNodes.Current;
+                var result = new SearchResult();
+
+                if (!ResultFieldFromAttribute<String>(pepXMLReader, spectrumQueryNavigator, "spectrum", result))
+                {
+                    ErrorMessage = "Could not read the spectrum attribute.";
+                    return false;
+                }
+
+                if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "start_scan", result))
+                {
+                    ErrorMessage = "Could not read the start_scan attribute.";
+                    return false;
+                }
+
+                if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "index", result))
+                {
+                    ErrorMessage = "Could not read the index attribute.";
+                    return false;
+                }
+
+                if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "assumed_charge", result))
+                {
+                    ErrorMessage = "Could not read the assumed_charge attribute.";
+                    return false;
+                }
+
+                if (!ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "precursor_neutral_mass", result))
+                {
+                    ErrorMessage = "Could not read the precursor_neutral_mass attribute.";
+                    return false;
+                }
+
+                if (!ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "retention_time_sec", result))
+                {
+                    ErrorMessage = "Could not read the retention_time_sec attribute.";
+                    return false;
+                }
+
+                // The "precursor_intensity" field may or may not be there, so just ignore the return value.
+                ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "precursor_intensity",
+                                                 result);
+                
+                SearchResults.Add(result);
+            }
+
+            return true;
         }
 
         //private bool ReadResults(PepXMLReader pepXMLReader)
@@ -266,6 +334,19 @@ namespace CometUI.ViewResults
 
         //    return true;
         //}
+
+        private bool ResultFieldFromAttribute<T>(PepXMLReader pepXMLReader, XPathNavigator nodeNavigator, String attributeName, SearchResult result)
+        {
+            var attribute = pepXMLReader.ReadAttribute(nodeNavigator, attributeName);
+            if (attribute.Equals(String.Empty))
+            {
+                return false;
+            }
+
+            var resultField = new TypedSearchResultField<T>((T)Convert.ChangeType(attribute, typeof(T)));
+            result.Fields.Add(attributeName, resultField);
+            return true;
+        }
 
         private void InitializeFromDefaultSettings()
         {

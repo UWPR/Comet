@@ -8,6 +8,8 @@ namespace CometUI.ViewResults
 {
     public partial class ViewResultsSummaryOptionsControl : UserControl
     {
+        public String ErrorMessage { get; private set; }
+
         private static readonly string[] QuantitationTools = new[] {"xpress","asapratio","libra"};
 
         private ViewSearchResultsControl ViewSearchResultsControl { get; set; }
@@ -28,10 +30,17 @@ namespace CometUI.ViewResults
             }
         }
 
-        public void UpdateSummaryOptions()
+        public bool UpdateSummaryOptions()
         {
+            ErrorMessage = String.Empty;
             UpdatePepXMLFileCombo();
-            UpdateSearchSummaryLabel();
+
+            if (!UpdateSearchSummaryLabel())
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void UpdatePepXMLFileCombo()
@@ -39,14 +48,14 @@ namespace CometUI.ViewResults
             pepXMLFileCombo.Text = ViewSearchResultsControl.ResultsPepXMLFile;
         }
 
-        private void UpdateSearchSummaryLabel()
+        private bool UpdateSearchSummaryLabel()
         {
             String resultsFile = ViewSearchResultsControl.ResultsPepXMLFile;
             if (String.Empty == resultsFile)
             {
                 // If there is no results file, clear the search summary display
                 searchResultsSummaryLabel.Text = String.Empty;
-                return;
+                return true;
             }
 
             var searchSummary = String.Empty;
@@ -58,8 +67,11 @@ namespace CometUI.ViewResults
             }
             catch (Exception e)
             {
-                MessageBox.Show(Resources.ViewResultsSummaryOptionsControl_UpdateSearchSummaryLabel_Could_not_read_the_results_pep_xml_file__ + e.Message, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                ErrorMessage =
+                    Resources.
+                        ViewResultsSummaryOptionsControl_UpdateSearchSummaryLabel_Could_not_read_the_results_pep_xml_file__ +
+                    e.Message;
+                return false;
             }
 
             searchSummary += pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/sample_enzyme", "name");
@@ -78,6 +90,8 @@ namespace CometUI.ViewResults
             
             // Display the search summary
             searchResultsSummaryLabel.Text = searchSummary;
+
+            return true;
         }
 
         private String GetQuantitationTool(PepXMLReader pepXMLReader)
