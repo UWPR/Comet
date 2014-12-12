@@ -22,19 +22,19 @@ CC = g++
 GCC = gcc
 NOSQLITE = -D_NOSQLITE
 
-CFLAGS = -O3 -static -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H -DD__LINUX__
+CFLAGS = -O3 -static -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H -D__LINUX__
 LIBS = -lm -lpthread -ldl
 
 all:  $(ZLIB) $(MZPARSER) $(MZPARSERLITE) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) $(SQLITE)
 	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZPARSERLITE) $(MSTOOLKIT) $(READERLITE)
 	ar rcs libmstoolkit.a $(ZLIB) $(EXPAT) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE)
 #	$(CC) $(CFLAGS) MSTDemo.cpp -L. -lmstoolkitlite -o MSTDemo
-	$(CC) $(CFLAGS) -I./include MSSingleScan/MSSingleScan.cpp -L. -lmstoolkitlite -o msSingleScan
+#	$(CC) $(CFLAGS) -I./include MSSingleScan/MSSingleScan.cpp -L. -lmstoolkitlite -o msSingleScan
 #	$(CC) $(CFLAGS) MSConvertFile.cpp -L. -lmstoolkitlite -o MSConvertFile
 
 lite: $(ZLIB) $(MZPARSERLITE) $(MSTOOLKIT) $(READERLITE) $(EXPAT)
 	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZPARSERLITE) $(MSTOOLKIT) $(READERLITE)
-	$(CC) $(CFLAGS) -I./include MSSingleScan/MSSingleScan.cpp -L. -lmstoolkitlite -o msSingleScan
+#	$(CC) $(CFLAGS) -I./include MSSingleScan/MSSingleScan.cpp -L. -lmstoolkitlite -o msSingleScan
 
 clean:
 	rm -f *.o libmstoolkitlite.a libmstoolkit.a msSingleScan
