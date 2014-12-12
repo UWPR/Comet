@@ -27,7 +27,9 @@ public:
   ~RAWReader();
 
 	//Public Functions
+  void getInstrument(char* str);
 	long getLastScanNumber();
+  void getManufacturer(char* str);
 	long getScanCount();
 	bool getStatus();
 
@@ -49,6 +51,8 @@ private:
 	bool rawLabel;
 	bool rawUserFilterExact;
 
+  char rawInstrument[256];
+  char rawManufacturer[256];
   char rawUserFilter[256];
 
 	int rawAvgWidth;
@@ -63,7 +67,7 @@ private:
 	//Private Functions
   int							calcChargeState(double precursormz, double highmass, VARIANT* varMassList, long nArraySize);
   double					calcPepMass(int chargestate, double precursormz);
-  MSSpectrumType	evaluateFilter(long scan, char* chFilter, vector<double>& MZs, bool& bCentroid, double& cv);
+  MSSpectrumType	evaluateFilter(long scan, char* chFilter, vector<double>& MZs, bool& bCentroid, double& cv, MSActivation& act);
 	bool						initRaw();
   
 

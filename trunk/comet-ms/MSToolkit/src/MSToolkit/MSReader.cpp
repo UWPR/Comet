@@ -17,6 +17,8 @@ MSReader::MSReader(){
   iVersion=0;
   for(int i=0;i<16;i++)	strcpy(header.header[i],"\0");
   headerIndex=0;
+  sInstrument="unknown";
+  sManufacturer="unknown";
 
   #ifndef _NOSQLITE
   db = NULL;
@@ -53,6 +55,14 @@ void MSReader::closeFile(){
 
 MSHeader& MSReader::getHeader(){
   return header;
+}
+
+void MSReader::getInstrument(char* str){
+  strcpy(str,&sInstrument[0]);
+}
+
+void MSReader::getManufacturer(char* str){
+  strcpy(str,&sManufacturer[0]);
 }
 
 /* 0 = File opened correctly
@@ -1110,7 +1120,11 @@ void MSReader::setPrecisionMZ(int i){
 
 bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 
-  if(c!=NULL) lastFileFormat = checkFileFormat(c);
+  if(c!=NULL) {
+    lastFileFormat = checkFileFormat(c);
+    sInstrument="unknown";
+    sManufacturer="unknown";
+  }
   switch(lastFileFormat){
 		case ms1:
 		case ms2:
@@ -1140,7 +1154,12 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 			//only read the raw file if the dll was present and loaded.
 			if(cRAW.getStatus()) {
 				cRAW.setMSLevelFilter(&filter);
-				return cRAW.readRawFile(c,s,scNum);
+        bool b=cRAW.readRawFile(c,s,scNum);
+        if(b && c!=NULL) {
+          cRAW.getInstrument(&sInstrument[0]);
+          cRAW.getManufacturer(&sManufacturer[0]);
+        }
+				return b;
 			} else {
 				cerr << "Could not read Thermo RAW file. The Thermo .dll likely was not loaded." << endl;
 				return false;
@@ -1706,6 +1725,7 @@ void MSReader::writeTextSpec(FILE* fileOut, Spectrum& s) {
         fprintf(fileOut,"BEGIN IONS\n");
         fprintf(fileOut,"PEPMASS=%.*f\n",6,s.atZ(i).mz);
         fprintf(fileOut,"CHARGE=%d+\n",s.atZ(i).z);
+        fprintf(fileOut,"RTINSECONDS=%d\n",(int)(s.getRTime()*60));
         fprintf(fileOut,"TITLE=%s.%d.%d.%d %d %.4f\n","test",s.getScanNumber(),s.getScanNumber(true),s.atZ(i).z,i,s.getRTime());
         for(j=0;j<s.size();j++){
 		      sprintf(t,"%.*f",iIntensityPrecision,s.at(j).intensity);
@@ -1728,10 +1748,13 @@ void MSReader::writeTextSpec(FILE* fileOut, Spectrum& s) {
     } else {
       fprintf(fileOut,"BEGIN IONS\n");
       fprintf(fileOut,"PEPMASS=%.*f\n",6,s.getMZ());
+      fprintf(fileOut,"RTINSECONDS=%d\n",(int)(s.getRTime()*60));
       if(s.sizeZ()==1){
         if(s.atZ(0).z==1) fprintf(fileOut,"CHARGE=1+\n");
+        fprintf(fileOut,"TITLE=%s.%d.%d.%d %d %.4f\n","test",s.getScanNumber(),s.getScanNumber(true),s.atZ(0).z,0,s.getRTime());
+      } else {
+        fprintf(fileOut,"TITLE=%s.%d.%d.%d %d %.4f\n","test",s.getScanNumber(),s.getScanNumber(true),0,0,s.getRTime());
       }
-      fprintf(fileOut,"TITLE=%s.%d.%d.%d %d %.4f\n","test",s.getScanNumber(),s.getScanNumber(true),s.atZ(0).z,0,s.getRTime());
       for(j=0;j<s.size();j++){
 		    sprintf(t,"%.*f",iIntensityPrecision,s.at(j).intensity);
 		    k=strlen(t);
@@ -1971,12 +1994,8 @@ MSFileFormat MSReader::checkFileFormat(const char *fn){
   if(strcmp(ext,".RAW")==0 ) return raw;
   if(strcmp(ext,".MZXML")==0 ) return mzXML;
   if(strcmp(ext,".MZ5")==0 ) {
-#ifdef MST_MZ5
-    return mz5;
-#else
-    cerr << "MZ5 format not supported. Recompile with MZ5 support to use this format." << endl;
+    cerr << "MZ5 format is no longer supported." << endl;
     return dunno;
-#endif
   }
 	if(strcmp(ext,".MZML")==0 ) return mzML;
   if(strcmp(ext,".MGF")==0 ) return mgf;

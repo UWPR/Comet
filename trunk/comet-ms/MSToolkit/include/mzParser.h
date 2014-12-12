@@ -54,11 +54,6 @@ using namespace H5;
 //#define GCC				// to compile with gcc (or g++) on LINUX
 //#define __LINUX__				// to compile with gcc (or g++) on LINUX
 //#define _MSC_VER	// to compile with Microsoft Studio
-#define __LINUX__                             // to compile with gcc (or g++) on LINUX
-#ifdef _MSC_VER       // to compile with Microsoft Studio
-#undef __LINUX__
-#endif
-
 
 #define XMLCLASS		
 #ifndef XML_STATIC
