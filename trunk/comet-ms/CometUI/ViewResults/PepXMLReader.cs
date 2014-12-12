@@ -6,6 +6,7 @@ namespace CometUI.ViewResults
 {
     public class PepXMLReader
     {
+        private const String NamespaceURI = "http://regis-web.systemsbiology.net/pepXML";
         private String FileName { get; set; }
         private XPathDocument PepXmlXPathDoc { get; set; }
         private XPathNavigator PepXmlXPathNav { get; set; }
@@ -29,16 +30,16 @@ namespace CometUI.ViewResults
             if (PepXmlXPathNav.NameTable != null)
             {
                 PepXmlNamespaceMgr = new XmlNamespaceManager(PepXmlXPathNav.NameTable);
-                PepXmlNamespaceMgr.AddNamespace("pepXML", "http://regis-web.systemsbiology.net/pepXML");
+                PepXmlNamespaceMgr.AddNamespace("pepXML", NamespaceURI);
                 //int spectraCount = (int)(double)PepXmlXPathNav.Evaluate(("count(/pepXML:msms_pipeline_analysis/pepXML:msms_run_summary/pepXML:spectrum_query)"), nsMgr);
                 //MessageBox.Show(spectraCount.ToString());
             }
         }
 
-        public XPathNodeIterator ReadNodes(String name)
+        private String GetFullNodeName(String name)
         {
-            String fullName = String.Empty;
-            String[] nodeNames = name.Split('/');
+            var fullName = String.Empty;
+            var nodeNames = name.Split('/');
             foreach (var nodeName in nodeNames)
             {
                 if (!nodeName.Equals(String.Empty))
@@ -47,7 +48,34 @@ namespace CometUI.ViewResults
                 }
             }
 
-            return PepXmlXPathNav.Select(fullName, PepXmlNamespaceMgr);
+            return fullName;
+        }
+
+        public XPathNodeIterator ReadNodes(String name)
+        {
+            return PepXmlXPathNav.Select(GetFullNodeName(name), PepXmlNamespaceMgr);
+        }
+
+        public XPathNodeIterator ReadDescendants(XPathNavigator nodeNav, String name)
+        {
+            return nodeNav.SelectDescendants(name, NamespaceURI, true);
+        }
+
+        public XPathNodeIterator ReadChildren(XPathNavigator nodeNav, String name)
+        {
+            return nodeNav.SelectChildren(name, NamespaceURI);
+        }
+
+        public XPathNavigator ReadFirstMatchingChild(XPathNavigator nodeNav, String name)
+        {
+            var children = nodeNav.SelectChildren(name, NamespaceURI);
+            if (children.Count == 0)
+            {
+                return null;
+            }
+
+            children.MoveNext();
+            return children.Current;
         }
 
         public XPathNavigator ReadFirstMatchingNode(String name)

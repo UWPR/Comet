@@ -199,7 +199,23 @@ namespace CometUI.ViewResults
                 // The "precursor_intensity" field may or may not be there, so just ignore the return value.
                 ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "precursor_intensity",
                                                  result);
-                
+
+                var searchResultNodes = pepXMLReader.ReadChildren(spectrumQueryNavigator, "search_result");
+                while (searchResultNodes.MoveNext())
+                {
+                    var searchResultNavigator = searchResultNodes.Current;
+                    var searchHitNavigator = pepXMLReader.ReadFirstMatchingChild(searchResultNavigator, "search_hit");
+                    if (null != searchHitNavigator)
+                    {
+                        if (!ResultFieldFromAttribute<double>(pepXMLReader, searchHitNavigator, "calc_neutral_pep_mass",
+                                                              result))
+                        {
+                            ErrorMessage = "Could not read the calc_neutral_pep_mass attribute.";
+                            return false;
+                        }
+                    }
+                }
+
                 SearchResults.Add(result);
             }
 
