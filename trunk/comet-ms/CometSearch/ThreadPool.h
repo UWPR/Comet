@@ -165,7 +165,7 @@ public:
       }
    }
 
-   void WaitForQueuedParams(int maxNumQueuedParamsAllowed, unsigned long ulWaitPeriodMilliseconds = 10)
+   void WaitForQueuedParams(int maxNumQueuedParamsAllowed, unsigned long ulWaitPeriodMilliseconds = 1)
    {
       while (NumParamsQueued() > maxNumQueuedParamsAllowed)
       {
