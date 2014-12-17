@@ -68,8 +68,11 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    Threading::CreateMutex(&_maxChargeMutex);
 
    // Get the thread pool of threads that will preprocess the data.
+   // NOTE: We are specifying a "maxNumParamsToQueue" to indicate that, 
+   // at most, we will only read in and queue "maxNumParamsToQueue" 
+   // additional parameters (1 in this case) 
    ThreadPool<PreprocessThreadData *> *pPreprocessThreadPool = new ThreadPool<PreprocessThreadData *>(PreprocessThreadProc,
-         minNumThreads, maxNumThreads);
+         minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
 
    // Load all input spectra.
    while(true)
@@ -146,8 +149,11 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                iNumSpectraLoaded++;
                Threading::UnlockMutex(g_pvQueryMutex);
 
-               // Queue at most 1 additional parameter for threads to process.
-               pPreprocessThreadPool->WaitForQueuedParams(1);
+               // When we created the thread pool above, we specified the max number of
+               // additional params to queue. Here, we must call this method if we want
+               // to wait for the queued params to be processed by the threads before we 
+               // load any more params.
+               pPreprocessThreadPool->WaitForQueuedParams();
               
                //-->MH
                //If there are no Z-lines, filter the spectrum for charge state

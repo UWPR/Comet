@@ -105,7 +105,12 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to so a search.
-   ThreadPool<SearchThreadData *> *pSearchThreadPool = new ThreadPool<SearchThreadData *>(SearchThreadProc, minNumThreads, maxNumThreads);
+   // NOTE: We don't want to read in ALL the database sequences at once or we
+   // will run out of memory for large databases, so we specify a 
+   // "maxNumParamsToQueue" to indicate that, at most, we will only read in
+   // and queue "maxNumParamsToQueue" additional parameters (1 in this case) 
+   ThreadPool<SearchThreadData *> *pSearchThreadPool = new ThreadPool<SearchThreadData *>(SearchThreadProc, 
+       minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
 
    g_staticParams.databaseInfo.uliTotAACount = 0;
    g_staticParams.databaseInfo.iTotalNumProteins = 0;
@@ -136,8 +141,11 @@ bool CometSearch::RunSearch(int minNumThreads,
    // Loop through entire database.
    while(!feof(fptr))
    {
-      // Queue at most 1 additional parameter for threads to process.
-      pSearchThreadPool->WaitForQueuedParams(1);
+      // When we created the thread pool above, we specified the max number of
+      // additional params to queue. Here, we must call this method if we want
+      // to wait for the queued params to be processed by the threads before we 
+      // load any more params.
+      pSearchThreadPool->WaitForQueuedParams();
 
       dbe.strName = "";
       dbe.strSeq = "";
