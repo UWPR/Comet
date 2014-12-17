@@ -165,12 +165,9 @@ public:
       }
    }
 
-   void WaitForQueuedParams(int maxNumQueuedParamsAllowed, unsigned long ulWaitPeriodMilliseconds = 1)
+   void WaitForQueuedParams(int maxNumQueuedParamsAllowed)
    {
-      while (NumParamsQueued() > maxNumQueuedParamsAllowed)
-      {
-         Threading::ThreadSleep(ulWaitPeriodMilliseconds);
-      }
+      while (NumParamsQueued() > maxNumQueuedParamsAllowed) {}
    }
 
    int NumParamsQueued()
