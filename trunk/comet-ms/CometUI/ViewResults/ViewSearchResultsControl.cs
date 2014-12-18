@@ -213,6 +213,13 @@ namespace CometUI.ViewResults
                             ErrorMessage = "Could not read the calc_neutral_pep_mass attribute.";
                             return false;
                         }
+
+                        if (!ResultFieldFromAttribute<String>(pepXMLReader, searchHitNavigator, "peptide",
+                                                              result))
+                        {
+                            ErrorMessage = "Could not read the peptide attribute.";
+                            return false;
+                        }
                     }
                 }
 
