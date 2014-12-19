@@ -220,6 +220,78 @@ namespace CometUI.ViewResults
                             ErrorMessage = "Could not read the peptide attribute.";
                             return false;
                         }
+
+                        String proteinName = pepXMLReader.ReadAttribute(searchHitNavigator, "protein");
+                        if (proteinName.Equals(String.Empty))
+                        {
+                            ErrorMessage = "Could not read the protein attribute.";
+                            return false;
+                        }
+
+                        String peptidePrevAAA = pepXMLReader.ReadAttribute(searchHitNavigator, "peptide_prev_aa");
+                        if (peptidePrevAAA.Equals(String.Empty))
+                        {
+                            ErrorMessage = "Could not read the peptide_prev_aa attribute.";
+                            return false;
+                        }
+
+                        String peptideNextAAA = pepXMLReader.ReadAttribute(searchHitNavigator, "peptide_next_aa");
+                        if (peptideNextAAA.Equals(String.Empty))
+                        {
+                            ErrorMessage = "Could not read the peptide_next_aa attribute.";
+                            return false;
+                        }
+
+                        String proteinDescr = pepXMLReader.ReadAttribute(searchHitNavigator, "protein_descr");
+
+                        var proteinInfo = new ProteinInfo(proteinName, proteinDescr, peptidePrevAAA, peptideNextAAA);
+                        var proteinResultField = new TypedSearchResultField<ProteinInfo>(proteinInfo);
+                        result.Fields.Add("protein", proteinResultField);
+
+                        int numProteins;
+                        if (!pepXMLReader.ReadAttribute(searchHitNavigator, "num_tot_proteins", out numProteins))
+                        {
+                            ErrorMessage = "Could not read the num_tot_proteins attribute.";
+                            return false;
+                        }
+
+                        if (numProteins > 1)
+                        {
+                            //var altProteinsList = new List<ProteinInfo>();
+                            //var alternativeProteinNodes = pepXMLReader.ReadChildren(spectrumQueryNavigator, "alternative_protein");
+                            //while (alternativeProteinNodes.MoveNext())
+                            //{
+                            //    var altProteinNavigator = alternativeProteinNodes.Current;
+                            //    String altProteinName = pepXMLReader.ReadAttribute(altProteinNavigator, "protein");
+                            //    if (altProteinName.Equals(String.Empty))
+                            //    {
+                            //        ErrorMessage = "Could not read the protein attribute.";
+                            //        return false;
+                            //    }
+
+                            //    String altPeptidePrevAAA = pepXMLReader.ReadAttribute(altProteinNavigator, "peptide_prev_aa");
+                            //    if (altPeptidePrevAAA.Equals(String.Empty))
+                            //    {
+                            //        ErrorMessage = "Could not read the peptide_prev_aa attribute.";
+                            //        return false;
+                            //    }
+
+                            //    String altPeptideNextAAA = pepXMLReader.ReadAttribute(altProteinNavigator, "peptide_next_aa");
+                            //    if (peptideNextAAA.Equals(String.Empty))
+                            //    {
+                            //        ErrorMessage = "Could not read the peptide_next_aa attribute.";
+                            //        return false;
+                            //    }
+
+                            //    String altProteinDescr = pepXMLReader.ReadAttribute(altProteinNavigator, "protein_descr");
+
+                            //    var altProteinInfo = new ProteinInfo(altProteinName, altProteinDescr, altPeptidePrevAAA, altPeptideNextAAA);
+                            //    altProteinsList.Add(altProteinInfo);
+                            //}
+
+                            //var altProteinResultField = new TypedSearchResultField<List<ProteinInfo>>(altProteinsList);
+                            //result.Fields.Add("alternative_protein", altProteinResultField);
+                        }
                     }
                 }
 
@@ -344,29 +416,15 @@ namespace CometUI.ViewResults
         //    return true;
         //}
 
-        //private bool ResultFieldFromAttribute<T>(String attributeName, XElement element, PepXMLReader pepXMLReader, SearchResult result)
-        //{
-        //    XAttribute attribute = pepXMLReader.ReadFirstAttribute(element, attributeName);
-        //    if (null == attribute)
-        //    {
-        //        return false;
-        //    }
-
-        //    var resultField = new TypedSearchResultField<T>((T)Convert.ChangeType(attribute.Value, typeof(T)));
-        //    result.Fields.Add(attributeName, resultField);
-
-        //    return true;
-        //}
-
         private bool ResultFieldFromAttribute<T>(PepXMLReader pepXMLReader, XPathNavigator nodeNavigator, String attributeName, SearchResult result)
         {
-            var attribute = pepXMLReader.ReadAttribute(nodeNavigator, attributeName);
-            if (attribute.Equals(String.Empty))
+            T attribute;
+            if (!pepXMLReader.ReadAttribute(nodeNavigator, attributeName, out attribute))
             {
                 return false;
             }
 
-            var resultField = new TypedSearchResultField<T>((T)Convert.ChangeType(attribute, typeof(T)));
+            var resultField = new TypedSearchResultField<T>(attribute);
             result.Fields.Add(attributeName, resultField);
             return true;
         }

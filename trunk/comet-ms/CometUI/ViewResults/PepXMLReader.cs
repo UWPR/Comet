@@ -90,12 +90,37 @@ namespace CometUI.ViewResults
             return nodeNav.GetAttribute(attributeName, String.Empty);
         }
 
+        public bool ReadAttribute<T>(XPathNavigator nodeNavigator, String attributeName, out T attribute)
+        {
+            attribute = default(T);
+            var attributeStrValue = ReadAttribute(nodeNavigator, attributeName);
+            if (attributeStrValue.Equals(String.Empty))
+            {
+                return false;
+            }
+
+            attribute = (T)Convert.ChangeType(attributeStrValue, typeof(T));
+            return true;
+        }
+
         public String ReadAttributeFromFirstMatchingNode(String nodeName, String attributeName)
         {
-            String attribute = String.Empty;
             var nodeNav = ReadFirstMatchingNode(nodeName);
-            attribute += ReadAttribute(nodeNav, attributeName);
+            var attribute = ReadAttribute(nodeNav, attributeName);
             return attribute;
+        }
+
+        public bool ReadAttributeFromFirstMatchingNode<T>(String nodeName, String attributeName, out T attribute)
+        {
+            attribute = default(T);
+            var attributeStrValue = ReadAttributeFromFirstMatchingNode(nodeName, attributeName);
+            if (attributeStrValue.Equals(String.Empty))
+            {
+                return false;
+            }
+
+            attribute = (T) Convert.ChangeType(attributeStrValue, typeof (T));
+            return true;
         }
     }
 }
