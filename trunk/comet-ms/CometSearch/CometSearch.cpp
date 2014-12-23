@@ -62,10 +62,12 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr("%s\n\n", szErrorMsg);
+         logerr(szErrorMsg);
          return false;
       }
    }
@@ -92,7 +94,9 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 
 
 bool CometSearch::RunSearch(int minNumThreads,
-                            int maxNumThreads)
+                            int maxNumThreads,
+                            int iPercentStart,
+                            int iPercentEnd)
 {
    bool bSucceeded = true;
    sDBEntry dbe;
@@ -118,10 +122,10 @@ bool CometSearch::RunSearch(int minNumThreads,
    if ((fptr=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".", g_staticParams.databaseInfo.szDatabase); 
+      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase); 
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
-      logerr("%s\n\n", szErrorMsg);
+      logerr(szErrorMsg);
       return false;
    }
 
@@ -130,6 +134,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    rewind(fptr);
 
    // Load database entry header.
+   lCurrPos = ftell(fptr);
    iTmpCh = getc(fptr);
 
    if (!g_staticParams.options.bOutputSqtStream)
@@ -153,16 +158,17 @@ bool CometSearch::RunSearch(int minNumThreads,
       // Expect a '>' for sequence header line.
       if (iTmpCh != '>')
       {
-         string strError = " Error - database file, expecting definition line here.";
+         string strError = " Error - database file, expecting definition line here.\n";
          string strFormatError = strError + "\n";
          g_cometStatus.SetStatus(CometResult_Failed, strError);
          logerr(strFormatError.c_str());
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr(" %c%s", iTmpCh, szBuf);
+         sprintf(szBuf, " %c%s", iTmpCh, szBuf);
+         logerr(szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr(" %s", szBuf);
+         logerr(szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr(" %s", szBuf);
+         logerr(szBuf);
          return false;
       } 
 
@@ -193,8 +199,11 @@ bool CometSearch::RunSearch(int minNumThreads,
       if (!g_staticParams.options.bOutputSqtStream
             && !(g_staticParams.databaseInfo.iTotalNumProteins%200))
       {
+         char szTmp[128];
          lCurrPos = ftell(fptr);
-         logout("%3d%%", (int)(100.0 * (double)lCurrPos/(double)lEndPos));
+         // go from iPercentStart to iPercentEnd, scaled by lCurrPos/iEndPos
+         sprintf(szTmp, "%3d%%", (int)(((double)(iPercentStart + (iPercentEnd-iPercentStart)*(double)lCurrPos/(double)lEndPos) ))); 
+         logout(szTmp);
          fflush(stdout);
          logout("\b\b\b\b");
       }
@@ -228,7 +237,9 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      logout(" 100%%\n");
+      char szTmp[12];
+      sprintf(szTmp, "%3d%%\n", iPercentEnd);
+      logout(szTmp);
       fflush(stdout);
    }
 
@@ -366,10 +377,12 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          catch (std::bad_alloc& ba)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.", seqSize, ba.what());
+            sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.\n", seqSize, ba.what());
+            sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+            sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             return false;
          }
 
@@ -960,10 +973,10 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       else
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!", g_staticParams.tolerances.iIsotopeError);
+         sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!\n", g_staticParams.tolerances.iIsotopeError);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr("%s\n\n", szErrorMsg);
+         logerr(szErrorMsg);
          return false;
       }
    }
@@ -998,11 +1011,11 @@ bool CometSearch::TranslateNA2AA(int *frame,
                sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
- the sequence into multiple, overlapping, smaller entries.", ii); 
+ the sequence into multiple, overlapping, smaller entries.\n", ii); 
                   
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr("%s\n\n", szErrorMsg);
+               logerr(szErrorMsg);
                return false;
             }
 
@@ -1033,11 +1046,11 @@ bool CometSearch::TranslateNA2AA(int *frame,
                sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
- the sequence into multiple, overlapping, smaller entries.", ii); 
+ the sequence into multiple, overlapping, smaller entries.\n", ii); 
                   
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr("%s\n\n", szErrorMsg);
+               logerr(szErrorMsg);
                return false;
             }
 
@@ -2128,10 +2141,10 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          break;
       default:
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - in CometSearch::PermuteMods, iWhichIndex=%d (valid range 1 to 9)", iWhichMod);
+         sprintf(szErrorMsg,  " Error - in CometSearch::PermuteMods, iWhichIndex=%d (valid range 1 to 9)\n", iWhichMod);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr("%s\n\n", szErrorMsg);
+         logerr(szErrorMsg);
          return false;
    }
 

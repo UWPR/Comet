@@ -550,7 +550,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
    int ii;
    int j;
    int k;
-   int iFastXcorrIndex;
    int iLastFastXcorrIndex;
    int iMaxFragCharge;
    int ctCharge;
@@ -698,8 +697,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   
                   string strErrorMsg(szErrorMsg);
                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr("\n Comet version \"%s\"\n\n", comet_version);
-                  logerr("%s\n\n", szErrorMsg);
+                  logerr(szErrorMsg);
                   return false;
                }
 

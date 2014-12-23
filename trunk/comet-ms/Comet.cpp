@@ -67,12 +67,16 @@ int main(int argc, char *argv[])
 
 void Usage(char *pszCmd)
 {
+   char szErrorMsg[128];
+
    logout("\n");
-   logout(" Comet version \"%s\"\n %s\n", comet_version, copyright);
+   sprintf(szErrorMsg, " Comet version \"%s\"\n %s\n", comet_version, copyright);
+   logout(szErrorMsg);
    logout("\n");
-   logout(" Comet usage:  %s [options] <input_files>\n", pszCmd);
+   sprintf(szErrorMsg, " Comet usage:  %s [options] <input_files>\n", pszCmd);
+   logout(szErrorMsg);
    logout("\n");
-   logout(" Supported input formats include mzXML, mzXML, and ms2 variants (cms2, bms2, ms2)\n");
+   logout(" Supported input formats include mzXML, mzXML, mz5 and ms2 variants (cms2, bms2, ms2)\n");
    logout("\n");
    logout("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
    logout("                 -P<params> to specify an alternate parameters file (default comet.params)\n");
@@ -82,9 +86,13 @@ void Usage(char *pszCmd)
    logout("                 -L<num>    to specify the last/end scan to search, overriding entry in parameters file\n");
    logout("                            (-L option is required if -F option is used)\n");
    logout("\n");
-   logout("       example:  %s file1.mzXML file2.mzXML\n", pszCmd);
-   logout("            or   %s -F1000 -L1500 file1.mzXML    <- to search scans 1000 through 1500\n", pszCmd);
-   logout("            or   %s -pParams.txt *.mzXML         <- use parameters in the file 'Params.txt'\n", pszCmd);
+   sprintf(szErrorMsg, "       example:  %s file1.mzXML file2.mzXML\n", pszCmd);
+   logout(szErrorMsg);
+   sprintf(szErrorMsg, "            or   %s -F1000 -L1500 file1.mzXML    <- to search scans 1000 through 1500\n", pszCmd);
+   logout(szErrorMsg);
+   sprintf(szErrorMsg, "            or   %s -pParams.txt *.mzXML         <- use parameters in the file 'Params.txt'\n", pszCmd);
+   logout(szErrorMsg);
+
    logout("\n");
 
    exit(1);
@@ -96,12 +104,16 @@ void SetOptions(char *arg,
       ICometSearchManager *pSearchMgr)
 {
    char szTmp[512];
+   char szErrorMsg[512];
 
    switch (arg[1])
    {
       case 'D':   // Alternate sequence database.
          if (sscanf(arg+2, "%512s", szTmp) == 0)
-            logerr("Cannot read command line database: '%s'.  Ignored.\n", szTmp);
+         {
+            sprintf(szErrorMsg, "Cannot read command line database: '%s'.  Ignored.\n", szTmp);
+            logerr(szErrorMsg);
+         }
          else
             pSearchMgr->SetParam("database_name", szTmp, szTmp);
          break;
@@ -180,7 +192,8 @@ void LoadParameters(char *pszParamsFile,
          szParamName[128],
          szParamVal[512],
          szParamStringVal[512],
-         szVersion[128];
+         szVersion[128],
+         szErrorMsg[512];
    FILE  *fp;
    bool  bCurrentParamsFile = 0, // Track a parameter to make sure present.
          bValidParamsFile;
@@ -191,8 +204,9 @@ void LoadParameters(char *pszParamsFile,
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
-      logerr("\n Comet version %s\n\n", comet_version);
-      logerr(" Error - cannot open parameter file \"%s\".\n\n", pszParamsFile);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - cannot open parameter file \"%s\".\n", pszParamsFile);
+      logerr(szErrorMsg);
       exit(1);
    }
 
@@ -217,10 +231,11 @@ void LoadParameters(char *pszParamsFile,
 
    if (!bValidParamsFile)
    {
-      logerr("\n Comet version %s\n\n", comet_version);
-      logerr(" The comet.params file is from version %s\n", szVersion);
-      logerr(" Please update your comet.params file.  You can generate\n");
-      logerr(" a new parameters file using \"comet -p\"\n\n");
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " The comet.params file is from version %s\n", szVersion);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Please update your comet.params file.  You can generate\n");
+      sprintf(szErrorMsg+strlen(szErrorMsg), " a new parameters file using \"comet -p\"\n\n");
+      logerr(szErrorMsg);
       exit(1);
    }
 
@@ -884,7 +899,8 @@ void LoadParameters(char *pszParamsFile,
          }
          else
          {
-            logout(" Warning - invalid parameter found: %s.  Parameter will be ignored.\n", szParamName);
+            sprintf(szErrorMsg, " Warning - invalid parameter found: %s.  Parameter will be ignored.\n", szParamName);
+            logout(szErrorMsg);
          }
       }
    } // while
@@ -935,22 +951,28 @@ void LoadParameters(char *pszParamsFile,
 
    if (!bCurrentParamsFile)
    {
-      logerr("\n Comet version %s\n\n", comet_version);
-      logerr(" Error - outdated params file; generate an update params file using '-p' option.\n\n");
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - outdated params file; generate an update params file using '-p' option.\n");
+      logerr(szErrorMsg);
       exit(1);
    }
 
    if (!strcmp(enzymeInformation.szSearchEnzymeName, "-"))
    {
-      logerr("\n Comet version %s\n\n", comet_version);
-      logerr(" Error - search enzyme number %d is missing definition in params file.\n\n", iSearchEnzymeNumber);
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - search enzyme number %d is missing definition in params file.\n", iSearchEnzymeNumber);
+      logerr(szErrorMsg);
       exit(1);
    }
 
    if (!strcmp(enzymeInformation.szSampleEnzymeName, "-"))
    {
-      logerr("\n Comet version %s\n\n", comet_version);
-      logerr(" Error - sample enzyme number %d is missing definition in params file.\n\n", iSampleEnzymeNumber);
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - sample enzyme number %d is missing definition in params file.\n", iSampleEnzymeNumber);
+      logerr(szErrorMsg);
       exit(1);
    }
 
@@ -958,6 +980,7 @@ void LoadParameters(char *pszParamsFile,
    pSearchMgr->SetParam("[COMET_ENZYME_INFO]", enzymeInfoStrVal, enzymeInformation);
 
 } // LoadParameters
+
 
 // Parses the command line and determines the type of analysis to perform.
 bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSearchMgr)
@@ -1071,8 +1094,10 @@ void ProcessCmdLine(int argc,
    
    if (iStartInputFile == argc)
    {
-      logerr("\n Comet version %s\n\n", comet_version);
-      logerr(" Error - no input files specified so nothing to do.\n\n");
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - no input files specified so nothing to do.\n");
+      logerr(szErrorMsg);
       exit(1);
    }
 
@@ -1115,8 +1140,10 @@ void ProcessCmdLine(int argc,
          InputFileInfo *pInputFileInfo = new InputFileInfo();
          if (!ParseCmdLine(arg, pInputFileInfo, pSearchMgr))
          {
-            logerr("\n Comet version %s\n\n", comet_version);
-            logerr(" Error - input file \"%s\" not found.\n\n", pInputFileInfo->szFileName);
+            char szErrorMsg[256];
+            sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+            sprintf(szErrorMsg+strlen(szErrorMsg), " Error - input file \"%s\" not found.\n", pInputFileInfo->szFileName);
+            logerr(szErrorMsg);
             pvInputFiles.clear();
             exit(1);
          }
@@ -1138,8 +1165,10 @@ void PrintParams(void)
 
    if ( (fp=fopen("comet.params.new", "w"))==NULL)
    {
-      logerr("\n Comet version %s\n\n", comet_version);
-      logerr(" Error - cannot write file comet.params.new\n\n");
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - cannot write file comet.params.new\n");
+      logerr(szErrorMsg);
       exit(1);
    }
 

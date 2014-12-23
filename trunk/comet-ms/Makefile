@@ -13,7 +13,7 @@ ifdef MSYSTEM
 endif
 
 comet.exe: $(OBJS)
-	cd $(MSTOOLKIT); make lite ; cd ../CometSearch ; make
+	cd $(MSTOOLKIT) ; make lite ; cd ../CometSearch ; make
 	${CXX} $(CXXFLAGS) $(OBJS) $(LIBPATHS) $(LIBS) -o ${EXECNAME}
 
 Comet.o: Comet.cpp $(DEPS)
@@ -21,4 +21,4 @@ Comet.o: Comet.cpp $(DEPS)
 
 clean:
 	rm -f *.o ${EXECNAME}
-	cd $(MSTOOLKIT); make clean ; cd ../CometSearch ; make clean
+	cd $(MSTOOLKIT) ; make clean ; cd ../CometSearch ; make clean
