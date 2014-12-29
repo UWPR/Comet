@@ -1731,7 +1731,7 @@ bool CometSearchManager::DoSearch()
             // Load and preprocess all the spectra.
             if (!g_staticParams.options.bOutputSqtStream)
             {
-               logout(" - Load and process input spectra:");
+               logout("   - Load spectra:");
 
 #ifdef PERF_DEBUG
                char szOut[128];
@@ -1859,6 +1859,12 @@ bool CometSearchManager::DoSearch()
                goto cleanup_results;
             }
 
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               logout("     - Post analysis:");
+               fflush(stdout);
+            }
+
             g_cometStatus.SetStatusMsg(string("Performing post-search analysis..."));
 
             // Sort each entry by xcorr, calculate E-values, etc.
@@ -1887,6 +1893,12 @@ bool CometSearchManager::DoSearch()
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
             CalcRunTime(tStartTime);
+
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               logout("  done\n");
+               fflush(stdout);
+            }
 
             if (g_staticParams.options.bOutputOutFiles)
             {

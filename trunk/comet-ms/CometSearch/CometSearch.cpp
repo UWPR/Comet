@@ -139,7 +139,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      logout(" - Search progress: ");
+      logout("     - Search progress: ");
       fflush(stdout);
    }
 
