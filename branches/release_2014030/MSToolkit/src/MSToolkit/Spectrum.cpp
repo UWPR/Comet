@@ -304,6 +304,10 @@ void Spectrum::eraseZ(unsigned int i, unsigned int j){
   vZ->erase(vi1,vi2);
 }
 
+MSActivation Spectrum::getActivationMethod(){
+  return actMethod;
+}
+
 float Spectrum::getBPI(){
   return BPI;
 }
@@ -555,10 +559,6 @@ void Spectrum::setPeaks(vector<Peak_T> peaks) {
   for(unsigned int i=0; i<peaks.size(); i++){
     vPeaks->push_back(peaks.at(i));
   }
-}
-  
-MSActivation Spectrum::getActivationMethod(){
-  return actMethod;
 }
 
 void Spectrum::setActivationMethod(MSActivation m){

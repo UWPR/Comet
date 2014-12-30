@@ -9,10 +9,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#ifdef MST_MZ5
-#define MZP_MZ5 1
-#endif
-
 //For mzXML Writing
 //#include "mzXMLWriter.h"
 //#include "MSToolkitInterface.h"
@@ -73,10 +69,13 @@ class MSReader {
   
   MSFileFormat checkFileFormat(const char *fn);
 
-  MSHeader& getHeader();
-  MSSpectrumType getFileType();
-  int getPercent();
-  int getLastScan();
+  MSSpectrumType  getFileType();
+  MSHeader&       getHeader();
+  void            getInstrument(char* str);
+  int             getLastScan();
+  void            getManufacturer(char* str);
+  int             getPercent();
+  
 
   //get specific header informations
   void setPrecision(int i, int j);
@@ -124,6 +123,8 @@ class MSReader {
   int iVersion;
   int iFType;
   MSFileFormat lastFileFormat;
+  string sInstrument;
+  string sManufacturer;
 
   //File compression
   bool compressMe;
