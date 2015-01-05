@@ -257,40 +257,40 @@ namespace CometUI.ViewResults
 
                         if (numProteins > 1)
                         {
-                            //var altProteinsList = new List<ProteinInfo>();
-                            //var alternativeProteinNodes = pepXMLReader.ReadChildren(spectrumQueryNavigator, "alternative_protein");
-                            //while (alternativeProteinNodes.MoveNext())
-                            //{
-                            //    var altProteinNavigator = alternativeProteinNodes.Current;
-                            //    String altProteinName = pepXMLReader.ReadAttribute(altProteinNavigator, "protein");
-                            //    if (altProteinName.Equals(String.Empty))
-                            //    {
-                            //        ErrorMessage = "Could not read the protein attribute.";
-                            //        return false;
-                            //    }
+                            var altProteinsList = new List<ProteinInfo>();
+                            var alternativeProteinNodes = pepXMLReader.ReadDescendants(spectrumQueryNavigator, "alternative_protein");
+                            while (alternativeProteinNodes.MoveNext())
+                            {
+                                var altProteinNavigator = alternativeProteinNodes.Current;
+                                String altProteinName = pepXMLReader.ReadAttribute(altProteinNavigator, "protein");
+                                if (altProteinName.Equals(String.Empty))
+                                {
+                                    ErrorMessage = "Could not read the protein attribute.";
+                                    return false;
+                                }
 
-                            //    String altPeptidePrevAAA = pepXMLReader.ReadAttribute(altProteinNavigator, "peptide_prev_aa");
-                            //    if (altPeptidePrevAAA.Equals(String.Empty))
-                            //    {
-                            //        ErrorMessage = "Could not read the peptide_prev_aa attribute.";
-                            //        return false;
-                            //    }
+                                String altPeptidePrevAAA = pepXMLReader.ReadAttribute(altProteinNavigator, "peptide_prev_aa");
+                                if (altPeptidePrevAAA.Equals(String.Empty))
+                                {
+                                    ErrorMessage = "Could not read the peptide_prev_aa attribute.";
+                                    return false;
+                                }
 
-                            //    String altPeptideNextAAA = pepXMLReader.ReadAttribute(altProteinNavigator, "peptide_next_aa");
-                            //    if (peptideNextAAA.Equals(String.Empty))
-                            //    {
-                            //        ErrorMessage = "Could not read the peptide_next_aa attribute.";
-                            //        return false;
-                            //    }
+                                String altPeptideNextAAA = pepXMLReader.ReadAttribute(altProteinNavigator, "peptide_next_aa");
+                                if (peptideNextAAA.Equals(String.Empty))
+                                {
+                                    ErrorMessage = "Could not read the peptide_next_aa attribute.";
+                                    return false;
+                                }
 
-                            //    String altProteinDescr = pepXMLReader.ReadAttribute(altProteinNavigator, "protein_descr");
+                                String altProteinDescr = pepXMLReader.ReadAttribute(altProteinNavigator, "protein_descr");
 
-                            //    var altProteinInfo = new ProteinInfo(altProteinName, altProteinDescr, altPeptidePrevAAA, altPeptideNextAAA);
-                            //    altProteinsList.Add(altProteinInfo);
-                            //}
+                                var altProteinInfo = new ProteinInfo(altProteinName, altProteinDescr, altPeptidePrevAAA, altPeptideNextAAA);
+                                altProteinsList.Add(altProteinInfo);
+                            }
 
-                            //var altProteinResultField = new TypedSearchResultField<List<ProteinInfo>>(altProteinsList);
-                            //result.Fields.Add("alternative_protein", altProteinResultField);
+                            var altProteinResultField = new TypedSearchResultField<List<ProteinInfo>>(altProteinsList);
+                            result.Fields.Add("alternative_protein", altProteinResultField);
                         }
                     }
                 }
