@@ -200,6 +200,11 @@ namespace CometUI.ViewResults
                                 return false;
                             }
                         }
+
+                        if (!ReadSearchScores(pepXMLReader, searchHitNavigator, result))
+                        {
+                            return false;
+                        }
                     }
                 }
 
@@ -324,90 +329,90 @@ namespace CometUI.ViewResults
         //    return true;
         //}
 
-        private bool ReadSpectrumQueryAttributes(PepXMLReader pepXMLReader, XPathNavigator nodeNavigator,
+        private bool ReadSpectrumQueryAttributes(PepXMLReader pepXMLReader, XPathNavigator spectrumQueryNavigator,
                                                  SearchResult result)
         {
-            if (!ResultFieldFromAttribute<String>(pepXMLReader, nodeNavigator, "spectrum", result))
+            if (!ResultFieldFromAttribute<String>(pepXMLReader, spectrumQueryNavigator, "spectrum", result))
             {
                 ErrorMessage = "Could not read the spectrum attribute.";
                 return false;
             }
 
-            if (!ResultFieldFromAttribute<int>(pepXMLReader, nodeNavigator, "start_scan", result))
+            if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "start_scan", result))
             {
                 ErrorMessage = "Could not read the start_scan attribute.";
                 return false;
             }
 
-            if (!ResultFieldFromAttribute<int>(pepXMLReader, nodeNavigator, "index", result))
+            if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "index", result))
             {
                 ErrorMessage = "Could not read the index attribute.";
                 return false;
             }
 
-            if (!ResultFieldFromAttribute<int>(pepXMLReader, nodeNavigator, "assumed_charge", result))
+            if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "assumed_charge", result))
             {
                 ErrorMessage = "Could not read the assumed_charge attribute.";
                 return false;
             }
 
-            if (!ResultFieldFromAttribute<double>(pepXMLReader, nodeNavigator, "precursor_neutral_mass", result))
+            if (!ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "precursor_neutral_mass", result))
             {
                 ErrorMessage = "Could not read the precursor_neutral_mass attribute.";
                 return false;
             }
 
-            if (!ResultFieldFromAttribute<double>(pepXMLReader, nodeNavigator, "retention_time_sec", result))
+            if (!ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "retention_time_sec", result))
             {
                 ErrorMessage = "Could not read the retention_time_sec attribute.";
                 return false;
             }
 
             // The "precursor_intensity" field may or may not be there, so just ignore the return value.
-            ResultFieldFromAttribute<double>(pepXMLReader, nodeNavigator, "precursor_intensity",
+            ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "precursor_intensity",
                                              result);
 
             return true;
         }
 
-        private bool ReadSearchHitAttributes(PepXMLReader pepXMLReader, XPathNavigator nodeNavigator, SearchResult result)
+        private bool ReadSearchHitAttributes(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
         {
-            if (!ResultFieldFromAttribute<double>(pepXMLReader, nodeNavigator, "calc_neutral_pep_mass",
+            if (!ResultFieldFromAttribute<double>(pepXMLReader, searchHitNavigator, "calc_neutral_pep_mass",
                                                               result))
             {
                 ErrorMessage = "Could not read the calc_neutral_pep_mass attribute.";
                 return false;
             }
 
-            if (!ResultFieldFromAttribute<String>(pepXMLReader, nodeNavigator, "peptide",
+            if (!ResultFieldFromAttribute<String>(pepXMLReader, searchHitNavigator, "peptide",
                                                   result))
             {
                 ErrorMessage = "Could not read the peptide attribute.";
                 return false;
             }
 
-            String proteinName = pepXMLReader.ReadAttribute(nodeNavigator, "protein");
+            String proteinName = pepXMLReader.ReadAttribute(searchHitNavigator, "protein");
             if (proteinName.Equals(String.Empty))
             {
                 ErrorMessage = "Could not read the protein attribute.";
                 return false;
             }
 
-            String peptidePrevAAA = pepXMLReader.ReadAttribute(nodeNavigator, "peptide_prev_aa");
+            String peptidePrevAAA = pepXMLReader.ReadAttribute(searchHitNavigator, "peptide_prev_aa");
             if (peptidePrevAAA.Equals(String.Empty))
             {
                 ErrorMessage = "Could not read the peptide_prev_aa attribute.";
                 return false;
             }
 
-            String peptideNextAAA = pepXMLReader.ReadAttribute(nodeNavigator, "peptide_next_aa");
+            String peptideNextAAA = pepXMLReader.ReadAttribute(searchHitNavigator, "peptide_next_aa");
             if (peptideNextAAA.Equals(String.Empty))
             {
                 ErrorMessage = "Could not read the peptide_next_aa attribute.";
                 return false;
             }
 
-            String proteinDescr = pepXMLReader.ReadAttribute(nodeNavigator, "protein_descr");
+            String proteinDescr = pepXMLReader.ReadAttribute(searchHitNavigator, "protein_descr");
 
             var proteinInfo = new ProteinInfo(proteinName, proteinDescr, peptidePrevAAA, peptideNextAAA);
             var proteinResultField = new TypedSearchResultField<ProteinInfo>(proteinInfo);
@@ -416,10 +421,10 @@ namespace CometUI.ViewResults
             return true;
         }
 
-        private bool ReadAlternativeProteins(PepXMLReader pepXMLReader, XPathNavigator nodeNavigator, SearchResult result)
+        private bool ReadAlternativeProteins(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
         {
             var altProteinsList = new List<ProteinInfo>();
-            var alternativeProteinNodes = pepXMLReader.ReadDescendants(nodeNavigator,
+            var alternativeProteinNodes = pepXMLReader.ReadDescendants(searchHitNavigator,
                                                                         "alternative_protein");
             while (alternativeProteinNodes.MoveNext())
             {
@@ -456,6 +461,32 @@ namespace CometUI.ViewResults
 
             var altProteinResultField = new TypedSearchResultField<List<ProteinInfo>>(altProteinsList);
             result.Fields.Add("alternative_protein", altProteinResultField);
+
+            return true;
+        }
+
+        private bool ReadSearchScores(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
+        {
+            var searchScoreNodes = pepXMLReader.ReadDescendants(searchHitNavigator, "search_score");
+            while (searchScoreNodes.MoveNext())
+            {
+                var searchScoreNavigator = searchScoreNodes.Current;
+                String name = pepXMLReader.ReadAttribute(searchScoreNavigator, "name");
+                if (name.Equals(String.Empty))
+                {
+                    ErrorMessage = "Could not read a search score name attribute.";
+                    return false;
+                }
+
+                double value;
+                if (!pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out value))
+                {
+                    ErrorMessage = "Could not read a search score value attribute.";
+                    return false;
+                }
+
+                result.Fields.Add(name, new TypedSearchResultField<double>(value));
+            }
 
             return true;
         }
