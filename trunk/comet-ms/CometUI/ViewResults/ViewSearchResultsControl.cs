@@ -77,8 +77,7 @@ namespace CometUI.ViewResults
             {
                 ResultsPepXMLFile = resultsPepXMLFile;
                 ShowResultsListPanel(String.Empty != ResultsPepXMLFile);
-                UpdateColumnHeaders();
-
+                
                 if (!ViewResultsSummaryOptionsControl.UpdateSummaryOptions())
                 {
                     MessageBox.Show(ViewResultsSummaryOptionsControl.ErrorMessage,
@@ -86,12 +85,14 @@ namespace CometUI.ViewResults
                                     MessageBoxIcon.Error);
                 }
 
-                if (!UpdateSearchResultsList())
+                if (!ReadSearchResults())
                 {
                     MessageBox.Show(ErrorMessage, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
                                     MessageBoxIcon.Error);
                 }
             }
+
+            UpdateSearchResultsList();
         }
 
         public void SaveViewResultsSettings()
@@ -103,12 +104,67 @@ namespace CometUI.ViewResults
             }
         }
 
-        public void UpdateColumnHeaders()
+        public void UpdateSearchResultsList()
         {
             resultsListView.BeginUpdate();
 
-            resultsListView.Columns.Clear();
+            resultsListView.Clear();
 
+            UpdateColumnHeaders();
+            
+            foreach (var searchResult in SearchResults)
+            {
+                var row = new List<string>();
+                foreach (ColumnHeader column in resultsListView.Columns)
+                {
+                    var columnHeader = column.Text;
+                    switch (columnHeader)
+                    {
+                        case "#":
+                        case "INDEX":
+                            var index = (TypedSearchResultField<int>)searchResult.Fields["index"];
+                            row.Add(Convert.ToString(index.Value));
+                            break;
+
+                        case "SPECTRUM":
+                            var spectrum = (TypedSearchResultField<String>)searchResult.Fields["spectrum"];
+                            row.Add(spectrum.Value);
+                            break;
+
+                        case "PROB":
+                        case "PROBABILITY":
+                            ISearchResultField probField;
+                            if (searchResult.Fields.TryGetValue("probability", out probField))
+                            {
+                                var probability = (TypedSearchResultField<double>) probField;
+                                row.Add(Convert.ToString(probability.Value));
+                            }
+                            else
+                            {
+                                row.Add(String.Empty);
+                            }
+                            break;
+
+                        default:
+                            row.Add(String.Empty);
+                            break;
+                    }
+                }
+
+                var item = new ListViewItem(row[0]);
+                for (int i = 1; i < row.Count; i++)
+                {
+                    item.SubItems.Add(row[i]);
+                }
+
+                resultsListView.Items.Add(item);
+            }
+
+            resultsListView.EndUpdate();
+        }
+
+        private void UpdateColumnHeaders()
+        {
             foreach (var item in CometUI.ViewResultsSettings.PickColumnsShowList)
             {
                 String columnHeader;
@@ -125,16 +181,15 @@ namespace CometUI.ViewResults
 
                 resultsListView.Columns.Add(columnHeader);
             }
-
-            resultsListView.EndUpdate();
         }
 
-        private bool UpdateSearchResultsList()
+        private bool ReadSearchResults()
         {
+            SearchResults.Clear();
+
             String resultsFile = ResultsPepXMLFile;
             if (String.Empty == resultsFile)
             {
-                SearchResults.Clear();
                 return true;
             }
 
@@ -152,16 +207,16 @@ namespace CometUI.ViewResults
                 return false;
             }
 
-            if (!ReadResults(pepXMLReader))
+            if (!ReadResultsFromPepXML(pepXMLReader))
             {
-                ErrorMessage = "Could not update the search results list. " + ErrorMessage;
+                ErrorMessage = "Could not read the search results. " + ErrorMessage;
                 return false;
             }
 
             return true;
         }
 
-        private bool ReadResults(PepXMLReader pepXMLReader)
+        private bool ReadResultsFromPepXML(PepXMLReader pepXMLReader)
         {
             var spectrumQueryNodes = pepXMLReader.ReadNodes("/msms_pipeline_analysis/msms_run_summary/spectrum_query");
             while (spectrumQueryNodes.MoveNext())
@@ -204,6 +259,15 @@ namespace CometUI.ViewResults
                         if (!ReadSearchScores(pepXMLReader, searchHitNavigator, result))
                         {
                             return false;
+                        }
+
+                        var peptideprophetResultNavigator = pepXMLReader.ReadFirstMatchingDescendant(searchHitNavigator, "peptideprophet_result");
+                        if (null != peptideprophetResultNavigator)
+                        {
+                            if (!ReadPeptideProphetResults(pepXMLReader, peptideprophetResultNavigator, result))
+                            {
+                                return false;
+                            }
                         }
                     }
                 }
@@ -371,6 +435,17 @@ namespace CometUI.ViewResults
                 }
 
                 result.Fields.Add(name, new TypedSearchResultField<double>(value));
+            }
+
+            return true;
+        }
+
+        private bool ReadPeptideProphetResults(PepXMLReader pepXMLReader, XPathNavigator peptideprophetResultNavigator, SearchResult result)
+        {
+            if (!ResultFieldFromAttribute<double>(pepXMLReader, peptideprophetResultNavigator, "probability", result))
+            {
+                ErrorMessage = "Could not read the probability attribute.";
+                return false;
             }
 
             return true;

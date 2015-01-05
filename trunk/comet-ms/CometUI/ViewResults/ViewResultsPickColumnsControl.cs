@@ -204,7 +204,7 @@ namespace CometUI.ViewResults
 
         private void BtnUpdateResultsClick(object sender, EventArgs e)
         {
-            ViewSearchResultsControl.UpdateColumnHeaders();
+            ViewSearchResultsControl.UpdateSearchResultsList();
         }
 
         private void HiddenColumnsListBoxSelectedIndexChanged(object sender, EventArgs e)

@@ -35,7 +35,7 @@ namespace CometUI.ViewResults
 
         private void BtnUpdateResultsClick(object sender, System.EventArgs e)
         {
-            ViewSearchResultsControl.UpdateColumnHeaders();
+            ViewSearchResultsControl.UpdateSearchResultsList();
         }
 
         private void RowsPerPageComboSelectedIndexChanged(object sender, System.EventArgs e)

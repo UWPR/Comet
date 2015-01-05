@@ -61,6 +61,18 @@ namespace CometUI.ViewResults
             return nodeNav.SelectDescendants(name, NamespaceURI, true);
         }
 
+        public XPathNavigator ReadFirstMatchingDescendant(XPathNavigator nodeNav, String name)
+        {
+            var descendants = nodeNav.SelectDescendants(name, NamespaceURI, true);
+            if (descendants.Count == 0)
+            {
+                return null;
+            }
+
+            descendants.MoveNext();
+            return descendants.Current;
+        }
+
         public XPathNodeIterator ReadChildren(XPathNavigator nodeNav, String name)
         {
             return nodeNav.SelectChildren(name, NamespaceURI);
