@@ -161,24 +161,40 @@ namespace CometUI.ViewResults
                             row.Add(Convert.ToString(expMass.Value));
                             break;
 
-
-                        case "SPECTRUM":
-                            var spectrum = (TypedSearchResultField<String>)searchResult.Fields["spectrum"];
-                            row.Add(spectrum.Value);
-                            break;
-
                         case "PROB":
                         case "PROBABILITY":
                             ISearchResultField probField;
                             if (searchResult.Fields.TryGetValue("probability", out probField))
                             {
-                                var probability = (TypedSearchResultField<double>) probField;
+                                var probability = (TypedSearchResultField<double>)probField;
                                 row.Add(Convert.ToString(probability.Value));
                             }
                             else
                             {
                                 row.Add(String.Empty);
                             }
+                            break;
+
+                        case "SSCAN":
+                        case "START_SCAN":
+                            var sscan = (TypedSearchResultField<int>)searchResult.Fields["start_scan"];
+                            row.Add(Convert.ToString(sscan.Value));
+                            break;
+
+                        case "CALC_MASS":
+                        case "CALC_NEUTRAL_PEP_MASS":
+                            var calcMass = (TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"];
+                            row.Add(Convert.ToString(calcMass.Value));
+                            break;
+
+                        case "SPECTRUM":
+                            var spectrum = (TypedSearchResultField<String>)searchResult.Fields["spectrum"];
+                            row.Add(spectrum.Value);
+                            break;
+
+                        case "RETENTION_TIME_SEC":
+                            var retentionTime = (TypedSearchResultField<double>)searchResult.Fields["retention_time_sec"];
+                            row.Add(Convert.ToString(retentionTime.Value));
                             break;
 
                         default:
