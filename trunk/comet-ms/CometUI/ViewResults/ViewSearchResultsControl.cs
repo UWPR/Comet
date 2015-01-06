@@ -155,6 +155,13 @@ namespace CometUI.ViewResults
                             row.Add(Convert.ToString(charge.Value));
                             break;
 
+                        case "PRECURSOR_NEUTRAL_MASS":
+                        case "EXP_MASS":
+                            var expMass = (TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"];
+                            row.Add(Convert.ToString(expMass.Value));
+                            break;
+
+
                         case "SPECTRUM":
                             var spectrum = (TypedSearchResultField<String>)searchResult.Fields["spectrum"];
                             row.Add(spectrum.Value);
@@ -250,6 +257,8 @@ namespace CometUI.ViewResults
             var spectrumQueryNodes = pepXMLReader.ReadNodes("/msms_pipeline_analysis/msms_run_summary/spectrum_query");
             while (spectrumQueryNodes.MoveNext())
             {
+                bool noSearchHits = false;
+
                 var spectrumQueryNavigator = spectrumQueryNodes.Current;
                 var result = new SearchResult();
 
@@ -263,45 +272,50 @@ namespace CometUI.ViewResults
                 {
                     var searchResultNavigator = searchResultNodes.Current;
                     var searchHitNavigator = pepXMLReader.ReadFirstMatchingChild(searchResultNavigator, "search_hit");
-                    if (null != searchHitNavigator)
+                    if (null == searchHitNavigator)
                     {
-                        if (!ReadSearchHitAttributes(pepXMLReader, searchHitNavigator, result))
+                        noSearchHits = true;
+                        break;
+                    }
+                    if (!ReadSearchHitAttributes(pepXMLReader, searchHitNavigator, result))
+                    {
+                        return false;
+                    }
+
+                    int numProteins;
+                    if (!pepXMLReader.ReadAttribute(searchHitNavigator, "num_tot_proteins", out numProteins))
+                    {
+                        ErrorMessage = "Could not read the num_tot_proteins attribute.";
+                        return false;
+                    }
+
+                    if (numProteins > 1)
+                    {
+                        if (!ReadAlternativeProteins(pepXMLReader, searchHitNavigator, result))
                         {
                             return false;
                         }
+                    }
 
-                        int numProteins;
-                        if (!pepXMLReader.ReadAttribute(searchHitNavigator, "num_tot_proteins", out numProteins))
-                        {
-                            ErrorMessage = "Could not read the num_tot_proteins attribute.";
-                            return false;
-                        }
+                    if (!ReadSearchScores(pepXMLReader, searchHitNavigator, result))
+                    {
+                        return false;
+                    }
 
-                        if (numProteins > 1)
-                        {
-                            if (!ReadAlternativeProteins(pepXMLReader, searchHitNavigator, result))
-                            {
-                                return false;
-                            }
-                        }
-
-                        if (!ReadSearchScores(pepXMLReader, searchHitNavigator, result))
+                    var peptideprophetResultNavigator = pepXMLReader.ReadFirstMatchingDescendant(searchHitNavigator, "peptideprophet_result");
+                    if (null != peptideprophetResultNavigator)
+                    {
+                        if (!ReadPeptideProphetResults(pepXMLReader, peptideprophetResultNavigator, result))
                         {
                             return false;
-                        }
-
-                        var peptideprophetResultNavigator = pepXMLReader.ReadFirstMatchingDescendant(searchHitNavigator, "peptideprophet_result");
-                        if (null != peptideprophetResultNavigator)
-                        {
-                            if (!ReadPeptideProphetResults(pepXMLReader, peptideprophetResultNavigator, result))
-                            {
-                                return false;
-                            }
                         }
                     }
                 }
 
-                SearchResults.Add(result);
+                if (!noSearchHits)
+                {
+                    SearchResults.Add(result);
+                }
             }
 
             return true;
