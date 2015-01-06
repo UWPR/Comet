@@ -36,9 +36,6 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
 {
    bool bSucceeded = true;
 
-   if (!g_staticParams.options.bOutputSqtStream)
-      logout(" - Perform post-search analysis\n");
-
    // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to do a post analysis.
    ThreadPool<PostAnalysisThreadData *> *pPostAnalysisThreadPool = new ThreadPool<PostAnalysisThreadData*>(PostAnalysisThreadProc,
@@ -550,7 +547,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
    int ii;
    int j;
    int k;
-   int iFastXcorrIndex;
    int iLastFastXcorrIndex;
    int iMaxFragCharge;
    int ctCharge;
@@ -669,56 +665,37 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
                iFragmentIonMass = BIN(dFragmentIonMass);
 
-               if (g_staticParams.options.bSparseMatrix)
+               if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                {
-                  if (iFragmentIonMass < pQuery->pSparseFastXcorrData[pQuery->iFastXcorrData-1].bin && iFragmentIonMass >= 0)
+                  if (g_staticParams.options.bSparseMatrix)
                   {
-                     iFastXcorrIndex = FindFastXcorrIndex(pQuery, iFragmentIonMass, iLastFastXcorrIndex);
-                     dFastXcorr += pQuery->pSparseFastXcorrData[iFastXcorrIndex].fIntensity;
-
-                     iLastFastXcorrIndex=iFastXcorrIndex;
+                     int x = iFragmentIonMass / 10;
+                     if (pQuery->ppfSparseFastXcorrData[x]!=NULL)
+                     {
+                        int y = iFragmentIonMass - (x*10);
+                        dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
+                     }
                   }
                   else
                   {
-                     char szErrorMsg[256];
-                     sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
-                           dFragmentIonMass, 
-                           iFragmentIonMass,
-                           pQuery->_spectrumInfoInternal.iArraySize, 
-                           pQuery->_pepMassInfo.dExpPepMass,
-                           pQuery->_spectrumInfoInternal.iScanNumber,
-                           ctCharge);
-                  
-                     string strErrorMsg(szErrorMsg);
-                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                     logerr("\n Comet version \"%s\"\n\n", comet_version);
-                     logerr("%s\n\n", szErrorMsg);
-                     return false;
+                     dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
                   }
                }
                else
                {
-                  if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
-                  {
-                     dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
-                  }
-                  else
-                  {
-                     char szErrorMsg[256];
-                     sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
-                           dFragmentIonMass,
-                           iFragmentIonMass,
-                           pQuery->_spectrumInfoInternal.iArraySize,
-                           pQuery->_pepMassInfo.dExpPepMass,
-                           pQuery->_spectrumInfoInternal.iScanNumber,
-                           ctCharge);
+                  char szErrorMsg[256];
+                  sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
+                        dFragmentIonMass,
+                        iFragmentIonMass,
+                        pQuery->_spectrumInfoInternal.iArraySize,
+                        pQuery->_pepMassInfo.dExpPepMass,
+                        pQuery->_spectrumInfoInternal.iScanNumber,
+                        ctCharge);
                   
-                     string strErrorMsg(szErrorMsg);
-                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                     logerr("\n Comet version \"%s\"\n\n", comet_version);
-                     logerr("%s\n\n", szErrorMsg);
-                     return false;
-                  }
+                  string strErrorMsg(szErrorMsg);
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(szErrorMsg);
+                  return false;
                }
 
                if (dBion > dPepMass)
@@ -754,70 +731,10 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 float CometPostAnalysis::FindSpScore(Query *pQuery,
                                      int bin)
 {
-   int lower;
-   int mid;
-   int upper;
-   int sz=pQuery->iSpScoreData;
-
-   mid=sz/2;
-   lower=0;
-   upper=sz;
-
-   while(pQuery->pSparseSpScoreData[mid].bin!=bin)
-   {
-      if(lower>=upper) 
-         return 0.0f;
-
-      if(bin<pQuery->pSparseSpScoreData[mid].bin)
-      {
-         upper=mid-1;
-         mid=(lower+upper)/2;
-      } 
-      else 
-      {
-         lower=mid+1;
-         mid=(lower+upper)/2;
-      }
-
-      if(mid==sz) 
-         return 0.0f;
-   }
-   return pQuery->pSparseSpScoreData[mid].fIntensity;
+   int x = bin / 10;
+   if (pQuery->ppfSparseSpScoreData[x] == NULL)
+      return 0.0f;
+   int y = bin - (x*10);
+   return pQuery->ppfSparseSpScoreData[x][y];
 }
 
-
-int CometPostAnalysis::FindFastXcorrIndex(Query *pQuery,
-                                          int bin,
-                                          int low)
-{
-   int lower=low;
-   int upper=pQuery->iFastXcorrData;
-   int sz=upper-low;
-   int mid=sz/2+low;
-   
-   while(pQuery->pSparseFastXcorrData[mid].bin!=bin)
-   {
-      if(lower>=upper) 
-      {
-         if(pQuery->pSparseFastXcorrData[mid].bin<bin)
-            return mid;
-         else
-            return mid-1;
-      }
-
-      if(bin<pQuery->pSparseFastXcorrData[mid].bin)
-      {
-         upper=mid-1;
-         mid=(lower+upper)/2;
-      } 
-      else 
-      {
-         lower=mid+1;
-         mid=(lower+upper)/2;
-      }
-
-      if(mid==pQuery->iFastXcorrData)
-         return mid-1;
-   }
-   return mid;
-}

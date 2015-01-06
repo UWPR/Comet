@@ -227,10 +227,11 @@ enum AnalysisType
 // enum in CometDataWrapper.h in the CometWrapper namespace.
 enum InputType 
 {
+   InputType_UNKNOWN = -1,
    InputType_MS2 = 0,           // ms2, cms2, bms2, etc.
    InputType_MZXML,
    InputType_MZML,
-   InputType_CMS2
+   InputType_RAW
 };
 
 struct InputFileInfo

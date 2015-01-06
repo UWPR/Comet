@@ -618,12 +618,12 @@ struct Query
    unsigned long int  _uliNumMatchedDecoyPeptides;
 
    // Sparse matrix representation of data
-   int iSpScoreData;  //size of sparse matrix
-   int iFastXcorrData;
-   int iFastXcorrDataNL;
-   struct SparseMatrix *pSparseSpScoreData;
-   struct SparseMatrix *pSparseFastXcorrData;
-   struct SparseMatrix *pSparseFastXcorrDataNL;
+   int iSpScoreData;    //size of sparse matrix
+   int iFastXcorrData;  //MH: I believe these are all the same size now.
+   int iFastXcorrDataNL; 
+   float **ppfSparseSpScoreData;
+   float **ppfSparseFastXcorrData;
+   float **ppfSparseFastXcorrDataNL;
 
    // Standard array representation of data
    float *pfSpScoreData;
@@ -664,9 +664,9 @@ struct Query
       _uliNumMatchedPeptides = 0;
       _uliNumMatchedDecoyPeptides = 0;
 
-      pSparseSpScoreData = NULL;
-      pSparseFastXcorrData = NULL;
-      pSparseFastXcorrDataNL= NULL;          // pfFastXcorrData with NH3, H2O contributions
+      ppfSparseSpScoreData = NULL;
+      ppfSparseFastXcorrData = NULL;
+      ppfSparseFastXcorrDataNL = NULL;          // pfFastXcorrData with NH3, H2O contributions
 
       pfSpScoreData = NULL;
       pfFastXcorrData = NULL;
@@ -694,19 +694,35 @@ struct Query
    {
       if (g_staticParams.options.bSparseMatrix)
       {
-         delete[] pSparseSpScoreData;
-         pSparseSpScoreData = NULL;
+         int i;
+         for (i=0;i<iSpScoreData;i++) 
+         {
+            if (ppfSparseSpScoreData[i] != NULL)
+               delete[] ppfSparseSpScoreData[i];
+         }
+         delete[] ppfSparseSpScoreData;
+         ppfSparseSpScoreData = NULL;
          
-         delete[] pSparseFastXcorrData;
-         pSparseFastXcorrData = NULL;
+         for (i=0;i<iFastXcorrData;i++) 
+         {
+            if (ppfSparseFastXcorrData[i] != NULL)
+               delete[] ppfSparseFastXcorrData[i];
+         }
+         delete[] ppfSparseFastXcorrData;
+         ppfSparseFastXcorrData = NULL;
 
          if (g_staticParams.ionInformation.bUseNeutralLoss
                && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
-            delete[] pSparseFastXcorrDataNL;
-            pSparseFastXcorrDataNL = NULL;
+            for (i=0;i<iFastXcorrDataNL;i++) 
+            {
+               if (ppfSparseFastXcorrDataNL[i]!=NULL)
+                  delete[] ppfSparseFastXcorrDataNL[i];
+            }
+            delete[] ppfSparseFastXcorrDataNL;
+            ppfSparseFastXcorrDataNL = NULL;
          }
       }
       else
@@ -714,8 +730,11 @@ struct Query
          delete[] pfSpScoreData;
          pfSpScoreData = NULL;
 
-         delete[] pfFastXcorrData;
-         pfFastXcorrData = NULL;
+         if (pfFastXcorrData!=NULL)
+         {
+            delete[] pfFastXcorrData;
+            pfFastXcorrData = NULL;
+         }
 
          if (g_staticParams.ionInformation.bUseNeutralLoss
                && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]

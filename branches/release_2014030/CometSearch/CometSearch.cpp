@@ -62,12 +62,12 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s\n", iArraySize, ba.what());
-         sprintf(szErrorMsg+strlen(szErrorMsg), "Search ran out of memory. Look into \"spectrum_batch_size\" and \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr("%s\n\n", szErrorMsg);
+         logerr(szErrorMsg);
          return false;
       }
    }
@@ -109,7 +109,12 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to so a search.
-   ThreadPool<SearchThreadData *> *pSearchThreadPool = new ThreadPool<SearchThreadData *>(SearchThreadProc, minNumThreads, maxNumThreads);
+   // NOTE: We don't want to read in ALL the database sequences at once or we
+   // will run out of memory for large databases, so we specify a 
+   // "maxNumParamsToQueue" to indicate that, at most, we will only read in
+   // and queue "maxNumParamsToQueue" additional parameters (1 in this case) 
+   ThreadPool<SearchThreadData *> *pSearchThreadPool = new ThreadPool<SearchThreadData *>(SearchThreadProc, 
+       minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
 
    g_staticParams.databaseInfo.uliTotAACount = 0;
    g_staticParams.databaseInfo.iTotalNumProteins = 0;
@@ -117,10 +122,10 @@ bool CometSearch::RunSearch(int minNumThreads,
    if ((fptr=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".", g_staticParams.databaseInfo.szDatabase); 
+      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase); 
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
-      logerr("%s\n\n", szErrorMsg);
+      logerr(szErrorMsg);
       return false;
    }
 
@@ -129,20 +134,23 @@ bool CometSearch::RunSearch(int minNumThreads,
    rewind(fptr);
 
    // Load database entry header.
-   lCurrPos=ftell(fptr);
+   lCurrPos = ftell(fptr);
    iTmpCh = getc(fptr);
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      logout(" - Search progress: ");
+      logout("     - Search progress: ");
       fflush(stdout);
    }
 
    // Loop through entire database.
    while(!feof(fptr))
    {
-      // Queue at most 1 additional parameter for threads to process.
-      pSearchThreadPool->WaitForQueuedParams(1);
+      // When we created the thread pool above, we specified the max number of
+      // additional params to queue. Here, we must call this method if we want
+      // to wait for the queued params to be processed by the threads before we 
+      // load any more params.
+      pSearchThreadPool->WaitForQueuedParams();
 
       dbe.strName = "";
       dbe.strSeq = "";
@@ -150,16 +158,17 @@ bool CometSearch::RunSearch(int minNumThreads,
       // Expect a '>' for sequence header line.
       if (iTmpCh != '>')
       {
-         string strError = " Error - database file, expecting definition line here.";
+         string strError = " Error - database file, expecting definition line here.\n";
          string strFormatError = strError + "\n";
          g_cometStatus.SetStatus(CometResult_Failed, strError);
          logerr(strFormatError.c_str());
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr(" %c%s", iTmpCh, szBuf);
+         sprintf(szBuf, " %c%s", iTmpCh, szBuf);
+         logerr(szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr(" %s", szBuf);
+         logerr(szBuf);
          fgets(szBuf, SIZE_BUF, fptr);
-         logerr(" %s", szBuf);
+         logerr(szBuf);
          return false;
       } 
 
@@ -190,11 +199,11 @@ bool CometSearch::RunSearch(int minNumThreads,
       if (!g_staticParams.options.bOutputSqtStream
             && !(g_staticParams.databaseInfo.iTotalNumProteins%200))
       {
+         char szTmp[128];
          lCurrPos = ftell(fptr);
-
          // go from iPercentStart to iPercentEnd, scaled by lCurrPos/iEndPos
-         logout("%3d%%", (int)(((double)(iPercentStart + (iPercentEnd-iPercentStart)*(double)lCurrPos/(double)lEndPos) ))); 
-
+         sprintf(szTmp, "%3d%%", (int)(((double)(iPercentStart + (iPercentEnd-iPercentStart)*(double)lCurrPos/(double)lEndPos) ))); 
+         logout(szTmp);
          fflush(stdout);
          logout("\b\b\b\b");
       }
@@ -228,8 +237,9 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      logout("%3d%%\n", iPercentEnd);
-
+      char szTmp[12];
+      sprintf(szTmp, "%3d%%\n", iPercentEnd);
+      logout(szTmp);
       fflush(stdout);
    }
 
@@ -367,12 +377,12 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          catch (std::bad_alloc& ba)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s\n", seqSize, ba.what());
-            sprintf(szErrorMsg+strlen(szErrorMsg), "Search ran out of memory. Look into \"spectrum_batch_size\" and \"use_sparse_matrix\"\n");
+            sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.\n", seqSize, ba.what());
+            sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
             sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             return false;
          }
 
@@ -963,10 +973,10 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
       else
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!", g_staticParams.tolerances.iIsotopeError);
+         sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!\n", g_staticParams.tolerances.iIsotopeError);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr("%s\n\n", szErrorMsg);
+         logerr(szErrorMsg);
          return false;
       }
    }
@@ -1001,11 +1011,11 @@ bool CometSearch::TranslateNA2AA(int *frame,
                sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
- the sequence into multiple, overlapping, smaller entries.", ii); 
+ the sequence into multiple, overlapping, smaller entries.\n", ii); 
                   
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr("%s\n\n", szErrorMsg);
+               logerr(szErrorMsg);
                return false;
             }
 
@@ -1036,11 +1046,11 @@ bool CometSearch::TranslateNA2AA(int *frame,
                sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
- the sequence into multiple, overlapping, smaller entries.", ii); 
+ the sequence into multiple, overlapping, smaller entries.\n", ii); 
                   
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr("%s\n\n", szErrorMsg);
+               logerr(szErrorMsg);
                return false;
             }
 
@@ -1195,7 +1205,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    bool bUseNLPeaks = false;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   struct SparseMatrix *pSparseFastXcorrData;  // use this if bSparseMatrix
+   float **ppSparseFastXcorrData;              // use this if bSparseMatrix
    float *pFastXcorrData;                      // use this if not using SparseMatrix
 
    dXcorr = 0.0;
@@ -1216,28 +1226,29 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
          if (ctCharge == 1 && bUseNLPeaks)
          {
-            pSparseFastXcorrData = pQuery->pSparseFastXcorrDataNL;
+            ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrDataNL;
             pFastXcorrData = pQuery->pfFastXcorrDataNL;
          }
          else
          {
-            pSparseFastXcorrData = pQuery->pSparseFastXcorrData;
+            ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
             pFastXcorrData = pQuery->pfFastXcorrData;
          }
 
          if (g_staticParams.options.bSparseMatrix)
          {
-            //MH: ratchet through pfFastXcorrData
-            //This assumes fragment ions are in order...
-            int xx=0;
+            int bin,x,y;
             for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
             {
-               if(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)==0)
+               //MH: newer sparse matrix converts bin to sparse matrix bin
+               bin = *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen);
+               x = bin / 10;
+               if (ppSparseFastXcorrData[x]==NULL) 
                   continue;
-               while( *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) >=  (unsigned)pSparseFastXcorrData[xx].bin)
-                  xx++;
-               dXcorr += pSparseFastXcorrData[xx-1].fIntensity;
+               y = bin - (x*10);
+               dXcorr += ppSparseFastXcorrData[x][y];
             }
+            
          }
          else
          {
@@ -1621,15 +1632,25 @@ void CometSearch::SubtractVarMods(int *piVarModCounts,
          }
          else
          {
-            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // n-term
+            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)      // protein N
             {
                if (iResiduePosition <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
                   piVarModCounts[i]--;
             }
-            else // c-term
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
             {
-              if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+               if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
                   piVarModCounts[i]--;
+            }
+            // Do we just let possible mod residue simply drop off here and
+            // deal with peptide distance constraint later??  I think so.
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
+            {
+               piVarModCounts[i]--;
+            }
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3) // peptide C
+            {
+               piVarModCounts[i]--;
             }
          } 
       }
@@ -1654,15 +1675,24 @@ void CometSearch::CountVarMods(int *piVarModCounts,
          }
          else
          {
-            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // n-term distance
+            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)      // protein N
             {
                if (iResiduePosition <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
                   piVarModCounts[i]++;
             }
-            else // c-term distance
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
             {
               if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
                   piVarModCounts[i]++;
+            }
+            // deal with peptide terminal distance constraint elsewhere
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
+            {
+               piVarModCounts[i]++;
+            }
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3) // peptide C
+            {
+               piVarModCounts[i]++;
             }
          } 
       }
@@ -1704,7 +1734,7 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
          {
             // if n-term distance constraint is specified, make sure first residue for n-term
             // mod or last residue for c-term mod are within distance constraint
-            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)
+            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)       // protein N
             {
                // a distance contraint limiting terminal mod to n-terminus
                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
@@ -1720,7 +1750,7 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
             }
             // if c-cterm distance constraint specified, must make sure terminal mods are
             // at the end within the distance constraint
-            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)  // protein C
             {
                // a distance contraint limiting terminal mod to c-terminus
                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
@@ -1733,6 +1763,35 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
                {
                   return true;
                }
+            }
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)  // peptide N
+            { 
+               // if distance contraint is from peptide n-term and n-term mod is specified
+               if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n'))
+               {
+                  return true;
+               }
+               // if distance constraint is from peptide n-term, make sure c-term is within that distance from the n-term
+               if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
+                     && iEndPos - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+               {
+                  return true;
+               }
+            }
+            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)  // peptide C
+            {
+               // if distance contraint is from peptide c-term and c-term mod is specified
+               if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
+               {
+                  return true;
+               }
+               // if distance constraint is from peptide c-term, make sure n-term is within that distance from the c-term
+               if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
+                     && iEndPos - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+               {
+                  return true;
+               }
+
             }
          }
       }
@@ -1780,25 +1839,26 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
                piVarModCountsNC[i] += 1;
          }
-         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)
+         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)  // protein N
          {
-            // a distance contraint limiting terminal mod to n-terminus
+            // a distance contraint limiting terminal mod to protein N-terminus
             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
                   && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
             {
                piVarModCountsNC[i] += 1;
             }
-            // since don't know if iEndPos is last residue in peptide (not necessarily),
+            // Since don't know if iEndPos is last residue in peptide (not necessarily),
             // have to be conservative here and count possible c-term mods if within iStartPos+3
+            // Honestly not sure why I chose iStartPos+3 here.
             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
                   && iStartPos+3 <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
             {
                piVarModCountsNC[i] += 1;
             }
          }
-         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)
+         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)  // protein C
          {
-            // a distance contraint limiting terminal mod to c-terminus
+            // a distance contraint limiting terminal mod to protein C-terminus
             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
                   && iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
             {
@@ -1806,6 +1866,30 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
             }
             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
                   && iStartPos+3 + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+            {
+               piVarModCountsNC[i] += 1;
+            }
+         }
+         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)  // peptide N
+         {
+            if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n'))
+            {
+               piVarModCountsNC[i] += 1;
+            }
+            if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
+                  && iEndPos - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+            {
+               piVarModCountsNC[i] += 1;
+            }
+         }
+         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)  // peptide C
+         {
+            if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
+                  && iEndPos - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+            {
+               piVarModCountsNC[i] += 1;
+            }
+            if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
             {
                piVarModCountsNC[i] += 1;
             }
@@ -1923,16 +2007,27 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                                 if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
                                                    _varModInfo.varModStatList[i].iTotVarModCt++;
 
-                                                else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)
+                                                else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
                                                 {
                                                    if (iTmpEnd <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
                                                       _varModInfo.varModStatList[i].iTotVarModCt++;
                                                 }
-                                                else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)
+                                                else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
                                                 {
-                                                   if (iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+                                                   if (iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
+                                                         >= _proteinInfo.iProteinSeqLength-1)
+                                                   {
+                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                   }
+                                                }
+                                                else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
+                                                {
+                                                   if (iTmpEnd - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
                                                       _varModInfo.varModStatList[i].iTotVarModCt++;
                                                 }
+
+                                                // analyse peptide C term mod later as iTmpEnd is variable
+
                                              }
    
                                              // consider n-term mods only for start residue
@@ -1969,17 +2064,48 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                              // Add in possible c-term variable mods
                                              if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
                                              {
-                                                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
-                                                      && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
-                                                         || iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
-                                                         >= _proteinInfo.iProteinSeqLength-1))
+                                                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
                                                 {
-                                                   _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                   // valid if no distance contraint or if defined constraint is on peptide c-terminus
+                                                   if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1
+                                                         || g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)
+                                                   {
+                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                   }
+                                                   else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
+                                                   {
+                                                      if (iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
+                                                            >= _proteinInfo.iProteinSeqLength-1)
+                                                      {
+                                                         _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                      }
+                                                   }
+                                                }
+                                             }
+                                          }
+
+                                          // also need to consider all residue mods that have a peptide c-term distance
+                                          // constraint because these depend on iTmpEnd which was not defined until now
+                                          int x;
+                                          for (x=iStartPos; x<=iTmpEnd; x++)
+                                          {
+                                             cResidue = szProteinSeq[x];
+
+                                             for (i=0; i<VMODS; i++)
+                                             {
+                                                if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+                                                      && g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3
+                                                      && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
+                                                {
+                                                   if (iTmpEnd - x <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                   {
+                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                   }
                                                 }
                                              }
                                           }
                                        }
-      
+
                                        if (bValid)
                                        {
                                           // Check to make sure # required mod are actually present in
@@ -2130,10 +2256,10 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          break;
       default:
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - in CometSearch::PermuteMods, iWhichIndex=%d (valid range 1 to 9)", iWhichMod);
+         sprintf(szErrorMsg,  " Error - in CometSearch::PermuteMods, iWhichIndex=%d (valid range 1 to 9)\n", iWhichMod);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr("%s\n\n", szErrorMsg);
+         logerr(szErrorMsg);
          return false;
    }
 

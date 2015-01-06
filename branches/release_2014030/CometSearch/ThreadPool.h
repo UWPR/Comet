@@ -53,14 +53,17 @@ public:
 // typedef enum NextThreadState { Run, Sleep, Die } ;
    enum NextThreadState { Run, Sleep, Die } ;
 
-   ThreadPool(ThreadProc threadProc, int minThreads, int maxThreads)
+   ThreadPool(ThreadProc threadProc, int minThreads, int maxThreads, int maxNumParamsToQueue = -1)
    {
       _minThreads = minThreads;
       _maxThreads = maxThreads;
       _threadProc = threadProc;
+      _maxQueuedParams = maxNumParamsToQueue;
 
       Threading::CreateMutex(&_poolAccessMutex);
-      
+
+      Threading::CreateSemaphore(&_queueParamsSemaphore);
+
       for (_numCurrThreads=0; _numCurrThreads < _minThreads; _numCurrThreads++) 
       {
          new ThreadManager<T>(this);
@@ -75,6 +78,8 @@ public:
      }
 
      Threading::DestroyMutex(_poolAccessMutex);
+
+     Threading::DestroySemaphore(_queueParamsSemaphore);
    }
 
    ThreadProc GetThreadProc() { return _threadProc; }
@@ -165,12 +170,23 @@ public:
       }
    }
 
-   void WaitForQueuedParams(int maxNumQueuedParamsAllowed, unsigned long ulWaitPeriodMilliseconds = 10)
-   {
-      while (NumParamsQueued() > maxNumQueuedParamsAllowed)
+   void WaitForQueuedParams()
+   {  
+      if (ShouldCheckQueuedParams() && (NumParamsQueued() > _maxQueuedParams))
       {
-         Threading::ThreadSleep(ulWaitPeriodMilliseconds);
+         Threading::WaitSemaphore(_queueParamsSemaphore);
       }
+   }
+
+   void CheckQueuedParams()
+   {
+       if (ShouldCheckQueuedParams())
+       {
+           if (NumParamsQueued() <= _maxQueuedParams)
+           {
+               QueueMoreParams();
+           }
+       }
    }
 
    int NumParamsQueued()
@@ -190,6 +206,17 @@ public:
    }
 
 protected:
+   bool ShouldCheckQueuedParams()
+   {
+       // Only check for queued params if we have a valid number for _maxQueuedParams
+       return _maxQueuedParams != -1;
+   }
+
+   void QueueMoreParams()
+   {
+      Threading::SignalSemaphore(_queueParamsSemaphore);
+   }
+
    ThreadProc                     _threadProc;
    std::vector<ThreadManager<T>*> _threads;
    std::deque<T>                  _params;
@@ -197,6 +224,8 @@ protected:
    int                            _maxThreads;      
    int                            _minThreads;      
    int                            _numCurrThreads;
+   int                            _maxQueuedParams;
+   Semaphore                      _queueParamsSemaphore;
 };
 
 
@@ -282,7 +311,10 @@ public:
 
          // So we don't loop endlessly with the same parameter
          SetParam(NULL);
+
+         _pPool->CheckQueuedParams();
       }
+      
       // The thread exits if the pool won't accept it's rejoin - deleting itself on exit
       Threading::EndThread();
       delete this;

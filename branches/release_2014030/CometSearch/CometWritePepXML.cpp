@@ -117,10 +117,11 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    if ( (pStr = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - in WriteXMLHeader missing last period in file name: %s", g_staticParams.inputFile.szFileName);
+      sprintf(szErrorMsg,  " Error - in WriteXMLHeader missing last period in file name: %s\n",
+            g_staticParams.inputFile.szFileName);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr("%s\n", szErrorMsg);
+      logerr(szErrorMsg);
       return false;
    }
    //FIX:  if going to support .mzXML.gz, .mzML.gz files, need to back a second period

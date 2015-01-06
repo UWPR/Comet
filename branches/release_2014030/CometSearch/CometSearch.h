@@ -42,9 +42,11 @@ struct SearchThreadData
       // DO NOT FREE MEMORY HERE. Just release pointer.
       Threading::LockMutex(g_searchMemoryPoolMutex);
 
-      if(pbSearchMemoryPool!=NULL)
+      if (pbSearchMemoryPool!=NULL)
+      {
          *pbSearchMemoryPool=false;
-      pbSearchMemoryPool=NULL;
+         pbSearchMemoryPool=NULL;
+      }
 
       Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }

@@ -151,7 +151,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
       sprintf(szErrorMsg,  " Error - cannot write to file %s.\n", szOutput);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr("%s\n", szErrorMsg);
+      logerr(szErrorMsg);
       return false;
    }
 
@@ -608,7 +608,7 @@ void CometWriteOut::PrintIons(int iWhichQuery,
             {
                sprintf(szBuf+strlen(szBuf), "%9.4f", dFragmentIonMass);
 
-               if(FindSpScore(pQuery,BIN(dFragmentIonMass)) > FLOAT_ZERO)
+               if (FindSpScore(pQuery, BIN(dFragmentIonMass)) > FLOAT_ZERO)
                   sprintf(szBuf+strlen(szBuf), "+ ");
                else
                   sprintf(szBuf+strlen(szBuf), "  ");
@@ -627,33 +627,11 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 float CometWriteOut::FindSpScore(Query *pQuery,
                                  int bin)
 {
-   int lower;
-   int mid;
-   int upper;
-   int sz=pQuery->iSpScoreData;
+   int x = bin / 10;
 
-   mid=sz/2;
-   lower=0;
-   upper=sz;
+   if (pQuery->ppfSparseSpScoreData[x] == NULL)
+      return 0.0f;
 
-   while (pQuery->pSparseSpScoreData[mid].bin!=bin)
-   {
-      if (lower>=upper) 
-         return 0.0f;
-
-      if (bin<pQuery->pSparseSpScoreData[mid].bin)
-      {
-         upper=mid-1;
-         mid=(lower+upper)/2;
-      } 
-      else 
-      {
-         lower=mid+1;
-         mid=(lower+upper)/2;
-      }
-
-      if (mid==sz) 
-         return 0.0f;
-   }
-   return pQuery->pSparseSpScoreData[mid].fIntensity;
+   int y = bin - (x*10);
+   return pQuery->ppfSparseSpScoreData[x][y];
 }

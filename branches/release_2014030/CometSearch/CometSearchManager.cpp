@@ -66,6 +66,31 @@ static void GetHostName()
       *pStr = '\0';
 }
 
+static InputType GetInputType(const char *pszFileName)
+{
+   int iLen = strlen(pszFileName);
+
+   if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 6, ".mzXML")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".mzML")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".mz5")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 9, ".mzXML.gz")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 8, ".mzML.gz"))
+
+   {
+      return InputType_MZXML;
+   }
+   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".raw"))
+   {
+      return InputType_RAW;
+   }
+   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".ms2"))
+   {
+      return InputType_MS2;
+   }
+
+   return InputType_UNKNOWN;
+}
+
 static bool UpdateInputFile(InputFileInfo *pFileInfo)
 {
    bool bUpdateBaseName = false;
@@ -80,17 +105,13 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
    g_staticParams.inputFile = *pFileInfo;
 
-   int iLen = strlen(g_staticParams.inputFile.szFileName);
+   g_staticParams.inputFile.iInputType = GetInputType(g_staticParams.inputFile.szFileName);
 
-   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 6, ".mzXML")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 5, ".mzML")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 4, ".mz5")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
-
+   if (InputType_UNKNOWN == g_staticParams.inputFile.iInputType)
    {
-      g_staticParams.inputFile.iInputType = InputType_MZXML;
-   } 
+       return false;
+   }
+   int iLen = strlen(g_staticParams.inputFile.szFileName);
 
    // per request, perform quick check to validate file still exists
    // to avoid creating stub output files in these cases.
@@ -98,11 +119,11 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    if ( (fp=fopen(g_staticParams.inputFile.szFileName, "r"))==NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - cannot read input file \"%s\".",  g_staticParams.inputFile.szFileName);
+      sprintf(szErrorMsg,  " Error - cannot read input file \"%s\".\n",
+            g_staticParams.inputFile.szFileName);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr("%s\n\n", szErrorMsg);
+      logerr(szErrorMsg);
       return false;
    }
    else
@@ -143,11 +164,11 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
          if (err != EEXIST) 
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
+            sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",
+                  g_staticParams.inputFile.szBaseName);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr("\n Comet version \"%s\"\n\n", comet_version);
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             return false;
          }
       }
@@ -164,11 +185,10 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
             if (err != EEXIST) 
             {
                char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
+               sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr("\n Comet version \"%s\"\n\n", comet_version);
-               logerr("%s\n\n", szErrorMsg);
+               logerr(szErrorMsg);
                return false;
             }
          }
@@ -177,11 +197,11 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  g_staticParams.inputFile.szBaseName);
+         sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",
+               g_staticParams.inputFile.szBaseName);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr("\n Comet version \"%s\"\n\n", comet_version);
-         logerr("%s\n\n", szErrorMsg);
+         logerr(szErrorMsg);
          return false;
       }
       if (g_staticParams.options.iDecoySearch == 2)
@@ -192,11 +212,10 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - could not create directory \"%s\".",  szDecoyDir);
+            sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr("\n Comet version \"%s\"\n\n", comet_version);
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             return false;
          }
       }
@@ -234,10 +253,10 @@ static bool AllocateResultsMem()
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg, " Error - new(_pResults[]). bad_alloc: %s.", ba.what());
+         sprintf(szErrorMsg, " Error - new(_pResults[]). bad_alloc: %s.\n", ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
-         logerr("%s\n\n", szErrorMsg);
+         logerr(szErrorMsg);
          return false;
       }
 
@@ -250,10 +269,10 @@ static bool AllocateResultsMem()
          catch (std::bad_alloc& ba)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg, " Error - new(_pDecoys[]). bad_alloc: %s.", ba.what());
+            sprintf(szErrorMsg, " Error - new(_pDecoys[]). bad_alloc: %s.\n", ba.what());
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             return false;
          }
       }
@@ -405,8 +424,7 @@ static bool ValidateOutputFormat()
       string strError = " Please specify at least one output format.";
       
       g_cometStatus.SetStatus(CometResult_Failed, strError);
-      logerr("\n Comet version \"%s\"\n\n", comet_version);
-      string strErrorFormat = strError + "\n\n";
+      string strErrorFormat = strError + "\n";
       logerr(strErrorFormat.c_str());
       return false;
    }
@@ -423,12 +441,11 @@ static bool ValidateSequenceDatabaseFile()
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.", g_staticParams.databaseInfo.szDatabase);
-      
+      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
+            g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr("%s\n\n", szErrorMsg);
+      logerr(szErrorMsg);
       return false;
    }
 
@@ -441,14 +458,12 @@ static bool ValidateScanRange()
    if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.", 
+      sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.\n", 
             g_staticParams.options.scanRange.iStart,
             g_staticParams.options.scanRange.iEnd);
-      
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr("%s\n\n", szErrorMsg);
+      logerr(szErrorMsg);
       return false;
    }
 
@@ -1112,13 +1127,11 @@ bool CometSearchManager::InitializeStaticParams()
          || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - bin offset %f must between 0.0 and 1.0\n\n",
+      sprintf(szErrorMsg,  " Error - bin offset %f must between 0.0 and 1.0\n",
             g_staticParams.tolerances.dFragmentBinStartOffset);
-           
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr("\n Comet version \"%s\"\n\n", comet_version);
-      logerr("%s\n\n", szErrorMsg);
+      logerr(szErrorMsg);
       return false;
    }
 
@@ -1370,6 +1383,8 @@ void CometSearchManager::ResetSearchStatus()
 
 bool CometSearchManager::DoSearch()
 {
+   char szOut[256];
+
    if (!InitializeStaticParams())
    {
       return false;
@@ -1396,7 +1411,8 @@ bool CometSearchManager::DoSearch()
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      logout(" Comet version \"%s\"\n\n", comet_version);
+      sprintf(szOut, " Comet version \"%s\"\n\n", comet_version);
+      logout(szOut);
       fflush(stdout);
    }
 
@@ -1414,8 +1430,9 @@ bool CometSearchManager::DoSearch()
 
       if (!g_staticParams.options.bOutputSqtStream)
       {
-         logout(" Search start:  %s\n", g_staticParams.szDate);
-         logout(" - Input file: %s\n", g_staticParams.inputFile.szFileName);
+         sprintf(szOut, " Search start:  %s\n", g_staticParams.szDate);
+         sprintf(szOut+strlen(szOut), " - Input file: %s\n", g_staticParams.inputFile.szFileName);
+         logout(szOut);
          fflush(stdout);
       }
 
@@ -1451,27 +1468,31 @@ bool CometSearchManager::DoSearch()
          if (iAnalysisType == AnalysisType_EntireFile)
          {
 #ifdef CRUX
-            sprintf(szOutputSQT, "%s%s.target.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputSQT, "%s%s.target.sqt",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #else
-            sprintf(szOutputSQT, "%s%s.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputSQT, "%s%s.sqt",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #endif
          }
          else
          {
 #ifdef CRUX
-            sprintf(szOutputSQT, "%s%s.%d-%d.target.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputSQT, "%s%s.%d-%d.target.sqt",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #else
-            sprintf(szOutputSQT, "%s%s.%d-%d.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputSQT, "%s%s.%d-%d.sqt",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #endif
          }
 
          if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputSQT);
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputSQT);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             bSucceeded = false;
          }
 
@@ -1480,17 +1501,23 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-               sprintf(szOutputDecoySQT, "%s%s.decoy.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            {
+               sprintf(szOutputDecoySQT, "%s%s.decoy.sqt",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            }
             else
-               sprintf(szOutputDecoySQT, "%s%s.%d-%d.decoy.sqt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            {
+               sprintf(szOutputDecoySQT, "%s%s.%d-%d.decoy.sqt",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            }
 
             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
             {   
                char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoySQT);
+               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoySQT);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr("%s\n\n", szErrorMsg);
+               logerr(szErrorMsg);
                bSucceeded = false;
             }
 
@@ -1503,27 +1530,31 @@ bool CometSearchManager::DoSearch()
          if (iAnalysisType == AnalysisType_EntireFile)
          {
 #ifdef CRUX
-            sprintf(szOutputTxt, "%s%s.target.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputTxt, "%s%s.target.txt",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #else
-            sprintf(szOutputTxt, "%s%s.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputTxt, "%s%s.txt",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #endif
          }
          else
          {
 #ifdef CRUX
-            sprintf(szOutputTxt, "%s%s.%d-%d.target.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputTxt, "%s%s.%d-%d.target.txt",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #else
-            sprintf(szOutputTxt, "%s%s.%d-%d.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputTxt, "%s%s.%d-%d.txt",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #endif
          }
 
          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputTxt);
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputTxt);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             bSucceeded = false;
          }
 
@@ -1532,19 +1563,23 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-               sprintf(szOutputDecoyTxt, "%s%s.decoy.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            {
+               sprintf(szOutputDecoyTxt, "%s%s.decoy.txt",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            }
             else
-               sprintf(szOutputDecoyTxt, "%s%s.%d-%d.decoy.txt", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            {
+               sprintf(szOutputDecoyTxt, "%s%s.%d-%d.decoy.txt",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            }
 
             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
             {
                char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyTxt);
-                 
+               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyTxt);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            
-               logerr("%s\n\n", szErrorMsg);
+               logerr(szErrorMsg);
                bSucceeded = false;
             }
 
@@ -1557,27 +1592,31 @@ bool CometSearchManager::DoSearch()
          if (iAnalysisType == AnalysisType_EntireFile)
          {
 #ifdef CRUX
-            sprintf(szOutputPepXML, "%s%s.target.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputPepXML, "%s%s.target.pep.xml",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #else
-            sprintf(szOutputPepXML, "%s%s.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputPepXML, "%s%s.pep.xml",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
 #endif
          }
          else
          {
 #ifdef CRUX
-            sprintf(szOutputPepXML, "%s%s.%d-%d.target.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputPepXML, "%s%s.%d-%d.target.pep.xml",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #else
-            sprintf(szOutputPepXML, "%s%s.%d-%d.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputPepXML, "%s%s.%d-%d.pep.xml",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
 #endif
          }
 
          if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPepXML);
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputPepXML);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             bSucceeded = false;
          }
 
@@ -1589,17 +1628,23 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-               sprintf(szOutputDecoyPepXML, "%s%s.decoy.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            {
+               sprintf(szOutputDecoyPepXML, "%s%s.decoy.pep.xml",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            }
             else
-               sprintf(szOutputDecoyPepXML, "%s%s.%d-%d.decoy.pep.xml", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            {
+               sprintf(szOutputDecoyPepXML, "%s%s.%d-%d.decoy.pep.xml",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            }
 
             if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
             {
                char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".",  szOutputDecoyPepXML);
+               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyPepXML);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr("%s\n\n", szErrorMsg);
+               logerr(szErrorMsg);
                bSucceeded = false;
             }
 
@@ -1613,17 +1658,23 @@ bool CometSearchManager::DoSearch()
       if (bSucceeded && g_staticParams.options.bOutputPercolatorFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
-            sprintf(szOutputPercolator, "%s%s.tsv", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+         {
+            sprintf(szOutputPercolator, "%s%s.tsv",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+         }
          else
-            sprintf(szOutputPercolator, "%s%s.%d-%d.tsv", g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+         {
+            sprintf(szOutputPercolator, "%s%s.%d-%d.tsv",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+         }
 
          if ((fpout_percolator = fopen(szOutputPercolator, "w")) == NULL)
          {
             char szErrorMsg[256];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".",  szOutputPercolator);
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputPercolator);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr("%s\n\n", szErrorMsg);
+            logerr(szErrorMsg);
             bSucceeded = false;
          }
 
@@ -1642,14 +1693,14 @@ bool CometSearchManager::DoSearch()
          bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
          if (!bSucceeded)
          {
-             break;
+            break;
          }
 
          // Allocate memory shared by threads during search
          bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
          if (!bSucceeded)
          {
-             break;
+            break;
          }
 
          // For file access using MSToolkit.
@@ -1685,18 +1736,20 @@ bool CometSearchManager::DoSearch()
             // Load and preprocess all the spectra.
             if (!g_staticParams.options.bOutputSqtStream)
             {
-               logout(" - Load and process input spectra");
+               logout("   - Load spectra:");
 
 #ifdef PERF_DEBUG
+               char szOut[128];
                time(&tLoadAndPreprocessSpectraStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraStartTime));
-               logout(" - Start LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               sprintf(szOut, " - Start LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               logout(szOut);
 #endif
 
                fflush(stdout);
             }
 
-            g_cometStatus.SetStatusMsg(string("Loading and processing input spectra..."));
+            g_cometStatus.SetStatusMsg(string("Loading and processing input spectra"));
 
             // IMPORTANT: From this point onwards, because we've loaded some
             // spectra, we MUST "goto cleanup_results" before exiting the loop, 
@@ -1716,11 +1769,14 @@ bool CometSearchManager::DoSearch()
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
             {
+               char szOut[128];
                time(&tLoadAndPreprocessSpectraEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraEndTime));
-               logout(" - End LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               sprintf(szOut, " - End LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               logout(szOut);
                int iElapsedTime=(int)difftime(tLoadAndPreprocessSpectraEndTime, tLoadAndPreprocessSpectraStartTime);
-               logout(" - Time spent in LoadAndPreprocessSpectra:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, " - Time spent in LoadAndPreprocessSpectra:  %d seconds\n", iElapsedTime);
+               logout(szOut);
                fflush(stdout);
             }
 #endif
@@ -1737,9 +1793,13 @@ bool CometSearchManager::DoSearch()
             }
 
             char szStatusMsg[256];
-            sprintf(szStatusMsg, ": %d", (int)g_pvQuery.size());
+            sprintf(szStatusMsg, " %d\n", (int)g_pvQuery.size());
             if (!g_staticParams.options.bOutputSqtStream)
-               logout("%s\n", szStatusMsg);
+            {
+               char szOut[128];
+               sprintf(szOut, "%s", szStatusMsg);
+               logout(szOut);
+            }
             g_cometStatus.SetStatusMsg(string(szStatusMsg));
 
             // Sort g_pvQuery vector by dExpPepMass.
@@ -1751,25 +1811,26 @@ bool CometSearchManager::DoSearch()
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
             {
+               char szOut[128];
                time(&tRunSearchStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchStartTime));
-               logout(" - Start RunSearch:  %s\n", szTimeBuffer);
+               sprintf(szOut, " - Start RunSearch:  %s\n", szTimeBuffer);
+               logout(szOut);
                fflush(stdout);
+
             }
 #endif
      
             bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
             if (!bSucceeded)
             {
-                goto cleanup_results;
+               goto cleanup_results;
             }
 
             g_cometStatus.SetStatusMsg(string("Running search..."));
 
             // Now that spectra are loaded to memory and sorted, do search.
-            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads,
-                  iPercentStart, iPercentEnd);
-
+            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
             if (!bSucceeded)
             {
                goto cleanup_results;
@@ -1778,15 +1839,20 @@ bool CometSearchManager::DoSearch()
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
             {
+               char szOut[128];
                time(&tRunSearchEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchEndTime));
-               logout(" - End RunSearch:  %s\n", szTimeBuffer);
+               sprintf(szOut, " - End RunSearch:  %s\n", szTimeBuffer);
+               logout(szOut);
+
                int iElapsedTime=(int)difftime(tRunSearchEndTime, tRunSearchStartTime);
-               logout(" - Time spent in RunSearch:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, " - Time spent in RunSearch:  %d seconds\n", iElapsedTime);
+               logout(szOut);
 
                time(&tPostAnalysisStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisStartTime));
-               logout(" - Start PostAnalysis:  %s\n", szTimeBuffer);
+               sprintf(szOut, " - Start PostAnalysis:  %s\n", szTimeBuffer);
+               logout(szOut);
 
                fflush(stdout);
             }
@@ -1795,10 +1861,16 @@ bool CometSearchManager::DoSearch()
             bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
             if (!bSucceeded)
             {
-                goto cleanup_results;
+               goto cleanup_results;
             }
 
-            g_cometStatus.SetStatusMsg(string("Performing post-search analysis..."));
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               logout("     - Post analysis:");
+               fflush(stdout);
+            }
+
+            g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
 
             // Sort each entry by xcorr, calculate E-values, etc.
             bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
@@ -1810,11 +1882,14 @@ bool CometSearchManager::DoSearch()
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
             {
+               char szOut[128];
                time(&tPostAnalysisEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisEndTime));
-               logout(" - End PostAnalysis:  %s\n", szTimeBuffer);
+               sprintf(szOut, " - End PostAnalysis:  %s\n", szTimeBuffer);
+               logout(szOut);
                int iElapsedTime=(int)difftime(tPostAnalysisEndTime, tPostAnalysisStartTime);
-               logout(" - Time spent in PostAnalysis:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, " - Time spent in PostAnalysis:  %d seconds\n", iElapsedTime);
+               logout(szOut);
                fflush(stdout);
             }
 #endif
@@ -1823,6 +1898,12 @@ bool CometSearchManager::DoSearch()
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
             CalcRunTime(tStartTime);
+
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               logout("  done\n");
+               fflush(stdout);
+            }
 
             if (g_staticParams.options.bOutputOutFiles)
             {
@@ -1875,15 +1956,18 @@ bool CometSearchManager::DoSearch()
 
             if (!g_staticParams.options.bOutputSqtStream)
             {
+               char szOut[128];
 #ifdef PERF_DEBUG
                time_t tStartTimeSave = tStartTime;
 #endif
                time(&tStartTime);
                strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
-               logout(" Search end:    %s\n\n", g_staticParams.szDate);
+               sprintf(szOut, " Search end:    %s\n\n", g_staticParams.szDate);
+               logout(szOut);
 #ifdef PERF_DEBUG
                int iElapsedTime=(int)difftime(tStartTime, tStartTimeSave);
-               logout(" - Total search time:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, " - Total search time:  %d seconds\n", iElapsedTime);
+               logout(szOut);
 #endif
             }
 
