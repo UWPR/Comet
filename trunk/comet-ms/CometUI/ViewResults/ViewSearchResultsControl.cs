@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Windows.Forms;
 using System.Xml.XPath;
 using CometUI.Properties;
@@ -122,6 +123,9 @@ namespace CometUI.ViewResults
 
             foreach (var searchResult in SearchResults)
             {
+                TypedSearchResultField<ProteinInfo> proteinInfo = null;
+                TypedSearchResultField<List<ProteinInfo>> altProteins = null;
+                int proteinRow = -1;
                 var row = new List<string>();
                 foreach (ColumnHeader column in resultsListView.Columns)
                 {
@@ -230,8 +234,41 @@ namespace CometUI.ViewResults
 
                         case "PEPTIDE":
                             var peptide = (TypedSearchResultField<String>)searchResult.Fields["peptide"];
-                            var protein = (TypedSearchResultField<ProteinInfo>) searchResult.Fields["protein"];
-                            row.Add(protein.Value.PeptidePrevAA + "." + peptide.Value + "." + protein.Value.PeptideNextAA);
+                            if (proteinInfo == null)
+                            {
+                                proteinInfo = (TypedSearchResultField<ProteinInfo>) searchResult.Fields["protein"];
+                            }
+                            row.Add(proteinInfo.Value.PeptidePrevAA + "." + peptide.Value + "." + proteinInfo.Value.PeptideNextAA);
+                            break;
+
+                        case "PROTEIN_DESCR":
+                            if (proteinInfo == null)
+                            {
+                                proteinInfo = (TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"];
+                            }
+                            row.Add(proteinInfo.Value.ProteinDescr);
+                            break;
+
+                        case "PROTEIN":
+                            proteinRow = row.Count;
+                            if (proteinInfo == null)
+                            {
+                                proteinInfo = (TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"];
+                            }
+                            String proteinDisplayText = proteinInfo.Value.Name;
+                            
+                            ISearchResultField altProteinsField;
+                            if (searchResult.Fields.TryGetValue("alternative_protein", out altProteinsField))
+                            {
+                                altProteins = (TypedSearchResultField<List<ProteinInfo>>) altProteinsField;
+                                if (altProteins.Value.Count > 1)
+                                {
+                                    proteinDisplayText += " +" +
+                                                          altProteins.Value.Count.ToString(CultureInfo.InvariantCulture);
+                                }
+                            }
+
+                            row.Add(proteinDisplayText);
                             break;
 
                         default:
@@ -244,6 +281,17 @@ namespace CometUI.ViewResults
                 for (int i = 1; i < row.Count; i++)
                 {
                     item.SubItems.Add(row[i]);
+                }
+
+                if (proteinRow != -1)
+                {
+                    if (null != altProteins)
+                    {
+                        foreach (var altProtein in altProteins.Value)
+                        {
+                            item.SubItems[proteinRow].Tag += altProtein.Name + Environment.NewLine;
+                        }
+                    }
                 }
 
                 resultsListView.Items.Add(item);
@@ -667,6 +715,16 @@ namespace CometUI.ViewResults
             else
             {
                 resultsListPanel.Hide();
+            }
+        }
+
+        private void ResultsListViewItemMouseHover(object sender, ListViewItemMouseHoverEventArgs e)
+        {
+            Point mousePos = resultsListView.PointToClient(MousePosition);
+            ListViewHitTestInfo ht = resultsListView.HitTest(mousePos);
+            if ((ht.SubItem != null))
+            {
+                viewResultsToolTip.Show(ht.SubItem.Tag as String, sender as IWin32Window, mousePos, 5000);
             }
         }
     }

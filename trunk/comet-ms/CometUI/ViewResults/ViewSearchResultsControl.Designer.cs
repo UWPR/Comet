@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.showOptionsPanel = new System.Windows.Forms.Panel();
             this.viewOptionsTab = new System.Windows.Forms.TabControl();
             this.summaryTabPage = new System.Windows.Forms.TabPage();
@@ -40,6 +41,7 @@
             this.showHideOptionsBtn = new System.Windows.Forms.Button();
             this.resultsListPanelFull = new System.Windows.Forms.Panel();
             this.resultsListPanelNormal = new System.Windows.Forms.Panel();
+            this.viewResultsToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.showOptionsPanel.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.resultsListPanel.SuspendLayout();
@@ -112,6 +114,7 @@
             // 
             // resultsListView
             // 
+            this.resultsListView.Activation = System.Windows.Forms.ItemActivation.OneClick;
             this.resultsListView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
@@ -123,6 +126,7 @@
             this.resultsListView.TabIndex = 9;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
             this.resultsListView.View = System.Windows.Forms.View.Details;
+            this.resultsListView.ItemMouseHover += new System.Windows.Forms.ListViewItemMouseHoverEventHandler(this.ResultsListViewItemMouseHover);
             // 
             // hideOptionsGroupBox
             // 
@@ -209,5 +213,6 @@
         private System.Windows.Forms.Button showHideOptionsBtn;
         private System.Windows.Forms.Panel resultsListPanelFull;
         private System.Windows.Forms.Panel resultsListPanelNormal;
+        private System.Windows.Forms.ToolTip viewResultsToolTip;
     }
 }
