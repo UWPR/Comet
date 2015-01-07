@@ -112,26 +112,11 @@ namespace CometUI.ViewResults
 
             UpdateColumnHeaders();
 
-            //_condensedColumnHeadersMap.Add("index", "#");
-            //_condensedColumnHeadersMap.Add("assumed_charge", "Z");
-            //_condensedColumnHeadersMap.Add("precursor_neutral_mass", "EXP_MASS");
-            //_condensedColumnHeadersMap.Add("probability", "PROB");
-            //_condensedColumnHeadersMap.Add("start_scan", "SSCAN");
-            //_condensedColumnHeadersMap.Add("calc_neutral_pep_mass", "CALC_MASS");
-
             //_columnHeadersMap.Add("MZratio", "MZRATIO");
             //_columnHeadersMap.Add("protein_descr", "PROTEIN_DESCR");
             //_columnHeadersMap.Add("pI", "PI");
-            //_columnHeadersMap.Add("retention_time_sec", "RETENTION_TIME_SEC");
-            //_columnHeadersMap.Add("precursor_intensity", "PRECURSOR_INTENSITY");
             //_columnHeadersMap.Add("ppm", "PPM");
-            //_columnHeadersMap.Add("xcorr", "XCORR");
-            //_columnHeadersMap.Add("deltacn", "DELTACN");
-            //_columnHeadersMap.Add("deltacnstar", "DELTACNSTAR");
-            //_columnHeadersMap.Add("spectrum", "SPECTRUM");
-            //_columnHeadersMap.Add("spscore", "SPSCORE");
             //_columnHeadersMap.Add("ions2", "IONS2");
-            //_columnHeadersMap.Add("peptide", "PEPTIDE");
             //_columnHeadersMap.Add("protein", "PROTEIN");
             //_columnHeadersMap.Add("xpress", "XPRESS");
 
@@ -195,6 +180,58 @@ namespace CometUI.ViewResults
                         case "RETENTION_TIME_SEC":
                             var retentionTime = (TypedSearchResultField<double>)searchResult.Fields["retention_time_sec"];
                             row.Add(Convert.ToString(retentionTime.Value));
+                            break;
+
+                        case "PRECURSOR_INTENSITY":
+                            ISearchResultField precursorIntensityField;
+                            if (searchResult.Fields.TryGetValue("precursor_intensity", out precursorIntensityField))
+                            {
+                                var intensity = (TypedSearchResultField<double>)precursorIntensityField;
+                                row.Add(Convert.ToString(intensity.Value));
+                            }
+                            else
+                            {
+                                row.Add(String.Empty);
+                            }
+                            break;
+
+                        case "XCORR":
+                            var xcorr = (TypedSearchResultField<double>)searchResult.Fields["xcorr"];
+                            row.Add(Convert.ToString(xcorr.Value));
+                            break;
+
+                        case "DELTACN":
+                            var deltacn = (TypedSearchResultField<double>)searchResult.Fields["deltacn"];
+                            row.Add(Convert.ToString(deltacn.Value));
+                            break;
+
+                        case "DELTACNSTAR":
+                            var deltacnstar = (TypedSearchResultField<double>)searchResult.Fields["deltacnstar"];
+                            row.Add(Convert.ToString(deltacnstar.Value));
+                            break;
+
+                        case "SPSCORE":
+                            var spscore = (TypedSearchResultField<double>)searchResult.Fields["spscore"];
+                            row.Add(Convert.ToString(spscore.Value));
+                            break;
+
+                        case "EXPECT":
+                            ISearchResultField expectField;
+                            if (searchResult.Fields.TryGetValue("expect", out expectField))
+                            {
+                                var expect = (TypedSearchResultField<double>)expectField;
+                                row.Add(Convert.ToString(expect.Value));
+                            }
+                            else
+                            {
+                                row.Add(String.Empty);
+                            }
+                            break;
+
+                        case "PEPTIDE":
+                            var peptide = (TypedSearchResultField<String>)searchResult.Fields["peptide"];
+                            var protein = (TypedSearchResultField<ProteinInfo>) searchResult.Fields["protein"];
+                            row.Add(protein.Value.PeptidePrevAA + "." + peptide.Value + "." + protein.Value.PeptideNextAA);
                             break;
 
                         default:

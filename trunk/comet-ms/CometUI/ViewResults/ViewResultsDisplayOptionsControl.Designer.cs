@@ -41,8 +41,6 @@
             this.highlightPeptideIncludeModCheckBox = new System.Windows.Forms.CheckBox();
             this.highlightProteinLabel = new System.Windows.Forms.Label();
             this.highlightPeptideLabel = new System.Windows.Forms.Label();
-            this.rowsPerPageCombo = new System.Windows.Forms.ComboBox();
-            this.rowsPerPageLabel = new System.Windows.Forms.Label();
             this.displayOptionsMainPanel.SuspendLayout();
             this.columnHeadersRadioButtonsPanel.SuspendLayout();
             this.SuspendLayout();
@@ -60,8 +58,6 @@
             this.displayOptionsMainPanel.Controls.Add(this.highlightPeptideIncludeModCheckBox);
             this.displayOptionsMainPanel.Controls.Add(this.highlightProteinLabel);
             this.displayOptionsMainPanel.Controls.Add(this.highlightPeptideLabel);
-            this.displayOptionsMainPanel.Controls.Add(this.rowsPerPageCombo);
-            this.displayOptionsMainPanel.Controls.Add(this.rowsPerPageLabel);
             this.displayOptionsMainPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.displayOptionsMainPanel.Location = new System.Drawing.Point(0, 0);
             this.displayOptionsMainPanel.Name = "displayOptionsMainPanel";
@@ -83,7 +79,7 @@
             // 
             this.columnHeadersRadioButtonsPanel.Controls.Add(this.columnHeadersRegularRadioButton);
             this.columnHeadersRadioButtonsPanel.Controls.Add(this.columnHeadersCondensedRadioButton);
-            this.columnHeadersRadioButtonsPanel.Location = new System.Drawing.Point(176, 163);
+            this.columnHeadersRadioButtonsPanel.Location = new System.Drawing.Point(176, 140);
             this.columnHeadersRadioButtonsPanel.Name = "columnHeadersRadioButtonsPanel";
             this.columnHeadersRadioButtonsPanel.Size = new System.Drawing.Size(244, 21);
             this.columnHeadersRadioButtonsPanel.TabIndex = 58;
@@ -114,21 +110,21 @@
             // 
             // highlightSpectrumTextBox
             // 
-            this.highlightSpectrumTextBox.Location = new System.Drawing.Point(176, 127);
+            this.highlightSpectrumTextBox.Location = new System.Drawing.Point(176, 104);
             this.highlightSpectrumTextBox.Name = "highlightSpectrumTextBox";
             this.highlightSpectrumTextBox.Size = new System.Drawing.Size(209, 20);
             this.highlightSpectrumTextBox.TabIndex = 56;
             // 
             // highlightProteinTextBox
             // 
-            this.highlightProteinTextBox.Location = new System.Drawing.Point(176, 89);
+            this.highlightProteinTextBox.Location = new System.Drawing.Point(176, 66);
             this.highlightProteinTextBox.Name = "highlightProteinTextBox";
             this.highlightProteinTextBox.Size = new System.Drawing.Size(209, 20);
             this.highlightProteinTextBox.TabIndex = 55;
             // 
             // highlightPeptideTextBox
             // 
-            this.highlightPeptideTextBox.Location = new System.Drawing.Point(176, 52);
+            this.highlightPeptideTextBox.Location = new System.Drawing.Point(176, 29);
             this.highlightPeptideTextBox.Name = "highlightPeptideTextBox";
             this.highlightPeptideTextBox.Size = new System.Drawing.Size(209, 20);
             this.highlightPeptideTextBox.TabIndex = 54;
@@ -136,7 +132,7 @@
             // columnHeadersLabel
             // 
             this.columnHeadersLabel.AutoSize = true;
-            this.columnHeadersLabel.Location = new System.Drawing.Point(18, 170);
+            this.columnHeadersLabel.Location = new System.Drawing.Point(18, 147);
             this.columnHeadersLabel.Name = "columnHeadersLabel";
             this.columnHeadersLabel.Size = new System.Drawing.Size(86, 13);
             this.columnHeadersLabel.TabIndex = 51;
@@ -145,7 +141,7 @@
             // highlightSpectrumLabel
             // 
             this.highlightSpectrumLabel.AutoSize = true;
-            this.highlightSpectrumLabel.Location = new System.Drawing.Point(18, 130);
+            this.highlightSpectrumLabel.Location = new System.Drawing.Point(18, 107);
             this.highlightSpectrumLabel.Name = "highlightSpectrumLabel";
             this.highlightSpectrumLabel.Size = new System.Drawing.Size(152, 13);
             this.highlightSpectrumLabel.TabIndex = 46;
@@ -154,7 +150,7 @@
             // highlightPeptideIncludeModCheckBox
             // 
             this.highlightPeptideIncludeModCheckBox.AutoSize = true;
-            this.highlightPeptideIncludeModCheckBox.Location = new System.Drawing.Point(404, 54);
+            this.highlightPeptideIncludeModCheckBox.Location = new System.Drawing.Point(404, 31);
             this.highlightPeptideIncludeModCheckBox.Name = "highlightPeptideIncludeModCheckBox";
             this.highlightPeptideIncludeModCheckBox.Size = new System.Drawing.Size(191, 17);
             this.highlightPeptideIncludeModCheckBox.TabIndex = 45;
@@ -165,7 +161,7 @@
             // highlightProteinLabel
             // 
             this.highlightProteinLabel.AutoSize = true;
-            this.highlightProteinLabel.Location = new System.Drawing.Point(18, 92);
+            this.highlightProteinLabel.Location = new System.Drawing.Point(18, 69);
             this.highlightProteinLabel.Name = "highlightProteinLabel";
             this.highlightProteinLabel.Size = new System.Drawing.Size(141, 13);
             this.highlightProteinLabel.TabIndex = 43;
@@ -174,39 +170,11 @@
             // highlightPeptideLabel
             // 
             this.highlightPeptideLabel.AutoSize = true;
-            this.highlightPeptideLabel.Location = new System.Drawing.Point(18, 55);
+            this.highlightPeptideLabel.Location = new System.Drawing.Point(18, 32);
             this.highlightPeptideLabel.Name = "highlightPeptideLabel";
             this.highlightPeptideLabel.Size = new System.Drawing.Size(144, 13);
             this.highlightPeptideLabel.TabIndex = 41;
             this.highlightPeptideLabel.Text = "Highlight peptide text (regex):";
-            // 
-            // rowsPerPageCombo
-            // 
-            this.rowsPerPageCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.rowsPerPageCombo.FormattingEnabled = true;
-            this.rowsPerPageCombo.Items.AddRange(new object[] {
-            "10",
-            "25",
-            "50",
-            "100",
-            "250",
-            "500",
-            "1000",
-            "all"});
-            this.rowsPerPageCombo.Location = new System.Drawing.Point(176, 16);
-            this.rowsPerPageCombo.Name = "rowsPerPageCombo";
-            this.rowsPerPageCombo.Size = new System.Drawing.Size(87, 21);
-            this.rowsPerPageCombo.TabIndex = 40;
-            this.rowsPerPageCombo.SelectedIndexChanged += new System.EventHandler(this.RowsPerPageComboSelectedIndexChanged);
-            // 
-            // rowsPerPageLabel
-            // 
-            this.rowsPerPageLabel.AutoSize = true;
-            this.rowsPerPageLabel.Location = new System.Drawing.Point(18, 16);
-            this.rowsPerPageLabel.Name = "rowsPerPageLabel";
-            this.rowsPerPageLabel.Size = new System.Drawing.Size(82, 13);
-            this.rowsPerPageLabel.TabIndex = 39;
-            this.rowsPerPageLabel.Text = "Rows per page:";
             // 
             // ViewResultsDisplayOptionsControl
             // 
@@ -229,8 +197,6 @@
         private System.Windows.Forms.CheckBox highlightPeptideIncludeModCheckBox;
         private System.Windows.Forms.Label highlightProteinLabel;
         private System.Windows.Forms.Label highlightPeptideLabel;
-        private System.Windows.Forms.ComboBox rowsPerPageCombo;
-        private System.Windows.Forms.Label rowsPerPageLabel;
         private System.Windows.Forms.Label highlightSpectrumLabel;
         private System.Windows.Forms.Label columnHeadersLabel;
         private System.Windows.Forms.RadioButton columnHeadersCondensedRadioButton;

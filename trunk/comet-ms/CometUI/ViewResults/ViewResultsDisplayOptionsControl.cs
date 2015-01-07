@@ -18,8 +18,6 @@ namespace CometUI.ViewResults
 
         private void InitializeFromDefaultSettings()
         {
-            rowsPerPageCombo.SelectedItem = CometUI.ViewResultsSettings.DisplayOptionsRowsPerPage.ToString(CultureInfo.InvariantCulture);
-
             highlightPeptideIncludeModCheckBox.Checked =
                 CometUI.ViewResultsSettings.DisplayOptionsInlcudeModsWhenHighlightingPeptides;
 
@@ -36,22 +34,6 @@ namespace CometUI.ViewResults
         private void BtnUpdateResultsClick(object sender, System.EventArgs e)
         {
             ViewSearchResultsControl.UpdateSearchResultsList();
-        }
-
-        private void RowsPerPageComboSelectedIndexChanged(object sender, System.EventArgs e)
-        {
-            VerifyAndUpdateRowsPerPageSetting();
-        }
-
-        private void VerifyAndUpdateRowsPerPageSetting()
-        {
-            if (
-                !rowsPerPageCombo.SelectedItem.Equals(
-                    CometUI.ViewResultsSettings.DisplayOptionsRowsPerPage.ToString(CultureInfo.InvariantCulture)))
-            {
-                CometUI.ViewResultsSettings.DisplayOptionsRowsPerPage = int.Parse(rowsPerPageCombo.SelectedItem.ToString());
-                ViewSearchResultsControl.SettingsChanged = true;
-            }
         }
 
         private void HighlightPeptideIncludeModCheckBoxCheckedChanged(object sender, System.EventArgs e)

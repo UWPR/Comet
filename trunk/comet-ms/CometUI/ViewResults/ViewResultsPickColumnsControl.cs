@@ -116,6 +116,11 @@ namespace CometUI.ViewResults
 
         private void MoveDown(ListBox listBox)
         {
+            if (listBox.SelectedIndex == listBox.Items.Count -1)
+            {
+                return;
+            }
+
             var selectedIndices = listBox.SelectedIndices;
             if (selectedIndices.Count > 0)
             {
