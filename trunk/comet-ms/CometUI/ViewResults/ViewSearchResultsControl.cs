@@ -724,7 +724,11 @@ namespace CometUI.ViewResults
             ListViewHitTestInfo ht = resultsListView.HitTest(mousePos);
             if ((ht.SubItem != null))
             {
-                viewResultsToolTip.Show(ht.SubItem.Tag as String, sender as IWin32Window, mousePos, 5000);
+                var text = ht.SubItem.Tag as String;
+                if (!String.IsNullOrEmpty(text))
+                {
+                    viewResultsToolTip.Show(text, sender as IWin32Window, mousePos, 5000);
+                }
             }
         }
     }
