@@ -16,6 +16,8 @@ namespace CometUI.ViewResults
 
         public String ErrorMessage { get; private set; }
 
+        private const double ProtonMass = 1.00727646688;
+
         private CometUI CometUI { get; set; }
         private bool OptionsPanelShown { get; set; }
         private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
@@ -267,8 +269,14 @@ namespace CometUI.ViewResults
                                                           altProteins.Value.Count.ToString(CultureInfo.InvariantCulture);
                                 }
                             }
-
                             row.Add(proteinDisplayText);
+                            break;
+
+                        case "MZRATIO":
+                            var calcNeutralMass = (TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"];
+                            var assumedCharge = (TypedSearchResultField<int>)searchResult.Fields["assumed_charge"];
+                            double mzRatio = (calcNeutralMass.Value + (assumedCharge.Value * ProtonMass)) / assumedCharge.Value;
+                            row.Add(mzRatio.ToString(CultureInfo.InvariantCulture));
                             break;
 
                         default:
@@ -644,7 +652,7 @@ namespace CometUI.ViewResults
 
             _condensedColumnHeadersMap.Add("probability", "PROB");
 
-            // calc_neutral_pep_mass / assumed_charge (add protons and stuff, the usual calcs)
+            // (calc_neutral_pep_mass + (assumed_charge * 1.0073)) / assumed_charge (add protons and stuff, the usual calcs)
             //_columnHeadersMap.Add("MZratio", "MZRATIO");
 
             // calculated (isoelectric point - there is code floating around)
