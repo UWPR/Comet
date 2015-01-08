@@ -403,9 +403,6 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("use_sparse_matrix", szParamStringVal, iIntParam);
          }
-         // FIX: should really be more careful here and check the range of the variable
-         // mod is within allowed i.e. no variable_mod95
-         // Otherwise this else-if code will parse in all variable mods
          else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
          {
             varModsParam.szVarModChar[0] = '\0';
@@ -416,7 +413,6 @@ void LoadParameters(char *pszParamsFile,
                   &varModsParam.iMaxNumVarModAAPerMod,
                   &varModsParam.iVarModTermDistance,
                   &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%lf %s %d %d %d %d",
                   varModsParam.dVarModMass,
                   varModsParam.szVarModChar,

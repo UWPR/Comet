@@ -164,6 +164,7 @@ struct Results
    int    iRankSp;
    int    iMatchedIons;
    int    iTotalIons;
+   int    iSeqFilePosition;
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];    // store variable mods encoding, +2 to accomodate N/C-term
    char szProtein[WIDTH_REFERENCE];
    char szPeptide[MAX_PEPTIDE_LEN];
@@ -216,6 +217,7 @@ typedef struct sDBEntry
 {
    string strName;
    string strSeq;
+   int iSeqFilePosition;
 } sDBEntry;
 
 typedef struct sDBTable

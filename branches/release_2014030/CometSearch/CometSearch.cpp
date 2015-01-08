@@ -183,6 +183,8 @@ bool CometSearch::RunSearch(int minNumThreads,
             dbe.strName += iTmpCh;
       }
 
+      dbe.iSeqFilePosition = ftell(fptr);  // grab sequence file position here
+
       // Load sequence.
       while (((iTmpCh=getc(fptr)) != '>') && (iTmpCh != EOF))
       {
@@ -289,6 +291,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
       _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
+      _proteinInfo.iSeqFilePosition = dbe.iSeqFilePosition;
 
       if (!SearchForPeptides((char *)dbe.strSeq.c_str(),
                              (char *)dbe.strName.c_str(),
@@ -1414,6 +1417,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       strcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szProtein, szProteinName);
 
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
+
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (!bFoundVariableMod)   // Normal peptide in variable mod search.
@@ -1485,6 +1490,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       strcpy(pQuery->_pResults[siLowestSpScoreIndex].szProtein, szProteinName);
 
+      pQuery->_pResults[siLowestSpScoreIndex].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
+
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (!bFoundVariableMod)  // Normal peptide in variable mod search.
@@ -1553,8 +1560,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (!memcmp(pcVarModSites, pQuery->_pDecoys[i].pcVarModSites,
-                        pQuery->_pDecoys[i].iLenPeptide + 2))
+               if (!memcmp(pcVarModSites, pQuery->_pDecoys[i].pcVarModSites, pQuery->_pDecoys[i].iLenPeptide + 2))
                {
                   bIsDuplicate=1;
                }
@@ -1564,8 +1570,34 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                }
             }
 
+            // FIX
+            // Now check if decoy peptides differs only by I/L.  How to handle I/L variable mods??
+
             if (bIsDuplicate)
             {
+               if (pQuery->_pDecoys[i].iSeqFilePosition > _proteinInfo.iSeqFilePosition)
+               {
+                  pQuery->_pDecoys[i].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
+#ifdef _WIN32
+                  _snprintf(pQuery->_pDecoys[i].szProtein, WIDTH_REFERENCE, "%s%s",
+                        g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
+                  pQuery->_pDecoys[i].szProtein[WIDTH_REFERENCE-1]=0;    // _snprintf does not guarantee null termination
+#else
+                  snprintf(pQuery->_pDecoys[i].szProtein, WIDTH_REFERENCE, "%s%s",
+                        g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
+#endif
+
+                  if (iStartPos == 0)
+                     pQuery->_pDecoys[i].szPrevNextAA[0] = '-';
+                  else
+                     pQuery->_pDecoys[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+
+                  if (iEndPos == _proteinInfo.iProteinSeqLength-1)
+                     pQuery->_pDecoys[i].szPrevNextAA[1] = '-';
+                  else
+                     pQuery->_pDecoys[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+               }
+
                pQuery->_pDecoys[i].iDuplicateCount++;
                break;
             }
@@ -1592,8 +1624,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (!memcmp(pcVarModSites, pQuery->_pResults[i].pcVarModSites,
-                        pQuery->_pResults[i].iLenPeptide + 2))
+               if (!memcmp(pcVarModSites, pQuery->_pResults[i].pcVarModSites, pQuery->_pResults[i].iLenPeptide + 2))
                {
                   bIsDuplicate=1;
                }
@@ -1605,6 +1636,23 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
             if (bIsDuplicate)
             {
+               // if duplicate, store name and prev/next AA from the first protein
+               if (pQuery->_pResults[i].iSeqFilePosition > _proteinInfo.iSeqFilePosition)
+               {
+                  pQuery->_pResults[i].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
+                  strcpy(pQuery->_pResults[i].szProtein, _proteinInfo.szProteinName);
+
+                  if (iStartPos == 0)
+                     pQuery->_pResults[i].szPrevNextAA[0] = '-';
+                  else
+                     pQuery->_pResults[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+
+                  if (iEndPos == _proteinInfo.iProteinSeqLength-1)
+                     pQuery->_pResults[i].szPrevNextAA[1] = '-';
+                  else
+                     pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+               }
+
                pQuery->_pResults[i].iDuplicateCount++;
                break;
             }
@@ -2821,8 +2869,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
          }
 
-         XcorrScore(szProteinSeq, _proteinInfo.szProteinName, _varModInfo.iStartPos, _varModInfo.iEndPos, true,
-               _varModInfo.dCalcPepMass, false, iWhichQuery, iLenPeptide, pcVarModSites);
+         XcorrScore(szProteinSeq, _proteinInfo.szProteinName, _varModInfo.iStartPos,
+               _varModInfo.iEndPos, true, _varModInfo.dCalcPepMass, false, iWhichQuery, iLenPeptide, pcVarModSites);
 
          if (g_staticParams.options.iDecoySearch)
          {

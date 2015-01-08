@@ -112,7 +112,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    // Target search
    CalculateSP(pQuery->_pResults, i, iSize);
 
-   qsort(pQuery->_pResults, iSize, sizeof(struct Results), SPQSortFn);
+   qsort(pQuery->_pResults, iSize, sizeof(struct Results), QSortFnSp);
    pQuery->_pResults[0].iRankSp = 1;
 
    for (int ii=1; ii<iSize; ii++)
@@ -125,7 +125,22 @@ void CometPostAnalysis::AnalyzeSP(int i)
    }
 
    // Then sort each entry by xcorr
-   qsort(pQuery->_pResults, iSize, sizeof(struct Results), XcorrQSortFn);
+   qsort(pQuery->_pResults, iSize, sizeof(struct Results), QSortFnXcorr);
+
+
+   // Need to sort by peptide sequence now for those entries that have same xcorr value.
+   // This will address peptides with I/L differences but same xcorr showing up
+   // differently in search results.
+   for (int ii=0; ii<iSize; ii++)
+   {
+      int j=ii+1;
+
+      while (j<iSize && (pQuery->_pResults[j].fXcorr == pQuery->_pResults[ii].fXcorr))
+         j++;
+
+      if (j!=i+1)
+         qsort(pQuery->_pResults + ii, j-ii, sizeof(struct Results), QSortFnPep);
+   }
  
    // Repeat for decoy search
    if (g_staticParams.options.iDecoySearch == 2)
@@ -137,7 +152,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
       CalculateSP(pQuery->_pDecoys, i, iSize);
 
-      qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), SPQSortFn);
+      qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), QSortFnSp);
       pQuery->_pDecoys[0].iRankSp = 1;
 
       for (int ii=1; ii<iSize; ii++)
@@ -150,7 +165,19 @@ void CometPostAnalysis::AnalyzeSP(int i)
       }
 
       // Then sort each entry by xcorr
-      qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), XcorrQSortFn);
+      qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), QSortFnXcorr);
+
+      // Need to sort by peptide sequence now for those entries that have same xcorr value
+      for (int ii=0; ii<iSize; ii++)
+      {
+         int j=ii+1;
+
+         while (j<iSize && (pQuery->_pDecoys[j].fXcorr == pQuery->_pDecoys[ii].fXcorr))
+            j++;
+
+         if (j!=i+1)
+            qsort(pQuery->_pDecoys + ii, j-ii, sizeof(struct Results), QSortFnPep);
+      }
    }
 }
 
@@ -220,16 +247,6 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[ii]>0)
             dBion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[ii]-1].dVarModMass;
 
-/*
-FIX:  what is this code??
-         if (g_staticParams.variableModParameters.bVarModSearch
-               && (ii == pOutput[i].iLenPeptide -1)
-               && (pOutput[i].pcVarModSites[pOutput[0].iLenPeptide + 1] == 1))
-         {
-            dBion += g_staticParams.variableModParameters.dVarModMassC;
-         }
-*/
-
          if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[iPos]>0)
             dYion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[iPos]-1].dVarModMass;
 
@@ -290,7 +307,7 @@ FIX:  what is this code??
 }
 
 
-int CometPostAnalysis::SPQSortFn(const void *a,
+int CometPostAnalysis::QSortFnSp(const void *a,
                                  const void *b)
 {
    struct Results *ia = (struct Results *)a;
@@ -305,7 +322,7 @@ int CometPostAnalysis::SPQSortFn(const void *a,
 }
 
 
-int CometPostAnalysis::XcorrQSortFn(const void *a,
+int CometPostAnalysis::QSortFnXcorr(const void *a,
                                     const void *b)
 {
    struct Results *ia = (struct Results *)a;
@@ -317,6 +334,16 @@ int CometPostAnalysis::XcorrQSortFn(const void *a,
       return -1;
    else
       return 0;
+}
+
+
+int CometPostAnalysis::QSortFnPep(const void *a,
+                                  const void *b)
+{
+   struct Results *ia = (struct Results *)a;
+   struct Results *ib = (struct Results *)b;
+
+   return (strcmp(ia->szPeptide, ib->szPeptide));
 }
 
 

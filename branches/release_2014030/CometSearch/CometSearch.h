@@ -34,6 +34,7 @@ struct SearchThreadData
    {
       dbEntry.strName = dbEntry_in.strName;
       dbEntry.strSeq = dbEntry_in.strSeq;
+      dbEntry.iSeqFilePosition = dbEntry_in.iSeqFilePosition;
    }
 
    ~SearchThreadData()
@@ -214,6 +215,7 @@ private:
        char *pszProteinSeq;
        int  iProteinSeqLength;
        int  iAllocatedProtSeqLength;
+       int  iSeqFilePosition;  // ftell position of sequence, used to store/report first protein name
    };
 
    struct SpectrumInfoInternal
