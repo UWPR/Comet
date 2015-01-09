@@ -164,7 +164,7 @@ img.left {
    text-decoration: none;
    font-style: italic;
    font-weight: normal;
-   color: #FFFFFF;
+   color: #F7F6F6;
 }
 
 #header h2 {
@@ -175,8 +175,6 @@ img.left {
    background: url(/images/img03.jpg) no-repeat;
    padding: 50px 20px 0 0;
    text-align: right;
-/*   color: #3F7F3B; */
-/*   color: #366E33; */
    color: #B0ACA8;
    font-size: 24px;
 }
@@ -272,7 +270,7 @@ img.left {
 
 #footer {
    clear: both;
-   height: 50px;
+   height: 10px;
    padding: 25px 0;
    background: #EDEBD5 url(/images/img04.gif) repeat-x;
 }
