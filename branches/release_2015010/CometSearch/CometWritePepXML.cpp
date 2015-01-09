@@ -102,7 +102,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-   
+
    fprintf(fpout, " <msms_pipeline_analysis date=\"%s\" ", szDate);
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
@@ -429,41 +429,45 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       double dDeltaCnStar;   // this is explicit deltaCn between i and i+1 hits or 0.0 ...
                              // I honestly don't understand the logic in the deltacnstar convention being used in TPP
 
-      for (j=i+1; j<iNumPrintLines; j++)
+      // go one past iNumPrintLines to calculate deltaCn value
+      for (j=i+1; j<iNumPrintLines+1; j++)
       {
-         // very poor way of calculating peptide similarity but it's what we have for now
-         int iDiffCt = 0;
-
-         for (int k=0; k<iMinLength; k++)
+         if (j<g_staticParams.options.iNumStored)
          {
-            // I-L and Q-K are same for purposes here
-            if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
+            // very poor way of calculating peptide similarity but it's what we have for now
+            int iDiffCt = 0;
+
+            for (int k=0; k<iMinLength; k++)
             {
-               if (!((pOutput[i].szPeptide[k] == 'K' || pOutput[i].szPeptide[k] == 'Q')
-                       && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                     && !((pOutput[i].szPeptide[k] == 'I' || pOutput[i].szPeptide[k] == 'L')
-                        && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+               // I-L and Q-K are same for purposes here
+               if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
                {
-                  iDiffCt++;
+                  if (!((pOutput[i].szPeptide[k] == 'K' || pOutput[i].szPeptide[k] == 'Q')
+                          && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                        && !((pOutput[i].szPeptide[k] == 'I' || pOutput[i].szPeptide[k] == 'L')
+                           && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                  {
+                     iDiffCt++;
+                  }
                }
             }
-         }
 
-         // calculate deltaCn only if sequences are less than 0.75 similar
-         if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
-         {
-            if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-               dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
-            else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-               dDeltaCn = 1.0;
-            else
-               dDeltaCn = 0.0;
+            // calculate deltaCn only if sequences are less than 0.75 similar
+            if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
+            {
+               if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
+               else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+                  dDeltaCn = 1.0;
+               else
+                  dDeltaCn = 0.0;
 
-            bNoDeltaCnYet = 0;
-   
-            if (j - i > 1)
-               bDeltaCnStar = true;
-            break;
+               bNoDeltaCnYet = 0;
+
+               if (j - i > 1)
+                  bDeltaCnStar = true;
+               break;
+            }
          }
       }
 

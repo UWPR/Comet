@@ -131,12 +131,14 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          double dDeltaCn;
 
-         if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr >= 0.0)
+         bDeltaCn = 1.0;
+
+         if (pOutput[0].fXcorr > 0.0
+               && iWhichResult+1 < g_staticParams.options.iNumStored
+               && pOutput[iWhichResult+1].fXcorr >= 0.0)
+         {
             dDeltaCn = 1.0 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;
-         else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr < 0.0)
-            dDeltaCn = 1.0;
-         else
-            dDeltaCn = 0.0;
+         }
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
          fprintf(fpout, "%d\t",  pQuery->_spectrumInfoInternal.iChargeState);
