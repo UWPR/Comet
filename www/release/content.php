@@ -3,6 +3,7 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
+               <li><a href="/release/release_201501/">Release 2015.01, next pending release</a></li>
                <li><a href="/release/release_201402/">Release 2014.02, 2014/09/16</a></li>
                <li><a href="/release/release_201401/">Release 2014.01, 2014/03/25</a></li>
                <li><a href="/release/release_201302/">Release 2013.02, 2013/10/18</a></li>
@@ -23,6 +24,7 @@
             <li><a target="new" href="http://www.bioprocess.org/massypup/">MASSyPup</a>
             <li><a target="new" href="http://pcarvalho.com/patternlab/">PatternLab</a>
             <li><a target="new" href="http://prohitsms.com/">ProHits</a>
+            <li><a target="new" href="http://code.google.com/p/searchgui/">SearchGUI</a> and <a target="new" href="http://code.google.com/p/peptide-shaker/">PeptideShaker</a> 
             <li><a target="new" href="http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP">Trans-Proteomic Pipeline (TPP)</a>
          </ul>
 

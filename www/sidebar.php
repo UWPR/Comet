@@ -2,10 +2,9 @@
       <div id="updates" class="orangebox">
          <h2><a href="/updates">Recent Updates</a></h2>
             <ul>
-               <li><b>2014/06/03</b>: <a href="/release/release_201401">Release 2014.01 rev. 1</a>
-               is available; this maintenance release addresses
-               a number of bugs.
-               <li><b>2014/03/25</b>: <a href="/release/release_201401">Release 2014.01 rev. 0</a>
+               <li><b>2014/09/18</b>: <a href="/release/release_201402">Release 2014.02 rev. 2</a>
+               is available; this maintenance release addresses an SQT output issue.
+               <li><b>2014/09/16</b>: <a href="/release/release_201402">Release 2014.02 rev. 0</a>
                is available; this is a full release.
                <p/>
             </ul>
@@ -20,6 +19,7 @@
       <div id="updates" class="orangebox">
          <h2>Links</h2>
             <ul>
+               <li><a target="new" href="http://pcarvalho.com/patternlab/">PatternLab</a> for proteomics</li>
                <li><a target="new" href="http://www.matrixscience.com/cgi/search_form.pl?FORMVER=2&SEARCH=MIS">Mascot</a> search engine</li>
                <li><a target="new" href="http://h.thegpm.org/tandem/thegpm_tandem.html">X!Tandem</a> search engine</li>
                <li><a target="new" href="http://fenchurch.mc.vanderbilt.edu/bumbershoot/myrimatch/">MyriMatch</a> search engine</li>

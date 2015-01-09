@@ -55,7 +55,7 @@ blockquote {
 }
 
 a:link {
-   color: #1953A7;
+   color: #002244;
 }
 
 a:active {
@@ -176,7 +176,8 @@ img.left {
    padding: 50px 20px 0 0;
    text-align: right;
 /*   color: #3F7F3B; */
-   color: #366E33;
+/*   color: #366E33; */
+   color: #B0ACA8;
    font-size: 24px;
 }
 

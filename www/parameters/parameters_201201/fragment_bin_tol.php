@@ -21,6 +21,7 @@
          fragment_bin_tol setting, the more memory a search will use.  A test of
          4,515 query spectra used 724MB RAM with a 0.36 fragment_bin_tol value,
          1.4GB RAM with a 0.10 value, and 9.6GB RAM with a 0.01 value.
+         <li>The minimum allowed value is 0.01.
          </ul>
 
          <p>Example:
