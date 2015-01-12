@@ -127,6 +127,8 @@
             this.resultsListView.UseCompatibleStateImageBehavior = false;
             this.resultsListView.View = System.Windows.Forms.View.Details;
             this.resultsListView.ItemMouseHover += new System.Windows.Forms.ListViewItemMouseHoverEventHandler(this.ResultsListViewItemMouseHover);
+            this.resultsListView.MouseLeave += new System.EventHandler(this.ResultsListViewMouseLeave);
+            this.resultsListView.MouseMove += new System.Windows.Forms.MouseEventHandler(this.ResultsListViewMouseMove);
             // 
             // hideOptionsGroupBox
             // 
@@ -177,6 +179,10 @@
             this.resultsListPanelNormal.Name = "resultsListPanelNormal";
             this.resultsListPanelNormal.Size = new System.Drawing.Size(710, 380);
             this.resultsListPanelNormal.TabIndex = 17;
+            // 
+            // viewResultsToolTip
+            // 
+            this.viewResultsToolTip.UseFading = false;
             // 
             // ViewSearchResultsControl
             // 

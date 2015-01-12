@@ -784,6 +784,8 @@ namespace CometUI.ViewResults
 
         private void ResultsListViewItemMouseHover(object sender, ListViewItemMouseHoverEventArgs e)
         {
+            viewResultsToolTip.Hide(sender as IWin32Window);
+
             Point mousePos = resultsListView.PointToClient(MousePosition);
             ListViewHitTestInfo ht = resultsListView.HitTest(mousePos);
             if ((ht.SubItem != null))
@@ -793,6 +795,26 @@ namespace CometUI.ViewResults
                 {
                     viewResultsToolTip.Show(text, sender as IWin32Window, mousePos, 5000);
                 }
+            }
+        }
+
+        private void ResultsListViewMouseMove(object sender, MouseEventArgs e)
+        {
+            Point mousePos = resultsListView.PointToClient(MousePosition);
+            ListViewHitTestInfo ht = resultsListView.HitTest(mousePos);
+            if ((ht.SubItem == null))
+            {
+                viewResultsToolTip.Hide(sender as IWin32Window);
+            }
+        }
+
+        private void ResultsListViewMouseLeave(object sender, EventArgs e)
+        {
+            Point mousePos = resultsListView.PointToClient(MousePosition);
+            ListViewHitTestInfo ht = resultsListView.HitTest(mousePos);
+            if ((ht.SubItem == null))
+            {
+                viewResultsToolTip.Hide(sender as IWin32Window);
             }
         }
     }
