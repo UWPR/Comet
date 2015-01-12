@@ -138,10 +138,6 @@ namespace CometUI.ViewResults
         private List<String> GetResultColumns(SearchResult searchResult)
         {
             //_columnHeadersMap.Add("pI", "PI");
-
-            // num_matched_ions/tot_num_ions (ideally, it should have something like Vagisha's "lorikeet" tool to show graphical drawing) https://code.google.com/p/lorikeet/
-            //_columnHeadersMap.Add("ions2", "IONS2");
-
             //_columnHeadersMap.Add("xpress", "XPRESS");
 
             var resultColumns = new List<String>();
@@ -342,6 +338,7 @@ namespace CometUI.ViewResults
                         break;
 
                     case "IONS2":
+                        // Eventually, clicking this value should show something like Vagisha's "lorikeet" tool to show graphical drawing: https://code.google.com/p/lorikeet/
                         int numMatchedIons = ((TypedSearchResultField<int>)searchResult.Fields["num_matched_ions"]).Value;
                         var matchedIonsStr = Convert.ToString(numMatchedIons);
 
