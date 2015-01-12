@@ -341,6 +341,16 @@ namespace CometUI.ViewResults
                         resultColumns.Add(ppm.ToString(CultureInfo.InvariantCulture));
                         break;
 
+                    case "IONS2":
+                        int numMatchedIons = ((TypedSearchResultField<int>)searchResult.Fields["num_matched_ions"]).Value;
+                        var matchedIonsStr = Convert.ToString(numMatchedIons);
+
+                        int totNumIons = ((TypedSearchResultField<int>)searchResult.Fields["tot_num_ions"]).Value;
+                        var totalIonsStr = Convert.ToString(totNumIons);
+
+                        resultColumns.Add(matchedIonsStr + "/" + totalIonsStr);
+                        break;
+
                     default:
                         resultColumns.Add(String.Empty);
                         break;
@@ -575,6 +585,20 @@ namespace CometUI.ViewResults
                                                               result))
             {
                 ErrorMessage = "Could not read the calc_neutral_pep_mass attribute.";
+                return false;
+            }
+
+            if (!ResultFieldFromAttribute<int>(pepXMLReader, searchHitNavigator, "num_matched_ions",
+                                                  result))
+            {
+                ErrorMessage = "Could not read the num_matched_ions attribute.";
+                return false;
+            }
+
+            if (!ResultFieldFromAttribute<int>(pepXMLReader, searchHitNavigator, "tot_num_ions",
+                                      result))
+            {
+                ErrorMessage = "Could not read the tot_num_ions attribute.";
                 return false;
             }
 
