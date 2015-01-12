@@ -116,7 +116,8 @@
          <li><a href="variable_mod07.php">variable_mod07</a> <font color="red">**</font></li>
          <li><a href="variable_mod08.php">variable_mod08</a> <font color="red">**</font></li>
          <li><a href="variable_mod09.php">variable_mod09</a> <font color="red">**</font></li>
-         <li><a href="max_variable_mods_in_peptide.php">max_variable_mods_in_peptide</a> <font color="red">**</font></li>
+         <li><a href="max_variable_mods_in_peptide.php">max_variable_mods_in_peptide</a></li>
+         <li><a href="require_variable_mod.php">require_variable_mod</a> <font color="red">*</font></li>
          </ul>
 
          <h3>Static modifications</h3>
