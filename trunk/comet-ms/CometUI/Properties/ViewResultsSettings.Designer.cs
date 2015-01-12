@@ -88,6 +88,7 @@ namespace CometUI.Properties {
   <string>deltacn</string>
   <string>deltacnstar</string>
   <string>expect</string>
+  <string>massdiff</string>
 </ArrayOfString>")]
         public global::System.Collections.Specialized.StringCollection PickColumnsHideList {
             get {

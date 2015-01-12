@@ -115,197 +115,290 @@ namespace CometUI.ViewResults
 
             UpdateColumnHeaders();
 
-            //_columnHeadersMap.Add("MZratio", "MZRATIO");
-            //_columnHeadersMap.Add("protein_descr", "PROTEIN_DESCR");
-            //_columnHeadersMap.Add("pI", "PI");
-            //_columnHeadersMap.Add("ppm", "PPM");
-            //_columnHeadersMap.Add("ions2", "IONS2");
-            //_columnHeadersMap.Add("protein", "PROTEIN");
-            //_columnHeadersMap.Add("xpress", "XPRESS");
-
-            foreach (var searchResult in SearchResults)
+            if (resultsListView.Columns.Count > 0)
             {
-                TypedSearchResultField<ProteinInfo> proteinInfo = null;
-                TypedSearchResultField<List<ProteinInfo>> altProteins = null;
-                int proteinRow = -1;
-                var row = new List<string>();
-                foreach (ColumnHeader column in resultsListView.Columns)
+                foreach (var searchResult in SearchResults)
                 {
-                    var columnHeader = column.Text;
-                    switch (columnHeader)
+                    var resultColumns = GetResultColumns(searchResult);
+                    var item = new ListViewItem(resultColumns[0]);
+                    for (int i = 1; i < resultColumns.Count; i++)
                     {
-                        case "#":
-                        case "INDEX":
-                            var index = (TypedSearchResultField<int>)searchResult.Fields["index"];
-                            row.Add(Convert.ToString(index.Value));
-                            break;
-
-                        case "ASSUMED_CHARGE":
-                        case "Z":
-                            var charge = (TypedSearchResultField<int>)searchResult.Fields["assumed_charge"];
-                            row.Add(Convert.ToString(charge.Value));
-                            break;
-
-                        case "PRECURSOR_NEUTRAL_MASS":
-                        case "EXP_MASS":
-                            var expMass = (TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"];
-                            row.Add(Convert.ToString(expMass.Value));
-                            break;
-
-                        case "PROB":
-                        case "PROBABILITY":
-                            ISearchResultField probField;
-                            if (searchResult.Fields.TryGetValue("probability", out probField))
-                            {
-                                var probability = (TypedSearchResultField<double>)probField;
-                                row.Add(Convert.ToString(probability.Value));
-                            }
-                            else
-                            {
-                                row.Add(String.Empty);
-                            }
-                            break;
-
-                        case "SSCAN":
-                        case "START_SCAN":
-                            var sscan = (TypedSearchResultField<int>)searchResult.Fields["start_scan"];
-                            row.Add(Convert.ToString(sscan.Value));
-                            break;
-
-                        case "CALC_MASS":
-                        case "CALC_NEUTRAL_PEP_MASS":
-                            var calcMass = (TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"];
-                            row.Add(Convert.ToString(calcMass.Value));
-                            break;
-
-                        case "SPECTRUM":
-                            var spectrum = (TypedSearchResultField<String>)searchResult.Fields["spectrum"];
-                            row.Add(spectrum.Value);
-                            break;
-
-                        case "RETENTION_TIME_SEC":
-                            var retentionTime = (TypedSearchResultField<double>)searchResult.Fields["retention_time_sec"];
-                            row.Add(Convert.ToString(retentionTime.Value));
-                            break;
-
-                        case "PRECURSOR_INTENSITY":
-                            ISearchResultField precursorIntensityField;
-                            if (searchResult.Fields.TryGetValue("precursor_intensity", out precursorIntensityField))
-                            {
-                                var intensity = (TypedSearchResultField<double>)precursorIntensityField;
-                                row.Add(Convert.ToString(intensity.Value));
-                            }
-                            else
-                            {
-                                row.Add(String.Empty);
-                            }
-                            break;
-
-                        case "XCORR":
-                            var xcorr = (TypedSearchResultField<double>)searchResult.Fields["xcorr"];
-                            row.Add(Convert.ToString(xcorr.Value));
-                            break;
-
-                        case "DELTACN":
-                            var deltacn = (TypedSearchResultField<double>)searchResult.Fields["deltacn"];
-                            row.Add(Convert.ToString(deltacn.Value));
-                            break;
-
-                        case "DELTACNSTAR":
-                            var deltacnstar = (TypedSearchResultField<double>)searchResult.Fields["deltacnstar"];
-                            row.Add(Convert.ToString(deltacnstar.Value));
-                            break;
-
-                        case "SPSCORE":
-                            var spscore = (TypedSearchResultField<double>)searchResult.Fields["spscore"];
-                            row.Add(Convert.ToString(spscore.Value));
-                            break;
-
-                        case "EXPECT":
-                            ISearchResultField expectField;
-                            if (searchResult.Fields.TryGetValue("expect", out expectField))
-                            {
-                                var expect = (TypedSearchResultField<double>)expectField;
-                                row.Add(Convert.ToString(expect.Value));
-                            }
-                            else
-                            {
-                                row.Add(String.Empty);
-                            }
-                            break;
-
-                        case "PEPTIDE":
-                            var peptide = (TypedSearchResultField<String>)searchResult.Fields["peptide"];
-                            if (proteinInfo == null)
-                            {
-                                proteinInfo = (TypedSearchResultField<ProteinInfo>) searchResult.Fields["protein"];
-                            }
-                            row.Add(proteinInfo.Value.PeptidePrevAA + "." + peptide.Value + "." + proteinInfo.Value.PeptideNextAA);
-                            break;
-
-                        case "PROTEIN_DESCR":
-                            if (proteinInfo == null)
-                            {
-                                proteinInfo = (TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"];
-                            }
-                            row.Add(proteinInfo.Value.ProteinDescr);
-                            break;
-
-                        case "PROTEIN":
-                            proteinRow = row.Count;
-                            if (proteinInfo == null)
-                            {
-                                proteinInfo = (TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"];
-                            }
-                            String proteinDisplayText = proteinInfo.Value.Name;
-                            
-                            ISearchResultField altProteinsField;
-                            if (searchResult.Fields.TryGetValue("alternative_protein", out altProteinsField))
-                            {
-                                altProteins = (TypedSearchResultField<List<ProteinInfo>>) altProteinsField;
-                                if (altProteins.Value.Count > 1)
-                                {
-                                    proteinDisplayText += " +" +
-                                                          altProteins.Value.Count.ToString(CultureInfo.InvariantCulture);
-                                }
-                            }
-                            row.Add(proteinDisplayText);
-                            break;
-
-                        case "MZRATIO":
-                            var calcNeutralMass = (TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"];
-                            var assumedCharge = (TypedSearchResultField<int>)searchResult.Fields["assumed_charge"];
-                            double mzRatio = (calcNeutralMass.Value + (assumedCharge.Value * ProtonMass)) / assumedCharge.Value;
-                            row.Add(mzRatio.ToString(CultureInfo.InvariantCulture));
-                            break;
-
-                        default:
-                            row.Add(String.Empty);
-                            break;
+                        item.SubItems.Add(resultColumns[i]);
                     }
-                }
 
-                var item = new ListViewItem(row[0]);
-                for (int i = 1; i < row.Count; i++)
-                {
-                    item.SubItems.Add(row[i]);
-                }
+                    TagAlternateProteins(searchResult, item);
 
-                if (proteinRow != -1)
-                {
-                    if (null != altProteins)
-                    {
-                        foreach (var altProtein in altProteins.Value)
-                        {
-                            item.SubItems[proteinRow].Tag += altProtein.Name + Environment.NewLine;
-                        }
-                    }
+                    resultsListView.Items.Add(item);
                 }
-
-                resultsListView.Items.Add(item);
             }
 
             resultsListView.EndUpdate();
+        }
+
+        private List<String> GetResultColumns(SearchResult searchResult)
+        {
+            //_columnHeadersMap.Add("pI", "PI");
+
+            // num_matched_ions/tot_num_ions (ideally, it should have something like Vagisha's "lorikeet" tool to show graphical drawing) https://code.google.com/p/lorikeet/
+            //_columnHeadersMap.Add("ions2", "IONS2");
+
+            //_columnHeadersMap.Add("xpress", "XPRESS");
+
+            var resultColumns = new List<String>();
+            ProteinInfo proteinInfo = null;
+            double calcNeutralMass = -1;
+            double expMass = -1;
+            foreach (ColumnHeader column in resultsListView.Columns)
+            {
+                var columnHeader = column.Text;
+                switch (columnHeader)
+                {
+                    case "#":
+                    case "INDEX":
+                        var index = ((TypedSearchResultField<int>)searchResult.Fields["index"]).Value;
+                        resultColumns.Add(Convert.ToString(index));
+                        break;
+
+                    case "ASSUMED_CHARGE":
+                    case "Z":
+                        var charge = ((TypedSearchResultField<int>)searchResult.Fields["assumed_charge"]).Value;
+                        resultColumns.Add(Convert.ToString(charge));
+                        break;
+
+                    case "PRECURSOR_NEUTRAL_MASS":
+                    case "EXP_MASS":
+                        if (expMass < 0)
+                        {
+                            expMass = ((TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"]).Value;
+                        }
+                        resultColumns.Add(Convert.ToString(expMass));
+                        break;
+
+                    case "PROB":
+                    case "PROBABILITY":
+                        ISearchResultField probField;
+                        String probabilityDisplayString = String.Empty;
+                        if (searchResult.Fields.TryGetValue("probability", out probField))
+                        {
+                            var probability = ((TypedSearchResultField<double>)probField).Value;
+                            probabilityDisplayString = Convert.ToString(probability);
+                        }
+
+                        resultColumns.Add(probabilityDisplayString);
+                        break;
+
+                    case "SSCAN":
+                    case "START_SCAN":
+                        var sscan = ((TypedSearchResultField<int>)searchResult.Fields["start_scan"]).Value;
+                        resultColumns.Add(Convert.ToString(sscan));
+                        break;
+
+                    case "CALC_MASS":
+                    case "CALC_NEUTRAL_PEP_MASS":
+                        var calcMass =
+                            ((TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"]).Value;
+                        resultColumns.Add(Convert.ToString(calcMass));
+                        break;
+
+                    case "SPECTRUM":
+                        var spectrum = ((TypedSearchResultField<String>)searchResult.Fields["spectrum"]).Value;
+                        resultColumns.Add(spectrum);
+                        break;
+
+                    case "RETENTION_TIME_SEC":
+                        var retentionTime =
+                            ((TypedSearchResultField<double>)searchResult.Fields["retention_time_sec"]).Value;
+                        resultColumns.Add(Convert.ToString(retentionTime));
+                        break;
+
+                    case "PRECURSOR_INTENSITY":
+                        ISearchResultField precursorIntensityField;
+                        String precursorIntensityDisplayString = String.Empty;
+                        if (searchResult.Fields.TryGetValue("precursor_intensity", out precursorIntensityField))
+                        {
+                            var intensity = ((TypedSearchResultField<double>)precursorIntensityField).Value;
+                            precursorIntensityDisplayString = Convert.ToString(intensity);
+                        }
+                        resultColumns.Add(precursorIntensityDisplayString);
+                        break;
+
+                    case "XCORR":
+                        var xcorr = ((TypedSearchResultField<double>)searchResult.Fields["xcorr"]).Value;
+                        resultColumns.Add(Convert.ToString(xcorr));
+                        break;
+
+                    case "DELTACN":
+                        var deltacn = ((TypedSearchResultField<double>)searchResult.Fields["deltacn"]).Value;
+                        resultColumns.Add(Convert.ToString(deltacn));
+                        break;
+
+                    case "DELTACNSTAR":
+                        var deltacnstar = ((TypedSearchResultField<double>)searchResult.Fields["deltacnstar"]).Value;
+                        resultColumns.Add(Convert.ToString(deltacnstar));
+                        break;
+
+                    case "SPSCORE":
+                        var spscore = ((TypedSearchResultField<double>)searchResult.Fields["spscore"]).Value;
+                        resultColumns.Add(Convert.ToString(spscore));
+                        break;
+
+                    case "EXPECT":
+                        ISearchResultField expectField;
+                        if (searchResult.Fields.TryGetValue("expect", out expectField))
+                        {
+                            var expect = ((TypedSearchResultField<double>)expectField).Value;
+                            resultColumns.Add(Convert.ToString(expect));
+                        }
+                        else
+                        {
+                            resultColumns.Add(String.Empty);
+                        }
+                        break;
+
+                    case "PEPTIDE":
+                        var peptide = ((TypedSearchResultField<String>)searchResult.Fields["peptide"]).Value;
+                        if (null == proteinInfo)
+                        {
+                            proteinInfo =
+                                ((TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"]).Value;
+                        }
+                        resultColumns.Add(proteinInfo.PeptidePrevAA + "." + peptide + "." + proteinInfo.PeptideNextAA);
+                        break;
+
+                    case "PROTEIN_DESCR":
+                        if (null == proteinInfo)
+                        {
+                            proteinInfo =
+                                ((TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"]).Value;
+                        }
+                        resultColumns.Add(proteinInfo.ProteinDescr);
+                        break;
+
+                    case "PROTEIN":
+                        if (null == proteinInfo)
+                        {
+                            proteinInfo =
+                                ((TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"]).Value;
+                        }
+                        String proteinDisplayText = proteinInfo.Name;
+
+                        ISearchResultField altProteinsField;
+                        if (searchResult.Fields.TryGetValue("alternative_protein", out altProteinsField))
+                        {
+                            var altProteins = ((TypedSearchResultField<List<ProteinInfo>>)altProteinsField).Value;
+                            if (altProteins.Count > 0)
+                            {
+                                proteinDisplayText += " +" + altProteins.Count.ToString(CultureInfo.InvariantCulture);
+                            }
+                        }
+                        resultColumns.Add(proteinDisplayText);
+                        break;
+
+                    case "MZRATIO":
+                        if (calcNeutralMass < 0)
+                        {
+                            calcNeutralMass =
+                                ((TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"]).
+                                    Value;
+                        }
+                        var assumedCharge = ((TypedSearchResultField<int>)searchResult.Fields["assumed_charge"]).Value;
+                        double mzRatio = CalculateMzRatio(calcNeutralMass, assumedCharge);
+                        resultColumns.Add(Convert.ToString(mzRatio));
+                        break;
+
+                    case "MASSDIFF":
+                        if (calcNeutralMass < 0)
+                        {
+                            calcNeutralMass =
+                                ((TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"]).
+                                    Value;
+                        }
+
+                        if (expMass < 0)
+                        {
+                            expMass = ((TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"]).Value;
+                        }
+
+                        var massDiff = CalculateMassDiff(calcNeutralMass, expMass);
+                        resultColumns.Add(Convert.ToString(massDiff));
+                        break;
+
+                    case "PPM":
+                        // (cal mass - exact mass)/exact mass) x 10^6 
+                        if (calcNeutralMass < 0)
+                        {
+                            calcNeutralMass =
+                                ((TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"]).
+                                    Value;
+                        }
+
+                        if (expMass < 0)
+                        {
+                            expMass = ((TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"]).Value;
+                        }
+
+                        var ppm = CalculateMassErrorPPM(calcNeutralMass, expMass);
+                        resultColumns.Add(ppm.ToString(CultureInfo.InvariantCulture));
+                        break;
+
+                    default:
+                        resultColumns.Add(String.Empty);
+                        break;
+                }
+            }
+
+            return resultColumns;
+        }
+
+        private double CalculateMzRatio(double calcNeutralMass, int assumedCharge)
+        {
+            double mzRatio = (calcNeutralMass + (assumedCharge * ProtonMass)) / assumedCharge;
+            //mzRatio = Math.Round(mzRatio, 4);
+            return mzRatio;
+        }
+
+        private double CalculateMassDiff(double calcNeutralMass, double expMass)
+        {
+            var massDiff = calcNeutralMass - expMass;
+            //massDiff = Math.Round(massDiff, 4);
+            return massDiff;
+        }
+
+        private double CalculateMassErrorPPM(double calcNeutralMass, double expMass)
+        {
+            var ppm = ((calcNeutralMass - expMass) / calcNeutralMass) * Math.Pow(10, 6);
+            ppm = Math.Round(ppm, 4);
+            return ppm;
+        }
+
+        private void TagAlternateProteins(SearchResult searchResult, ListViewItem item)
+        {
+            int proteinColumn = FindColumnIndex(resultsListView, "PROTEIN");
+            if (proteinColumn >= 0)
+            {
+                ISearchResultField altProteinsField;
+                if (searchResult.Fields.TryGetValue("alternative_protein", out altProteinsField))
+                {
+                    var altProteins = ((TypedSearchResultField<List<ProteinInfo>>)altProteinsField).Value;
+                    foreach (var altProtein in altProteins)
+                    {
+                        item.SubItems[proteinColumn].Tag += altProtein.Name + Environment.NewLine;
+                    }
+                }
+            }
+        }
+
+        private int FindColumnIndex(ListView list, String columnHeaderText)
+        {
+            foreach (ColumnHeader header in list.Columns)
+            {
+                if (header.Text.Equals(columnHeaderText))
+                {
+                    return header.Index;
+                }
+            }
+
+            return -1;
         }
 
         private void UpdateColumnHeaders()
@@ -630,50 +723,13 @@ namespace CometUI.ViewResults
 
         private void InitializeColumnHeadersMap()
         {
+            // These are the column headers that have alternate condensed names
             _condensedColumnHeadersMap.Add("index", "#");
             _condensedColumnHeadersMap.Add("assumed_charge", "Z");
             _condensedColumnHeadersMap.Add("precursor_neutral_mass", "EXP_MASS");
             _condensedColumnHeadersMap.Add("start_scan", "SSCAN");
             _condensedColumnHeadersMap.Add("calc_neutral_pep_mass", "CALC_MASS");
-
-            //_columnHeadersMap.Add("spectrum", "SPECTRUM");
-            //_columnHeadersMap.Add("retention_time_sec", "RETENTION_TIME_SEC");
-
-            // Need to add peptide_prev_aa="R" peptide_next_aa="T" before and after, like the viewer now "R.EIAQDFK.T"
-            //_columnHeadersMap.Add("peptide", "PEPTIDE");
-
-            //_columnHeadersMap.Add("xcorr", "XCORR");
-            //_columnHeadersMap.Add("deltacn", "DELTACN");
-            //_columnHeadersMap.Add("deltacnstar", "DELTACNSTAR");
-            //_columnHeadersMap.Add("spscore", "SPSCORE");
-            // ADD THIS
-            //_columnHeadersMap.Add("expect", "EXPECT");
-
-
             _condensedColumnHeadersMap.Add("probability", "PROB");
-
-            // (calc_neutral_pep_mass + (assumed_charge * 1.0073)) / assumed_charge (add protons and stuff, the usual calcs)
-            //_columnHeadersMap.Add("MZratio", "MZRATIO");
-
-            // calculated (isoelectric point - there is code floating around)
-            //_columnHeadersMap.Add("pI", "PI");
-
-            // This one is optional - if it were there, it would be in the spectrum query line
-            //_columnHeadersMap.Add("precursor_intensity", "PRECURSOR_INTENSITY");
-
-            // calculated - diff between theoretical and experimental masses - convert to ppm after taking diff
-            //_columnHeadersMap.Add("ppm", "PPM");
-
-
-            // num_matched_ions/tot_num_ions (ideally, it should have something like Vagisha's "lorikeet" tool to show graphical drawing) https://code.google.com/p/lorikeet/
-            //_columnHeadersMap.Add("ions2", "IONS2");
-
-
-            // There may be multiple protein hits for this field, so I need to create a new data structure to store this, or maybe use a string collection or something?
-            //_columnHeadersMap.Add("protein", "PROTEIN");
-            //_columnHeadersMap.Add("protein_descr", "PROTEIN_DESCR");
-
-            //_columnHeadersMap.Add("xpress", "XPRESS");
         }
 
         private void ShowViewOptionsPanel()
@@ -748,7 +804,7 @@ namespace CometUI.ViewResults
 
     public class TypedSearchResultField<T> : ISearchResultField
     {
-        public new T Value { get; set; }
+        public T Value { get; set; }
 
         public TypedSearchResultField(T value)
         {

@@ -30,6 +30,7 @@
   &lt;string&gt;deltacn&lt;/string&gt;
   &lt;string&gt;deltacnstar&lt;/string&gt;
   &lt;string&gt;expect&lt;/string&gt;
+  &lt;string&gt;massdiff&lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>
     </Setting>
     <Setting Name="PickColumnsShowList" Type="System.Collections.Specialized.StringCollection" Scope="User">
