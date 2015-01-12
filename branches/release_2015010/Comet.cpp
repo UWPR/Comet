@@ -406,20 +406,22 @@ void LoadParameters(char *pszParamsFile,
          else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
          {
             varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d %d %d %d",
                   &varModsParam.dVarModMass,
                   varModsParam.szVarModChar,
                   &varModsParam.bBinaryMod,
                   &varModsParam.iMaxNumVarModAAPerMod,
                   &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
+                  &varModsParam.iWhichTerm,
+                  &varModsParam.bRequireThisMod);
+            sprintf(szParamStringVal, "%lf %s %d %d %d %d %d",
                   varModsParam.dVarModMass,
                   varModsParam.szVarModChar,
                   varModsParam.bBinaryMod,
                   varModsParam.iMaxNumVarModAAPerMod,
                   varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
+                  varModsParam.iWhichTerm,
+                  varModsParam.bRequireThisMod);
             pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
          }
          else if (!strcmp(szParamName, "max_variable_mods_in_peptide"))
@@ -428,6 +430,13 @@ void LoadParameters(char *pszParamsFile,
             szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("max_variable_mods_in_peptide", szParamStringVal, iIntParam);
+         }
+         else if (!strcmp(szParamName, "require_variable_mod"))
+         {
+            sscanf(szParamVal, "%d", &iIntParam);
+            szParamStringVal[0] = '\0';
+            sprintf(szParamStringVal, "%d", iIntParam);
+            pSearchMgr->SetParam("require_variable_mod", szParamStringVal, iIntParam);
          }
          else if (!strcmp(szParamName, "fragment_bin_tol"))
          {
@@ -1199,19 +1208,20 @@ allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n
 \n\
 #\n\
 # Up to 9 variable modifications are supported\n\
-# format:  <mass> <residues> <0=variable/1=binary> <max_mods_per_peptide> <term_distance> <n/c-term>\n\
-#     e.g. 79.966331 STY 0 3 -1 0\n\
+# format:  <mass> <residues> <0=variable/1=binary> <max_mods_per_peptide> <term_distance> <n/c-term> <required>\n\
+#     e.g. 79.966331 STY 0 3 -1 0 0\n\
 #\n\
-variable_mod01 = 15.9949 M 0 3 -1 0\n\
-variable_mod02 = 0.0 X 0 3 -1 0\n\
-variable_mod03 = 0.0 X 0 3 -1 0\n\
-variable_mod04 = 0.0 X 0 3 -1 0\n\
-variable_mod05 = 0.0 X 0 3 -1 0\n\
-variable_mod06 = 0.0 X 0 3 -1 0\n\
-variable_mod07 = 0.0 X 0 3 -1 0\n\
-variable_mod08 = 0.0 X 0 3 -1 0\n\
-variable_mod09 = 0.0 X 0 3 -1 0\n\
+variable_mod01 = 15.9949 M 0 3 -1 0 0\n\
+variable_mod02 = 0.0 X 0 3 -1 0 0\n\
+variable_mod03 = 0.0 X 0 3 -1 0 0\n\
+variable_mod04 = 0.0 X 0 3 -1 0 0\n\
+variable_mod05 = 0.0 X 0 3 -1 0 0\n\
+variable_mod06 = 0.0 X 0 3 -1 0 0\n\
+variable_mod07 = 0.0 X 0 3 -1 0 0\n\
+variable_mod08 = 0.0 X 0 3 -1 0 0\n\
+variable_mod09 = 0.0 X 0 3 -1 0 0\n\
 max_variable_mods_in_peptide = 5\n\
+require_variable_mod = 0\n\
 \n\
 #\n\
 # fragment ions\n\

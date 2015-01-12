@@ -706,13 +706,16 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
 
                   char pcVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
 
-                  XcorrScore(szProteinSeq, szProteinName, iStartPos, iEndPos, false,
-                        dCalcPepMass, false, iWhichQuery, iLenPeptide, pcVarModSites);
-
-                  if (g_staticParams.options.iDecoySearch)
+                  if (!g_staticParams.variableModParameters.bRequireVarMod)
                   {
-                     XcorrScore(szDecoyPeptide, szDecoyProteinName, 1, iLenPeptide, false,
-                           dCalcPepMass, true, iWhichQuery, iLenPeptide, pcVarModSites);
+                     XcorrScore(szProteinSeq, szProteinName, iStartPos, iEndPos, false,
+                           dCalcPepMass, false, iWhichQuery, iLenPeptide, pcVarModSites);
+
+                     if (g_staticParams.options.iDecoySearch)
+                     {
+                        XcorrScore(szDecoyPeptide, szDecoyProteinName, 1, iLenPeptide, false,
+                              dCalcPepMass, true, iWhichQuery, iLenPeptide, pcVarModSites);
+                     }
                   }
 
                }
@@ -2188,6 +2191,20 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                           }
                                        }
 
+                                       if (bValid && g_staticParams.variableModParameters.bRequireVarMod)
+                                       {
+                                          // Check to see if required mods are satisfied
+                                          for (i=0; i<VMODS; i++)
+                                          {
+                                             if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod
+                                                   && piTmpVarModCounts[i] == 0)
+                                             {
+                                                bValid = false;
+                                                break;
+                                             }
+                                          }
+                                       }
+
                                        if (bValid && HasVariableMod(piTmpVarModCounts, iStartPos, iEndPos))
                                        {
                                           // mass including terminal mods that need to be tracked separately here
@@ -2635,6 +2652,34 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
 
                _pdAAforward[iPos] = dBion;
+            }
+
+            // Check to see if required mods are satisfied
+            if (g_staticParams.variableModParameters.bRequireVarMod)
+            {
+               for (j=0; j<VMODS; j++)
+               {
+                  if (g_staticParams.variableModParameters.varModList[j].bRequireThisMod
+                        && !isEqual(g_staticParams.variableModParameters.varModList[j].dVarModMass, 0.0))
+                  {
+                     bool bPresent = false;
+
+                     // if mod is required, see if it is present in the peptide
+                     for (i=_varModInfo.iStartPos; i<=_varModInfo.iEndPos; i++)
+                     {
+                        int iPos = i - _varModInfo.iStartPos;
+
+                        if (pcVarModSites[iPos] == _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
+                        {
+                           bPresent = true;
+                           break;
+                        }
+                     }
+
+                     if (!bPresent)
+                        return true;
+                  }
+               }
             }
 
             // this needs to be a separate loop from one above because of pcVarModSites being set above

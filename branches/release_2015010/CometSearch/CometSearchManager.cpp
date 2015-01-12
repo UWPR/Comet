@@ -600,6 +600,8 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
+   GetParamValue("require_variable_mod", g_staticParams.variableModParameters.bRequireVarMod);
+
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
    if (g_staticParams.tolerances.dFragmentBinSize < 0.01)
    {
@@ -1036,6 +1038,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    // Variable mod search for AAs listed in szVarModChar.
    g_staticParams.szMod[0] = '\0';
+   g_staticParams.variableModParameters.bVarModSearch = false;
    for (int i=0; i<VMODS; i++)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
@@ -1045,7 +1048,12 @@ bool CometSearchManager::InitializeStaticParams()
                g_staticParams.variableModParameters.varModList[i].szVarModChar,
                g_staticParams.variableModParameters.cModCode[i],
                g_staticParams.variableModParameters.varModList[i].dVarModMass);
-         g_staticParams.variableModParameters.bVarModSearch = 1;
+
+         g_staticParams.variableModParameters.bVarModSearch = true;
+         if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
+         {
+            g_staticParams.variableModParameters.bRequireVarMod = true;
+         }
       }
    }
 

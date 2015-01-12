@@ -94,16 +94,18 @@ struct IntRange
 
 struct VarMods 
 {
+   double dVarModMass;
    int    bBinaryMod;
+   int    bRequireThisMod;
    int    iMaxNumVarModAAPerMod;
    int    iVarModTermDistance;
    int    iWhichTerm;
-   double dVarModMass;
    char   szVarModChar[MAX_VARMOD_AA];
 
    VarMods()
    {
       bBinaryMod = 0;
+      bRequireThisMod = 0;
       iMaxNumVarModAAPerMod = 0;
       iVarModTermDistance = -1;
       iWhichTerm = 0;
@@ -114,6 +116,7 @@ struct VarMods
    VarMods(const VarMods& a)
    {
       bBinaryMod = a.bBinaryMod;
+      bRequireThisMod = a.bRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
@@ -124,6 +127,7 @@ struct VarMods
    VarMods& operator=(VarMods& a) 
    {
       bBinaryMod = a.bBinaryMod;
+      bRequireThisMod = a.bRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;

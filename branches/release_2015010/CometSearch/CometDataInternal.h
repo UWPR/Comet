@@ -168,7 +168,7 @@ struct Results
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];    // store variable mods encoding, +2 to accomodate N/C-term
    char szProtein[WIDTH_REFERENCE];
    char szPeptide[MAX_PEPTIDE_LEN];
-   char szPrevNextAA[4];                      // [0] stores prev AA, [1] stores next AA
+   char szPrevNextAA[2];                      // [0] stores prev AA, [1] stores next AA
 };
 
 struct PepMassInfo
@@ -291,7 +291,8 @@ struct PrecalcMasses
 
 struct VarModParams
 {
-   int     bVarModSearch; 
+   bool    bVarModSearch; 
+   int     bRequireVarMod;               // also set to true if any individual bRequireThisMod is true
    int     iMaxVarModPerPeptide;
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
@@ -471,6 +472,7 @@ struct StaticParams
       {
          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 4;
          variableModParameters.varModList[i].bBinaryMod = 0;
+         variableModParameters.varModList[i].bRequireThisMod = 0;
          variableModParameters.varModList[i].dVarModMass = 0.0;
          variableModParameters.varModList[i].szVarModChar[0] = '\0';
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
@@ -486,7 +488,6 @@ struct StaticParams
       variableModParameters.cModCode[6] = '%';
       variableModParameters.cModCode[7] = '!';
       variableModParameters.cModCode[8] = '+';
-//    variableModParameters.cModCode[9] = '&';
 
       variableModParameters.iMaxVarModPerPeptide = 10;
 
