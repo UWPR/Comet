@@ -212,32 +212,32 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       }
    }
 
-   WriteAddAminoAcid(fpout, searchMgr, "add_G_glycine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_A_alanine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_S_serine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_P_proline");
-   WriteAddAminoAcid(fpout, searchMgr, "add_V_valine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_T_threonine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_C_cysteine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_L_leucine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_I_isoleucine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_N_asparagine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_O_ornithine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_D_aspartic_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_Q_glutamine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_K_lysine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_E_glutamic_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_M_methionine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_H_histidine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_F_phenylalanine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_R_arginine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_Y_tyrosine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_W_tryptophan");
-   WriteAddAminoAcid(fpout, searchMgr, "add_B_user_amino_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_J_user_amino_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_U_user_amino_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_X_user_amino_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_Z_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_G_glycine");
+   WriteStaticMod(fpout, searchMgr, "add_A_alanine");
+   WriteStaticMod(fpout, searchMgr, "add_S_serine");
+   WriteStaticMod(fpout, searchMgr, "add_P_proline");
+   WriteStaticMod(fpout, searchMgr, "add_V_valine");
+   WriteStaticMod(fpout, searchMgr, "add_T_threonine");
+   WriteStaticMod(fpout, searchMgr, "add_C_cysteine");
+   WriteStaticMod(fpout, searchMgr, "add_L_leucine");
+   WriteStaticMod(fpout, searchMgr, "add_I_isoleucine");
+   WriteStaticMod(fpout, searchMgr, "add_N_asparagine");
+   WriteStaticMod(fpout, searchMgr, "add_O_ornithine");
+   WriteStaticMod(fpout, searchMgr, "add_D_aspartic_acid");
+   WriteStaticMod(fpout, searchMgr, "add_Q_glutamine");
+   WriteStaticMod(fpout, searchMgr, "add_K_lysine");
+   WriteStaticMod(fpout, searchMgr, "add_E_glutamic_acid");
+   WriteStaticMod(fpout, searchMgr, "add_M_methionine");
+   WriteStaticMod(fpout, searchMgr, "add_H_histidine");
+   WriteStaticMod(fpout, searchMgr, "add_F_phenylalanine");
+   WriteStaticMod(fpout, searchMgr, "add_R_arginine");
+   WriteStaticMod(fpout, searchMgr, "add_Y_tyrosine");
+   WriteStaticMod(fpout, searchMgr, "add_W_tryptophan");
+   WriteStaticMod(fpout, searchMgr, "add_B_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_J_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_U_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_X_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_Z_user_amino_acid");
 
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
    for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
@@ -328,9 +328,9 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
 }
 
 
-void CometWritePepXML::WriteAddAminoAcid(FILE *fpout,
-                                         CometSearchManager &searchMgr,
-                                         string paramName)
+void CometWritePepXML::WriteStaticMod(FILE *fpout,
+                                      CometSearchManager &searchMgr,
+                                      string paramName)
 {
    double dMass = 0.0;
    if (searchMgr.GetParamValue(paramName, dMass))
