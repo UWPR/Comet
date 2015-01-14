@@ -16,8 +16,6 @@ namespace CometUI.ViewResults
 
         public String ErrorMessage { get; private set; }
 
-        private const double ProtonMass = 1.00727646688;
-
         private CometUI CometUI { get; set; }
         private bool OptionsPanelShown { get; set; }
         private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
@@ -144,6 +142,7 @@ namespace CometUI.ViewResults
             ProteinInfo proteinInfo = null;
             double calcNeutralMass = -1;
             double expMass = -1;
+            String peptide = null;
             foreach (ColumnHeader column in resultsListView.Columns)
             {
                 var columnHeader = column.Text;
@@ -252,7 +251,10 @@ namespace CometUI.ViewResults
                         break;
 
                     case "PEPTIDE":
-                        var peptide = ((TypedSearchResultField<String>)searchResult.Fields["peptide"]).Value;
+                        if (null == peptide)
+                        {
+                            peptide = ((TypedSearchResultField<String>) searchResult.Fields["peptide"]).Value;
+                        }
                         if (null == proteinInfo)
                         {
                             proteinInfo =
@@ -298,7 +300,9 @@ namespace CometUI.ViewResults
                                     Value;
                         }
                         var assumedCharge = ((TypedSearchResultField<int>)searchResult.Fields["assumed_charge"]).Value;
-                        double mzRatio = CalculateMzRatio(calcNeutralMass, assumedCharge);
+                        double mzRatio = MassSpecUtils.CalculateMzRatio(calcNeutralMass, assumedCharge);
+                        mzRatio = Math.Round(mzRatio, 4);
+
                         resultColumns.Add(Convert.ToString(mzRatio));
                         break;
 
@@ -315,7 +319,9 @@ namespace CometUI.ViewResults
                             expMass = ((TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"]).Value;
                         }
 
-                        var massDiff = CalculateMassDiff(calcNeutralMass, expMass);
+                        var massDiff = MassSpecUtils.CalculateMassDiff(calcNeutralMass, expMass);
+                        massDiff = Math.Round(massDiff, 4);
+
                         resultColumns.Add(Convert.ToString(massDiff));
                         break;
 
@@ -333,7 +339,9 @@ namespace CometUI.ViewResults
                             expMass = ((TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"]).Value;
                         }
 
-                        var ppm = CalculateMassErrorPPM(calcNeutralMass, expMass);
+                        var ppm = MassSpecUtils.CalculateMassErrorPPM(calcNeutralMass, expMass);
+                        ppm = Math.Round(ppm, 4);
+
                         resultColumns.Add(ppm.ToString(CultureInfo.InvariantCulture));
                         break;
 
@@ -348,6 +356,17 @@ namespace CometUI.ViewResults
                         resultColumns.Add(matchedIonsStr + "/" + totalIonsStr);
                         break;
 
+                    case "PI":
+                        if (null == peptide)
+                        {
+                            peptide = ((TypedSearchResultField<String>)searchResult.Fields["peptide"]).Value;
+                        }
+                        var pI = MassSpecUtils.CalculatePI(peptide);
+                        pI = Math.Round(pI, 2);
+
+                        resultColumns.Add(Convert.ToString(pI));
+                        break;
+
                     default:
                         resultColumns.Add(String.Empty);
                         break;
@@ -355,27 +374,6 @@ namespace CometUI.ViewResults
             }
 
             return resultColumns;
-        }
-
-        private double CalculateMzRatio(double calcNeutralMass, int assumedCharge)
-        {
-            double mzRatio = (calcNeutralMass + (assumedCharge * ProtonMass)) / assumedCharge;
-            //mzRatio = Math.Round(mzRatio, 4);
-            return mzRatio;
-        }
-
-        private double CalculateMassDiff(double calcNeutralMass, double expMass)
-        {
-            var massDiff = calcNeutralMass - expMass;
-            //massDiff = Math.Round(massDiff, 4);
-            return massDiff;
-        }
-
-        private double CalculateMassErrorPPM(double calcNeutralMass, double expMass)
-        {
-            var ppm = ((calcNeutralMass - expMass) / calcNeutralMass) * Math.Pow(10, 6);
-            ppm = Math.Round(ppm, 4);
-            return ppm;
         }
 
         private void TagAlternateProteins(SearchResult searchResult, ListViewItem item)
