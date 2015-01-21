@@ -276,7 +276,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData)
    pSearchThreadData->pbSearchMemoryPool = &_pbSearchMemoryPool[i];
 
    CometSearch sqSearch;
-   // DoSearch now returs true/false, but we already log errors and set
+   // DoSearch now returns true/false, but we already log errors and set
    // the global error variable before we get here, so no need to check
    // the return value here.
    sqSearch.DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
@@ -291,9 +291,9 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
       _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
-      _proteinInfo.iSeqFilePosition = dbe.iSeqFilePosition;
 
       if (!SearchForPeptides((char *)dbe.strSeq.c_str(),
+                             dbe.iSeqFilePosition,
                              (char *)dbe.strName.c_str(),
                              0,
                              pbDuplFragment))
@@ -306,6 +306,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          _proteinInfo.iProteinSeqLength -= 1;
 
          if (!SearchForPeptides((char *)dbe.strSeq.c_str()+1,
+                                dbe.iSeqFilePosition,
                                 (char *)dbe.strName.c_str(),
                                 1,
                                 pbDuplFragment))
@@ -334,6 +335,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          }
 
          if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
+                                dbe.iSeqFilePosition,
                                 (char *)dbe.strName.c_str(),
                                 0,
                                 pbDuplFragment))
@@ -353,6 +355,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             }
 
             if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
+                                   dbe.iSeqFilePosition,
                                    (char *)dbe.strName.c_str(),
                                    0,
                                    pbDuplFragment))
@@ -424,6 +427,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
                }
 
                if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
+                                      dbe.iSeqFilePosition,
                                       (char *)dbe.strName.c_str(),
                                       0,
                                       pbDuplFragment))
@@ -452,6 +456,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             }
 
             if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
+                                   dbe.iSeqFilePosition,
                                    (char *)dbe.strName.c_str(),
                                    0,
                                    pbDuplFragment))
@@ -471,6 +476,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 
 // Compare MSMS data to peptide with szProteinSeq from the input database.
 bool CometSearch::SearchForPeptides(char *szProteinSeq,
+                                    int  iSeqFilePosition,
                                     char *szProteinName,
                                     bool bNtermPeptideOnly,
                                     bool *pbDuplFragment)
@@ -708,12 +714,12 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
 
                   if (!g_staticParams.variableModParameters.bRequireVarMod)
                   {
-                     XcorrScore(szProteinSeq, szProteinName, iStartPos, iEndPos, false,
+                     XcorrScore(szProteinSeq, iSeqFilePosition, szProteinName, iStartPos, iEndPos, false,
                            dCalcPepMass, false, iWhichQuery, iLenPeptide, pcVarModSites);
 
                      if (g_staticParams.options.iDecoySearch)
                      {
-                        XcorrScore(szDecoyPeptide, szDecoyProteinName, 1, iLenPeptide, false,
+                        XcorrScore(szDecoyPeptide, iSeqFilePosition, szDecoyProteinName, 1, iLenPeptide, false,
                               dCalcPepMass, true, iWhichQuery, iLenPeptide, pcVarModSites);
                      }
                   }
@@ -761,7 +767,7 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
 
             if (HasVariableMod(piVarModCounts, iStartPos, iEndPos))
             {
-               if (!VarModSearch(szProteinSeq, szProteinName, piVarModCounts, iStartPos, iEndPos, pbDuplFragment))
+               if (!VarModSearch(szProteinSeq, iSeqFilePosition, szProteinName, piVarModCounts, iStartPos, iEndPos, pbDuplFragment))
                {
                   return false;
                }
@@ -1182,6 +1188,7 @@ char CometSearch::GetAA(int i,
 
 // Compares sequence to MSMS spectrum by matching ion intensities.
 void CometSearch::XcorrScore(char *szProteinSeq,
+                             int iSeqFilePosition,
                              char *szProteinName,
                              int iStartPos,
                              int iEndPos,
@@ -1300,9 +1307,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       if (dXcorr > pQuery->fLowestDecoyCorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
-                  szProteinSeq, 1, pcVarModSites))
+                  szProteinSeq, iSeqFilePosition, szProteinName, 1, pcVarModSites))
          {
-            StorePeptide(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq,
+            StorePeptide(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq, iSeqFilePosition,
                   dCalcPepMass, dXcorr, szProteinName, 1,  pcVarModSites);
          }
       }
@@ -1312,9 +1319,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       if (dXcorr > pQuery->fLowestCorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
-                  szProteinSeq, 0, pcVarModSites))
+                  szProteinSeq, iSeqFilePosition, szProteinName, 0, pcVarModSites))
          {
-            StorePeptide(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq,
+            StorePeptide(iWhichQuery, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq, iSeqFilePosition,
                   dCalcPepMass, dXcorr, szProteinName, 0, pcVarModSites);
          }
       }      
@@ -1363,6 +1370,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
                                int iEndPos,
                                bool bFoundVariableMod,
                                char *szProteinSeq,
+                               int iSeqFilePosition,
                                double dCalcPepMass,
                                double dXcorr,
                                char *szProteinName,
@@ -1418,9 +1426,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
       else
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
+// FIX:  store szProteinName to set and add protein idx here
       strcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szProtein, szProteinName);
 
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iSeqFilePosition = iSeqFilePosition;
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
@@ -1491,9 +1500,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
       else
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
+// FIX:  store szProteinName to set and add number here
       strcpy(pQuery->_pResults[siLowestSpScoreIndex].szProtein, szProteinName);
 
-      pQuery->_pResults[siLowestSpScoreIndex].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
+      pQuery->_pResults[siLowestSpScoreIndex].iSeqFilePosition = iSeqFilePosition;
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
@@ -1533,6 +1543,8 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                                 bool bFoundVariableMod,
                                 double dCalcPepMass,
                                 char *szProteinSeq,
+                                int iSeqFilePosition,
+                                char *szProteinName,
                                 bool bDecoyResults,
                                 char *pcVarModSites)
 {
@@ -1573,21 +1585,20 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                }
             }
 
-            // FIX
-            // Now check if decoy peptides differs only by I/L.  How to handle I/L variable mods??
-
             if (bIsDuplicate)
             {
-               if (pQuery->_pDecoys[i].iSeqFilePosition > _proteinInfo.iSeqFilePosition)
+               // if duplicate, check to see if need to replace stored protein info
+               // with protein that's earlier in database
+               if (pQuery->_pDecoys[i].iSeqFilePosition > iSeqFilePosition)
                {
-                  pQuery->_pDecoys[i].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
+                  pQuery->_pDecoys[i].iSeqFilePosition = iSeqFilePosition;
 #ifdef _WIN32
                   _snprintf(pQuery->_pDecoys[i].szProtein, WIDTH_REFERENCE, "%s%s",
-                        g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
+                        g_staticParams.szDecoyPrefix, szProteinName);
                   pQuery->_pDecoys[i].szProtein[WIDTH_REFERENCE-1]=0;    // _snprintf does not guarantee null termination
 #else
                   snprintf(pQuery->_pDecoys[i].szProtein, WIDTH_REFERENCE, "%s%s",
-                        g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
+                        g_staticParams.szDecoyPrefix, szProteinName);
 #endif
 
                   if (iStartPos == 0)
@@ -1600,6 +1611,8 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   else
                      pQuery->_pDecoys[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
                }
+
+// FIX:  ignore if statement above, add _proteinInfo.szProteinName to protein set, and append protein idx here
 
                pQuery->_pDecoys[i].iDuplicateCount++;
                break;
@@ -1639,11 +1652,13 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
             if (bIsDuplicate)
             {
-               // if duplicate, store name and prev/next AA from the first protein
-               if (pQuery->_pResults[i].iSeqFilePosition > _proteinInfo.iSeqFilePosition)
+               // if duplicate, check to see if need to replace stored protein info
+               // with protein that's earlier in database
+               if (pQuery->_pResults[i].iSeqFilePosition > iSeqFilePosition)
                {
-                  pQuery->_pResults[i].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
-                  strcpy(pQuery->_pResults[i].szProtein, _proteinInfo.szProteinName);
+                  pQuery->_pResults[i].iSeqFilePosition = iSeqFilePosition;
+
+                  strcpy(pQuery->_pResults[i].szProtein, szProteinName);
 
                   if (iStartPos == 0)
                      pQuery->_pResults[i].szPrevNextAA[0] = '-';
@@ -1655,6 +1670,8 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   else
                      pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
                }
+
+// FIX:  ignore if statement above, add _proteinInfo.szProteinName to protein set, and append protein idx here
 
                pQuery->_pResults[i].iDuplicateCount++;
                break;
@@ -1853,6 +1870,7 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
 
 
 bool CometSearch::VarModSearch(char *szProteinSeq,
+                               int iSeqFilePosition,
                                char *szProteinName,
                                int piVarModCounts[],
                                int iStartPos,
@@ -2240,7 +2258,7 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                              _varModInfo.dCalcPepMass = dCalcPepMass;
 
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-                                             if (!PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment))
+                                             if (!PermuteMods(szProteinSeq, iSeqFilePosition, iWhichQuery, 1, pbDuplFragment))
                                              {
                                                 return false;
                                              }
@@ -2284,6 +2302,7 @@ double CometSearch::TotalVarModMass(int *pVarModCounts)
 
 
 bool CometSearch::PermuteMods(char *szProteinSeq,
+                              int iSeqFilePosition,
                               int iWhichQuery,
                               int iWhichMod,
                               bool *pbDuplFragment)
@@ -2355,12 +2374,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
       if (iWhichMod == 9)
       {
-         if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
+         if (!CalcVarModIons(szProteinSeq, iSeqFilePosition, iWhichQuery, pbDuplFragment))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment))
+         if (!PermuteMods(szProteinSeq, iSeqFilePosition, iWhichQuery, iWhichMod+1, pbDuplFragment))
             return false;
       }
 
@@ -2374,12 +2393,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
          if (iWhichMod == 9)
          {
-            if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
+            if (!CalcVarModIons(szProteinSeq, iSeqFilePosition, iWhichQuery, pbDuplFragment))
                return false;
          }
          else
          {
-            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment))
+            if (!PermuteMods(szProteinSeq, iSeqFilePosition, iWhichQuery, iWhichMod+1, pbDuplFragment))
                return false;
          }
       }
@@ -2388,12 +2407,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
    {
       if (iWhichMod == 9)
       {
-         if (!CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment))
+         if (!CalcVarModIons(szProteinSeq, iSeqFilePosition, iWhichQuery, pbDuplFragment))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment))
+         if (!PermuteMods(szProteinSeq, iSeqFilePosition, iWhichQuery, iWhichMod+1, pbDuplFragment))
             return false;
       }
    }
@@ -2527,6 +2546,7 @@ void CometSearch::inittwiddle(int m, int n, int *p)
 
 
 bool CometSearch::CalcVarModIons(char *szProteinSeq,
+                                 int iSeqFilePosition,
                                  int iWhichQuery,
                                  bool *pbDuplFragment)
 {
@@ -2914,12 +2934,12 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
          }
 
-         XcorrScore(szProteinSeq, _proteinInfo.szProteinName, _varModInfo.iStartPos,
+         XcorrScore(szProteinSeq, iSeqFilePosition, _proteinInfo.szProteinName, _varModInfo.iStartPos,
                _varModInfo.iEndPos, true, _varModInfo.dCalcPepMass, false, iWhichQuery, iLenPeptide, pcVarModSites);
 
          if (g_staticParams.options.iDecoySearch)
          {
-            XcorrScore(szDecoyPeptide, szDecoyProteinName, 1, iLenPeptide, true,
+            XcorrScore(szDecoyPeptide, iSeqFilePosition, szDecoyProteinName, 1, iLenPeptide, true,
                   _varModInfo.dCalcPepMass, true, iWhichQuery, iLenPeptide, pcVarModSitesDecoy);
          }
 
