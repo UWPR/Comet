@@ -89,7 +89,6 @@ private:
                            int iStartPos,
                            int iEndPos);
    void XcorrScore(char *szProteinSeq,
-                    int iSeqFilePosition,
                    char *szProteinName,
                    int iStartPos,
                    int iEndPos,
@@ -115,7 +114,6 @@ private:
                       bool bFoundVariableMod,
                       double dCalcPepMass,
                       char *szProteinSeq,
-                      int iSeqFilePosition,
                       char *szProteinName,
                       bool bDecoyResults,
                       char *pcVarModSites);
@@ -124,14 +122,12 @@ private:
                      int iEndPos,
                      bool bFoundVariableMod,
                      char *szProteinSeq,
-                     int iSeqFilePosition,
                      double dCalcPepMass,
                      double dScoreSp,
                      char *szProteinName,
                      bool bStoreSeparateDecoy,
                      char *pcVarModSites);
    bool VarModSearch(char *szProteinSeq,
-                     int iSeqFilePosition,
                      char *szProteinName,
                      int varModCounts[],
                      int iStartPos,
@@ -139,18 +135,15 @@ private:
                      bool *pbDuplFragment);
    double TotalVarModMass(int *pVarModCounts);
    bool PermuteMods(char *szProteinSeq, 
-                 int iSeqFilePosition,
-                 int iWhichQuery,
-                 int iWhichMod,
-                 bool *pbDuplFragments);
+                    int iWhichQuery,
+                    int iWhichMod,
+                    bool *pbDuplFragments);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool CalcVarModIons(char *szProteinSeq,
-                       int iSeqFilePosition,
                        int iWhichQuery,
                        bool *pbDuplFragments);
    bool SearchForPeptides(char *szProteinSeq,
-                          int iSeqFilePosition,
                           char *szProteinName,
                           bool bNtermPeptideOnly,
                           bool *pbDuplFragment);
@@ -223,6 +216,7 @@ private:
        char *pszProteinSeq;
        int  iProteinSeqLength;
        int  iAllocatedProtSeqLength;
+       int  iSeqFilePosition;
    };
 
    struct SpectrumInfoInternal
