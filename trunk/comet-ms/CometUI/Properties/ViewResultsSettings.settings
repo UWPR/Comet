@@ -17,6 +17,7 @@
     <Setting Name="PickColumnsHideList" Type="System.Collections.Specialized.StringCollection" Scope="User">
       <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;string&gt;probability&lt;/string&gt;
   &lt;string&gt;index&lt;/string&gt;
   &lt;string&gt;assumed_charge&lt;/string&gt;
   &lt;string&gt;precursor_neutral_mass&lt;/string&gt;
@@ -30,13 +31,14 @@
   &lt;string&gt;deltacn&lt;/string&gt;
   &lt;string&gt;deltacnstar&lt;/string&gt;
   &lt;string&gt;expect&lt;/string&gt;
+  &lt;string&gt;sprank&lt;/string&gt;
   &lt;string&gt;massdiff&lt;/string&gt;
+  &lt;string&gt;xpress&lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>
     </Setting>
     <Setting Name="PickColumnsShowList" Type="System.Collections.Specialized.StringCollection" Scope="User">
       <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
-  &lt;string&gt;probability&lt;/string&gt;
   &lt;string&gt;spectrum&lt;/string&gt;
   &lt;string&gt;start_scan&lt;/string&gt;
   &lt;string&gt;spscore&lt;/string&gt;
@@ -44,7 +46,6 @@
   &lt;string&gt;peptide&lt;/string&gt;
   &lt;string&gt;protein&lt;/string&gt;
   &lt;string&gt;calc_neutral_pep_mass&lt;/string&gt;
-  &lt;string&gt;xpress&lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>
     </Setting>
     <Setting Name="DisplayOptionsSortAscending" Type="System.Boolean" Scope="User">

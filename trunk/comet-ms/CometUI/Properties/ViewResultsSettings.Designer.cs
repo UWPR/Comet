@@ -75,6 +75,7 @@ namespace CometUI.Properties {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute(@"<?xml version=""1.0"" encoding=""utf-16""?>
 <ArrayOfString xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
+  <string>probability</string>
   <string>index</string>
   <string>assumed_charge</string>
   <string>precursor_neutral_mass</string>
@@ -88,7 +89,9 @@ namespace CometUI.Properties {
   <string>deltacn</string>
   <string>deltacnstar</string>
   <string>expect</string>
+  <string>sprank</string>
   <string>massdiff</string>
+  <string>xpress</string>
 </ArrayOfString>")]
         public global::System.Collections.Specialized.StringCollection PickColumnsHideList {
             get {
@@ -103,7 +106,6 @@ namespace CometUI.Properties {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute(@"<?xml version=""1.0"" encoding=""utf-16""?>
 <ArrayOfString xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
-  <string>probability</string>
   <string>spectrum</string>
   <string>start_scan</string>
   <string>spscore</string>
@@ -111,7 +113,6 @@ namespace CometUI.Properties {
   <string>peptide</string>
   <string>protein</string>
   <string>calc_neutral_pep_mass</string>
-  <string>xpress</string>
 </ArrayOfString>")]
         public global::System.Collections.Specialized.StringCollection PickColumnsShowList {
             get {

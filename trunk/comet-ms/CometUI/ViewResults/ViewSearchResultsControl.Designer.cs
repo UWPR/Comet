@@ -35,7 +35,7 @@
             this.displayOptionsTabPage = new System.Windows.Forms.TabPage();
             this.pickColumnsTabPage = new System.Windows.Forms.TabPage();
             this.resultsListPanel = new System.Windows.Forms.Panel();
-            this.resultsListView = new System.Windows.Forms.ListView();
+            this.resultsListView = new BrightIdeasSoftware.ObjectListView();
             this.hideOptionsGroupBox = new System.Windows.Forms.GroupBox();
             this.showHideOptionsLabel = new System.Windows.Forms.Label();
             this.showHideOptionsBtn = new System.Windows.Forms.Button();
@@ -45,6 +45,7 @@
             this.showOptionsPanel.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.resultsListPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).BeginInit();
             this.SuspendLayout();
             // 
             // showOptionsPanel
@@ -114,21 +115,16 @@
             // 
             // resultsListView
             // 
-            this.resultsListView.Activation = System.Windows.Forms.ItemActivation.OneClick;
             this.resultsListView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.resultsListView.FullRowSelect = true;
-            this.resultsListView.GridLines = true;
-            this.resultsListView.Location = new System.Drawing.Point(18, 7);
+            this.resultsListView.Location = new System.Drawing.Point(18, 4);
             this.resultsListView.Name = "resultsListView";
-            this.resultsListView.Size = new System.Drawing.Size(669, 336);
-            this.resultsListView.TabIndex = 9;
+            this.resultsListView.ShowGroups = false;
+            this.resultsListView.Size = new System.Drawing.Size(669, 356);
+            this.resultsListView.TabIndex = 0;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
             this.resultsListView.View = System.Windows.Forms.View.Details;
-            this.resultsListView.ItemMouseHover += new System.Windows.Forms.ListViewItemMouseHoverEventHandler(this.ResultsListViewItemMouseHover);
-            this.resultsListView.MouseLeave += new System.EventHandler(this.ResultsListViewMouseLeave);
-            this.resultsListView.MouseMove += new System.Windows.Forms.MouseEventHandler(this.ResultsListViewMouseMove);
             // 
             // hideOptionsGroupBox
             // 
@@ -200,6 +196,7 @@
             this.showOptionsPanel.ResumeLayout(false);
             this.viewOptionsTab.ResumeLayout(false);
             this.resultsListPanel.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -213,12 +210,12 @@
         private System.Windows.Forms.TabPage displayOptionsTabPage;
         private System.Windows.Forms.TabPage pickColumnsTabPage;
         private System.Windows.Forms.Panel resultsListPanel;
-        private System.Windows.Forms.ListView resultsListView;
         private System.Windows.Forms.GroupBox hideOptionsGroupBox;
         private System.Windows.Forms.Label showHideOptionsLabel;
         private System.Windows.Forms.Button showHideOptionsBtn;
         private System.Windows.Forms.Panel resultsListPanelFull;
         private System.Windows.Forms.Panel resultsListPanelNormal;
         private System.Windows.Forms.ToolTip viewResultsToolTip;
+        private BrightIdeasSoftware.ObjectListView resultsListView;
     }
 }

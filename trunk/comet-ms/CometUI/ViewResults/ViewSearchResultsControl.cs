@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
 using System.Windows.Forms;
 using System.Xml.XPath;
+using BrightIdeasSoftware;
 using CometUI.Properties;
 
 namespace CometUI.ViewResults
@@ -11,9 +11,7 @@ namespace CometUI.ViewResults
     public partial class ViewSearchResultsControl : UserControl
     {
         public String ResultsPepXMLFile { get; set; }
-
         public bool SettingsChanged { get; set; }
-
         public String ErrorMessage { get; private set; }
 
         private CometUI CometUI { get; set; }
@@ -21,10 +19,8 @@ namespace CometUI.ViewResults
         private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
         private ViewResultsPickColumnsControl ViewResultsPickColumnsControl { get; set; }
-
         private List<SearchResult> SearchResults { get; set; }
-
-        private readonly Dictionary<String, String> _condensedColumnHeadersMap = new Dictionary<String, String>();
+        private Dictionary<String, SearchResultColumn> ResultColumns { get; set; } 
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -32,7 +28,7 @@ namespace CometUI.ViewResults
 
             CometUI = parent;
 
-            InitializeColumnHeadersMap();
+            InitializeResultsColumns();
 
             SearchResults = new List<SearchResult>();
 
@@ -107,322 +103,32 @@ namespace CometUI.ViewResults
 
         public void UpdateSearchResultsList()
         {
-            resultsListView.BeginUpdate();
-
             resultsListView.Clear();
-
             UpdateColumnHeaders();
-
-            if (resultsListView.Columns.Count > 0)
-            {
-                foreach (var searchResult in SearchResults)
-                {
-                    var resultColumns = GetResultColumns(searchResult);
-                    var item = new ListViewItem(resultColumns[0]);
-                    for (int i = 1; i < resultColumns.Count; i++)
-                    {
-                        item.SubItems.Add(resultColumns[i]);
-                    }
-
-                    TagAlternateProteins(searchResult, item);
-
-                    resultsListView.Items.Add(item);
-                }
-            }
-
-            resultsListView.EndUpdate();
-        }
-
-        private List<String> GetResultColumns(SearchResult searchResult)
-        {
-            //_columnHeadersMap.Add("pI", "PI");
-            //_columnHeadersMap.Add("xpress", "XPRESS");
-
-            var resultColumns = new List<String>();
-            ProteinInfo proteinInfo = null;
-            double calcNeutralMass = -1;
-            double expMass = -1;
-            String peptide = null;
-            foreach (ColumnHeader column in resultsListView.Columns)
-            {
-                var columnHeader = column.Text;
-                switch (columnHeader)
-                {
-                    case "#":
-                    case "INDEX":
-                        var index = ((TypedSearchResultField<int>)searchResult.Fields["index"]).Value;
-                        resultColumns.Add(Convert.ToString(index));
-                        break;
-
-                    case "ASSUMED_CHARGE":
-                    case "Z":
-                        var charge = ((TypedSearchResultField<int>)searchResult.Fields["assumed_charge"]).Value;
-                        resultColumns.Add(Convert.ToString(charge));
-                        break;
-
-                    case "PRECURSOR_NEUTRAL_MASS":
-                    case "EXP_MASS":
-                        if (expMass < 0)
-                        {
-                            expMass = ((TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"]).Value;
-                        }
-                        resultColumns.Add(Convert.ToString(expMass));
-                        break;
-
-                    case "PROB":
-                    case "PROBABILITY":
-                        ISearchResultField probField;
-                        String probabilityDisplayString = String.Empty;
-                        if (searchResult.Fields.TryGetValue("probability", out probField))
-                        {
-                            var probability = ((TypedSearchResultField<double>)probField).Value;
-                            probabilityDisplayString = Convert.ToString(probability);
-                        }
-
-                        resultColumns.Add(probabilityDisplayString);
-                        break;
-
-                    case "SSCAN":
-                    case "START_SCAN":
-                        var sscan = ((TypedSearchResultField<int>)searchResult.Fields["start_scan"]).Value;
-                        resultColumns.Add(Convert.ToString(sscan));
-                        break;
-
-                    case "CALC_MASS":
-                    case "CALC_NEUTRAL_PEP_MASS":
-                        var calcMass =
-                            ((TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"]).Value;
-                        resultColumns.Add(Convert.ToString(calcMass));
-                        break;
-
-                    case "SPECTRUM":
-                        var spectrum = ((TypedSearchResultField<String>)searchResult.Fields["spectrum"]).Value;
-                        resultColumns.Add(spectrum);
-                        break;
-
-                    case "RETENTION_TIME_SEC":
-                        var retentionTime =
-                            ((TypedSearchResultField<double>)searchResult.Fields["retention_time_sec"]).Value;
-                        resultColumns.Add(Convert.ToString(retentionTime));
-                        break;
-
-                    case "PRECURSOR_INTENSITY":
-                        ISearchResultField precursorIntensityField;
-                        String precursorIntensityDisplayString = String.Empty;
-                        if (searchResult.Fields.TryGetValue("precursor_intensity", out precursorIntensityField))
-                        {
-                            var intensity = ((TypedSearchResultField<double>)precursorIntensityField).Value;
-                            precursorIntensityDisplayString = Convert.ToString(intensity);
-                        }
-                        resultColumns.Add(precursorIntensityDisplayString);
-                        break;
-
-                    case "XCORR":
-                        var xcorr = ((TypedSearchResultField<double>)searchResult.Fields["xcorr"]).Value;
-                        resultColumns.Add(Convert.ToString(xcorr));
-                        break;
-
-                    case "DELTACN":
-                        var deltacn = ((TypedSearchResultField<double>)searchResult.Fields["deltacn"]).Value;
-                        resultColumns.Add(Convert.ToString(deltacn));
-                        break;
-
-                    case "DELTACNSTAR":
-                        var deltacnstar = ((TypedSearchResultField<double>)searchResult.Fields["deltacnstar"]).Value;
-                        resultColumns.Add(Convert.ToString(deltacnstar));
-                        break;
-
-                    case "SPSCORE":
-                        var spscore = ((TypedSearchResultField<double>)searchResult.Fields["spscore"]).Value;
-                        resultColumns.Add(Convert.ToString(spscore));
-                        break;
-
-                    case "EXPECT":
-                        ISearchResultField expectField;
-                        if (searchResult.Fields.TryGetValue("expect", out expectField))
-                        {
-                            var expect = ((TypedSearchResultField<double>)expectField).Value;
-                            resultColumns.Add(Convert.ToString(expect));
-                        }
-                        else
-                        {
-                            resultColumns.Add(String.Empty);
-                        }
-                        break;
-
-                    case "PEPTIDE":
-                        if (null == peptide)
-                        {
-                            peptide = ((TypedSearchResultField<String>) searchResult.Fields["peptide"]).Value;
-                        }
-                        if (null == proteinInfo)
-                        {
-                            proteinInfo =
-                                ((TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"]).Value;
-                        }
-                        resultColumns.Add(proteinInfo.PeptidePrevAA + "." + peptide + "." + proteinInfo.PeptideNextAA);
-                        break;
-
-                    case "PROTEIN_DESCR":
-                        if (null == proteinInfo)
-                        {
-                            proteinInfo =
-                                ((TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"]).Value;
-                        }
-                        resultColumns.Add(proteinInfo.ProteinDescr);
-                        break;
-
-                    case "PROTEIN":
-                        if (null == proteinInfo)
-                        {
-                            proteinInfo =
-                                ((TypedSearchResultField<ProteinInfo>)searchResult.Fields["protein"]).Value;
-                        }
-                        String proteinDisplayText = proteinInfo.Name;
-
-                        ISearchResultField altProteinsField;
-                        if (searchResult.Fields.TryGetValue("alternative_protein", out altProteinsField))
-                        {
-                            var altProteins = ((TypedSearchResultField<List<ProteinInfo>>)altProteinsField).Value;
-                            if (altProteins.Count > 0)
-                            {
-                                proteinDisplayText += " +" + altProteins.Count.ToString(CultureInfo.InvariantCulture);
-                            }
-                        }
-                        resultColumns.Add(proteinDisplayText);
-                        break;
-
-                    case "MZRATIO":
-                        if (calcNeutralMass < 0)
-                        {
-                            calcNeutralMass =
-                                ((TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"]).
-                                    Value;
-                        }
-                        var assumedCharge = ((TypedSearchResultField<int>)searchResult.Fields["assumed_charge"]).Value;
-                        double mzRatio = MassSpecUtils.CalculateMzRatio(calcNeutralMass, assumedCharge);
-                        mzRatio = Math.Round(mzRatio, 4);
-
-                        resultColumns.Add(Convert.ToString(mzRatio));
-                        break;
-
-                    case "MASSDIFF":
-                        if (calcNeutralMass < 0)
-                        {
-                            calcNeutralMass =
-                                ((TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"]).
-                                    Value;
-                        }
-
-                        if (expMass < 0)
-                        {
-                            expMass = ((TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"]).Value;
-                        }
-
-                        var massDiff = MassSpecUtils.CalculateMassDiff(calcNeutralMass, expMass);
-                        massDiff = Math.Round(massDiff, 4);
-
-                        resultColumns.Add(Convert.ToString(massDiff));
-                        break;
-
-                    case "PPM":
-                        // (cal mass - exact mass)/exact mass) x 10^6 
-                        if (calcNeutralMass < 0)
-                        {
-                            calcNeutralMass =
-                                ((TypedSearchResultField<double>)searchResult.Fields["calc_neutral_pep_mass"]).
-                                    Value;
-                        }
-
-                        if (expMass < 0)
-                        {
-                            expMass = ((TypedSearchResultField<double>)searchResult.Fields["precursor_neutral_mass"]).Value;
-                        }
-
-                        var ppm = MassSpecUtils.CalculateMassErrorPPM(calcNeutralMass, expMass);
-                        ppm = Math.Round(ppm, 4);
-
-                        resultColumns.Add(ppm.ToString(CultureInfo.InvariantCulture));
-                        break;
-
-                    case "IONS2":
-                        // Eventually, clicking this value should show something like Vagisha's "lorikeet" tool to show graphical drawing: https://code.google.com/p/lorikeet/
-                        int numMatchedIons = ((TypedSearchResultField<int>)searchResult.Fields["num_matched_ions"]).Value;
-                        var matchedIonsStr = Convert.ToString(numMatchedIons);
-
-                        int totNumIons = ((TypedSearchResultField<int>)searchResult.Fields["tot_num_ions"]).Value;
-                        var totalIonsStr = Convert.ToString(totNumIons);
-
-                        resultColumns.Add(matchedIonsStr + "/" + totalIonsStr);
-                        break;
-
-                    case "PI":
-                        if (null == peptide)
-                        {
-                            peptide = ((TypedSearchResultField<String>)searchResult.Fields["peptide"]).Value;
-                        }
-                        var pI = MassSpecUtils.CalculatePI(peptide);
-                        pI = Math.Round(pI, 2);
-
-                        resultColumns.Add(Convert.ToString(pI));
-                        break;
-
-                    default:
-                        resultColumns.Add(String.Empty);
-                        break;
-                }
-            }
-
-            return resultColumns;
-        }
-
-        private void TagAlternateProteins(SearchResult searchResult, ListViewItem item)
-        {
-            int proteinColumn = FindColumnIndex(resultsListView, "PROTEIN");
-            if (proteinColumn >= 0)
-            {
-                ISearchResultField altProteinsField;
-                if (searchResult.Fields.TryGetValue("alternative_protein", out altProteinsField))
-                {
-                    var altProteins = ((TypedSearchResultField<List<ProteinInfo>>)altProteinsField).Value;
-                    foreach (var altProtein in altProteins)
-                    {
-                        item.SubItems[proteinColumn].Tag += altProtein.Name + Environment.NewLine;
-                    }
-                }
-            }
-        }
-
-        private int FindColumnIndex(ListView list, String columnHeaderText)
-        {
-            foreach (ColumnHeader header in list.Columns)
-            {
-                if (header.Text.Equals(columnHeaderText))
-                {
-                    return header.Index;
-                }
-            }
-
-            return -1;
+            resultsListView.SetObjects(SearchResults);
         }
 
         private void UpdateColumnHeaders()
         {
+            resultsListView.Columns.Clear();
+
             foreach (var item in CometUI.ViewResultsSettings.PickColumnsShowList)
             {
-                String columnHeader;
-                String value;
-                if (CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders &&
-                    _condensedColumnHeadersMap.TryGetValue(item, out value))
+                SearchResultColumn resultCol;
+                if (ResultColumns.TryGetValue(item, out resultCol))
                 {
-                    columnHeader = value.ToUpper();
-                }
-                else
-                {
-                    columnHeader = item.ToUpper();
-                }
+                    String columnHeader;
+                    if (CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
+                    {
+                        columnHeader = resultCol.CondensedHeader;
+                    }
+                    else
+                    {
+                        columnHeader = resultCol.Header;
+                    }
 
-                resultsListView.Columns.Add(columnHeader);
+                    resultsListView.Columns.Add(new OLVColumn(columnHeader, resultCol.Aspect));
+                }
             }
         }
 
@@ -528,88 +234,98 @@ namespace CometUI.ViewResults
             return true;
         }
 
-        private bool ReadSpectrumQueryAttributes(PepXMLReader pepXMLReader, XPathNavigator spectrumQueryNavigator,
-                                                 SearchResult result)
+        private bool ReadSpectrumQueryAttributes(PepXMLReader pepXMLReader, XPathNavigator spectrumQueryNavigator, SearchResult result)
         {
-            if (!ResultFieldFromAttribute<String>(pepXMLReader, spectrumQueryNavigator, "spectrum", result))
+            String spectrum;
+            if (!pepXMLReader.ReadAttribute(spectrumQueryNavigator, "spectrum", out spectrum))
             {
                 ErrorMessage = "Could not read the spectrum attribute.";
                 return false;
             }
+            result.Spectrum = spectrum;
 
-            if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "start_scan", result))
+            int startScan;
+            if (!pepXMLReader.ReadAttribute(spectrumQueryNavigator, "start_scan", out startScan))
             {
                 ErrorMessage = "Could not read the start_scan attribute.";
                 return false;
             }
+            result.StartScan = startScan;
 
-            if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "index", result))
+            int index;
+            if (!pepXMLReader.ReadAttribute(spectrumQueryNavigator, "index", out index))
             {
                 ErrorMessage = "Could not read the index attribute.";
                 return false;
             }
+            result.Index = index;
 
-            if (!ResultFieldFromAttribute<int>(pepXMLReader, spectrumQueryNavigator, "assumed_charge", result))
+            int assumedCharge;
+            if (!pepXMLReader.ReadAttribute(spectrumQueryNavigator, "assumed_charge", out assumedCharge))
             {
                 ErrorMessage = "Could not read the assumed_charge attribute.";
                 return false;
             }
+            result.AssumedCharge = assumedCharge;
 
-            if (!ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "precursor_neutral_mass", result))
+            double precursorNeutralMass;
+            if (!pepXMLReader.ReadAttribute(spectrumQueryNavigator, "precursor_neutral_mass", out precursorNeutralMass))
             {
                 ErrorMessage = "Could not read the precursor_neutral_mass attribute.";
                 return false;
             }
+            result.ExperimentalMass = precursorNeutralMass;
 
-            if (!ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "retention_time_sec", result))
+            double retentionTimeSec;
+            if (!pepXMLReader.ReadAttribute(spectrumQueryNavigator, "retention_time_sec", out retentionTimeSec))
             {
                 ErrorMessage = "Could not read the retention_time_sec attribute.";
                 return false;
             }
+            result.RetentionTimeSec = retentionTimeSec;
 
             // The "precursor_intensity" field may or may not be there, so just ignore the return value.
-            ResultFieldFromAttribute<double>(pepXMLReader, spectrumQueryNavigator, "precursor_intensity",
-                                             result);
+            double precursorIntensity;
+            pepXMLReader.ReadAttribute(spectrumQueryNavigator, "precursor_intensity", out precursorIntensity);
+            result.PrecursorIntensity = precursorIntensity;
 
             return true;
         }
 
+
         private bool ReadSearchHitAttributes(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
         {
-            if (!ResultFieldFromAttribute<double>(pepXMLReader, searchHitNavigator, "calc_neutral_pep_mass",
-                                                              result))
+            double calculatedMass;
+            if (!pepXMLReader.ReadAttribute(searchHitNavigator, "calc_neutral_pep_mass", out calculatedMass))
             {
                 ErrorMessage = "Could not read the calc_neutral_pep_mass attribute.";
                 return false;
             }
+            result.CalculatedMass = calculatedMass;
 
-            if (!ResultFieldFromAttribute<int>(pepXMLReader, searchHitNavigator, "num_matched_ions",
-                                                  result))
+            int numMatchedIons;
+            if (!pepXMLReader.ReadAttribute(searchHitNavigator, "num_matched_ions", out numMatchedIons))
             {
                 ErrorMessage = "Could not read the num_matched_ions attribute.";
                 return false;
             }
+            result.NumMatchedIons = numMatchedIons;
 
-            if (!ResultFieldFromAttribute<int>(pepXMLReader, searchHitNavigator, "tot_num_ions",
-                                      result))
+            int totalNumIons;
+            if (!pepXMLReader.ReadAttribute(searchHitNavigator, "tot_num_ions", out totalNumIons))
             {
                 ErrorMessage = "Could not read the tot_num_ions attribute.";
                 return false;
             }
+            result.TotalNumIons = totalNumIons;
 
-            if (!ResultFieldFromAttribute<String>(pepXMLReader, searchHitNavigator, "peptide",
-                                                  result))
+            String peptide = pepXMLReader.ReadAttribute(searchHitNavigator, "peptide");
+            if (String.IsNullOrEmpty(peptide))
             {
                 ErrorMessage = "Could not read the peptide attribute.";
                 return false;
             }
-
-            String proteinName = pepXMLReader.ReadAttribute(searchHitNavigator, "protein");
-            if (proteinName.Equals(String.Empty))
-            {
-                ErrorMessage = "Could not read the protein attribute.";
-                return false;
-            }
+            result.Peptide = peptide;
 
             String peptidePrevAAA = pepXMLReader.ReadAttribute(searchHitNavigator, "peptide_prev_aa");
             if (peptidePrevAAA.Equals(String.Empty))
@@ -625,18 +341,23 @@ namespace CometUI.ViewResults
                 return false;
             }
 
-            String proteinDescr = pepXMLReader.ReadAttribute(searchHitNavigator, "protein_descr");
+            String proteinName = pepXMLReader.ReadAttribute(searchHitNavigator, "protein");
+            if (proteinName.Equals(String.Empty))
+            {
+                ErrorMessage = "Could not read the protein attribute.";
+                return false;
+            }
+            
+            var proteinDescr = pepXMLReader.ReadAttribute(searchHitNavigator, "protein_descr");
 
-            var proteinInfo = new ProteinInfo(proteinName, proteinDescr, peptidePrevAAA, peptideNextAAA);
-            var proteinResultField = new TypedSearchResultField<ProteinInfo>(proteinInfo);
-            result.Fields.Add("protein", proteinResultField);
-
+            result.ProteinInfo = new ProteinInfo(proteinName, proteinDescr, peptidePrevAAA, peptideNextAAA);
+           
             return true;
         }
 
         private bool ReadAlternativeProteins(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
         {
-            var altProteinsList = new List<ProteinInfo>();
+            //var altProteinsList = new List<ProteinInfo>();
             var alternativeProteinNodes = pepXMLReader.ReadDescendants(searchHitNavigator,
                                                                         "alternative_protein");
             while (alternativeProteinNodes.MoveNext())
@@ -669,11 +390,8 @@ namespace CometUI.ViewResults
 
                 var altProteinInfo = new ProteinInfo(altProteinName, altProteinDescr, altPeptidePrevAAA,
                                                         altPeptideNextAAA);
-                altProteinsList.Add(altProteinInfo);
+                result.AltProteins.Add(altProteinInfo);
             }
-
-            var altProteinResultField = new TypedSearchResultField<List<ProteinInfo>>(altProteinsList);
-            result.Fields.Add("alternative_protein", altProteinResultField);
 
             return true;
         }
@@ -691,14 +409,60 @@ namespace CometUI.ViewResults
                     return false;
                 }
 
-                double value;
-                if (!pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out value))
+                switch (name)
                 {
-                    ErrorMessage = "Could not read a search score value attribute.";
-                    return false;
-                }
+                    case "xcorr":
+                        double xcorrValue;
+                        if (!pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out xcorrValue))
+                        {
+                            ErrorMessage = "Could not read the xcorr value attribute.";
+                            return false;
+                        }
+                        result.XCorr = xcorrValue;
+                        break;
 
-                result.Fields.Add(name, new TypedSearchResultField<double>(value));
+                    case "deltacn":
+                        double deltaCNValue;
+                        if (!pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out deltaCNValue))
+                        {
+                            ErrorMessage = "Could not read the deltacn value attribute.";
+                            return false;
+                        }
+                        result.DeltaCN = deltaCNValue;
+                        break;
+
+                    case "deltacnstar":
+                        double deltaCNStar;
+                        if (!pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out deltaCNStar))
+                        {
+                            ErrorMessage = "Could not read the deltacnstar value attribute.";
+                            return false;
+                        }
+                        result.DeltaCNStar = deltaCNStar;
+                        break;
+
+                    case "spscore":
+                        double spscore;
+                        if (!pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out spscore))
+                        {
+                            ErrorMessage = "Could not read the spscore value attribute.";
+                            return false;
+                        }
+                        result.SpScore = spscore;
+                        break;
+
+                    case "sprank":
+                        int sprank;
+                        pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out sprank);
+                        result.SpRank = sprank;
+                        break;
+
+                    case "expect":
+                        double expect;
+                        pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out expect);
+                        result.Expect = expect;
+                        break;
+                }
             }
 
             return true;
@@ -706,25 +470,13 @@ namespace CometUI.ViewResults
 
         private bool ReadPeptideProphetResults(PepXMLReader pepXMLReader, XPathNavigator peptideprophetResultNavigator, SearchResult result)
         {
-            if (!ResultFieldFromAttribute<double>(pepXMLReader, peptideprophetResultNavigator, "probability", result))
+            double probability;
+            if (!pepXMLReader.ReadAttribute(peptideprophetResultNavigator, "probability", out probability))
             {
                 ErrorMessage = "Could not read the probability attribute.";
                 return false;
             }
-
-            return true;
-        }
-
-        private bool ResultFieldFromAttribute<T>(PepXMLReader pepXMLReader, XPathNavigator nodeNavigator, String attributeName, SearchResult result)
-        {
-            T attribute;
-            if (!pepXMLReader.ReadAttribute(nodeNavigator, attributeName, out attribute))
-            {
-                return false;
-            }
-
-            var resultField = new TypedSearchResultField<T>(attribute);
-            result.Fields.Add(attributeName, resultField);
+            result.Probability = probability;
             return true;
         }
 
@@ -740,15 +492,34 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void InitializeColumnHeadersMap()
+        private void InitializeResultsColumns()
         {
-            // These are the column headers that have alternate condensed names
-            _condensedColumnHeadersMap.Add("index", "#");
-            _condensedColumnHeadersMap.Add("assumed_charge", "Z");
-            _condensedColumnHeadersMap.Add("precursor_neutral_mass", "EXP_MASS");
-            _condensedColumnHeadersMap.Add("start_scan", "SSCAN");
-            _condensedColumnHeadersMap.Add("calc_neutral_pep_mass", "CALC_MASS");
-            _condensedColumnHeadersMap.Add("probability", "PROB");
+            ResultColumns = new Dictionary<String, SearchResultColumn>
+                                {
+                                    {"index", new SearchResultColumn("Index", "INDEX", "#")},
+                                    {"assumed_charge", new SearchResultColumn("AssumedCharge", "ASSUMED_CHARGE", "Z")},
+                                    {"start_scan", new SearchResultColumn("StartScan", "START_SCAN", "SSCAN")},
+                                    {"spectrum", new SearchResultColumn("Spectrum", "SPECTRUM", "SPECTRUM")},
+                                    {"precursor_neutral_mass", new SearchResultColumn("ExperimentalMass", "PRECURSOR_NEUTRAL_MASS", "EXP_MASS")},
+                                    {"calc_neutral_pep_mass", new SearchResultColumn("CalculatedMass", "CALC_NEUTRAL_PEP_MASS", "CALC_MASS")},
+                                    {"retention_time_sec", new SearchResultColumn("RetentionTimeSec", "RETENTION_TIME_SEC", "RTIME_SEC")},
+                                    {"xcorr", new SearchResultColumn("XCorr", "XCORR", "XCORR")},
+                                    {"deltacn", new SearchResultColumn("DeltaCN", "DELTACN", "DELTACN")},
+                                    {"deltacnstar", new SearchResultColumn("DeltaCNStar", "DELTACNSTAR", "DELTACNSTAR")},
+                                    {"spscore", new SearchResultColumn("SpScore", "SPSCORE", "SPSCORE")},
+                                    {"sprank", new SearchResultColumn("SpRank", "SPRANK", "SPRANK")},
+                                    {"expect", new SearchResultColumn("Expect", "EXPECT", "EXPECT")},
+                                    {"probability", new SearchResultColumn("Probability", "PROBABILITY", "PROB")},
+                                    {"precursor_intensity", new SearchResultColumn("PrecursorIntensity", "PRECURSOR_INTENSITY", "INTENSITY")},
+                                    {"protein", new SearchResultColumn("ProteinName", "PROTEIN", "PROTEIN")},
+                                    {"protein_descr", new SearchResultColumn("ProteinDescr", "PROTEIN_DESCR", "PROTEIN_DESCR")},
+                                    {"peptide", new SearchResultColumn("PeptideDisplayStr", "PEPTIDE", "PEPTIDE")},
+                                    {"ions2", new SearchResultColumn("Ions2", "IONS2", "IONS2")},
+                                    {"mzratio", new SearchResultColumn("MzRatio", "MZRATIO", "MZRATIO")},
+                                    {"massdiff", new SearchResultColumn("MassDiff", "MASSDIFF", "MASSDIFF")},
+                                    {"ppm", new SearchResultColumn("PPM", "PPM", "PPM")},
+                                    {"pi", new SearchResultColumn("PI", "PI", "PPM")}
+                                };
         }
 
         private void ShowViewOptionsPanel()
@@ -799,96 +570,6 @@ namespace CometUI.ViewResults
             {
                 resultsListPanel.Hide();
             }
-        }
-
-        private void ResultsListViewItemMouseHover(object sender, ListViewItemMouseHoverEventArgs e)
-        {
-            viewResultsToolTip.Hide(sender as IWin32Window);
-
-            Point mousePos = resultsListView.PointToClient(MousePosition);
-            ListViewHitTestInfo ht = resultsListView.HitTest(mousePos);
-            if ((ht.SubItem != null))
-            {
-                var text = ht.SubItem.Tag as String;
-                if (!String.IsNullOrEmpty(text))
-                {
-                    viewResultsToolTip.Show(text, sender as IWin32Window, mousePos, 5000);
-                }
-            }
-        }
-
-        private void ResultsListViewMouseMove(object sender, MouseEventArgs e)
-        {
-            Point mousePos = resultsListView.PointToClient(MousePosition);
-            ListViewHitTestInfo ht = resultsListView.HitTest(mousePos);
-            if ((ht.SubItem == null))
-            {
-                viewResultsToolTip.Hide(sender as IWin32Window);
-            }
-        }
-
-        private void ResultsListViewMouseLeave(object sender, EventArgs e)
-        {
-            Point mousePos = resultsListView.PointToClient(MousePosition);
-            ListViewHitTestInfo ht = resultsListView.HitTest(mousePos);
-            if ((ht.SubItem == null))
-            {
-                viewResultsToolTip.Hide(sender as IWin32Window);
-            }
-        }
-    }
-
-    public interface ISearchResultField
-    {
-        Type FieldType { get; }
-    }
-
-    public class TypedSearchResultField<T> : ISearchResultField
-    {
-        public T Value { get; set; }
-
-        public TypedSearchResultField(T value)
-        {
-            Value = value;
-        }
-
-        public Type FieldType
-        {
-            get { return typeof (T); }
-        }
-    }
-
-    public class SearchResult
-    {
-        public Dictionary<String, ISearchResultField> Fields { get; set; }
-
-        public SearchResult()
-        {
-            Fields = new Dictionary<string, ISearchResultField>();
-        }
-    }
-
-    public class ProteinInfo
-    {
-        public String Name { get; set; }
-        public String ProteinDescr { get; set; } 
-        public String PeptidePrevAA { get; set; }
-        public String PeptideNextAA { get; set; }
-
-        public ProteinInfo()
-        {
-            Name = String.Empty;
-            ProteinDescr = String.Empty;
-            PeptidePrevAA = String.Empty;
-            PeptideNextAA = String.Empty;
-        }
-
-        public ProteinInfo(String name, String protDescr, String prevAA, String nextAA)
-        {
-            Name = name;
-            ProteinDescr = protDescr;
-            PeptidePrevAA = prevAA;
-            PeptideNextAA = nextAA;
         }
     }
 }
