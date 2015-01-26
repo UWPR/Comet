@@ -219,6 +219,11 @@ namespace CometUI.ViewResults
                         }
                     }
 
+                    if (!ReadModifications(pepXMLReader, searchHitNavigator, result))
+                    {
+                        return false;
+                    }
+
                     if (!ReadSearchScores(pepXMLReader, searchHitNavigator, result))
                     {
                         return false;
@@ -366,7 +371,6 @@ namespace CometUI.ViewResults
 
         private bool ReadAlternativeProteins(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
         {
-            //var altProteinsList = new List<ProteinInfo>();
             var alternativeProteinNodes = pepXMLReader.ReadDescendants(searchHitNavigator,
                                                                         "alternative_protein");
             while (alternativeProteinNodes.MoveNext())
@@ -489,6 +493,32 @@ namespace CometUI.ViewResults
             return true;
         }
 
+        private bool ReadModifications(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
+        {
+            var modNodes = pepXMLReader.ReadDescendants(searchHitNavigator, "mod_aminoacid_mass");
+            while (modNodes.MoveNext())
+            {
+                var modNavigator = modNodes.Current;
+                int pos;
+                if (!pepXMLReader.ReadAttribute(modNavigator, "position", out pos))
+                {
+                    ErrorMessage = "Could not read the mod_aminoacid_mass position attribute.";
+                    return false;
+                }
+
+                double mass;
+                if (!pepXMLReader.ReadAttribute(modNavigator, "mass", out mass))
+                {
+                    ErrorMessage = "Could not read the mod_aminoacid_mass mass attribute.";
+                    return false;
+                }
+
+                result.Modifications.Add(new ModificationInfo(pos, mass));
+            }
+
+            return true;
+        }
+
         private void InitializeFromDefaultSettings()
         {
             if (CometUI.ViewResultsSettings.ShowOptions)
@@ -588,6 +618,7 @@ namespace CometUI.ViewResults
                 var result = e.Model as SearchResult;
                 if ((null != result) && (result.AltProteins.Count > 0))
                 {
+                    e.AutoPopDelay = 30000;
                     foreach (var altProtein in result.AltProteins)
                     {
                         e.Text += String.Format("{0}\r\n", altProtein.Name);
