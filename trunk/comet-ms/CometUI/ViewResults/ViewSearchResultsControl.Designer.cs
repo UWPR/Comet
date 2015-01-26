@@ -118,12 +118,14 @@
             this.resultsListView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.resultsListView.Cursor = System.Windows.Forms.Cursors.Default;
             this.resultsListView.Location = new System.Drawing.Point(18, 4);
             this.resultsListView.Name = "resultsListView";
             this.resultsListView.ShowGroups = false;
             this.resultsListView.Size = new System.Drawing.Size(669, 356);
             this.resultsListView.TabIndex = 0;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
+            this.resultsListView.UseHyperlinks = true;
             this.resultsListView.View = System.Windows.Forms.View.Details;
             // 
             // hideOptionsGroupBox

@@ -127,7 +127,9 @@ namespace CometUI.ViewResults
                         columnHeader = resultCol.Header;
                     }
 
-                    resultsListView.Columns.Add(new OLVColumn(columnHeader, resultCol.Aspect));
+                    var olvColumn = new OLVColumn(columnHeader, resultCol.Aspect) {Hyperlink = resultCol.Hyperlink};
+
+                    resultsListView.Columns.Add(olvColumn);
                 }
             }
         }
@@ -509,12 +511,12 @@ namespace CometUI.ViewResults
                                     {"spscore", new SearchResultColumn("SpScore", "SPSCORE", "SPSCORE")},
                                     {"sprank", new SearchResultColumn("SpRank", "SPRANK", "SPRANK")},
                                     {"expect", new SearchResultColumn("Expect", "EXPECT", "EXPECT")},
-                                    {"probability", new SearchResultColumn("Probability", "PROBABILITY", "PROB")},
+                                    {"probability", new SearchResultColumn("Probability", "PROBABILITY", "PROB", true)},
                                     {"precursor_intensity", new SearchResultColumn("PrecursorIntensity", "PRECURSOR_INTENSITY", "INTENSITY")},
-                                    {"protein", new SearchResultColumn("ProteinName", "PROTEIN", "PROTEIN")},
+                                    {"protein", new SearchResultColumn("ProteinName", "PROTEIN", "PROTEIN", true)},
                                     {"protein_descr", new SearchResultColumn("ProteinDescr", "PROTEIN_DESCR", "PROTEIN_DESCR")},
-                                    {"peptide", new SearchResultColumn("PeptideDisplayStr", "PEPTIDE", "PEPTIDE")},
-                                    {"ions2", new SearchResultColumn("Ions2", "IONS2", "IONS2")},
+                                    {"peptide", new SearchResultColumn("PeptideDisplayStr", "PEPTIDE", "PEPTIDE", true)},
+                                    {"ions2", new SearchResultColumn("Ions2", "IONS2", "IONS2", true)},
                                     {"mzratio", new SearchResultColumn("MzRatio", "MZRATIO", "MZRATIO")},
                                     {"massdiff", new SearchResultColumn("MassDiff", "MASSDIFF", "MASSDIFF")},
                                     {"ppm", new SearchResultColumn("PPM", "PPM", "PPM")},

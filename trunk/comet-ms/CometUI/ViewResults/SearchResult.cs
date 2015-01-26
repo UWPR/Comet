@@ -125,12 +125,22 @@ namespace CometUI.ViewResults
         public String Aspect { get; set; }  // E.g. "SearchResult.AssumedCharge"
         public String Header { get; set; }
         public String CondensedHeader { get; set; }
+        public bool Hyperlink { get; set; }
 
         public SearchResultColumn(String aspect, String header, String condensedHeader)
         {
             Aspect = aspect;
             Header = header;
             CondensedHeader = condensedHeader;
+            Hyperlink = false;
+        }
+
+        public SearchResultColumn(String aspect, String header, String condensedHeader, bool hyperlink)
+        {
+            Aspect = aspect;
+            Header = header;
+            CondensedHeader = condensedHeader;
+            Hyperlink = hyperlink;
         }
     }
 }
