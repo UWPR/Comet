@@ -115,18 +115,22 @@
             // 
             // resultsListView
             // 
+            this.resultsListView.AlternateRowBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(222)))), ((int)(((byte)(254)))));
             this.resultsListView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.resultsListView.BackColor = System.Drawing.Color.White;
             this.resultsListView.Cursor = System.Windows.Forms.Cursors.Default;
             this.resultsListView.Location = new System.Drawing.Point(18, 4);
             this.resultsListView.Name = "resultsListView";
             this.resultsListView.ShowGroups = false;
             this.resultsListView.Size = new System.Drawing.Size(669, 356);
             this.resultsListView.TabIndex = 0;
+            this.resultsListView.UseAlternatingBackColors = true;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
             this.resultsListView.UseHyperlinks = true;
             this.resultsListView.View = System.Windows.Forms.View.Details;
+            this.resultsListView.CellToolTipShowing += new System.EventHandler<BrightIdeasSoftware.ToolTipShowingEventArgs>(this.ResultsListViewCellToolTipShowing);
             // 
             // hideOptionsGroupBox
             // 

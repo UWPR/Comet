@@ -513,7 +513,7 @@ namespace CometUI.ViewResults
                                     {"expect", new SearchResultColumn("Expect", "EXPECT", "EXPECT")},
                                     {"probability", new SearchResultColumn("Probability", "PROBABILITY", "PROB", true)},
                                     {"precursor_intensity", new SearchResultColumn("PrecursorIntensity", "PRECURSOR_INTENSITY", "INTENSITY")},
-                                    {"protein", new SearchResultColumn("ProteinName", "PROTEIN", "PROTEIN", true)},
+                                    {"protein", new SearchResultColumn("ProteinDisplayStr", "PROTEIN", "PROTEIN", true)},
                                     {"protein_descr", new SearchResultColumn("ProteinDescr", "PROTEIN_DESCR", "PROTEIN_DESCR")},
                                     {"peptide", new SearchResultColumn("PeptideDisplayStr", "PEPTIDE", "PEPTIDE", true)},
                                     {"ions2", new SearchResultColumn("Ions2", "IONS2", "IONS2", true)},
@@ -571,6 +571,21 @@ namespace CometUI.ViewResults
             else
             {
                 resultsListPanel.Hide();
+            }
+        }
+
+        private void ResultsListViewCellToolTipShowing(object sender, ToolTipShowingEventArgs e)
+        {
+            if (e.Column.AspectName.Equals("ProteinDisplayStr"))
+            {
+                var result = e.Model as SearchResult;
+                if ((null != result) && (result.AltProteins.Count > 0))
+                {
+                    foreach (var altProtein in result.AltProteins)
+                    {
+                        e.Text += String.Format("{0}\r\n", altProtein.Name);
+                    }
+                }
             }
         }
     }

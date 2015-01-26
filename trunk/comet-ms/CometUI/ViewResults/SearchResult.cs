@@ -26,9 +26,21 @@ namespace CometUI.ViewResults
         public double Probability { get; set; }
         public double PrecursorIntensity { get; set; }
 
-        public String ProteinName
+        public String ProteinDisplayStr
         {
-            get { return ProteinInfo.Name; }
+            get
+            {
+                String proteinDisplayStr;
+                if (AltProteins.Count > 0)
+                {
+                    proteinDisplayStr = String.Format(ProteinInfo.Name + " +{0}", AltProteins.Count);
+                }
+                else
+                {
+                    proteinDisplayStr = ProteinInfo.Name;
+                }
+                return proteinDisplayStr;
+            }
         }
 
         public String ProteinDescr
