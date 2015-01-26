@@ -106,6 +106,7 @@ namespace CometUI.ViewResults
             resultsListView.Clear();
             UpdateColumnHeaders();
             resultsListView.SetObjects(SearchResults);
+            resultsListView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
         }
 
         private void UpdateColumnHeaders()
@@ -128,7 +129,6 @@ namespace CometUI.ViewResults
                     }
 
                     var olvColumn = new OLVColumn(columnHeader, resultCol.Aspect) {Hyperlink = resultCol.Hyperlink};
-
                     resultsListView.Columns.Add(olvColumn);
                 }
             }

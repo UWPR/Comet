@@ -121,6 +121,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.resultsListView.BackColor = System.Drawing.Color.White;
             this.resultsListView.Cursor = System.Windows.Forms.Cursors.Default;
+            this.resultsListView.IncludeColumnHeadersInCopy = true;
             this.resultsListView.Location = new System.Drawing.Point(18, 4);
             this.resultsListView.Name = "resultsListView";
             this.resultsListView.ShowGroups = false;

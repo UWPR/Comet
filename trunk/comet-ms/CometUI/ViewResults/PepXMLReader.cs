@@ -31,8 +31,6 @@ namespace CometUI.ViewResults
             {
                 PepXmlNamespaceMgr = new XmlNamespaceManager(PepXmlXPathNav.NameTable);
                 PepXmlNamespaceMgr.AddNamespace("pepXML", NamespaceURI);
-                //int spectraCount = (int)(double)PepXmlXPathNav.Evaluate(("count(/pepXML:msms_pipeline_analysis/pepXML:msms_run_summary/pepXML:spectrum_query)"), nsMgr);
-                //MessageBox.Show(spectraCount.ToString());
             }
         }
 
