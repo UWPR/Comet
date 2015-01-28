@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Xml.XPath;
@@ -20,7 +21,9 @@ namespace CometUI.ViewResults
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
         private ViewResultsPickColumnsControl ViewResultsPickColumnsControl { get; set; }
         private List<SearchResult> SearchResults { get; set; }
-        private Dictionary<String, SearchResultColumn> ResultColumns { get; set; } 
+        private Dictionary<String, SearchResultColumn> ResultColumns { get; set; }
+
+        private const String BlastHttpLink = "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -623,6 +626,19 @@ namespace CometUI.ViewResults
                     {
                         e.Text += String.Format("{0}\r\n", altProtein.Name);
                     }
+                }
+            }
+        }
+
+        private void ResultsListViewHyperlinkClicked(object sender, HyperlinkClickedEventArgs e)
+        {
+            if (e.Column.AspectName.Equals("PeptideDisplayStr"))
+            {
+                var result = e.Model as SearchResult;
+                if (null != result)
+                {
+                    var hyperlinkString = BlastHttpLink + result.Peptide;
+                    Process.Start(hyperlinkString);
                 }
             }
         }

@@ -132,6 +132,7 @@
             this.resultsListView.UseHyperlinks = true;
             this.resultsListView.View = System.Windows.Forms.View.Details;
             this.resultsListView.CellToolTipShowing += new System.EventHandler<BrightIdeasSoftware.ToolTipShowingEventArgs>(this.ResultsListViewCellToolTipShowing);
+            this.resultsListView.HyperlinkClicked += new System.EventHandler<BrightIdeasSoftware.HyperlinkClickedEventArgs>(this.ResultsListViewHyperlinkClicked);
             // 
             // hideOptionsGroupBox
             // 
