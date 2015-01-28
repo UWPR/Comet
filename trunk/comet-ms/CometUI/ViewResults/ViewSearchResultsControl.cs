@@ -637,8 +637,7 @@ namespace CometUI.ViewResults
                 var result = e.Model as SearchResult;
                 if (null != result)
                 {
-                    var hyperlinkString = BlastHttpLink + result.Peptide;
-                    Process.Start(hyperlinkString);
+                    e.Url = BlastHttpLink + result.Peptide;
                 }
             }
         }
