@@ -12,9 +12,13 @@ namespace CometUI.ViewResults
         private XPathNavigator PepXmlXPathNav { get; set; }
         private XmlNamespaceManager PepXmlNamespaceMgr { get; set; }
 
-        // This constructor will throw an exception if there is an 
-        // error, such as invalid file name. The caller needs to
-        // handle the exception.
+        
+        /// <summary>
+        /// Constructor for the PepXMLReader that creates the document 
+        /// navigator. It throws exceptions that the caller must handle.
+        /// such as invalid file name.
+        /// </summary>
+        /// <param name="fileName"></param>
         public PepXMLReader(String fileName)
         {
             FileName = fileName;

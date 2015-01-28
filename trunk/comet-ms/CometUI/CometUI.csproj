@@ -218,6 +218,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ViewResults\SearchDBReader.cs" />
     <Compile Include="ViewResults\SearchResult.cs" />
     <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.cs">
       <SubType>UserControl</SubType>

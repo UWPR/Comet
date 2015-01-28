@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Xml.XPath;
@@ -17,6 +16,7 @@ namespace CometUI.ViewResults
 
         private CometUI CometUI { get; set; }
         private bool OptionsPanelShown { get; set; }
+        private String SearchDatabaseFile { get; set; }
         private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
         private ViewResultsPickColumnsControl ViewResultsPickColumnsControl { get; set; }
@@ -179,6 +179,8 @@ namespace CometUI.ViewResults
 
         private bool ReadResultsFromPepXML(PepXMLReader pepXMLReader)
         {
+            SearchDatabaseFile = pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/search_database", "local_path");
+
             var spectrumQueryNodes = pepXMLReader.ReadNodes("/msms_pipeline_analysis/msms_run_summary/spectrum_query");
             while (spectrumQueryNodes.MoveNext())
             {
@@ -632,12 +634,52 @@ namespace CometUI.ViewResults
 
         private void ResultsListViewHyperlinkClicked(object sender, HyperlinkClickedEventArgs e)
         {
-            if (e.Column.AspectName.Equals("PeptideDisplayStr"))
+            switch (e.Column.AspectName)
             {
-                var result = e.Model as SearchResult;
-                if (null != result)
+                case "PeptideDisplayStr":
+                    OnPeptideLinkClick(e);
+                    break;
+
+                case "ProteinDisplayStr":
+                    OnProteinLinkClick(e);
+                    break;
+            }
+        }
+
+        private static void OnPeptideLinkClick(HyperlinkClickedEventArgs e)
+        {
+            var result = e.Model as SearchResult;
+            if (null != result)
+            {
+                e.Url = BlastHttpLink + result.Peptide;
+            }
+        }
+
+        private void OnProteinLinkClick(HyperlinkClickedEventArgs e)
+        {
+            // Todo: Here's how this should work:
+            // Try to open the SearchDatabaseFile read in from the pep.xml file.
+            // If it works, great, display it on a closable panel that opens up next to/underneath the results list
+            // Highlight the peptide sequence that was found
+            // If it doesn't work, allow the user to browse to a path where the database file is located, then try again
+            // Make sure to allow the user to cancel out of the UI that lets them browse to cancel the operation
+
+            var result = e.Model as SearchResult;
+            if (null != result)
+            {
+                try
                 {
-                    e.Url = BlastHttpLink + result.Peptide;
+                    var dbReader = new SearchDBReader(SearchDatabaseFile);
+                    var proteinSequence = dbReader.ReadProtein(result.ProteinInfo.Name);
+                    if (null != proteinSequence)
+                    {
+                        MessageBox.Show(proteinSequence, "View Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    MessageBox.Show("Could not look up the protein sequence. " + exception.Message,
+                                    "View Results Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
