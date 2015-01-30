@@ -39,6 +39,7 @@
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveCurrentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveSearchSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.viewResultsSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.importToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.searchSettingsToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.exportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -52,7 +53,6 @@
             this.LeftVennPepMass3Col = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
             this.viewSearchResultsPanel = new System.Windows.Forms.Panel();
-            this.viewResultsSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -66,7 +66,7 @@
             this.toolStripMenuItem1});
             this.mainMenuStrip.Location = new System.Drawing.Point(0, 0);
             this.mainMenuStrip.Name = "mainMenuStrip";
-            this.mainMenuStrip.Size = new System.Drawing.Size(734, 24);
+            this.mainMenuStrip.Size = new System.Drawing.Size(1084, 24);
             this.mainMenuStrip.TabIndex = 0;
             this.mainMenuStrip.Text = "mainMenuStrip";
             // 
@@ -142,6 +142,13 @@
             this.saveSearchSettingsToolStripMenuItem.Text = "&Search Settings";
             this.saveSearchSettingsToolStripMenuItem.Click += new System.EventHandler(this.SaveSearchSettingsToolStripMenuItemClick);
             // 
+            // viewResultsSettingsToolStripMenuItem
+            // 
+            this.viewResultsSettingsToolStripMenuItem.Name = "viewResultsSettingsToolStripMenuItem";
+            this.viewResultsSettingsToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
+            this.viewResultsSettingsToolStripMenuItem.Text = "&View Results Settings";
+            this.viewResultsSettingsToolStripMenuItem.Click += new System.EventHandler(this.ViewResultsSettingsToolStripMenuItemClick);
+            // 
             // importToolStripMenuItem
             // 
             this.importToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -216,7 +223,7 @@
             // 
             this.mainStatusStrip.Location = new System.Drawing.Point(0, 740);
             this.mainStatusStrip.Name = "mainStatusStrip";
-            this.mainStatusStrip.Size = new System.Drawing.Size(734, 22);
+            this.mainStatusStrip.Size = new System.Drawing.Size(1084, 22);
             this.mainStatusStrip.TabIndex = 1;
             this.mainStatusStrip.Text = "statusStrip1";
             // 
@@ -225,21 +232,14 @@
             this.viewSearchResultsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.viewSearchResultsPanel.Location = new System.Drawing.Point(0, 24);
             this.viewSearchResultsPanel.Name = "viewSearchResultsPanel";
-            this.viewSearchResultsPanel.Size = new System.Drawing.Size(734, 716);
+            this.viewSearchResultsPanel.Size = new System.Drawing.Size(1084, 716);
             this.viewSearchResultsPanel.TabIndex = 2;
-            // 
-            // viewResultsSettingsToolStripMenuItem
-            // 
-            this.viewResultsSettingsToolStripMenuItem.Name = "viewResultsSettingsToolStripMenuItem";
-            this.viewResultsSettingsToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
-            this.viewResultsSettingsToolStripMenuItem.Text = "&View Results Settings";
-            this.viewResultsSettingsToolStripMenuItem.Click += new System.EventHandler(this.ViewResultsSettingsToolStripMenuItemClick);
             // 
             // CometUI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(734, 762);
+            this.ClientSize = new System.Drawing.Size(1084, 762);
             this.Controls.Add(this.viewSearchResultsPanel);
             this.Controls.Add(this.mainStatusStrip);
             this.Controls.Add(this.mainMenuStrip);

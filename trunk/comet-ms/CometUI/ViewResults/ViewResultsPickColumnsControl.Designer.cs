@@ -29,13 +29,13 @@
         private void InitializeComponent()
         {
             this.pickColumnsMainPanel = new System.Windows.Forms.Panel();
+            this.btnUpdateResults = new System.Windows.Forms.Button();
             this.btnMoveDown = new System.Windows.Forms.Button();
             this.btnMoveUp = new System.Windows.Forms.Button();
             this.btnMoveToShowColumns = new System.Windows.Forms.Button();
             this.btnMoveToHideColumns = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.hiddenColumnsLabel = new System.Windows.Forms.Label();
-            this.btnUpdateResults = new System.Windows.Forms.Button();
             this.showColumnsListBox = new System.Windows.Forms.ListBox();
             this.hiddenColumnsListBox = new System.Windows.Forms.ListBox();
             this.pickColumnsMainPanel.SuspendLayout();
@@ -43,21 +43,31 @@
             // 
             // pickColumnsMainPanel
             // 
-            this.pickColumnsMainPanel.AutoScroll = true;
+            this.pickColumnsMainPanel.Controls.Add(this.btnUpdateResults);
             this.pickColumnsMainPanel.Controls.Add(this.btnMoveDown);
             this.pickColumnsMainPanel.Controls.Add(this.btnMoveUp);
             this.pickColumnsMainPanel.Controls.Add(this.btnMoveToShowColumns);
             this.pickColumnsMainPanel.Controls.Add(this.btnMoveToHideColumns);
             this.pickColumnsMainPanel.Controls.Add(this.label1);
             this.pickColumnsMainPanel.Controls.Add(this.hiddenColumnsLabel);
-            this.pickColumnsMainPanel.Controls.Add(this.btnUpdateResults);
             this.pickColumnsMainPanel.Controls.Add(this.showColumnsListBox);
             this.pickColumnsMainPanel.Controls.Add(this.hiddenColumnsListBox);
             this.pickColumnsMainPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pickColumnsMainPanel.Location = new System.Drawing.Point(0, 0);
             this.pickColumnsMainPanel.Name = "pickColumnsMainPanel";
-            this.pickColumnsMainPanel.Size = new System.Drawing.Size(653, 220);
+            this.pickColumnsMainPanel.Size = new System.Drawing.Size(1000, 230);
             this.pickColumnsMainPanel.TabIndex = 0;
+            // 
+            // btnUpdateResults
+            // 
+            this.btnUpdateResults.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnUpdateResults.Location = new System.Drawing.Point(908, 195);
+            this.btnUpdateResults.Name = "btnUpdateResults";
+            this.btnUpdateResults.Size = new System.Drawing.Size(75, 23);
+            this.btnUpdateResults.TabIndex = 52;
+            this.btnUpdateResults.Text = "&Update";
+            this.btnUpdateResults.UseVisualStyleBackColor = true;
+            this.btnUpdateResults.Click += new System.EventHandler(this.BtnUpdateResultsClick);
             // 
             // btnMoveDown
             // 
@@ -117,17 +127,6 @@
             this.hiddenColumnsLabel.TabIndex = 46;
             this.hiddenColumnsLabel.Text = "Hide Columns:";
             // 
-            // btnUpdateResults
-            // 
-            this.btnUpdateResults.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnUpdateResults.Location = new System.Drawing.Point(561, 180);
-            this.btnUpdateResults.Name = "btnUpdateResults";
-            this.btnUpdateResults.Size = new System.Drawing.Size(75, 23);
-            this.btnUpdateResults.TabIndex = 45;
-            this.btnUpdateResults.Text = "&Update";
-            this.btnUpdateResults.UseVisualStyleBackColor = true;
-            this.btnUpdateResults.Click += new System.EventHandler(this.BtnUpdateResultsClick);
-            // 
             // showColumnsListBox
             // 
             this.showColumnsListBox.FormattingEnabled = true;
@@ -156,7 +155,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.pickColumnsMainPanel);
             this.Name = "ViewResultsPickColumnsControl";
-            this.Size = new System.Drawing.Size(653, 220);
+            this.Size = new System.Drawing.Size(1000, 230);
             this.pickColumnsMainPanel.ResumeLayout(false);
             this.pickColumnsMainPanel.PerformLayout();
             this.ResumeLayout(false);
@@ -168,12 +167,12 @@
         private System.Windows.Forms.Panel pickColumnsMainPanel;
         private System.Windows.Forms.ListBox showColumnsListBox;
         private System.Windows.Forms.ListBox hiddenColumnsListBox;
-        private System.Windows.Forms.Button btnUpdateResults;
         private System.Windows.Forms.Label hiddenColumnsLabel;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button btnMoveDown;
         private System.Windows.Forms.Button btnMoveUp;
         private System.Windows.Forms.Button btnMoveToShowColumns;
         private System.Windows.Forms.Button btnMoveToHideColumns;
+        private System.Windows.Forms.Button btnUpdateResults;
     }
 }

@@ -31,11 +31,6 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void BtnUpdateResultsClick(object sender, System.EventArgs e)
-        {
-            ViewSearchResultsControl.UpdateSearchResultsList();
-        }
-
         private void HighlightPeptideIncludeModCheckBoxCheckedChanged(object sender, System.EventArgs e)
         {
             VerifyAndUpdateHighlightPeptideIncludeModSetting();
@@ -71,6 +66,11 @@ namespace CometUI.ViewResults
                     columnHeadersCondensedRadioButton.Checked;
                 ViewSearchResultsControl.SettingsChanged = true;
             } 
+        }
+
+        private void BtnUpdateResultsClick(object sender, System.EventArgs e)
+        {
+            ViewSearchResultsControl.UpdateSearchResultsList();
         }
     }
 }

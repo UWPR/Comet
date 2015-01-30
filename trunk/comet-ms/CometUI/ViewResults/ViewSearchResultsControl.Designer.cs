@@ -55,7 +55,7 @@
             this.showOptionsPanel.Controls.Add(this.viewOptionsTab);
             this.showOptionsPanel.Location = new System.Drawing.Point(7, 52);
             this.showOptionsPanel.Name = "showOptionsPanel";
-            this.showOptionsPanel.Size = new System.Drawing.Size(710, 270);
+            this.showOptionsPanel.Size = new System.Drawing.Size(1060, 270);
             this.showOptionsPanel.TabIndex = 15;
             // 
             // viewOptionsTab
@@ -69,7 +69,7 @@
             this.viewOptionsTab.Location = new System.Drawing.Point(18, 3);
             this.viewOptionsTab.Name = "viewOptionsTab";
             this.viewOptionsTab.SelectedIndex = 0;
-            this.viewOptionsTab.Size = new System.Drawing.Size(669, 262);
+            this.viewOptionsTab.Size = new System.Drawing.Size(1019, 262);
             this.viewOptionsTab.TabIndex = 0;
             // 
             // summaryTabPage
@@ -77,7 +77,7 @@
             this.summaryTabPage.Location = new System.Drawing.Point(4, 22);
             this.summaryTabPage.Name = "summaryTabPage";
             this.summaryTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.summaryTabPage.Size = new System.Drawing.Size(661, 236);
+            this.summaryTabPage.Size = new System.Drawing.Size(1011, 236);
             this.summaryTabPage.TabIndex = 0;
             this.summaryTabPage.Text = "Summary";
             this.summaryTabPage.UseVisualStyleBackColor = true;
@@ -87,7 +87,7 @@
             this.displayOptionsTabPage.Location = new System.Drawing.Point(4, 22);
             this.displayOptionsTabPage.Name = "displayOptionsTabPage";
             this.displayOptionsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.displayOptionsTabPage.Size = new System.Drawing.Size(661, 236);
+            this.displayOptionsTabPage.Size = new System.Drawing.Size(1011, 236);
             this.displayOptionsTabPage.TabIndex = 1;
             this.displayOptionsTabPage.Text = "Display Options";
             this.displayOptionsTabPage.UseVisualStyleBackColor = true;
@@ -97,7 +97,7 @@
             this.pickColumnsTabPage.Location = new System.Drawing.Point(4, 22);
             this.pickColumnsTabPage.Name = "pickColumnsTabPage";
             this.pickColumnsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.pickColumnsTabPage.Size = new System.Drawing.Size(661, 236);
+            this.pickColumnsTabPage.Size = new System.Drawing.Size(1011, 236);
             this.pickColumnsTabPage.TabIndex = 2;
             this.pickColumnsTabPage.Text = "Pick Columns";
             this.pickColumnsTabPage.UseVisualStyleBackColor = true;
@@ -110,7 +110,7 @@
             this.resultsListPanel.Controls.Add(this.resultsListView);
             this.resultsListPanel.Location = new System.Drawing.Point(7, 339);
             this.resultsListPanel.Name = "resultsListPanel";
-            this.resultsListPanel.Size = new System.Drawing.Size(710, 383);
+            this.resultsListPanel.Size = new System.Drawing.Size(1060, 383);
             this.resultsListPanel.TabIndex = 16;
             // 
             // resultsListView
@@ -125,7 +125,7 @@
             this.resultsListView.Location = new System.Drawing.Point(18, 4);
             this.resultsListView.Name = "resultsListView";
             this.resultsListView.ShowGroups = false;
-            this.resultsListView.Size = new System.Drawing.Size(669, 356);
+            this.resultsListView.Size = new System.Drawing.Size(1019, 356);
             this.resultsListView.TabIndex = 0;
             this.resultsListView.UseAlternatingBackColors = true;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
@@ -140,7 +140,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.hideOptionsGroupBox.Location = new System.Drawing.Point(126, 22);
             this.hideOptionsGroupBox.Name = "hideOptionsGroupBox";
-            this.hideOptionsGroupBox.Size = new System.Drawing.Size(568, 5);
+            this.hideOptionsGroupBox.Size = new System.Drawing.Size(918, 5);
             this.hideOptionsGroupBox.TabIndex = 11;
             this.hideOptionsGroupBox.TabStop = false;
             // 
@@ -171,7 +171,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.resultsListPanelFull.Location = new System.Drawing.Point(7, 52);
             this.resultsListPanelFull.Name = "resultsListPanelFull";
-            this.resultsListPanelFull.Size = new System.Drawing.Size(710, 670);
+            this.resultsListPanelFull.Size = new System.Drawing.Size(1060, 670);
             this.resultsListPanelFull.TabIndex = 13;
             // 
             // resultsListPanelNormal
@@ -181,7 +181,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.resultsListPanelNormal.Location = new System.Drawing.Point(7, 339);
             this.resultsListPanelNormal.Name = "resultsListPanelNormal";
-            this.resultsListPanelNormal.Size = new System.Drawing.Size(710, 380);
+            this.resultsListPanelNormal.Size = new System.Drawing.Size(1060, 380);
             this.resultsListPanelNormal.TabIndex = 17;
             // 
             // viewResultsToolTip
@@ -200,7 +200,7 @@
             this.Controls.Add(this.resultsListPanelFull);
             this.Controls.Add(this.resultsListPanelNormal);
             this.Name = "ViewSearchResultsControl";
-            this.Size = new System.Drawing.Size(725, 725);
+            this.Size = new System.Drawing.Size(1084, 725);
             this.showOptionsPanel.ResumeLayout(false);
             this.viewOptionsTab.ResumeLayout(false);
             this.resultsListPanel.ResumeLayout(false);

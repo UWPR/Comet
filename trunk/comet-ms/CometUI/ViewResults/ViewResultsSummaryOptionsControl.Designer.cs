@@ -40,7 +40,7 @@
             // btnBrowsePepXMLFile
             // 
             this.btnBrowsePepXMLFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowsePepXMLFile.Location = new System.Drawing.Point(561, 32);
+            this.btnBrowsePepXMLFile.Location = new System.Drawing.Point(908, 32);
             this.btnBrowsePepXMLFile.Name = "btnBrowsePepXMLFile";
             this.btnBrowsePepXMLFile.Size = new System.Drawing.Size(75, 23);
             this.btnBrowsePepXMLFile.TabIndex = 42;
@@ -58,7 +58,7 @@
             this.pepXMLFileCombo.FormattingEnabled = true;
             this.pepXMLFileCombo.Location = new System.Drawing.Point(93, 32);
             this.pepXMLFileCombo.Name = "pepXMLFileCombo";
-            this.pepXMLFileCombo.Size = new System.Drawing.Size(462, 23);
+            this.pepXMLFileCombo.Size = new System.Drawing.Size(809, 23);
             this.pepXMLFileCombo.TabIndex = 41;
             // 
             // pepXMLFileLabel
@@ -74,7 +74,7 @@
             // btnUpdateResults
             // 
             this.btnUpdateResults.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnUpdateResults.Location = new System.Drawing.Point(569, 200);
+            this.btnUpdateResults.Location = new System.Drawing.Point(908, 195);
             this.btnUpdateResults.Name = "btnUpdateResults";
             this.btnUpdateResults.Size = new System.Drawing.Size(75, 23);
             this.btnUpdateResults.TabIndex = 44;
@@ -92,7 +92,7 @@
             this.viewResultsSummaryMainPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.viewResultsSummaryMainPanel.Location = new System.Drawing.Point(0, 0);
             this.viewResultsSummaryMainPanel.Name = "viewResultsSummaryMainPanel";
-            this.viewResultsSummaryMainPanel.Size = new System.Drawing.Size(653, 230);
+            this.viewResultsSummaryMainPanel.Size = new System.Drawing.Size(1000, 230);
             this.viewResultsSummaryMainPanel.TabIndex = 46;
             // 
             // searchResultsSummaryLabel
@@ -110,7 +110,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.viewResultsSummaryMainPanel);
             this.Name = "ViewResultsSummaryOptionsControl";
-            this.Size = new System.Drawing.Size(653, 230);
+            this.Size = new System.Drawing.Size(1000, 230);
             this.viewResultsSummaryMainPanel.ResumeLayout(false);
             this.viewResultsSummaryMainPanel.PerformLayout();
             this.ResumeLayout(false);

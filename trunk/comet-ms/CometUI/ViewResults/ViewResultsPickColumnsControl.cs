@@ -207,11 +207,6 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void BtnUpdateResultsClick(object sender, EventArgs e)
-        {
-            ViewSearchResultsControl.UpdateSearchResultsList();
-        }
-
         private void HiddenColumnsListBoxSelectedIndexChanged(object sender, EventArgs e)
         {
             VerifyAndUpdateHideColumnsSetting();
@@ -222,6 +217,11 @@ namespace CometUI.ViewResults
         {
             VerifyAndUpdateShowColumnsSetting();
             VerifyAndUpdateHideColumnsSetting();
+        }
+
+        private void BtnUpdateResultsClick(object sender, EventArgs e)
+        {
+            ViewSearchResultsControl.UpdateSearchResultsList();
         }
     }
 }
