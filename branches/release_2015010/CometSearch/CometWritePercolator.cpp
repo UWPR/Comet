@@ -72,7 +72,7 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    // Write header line
    fprintf(fpout, "id\t");
    fprintf(fpout, "label\t");
-   fprintf(fpout, "scannum\t");
+   fprintf(fpout, "ScanNr\t");
    fprintf(fpout, "lnrSp\t");
    fprintf(fpout, "deltLCn\t");
    fprintf(fpout, "deltCn\t");

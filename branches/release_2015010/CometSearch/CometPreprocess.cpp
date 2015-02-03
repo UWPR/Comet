@@ -339,19 +339,39 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
    MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
 
-   // Make fast xcorr spectrum.
-   double dSum=0.0;
-
-   dSum=0.0;
-   for (i=0; i<75; i++)
-      dSum += pdTmpCorrelationData[i];
-   for (i=75; i < pScoring->_spectrumInfoInternal.iArraySize +75; i++)
+   if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
    {
-      if (i<pScoring->_spectrumInfoInternal.iArraySize)
+      // Make fast xcorr spectrum.
+      double dSum=0.0;
+
+      dSum=0.0;
+      for (i=0; i<75; i++)
          dSum += pdTmpCorrelationData[i];
-      if (i>=151)
-         dSum -= pdTmpCorrelationData[i-151];
-      pdTmpFastXcorrData[i-75] = (dSum - pdTmpCorrelationData[i-75])* 0.0066666667;
+      for (i=75; i < pScoring->_spectrumInfoInternal.iArraySize +75; i++)
+      {
+         if (i<pScoring->_spectrumInfoInternal.iArraySize)
+            dSum += pdTmpCorrelationData[i];
+         if (i>=151)
+            dSum -= pdTmpCorrelationData[i-151];
+         pdTmpFastXcorrData[i-75] = (dSum - pdTmpCorrelationData[i-75])* 0.0066666667;
+      }
+   }
+   else
+   {
+      // Make fast xcorr spectrum.
+      double dSum=0.0;
+
+      dSum=0.0;
+      for (i=0; i<g_staticParams.iXcorrProcessingOffset; i++)
+         dSum += pdTmpCorrelationData[i];
+      for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; i++)
+      {
+         if (i<pScoring->_spectrumInfoInternal.iArraySize)
+            dSum += pdTmpCorrelationData[i];
+         if (i>=(2*g_staticParams.iXcorrProcessingOffset + 1))
+            dSum -= pdTmpCorrelationData[i-(2*g_staticParams.iXcorrProcessingOffset + 1)];
+         pdTmpFastXcorrData[i-g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i-g_staticParams.iXcorrProcessingOffset])* 0.02;
+      }
    }
 
    pScoring->pfFastXcorrData[0] = 0.0;

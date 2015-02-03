@@ -902,6 +902,13 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("decoy_search", szParamStringVal, iIntParam);
          }
+         else if (!strcmp(szParamName, "xcorr_processing_offset"))
+         {
+            sscanf(szParamVal, "%d", &iIntParam);
+            szParamStringVal[0] = '\0';
+            sprintf(szParamStringVal, "%d", iIntParam);
+            pSearchMgr->SetParam("xcorr_processing_offset", szParamStringVal, iIntParam);
+         }
          else
          {
             sprintf(szErrorMsg, " Warning - invalid parameter found: %s.  Parameter will be ignored.\n", szParamName);

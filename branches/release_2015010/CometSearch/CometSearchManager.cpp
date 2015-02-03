@@ -539,6 +539,8 @@ bool CometSearchManager::InitializeStaticParams()
       strcpy(g_staticParams.szOutputSuffix, strData.c_str());
    }
 
+   GetParamValue("xcorr_processing_offset", g_staticParams.iXcorrProcessingOffset);
+
    GetParamValue("nucleotide_reading_frame", g_staticParams.options.iWhichReadingFrame);
     
    GetParamValue("mass_type_parent", g_staticParams.massUtility.bMonoMassesParent);

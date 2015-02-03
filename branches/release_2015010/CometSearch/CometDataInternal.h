@@ -434,6 +434,7 @@ struct StaticParams
    double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
    PeaksInfo       peaksInformation;
    IonInfo         ionInformation;
+   int             iXcorrProcessingOffset;
 
    StaticParams()
    {
@@ -442,6 +443,8 @@ struct StaticParams
       inputFile.iInputType = InputType_MS2;
 
       szMod[0] = '\0';
+
+      iXcorrProcessingOffset = 75;
 
       databaseInfo.szDatabase[0] = '\0';
 
@@ -580,6 +583,7 @@ struct StaticParams
       massUtility = a.massUtility;
       dInverseBinWidth = a.dInverseBinWidth;
       dOneMinusBinOffset = a.dOneMinusBinOffset;
+      iXcorrProcessingOffset = a.iXcorrProcessingOffset;
       peaksInformation = a.peaksInformation;
       ionInformation = a.ionInformation;
       return *this; 
