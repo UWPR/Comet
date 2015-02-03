@@ -1246,7 +1246,7 @@ use_X_ions = 0\n\
 use_Y_ions = 1\n\
 use_Z_ions = 0\n\
 use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
-use_sparse_matrix = 0\n\
+use_sparse_matrix = 1\n\
 \n\
 #\n\
 # output\n\
