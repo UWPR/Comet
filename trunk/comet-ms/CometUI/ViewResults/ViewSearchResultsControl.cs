@@ -67,6 +67,8 @@ namespace CometUI.ViewResults
 
             InitializeFromDefaultSettings();
 
+            proteinSequencePanel.Visible = false;
+
             UpdateViewSearchResults(String.Empty);
         }
 
@@ -673,7 +675,9 @@ namespace CometUI.ViewResults
                     var proteinSequence = dbReader.ReadProtein(result.ProteinInfo.Name);
                     if (null != proteinSequence)
                     {
-                        MessageBox.Show(proteinSequence, "View Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        proteinSequenceTextBox.Text = proteinSequence;
+                        proteinSequencePanel.Visible = true;
+                        //MessageBox.Show(proteinSequence, "View Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
                 catch (Exception exception)
@@ -682,6 +686,11 @@ namespace CometUI.ViewResults
                                     "View Results Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+
+        private void ShowHideProteinPanelButtonClick(object sender, EventArgs e)
+        {
+            proteinSequencePanel.Visible = false;
         }
     }
 }

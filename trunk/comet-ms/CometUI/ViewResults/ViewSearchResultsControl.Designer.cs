@@ -35,7 +35,11 @@
             this.displayOptionsTabPage = new System.Windows.Forms.TabPage();
             this.pickColumnsTabPage = new System.Windows.Forms.TabPage();
             this.resultsListPanel = new System.Windows.Forms.Panel();
+            this.resultsListSubPanel = new System.Windows.Forms.Panel();
             this.resultsListView = new BrightIdeasSoftware.ObjectListView();
+            this.proteinSequencePanel = new System.Windows.Forms.Panel();
+            this.proteinSequenceTextBox = new System.Windows.Forms.TextBox();
+            this.showHideProteinPanelButton = new System.Windows.Forms.Button();
             this.hideOptionsGroupBox = new System.Windows.Forms.GroupBox();
             this.showHideOptionsLabel = new System.Windows.Forms.Label();
             this.showHideOptionsBtn = new System.Windows.Forms.Button();
@@ -45,7 +49,9 @@
             this.showOptionsPanel.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.resultsListPanel.SuspendLayout();
+            this.resultsListSubPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).BeginInit();
+            this.proteinSequencePanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // showOptionsPanel
@@ -107,25 +113,35 @@
             this.resultsListPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.resultsListPanel.Controls.Add(this.resultsListView);
+            this.resultsListPanel.Controls.Add(this.resultsListSubPanel);
             this.resultsListPanel.Location = new System.Drawing.Point(7, 339);
             this.resultsListPanel.Name = "resultsListPanel";
             this.resultsListPanel.Size = new System.Drawing.Size(1060, 383);
             this.resultsListPanel.TabIndex = 16;
             // 
+            // resultsListSubPanel
+            // 
+            this.resultsListSubPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.resultsListSubPanel.Controls.Add(this.resultsListView);
+            this.resultsListSubPanel.Controls.Add(this.proteinSequencePanel);
+            this.resultsListSubPanel.Location = new System.Drawing.Point(18, 4);
+            this.resultsListSubPanel.Name = "resultsListSubPanel";
+            this.resultsListSubPanel.Size = new System.Drawing.Size(1019, 356);
+            this.resultsListSubPanel.TabIndex = 2;
+            // 
             // resultsListView
             // 
             this.resultsListView.AlternateRowBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(222)))), ((int)(((byte)(254)))));
-            this.resultsListView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.resultsListView.BackColor = System.Drawing.Color.White;
             this.resultsListView.Cursor = System.Windows.Forms.Cursors.Default;
+            this.resultsListView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.resultsListView.IncludeColumnHeadersInCopy = true;
-            this.resultsListView.Location = new System.Drawing.Point(18, 4);
+            this.resultsListView.Location = new System.Drawing.Point(0, 0);
             this.resultsListView.Name = "resultsListView";
             this.resultsListView.ShowGroups = false;
-            this.resultsListView.Size = new System.Drawing.Size(1019, 356);
+            this.resultsListView.Size = new System.Drawing.Size(1019, 256);
             this.resultsListView.TabIndex = 0;
             this.resultsListView.UseAlternatingBackColors = true;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
@@ -133,6 +149,43 @@
             this.resultsListView.View = System.Windows.Forms.View.Details;
             this.resultsListView.CellToolTipShowing += new System.EventHandler<BrightIdeasSoftware.ToolTipShowingEventArgs>(this.ResultsListViewCellToolTipShowing);
             this.resultsListView.HyperlinkClicked += new System.EventHandler<BrightIdeasSoftware.HyperlinkClickedEventArgs>(this.ResultsListViewHyperlinkClicked);
+            // 
+            // proteinSequencePanel
+            // 
+            this.proteinSequencePanel.AutoSize = true;
+            this.proteinSequencePanel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.proteinSequencePanel.Controls.Add(this.proteinSequenceTextBox);
+            this.proteinSequencePanel.Controls.Add(this.showHideProteinPanelButton);
+            this.proteinSequencePanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.proteinSequencePanel.Location = new System.Drawing.Point(0, 256);
+            this.proteinSequencePanel.Name = "proteinSequencePanel";
+            this.proteinSequencePanel.Size = new System.Drawing.Size(1019, 100);
+            this.proteinSequencePanel.TabIndex = 1;
+            // 
+            // proteinSequenceTextBox
+            // 
+            this.proteinSequenceTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.proteinSequenceTextBox.Location = new System.Drawing.Point(0, 23);
+            this.proteinSequenceTextBox.MaxLength = 100000;
+            this.proteinSequenceTextBox.Multiline = true;
+            this.proteinSequenceTextBox.Name = "proteinSequenceTextBox";
+            this.proteinSequenceTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.proteinSequenceTextBox.Size = new System.Drawing.Size(1019, 74);
+            this.proteinSequenceTextBox.TabIndex = 1;
+            // 
+            // showHideProteinPanelButton
+            // 
+            this.showHideProteinPanelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.showHideProteinPanelButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.showHideProteinPanelButton.Location = new System.Drawing.Point(998, 6);
+            this.showHideProteinPanelButton.Name = "showHideProteinPanelButton";
+            this.showHideProteinPanelButton.Size = new System.Drawing.Size(21, 18);
+            this.showHideProteinPanelButton.TabIndex = 0;
+            this.showHideProteinPanelButton.Text = "X";
+            this.showHideProteinPanelButton.UseVisualStyleBackColor = true;
+            this.showHideProteinPanelButton.Click += new System.EventHandler(this.ShowHideProteinPanelButtonClick);
             // 
             // hideOptionsGroupBox
             // 
@@ -204,7 +257,11 @@
             this.showOptionsPanel.ResumeLayout(false);
             this.viewOptionsTab.ResumeLayout(false);
             this.resultsListPanel.ResumeLayout(false);
+            this.resultsListSubPanel.ResumeLayout(false);
+            this.resultsListSubPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).EndInit();
+            this.proteinSequencePanel.ResumeLayout(false);
+            this.proteinSequencePanel.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -225,5 +282,9 @@
         private System.Windows.Forms.Panel resultsListPanelNormal;
         private System.Windows.Forms.ToolTip viewResultsToolTip;
         private BrightIdeasSoftware.ObjectListView resultsListView;
+        private System.Windows.Forms.Panel proteinSequencePanel;
+        private System.Windows.Forms.Panel resultsListSubPanel;
+        private System.Windows.Forms.Button showHideProteinPanelButton;
+        private System.Windows.Forms.TextBox proteinSequenceTextBox;
     }
 }
