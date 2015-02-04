@@ -761,10 +761,10 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                {
                   if (g_staticParams.options.bSparseMatrix)
                   {
-                     int x = iFragmentIonMass / 10;
+                     int x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
                      if (pQuery->ppfSparseFastXcorrData[x]!=NULL)
                      {
-                        int y = iFragmentIonMass - (x*10);
+                        int y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
                         dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
                      }
                   }
@@ -823,10 +823,10 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 float CometPostAnalysis::FindSpScore(Query *pQuery,
                                      int bin)
 {
-   int x = bin / 10;
+   int x = bin / SPARSE_MATRIX_SIZE;
    if (pQuery->ppfSparseSpScoreData[x] == NULL)
       return 0.0f;
-   int y = bin - (x*10);
+   int y = bin - (x*SPARSE_MATRIX_SIZE);
    return pQuery->ppfSparseSpScoreData[x][y];
 }
 

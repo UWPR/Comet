@@ -30,6 +30,8 @@
 #define MAX_FRAGMENT_CHARGE         5
 #define MAX_PRECURSOR_CHARGE        9
 
+#define SPARSE_MATRIX_SIZE          100
+
 struct DoubleRange
 {
    double dStart;

@@ -1248,10 +1248,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             {
                //MH: newer sparse matrix converts bin to sparse matrix bin
                bin = *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen);
-               x = bin / 10;
+               x = bin / SPARSE_MATRIX_SIZE;
                if (ppSparseFastXcorrData[x]==NULL) 
                   continue;
-               y = bin - (x*10);
+               y = bin - (x*SPARSE_MATRIX_SIZE);
                dXcorr += ppSparseFastXcorrData[x][y];
             }
             
