@@ -38,7 +38,7 @@
             this.resultsListSubPanel = new System.Windows.Forms.Panel();
             this.resultsListView = new BrightIdeasSoftware.ObjectListView();
             this.proteinSequencePanel = new System.Windows.Forms.Panel();
-            this.proteinSequenceTextBox = new System.Windows.Forms.TextBox();
+            this.proteinSequenceTextBox = new System.Windows.Forms.RichTextBox();
             this.showHideProteinPanelButton = new System.Windows.Forms.Button();
             this.hideOptionsGroupBox = new System.Windows.Forms.GroupBox();
             this.showHideOptionsLabel = new System.Windows.Forms.Label();
@@ -141,8 +141,8 @@
             this.resultsListView.Location = new System.Drawing.Point(0, 0);
             this.resultsListView.Name = "resultsListView";
             this.resultsListView.ShowGroups = false;
-            this.resultsListView.Size = new System.Drawing.Size(1019, 256);
-            this.resultsListView.TabIndex = 0;
+            this.resultsListView.Size = new System.Drawing.Size(1019, 214);
+            this.resultsListView.TabIndex = 1;
             this.resultsListView.UseAlternatingBackColors = true;
             this.resultsListView.UseCompatibleStateImageBehavior = false;
             this.resultsListView.UseHyperlinks = true;
@@ -157,9 +157,9 @@
             this.proteinSequencePanel.Controls.Add(this.proteinSequenceTextBox);
             this.proteinSequencePanel.Controls.Add(this.showHideProteinPanelButton);
             this.proteinSequencePanel.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.proteinSequencePanel.Location = new System.Drawing.Point(0, 256);
+            this.proteinSequencePanel.Location = new System.Drawing.Point(0, 214);
             this.proteinSequencePanel.Name = "proteinSequencePanel";
-            this.proteinSequencePanel.Size = new System.Drawing.Size(1019, 100);
+            this.proteinSequencePanel.Size = new System.Drawing.Size(1019, 142);
             this.proteinSequencePanel.TabIndex = 1;
             // 
             // proteinSequenceTextBox
@@ -167,19 +167,18 @@
             this.proteinSequenceTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.proteinSequenceTextBox.Location = new System.Drawing.Point(0, 23);
-            this.proteinSequenceTextBox.MaxLength = 100000;
-            this.proteinSequenceTextBox.Multiline = true;
+            this.proteinSequenceTextBox.Location = new System.Drawing.Point(0, 40);
             this.proteinSequenceTextBox.Name = "proteinSequenceTextBox";
-            this.proteinSequenceTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.proteinSequenceTextBox.Size = new System.Drawing.Size(1019, 74);
-            this.proteinSequenceTextBox.TabIndex = 1;
+            this.proteinSequenceTextBox.ReadOnly = true;
+            this.proteinSequenceTextBox.Size = new System.Drawing.Size(1019, 99);
+            this.proteinSequenceTextBox.TabIndex = 2;
+            this.proteinSequenceTextBox.Text = "";
             // 
             // showHideProteinPanelButton
             // 
             this.showHideProteinPanelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.showHideProteinPanelButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.showHideProteinPanelButton.Location = new System.Drawing.Point(998, 6);
+            this.showHideProteinPanelButton.Location = new System.Drawing.Point(998, 24);
             this.showHideProteinPanelButton.Name = "showHideProteinPanelButton";
             this.showHideProteinPanelButton.Size = new System.Drawing.Size(21, 18);
             this.showHideProteinPanelButton.TabIndex = 0;
@@ -261,7 +260,6 @@
             this.resultsListSubPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).EndInit();
             this.proteinSequencePanel.ResumeLayout(false);
-            this.proteinSequencePanel.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -285,6 +283,6 @@
         private System.Windows.Forms.Panel proteinSequencePanel;
         private System.Windows.Forms.Panel resultsListSubPanel;
         private System.Windows.Forms.Button showHideProteinPanelButton;
-        private System.Windows.Forms.TextBox proteinSequenceTextBox;
+        private System.Windows.Forms.RichTextBox proteinSequenceTextBox;
     }
 }

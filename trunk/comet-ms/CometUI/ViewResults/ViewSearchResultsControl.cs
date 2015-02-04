@@ -677,7 +677,10 @@ namespace CometUI.ViewResults
                     {
                         proteinSequenceTextBox.Text = proteinSequence;
                         proteinSequencePanel.Visible = true;
-                        //MessageBox.Show(proteinSequence, "View Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        int highlightStartIndex = proteinSequenceTextBox.Find(result.Peptide);
+                        proteinSequenceTextBox.Select(highlightStartIndex, result.Peptide.Length);
+                        proteinSequenceTextBox.SelectionBackColor = Color.Orange;
+                        proteinSequenceTextBox.ShowSelectionMargin = true;
                     }
                 }
                 catch (Exception exception)
