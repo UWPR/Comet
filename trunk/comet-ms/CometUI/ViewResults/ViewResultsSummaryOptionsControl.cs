@@ -30,12 +30,12 @@ namespace CometUI.ViewResults
             }
         }
 
-        public bool UpdateSummaryOptions()
+        public bool UpdateSummaryOptions(String resultsPepXMLFile)
         {
             ErrorMessage = String.Empty;
-            UpdatePepXMLFileCombo();
+            UpdatePepXMLFileCombo(resultsPepXMLFile);
 
-            if (!UpdateSearchSummaryLabel())
+            if (!UpdateSearchSummaryLabel(resultsPepXMLFile))
             {
                 return false;
             }
@@ -43,14 +43,14 @@ namespace CometUI.ViewResults
             return true;
         }
 
-        private void UpdatePepXMLFileCombo()
+        private void UpdatePepXMLFileCombo(String resultsPepXMLFile)
         {
-            pepXMLFileCombo.Text = ViewSearchResultsControl.ResultsPepXMLFile;
+            pepXMLFileCombo.Text = resultsPepXMLFile;
         }
 
-        private bool UpdateSearchSummaryLabel()
+        private bool UpdateSearchSummaryLabel(String resultsPepXMLFile)
         {
-            String resultsFile = ViewSearchResultsControl.ResultsPepXMLFile;
+            String resultsFile = resultsPepXMLFile;
             if (String.Empty == resultsFile)
             {
                 // If there is no results file, clear the search summary display
