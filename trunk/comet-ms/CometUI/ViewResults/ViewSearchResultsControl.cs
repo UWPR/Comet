@@ -74,6 +74,8 @@ namespace CometUI.ViewResults
 
         public void UpdateViewSearchResults(String resultsPepXMLFile)
         {
+            ShowProteinSequencePanel(false);
+
             ErrorMessage = String.Empty;
             if (null != resultsPepXMLFile)
             {
@@ -618,6 +620,11 @@ namespace CometUI.ViewResults
             }
         }
 
+        private void ShowProteinSequencePanel(bool show)
+        {
+            proteinSequencePanel.Visible = show;
+        }
+
         private void ResultsListViewCellToolTipShowing(object sender, ToolTipShowingEventArgs e)
         {
             if (e.Column.AspectName.Equals("ProteinDisplayStr"))
@@ -675,8 +682,9 @@ namespace CometUI.ViewResults
                     var proteinSequence = dbReader.ReadProtein(result.ProteinInfo.Name);
                     if (null != proteinSequence)
                     {
+                        databaseLabel.Text = "Database: " + SearchDatabaseFile;
                         proteinSequenceTextBox.Text = proteinSequence;
-                        proteinSequencePanel.Visible = true;
+                        ShowProteinSequencePanel(true);
                         int highlightStartIndex = proteinSequenceTextBox.Find(result.Peptide);
                         proteinSequenceTextBox.Select(highlightStartIndex, result.Peptide.Length);
                         proteinSequenceTextBox.SelectionBackColor = Color.Orange;
@@ -691,9 +699,9 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void ShowHideProteinPanelButtonClick(object sender, EventArgs e)
+        private void HideProteinPanelButtonClick(object sender, EventArgs e)
         {
-            proteinSequencePanel.Visible = false;
+            ShowProteinSequencePanel(false);
         }
     }
 }
