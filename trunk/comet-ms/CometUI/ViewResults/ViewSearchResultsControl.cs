@@ -250,35 +250,55 @@ namespace CometUI.ViewResults
 
         private void OnProteinLinkClick(HyperlinkClickedEventArgs e)
         {
-            // Todo: Here's how this should work:
-            // Try to open the SearchDatabaseFile read in from the pep.xml file.
-            // If it works, great, display it on a closable panel that opens up next to/underneath the results list
-            // Highlight the peptide sequence that was found
-            // If it doesn't work, allow the user to browse to a path where the database file is located, then try again
-            // Make sure to allow the user to cancel out of the UI that lets them browse to cancel the operation
-
             var result = e.Model as SearchResult;
             if (null != result)
             {
-                try
+                ShowProteinSequence(result);
+            }
+        }
+
+        private void ShowProteinSequence(SearchResult result)
+        {
+            try
+            {
+                var dbReader = new ProteinDBReader(SearchResultsMgr.SearchDatabaseFile);
+                var proteinSequence = dbReader.ReadProtein(result.ProteinInfo.Name);
+                if (null != proteinSequence)
                 {
-                    var dbReader = new SearchDBReader(SearchResultsMgr.SearchDatabaseFile);
-                    var proteinSequence = dbReader.ReadProtein(result.ProteinInfo.Name);
-                    if (null != proteinSequence)
-                    {
-                        databaseLabel.Text = "Database: " + SearchResultsMgr.SearchDatabaseFile;
-                        proteinSequenceTextBox.Text = proteinSequence;
-                        ShowProteinSequencePanel(true);
-                        int highlightStartIndex = proteinSequenceTextBox.Find(result.Peptide);
-                        proteinSequenceTextBox.Select(highlightStartIndex, result.Peptide.Length);
-                        proteinSequenceTextBox.SelectionBackColor = Color.Orange;
-                        proteinSequenceTextBox.ShowSelectionMargin = true;
-                    }
+                    ShowProteinSequencePanel(true);
+
+                    // Show the path of the protein database file
+                    databaseLabel.Text = Resources.ViewSearchResultsControl_ShowProteinSequence_Database__ 
+                        + SearchResultsMgr.SearchDatabaseFile;
+                    
+                    // Show the protein
+                    proteinSequenceTextBox.Text = proteinSequence;
+                    
+                    // Highlight the matching peptide within the protein
+                    int highlightStartIndex = proteinSequenceTextBox.Find(result.Peptide);
+                    proteinSequenceTextBox.Select(highlightStartIndex, result.Peptide.Length);
+                    proteinSequenceTextBox.SelectionBackColor = Color.Orange;
+                    proteinSequenceTextBox.ShowSelectionMargin = true;
                 }
-                catch (Exception exception)
+            }
+            catch (Exception exception)
+            {
+                if (DialogResult.Yes == MessageBox.Show(Resources.ViewSearchResultsControl_ShowProteinSequence_Could_not_find_the_protein_database_file__ 
+                    + exception.Message 
+                    + Environment.NewLine + Environment.NewLine 
+                    + Resources.ViewSearchResultsControl_ShowProteinSequence_Would_you_like_to_specify_an_alternate_path_to_the_file_,
+                                Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
                 {
-                    MessageBox.Show("Could not look up the protein sequence. " + exception.Message,
-                                    "View Results Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    var findProteinDBDlg = new FindProteinDBDlg();
+                    if (DialogResult.OK == findProteinDBDlg.ShowDialog())
+                    {
+                        SearchResultsMgr.SearchDatabaseFile = findProteinDBDlg.SearchDBFile;
+
+                        // As long as the user keeps specifying a valid new
+                        // path to a protein database, recursively call into
+                        // this method to try to display the protein sequence.
+                        ShowProteinSequence(result);
+                    }
                 }
             }
         }

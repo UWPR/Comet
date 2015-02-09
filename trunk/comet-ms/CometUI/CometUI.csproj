@@ -218,7 +218,13 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ViewResults\SearchDBReader.cs" />
+    <Compile Include="ViewResults\FindProteinDBDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ViewResults\FindProteinDBDlg.Designer.cs">
+      <DependentUpon>FindProteinDBDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\ProteinDBReader.cs" />
     <Compile Include="ViewResults\SearchResult.cs" />
     <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.cs">
       <SubType>UserControl</SubType>
@@ -303,6 +309,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="ViewResults\FindProteinDBDlg.resx">
+      <DependentUpon>FindProteinDBDlg.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="ViewResults\ViewResultsDisplayOptionsControl.resx">
       <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
     </EmbeddedResource>

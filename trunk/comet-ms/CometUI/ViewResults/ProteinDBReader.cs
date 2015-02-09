@@ -3,11 +3,11 @@ using System.IO;
 
 namespace CometUI.ViewResults
 {
-    class SearchDBReader
+    class ProteinDBReader
     {
         private String FileName { get; set; }
 
-        public SearchDBReader(String fileName)
+        public ProteinDBReader(String fileName)
         {
             FileName = fileName;
         }

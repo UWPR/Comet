@@ -296,6 +296,24 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to All Files (*.*)|*.*.
+        /// </summary>
+        internal static string FindProteinDBDlg_BtnBrowseSearchDBFileClick_All_Files__________ {
+            get {
+                return ResourceManager.GetString("FindProteinDBDlg_BtnBrowseSearchDBFileClick_All_Files__________", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open Protein Database File.
+        /// </summary>
+        internal static string FindProteinDBDlg_BtnBrowseSearchDBFileClick_Open_Protein_Database_File {
+            get {
+                return ResourceManager.GetString("FindProteinDBDlg_BtnBrowseSearchDBFileClick_Open_Protein_Database_File", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Comet Params Files (*.params)|*.params.
         /// </summary>
         internal static string ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params {
@@ -747,6 +765,44 @@ namespace CometUI.Properties {
         internal static string ViewSearchResultsControl_HideViewOptionsPanel_Show_options {
             get {
                 return ResourceManager.GetString("ViewSearchResultsControl_HideViewOptionsPanel_Show_options", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not find the protein database file. .
+        /// </summary>
+        internal static string ViewSearchResultsControl_ShowProteinSequence_Could_not_find_the_protein_database_file__ {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_ShowProteinSequence_Could_not_find_the_protein_database_" +
+                        "file__", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Database: .
+        /// </summary>
+        internal static string ViewSearchResultsControl_ShowProteinSequence_Database__ {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_ShowProteinSequence_Database__", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to View Results Error.
+        /// </summary>
+        internal static string ViewSearchResultsControl_ShowProteinSequence_View_Results_Error {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_ShowProteinSequence_View_Results_Error", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Would you like to specify an alternate path to the file?.
+        /// </summary>
+        internal static string ViewSearchResultsControl_ShowProteinSequence_Would_you_like_to_specify_an_alternate_path_to_the_file_ {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_ShowProteinSequence_Would_you_like_to_specify_an_alterna" +
+                        "te_path_to_the_file_", resourceCulture);
             }
         }
         
