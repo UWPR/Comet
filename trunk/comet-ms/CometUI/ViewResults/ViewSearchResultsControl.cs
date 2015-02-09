@@ -236,6 +236,10 @@ namespace CometUI.ViewResults
                 case "ProteinDisplayStr":
                     OnProteinLinkClick(e);
                     break;
+
+                case "Ions2":
+                    OnIons2LinkClick(e);
+                    break;
             }
         }
 
@@ -268,12 +272,12 @@ namespace CometUI.ViewResults
                     ShowProteinSequencePanel(true);
 
                     // Show the path of the protein database file
-                    databaseLabel.Text = Resources.ViewSearchResultsControl_ShowProteinSequence_Database__ 
+                    databaseLabel.Text = Resources.ViewSearchResultsControl_ShowProteinSequence_Database__
                         + SearchResultsMgr.SearchDatabaseFile;
-                    
+
                     // Show the protein
                     proteinSequenceTextBox.Text = proteinSequence;
-                    
+
                     // Highlight the matching peptide within the protein
                     int highlightStartIndex = proteinSequenceTextBox.Find(result.Peptide);
                     proteinSequenceTextBox.Select(highlightStartIndex, result.Peptide.Length);
@@ -283,9 +287,9 @@ namespace CometUI.ViewResults
             }
             catch (Exception exception)
             {
-                if (DialogResult.Yes == MessageBox.Show(Resources.ViewSearchResultsControl_ShowProteinSequence_Could_not_find_the_protein_database_file__ 
-                    + exception.Message 
-                    + Environment.NewLine + Environment.NewLine 
+                if (DialogResult.Yes == MessageBox.Show(Resources.ViewSearchResultsControl_ShowProteinSequence_Could_not_find_the_protein_database_file__
+                    + exception.Message
+                    + Environment.NewLine + Environment.NewLine
                     + Resources.ViewSearchResultsControl_ShowProteinSequence_Would_you_like_to_specify_an_alternate_path_to_the_file_,
                                 Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
                 {
@@ -306,6 +310,11 @@ namespace CometUI.ViewResults
         private void HideProteinPanelButtonClick(object sender, EventArgs e)
         {
             ShowProteinSequencePanel(false);
+        }
+
+        private void OnIons2LinkClick(HyperlinkClickedEventArgs e)
+        {
+
         }
     }
 }
