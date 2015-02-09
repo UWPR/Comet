@@ -55,13 +55,13 @@
             this.pickColumnsMainPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pickColumnsMainPanel.Location = new System.Drawing.Point(0, 0);
             this.pickColumnsMainPanel.Name = "pickColumnsMainPanel";
-            this.pickColumnsMainPanel.Size = new System.Drawing.Size(1000, 230);
+            this.pickColumnsMainPanel.Size = new System.Drawing.Size(1000, 210);
             this.pickColumnsMainPanel.TabIndex = 0;
             // 
             // btnUpdateResults
             // 
             this.btnUpdateResults.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnUpdateResults.Location = new System.Drawing.Point(908, 195);
+            this.btnUpdateResults.Location = new System.Drawing.Point(908, 163);
             this.btnUpdateResults.Name = "btnUpdateResults";
             this.btnUpdateResults.Size = new System.Drawing.Size(75, 23);
             this.btnUpdateResults.TabIndex = 52;
@@ -155,7 +155,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.pickColumnsMainPanel);
             this.Name = "ViewResultsPickColumnsControl";
-            this.Size = new System.Drawing.Size(1000, 230);
+            this.Size = new System.Drawing.Size(1000, 210);
             this.pickColumnsMainPanel.ResumeLayout(false);
             this.pickColumnsMainPanel.PerformLayout();
             this.ResumeLayout(false);

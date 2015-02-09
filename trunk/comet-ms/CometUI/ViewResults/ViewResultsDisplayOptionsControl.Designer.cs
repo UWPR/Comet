@@ -60,13 +60,13 @@
             this.displayOptionsMainPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.displayOptionsMainPanel.Location = new System.Drawing.Point(0, 0);
             this.displayOptionsMainPanel.Name = "displayOptionsMainPanel";
-            this.displayOptionsMainPanel.Size = new System.Drawing.Size(1000, 230);
+            this.displayOptionsMainPanel.Size = new System.Drawing.Size(1000, 210);
             this.displayOptionsMainPanel.TabIndex = 0;
             // 
             // btnUpdateResults
             // 
             this.btnUpdateResults.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnUpdateResults.Location = new System.Drawing.Point(908, 195);
+            this.btnUpdateResults.Location = new System.Drawing.Point(908, 163);
             this.btnUpdateResults.Name = "btnUpdateResults";
             this.btnUpdateResults.Size = new System.Drawing.Size(75, 23);
             this.btnUpdateResults.TabIndex = 59;
@@ -181,7 +181,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.displayOptionsMainPanel);
             this.Name = "ViewResultsDisplayOptionsControl";
-            this.Size = new System.Drawing.Size(1000, 230);
+            this.Size = new System.Drawing.Size(1000, 210);
             this.displayOptionsMainPanel.ResumeLayout(false);
             this.displayOptionsMainPanel.PerformLayout();
             this.columnHeadersRadioButtonsPanel.ResumeLayout(false);

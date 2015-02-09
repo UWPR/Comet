@@ -160,8 +160,8 @@ namespace CometUI.ViewResults
             showOptionsPanel.Visible = true;
             hideOptionsGroupBox.Visible = false;
             OptionsPanelShown = true;
-            resultsListPanel.Location = resultsListPanelNormal.Location;
-            resultsListPanel.Size = resultsListPanelNormal.Size;
+            resultsPanel.Location = resultsPanelNormal.Location;
+            resultsPanel.Size = resultsPanelNormal.Size;
             showHideOptionsBtn.Text = Resources.ViewSearchResultsControl_ShowViewOptionsPanel__;
         }
 
@@ -171,8 +171,8 @@ namespace CometUI.ViewResults
             showOptionsPanel.Visible = false;
             hideOptionsGroupBox.Visible = true;
             OptionsPanelShown = false;
-            resultsListPanel.Location = resultsListPanelFull.Location;
-            resultsListPanel.Size = resultsListPanelFull.Size;
+            resultsPanel.Location = resultsPanelFull.Location;
+            resultsPanel.Size = resultsPanelFull.Size;
             showHideOptionsBtn.Text = Resources.ViewSearchResultsControl_HideViewOptionsPanel__;
         }
 
@@ -196,11 +196,11 @@ namespace CometUI.ViewResults
         {
             if (show)
             {
-                resultsListPanel.Show();
+                resultsPanel.Show();
             }
             else
             {
-                resultsListPanel.Hide();
+                resultsPanel.Hide();
             }
         }
 
