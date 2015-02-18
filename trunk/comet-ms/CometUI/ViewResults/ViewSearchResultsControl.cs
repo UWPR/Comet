@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
 using CometUI.Properties;
+using CometWrapper;
 
 namespace CometUI.ViewResults
 {
@@ -314,7 +316,19 @@ namespace CometUI.ViewResults
 
         private void OnIons2LinkClick(HyperlinkClickedEventArgs e)
         {
+            var result = e.Model as SearchResult;
+            if (null != result)
+            {
+                // Todo: need to launch the spectrum viewer from here
 
+                //// The stuff below is just for the purposes of testing the MSFileReaderWrapper for now.
+                //var msFileReaderWrapper = new MSFileReaderWrapper();
+                //var peaks = new List<Peak_T_Wrapper>();
+                //if (!msFileReaderWrapper.ReadPeaks("C:\\Projects\\Comet\\TestFiles\\sh_1617_JX_070209p_KO410_run1.mzXML", result.StartScan, SearchResultsMgr.MSLevel, peaks))
+                //{
+                //    MessageBox.Show("Could not get peaks", "Ions2 Error", MessageBoxButtons.OK);
+                //}
+            }
         }
     }
 }

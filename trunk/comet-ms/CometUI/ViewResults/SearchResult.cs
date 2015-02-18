@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Xml.XPath;
 using CometUI.Properties;
+using CometWrapper;
 
 namespace CometUI.ViewResults
 {
@@ -10,8 +11,11 @@ namespace CometUI.ViewResults
         public String ErrorMessage { get; set; }
         public String ResultsPepXMLFile { get; set; }
         public String SearchDatabaseFile { get; set; }
+        public MSSpectrumTypeWrapper MSLevel { get; set; }
         public List<SearchResult> SearchResults { get; set; }
         public Dictionary<String, SearchResultColumn> ResultColumns { get; set; }
+
+        private const MSSpectrumTypeWrapper DefaultMSLevel = MSSpectrumTypeWrapper.MS2;
 
         public SearchResultsManager()
         {
@@ -94,6 +98,8 @@ namespace CometUI.ViewResults
         {
             SearchDatabaseFile = pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/search_database", "local_path");
 
+            ReadMSLevel(pepXMLReader);
+
             var spectrumQueryNodes = pepXMLReader.ReadNodes("/msms_pipeline_analysis/msms_run_summary/spectrum_query");
             while (spectrumQueryNodes.MoveNext())
             {
@@ -164,6 +170,30 @@ namespace CometUI.ViewResults
             }
 
             return true;
+        }
+
+        private void ReadMSLevel(PepXMLReader pepXMLReader)
+        {
+            int msLevel;
+            if (pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='ms_level']", "value", out msLevel))
+            {
+                switch (msLevel)
+                {
+                    case 2:
+                        MSLevel = MSSpectrumTypeWrapper.MS2;
+                        break;
+                    case 3:
+                        MSLevel = MSSpectrumTypeWrapper.MS3;
+                        break;
+                    default:
+                        MSLevel = DefaultMSLevel;
+                        break;
+                }
+            }
+            else
+            {
+                MSLevel = DefaultMSLevel;
+            }
         }
 
         private bool ReadSpectrumQueryAttributes(PepXMLReader pepXMLReader, XPathNavigator spectrumQueryNavigator, SearchResult result)
