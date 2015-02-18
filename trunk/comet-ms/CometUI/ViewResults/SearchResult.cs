@@ -11,6 +11,7 @@ namespace CometUI.ViewResults
         public String ErrorMessage { get; set; }
         public String ResultsPepXMLFile { get; set; }
         public String SearchDatabaseFile { get; set; }
+        public String SpectraFile { get; set; }
         public MSSpectrumTypeWrapper MSLevel { get; set; }
         public List<SearchResult> SearchResults { get; set; }
         public Dictionary<String, SearchResultColumn> ResultColumns { get; set; }
@@ -96,6 +97,8 @@ namespace CometUI.ViewResults
 
         private bool ReadResultsFromPepXML(PepXMLReader pepXMLReader)
         {
+            ReadSpectraFile(pepXMLReader);
+
             SearchDatabaseFile = pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/search_database", "local_path");
 
             ReadMSLevel(pepXMLReader);
@@ -193,6 +196,22 @@ namespace CometUI.ViewResults
             else
             {
                 MSLevel = DefaultMSLevel;
+            }
+        }
+
+        private void ReadSpectraFile(PepXMLReader pepXMLReader)
+        {
+            SpectraFile = String.Empty;
+            var spectraFileName = pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary", "base_name");
+            if (!String.IsNullOrEmpty(spectraFileName))
+            {
+                var spectraFileExtension =
+                    pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary",
+                                                                    "raw_data");
+                if (!String.IsNullOrEmpty(spectraFileExtension))
+                {
+                    SpectraFile = spectraFileName + spectraFileExtension;
+                }
             }
         }
 

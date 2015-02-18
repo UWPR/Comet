@@ -326,15 +326,35 @@ namespace CometUI.ViewResults
             var result = e.Model as SearchResult;
             if (null != result)
             {
-                // Todo: need to launch the spectrum viewer from here
+                ViewSpectra(result);
+            }
+        }
 
-                //// The stuff below is just for the purposes of testing the MSFileReaderWrapper for now.
-                //var msFileReaderWrapper = new MSFileReaderWrapper();
-                //var peaks = new List<Peak_T_Wrapper>();
-                //if (!msFileReaderWrapper.ReadPeaks("C:\\Projects\\Comet\\TestFiles\\sh_1617_JX_070209p_KO410_run1.mzXML", result.StartScan, SearchResultsMgr.MSLevel, peaks))
-                //{
-                //    MessageBox.Show("Could not get peaks", "Ions2 Error", MessageBoxButtons.OK);
-                //}
+        private void ViewSpectra(SearchResult result)
+        {
+            // Todo: This method is just for the purposes of testing the MSFileReaderWrapper for now.
+            // Most of this functionality will move into a spectrum viewer
+
+            var msFileReaderWrapper = new MSFileReaderWrapper();
+            var peaks = new List<Peak_T_Wrapper>();
+            if (!msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, result.StartScan, SearchResultsMgr.MSLevel, peaks))
+            {
+                if (DialogResult.Yes == MessageBox.Show("Could not read the spectra file. Would you like to try specifying an alternate path to the file?",
+            Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
+                {
+                    var findSpectraFileDlg = new FindFileDlg
+                    {
+                        OpenFileDlgTitle ="Open Spectra File",
+                        DlgTitle = "Find Spectra File",
+                        FileComboLabel = "Spectra File:"
+                    };
+                    if (DialogResult.OK == findSpectraFileDlg.ShowDialog())
+                    {
+                        SearchResultsMgr.SpectraFile = findSpectraFileDlg.FileName;
+
+                        ViewSpectra(result);
+                    }
+                }
             }
         }
     }
