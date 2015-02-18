@@ -361,10 +361,7 @@
   <data name="ViewSearchResultsControl_ShowProteinSequence_View_Results_Error">
     <value xml:space="preserve">View Results Error</value>
   </data>
-  <data name="FindProteinDBDlg_BtnBrowseSearchDBFileClick_Open_Protein_Database_File">
+  <data name="ViewSearchResultsControl_Open_Protein_Database_File_Dlg_Title">
     <value xml:space="preserve">Open Protein Database File</value>
-  </data>
-  <data name="FindProteinDBDlg_BtnBrowseSearchDBFileClick_All_Files__________">
-    <value xml:space="preserve">All Files (*.*)|*.*</value>
   </data>
 </root>

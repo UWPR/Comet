@@ -295,10 +295,17 @@ namespace CometUI.ViewResults
                     + Resources.ViewSearchResultsControl_ShowProteinSequence_Would_you_like_to_specify_an_alternate_path_to_the_file_,
                                 Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
                 {
-                    var findProteinDBDlg = new FindProteinDBDlg();
+                    var findProteinDBDlg = new FindFileDlg
+                                               {
+                                                   OpenFileDlgTitle =
+                                                       Resources.
+                                                       ViewSearchResultsControl_Open_Protein_Database_File_Dlg_Title,
+                                                       DlgTitle = "Find Protein DB File",
+                                                       FileComboLabel = "Protein DB File:"
+                                               };
                     if (DialogResult.OK == findProteinDBDlg.ShowDialog())
                     {
-                        SearchResultsMgr.SearchDatabaseFile = findProteinDBDlg.SearchDBFile;
+                        SearchResultsMgr.SearchDatabaseFile = findProteinDBDlg.FileName;
 
                         // As long as the user keeps specifying a valid new
                         // path to a protein database, recursively call into

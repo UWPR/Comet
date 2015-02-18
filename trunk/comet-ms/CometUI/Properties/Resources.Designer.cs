@@ -296,24 +296,6 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to All Files (*.*)|*.*.
-        /// </summary>
-        internal static string FindProteinDBDlg_BtnBrowseSearchDBFileClick_All_Files__________ {
-            get {
-                return ResourceManager.GetString("FindProteinDBDlg_BtnBrowseSearchDBFileClick_All_Files__________", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Open Protein Database File.
-        /// </summary>
-        internal static string FindProteinDBDlg_BtnBrowseSearchDBFileClick_Open_Protein_Database_File {
-            get {
-                return ResourceManager.GetString("FindProteinDBDlg_BtnBrowseSearchDBFileClick_Open_Protein_Database_File", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Comet Params Files (*.params)|*.params.
         /// </summary>
         internal static string ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params {
@@ -765,6 +747,15 @@ namespace CometUI.Properties {
         internal static string ViewSearchResultsControl_HideViewOptionsPanel_Show_options {
             get {
                 return ResourceManager.GetString("ViewSearchResultsControl_HideViewOptionsPanel_Show_options", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open Protein Database File.
+        /// </summary>
+        internal static string ViewSearchResultsControl_Open_Protein_Database_File_Dlg_Title {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_Open_Protein_Database_File_Dlg_Title", resourceCulture);
             }
         }
         

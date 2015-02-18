@@ -1,6 +1,6 @@
 ﻿namespace CometUI.ViewResults
 {
-    partial class FindProteinDBDlg
+    partial class FindFileDlg
     {
         /// <summary>
         /// Required designer variable.
@@ -28,12 +28,12 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FindProteinDBDlg));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FindFileDlg));
             this.btnOK = new System.Windows.Forms.Button();
-            this.btnBrowseSearchDBFile = new System.Windows.Forms.Button();
-            this.searchDbLabel = new System.Windows.Forms.Label();
+            this.btnBrowseFile = new System.Windows.Forms.Button();
+            this.findFileLabel = new System.Windows.Forms.Label();
             this.btnCancel = new System.Windows.Forms.Button();
-            this.searchDBFileCombo = new System.Windows.Forms.ComboBox();
+            this.findFileCombo = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // btnOK
@@ -48,26 +48,25 @@
             this.btnOK.UseVisualStyleBackColor = true;
             this.btnOK.Click += new System.EventHandler(this.BtnOKClick);
             // 
-            // btnBrowseSearchDBFile
+            // btnBrowseFile
             // 
-            this.btnBrowseSearchDBFile.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.btnBrowseFile.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowseSearchDBFile.Location = new System.Drawing.Point(481, 36);
-            this.btnBrowseSearchDBFile.Name = "btnBrowseSearchDBFile";
-            this.btnBrowseSearchDBFile.Size = new System.Drawing.Size(75, 23);
-            this.btnBrowseSearchDBFile.TabIndex = 106;
-            this.btnBrowseSearchDBFile.Text = "&Browse";
-            this.btnBrowseSearchDBFile.UseVisualStyleBackColor = true;
-            this.btnBrowseSearchDBFile.Click += new System.EventHandler(this.BtnBrowseSearchDBFileClick);
+            this.btnBrowseFile.Location = new System.Drawing.Point(481, 36);
+            this.btnBrowseFile.Name = "btnBrowseFile";
+            this.btnBrowseFile.Size = new System.Drawing.Size(75, 23);
+            this.btnBrowseFile.TabIndex = 106;
+            this.btnBrowseFile.Text = "&Browse";
+            this.btnBrowseFile.UseVisualStyleBackColor = true;
+            this.btnBrowseFile.Click += new System.EventHandler(this.BtnBrowseSearchDBFileClick);
             // 
-            // searchDbLabel
+            // findFileLabel
             // 
-            this.searchDbLabel.AutoSize = true;
-            this.searchDbLabel.Location = new System.Drawing.Point(12, 20);
-            this.searchDbLabel.Name = "searchDbLabel";
-            this.searchDbLabel.Size = new System.Drawing.Size(112, 13);
-            this.searchDbLabel.TabIndex = 104;
-            this.searchDbLabel.Text = "&Search Database File:";
+            this.findFileLabel.AutoSize = true;
+            this.findFileLabel.Location = new System.Drawing.Point(12, 20);
+            this.findFileLabel.Name = "findFileLabel";
+            this.findFileLabel.Size = new System.Drawing.Size(0, 13);
+            this.findFileLabel.TabIndex = 104;
             // 
             // btnCancel
             // 
@@ -80,33 +79,32 @@
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.BtnCancelClick);
             // 
-            // searchDBFileCombo
+            // findFileCombo
             // 
-            this.searchDBFileCombo.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest;
-            this.searchDBFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
-            this.searchDBFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
-            this.searchDBFileCombo.FormattingEnabled = true;
-            this.searchDBFileCombo.Location = new System.Drawing.Point(15, 36);
-            this.searchDBFileCombo.Name = "searchDBFileCombo";
-            this.searchDBFileCombo.Size = new System.Drawing.Size(460, 23);
-            this.searchDBFileCombo.TabIndex = 105;
+            this.findFileCombo.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest;
+            this.findFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
+            this.findFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
+            this.findFileCombo.FormattingEnabled = true;
+            this.findFileCombo.Location = new System.Drawing.Point(15, 36);
+            this.findFileCombo.Name = "findFileCombo";
+            this.findFileCombo.Size = new System.Drawing.Size(460, 23);
+            this.findFileCombo.TabIndex = 105;
             // 
-            // FindProteinDBDlg
+            // FindFileDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(568, 138);
             this.Controls.Add(this.btnOK);
-            this.Controls.Add(this.btnBrowseSearchDBFile);
-            this.Controls.Add(this.searchDbLabel);
-            this.Controls.Add(this.searchDBFileCombo);
+            this.Controls.Add(this.btnBrowseFile);
+            this.Controls.Add(this.findFileLabel);
+            this.Controls.Add(this.findFileCombo);
             this.Controls.Add(this.btnCancel);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
-            this.Name = "FindProteinDBDlg";
+            this.Name = "FindFileDlg";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Find Search Database File";
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -115,9 +113,9 @@
         #endregion
 
         private System.Windows.Forms.Button btnOK;
-        private System.Windows.Forms.Button btnBrowseSearchDBFile;
-        private System.Windows.Forms.Label searchDbLabel;
+        private System.Windows.Forms.Button btnBrowseFile;
+        private System.Windows.Forms.Label findFileLabel;
         private System.Windows.Forms.Button btnCancel;
-        private System.Windows.Forms.ComboBox searchDBFileCombo;
+        private System.Windows.Forms.ComboBox findFileCombo;
     }
 }
