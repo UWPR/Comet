@@ -37,7 +37,7 @@ class CometSearchManager;
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
-#define DECOY_SIZE                  1000     // minimum # of decoys to have for e-value calculation
+#define DECOY_SIZE                  200      // minimum # of decoys to have for e-value calculation
 
 #define VMODS                       9
 #define VMOD_1_INDEX                0
@@ -65,7 +65,7 @@ class CometSearchManager;
 #ifdef CRUX
 #define XCORR_CUTOFF                -999.0
 #else
-#define XCORR_CUTOFF                0.0
+#define XCORR_CUTOFF                1E-8   // some near-zero cutoff
 #endif
 
 

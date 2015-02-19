@@ -1254,7 +1254,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                y = bin - (x*SPARSE_MATRIX_SIZE);
                dXcorr += ppSparseFastXcorrData[x][y];
             }
-            
          }
          else
          {
