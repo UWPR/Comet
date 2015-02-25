@@ -337,7 +337,7 @@ namespace CometUI.ViewResults
 
             var msFileReaderWrapper = new MSFileReaderWrapper();
             var peaks = new List<Peak_T_Wrapper>();
-            if (!msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, result.StartScan, SearchResultsMgr.MSLevel, peaks))
+            if (!msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, result.StartScan, SearchResultsMgr.SearchParams.MSLevel, peaks))
             {
                 if (DialogResult.Yes == MessageBox.Show("Could not read the spectra file. Would you like to try specifying an alternate path to the file?",
             Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))

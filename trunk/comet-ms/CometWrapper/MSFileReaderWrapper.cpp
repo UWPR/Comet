@@ -45,7 +45,15 @@ bool MSFileReaderWrapper::ReadPeaks(String^ msFileName, int scanNum, MSSpectrumT
     szMSFileName[0] = '\0';
     strcpy(szMSFileName, pszMSFileName);
     Spectrum spec;
-    _pMSReader->readFile(szMSFileName, spec, scanNum);
+    if (!_pMSReader->readFile(szMSFileName, spec, scanNum))
+    {
+        return false;
+    }
+
+    if (0 == spec.size())
+    {
+        return false;
+    }
 
     for (int i = 0; i < spec.size(); i++)
     {

@@ -98,6 +98,7 @@
     </Compile>
     <Compile Include="CometParam.cs" />
     <Compile Include="CometParamsIO.cs" />
+    <Compile Include="MassSpecUtils.cs" />
     <Compile Include="Search\CometSearch.cs" />
     <Compile Include="CometUI.cs">
       <SubType>Form</SubType>
@@ -134,7 +135,6 @@
     <Compile Include="Search\SearchSettings\VarModInfoDlg.Designer.cs">
       <DependentUpon>VarModInfoDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="ViewResults\MassSpecUtils.cs" />
     <Compile Include="ViewResults\PepXMLReader.cs" />
     <Compile Include="Properties\SearchSettings.Designer.cs">
       <AutoGen>True</AutoGen>

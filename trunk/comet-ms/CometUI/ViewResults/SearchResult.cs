@@ -6,15 +6,15 @@ using CometWrapper;
 
 namespace CometUI.ViewResults
 {
-    class SearchResultsManager
+    internal class SearchResultsManager
     {
         public String ErrorMessage { get; set; }
         public String ResultsPepXMLFile { get; set; }
         public String SearchDatabaseFile { get; set; }
         public String SpectraFile { get; set; }
-        public MSSpectrumTypeWrapper MSLevel { get; set; }
         public List<SearchResult> SearchResults { get; set; }
         public Dictionary<String, SearchResultColumn> ResultColumns { get; set; }
+        public SearchResultParams SearchParams { get; private set; }
 
         private const MSSpectrumTypeWrapper DefaultMSLevel = MSSpectrumTypeWrapper.MS2;
 
@@ -22,6 +22,7 @@ namespace CometUI.ViewResults
         {
             ErrorMessage = String.Empty;
             SearchResults = new List<SearchResult>();
+            SearchParams = new SearchResultParams();
             InitializeResultsColumns();
         }
 
@@ -99,9 +100,15 @@ namespace CometUI.ViewResults
         {
             ReadSpectraFile(pepXMLReader);
 
-            SearchDatabaseFile = pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/search_database", "local_path");
+            // Read the database file name
+            SearchDatabaseFile =
+                pepXMLReader.ReadAttributeFromFirstMatchingNode(
+                    "/msms_pipeline_analysis/msms_run_summary/search_summary/search_database", "local_path");
 
-            ReadMSLevel(pepXMLReader);
+            if (!ReadSearchParams(pepXMLReader))
+            {
+                return false;
+            }
 
             var spectrumQueryNodes = pepXMLReader.ReadNodes("/msms_pipeline_analysis/msms_run_summary/spectrum_query");
             while (spectrumQueryNodes.MoveNext())
@@ -156,7 +163,8 @@ namespace CometUI.ViewResults
                         return false;
                     }
 
-                    var peptideprophetResultNavigator = pepXMLReader.ReadFirstMatchingDescendant(searchHitNavigator, "peptideprophet_result");
+                    var peptideprophetResultNavigator = pepXMLReader.ReadFirstMatchingDescendant(searchHitNavigator,
+                                                                                                 "peptideprophet_result");
                     if (null != peptideprophetResultNavigator)
                     {
                         if (!ReadPeptideProphetResults(pepXMLReader, peptideprophetResultNavigator, result))
@@ -175,28 +183,110 @@ namespace CometUI.ViewResults
             return true;
         }
 
+        private bool ReadSearchParams(PepXMLReader pepXMLReader)
+        {
+            ReadMSLevel(pepXMLReader);
+
+            if (!ReadUseIons(pepXMLReader))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private void ReadMSLevel(PepXMLReader pepXMLReader)
         {
             int msLevel;
-            if (pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='ms_level']", "value", out msLevel))
+            if (
+                pepXMLReader.ReadAttributeFromFirstMatchingNode(
+                    "/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='ms_level']", "value",
+                    out msLevel))
             {
                 switch (msLevel)
                 {
                     case 2:
-                        MSLevel = MSSpectrumTypeWrapper.MS2;
+                        SearchParams.MSLevel = MSSpectrumTypeWrapper.MS2;
                         break;
                     case 3:
-                        MSLevel = MSSpectrumTypeWrapper.MS3;
+                        SearchParams.MSLevel = MSSpectrumTypeWrapper.MS3;
                         break;
                     default:
-                        MSLevel = DefaultMSLevel;
+                        SearchParams.MSLevel = DefaultMSLevel;
                         break;
                 }
             }
             else
             {
-                MSLevel = DefaultMSLevel;
+                SearchParams.MSLevel = DefaultMSLevel;
             }
+        }
+
+        private bool ReadUseIons(PepXMLReader pepXMLReader)
+        {
+            int useIon;
+
+            if (pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='use_A_ions']", "value", out useIon))
+            {
+                SearchParams.UseAIons = useIon != 0;
+            }
+            else
+            {
+                ErrorMessage = "Could not read the use_A_ions attribute.";
+                return false;
+            }
+
+            if (pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='use_B_ions']", "value", out useIon))
+            {
+                SearchParams.UseBIons = useIon != 0;
+            }
+            else
+            {
+                ErrorMessage = "Could not read the use_B_ions attribute.";
+                return false;
+            }
+
+            if (pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='use_C_ions']", "value", out useIon))
+            {
+                SearchParams.UseCIons = useIon != 0;
+            }
+            else
+            {
+                ErrorMessage = "Could not read the use_C_ions attribute.";
+                return false;
+            }
+
+            if (pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='use_X_ions']", "value", out useIon))
+            {
+                SearchParams.UseXIons = useIon != 0;
+            }
+            else
+            {
+                ErrorMessage = "Could not read the use_X_ions attribute.";
+                return false;
+            }
+
+            if (pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='use_Y_ions']", "value", out useIon))
+            {
+                SearchParams.UseYIons = useIon != 0;
+            }
+            else
+            {
+                ErrorMessage = "Could not read the use_Y_ions attribute.";
+                return false;
+            }
+
+            if (pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='use_Z_ions']", "value", out useIon))
+            {
+                SearchParams.UseZIons = useIon != 0;
+            }
+            else
+            {
+                ErrorMessage = "Could not read the use_Z_ions attribute.";
+                return false;
+            }
+
+            return true;
         }
 
         private void ReadSpectraFile(PepXMLReader pepXMLReader)
@@ -700,5 +790,23 @@ namespace CometUI.ViewResults
             CondensedHeader = condensedHeader;
             Hyperlink = hyperlink;
         }
+    }
+
+    public class SearchResultParams
+    {
+        public MSSpectrumTypeWrapper MSLevel { get; set; }
+        public MassType MassTypeFragment { get; set; }
+        public bool UseAIons { get; set; }
+        public bool UseBIons { get; set; }
+        public bool UseCIons { get; set; }
+        public bool UseXIons { get; set; }
+        public bool UseYIons { get; set; }
+        public bool UseZIons { get; set; }
+    }
+
+    public enum MassType
+    {
+        MassTypeAverage = 0,
+        MassTypeMonoisotopic
     }
 }

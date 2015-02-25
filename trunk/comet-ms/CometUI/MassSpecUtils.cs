@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Linq;
 
-namespace CometUI.ViewResults
+namespace CometUI
 {
     /// <summary>
     /// Given a protein sequence, calculate its pI. This code was adapted 
