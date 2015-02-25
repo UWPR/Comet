@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
 using CometUI.Properties;
 using CometWrapper;
+using ZedGraph;
 
 namespace CometUI.ViewResults
 {
@@ -21,6 +23,7 @@ namespace CometUI.ViewResults
         private SearchResultsManager SearchResultsMgr { get; set; }
 
         private const String BlastHttpLink = "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
+        private const int DetailsPanelExtraHeight = 100;
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -62,14 +65,14 @@ namespace CometUI.ViewResults
 
             InitializeFromDefaultSettings();
 
-            proteinSequencePanel.Visible = false;
-
+            ShowDetailsPanel(false);
+   
             UpdateViewSearchResults(String.Empty);
         }
 
         public void UpdateViewSearchResults(String resultsPepXMLFile)
         {
-            ShowProteinSequencePanel(false);
+            ShowDetailsPanel(false);
 
             ErrorMessage = String.Empty;
             if (null != resultsPepXMLFile)
@@ -206,9 +209,9 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void ShowProteinSequencePanel(bool show)
+        private void ShowDetailsPanel(bool show)
         {
-            proteinSequencePanel.Visible = show;
+            detailsPanel.Visible = show;
         }
 
         private void ResultsListViewCellToolTipShowing(object sender, ToolTipShowingEventArgs e)
@@ -256,6 +259,9 @@ namespace CometUI.ViewResults
 
         private void OnProteinLinkClick(HyperlinkClickedEventArgs e)
         {
+            // Make sure the View Spectrum UI gets hidden first
+            ShowViewSpectraUI(false);
+
             var result = e.Model as SearchResult;
             if (null != result)
             {
@@ -271,7 +277,8 @@ namespace CometUI.ViewResults
                 var proteinSequence = dbReader.ReadProtein(result.ProteinInfo.Name);
                 if (null != proteinSequence)
                 {
-                    ShowProteinSequencePanel(true);
+                    ShowDetailsPanel(true);
+                    ShowProteinSequenceUI(true);
 
                     // Show the path of the protein database file
                     databaseLabel.Text = Resources.ViewSearchResultsControl_ShowProteinSequence_Database__
@@ -289,6 +296,9 @@ namespace CometUI.ViewResults
             }
             catch (Exception exception)
             {
+                ShowProteinSequenceUI(false);
+                ShowDetailsPanel(false);
+
                 if (DialogResult.Yes == MessageBox.Show(Resources.ViewSearchResultsControl_ShowProteinSequence_Could_not_find_the_protein_database_file__
                     + exception.Message
                     + Environment.NewLine + Environment.NewLine
@@ -316,13 +326,11 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void HideProteinPanelButtonClick(object sender, EventArgs e)
-        {
-            ShowProteinSequencePanel(false);
-        }
-
         private void OnIons2LinkClick(HyperlinkClickedEventArgs e)
         {
+            // Make sure the protein sequence UI gets hidden first
+            ShowProteinSequenceUI(false); 
+
             var result = e.Model as SearchResult;
             if (null != result)
             {
@@ -332,19 +340,31 @@ namespace CometUI.ViewResults
 
         private void ViewSpectra(SearchResult result)
         {
-            // Todo: This method is just for the purposes of testing the MSFileReaderWrapper for now.
-            // Most of this functionality will move into a spectrum viewer
-
             var msFileReaderWrapper = new MSFileReaderWrapper();
             var peaks = new List<Peak_T_Wrapper>();
-            if (!msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, result.StartScan, SearchResultsMgr.SearchParams.MSLevel, peaks))
+            if (msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, result.StartScan, SearchResultsMgr.SearchParams.MSLevel, peaks))
             {
-                if (DialogResult.Yes == MessageBox.Show("Could not read the spectra file. Would you like to try specifying an alternate path to the file?",
-            Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
+                ShowViewSpectraUI(true);
+                ShowDetailsPanel(true);
+
+                // Todo: Work in progress, need to:
+                // 1) calculate and add ions to the graph
+                // 2) draw the table of ions
+                // 3) provide the user options for the graph
+
+                CreateSpectrumGraph(result, peaks);
+            }
+            else
+            {
+                ShowViewSpectraUI(false);
+                ShowDetailsPanel(false);
+
+                if (DialogResult.Yes == MessageBox.Show(Resources.ViewSearchResultsControl_ViewSpectra_Could_not_read_the_spectra_file__Would_you_like_to_try_specifying_an_alternate_path_to_the_file_, 
+                    Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
                 {
                     var findSpectraFileDlg = new FindFileDlg
                     {
-                        OpenFileDlgTitle ="Open Spectra File",
+                        OpenFileDlgTitle = "Open Spectra File",
                         DlgTitle = "Find Spectra File",
                         FileComboLabel = "Spectra File:"
                     };
@@ -356,6 +376,76 @@ namespace CometUI.ViewResults
                     }
                 }
             }
+        }
+
+        private void CreateSpectrumGraph(SearchResult result, IEnumerable<Peak_T_Wrapper> peaks)
+        {
+            // Todo: This is work in progress, there's lots left to do here!
+            spectrumGraphItem.GraphPane.GraphObjList.Clear();
+
+            GraphPane graphPane = spectrumGraphItem.GraphPane;
+
+            // Set the titles and axis labels
+            graphPane.Title.Text = result.Peptide;
+            graphPane.XAxis.Title.Text = "m/z";
+            //graphPane.XAxis.Scale.Max = Convert.ToDouble(XMaxTextBox.Text);
+            //graphPane.XAxis.Scale.Min = Convert.ToDouble(XMinTextBox.Text);
+            graphPane.YAxis.Title.Text = "Intensity";
+            //graphPane.YAxis.Scale.Min = Convert.ToDouble(YMinTextBox.Text);
+            //graphPane.YAxis.Scale.Max = Convert.ToDouble(YMaxTextBox.Text);
+
+            var peaksList = new PointPairList();
+            foreach (var peak in peaks)
+            {
+                peaksList.Add(peak.get_mz(), peak.get_intensity());
+            }
+
+            // Draw the QValue plot
+            graphPane.AddCurve(null, peaksList, Color.Black, SymbolType.None);
+
+            // Calculate the Axis Scale Ranges
+            spectrumGraphItem.AxisChange();
+
+            // Redraw the whole graph control for smooth transition
+            spectrumGraphItem.Invalidate();
+        }
+
+        private void HideDetailsPanelButtonClick(object sender, EventArgs e)
+        {
+            ShowProteinSequenceUI(false);
+            ShowViewSpectraUI(false);
+            ShowDetailsPanel(false);
+        }
+
+        private void ShowProteinSequenceUI(bool show)
+        {
+            databaseLabel.Visible = show;
+            proteinSequenceTextBox.Visible = show;
+        }
+
+        private void ShowViewSpectraUI(bool show)
+        {
+            if (show && !viewSpectraSplitContainer.Visible)
+            {
+                GrowDetailsPanel();
+            }
+
+            if (!show && viewSpectraSplitContainer.Visible)
+            {
+                ShrinkDetailsPanel();
+            }
+            
+            viewSpectraSplitContainer.Visible = show;
+        }
+
+        private void ShrinkDetailsPanel()
+        {
+            detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height - DetailsPanelExtraHeight);
+        }
+
+        private void GrowDetailsPanel()
+        {
+            detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height + DetailsPanelExtraHeight);
         }
     }
 }

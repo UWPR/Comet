@@ -364,4 +364,7 @@
   <data name="ViewSearchResultsControl_Open_Protein_Database_File_Dlg_Title">
     <value xml:space="preserve">Open Protein Database File</value>
   </data>
+  <data name="ViewSearchResultsControl_ViewSpectra_Could_not_read_the_spectra_file__Would_you_like_to_try_specifying_an_alternate_path_to_the_file_">
+    <value xml:space="preserve">Could not read the spectra file. Would you like to try specifying an alternate path to the file?</value>
+  </data>
 </root>

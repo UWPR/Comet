@@ -37,10 +37,14 @@
             this.resultsPanel = new System.Windows.Forms.Panel();
             this.resultsSubPanel = new System.Windows.Forms.Panel();
             this.resultsListView = new BrightIdeasSoftware.ObjectListView();
-            this.proteinSequencePanel = new System.Windows.Forms.Panel();
+            this.detailsPanel = new System.Windows.Forms.Panel();
+            this.viewSpectraSplitContainer = new System.Windows.Forms.SplitContainer();
+            this.spectrumGraphSplitContainer = new System.Windows.Forms.SplitContainer();
+            this.spectrumGraphItem = new ZedGraph.ZedGraphControl();
+            this.viewSpectraIonsList = new BrightIdeasSoftware.ObjectListView();
             this.databaseLabel = new System.Windows.Forms.Label();
             this.proteinSequenceTextBox = new System.Windows.Forms.RichTextBox();
-            this.hideProteinPanelButton = new System.Windows.Forms.Button();
+            this.hideDetailsPanelButton = new System.Windows.Forms.Button();
             this.hideOptionsGroupBox = new System.Windows.Forms.GroupBox();
             this.showHideOptionsLabel = new System.Windows.Forms.Label();
             this.showHideOptionsBtn = new System.Windows.Forms.Button();
@@ -52,7 +56,15 @@
             this.resultsPanel.SuspendLayout();
             this.resultsSubPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).BeginInit();
-            this.proteinSequencePanel.SuspendLayout();
+            this.detailsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.viewSpectraSplitContainer)).BeginInit();
+            this.viewSpectraSplitContainer.Panel2.SuspendLayout();
+            this.viewSpectraSplitContainer.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.spectrumGraphSplitContainer)).BeginInit();
+            this.spectrumGraphSplitContainer.Panel1.SuspendLayout();
+            this.spectrumGraphSplitContainer.Panel2.SuspendLayout();
+            this.spectrumGraphSplitContainer.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.viewSpectraIonsList)).BeginInit();
             this.SuspendLayout();
             // 
             // showOptionsPanel
@@ -126,7 +138,7 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.resultsSubPanel.Controls.Add(this.resultsListView);
-            this.resultsSubPanel.Controls.Add(this.proteinSequencePanel);
+            this.resultsSubPanel.Controls.Add(this.detailsPanel);
             this.resultsSubPanel.Location = new System.Drawing.Point(18, 4);
             this.resultsSubPanel.Name = "resultsSubPanel";
             this.resultsSubPanel.Size = new System.Drawing.Size(1019, 396);
@@ -151,16 +163,76 @@
             this.resultsListView.CellToolTipShowing += new System.EventHandler<BrightIdeasSoftware.ToolTipShowingEventArgs>(this.ResultsListViewCellToolTipShowing);
             this.resultsListView.HyperlinkClicked += new System.EventHandler<BrightIdeasSoftware.HyperlinkClickedEventArgs>(this.ResultsListViewHyperlinkClicked);
             // 
-            // proteinSequencePanel
+            // detailsPanel
             // 
-            this.proteinSequencePanel.Controls.Add(this.databaseLabel);
-            this.proteinSequencePanel.Controls.Add(this.proteinSequenceTextBox);
-            this.proteinSequencePanel.Controls.Add(this.hideProteinPanelButton);
-            this.proteinSequencePanel.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.proteinSequencePanel.Location = new System.Drawing.Point(0, 210);
-            this.proteinSequencePanel.Name = "proteinSequencePanel";
-            this.proteinSequencePanel.Size = new System.Drawing.Size(1019, 186);
-            this.proteinSequencePanel.TabIndex = 1;
+            this.detailsPanel.Controls.Add(this.viewSpectraSplitContainer);
+            this.detailsPanel.Controls.Add(this.databaseLabel);
+            this.detailsPanel.Controls.Add(this.proteinSequenceTextBox);
+            this.detailsPanel.Controls.Add(this.hideDetailsPanelButton);
+            this.detailsPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.detailsPanel.Location = new System.Drawing.Point(0, 210);
+            this.detailsPanel.Name = "detailsPanel";
+            this.detailsPanel.Size = new System.Drawing.Size(1019, 186);
+            this.detailsPanel.TabIndex = 1;
+            // 
+            // viewSpectraSplitContainer
+            // 
+            this.viewSpectraSplitContainer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.viewSpectraSplitContainer.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.viewSpectraSplitContainer.Location = new System.Drawing.Point(0, 48);
+            this.viewSpectraSplitContainer.Name = "viewSpectraSplitContainer";
+            // 
+            // viewSpectraSplitContainer.Panel2
+            // 
+            this.viewSpectraSplitContainer.Panel2.Controls.Add(this.spectrumGraphSplitContainer);
+            this.viewSpectraSplitContainer.Size = new System.Drawing.Size(1019, 138);
+            this.viewSpectraSplitContainer.SplitterDistance = 229;
+            this.viewSpectraSplitContainer.TabIndex = 3;
+            // 
+            // spectrumGraphSplitContainer
+            // 
+            this.spectrumGraphSplitContainer.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.spectrumGraphSplitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.spectrumGraphSplitContainer.Location = new System.Drawing.Point(0, 0);
+            this.spectrumGraphSplitContainer.Name = "spectrumGraphSplitContainer";
+            // 
+            // spectrumGraphSplitContainer.Panel1
+            // 
+            this.spectrumGraphSplitContainer.Panel1.Controls.Add(this.spectrumGraphItem);
+            // 
+            // spectrumGraphSplitContainer.Panel2
+            // 
+            this.spectrumGraphSplitContainer.Panel2.Controls.Add(this.viewSpectraIonsList);
+            this.spectrumGraphSplitContainer.Size = new System.Drawing.Size(786, 138);
+            this.spectrumGraphSplitContainer.SplitterDistance = 590;
+            this.spectrumGraphSplitContainer.TabIndex = 0;
+            // 
+            // spectrumGraphItem
+            // 
+            this.spectrumGraphItem.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.spectrumGraphItem.Location = new System.Drawing.Point(0, 0);
+            this.spectrumGraphItem.Name = "spectrumGraphItem";
+            this.spectrumGraphItem.ScrollGrace = 0D;
+            this.spectrumGraphItem.ScrollMaxX = 0D;
+            this.spectrumGraphItem.ScrollMaxY = 0D;
+            this.spectrumGraphItem.ScrollMaxY2 = 0D;
+            this.spectrumGraphItem.ScrollMinX = 0D;
+            this.spectrumGraphItem.ScrollMinY = 0D;
+            this.spectrumGraphItem.ScrollMinY2 = 0D;
+            this.spectrumGraphItem.Size = new System.Drawing.Size(586, 134);
+            this.spectrumGraphItem.TabIndex = 0;
+            // 
+            // viewSpectraIonsList
+            // 
+            this.viewSpectraIonsList.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.viewSpectraIonsList.Location = new System.Drawing.Point(0, 0);
+            this.viewSpectraIonsList.Name = "viewSpectraIonsList";
+            this.viewSpectraIonsList.Size = new System.Drawing.Size(188, 134);
+            this.viewSpectraIonsList.TabIndex = 0;
+            this.viewSpectraIonsList.UseCompatibleStateImageBehavior = false;
+            this.viewSpectraIonsList.View = System.Windows.Forms.View.Details;
             // 
             // databaseLabel
             // 
@@ -183,17 +255,17 @@
             this.proteinSequenceTextBox.TabIndex = 2;
             this.proteinSequenceTextBox.Text = "";
             // 
-            // hideProteinPanelButton
+            // hideDetailsPanelButton
             // 
-            this.hideProteinPanelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.hideProteinPanelButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.hideProteinPanelButton.Location = new System.Drawing.Point(998, 24);
-            this.hideProteinPanelButton.Name = "hideProteinPanelButton";
-            this.hideProteinPanelButton.Size = new System.Drawing.Size(21, 18);
-            this.hideProteinPanelButton.TabIndex = 0;
-            this.hideProteinPanelButton.Text = "X";
-            this.hideProteinPanelButton.UseVisualStyleBackColor = true;
-            this.hideProteinPanelButton.Click += new System.EventHandler(this.HideProteinPanelButtonClick);
+            this.hideDetailsPanelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.hideDetailsPanelButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.hideDetailsPanelButton.Location = new System.Drawing.Point(998, 24);
+            this.hideDetailsPanelButton.Name = "hideDetailsPanelButton";
+            this.hideDetailsPanelButton.Size = new System.Drawing.Size(21, 18);
+            this.hideDetailsPanelButton.TabIndex = 0;
+            this.hideDetailsPanelButton.Text = "X";
+            this.hideDetailsPanelButton.UseVisualStyleBackColor = true;
+            this.hideDetailsPanelButton.Click += new System.EventHandler(this.HideDetailsPanelButtonClick);
             // 
             // hideOptionsGroupBox
             // 
@@ -267,8 +339,16 @@
             this.resultsPanel.ResumeLayout(false);
             this.resultsSubPanel.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).EndInit();
-            this.proteinSequencePanel.ResumeLayout(false);
-            this.proteinSequencePanel.PerformLayout();
+            this.detailsPanel.ResumeLayout(false);
+            this.detailsPanel.PerformLayout();
+            this.viewSpectraSplitContainer.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.viewSpectraSplitContainer)).EndInit();
+            this.viewSpectraSplitContainer.ResumeLayout(false);
+            this.spectrumGraphSplitContainer.Panel1.ResumeLayout(false);
+            this.spectrumGraphSplitContainer.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.spectrumGraphSplitContainer)).EndInit();
+            this.spectrumGraphSplitContainer.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.viewSpectraIonsList)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -289,10 +369,14 @@
         private System.Windows.Forms.Panel resultsPanelNormal;
         private System.Windows.Forms.ToolTip viewResultsToolTip;
         private BrightIdeasSoftware.ObjectListView resultsListView;
-        private System.Windows.Forms.Panel proteinSequencePanel;
+        private System.Windows.Forms.Panel detailsPanel;
         private System.Windows.Forms.Panel resultsSubPanel;
-        private System.Windows.Forms.Button hideProteinPanelButton;
+        private System.Windows.Forms.Button hideDetailsPanelButton;
         private System.Windows.Forms.RichTextBox proteinSequenceTextBox;
         private System.Windows.Forms.Label databaseLabel;
+        private System.Windows.Forms.SplitContainer viewSpectraSplitContainer;
+        private System.Windows.Forms.SplitContainer spectrumGraphSplitContainer;
+        private ZedGraph.ZedGraphControl spectrumGraphItem;
+        private BrightIdeasSoftware.ObjectListView viewSpectraIonsList;
     }
 }

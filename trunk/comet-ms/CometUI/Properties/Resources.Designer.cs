@@ -824,5 +824,15 @@ namespace CometUI.Properties {
                         "ml_file__", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not read the spectra file. Would you like to try specifying an alternate path to the file?.
+        /// </summary>
+        internal static string ViewSearchResultsControl_ViewSpectra_Could_not_read_the_spectra_file__Would_you_like_to_try_specifying_an_alternate_path_to_the_file_ {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_ViewSpectra_Could_not_read_the_spectra_file__Would_you_l" +
+                        "ike_to_try_specifying_an_alternate_path_to_the_file_", resourceCulture);
+            }
+        }
     }
 }
