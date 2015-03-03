@@ -109,7 +109,7 @@ namespace CometUI.Properties {
   <string>spectrum</string>
   <string>start_scan</string>
   <string>spscore</string>
-  <string>ions2</string>
+  <string>ions</string>
   <string>peptide</string>
   <string>protein</string>
   <string>calc_neutral_pep_mass</string>

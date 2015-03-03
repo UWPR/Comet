@@ -42,7 +42,7 @@
   &lt;string&gt;spectrum&lt;/string&gt;
   &lt;string&gt;start_scan&lt;/string&gt;
   &lt;string&gt;spscore&lt;/string&gt;
-  &lt;string&gt;ions2&lt;/string&gt;
+  &lt;string&gt;ions&lt;/string&gt;
   &lt;string&gt;peptide&lt;/string&gt;
   &lt;string&gt;protein&lt;/string&gt;
   &lt;string&gt;calc_neutral_pep_mass&lt;/string&gt;

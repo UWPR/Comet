@@ -48,7 +48,7 @@ namespace CometUI.ViewResults
                                     {"protein", new SearchResultColumn("ProteinDisplayStr", "PROTEIN", "PROTEIN", true)},
                                     {"protein_descr", new SearchResultColumn("ProteinDescr", "PROTEIN_DESCR", "PROTEIN_DESCR")},
                                     {"peptide", new SearchResultColumn("PeptideDisplayStr", "PEPTIDE", "PEPTIDE", true)},
-                                    {"ions2", new SearchResultColumn("Ions2", "IONS2", "IONS2", true)},
+                                    {"ions", new SearchResultColumn("Ions", "IONS", "IONS", true)},
                                     {"mzratio", new SearchResultColumn("MzRatio", "MZRATIO", "MZRATIO")},
                                     {"massdiff", new SearchResultColumn("MassDiff", "MASSDIFF", "MASSDIFF")},
                                     {"ppm", new SearchResultColumn("PPM", "PPM", "PPM")},
@@ -670,7 +670,7 @@ namespace CometUI.ViewResults
             }
         }
 
-        public String Ions2
+        public String Ions
         {
             get
             {

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
 using CometUI.Properties;
@@ -23,7 +22,7 @@ namespace CometUI.ViewResults
         private SearchResultsManager SearchResultsMgr { get; set; }
 
         private const String BlastHttpLink = "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
-        private const int DetailsPanelExtraHeight = 100;
+        private const int DetailsPanelExtraHeight = 150;
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -242,8 +241,8 @@ namespace CometUI.ViewResults
                     OnProteinLinkClick(e);
                     break;
 
-                case "Ions2":
-                    OnIons2LinkClick(e);
+                case "Ions":
+                    OnIonsLinkClick(e);
                     break;
             }
         }
@@ -326,7 +325,7 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void OnIons2LinkClick(HyperlinkClickedEventArgs e)
+        private void OnIonsLinkClick(HyperlinkClickedEventArgs e)
         {
             // Make sure the protein sequence UI gets hidden first
             ShowProteinSequenceUI(false); 
@@ -386,7 +385,7 @@ namespace CometUI.ViewResults
             GraphPane graphPane = spectrumGraphItem.GraphPane;
 
             // Set the titles and axis labels
-            graphPane.Title.Text = result.Peptide;
+            graphPane.Title.Text = result.Peptide + Environment.NewLine + SearchResultsMgr.ResultsPepXMLFile;
             graphPane.XAxis.Title.Text = "m/z";
             //graphPane.XAxis.Scale.Max = Convert.ToDouble(XMaxTextBox.Text);
             //graphPane.XAxis.Scale.Min = Convert.ToDouble(XMinTextBox.Text);
