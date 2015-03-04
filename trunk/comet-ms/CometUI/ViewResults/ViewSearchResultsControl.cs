@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
 using CometUI.Properties;
@@ -23,6 +24,8 @@ namespace CometUI.ViewResults
 
         private const String BlastHttpLink = "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
         private const int DetailsPanelExtraHeight = 150;
+
+        private const double DefaultMassTol = 0.5;
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -343,6 +346,8 @@ namespace CometUI.ViewResults
             var peaks = new List<Peak_T_Wrapper>();
             if (msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, result.StartScan, SearchResultsMgr.SearchParams.MSLevel, peaks))
             {
+                InitializeSpectrumGraph();
+
                 ShowViewSpectraUI(true);
                 ShowDetailsPanel(true);
 
@@ -351,7 +356,7 @@ namespace CometUI.ViewResults
                 // 2) draw the table of ions
                 // 3) provide the user options for the graph
 
-                CreateSpectrumGraph(result, peaks);
+                DrawSpectrumGraph(result, peaks);
             }
             else
             {
@@ -377,7 +382,25 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void CreateSpectrumGraph(SearchResult result, IEnumerable<Peak_T_Wrapper> peaks)
+        private void InitializeSpectrumGraph()
+        {
+            aIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseAIons;
+            bIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseBIons;
+            cIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseCIons;
+            xIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseXIons;
+            yIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseYIons;
+            zIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseZIons;
+
+            massTypeAvgRadioButton.Checked = SearchResultsMgr.SearchParams.MassTypeFragment == MassType.MassTypeAverage;
+            massTypeMonoRadioButton.Checked = SearchResultsMgr.SearchParams.MassTypeFragment ==
+                                              MassType.MassTypeMonoisotopic;
+
+            massTolTextBox.Text = Convert.ToString(DefaultMassTol);
+
+            peakLabelIonCheckBox.Checked = true;
+        }
+
+        private void DrawSpectrumGraph(SearchResult result, IEnumerable<Peak_T_Wrapper> peaks)
         {
             // Todo: This is work in progress, there's lots left to do here!
             spectrumGraphItem.GraphPane.GraphObjList.Clear();
