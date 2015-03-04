@@ -257,6 +257,8 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.viewSpectraSplitContainer.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.viewSpectraSplitContainer.FixedPanel = System.Windows.Forms.FixedPanel.Panel1;
+            this.viewSpectraSplitContainer.IsSplitterFixed = true;
             this.viewSpectraSplitContainer.Location = new System.Drawing.Point(0, 48);
             this.viewSpectraSplitContainer.Name = "viewSpectraSplitContainer";
             // 
