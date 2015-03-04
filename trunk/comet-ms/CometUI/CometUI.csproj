@@ -138,6 +138,7 @@
     <Compile Include="Search\SearchSettings\VarModInfoDlg.Designer.cs">
       <DependentUpon>VarModInfoDlg.cs</DependentUpon>
     </Compile>
+    <Compile Include="ViewResults\PeptideFragmentCalculator.cs" />
     <Compile Include="ViewResults\PepXMLReader.cs" />
     <Compile Include="Properties\SearchSettings.Designer.cs">
       <AutoGen>True</AutoGen>
