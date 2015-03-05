@@ -2819,12 +2819,12 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             {
                char pcTmpVarModSearchSites[MAX_PEPTIDE_LEN_P2];  // placeholder to reverse variable mods
 
-   #ifdef _WIN32
+#ifdef _WIN32
                _snprintf(szDecoyProteinName, WIDTH_REFERENCE, "%s%s", g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
                szDecoyProteinName[WIDTH_REFERENCE-1]=0;    // _snprintf does not guarantee null termination
-   #else
+#else
                snprintf(szDecoyProteinName, WIDTH_REFERENCE, "%s%s", g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
-   #endif
+#endif
 
                // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.
                // So actual reverse peptide starts at position 1 and ends at len-2 (as len-1
