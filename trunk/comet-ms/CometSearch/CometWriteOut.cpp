@@ -608,7 +608,7 @@ void CometWriteOut::PrintIons(int iWhichQuery,
             {
                sprintf(szBuf+strlen(szBuf), "%9.4f", dFragmentIonMass);
 
-               if(FindSpScore(pQuery,BIN(dFragmentIonMass)) > FLOAT_ZERO)
+               if (FindSpScore(pQuery, BIN(dFragmentIonMass)) > FLOAT_ZERO)
                   sprintf(szBuf+strlen(szBuf), "+ ");
                else
                   sprintf(szBuf+strlen(szBuf), "  ");
@@ -628,7 +628,10 @@ float CometWriteOut::FindSpScore(Query *pQuery,
                                  int bin)
 {
    int x = bin / 10;
-   if(pQuery->ppfSparseSpScoreData[x] == NULL) return 0.0f;
+
+   if (pQuery->ppfSparseSpScoreData[x] == NULL)
+      return 0.0f;
+
    int y = bin - (x*10);
    return pQuery->ppfSparseSpScoreData[x][y];
 }

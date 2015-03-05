@@ -83,6 +83,10 @@ static InputType GetInputType(const char *pszFileName)
    {
       return InputType_RAW;
    }
+   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".ms2"))
+   {
+      return InputType_MS2;
+   }
 
    return InputType_UNKNOWN;
 }
@@ -102,6 +106,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    g_staticParams.inputFile = *pFileInfo;
 
    g_staticParams.inputFile.iInputType = GetInputType(g_staticParams.inputFile.szFileName);
+
    if (InputType_UNKNOWN == g_staticParams.inputFile.iInputType)
    {
        return false;
@@ -534,6 +539,8 @@ bool CometSearchManager::InitializeStaticParams()
       strcpy(g_staticParams.szOutputSuffix, strData.c_str());
    }
 
+   GetParamValue("xcorr_processing_offset", g_staticParams.iXcorrProcessingOffset);
+
    GetParamValue("nucleotide_reading_frame", g_staticParams.options.iWhichReadingFrame);
     
    GetParamValue("mass_type_parent", g_staticParams.massUtility.bMonoMassesParent);
@@ -594,6 +601,8 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.variableModParameters.iMaxVarModPerPeptide = iIntData;
       }
    }
+
+   GetParamValue("require_variable_mod", g_staticParams.variableModParameters.bRequireVarMod);
 
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
    if (g_staticParams.tolerances.dFragmentBinSize < 0.01)
@@ -1031,6 +1040,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    // Variable mod search for AAs listed in szVarModChar.
    g_staticParams.szMod[0] = '\0';
+   g_staticParams.variableModParameters.bVarModSearch = false;
    for (int i=0; i<VMODS; i++)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
@@ -1040,7 +1050,12 @@ bool CometSearchManager::InitializeStaticParams()
                g_staticParams.variableModParameters.varModList[i].szVarModChar,
                g_staticParams.variableModParameters.cModCode[i],
                g_staticParams.variableModParameters.varModList[i].dVarModMass);
-         g_staticParams.variableModParameters.bVarModSearch = 1;
+
+         g_staticParams.variableModParameters.bVarModSearch = true;
+         if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
+         {
+            g_staticParams.variableModParameters.bRequireVarMod = true;
+         }
       }
    }
 
@@ -1788,11 +1803,11 @@ bool CometSearchManager::DoSearch()
             }
 
             char szStatusMsg[256];
-            sprintf(szStatusMsg, " %d", (int)g_pvQuery.size());
+            sprintf(szStatusMsg, " %d\n", (int)g_pvQuery.size());
             if (!g_staticParams.options.bOutputSqtStream)
             {
                char szOut[128];
-               sprintf(szOut, "%s\n", szStatusMsg);
+               sprintf(szOut, "%s", szStatusMsg);
                logout(szOut);
             }
             g_cometStatus.SetStatusMsg(string(szStatusMsg));
@@ -1865,7 +1880,7 @@ bool CometSearchManager::DoSearch()
                fflush(stdout);
             }
 
-            g_cometStatus.SetStatusMsg(string("Performing post-search analysis..."));
+            g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
 
             // Sort each entry by xcorr, calculate E-values, etc.
             bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);

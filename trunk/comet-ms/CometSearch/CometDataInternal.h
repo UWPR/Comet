@@ -37,7 +37,7 @@ class CometSearchManager;
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
-#define DECOY_SIZE                  1000     // minimum # of decoys to have for e-value calculation
+#define DECOY_SIZE                  200      // minimum # of decoys to have for e-value calculation
 
 #define VMODS                       9
 #define VMOD_1_INDEX                0
@@ -65,7 +65,7 @@ class CometSearchManager;
 #ifdef CRUX
 #define XCORR_CUTOFF                -999.0
 #else
-#define XCORR_CUTOFF                0.0
+#define XCORR_CUTOFF                1E-8   // some near-zero cutoff
 #endif
 
 
@@ -164,10 +164,11 @@ struct Results
    int    iRankSp;
    int    iMatchedIons;
    int    iTotalIons;
+   int    iSeqFilePosition;
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];    // store variable mods encoding, +2 to accomodate N/C-term
    char szProtein[WIDTH_REFERENCE];
    char szPeptide[MAX_PEPTIDE_LEN];
-   char szPrevNextAA[4];                      // [0] stores prev AA, [1] stores next AA
+   char szPrevNextAA[2];                      // [0] stores prev AA, [1] stores next AA
 };
 
 struct PepMassInfo
@@ -216,6 +217,7 @@ typedef struct sDBEntry
 {
    string strName;
    string strSeq;
+   int iSeqFilePosition;
 } sDBEntry;
 
 typedef struct sDBTable
@@ -289,7 +291,8 @@ struct PrecalcMasses
 
 struct VarModParams
 {
-   int     bVarModSearch; 
+   bool    bVarModSearch; 
+   int     bRequireVarMod;               // also set to true if any individual bRequireThisMod is true
    int     iMaxVarModPerPeptide;
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
@@ -431,6 +434,7 @@ struct StaticParams
    double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
    PeaksInfo       peaksInformation;
    IonInfo         ionInformation;
+   int             iXcorrProcessingOffset;
 
    StaticParams()
    {
@@ -439,6 +443,8 @@ struct StaticParams
       inputFile.iInputType = InputType_MS2;
 
       szMod[0] = '\0';
+
+      iXcorrProcessingOffset = 75;
 
       databaseInfo.szDatabase[0] = '\0';
 
@@ -469,6 +475,7 @@ struct StaticParams
       {
          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 4;
          variableModParameters.varModList[i].bBinaryMod = 0;
+         variableModParameters.varModList[i].bRequireThisMod = 0;
          variableModParameters.varModList[i].dVarModMass = 0.0;
          variableModParameters.varModList[i].szVarModChar[0] = '\0';
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
@@ -484,7 +491,6 @@ struct StaticParams
       variableModParameters.cModCode[6] = '%';
       variableModParameters.cModCode[7] = '!';
       variableModParameters.cModCode[8] = '+';
-//    variableModParameters.cModCode[9] = '&';
 
       variableModParameters.iMaxVarModPerPeptide = 10;
 
@@ -577,6 +583,7 @@ struct StaticParams
       massUtility = a.massUtility;
       dInverseBinWidth = a.dInverseBinWidth;
       dOneMinusBinOffset = a.dOneMinusBinOffset;
+      iXcorrProcessingOffset = a.iXcorrProcessingOffset;
       peaksInformation = a.peaksInformation;
       ionInformation = a.ionInformation;
       return *this; 
@@ -695,17 +702,17 @@ struct Query
       if (g_staticParams.options.bSparseMatrix)
       {
          int i;
-         for(i=0;i<iSpScoreData;i++) 
+         for (i=0;i<iSpScoreData;i++) 
          {
-            if(ppfSparseSpScoreData[i] != NULL)
+            if (ppfSparseSpScoreData[i] != NULL)
                delete[] ppfSparseSpScoreData[i];
          }
          delete[] ppfSparseSpScoreData;
          ppfSparseSpScoreData = NULL;
          
-         for(i=0;i<iFastXcorrData;i++) 
+         for (i=0;i<iFastXcorrData;i++) 
          {
-            if(ppfSparseFastXcorrData[i] != NULL)
+            if (ppfSparseFastXcorrData[i] != NULL)
                delete[] ppfSparseFastXcorrData[i];
          }
          delete[] ppfSparseFastXcorrData;
@@ -716,9 +723,9 @@ struct Query
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                   || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
          {
-            for(i=0;i<iFastXcorrDataNL;i++) 
+            for (i=0;i<iFastXcorrDataNL;i++) 
             {
-               if(ppfSparseFastXcorrDataNL[i]!=NULL)
+               if (ppfSparseFastXcorrDataNL[i]!=NULL)
                   delete[] ppfSparseFastXcorrDataNL[i];
             }
             delete[] ppfSparseFastXcorrDataNL;
@@ -730,8 +737,11 @@ struct Query
          delete[] pfSpScoreData;
          pfSpScoreData = NULL;
 
-         if(pfFastXcorrData!=NULL) delete[] pfFastXcorrData;
-         pfFastXcorrData = NULL;
+         if (pfFastXcorrData!=NULL)
+         {
+            delete[] pfFastXcorrData;
+            pfFastXcorrData = NULL;
+         }
 
          if (g_staticParams.ionInformation.bUseNeutralLoss
                && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]

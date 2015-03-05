@@ -34,6 +34,7 @@ struct SearchThreadData
    {
       dbEntry.strName = dbEntry_in.strName;
       dbEntry.strSeq = dbEntry_in.strSeq;
+      dbEntry.iSeqFilePosition = dbEntry_in.iSeqFilePosition;
    }
 
    ~SearchThreadData()
@@ -42,9 +43,11 @@ struct SearchThreadData
       // DO NOT FREE MEMORY HERE. Just release pointer.
       Threading::LockMutex(g_searchMemoryPoolMutex);
 
-      if(pbSearchMemoryPool!=NULL)
+      if (pbSearchMemoryPool!=NULL)
+      {
          *pbSearchMemoryPool=false;
-      pbSearchMemoryPool=NULL;
+         pbSearchMemoryPool=NULL;
+      }
 
       Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
@@ -59,8 +62,10 @@ public:
    // Manages memory in the search memory pool
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
-
-   static bool RunSearch(int minNumThreads, int maxNumThreads, int iPercentStart, int iPercentEnd);
+   static bool RunSearch(int minNumThreads,
+                         int maxNumThreads,
+                         int iPercentStart,
+                         int iPercentEnd);
    static void SearchThreadProc(SearchThreadData *pSearchThreadData);
    bool DoSearch(sDBEntry dbe, bool *pbDuplFragment);
     
@@ -109,6 +114,7 @@ private:
                       bool bFoundVariableMod,
                       double dCalcPepMass,
                       char *szProteinSeq,
+                      char *szProteinName,
                       bool bDecoyResults,
                       char *pcVarModSites);
    void StorePeptide(int iWhichQuery,
@@ -129,9 +135,9 @@ private:
                      bool *pbDuplFragment);
    double TotalVarModMass(int *pVarModCounts);
    bool PermuteMods(char *szProteinSeq, 
-                 int iWhichQuery,
-                 int iWhichMod,
-                 bool *pbDuplFragments);
+                    int iWhichQuery,
+                    int iWhichMod,
+                    bool *pbDuplFragments);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool CalcVarModIons(char *szProteinSeq,
@@ -210,6 +216,7 @@ private:
        char *pszProteinSeq;
        int  iProteinSeqLength;
        int  iAllocatedProtSeqLength;
+       int  iSeqFilePosition;
    };
 
    struct SpectrumInfoInternal

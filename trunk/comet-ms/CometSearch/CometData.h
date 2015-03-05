@@ -30,6 +30,8 @@
 #define MAX_FRAGMENT_CHARGE         5
 #define MAX_PRECURSOR_CHARGE        9
 
+#define SPARSE_MATRIX_SIZE          100
+
 struct DoubleRange
 {
    double dStart;
@@ -94,16 +96,18 @@ struct IntRange
 
 struct VarMods 
 {
+   double dVarModMass;
    int    bBinaryMod;
+   int    bRequireThisMod;
    int    iMaxNumVarModAAPerMod;
    int    iVarModTermDistance;
    int    iWhichTerm;
-   double dVarModMass;
    char   szVarModChar[MAX_VARMOD_AA];
 
    VarMods()
    {
       bBinaryMod = 0;
+      bRequireThisMod = 0;
       iMaxNumVarModAAPerMod = 0;
       iVarModTermDistance = -1;
       iWhichTerm = 0;
@@ -114,6 +118,7 @@ struct VarMods
    VarMods(const VarMods& a)
    {
       bBinaryMod = a.bBinaryMod;
+      bRequireThisMod = a.bRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
@@ -124,6 +129,7 @@ struct VarMods
    VarMods& operator=(VarMods& a) 
    {
       bBinaryMod = a.bBinaryMod;
+      bRequireThisMod = a.bRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
@@ -231,7 +237,6 @@ enum InputType
    InputType_MS2 = 0,           // ms2, cms2, bms2, etc.
    InputType_MZXML,
    InputType_MZML,
-   InputType_CMS2,
    InputType_RAW
 };
 

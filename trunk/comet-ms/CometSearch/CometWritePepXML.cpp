@@ -102,7 +102,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-   
+
    fprintf(fpout, " <msms_pipeline_analysis date=\"%s\" ", szDate);
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
@@ -212,32 +212,32 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       }
    }
 
-   WriteAddAminoAcid(fpout, searchMgr, "add_G_glycine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_A_alanine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_S_serine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_P_proline");
-   WriteAddAminoAcid(fpout, searchMgr, "add_V_valine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_T_threonine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_C_cysteine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_L_leucine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_I_isoleucine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_N_asparagine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_O_ornithine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_D_aspartic_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_Q_glutamine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_K_lysine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_E_glutamic_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_M_methionine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_H_histidine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_F_phenylalanine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_R_arginine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_Y_tyrosine");
-   WriteAddAminoAcid(fpout, searchMgr, "add_W_tryptophan");
-   WriteAddAminoAcid(fpout, searchMgr, "add_B_user_amino_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_J_user_amino_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_U_user_amino_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_X_user_amino_acid");
-   WriteAddAminoAcid(fpout, searchMgr, "add_Z_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_G_glycine");
+   WriteStaticMod(fpout, searchMgr, "add_A_alanine");
+   WriteStaticMod(fpout, searchMgr, "add_S_serine");
+   WriteStaticMod(fpout, searchMgr, "add_P_proline");
+   WriteStaticMod(fpout, searchMgr, "add_V_valine");
+   WriteStaticMod(fpout, searchMgr, "add_T_threonine");
+   WriteStaticMod(fpout, searchMgr, "add_C_cysteine");
+   WriteStaticMod(fpout, searchMgr, "add_L_leucine");
+   WriteStaticMod(fpout, searchMgr, "add_I_isoleucine");
+   WriteStaticMod(fpout, searchMgr, "add_N_asparagine");
+   WriteStaticMod(fpout, searchMgr, "add_O_ornithine");
+   WriteStaticMod(fpout, searchMgr, "add_D_aspartic_acid");
+   WriteStaticMod(fpout, searchMgr, "add_Q_glutamine");
+   WriteStaticMod(fpout, searchMgr, "add_K_lysine");
+   WriteStaticMod(fpout, searchMgr, "add_E_glutamic_acid");
+   WriteStaticMod(fpout, searchMgr, "add_M_methionine");
+   WriteStaticMod(fpout, searchMgr, "add_H_histidine");
+   WriteStaticMod(fpout, searchMgr, "add_F_phenylalanine");
+   WriteStaticMod(fpout, searchMgr, "add_R_arginine");
+   WriteStaticMod(fpout, searchMgr, "add_Y_tyrosine");
+   WriteStaticMod(fpout, searchMgr, "add_W_tryptophan");
+   WriteStaticMod(fpout, searchMgr, "add_B_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_J_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_U_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_X_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_Z_user_amino_acid");
 
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
    for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
@@ -328,9 +328,9 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
 }
 
 
-void CometWritePepXML::WriteAddAminoAcid(FILE *fpout,
-                                         CometSearchManager &searchMgr,
-                                         string paramName)
+void CometWritePepXML::WriteStaticMod(FILE *fpout,
+                                      CometSearchManager &searchMgr,
+                                      string paramName)
 {
    double dMass = 0.0;
    if (searchMgr.GetParamValue(paramName, dMass))
@@ -429,41 +429,45 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       double dDeltaCnStar;   // this is explicit deltaCn between i and i+1 hits or 0.0 ...
                              // I honestly don't understand the logic in the deltacnstar convention being used in TPP
 
-      for (j=i+1; j<iNumPrintLines; j++)
+      // go one past iNumPrintLines to calculate deltaCn value
+      for (j=i+1; j<iNumPrintLines+1; j++)
       {
-         // very poor way of calculating peptide similarity but it's what we have for now
-         int iDiffCt = 0;
-
-         for (int k=0; k<iMinLength; k++)
+         if (j<g_staticParams.options.iNumStored)
          {
-            // I-L and Q-K are same for purposes here
-            if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
+            // very poor way of calculating peptide similarity but it's what we have for now
+            int iDiffCt = 0;
+
+            for (int k=0; k<iMinLength; k++)
             {
-               if (!((pOutput[i].szPeptide[k] == 'K' || pOutput[i].szPeptide[k] == 'Q')
-                       && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                     && !((pOutput[i].szPeptide[k] == 'I' || pOutput[i].szPeptide[k] == 'L')
-                        && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+               // I-L and Q-K are same for purposes here
+               if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
                {
-                  iDiffCt++;
+                  if (!((pOutput[i].szPeptide[k] == 'K' || pOutput[i].szPeptide[k] == 'Q')
+                          && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                        && !((pOutput[i].szPeptide[k] == 'I' || pOutput[i].szPeptide[k] == 'L')
+                           && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                  {
+                     iDiffCt++;
+                  }
                }
             }
-         }
 
-         // calculate deltaCn only if sequences are less than 0.75 similar
-         if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
-         {
-            if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-               dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
-            else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-               dDeltaCn = 1.0;
-            else
-               dDeltaCn = 0.0;
+            // calculate deltaCn only if sequences are less than 0.75 similar
+            if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
+            {
+               if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
+               else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+                  dDeltaCn = 1.0;
+               else
+                  dDeltaCn = 0.0;
 
-            bNoDeltaCnYet = 0;
-   
-            if (j - i > 1)
-               bDeltaCnStar = true;
-            break;
+               bNoDeltaCnYet = 0;
+
+               if (j - i > 1)
+                  bDeltaCnStar = true;
+               break;
+            }
          }
       }
 

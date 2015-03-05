@@ -72,7 +72,7 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    // Write header line
    fprintf(fpout, "id\t");
    fprintf(fpout, "label\t");
-   fprintf(fpout, "scannum\t");
+   fprintf(fpout, "ScanNr\t");
    fprintf(fpout, "lnrSp\t");
    fprintf(fpout, "deltLCn\t");
    fprintf(fpout, "deltCn\t");
@@ -158,39 +158,43 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
    double dDeltaCn=1.0;       // this is deltaCn between i and first dissimilar peptide
    double dLastDeltaCn=1.0;   // this is deltaCn between first and last peptide in output list
 
-   for (j=1; j<iNumPrintLines; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
+   // go one past iNumPrintLines to calculate deltaCn value
+   for (j=1; j<iNumPrintLines+1; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
    {
-      // very poor way of calculating peptide similarity but it's what we have for now
-      int iDiffCt = 0;
-
-      for (int k=0; k<iMinLength; k++)
+      if (j<g_staticParams.options.iNumStored)
       {
-         // I-L and Q-K are same for purposes here
-         if (pOutput[0].szPeptide[k] != pOutput[j].szPeptide[k])
+         // very poor way of calculating peptide similarity but it's what we have for now
+         int iDiffCt = 0;
+
+         for (int k=0; k<iMinLength; k++)
          {
-            if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
-                    && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                  && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
-                     && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+            // I-L and Q-K are same for purposes here
+            if (pOutput[0].szPeptide[k] != pOutput[j].szPeptide[k])
             {
-               iDiffCt++;
+               if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
+                       && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                     && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
+                        && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+               {
+                  iDiffCt++;
+               }
             }
          }
-      }
 
-      // calculate deltaCn only if sequences are less than 0.75 similar
-      if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
-      {
-         if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-            dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[0].fXcorr;
-         else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-            dDeltaCn = 1.0;
-         else
-            dDeltaCn = 0.0;
+         // calculate deltaCn only if sequences are less than 0.75 similar
+         if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
+         {
+            if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+               dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[0].fXcorr;
+            else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+               dDeltaCn = 1.0;
+            else
+               dDeltaCn = 0.0;
 
-         bNoDeltaCnYet = 0;
+            bNoDeltaCnYet = 0;
 
-         break;
+            break;
+         }
       }
    }
 
@@ -268,9 +272,8 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
 
    // construct modified peptide string
    char szModPep[512];
-
    szModPep[0]='\0';
-   
+
    // Write the peptide sequence in the same format as an sqt file.
    sprintf(szModPep+strlen(szModPep), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
 

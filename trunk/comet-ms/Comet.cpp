@@ -76,7 +76,7 @@ void Usage(char *pszCmd)
    sprintf(szErrorMsg, " Comet usage:  %s [options] <input_files>\n", pszCmd);
    logout(szErrorMsg);
    logout("\n");
-   logout(" Supported input formats include mzXML, mzXML, mz5 and ms2 variants (cms2, bms2, ms2)\n");
+   logout(" Supported input formats include mzXML, mzXML, and ms2 variants (cms2, bms2, ms2)\n");
    logout("\n");
    logout("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
    logout("                 -P<params> to specify an alternate parameters file (default comet.params)\n");
@@ -403,27 +403,25 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("use_sparse_matrix", szParamStringVal, iIntParam);
          }
-         // FIX: should really be more careful here and check the range of the variable
-         // mod is within allowed i.e. no variable_mod95
-         // Otherwise this else-if code will parse in all variable mods
          else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
          {
             varModsParam.szVarModChar[0] = '\0';
-            sscanf(szParamVal, "%lf %20s %d %d %d %d",
+            sscanf(szParamVal, "%lf %20s %d %d %d %d %d",
                   &varModsParam.dVarModMass,
                   varModsParam.szVarModChar,
                   &varModsParam.bBinaryMod,
                   &varModsParam.iMaxNumVarModAAPerMod,
                   &varModsParam.iVarModTermDistance,
-                  &varModsParam.iWhichTerm);
-            szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%lf %s %d %d %d %d",
+                  &varModsParam.iWhichTerm,
+                  &varModsParam.bRequireThisMod);
+            sprintf(szParamStringVal, "%lf %s %d %d %d %d %d",
                   varModsParam.dVarModMass,
                   varModsParam.szVarModChar,
                   varModsParam.bBinaryMod,
                   varModsParam.iMaxNumVarModAAPerMod,
                   varModsParam.iVarModTermDistance,
-                  varModsParam.iWhichTerm);
+                  varModsParam.iWhichTerm,
+                  varModsParam.bRequireThisMod);
             pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
          }
          else if (!strcmp(szParamName, "max_variable_mods_in_peptide"))
@@ -432,6 +430,13 @@ void LoadParameters(char *pszParamsFile,
             szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("max_variable_mods_in_peptide", szParamStringVal, iIntParam);
+         }
+         else if (!strcmp(szParamName, "require_variable_mod"))
+         {
+            sscanf(szParamVal, "%d", &iIntParam);
+            szParamStringVal[0] = '\0';
+            sprintf(szParamStringVal, "%d", iIntParam);
+            pSearchMgr->SetParam("require_variable_mod", szParamStringVal, iIntParam);
          }
          else if (!strcmp(szParamName, "fragment_bin_tol"))
          {
@@ -897,6 +902,13 @@ void LoadParameters(char *pszParamsFile,
             sprintf(szParamStringVal, "%d", iIntParam);
             pSearchMgr->SetParam("decoy_search", szParamStringVal, iIntParam);
          }
+         else if (!strcmp(szParamName, "xcorr_processing_offset"))
+         {
+            sscanf(szParamVal, "%d", &iIntParam);
+            szParamStringVal[0] = '\0';
+            sprintf(szParamStringVal, "%d", iIntParam);
+            pSearchMgr->SetParam("xcorr_processing_offset", szParamStringVal, iIntParam);
+         }
          else
          {
             sprintf(szErrorMsg, " Warning - invalid parameter found: %s.  Parameter will be ignored.\n", szParamName);
@@ -1203,19 +1215,20 @@ allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n
 \n\
 #\n\
 # Up to 9 variable modifications are supported\n\
-# format:  <mass> <residues> <0=variable/1=binary> <max_mods_per_peptide> <term_distance> <n/c-term>\n\
-#     e.g. 79.966331 STY 0 3 -1 0\n\
+# format:  <mass> <residues> <0=variable/1=binary> <max_mods_per_peptide> <term_distance> <n/c-term> <required>\n\
+#     e.g. 79.966331 STY 0 3 -1 0 0\n\
 #\n\
-variable_mod01 = 15.9949 M 0 3 -1 0\n\
-variable_mod02 = 0.0 X 0 3 -1 0\n\
-variable_mod03 = 0.0 X 0 3 -1 0\n\
-variable_mod04 = 0.0 X 0 3 -1 0\n\
-variable_mod05 = 0.0 X 0 3 -1 0\n\
-variable_mod06 = 0.0 X 0 3 -1 0\n\
-variable_mod07 = 0.0 X 0 3 -1 0\n\
-variable_mod08 = 0.0 X 0 3 -1 0\n\
-variable_mod09 = 0.0 X 0 3 -1 0\n\
+variable_mod01 = 15.9949 M 0 3 -1 0 0\n\
+variable_mod02 = 0.0 X 0 3 -1 0 0\n\
+variable_mod03 = 0.0 X 0 3 -1 0 0\n\
+variable_mod04 = 0.0 X 0 3 -1 0 0\n\
+variable_mod05 = 0.0 X 0 3 -1 0 0\n\
+variable_mod06 = 0.0 X 0 3 -1 0 0\n\
+variable_mod07 = 0.0 X 0 3 -1 0 0\n\
+variable_mod08 = 0.0 X 0 3 -1 0 0\n\
+variable_mod09 = 0.0 X 0 3 -1 0 0\n\
 max_variable_mods_in_peptide = 5\n\
+require_variable_mod = 0\n\
 \n\
 #\n\
 # fragment ions\n\
@@ -1233,7 +1246,7 @@ use_X_ions = 0\n\
 use_Y_ions = 1\n\
 use_Z_ions = 0\n\
 use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
-use_sparse_matrix = 0\n\
+use_sparse_matrix = 1\n\
 \n\
 #\n\
 # output\n\
@@ -1264,7 +1277,7 @@ activation_method = ALL                # activation method; used if activation m
 # misc parameters\n\
 #\n\
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
-num_results = 50                       # number of search hits to store internally\n\
+num_results = 100                      # number of search hits to store internally\n\
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
