@@ -46,6 +46,7 @@ namespace CometUI.Search.SearchSettings
         {
             VerifyAndUpdateVarModsList();
             VerifyAndUpdateMaxModsInPeptide();
+            VerifyAndUpdateRequireVarMod();
             return true;
         }
 
@@ -76,6 +77,16 @@ namespace CometUI.Search.SearchSettings
             if (!maxModsInPeptide.Equals(CometUI.SearchSettings.MaxVarModsInPeptide))
             {
                 CometUI.SearchSettings.MaxVarModsInPeptide = maxModsInPeptide;
+                Parent.SettingsChanged = true;
+            }
+        }
+
+        private void VerifyAndUpdateRequireVarMod()
+        {
+            var requireVarMod = requireVarModCheckBox.Checked;
+            if (requireVarMod != CometUI.SearchSettings.RequireVariableMod)
+            {
+                CometUI.SearchSettings.RequireVariableMod = requireVarMod;
                 Parent.SettingsChanged = true;
             }
         }
@@ -113,7 +124,9 @@ namespace CometUI.Search.SearchSettings
                 }
             }
 
-            maxModsInPeptideTextBox.Text = CometUI.SearchSettings.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);            
+            maxModsInPeptideTextBox.Text = CometUI.SearchSettings.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);
+
+            requireVarModCheckBox.Checked = CometUI.SearchSettings.RequireVariableMod;
         }
 
         private void UpdateVarModsListBox(String selectedItem = null)

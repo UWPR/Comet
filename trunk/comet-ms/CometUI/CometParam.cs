@@ -373,6 +373,13 @@ namespace CometUI
             }
             cometSettings.MaxVarModsInPeptide = maxVarModsInPeptide;
 
+            int requireVarMods;
+            if (!GetCometParamValue("require_variable_mod", out requireVarMods, out paramValueStr))
+            {
+                return false;
+            }
+            cometSettings.RequireVariableMod = requireVarMods == 1;
+
             IntRange mzxmlScanRange;
             if (!GetCometParamValue("scan_range", out mzxmlScanRange, out paramValueStr))
             {
@@ -905,6 +912,15 @@ namespace CometUI
                              new TypedCometParam<int>(CometParamType.Int,
                                                       maxVarModsInPeptide.ToString(CultureInfo.InvariantCulture),
                                                       maxVarModsInPeptide)))
+            {
+                return false;
+            }
+
+            int requireVarMod = settings.RequireVariableMod ? 1 : 0;
+            if (!UpdateCometParam("require_variable_mod", 
+                new TypedCometParam<int>(CometParamType.Int,
+                    requireVarMod.ToString(CultureInfo.InvariantCulture),
+                    requireVarMod)))
             {
                 return false;
             }

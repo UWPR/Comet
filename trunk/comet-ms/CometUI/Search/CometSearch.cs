@@ -593,6 +593,13 @@ namespace CometUI.Search
                 return false;
             }
 
+            int requireVarMods = CometUI.SearchSettings.RequireVariableMod ? 1 : 0;
+            if (!SearchMgr.SetParam("require_variable_mod", requireVarMods.ToString(CultureInfo.InvariantCulture), requireVarMods))
+            {
+                SearchStatusMessage = "Could not set the require_variable_mod parameter.";
+                return false;
+            }
+
             return true;
         }
 

@@ -35,13 +35,14 @@
             this.addVarModBtn = new System.Windows.Forms.Button();
             this.editVarModBtn = new System.Windows.Forms.Button();
             this.removeVarModBtn = new System.Windows.Forms.Button();
+            this.requireVarModCheckBox = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.maxModsInPeptideTextBox)).BeginInit();
             this.SuspendLayout();
             // 
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(23, 219);
+            this.label6.Location = new System.Drawing.Point(23, 229);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(107, 13);
             this.label6.TabIndex = 15;
@@ -49,7 +50,7 @@
             // 
             // maxModsInPeptideTextBox
             // 
-            this.maxModsInPeptideTextBox.Location = new System.Drawing.Point(26, 235);
+            this.maxModsInPeptideTextBox.Location = new System.Drawing.Point(26, 245);
             this.maxModsInPeptideTextBox.Maximum = new decimal(new int[] {
             20,
             0,
@@ -106,17 +107,28 @@
             this.removeVarModBtn.UseVisualStyleBackColor = true;
             this.removeVarModBtn.Click += new System.EventHandler(this.RemoveVarModBtnClick);
             // 
+            // requireVarModCheckBox
+            // 
+            this.requireVarModCheckBox.AutoSize = true;
+            this.requireVarModCheckBox.Location = new System.Drawing.Point(26, 288);
+            this.requireVarModCheckBox.Name = "requireVarModCheckBox";
+            this.requireVarModCheckBox.Size = new System.Drawing.Size(126, 17);
+            this.requireVarModCheckBox.TabIndex = 38;
+            this.requireVarModCheckBox.Text = "Require variable mod";
+            this.requireVarModCheckBox.UseVisualStyleBackColor = true;
+            // 
             // VarModSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.maxModsInPeptideTextBox);
+            this.Controls.Add(this.requireVarModCheckBox);
+            this.Controls.Add(this.label6);
             this.Controls.Add(this.removeVarModBtn);
             this.Controls.Add(this.editVarModBtn);
             this.Controls.Add(this.addVarModBtn);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.varModsListBox);
-            this.Controls.Add(this.label6);
-            this.Controls.Add(this.maxModsInPeptideTextBox);
             this.Name = "VarModSettingsControl";
             this.Size = new System.Drawing.Size(527, 450);
             ((System.ComponentModel.ISupportInitialize)(this.maxModsInPeptideTextBox)).EndInit();
@@ -134,6 +146,7 @@
         private System.Windows.Forms.Button addVarModBtn;
         private System.Windows.Forms.Button editVarModBtn;
         private System.Windows.Forms.Button removeVarModBtn;
+        private System.Windows.Forms.CheckBox requireVarModCheckBox;
 
     }
 }

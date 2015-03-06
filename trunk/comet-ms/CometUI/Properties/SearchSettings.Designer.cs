@@ -830,5 +830,17 @@ namespace CometUI.Properties {
                 this["OutputFormatSqtToStandardOutput"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool RequireVariableMod {
+            get {
+                return ((bool)(this["RequireVariableMod"]));
+            }
+            set {
+                this["RequireVariableMod"] = value;
+            }
+        }
     }
 }
