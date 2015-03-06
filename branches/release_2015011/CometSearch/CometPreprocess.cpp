@@ -774,9 +774,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
    // Since we have no filter, just add zlines.
    // WARNING: only good up to charge state 3
-   if (spec.sizeZ() == 0 || g_staticParams.options.bOverrideCharge)
+   if (spec.sizeZ() == 0 || g_staticParams.options.bOverrideCharge == 1)
    {
-      if (g_staticParams.options.bOverrideCharge)
+      if (g_staticParams.options.bOverrideCharge == 1)
       {
          for (z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
          {
@@ -823,6 +823,15 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
    for (z=zStart; z<zStop; z++)
    {
+      if (g_staticParams.options.bOverrideCharge == 2)
+      {
+         // ignore spectra that aren't 2+ or 3+.
+         if (spec.atZ(z).z < g_staticParams.options.iStartCharge || z > g_staticParams.options.iEndCharge)
+         {
+            continue;
+         }
+      }
+
       int iPrecursorCharge = spec.atZ(z).z;  // I need this before iChargeState gets assigned.
       double dMass = spec.atZ(z).mz;
 

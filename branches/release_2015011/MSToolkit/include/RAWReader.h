@@ -8,14 +8,9 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
-//#include <cstring>
-//#include <cstdlib>
-//#include <iomanip>
 
-//Explicit path is needed on systems where Xcalibur installs with errors
-//For example, Vista-64bit
-//#import "C:\Xcalibur\system\programs\XRawfile2.dll" 
-#import "MSFileReader.XRawfile2.dll" rename_namespace("XRawfile")
+//#import "progid:MSFileReader.XRawfile" rename_namespace("XRawfile")
+#import "libid:F0C5F3E3-4F2A-443E-A74D-0AABE3237494" rename_namespace("XRawfile")
 using namespace XRawfile;
 using namespace std;
 

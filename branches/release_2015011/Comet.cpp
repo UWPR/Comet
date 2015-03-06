@@ -1269,7 +1269,7 @@ sample_enzyme_number = 1               # Sample enzyme which is possibly differe
 #\n\
 scan_range = 0 0                       # start and scan scan range to search; 0 as 1st entry ignores parameter\n\
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override any existing charge; 0 as 1st entry ignores parameter\n\
-override_charge = 0                    # 0=no, 1=yes to override existing precursor charge states with precursor_charge parameter\n\
+override_charge = 0                    # 0=no, 1=override precursor charge states, 2=ignore precursor charges outside precursor_charge range\n\
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3\n\
 activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, PQD, HCD, IRMPD\n\
 \n\

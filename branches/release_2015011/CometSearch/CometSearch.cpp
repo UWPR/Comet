@@ -719,13 +719,6 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
                   }
 
                }
-               else
-               {
-                  if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
-                  {
-                     return false;
-                  }
-               }
                iWhichQuery++;
             }
          }
@@ -3002,13 +2995,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
          {
             XcorrScore(szDecoyPeptide, szDecoyProteinName, 1, iLenPeptide, true,
                   dCalcPepMass, true, iWhichQuery, iLenPeptide, pcVarModSitesDecoy);
-         }
-      }
-      else
-      {
-         if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
-         {
-            return false;
          }
       }
 
