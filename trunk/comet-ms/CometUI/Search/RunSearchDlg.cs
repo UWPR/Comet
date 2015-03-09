@@ -137,8 +137,10 @@ namespace CometUI.Search
 
         private void OpenSettingsDialog()
         {
-            if (DialogResult.OK == Parent.SearchSettingsDlg.ShowDialog())
+            var searchSettingsDlg = new SearchSettingsDlg();
+            if (DialogResult.OK == searchSettingsDlg.ShowDialog())
             {
+                Parent.SearchSettingsChanged = searchSettingsDlg.SettingsChanged;
             }
         }
 

@@ -8,9 +8,13 @@ namespace CometUI.Search
 {
     public partial class ImportSearchParamsDlg : Form
     {
-        public ImportSearchParamsDlg()
+        private new CometUI Parent { get; set; }
+
+        public ImportSearchParamsDlg(CometUI parent)
         {
             InitializeComponent();
+
+            Parent = parent;
         }
 
         private void BtnCancelClick(object sender, EventArgs e)
@@ -55,6 +59,9 @@ namespace CometUI.Search
 
             if (succeeded)
             {
+                // Todo: Add functionality to check if something actually changed
+                Parent.SearchSettingsChanged = true;
+                
                 MessageBox.Show(Resources.ImportParamsDlg_BtnImportClick_Import_completed_successfully_, Resources.ImportParamsDlg_BtnImportClick_Import_Search_Settings, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
             }
@@ -86,6 +93,7 @@ namespace CometUI.Search
             var searchSettingsDlg = new SearchSettingsDlg();
             if (DialogResult.OK == searchSettingsDlg.ShowDialog())
             {
+                Parent.SearchSettingsChanged = searchSettingsDlg.SettingsChanged;
             }
         }
     }

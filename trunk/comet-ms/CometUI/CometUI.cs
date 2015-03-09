@@ -13,12 +13,7 @@ namespace CometUI
         public static SearchSettings SearchSettings { get; set; }
         public static RunSearchSettings RunSearchSettings { get; set; }
         public static ViewResultsSettings ViewResultsSettings { get; set; }
-
-        private SearchSettingsDlg _searchSettingsDlg;
-        public SearchSettingsDlg SearchSettingsDlg
-        {
-            get { return _searchSettingsDlg ?? (_searchSettingsDlg = new SearchSettingsDlg()); }
-        }
+        public bool SearchSettingsChanged { get; set; }
 
         private ViewSearchResultsControl ViewSearchResultsControl { get; set; }
 
@@ -62,11 +57,21 @@ namespace CometUI
             return null;
         }
 
+        private void SaveSearchSettings()
+        {
+            if (SearchSettingsChanged)
+            {
+                SearchSettings.Save();
+                SearchSettingsChanged = false;
+            }
+        }
+
         private void SearchSettingsToolStripMenuItemClick(object sender, EventArgs e)
         {
-            if (DialogResult.OK == SearchSettingsDlg.ShowDialog())
+            var searchSettingsDlg = new SearchSettingsDlg();
+            if (DialogResult.OK == searchSettingsDlg.ShowDialog())
             {
-                // Todo: do we need to do something here?
+                SearchSettingsChanged = searchSettingsDlg.SettingsChanged;
             }
         }
 
@@ -83,13 +88,13 @@ namespace CometUI
 
         private void CometUIFormClosing(object sender, FormClosingEventArgs e)
         {
-            if (SearchSettingsDlg.SettingsChanged)
+            if (SearchSettingsChanged)
             {
                 if (MessageBox.Show(Resources.CometUI_CometUIFormClosing_You_have_modified_the_search_settings__Would_you_like_to_save_the_changes_before_you_exit_, 
                     Resources.CometUI_CometUIFormClosing_Search_Settings_Changed, 
                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                 {
-                    SearchSettingsDlg.SaveSearchSettings();
+                    SaveSearchSettings();
                 }
             }
 
@@ -116,19 +121,19 @@ namespace CometUI
                     Resources.CometUI_SaveSearchSettingsToolStripMenuItemClick_Save_Search_Settings,
                     MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK)
             {
-                SearchSettingsDlg.SaveSearchSettings();
+                SaveSearchSettings();
             }
         }
 
         private void SearchSettingsImportToolStripMenuItemClick(object sender, EventArgs e)
         {
-            var importParamsDlg = new ImportSearchParamsDlg();
+            var importParamsDlg = new ImportSearchParamsDlg(this);
             importParamsDlg.ShowDialog();
         }
 
         private void SearchSettingsExportToolStripMenuItemClick(object sender, EventArgs e)
         {
-            var exportParamsDlg = new ExportParamsDlg();
+            var exportParamsDlg = new ExportParamsDlg(this);
             if (DialogResult.OK == exportParamsDlg.ShowDialog())
             {
                 MessageBox.Show(Resources.ExportParamsDlg_BtnExportClick_Settings_exported_to_ + exportParamsDlg.FilePath,

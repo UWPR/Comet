@@ -90,15 +90,6 @@ namespace CometUI.Search.SearchSettings
             VarModSettingsControl.Initialize();
         }
 
-        public void SaveSearchSettings()
-        {
-            if (SettingsChanged)
-            {
-                CometUI.SearchSettings.Save();
-                SettingsChanged = false;
-            }
-        }
-
         public static bool ConvertStrToDouble(string strValue, out double doubleValueOut)
         {
             var doubleValue = 0.0;

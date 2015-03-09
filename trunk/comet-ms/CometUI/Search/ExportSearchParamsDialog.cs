@@ -8,12 +8,16 @@ namespace CometUI.Search
 {
     public partial class ExportParamsDlg : Form
     {
-        public ExportParamsDlg()
+        private new CometUI Parent { get; set; }
+
+        public ExportParamsDlg(CometUI parent)
         {
             InitializeComponent();
             AcceptButton = btnExport;
             textBoxName.Text = Resources.ExportParamsDlg_ExportParamsDlg_comet;
             textBoxPath.Text = Directory.GetCurrentDirectory();
+
+            Parent = parent;
         }
 
         public string FilePath { get; set; }
@@ -132,6 +136,7 @@ namespace CometUI.Search
             var searchSettingsDlg = new SearchSettingsDlg();
             if (DialogResult.OK == searchSettingsDlg.ShowDialog())
             {
+                Parent.SearchSettingsChanged = searchSettingsDlg.SettingsChanged;
             }
         }
     }
