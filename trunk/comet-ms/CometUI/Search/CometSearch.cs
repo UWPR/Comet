@@ -579,6 +579,16 @@ namespace CometUI.Search
                     return false;
                 }
 
+                try
+                {
+                    varModsWrapper.set_RequireThisMod(Convert.ToInt32(varMods[CometParamsMap.VarModsColRequireThisMod]));
+                }
+                catch (Exception e)
+                {
+                    SearchStatusMessage = e.Message + "\nInvalid Require This Mod value for " + paramName + ".";
+                    return false;
+                }
+
                 if (!SearchMgr.SetParam(paramName, item, varModsWrapper))
                 {
                     SearchStatusMessage = "Could not set the " + paramName + " parameter.";

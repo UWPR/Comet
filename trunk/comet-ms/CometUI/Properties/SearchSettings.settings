@@ -117,15 +117,15 @@
     <Setting Name="VariableMods" Type="System.Collections.Specialized.StringCollection" Scope="User">
       <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
-  &lt;string&gt;15.9949,M,0,3,-1,0&lt;/string&gt;
-  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
-  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
-  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
-  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
-  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
-  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
-  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
-  &lt;string&gt;0.0,X,0,3,-1,0&lt;/string&gt;
+  &lt;string&gt;15.9949,M,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>
     </Setting>
     <Setting Name="MaxVarModsInPeptide" Type="System.Int32" Scope="User">

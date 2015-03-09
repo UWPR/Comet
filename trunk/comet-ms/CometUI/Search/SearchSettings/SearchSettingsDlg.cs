@@ -79,6 +79,17 @@ namespace CometUI.Search.SearchSettings
             miscTabPage.Controls.Add(MiscSettingsControl);
         }
 
+        private void SearchSettingsDlgLoad(object sender, EventArgs e)
+        {
+            EnzymeSettingsControl.Initialize();
+            InputSettingsControl.Initialize();
+            MassSettingsControl.Initialize();
+            MiscSettingsControl.Initialize();
+            OutputSettingsControl.Initialize();
+            StaticModSettingsControl.Initialize();
+            VarModSettingsControl.Initialize();
+        }
+
         public void SaveSearchSettings()
         {
             if (SettingsChanged)
@@ -189,6 +200,5 @@ namespace CometUI.Search.SearchSettings
 
             DialogResult = DialogResult.OK;
         }
-
     }
 }

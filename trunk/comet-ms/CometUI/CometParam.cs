@@ -46,7 +46,7 @@ namespace CometUI
     public class CometParamsMap
     {
         public const int MaxNumVarMods = 9;
-        private const int NumVarModFieldsInSettings = 6;
+        private const int NumVarModFieldsInSettings = 7;
         private const int NumStaticModFieldsInSettings = 3;
 
 
@@ -56,6 +56,7 @@ namespace CometUI
         public const int VarModsColMaxMods = 3;
         public const int VarModsColTermDist = 4;
         public const int VarModsColWhichTerm = 5;
+        public const int VarModsColRequireThisMod = 6;
 
         public Dictionary<string, CometParam> CometParams { get; private set; }
 
@@ -896,7 +897,8 @@ namespace CometUI
                     + varMod.BinaryMod + " " 
                     + varMod.MaxNumVarModAAPerMod + " "
                     + varMod.VarModTermDistance + " "
-                    + varMod.WhichTerm;
+                    + varMod.WhichTerm + " "
+                    + varMod.RequireThisMod;
                 if (!UpdateCometParam(paramName,
                                  new TypedCometParam<VarMod>(CometParamType.VarMod,
                                                              varModsStrValue,
@@ -1097,7 +1099,8 @@ namespace CometUI
                                       Convert.ToInt32(varModsStrArray[VarModsColBinaryMod]),
                                       Convert.ToInt32(varModsStrArray[VarModsColMaxMods]),
                                       Convert.ToInt32(varModsStrArray[VarModsColTermDist]),
-                                      Convert.ToInt32(varModsStrArray[VarModsColWhichTerm]));
+                                      Convert.ToInt32(varModsStrArray[VarModsColWhichTerm]),
+                                      Convert.ToInt32(varModsStrArray[VarModsColRequireThisMod]));
         }
 
         public bool GetCometParamValue(String name, out int value, out String strValue)
@@ -1702,10 +1705,16 @@ namespace CometUI
                 return null;
             }
 
+            int requireMod;
+            if (!Int32.TryParse(varModStrValues[VarModsColRequireThisMod], out requireMod))
+            {
+                return null;
+            }
+
             var newStrValue = strValue.Replace(' ', ',');
 
             return new TypedCometParam<VarMod>(CometParamType.VarMod, newStrValue, 
-                new VarMod(mass, varModChar, binaryMod, maxMods, termDist, whichTerm));
+                new VarMod(mass, varModChar, binaryMod, maxMods, termDist, whichTerm, requireMod));
         }
 
         private CometParam ParseCometStringCollectionParam(String strValue)
@@ -1737,6 +1746,7 @@ namespace CometUI
 
     public class VarMod
     {
+        public int RequireThisMod { get; set; }
         public int BinaryMod { get; set; }
         public int MaxNumVarModAAPerMod { get; set; }
         public int VarModTermDistance { get; set; }
@@ -1746,6 +1756,7 @@ namespace CometUI
 
         public VarMod()
         {
+            RequireThisMod = 0;
             BinaryMod = 0;
             MaxNumVarModAAPerMod = 3;
             VarModTermDistance = -1;
@@ -1756,7 +1767,7 @@ namespace CometUI
 
         public VarMod(double varModMass, String varModChar, 
             int binaryMod, int maxNumVarModPerMod,
-            int varModTermDist, int whichTerm)
+            int varModTermDist, int whichTerm, int requireThisMod)
         {
             VarModChar = varModChar;
             VarModMass = varModMass;
@@ -1764,6 +1775,7 @@ namespace CometUI
             MaxNumVarModAAPerMod = maxNumVarModPerMod;
             VarModTermDistance = varModTermDist;
             WhichTerm = whichTerm;
+            RequireThisMod = requireThisMod;
         }
     }
 

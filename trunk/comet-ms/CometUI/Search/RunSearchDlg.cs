@@ -137,8 +137,7 @@ namespace CometUI.Search
 
         private void OpenSettingsDialog()
         {
-            var searchSettingsDlg = new SearchSettingsDlg();
-            if (DialogResult.OK == searchSettingsDlg.ShowDialog())
+            if (DialogResult.OK == Parent.SearchSettingsDlg.ShowDialog())
             {
             }
         }
@@ -253,6 +252,8 @@ namespace CometUI.Search
                     ProteomeDbFileNameChanged();
                 }
             }
+
+            UpdateButtons(inputFilesList.CheckedItems.Count);
         }
 
         private void ProteomeDbFileComboTextUpdate(object sender, EventArgs e)

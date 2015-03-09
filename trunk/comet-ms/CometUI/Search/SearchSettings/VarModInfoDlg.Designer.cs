@@ -46,6 +46,7 @@ namespace CometUI.Search.SearchSettings
             this.okBtn = new System.Windows.Forms.Button();
             this.cancelBtn = new System.Windows.Forms.Button();
             this.varModInfoDlgToolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.requireModCheckBox = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.varModInfoDlgMainSplitContainer)).BeginInit();
             this.varModInfoDlgMainSplitContainer.Panel1.SuspendLayout();
             this.varModInfoDlgMainSplitContainer.Panel2.SuspendLayout();
@@ -63,6 +64,7 @@ namespace CometUI.Search.SearchSettings
             // 
             // varModInfoDlgMainSplitContainer.Panel1
             // 
+            this.varModInfoDlgMainSplitContainer.Panel1.Controls.Add(this.requireModCheckBox);
             this.varModInfoDlgMainSplitContainer.Panel1.Controls.Add(this.maxModsNumericTextBox);
             this.varModInfoDlgMainSplitContainer.Panel1.Controls.Add(this.massDiffNumericTextBox);
             this.varModInfoDlgMainSplitContainer.Panel1.Controls.Add(this.termDistNumericTextBox);
@@ -234,6 +236,16 @@ namespace CometUI.Search.SearchSettings
             this.varModInfoDlgToolTip.AutomaticDelay = 400;
             this.varModInfoDlgToolTip.IsBalloon = true;
             // 
+            // requireModCheckBox
+            // 
+            this.requireModCheckBox.AutoSize = true;
+            this.requireModCheckBox.Location = new System.Drawing.Point(168, 155);
+            this.requireModCheckBox.Name = "requireModCheckBox";
+            this.requireModCheckBox.Size = new System.Drawing.Size(141, 17);
+            this.requireModCheckBox.TabIndex = 22;
+            this.requireModCheckBox.Text = "Require this modification";
+            this.requireModCheckBox.UseVisualStyleBackColor = true;
+            // 
             // VarModInfoDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -269,5 +281,6 @@ namespace CometUI.Search.SearchSettings
         private NumericTextBox massDiffNumericTextBox;
         private NumericTextBox maxModsNumericTextBox;
         private System.Windows.Forms.ToolTip varModInfoDlgToolTip;
+        private System.Windows.Forms.CheckBox requireModCheckBox;
     }
 }

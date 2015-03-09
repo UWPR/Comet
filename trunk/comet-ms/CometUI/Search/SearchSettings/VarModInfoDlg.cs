@@ -80,6 +80,7 @@ namespace CometUI.Search.SearchSettings
                     maxModsNumericTextBox.Text =
                         varMod.VarModInfo.MaxNumVarModAAPerMod.ToString(CultureInfo.InvariantCulture);
                     isBinaryModCheckBox.Checked = varMod.VarModInfo.BinaryMod == 1;
+                    requireModCheckBox.Checked = varMod.VarModInfo.RequireThisMod == 1;
                     int varModTermDist = varMod.VarModInfo.VarModTermDistance;
                     if (varModTermDist > -1)
                     {
@@ -148,7 +149,9 @@ namespace CometUI.Search.SearchSettings
                 whichTerm = whichTermCombo.SelectedIndex;
             }
 
-            var newVarMod = new VarMod(varModMassDiff, varModChar, isBinaryMod ? 1 : 0, maxVarMods, termDist, whichTerm);
+            var requireThisMod = requireModCheckBox.Checked;
+
+            var newVarMod = new VarMod(varModMassDiff, varModChar, isBinaryMod ? 1 : 0, maxVarMods, termDist, whichTerm, requireThisMod ? 1: 0);
             VarModSettingsControl.NamedVarModsList[NamedVarModsListIndex].VarModInfo = newVarMod;
             VarModSettingsControl.NamedVarModsList[NamedVarModsListIndex].Name =
                 VarModSettingsControl.GetVarModName(newVarMod);

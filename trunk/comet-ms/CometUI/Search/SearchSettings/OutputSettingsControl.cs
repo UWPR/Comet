@@ -13,7 +13,10 @@ namespace CometUI.Search.SearchSettings
             InitializeComponent();
 
             Parent = parent;
+        }
 
+        public void Initialize()
+        {
             InitializeFromDefaultSettings();
         }
 

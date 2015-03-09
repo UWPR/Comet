@@ -32,13 +32,13 @@ namespace CometUI.Search.SearchSettings
             InitializeComponent();
 
             Parent = parent;
+        }
 
+        public void Initialize()
+        {
             NamedVarModsList = new List<NamedVarMod>();
-
             InitializeFromDefaultSettings();
-
             UpdateVarModsListBox();
-
             UpdateVarModsListBoxButtons();
         }
 
@@ -98,7 +98,8 @@ namespace CometUI.Search.SearchSettings
                                + varMod.BinaryMod + ","
                                + varMod.MaxNumVarModAAPerMod + ","
                                + varMod.VarModTermDistance + ","
-                               + varMod.WhichTerm;
+                               + varMod.WhichTerm + ","
+                               + varMod.RequireThisMod;
             return varModStr;
         }
 
@@ -190,7 +191,7 @@ namespace CometUI.Search.SearchSettings
             {
                 if (modName.Equals(NamedVarModsList[i].Name))
                 {
-                    NamedVarModsList[i].VarModInfo = new VarMod(0.0, "X", 0, 3, -1, 0);
+                    NamedVarModsList[i].VarModInfo = new VarMod(0.0, "X", 0, 3, -1, 0, 0);
                     NamedVarModsList[i].Name = GetVarModName(NamedVarModsList[i].VarModInfo);
                     break;
                 }

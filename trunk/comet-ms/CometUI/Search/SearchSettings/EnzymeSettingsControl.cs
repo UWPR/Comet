@@ -35,7 +35,10 @@ namespace CometUI.Search.SearchSettings
             {
                 enzymeTerminiCombo.Items.Add(_enzymeTermini[key]);
             }
+        }
 
+        public void Initialize()
+        {
             InitializeFromDefaultSettings();
 
             EnzymeInfoDlg = new EnzymeInfoDlg(this);

@@ -16,9 +16,11 @@ namespace CometUI.Search.SearchSettings
             InitializeComponent();
 
             Parent = parent;
-                 
-            InitializeFromDefaultSettings();
+        }
 
+        public void Initialize()
+        {
+            InitializeFromDefaultSettings();
             UpdateStatidModsDataGridView();
         }
 
@@ -107,6 +109,7 @@ namespace CometUI.Search.SearchSettings
 
         private void UpdateStatidModsDataGridView()
         {
+            staticModsDataGridView.Rows.Clear();
             staticModsDataGridView.Rows.Add(StaticMods.Count);
             for (int rowIndex = 0; rowIndex < StaticMods.Count; rowIndex++)
             {

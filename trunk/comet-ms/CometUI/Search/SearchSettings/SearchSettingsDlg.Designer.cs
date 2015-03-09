@@ -189,6 +189,7 @@
             this.Name = "SearchSettingsDlg";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Search Settings";
+            this.Load += new System.EventHandler(this.SearchSettingsDlgLoad);
             this.mainSplitContainer.Panel1.ResumeLayout(false);
             this.mainSplitContainer.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.mainSplitContainer)).EndInit();

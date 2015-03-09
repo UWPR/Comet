@@ -15,7 +15,7 @@ namespace CometUI
         public static ViewResultsSettings ViewResultsSettings { get; set; }
 
         private SearchSettingsDlg _searchSettingsDlg;
-        private SearchSettingsDlg SearchSettingsDlg
+        public SearchSettingsDlg SearchSettingsDlg
         {
             get { return _searchSettingsDlg ?? (_searchSettingsDlg = new SearchSettingsDlg()); }
         }

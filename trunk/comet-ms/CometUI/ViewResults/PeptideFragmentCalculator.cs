@@ -5,7 +5,16 @@ using System.Text;
 
 namespace CometUI.ViewResults
 {
-    class PeptideFragmentCalculator
+    public class PeptideFragmentCalculator
     {
+        public void CalculateIons()
+        {
+            
+        }
+    }
+
+    public class Ions
+    {
+        
     }
 }

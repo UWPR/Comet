@@ -26,7 +26,10 @@ namespace CometUI.Search.SearchSettings
             {
                 spectralProcessingRemovePrecursorPeakCombo.Items.Add(_removePrecursorPeak[key]);
             }
+        }
 
+        public void Initialize()
+        {
             InitializeFromDefaultSettings();
         }
 
