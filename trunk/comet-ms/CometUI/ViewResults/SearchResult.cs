@@ -795,18 +795,12 @@ namespace CometUI.ViewResults
     public class SearchResultParams
     {
         public MSSpectrumTypeWrapper MSLevel { get; set; }
-        public MassType MassTypeFragment { get; set; }
+        public MassSpecUtils.MassType MassTypeFragment { get; set; }
         public bool UseAIons { get; set; }
         public bool UseBIons { get; set; }
         public bool UseCIons { get; set; }
         public bool UseXIons { get; set; }
         public bool UseYIons { get; set; }
         public bool UseZIons { get; set; }
-    }
-
-    public enum MassType
-    {
-        MassTypeAverage = 0,
-        MassTypeMonoisotopic
     }
 }

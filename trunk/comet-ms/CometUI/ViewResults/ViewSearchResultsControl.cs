@@ -391,9 +391,9 @@ namespace CometUI.ViewResults
             yIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseYIons;
             zIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseZIons;
 
-            massTypeAvgRadioButton.Checked = SearchResultsMgr.SearchParams.MassTypeFragment == MassType.MassTypeAverage;
+            massTypeAvgRadioButton.Checked = SearchResultsMgr.SearchParams.MassTypeFragment == MassSpecUtils.MassType.MassTypeAverage;
             massTypeMonoRadioButton.Checked = SearchResultsMgr.SearchParams.MassTypeFragment ==
-                                              MassType.MassTypeMonoisotopic;
+                                              MassSpecUtils.MassType.MassTypeMonoisotopic;
 
             massTolTextBox.Text = Convert.ToString(DefaultMassTol);
 
