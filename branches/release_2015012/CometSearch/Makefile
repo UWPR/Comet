@@ -1,7 +1,7 @@
 CXX = g++
 GCC = gcc
 MSTOOLKIT = ../MSToolkit
-override CXXFLAGS += -O3 -Wall -Wextra -Wno-write-strings -static -std=c++0x -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTOOLKIT)/include
+override CXXFLAGS += -O3 -Wall -Wextra -Wno-write-strings -static -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTOOLKIT)/include
 
 COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o
 
@@ -19,7 +19,7 @@ CometPreprocess.o:    CometPreprocess.cpp Common.h CometData.h CometDataInternal
 	${CXX} ${CXXFLAGS} CometPreprocess.cpp -c
 CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometMassSpecUtils.cpp -c
-CometPostAnalysis.o:  CometPostAnalysis.cpp Common.h CometData.h CometDataInternal.h ThreadPool.h CometPostAnalysis.h CometMassSpecUtils.h CometInterfaces.h CometDecoys.h
+CometPostAnalysis.o:  CometPostAnalysis.cpp Common.h CometData.h CometDataInternal.h ThreadPool.h CometPostAnalysis.h CometMassSpecUtils.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometPostAnalysis.cpp -c
 CometWriteOut.o:      CometWriteOut.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWriteOut.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometWriteOut.cpp -c

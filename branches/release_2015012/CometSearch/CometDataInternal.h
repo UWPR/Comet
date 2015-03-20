@@ -66,6 +66,16 @@ class CometSearchManager;
 #define XCORR_CUTOFF                1E-8   // some near-zero cutoff
 #endif
 
+#define DECOY_SIZE                  5000     // minimum # of decoys to have for e-value calculation
+#define MAX_DECOY_PEP_LEN           40
+
+
+struct DecoysStruct          // decoy fragment ions
+{
+   char *szPeptide;
+   double  pdIonsN[MAX_DECOY_PEP_LEN]; // n-term 1+ ions of decoys for histogram
+   double  pdIonsC[MAX_DECOY_PEP_LEN]; // c-term 1+ ions of decoys for histogram
+};
 
 struct msdata                    // used in the preprocessing
 {

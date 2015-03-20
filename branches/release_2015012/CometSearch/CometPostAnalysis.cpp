@@ -20,10 +20,9 @@
 #include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
 #include "CometStatus.h"
-#include "CometDecoys.h"
 
 
-DecoyIons g_decoyIons;
+#include "decoys.inc"  // this is where decoyIons[DECOY_SIZE] is initialized
 
 
 CometPostAnalysis::CometPostAnalysis()
@@ -689,8 +688,8 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
       for (j=0; j<MAX_DECOY_PEP_LEN; j++)  // iterate through decoy fragment ions
       {
-         dBion = g_decoyIons.decoyIons[i].pdIonsN[j];
-         dYion = g_decoyIons.decoyIons[i].pdIonsC[j];
+         dBion = decoyIons[i].pdIonsN[j];
+         dYion = decoyIons[i].pdIonsC[j];
 
          for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
