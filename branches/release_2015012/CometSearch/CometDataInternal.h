@@ -37,8 +37,6 @@ class CometSearchManager;
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
-#define DECOY_SIZE                  200      // minimum # of decoys to have for e-value calculation
-
 #define VMODS                       9
 #define VMOD_1_INDEX                0
 #define VMOD_2_INDEX                1
