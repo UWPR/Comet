@@ -12,22 +12,24 @@ namespace CometUI
     {
         public enum MassType
         {
-            MassTypeAverage = 0,
-            MassTypeMonoisotopic
+            Average = 0,
+            Monoisotopic
         }
 
-        public MassSpecUtils(bool bMonoMass)
+        public enum NeutralLoss
         {
-            InitializeMassTables(bMonoMass);
+            None = 0,
+            H2O,
+            NH3
         }
 
         public static Dictionary<char, double> ElementMassTable { get; private set; }
         public static Dictionary<char, double> AminoAcidMassTable { get; private set; }
         public static Dictionary<String, double> CommonCompoundsMassTable { get; private set; }
 
-        private const double ProtonMass = 1.00727646688;
+        public const double ProtonMass = 1.00727646688;
 
-        private static void InitializeMassTables(bool bMonoMass)
+        public static void InitializeMassTables(bool bMonoMass)
         {
             ElementMassTable = new Dictionary<char, double>();
             AminoAcidMassTable = new Dictionary<char, double>();

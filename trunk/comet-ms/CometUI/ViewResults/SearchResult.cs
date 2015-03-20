@@ -6,7 +6,7 @@ using CometWrapper;
 
 namespace CometUI.ViewResults
 {
-    internal class SearchResultsManager
+    public class SearchResultsManager
     {
         public String ErrorMessage { get; set; }
         public String ResultsPepXMLFile { get; set; }
@@ -552,25 +552,49 @@ namespace CometUI.ViewResults
 
         private bool ReadModifications(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
         {
-            var modNodes = pepXMLReader.ReadDescendants(searchHitNavigator, "mod_aminoacid_mass");
-            while (modNodes.MoveNext())
+            var modInfoNavigator = pepXMLReader.ReadFirstMatchingDescendant(searchHitNavigator, "modification_info");
+            if (null != modInfoNavigator)
             {
-                var modNavigator = modNodes.Current;
-                int pos;
-                if (!pepXMLReader.ReadAttribute(modNavigator, "position", out pos))
+                double modNTermMass;
+                if (pepXMLReader.ReadAttribute(modInfoNavigator, "mod_nterm_mass", out modNTermMass))
                 {
-                    ErrorMessage = "Could not read the mod_aminoacid_mass position attribute.";
-                    return false;
+                    result.ModNTermMass = modNTermMass;
+                }
+                else
+                {
+                    result.ModNTermMass = 0.0;
                 }
 
-                double mass;
-                if (!pepXMLReader.ReadAttribute(modNavigator, "mass", out mass))
+                double modCTermMass;
+                if (pepXMLReader.ReadAttribute(modInfoNavigator, "mod_cterm_mass", out modCTermMass))
                 {
-                    ErrorMessage = "Could not read the mod_aminoacid_mass mass attribute.";
-                    return false;
+                    result.ModCTermMass = modCTermMass;
+                }
+                else
+                {
+                    result.ModCTermMass = 0.0;
                 }
 
-                result.Modifications.Add(new ModificationInfo(pos, mass));
+                var modNodes = pepXMLReader.ReadDescendants(modInfoNavigator, "mod_aminoacid_mass");
+                while (modNodes.MoveNext())
+                {
+                    var modNavigator = modNodes.Current;
+                    int pos;
+                    if (!pepXMLReader.ReadAttribute(modNavigator, "position", out pos))
+                    {
+                        ErrorMessage = "Could not read the mod_aminoacid_mass position attribute.";
+                        return false;
+                    }
+
+                    double mass;
+                    if (!pepXMLReader.ReadAttribute(modNavigator, "mass", out mass))
+                    {
+                        ErrorMessage = "Could not read the mod_aminoacid_mass mass attribute.";
+                        return false;
+                    }
+
+                    result.Modifications.Add(new ModificationInfo(pos, mass));
+                }
             }
 
             return true;
@@ -579,7 +603,7 @@ namespace CometUI.ViewResults
 
     }
 
-    class SearchResult
+    public class SearchResult
     {
         public int Index { get; set; }
         public int AssumedCharge { get; set; }
@@ -602,6 +626,11 @@ namespace CometUI.ViewResults
         public double Expect { get; set; }
         public double Probability { get; set; }
         public double PrecursorIntensity { get; set; }
+        public double ModNTermMass { get; set; }
+        public double ModCTermMass { get; set; }
+        public bool ModifiedNTerm { get { return ModNTermMass > 0.0; } }
+        public bool ModifiedCTerm { get { return ModCTermMass > 0.0; } }
+
 
         public String ProteinDisplayStr
         {
@@ -754,7 +783,7 @@ namespace CometUI.ViewResults
     {
         public int Position { get; set; }
         public double Mass { get; set; }
-
+        
         public ModificationInfo()
         {
             Position = 0;

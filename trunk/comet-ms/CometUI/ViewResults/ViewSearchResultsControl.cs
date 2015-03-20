@@ -21,6 +21,7 @@ namespace CometUI.ViewResults
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
         private ViewResultsPickColumnsControl ViewResultsPickColumnsControl { get; set; }
         private SearchResultsManager SearchResultsMgr { get; set; }
+        private SpectrumGraphUserOptions SpectrumGraphUserOptions { get; set; }
 
         private const String BlastHttpLink = "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
         private const int DetailsPanelExtraHeight = 150;
@@ -34,6 +35,8 @@ namespace CometUI.ViewResults
             CometUI = parent;
 
             SearchResultsMgr = new SearchResultsManager();
+
+            SpectrumGraphUserOptions = new SpectrumGraphUserOptions();
 
             SettingsChanged = false;
 
@@ -336,6 +339,7 @@ namespace CometUI.ViewResults
             var result = e.Model as SearchResult;
             if (null != result)
             {
+                InitializeSpectrumGraphUserOptions();
                 ViewSpectra(result);
             }
         }
@@ -382,22 +386,92 @@ namespace CometUI.ViewResults
             }
         }
 
+        private void InitializeSpectrumGraphUserOptions()
+        {
+            SpectrumGraphUserOptions.MassTol = DefaultMassTol;
+            SpectrumGraphUserOptions.MassType = SearchResultsMgr.SearchParams.MassTypeFragment;
+            SpectrumGraphUserOptions.NeutralLoss = MassSpecUtils.NeutralLoss.None;
+            SpectrumGraphUserOptions.PeakLabel = PeakLabel.Ion;
+
+            if (SearchResultsMgr.SearchParams.UseAIons)
+            {
+                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.A, new Dictionary<IonCharge, int> { { IonCharge.Singly, 1 } });
+            }
+
+            if (SearchResultsMgr.SearchParams.UseBIons)
+            {
+                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.B, new Dictionary<IonCharge, int> { { IonCharge.Singly, 1 } });
+            }
+
+            if (SearchResultsMgr.SearchParams.UseCIons)
+            {
+                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.C, new Dictionary<IonCharge, int> { { IonCharge.Singly, 1 } });
+            }
+
+            if (SearchResultsMgr.SearchParams.UseXIons)
+            {
+                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.X, new Dictionary<IonCharge, int> { { IonCharge.Singly, 1 } });
+            }
+
+            if (SearchResultsMgr.SearchParams.UseYIons)
+            {
+                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.Y, new Dictionary<IonCharge, int> { { IonCharge.Singly, 1 } });
+            }
+
+            if (SearchResultsMgr.SearchParams.UseZIons)
+            {
+                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.Z, new Dictionary<IonCharge, int> { { IonCharge.Singly, 1 } });
+            }
+        }
+
         private void InitializeSpectrumGraph()
         {
-            aIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseAIons;
-            bIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseBIons;
-            cIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseCIons;
-            xIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseXIons;
-            yIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseYIons;
-            zIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseZIons;
+            InitializeIonCharge(aIonSinglyChargedCheckBox, IonCharge.Singly, IonType.A);
+            InitializeIonCharge(aIonDoublyChargedCheckBox, IonCharge.Doubly, IonType.A);
+            InitializeIonCharge(aIonTriplyChargedCheckBox, IonCharge.Triply, IonType.A);
 
-            massTypeAvgRadioButton.Checked = SearchResultsMgr.SearchParams.MassTypeFragment == MassSpecUtils.MassType.MassTypeAverage;
-            massTypeMonoRadioButton.Checked = SearchResultsMgr.SearchParams.MassTypeFragment ==
-                                              MassSpecUtils.MassType.MassTypeMonoisotopic;
+            InitializeIonCharge(bIonSinglyChargedCheckBox, IonCharge.Singly, IonType.B);
+            InitializeIonCharge(bIonDoublyChargedCheckBox, IonCharge.Doubly, IonType.B);
+            InitializeIonCharge(bIonTriplyChargedCheckBox, IonCharge.Triply, IonType.B);
 
-            massTolTextBox.Text = Convert.ToString(DefaultMassTol);
+            InitializeIonCharge(cIonSinglyChargedCheckBox, IonCharge.Singly, IonType.C);
+            InitializeIonCharge(cIonDoublyChargedCheckBox, IonCharge.Doubly, IonType.C);
+            InitializeIonCharge(cIonTriplyChargedCheckBox, IonCharge.Triply, IonType.C);
 
-            peakLabelIonCheckBox.Checked = true;
+            InitializeIonCharge(xIonSinglyChargedCheckBox, IonCharge.Singly, IonType.X);
+            InitializeIonCharge(xIonDoublyChargedCheckBox, IonCharge.Doubly, IonType.X);
+            InitializeIonCharge(xIonTriplyChargedCheckBox, IonCharge.Triply, IonType.X);
+
+            InitializeIonCharge(yIonSinglyChargedCheckBox, IonCharge.Singly, IonType.Y);
+            InitializeIonCharge(yIonDoublyChargedCheckBox, IonCharge.Doubly, IonType.Y);
+            InitializeIonCharge(yIonTriplyChargedCheckBox, IonCharge.Triply, IonType.Y);
+
+            InitializeIonCharge(zIonSinglyChargedCheckBox, IonCharge.Singly, IonType.Z);
+            InitializeIonCharge(zIonDoublyChargedCheckBox, IonCharge.Doubly, IonType.Z);
+            InitializeIonCharge(zIonTriplyChargedCheckBox, IonCharge.Triply, IonType.Z);
+
+
+            massTypeAvgRadioButton.Checked = SpectrumGraphUserOptions.MassType == MassSpecUtils.MassType.Average;
+            massTypeMonoRadioButton.Checked = SpectrumGraphUserOptions.MassType == MassSpecUtils.MassType.Monoisotopic;
+
+            massTolTextBox.Text = Convert.ToString(SpectrumGraphUserOptions.MassTol);
+
+            peakLabelIonRadioButton.Checked = SpectrumGraphUserOptions.PeakLabel == PeakLabel.Ion;
+            peakLabelMzRadioButton.Checked = SpectrumGraphUserOptions.PeakLabel == PeakLabel.Mz;
+            peakLabelNoneRadioButton.Checked = SpectrumGraphUserOptions.PeakLabel == PeakLabel.None;
+        }
+
+        private void InitializeIonCharge(CheckBox ionChargeCheckBox, IonCharge ionCharge, IonType ionType)
+        {
+            Dictionary<IonCharge, int> ionCharges;
+            if (SpectrumGraphUserOptions.UseIonsMap.TryGetValue(ionType, out ionCharges))
+            {
+                int charge;
+                if (ionCharges.TryGetValue(ionCharge, out charge))
+                {
+                    ionChargeCheckBox.Checked = true;
+                }
+            }
         }
 
         private void DrawSpectrumGraph(SearchResult result, IEnumerable<Peak_T_Wrapper> peaks)
@@ -468,6 +542,52 @@ namespace CometUI.ViewResults
         private void GrowDetailsPanel()
         {
             detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height + DetailsPanelExtraHeight);
+        }
+    }
+
+    public enum IonCharge
+    {
+        Singly = 1,
+        Doubly,
+        Triply
+    }
+
+    public enum PeakLabel
+    {
+        None = 0,
+        Ion,
+        Mz
+    }
+
+    public class SpectrumGraphUserOptions
+    {
+        public MassSpecUtils.MassType MassType { get; set; }
+        public double MassTol { get; set; }
+        public MassSpecUtils.NeutralLoss NeutralLoss { get; set; }
+        public Dictionary<IonType, Dictionary<IonCharge, int>> UseIonsMap { get; set; }
+        public PeakLabel PeakLabel { get; set; }
+
+        //public bool UseAIons { get; set; }
+        //public bool UseBIons { get; set; }
+        //public bool UseCIons { get; set; }
+        //public bool UseXIons { get; set; }
+        //public bool UseYIons { get; set; }
+        //public bool UseZIons { get; set; }
+
+        public SpectrumGraphUserOptions()
+        {
+            UseIonsMap = new Dictionary<IonType, Dictionary<IonCharge, int>>();
+            MassType = MassSpecUtils.MassType.Monoisotopic;
+            MassTol = 0.5;
+            NeutralLoss = MassSpecUtils.NeutralLoss.None;
+            PeakLabel = PeakLabel.Ion;
+
+            //UseAIons = false;
+            //UseBIons = true;
+            //UseCIons = false;
+            //UseXIons = false;
+            //UseYIons = true;
+            //UseZIons = false;
         }
     }
 }

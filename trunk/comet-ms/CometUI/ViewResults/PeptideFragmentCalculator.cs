@@ -1,26 +1,32 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace CometUI.ViewResults
 {
     public class PeptideFragmentCalculator
     {
-        public void CalculateIons()
+        public void CalculateIons(SearchResult result, SearchResultParams resultParams)
         {
+            MassSpecUtils.InitializeMassTables(resultParams.MassTypeFragment == MassSpecUtils.MassType.Monoisotopic);
+
+            double nTerm = result.ModifiedNTerm ? result.ModNTermMass : MassSpecUtils.ElementMassTable['h'];
+            double cterm = result.ModifiedCTerm ? result.ModCTermMass : MassSpecUtils.ElementMassTable['o'] + MassSpecUtils.ElementMassTable['h'];
+
+
+            double bIion = nTerm - MassSpecUtils.ElementMassTable['h'] + MassSpecUtils.ProtonMass;
+            double yion =  result.CalculatedMass - nTerm + MassSpecUtils.ProtonMass;
+
             
         }
     }
 
     public enum IonType
     {
-        IonTypeA = 0,
-        IonTypeB,
-        IonTypeC,
-        IonTypeX,
-        IonTypeY,
-        IonTypeZ
+        A = 0,
+        B,
+        C,
+        X,
+        Y,
+        Z
     }
 
     public class FragmentIon
@@ -32,7 +38,6 @@ namespace CometUI.ViewResults
 
         public FragmentIon()
         {
-
         }
 
         public FragmentIon(String label, double mass, IonType type, bool used)

@@ -41,21 +41,18 @@
             this.viewSpectraSplitContainer = new System.Windows.Forms.SplitContainer();
             this.graphOptionsPanel = new System.Windows.Forms.Panel();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.label37 = new System.Windows.Forms.Label();
+            this.peakLabelNoneRadioButton = new System.Windows.Forms.RadioButton();
+            this.peakLabelMzRadioButton = new System.Windows.Forms.RadioButton();
+            this.peakLabelIonRadioButton = new System.Windows.Forms.RadioButton();
             this.label31 = new System.Windows.Forms.Label();
             this.label32 = new System.Windows.Forms.Label();
             this.neutralLossH2OcheckBox = new System.Windows.Forms.CheckBox();
             this.labelPeakLabel = new System.Windows.Forms.Label();
-            this.peakLabelNoneCheckBox = new System.Windows.Forms.CheckBox();
             this.label30 = new System.Windows.Forms.Label();
             this.label29 = new System.Windows.Forms.Label();
-            this.peakLabelMzCheckBox = new System.Windows.Forms.CheckBox();
             this.labelIons = new System.Windows.Forms.Label();
-            this.peakLabelIonCheckBox = new System.Windows.Forms.CheckBox();
             this.aIonSinglyChargedCheckBox = new System.Windows.Forms.CheckBox();
-            this.label35 = new System.Windows.Forms.Label();
             this.neutralLossNH3CheckBox = new System.Windows.Forms.CheckBox();
-            this.label34 = new System.Windows.Forms.Label();
             this.labelNeutralLoss = new System.Windows.Forms.Label();
             this.bIonSinglyChargedCheckBox = new System.Windows.Forms.CheckBox();
             this.cIonSinglyChargedCheckBox = new System.Windows.Forms.CheckBox();
@@ -286,21 +283,18 @@
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.label37);
+            this.groupBox2.Controls.Add(this.peakLabelNoneRadioButton);
+            this.groupBox2.Controls.Add(this.peakLabelMzRadioButton);
+            this.groupBox2.Controls.Add(this.peakLabelIonRadioButton);
             this.groupBox2.Controls.Add(this.label31);
             this.groupBox2.Controls.Add(this.label32);
             this.groupBox2.Controls.Add(this.neutralLossH2OcheckBox);
             this.groupBox2.Controls.Add(this.labelPeakLabel);
-            this.groupBox2.Controls.Add(this.peakLabelNoneCheckBox);
             this.groupBox2.Controls.Add(this.label30);
             this.groupBox2.Controls.Add(this.label29);
-            this.groupBox2.Controls.Add(this.peakLabelMzCheckBox);
             this.groupBox2.Controls.Add(this.labelIons);
-            this.groupBox2.Controls.Add(this.peakLabelIonCheckBox);
             this.groupBox2.Controls.Add(this.aIonSinglyChargedCheckBox);
-            this.groupBox2.Controls.Add(this.label35);
             this.groupBox2.Controls.Add(this.neutralLossNH3CheckBox);
-            this.groupBox2.Controls.Add(this.label34);
             this.groupBox2.Controls.Add(this.labelNeutralLoss);
             this.groupBox2.Controls.Add(this.bIonSinglyChargedCheckBox);
             this.groupBox2.Controls.Add(this.cIonSinglyChargedCheckBox);
@@ -352,14 +346,38 @@
             this.groupBox2.TabIndex = 53;
             this.groupBox2.TabStop = false;
             // 
-            // label37
+            // peakLabelNoneRadioButton
             // 
-            this.label37.AutoSize = true;
-            this.label37.Location = new System.Drawing.Point(146, 229);
-            this.label37.Name = "label37";
-            this.label37.Size = new System.Drawing.Size(33, 13);
-            this.label37.TabIndex = 64;
-            this.label37.Text = "None";
+            this.peakLabelNoneRadioButton.AutoSize = true;
+            this.peakLabelNoneRadioButton.Location = new System.Drawing.Point(137, 228);
+            this.peakLabelNoneRadioButton.Name = "peakLabelNoneRadioButton";
+            this.peakLabelNoneRadioButton.Size = new System.Drawing.Size(51, 17);
+            this.peakLabelNoneRadioButton.TabIndex = 69;
+            this.peakLabelNoneRadioButton.TabStop = true;
+            this.peakLabelNoneRadioButton.Text = "None";
+            this.peakLabelNoneRadioButton.UseVisualStyleBackColor = true;
+            // 
+            // peakLabelMzRadioButton
+            // 
+            this.peakLabelMzRadioButton.AutoSize = true;
+            this.peakLabelMzRadioButton.Location = new System.Drawing.Point(81, 228);
+            this.peakLabelMzRadioButton.Name = "peakLabelMzRadioButton";
+            this.peakLabelMzRadioButton.Size = new System.Drawing.Size(43, 17);
+            this.peakLabelMzRadioButton.TabIndex = 68;
+            this.peakLabelMzRadioButton.TabStop = true;
+            this.peakLabelMzRadioButton.Text = "m/z";
+            this.peakLabelMzRadioButton.UseVisualStyleBackColor = true;
+            // 
+            // peakLabelIonRadioButton
+            // 
+            this.peakLabelIonRadioButton.AutoSize = true;
+            this.peakLabelIonRadioButton.Location = new System.Drawing.Point(17, 228);
+            this.peakLabelIonRadioButton.Name = "peakLabelIonRadioButton";
+            this.peakLabelIonRadioButton.Size = new System.Drawing.Size(40, 17);
+            this.peakLabelIonRadioButton.TabIndex = 67;
+            this.peakLabelIonRadioButton.TabStop = true;
+            this.peakLabelIonRadioButton.Text = "Ion";
+            this.peakLabelIonRadioButton.UseVisualStyleBackColor = true;
             // 
             // label31
             // 
@@ -399,15 +417,6 @@
             this.labelPeakLabel.TabIndex = 58;
             this.labelPeakLabel.Text = "Peak Label:";
             // 
-            // peakLabelNoneCheckBox
-            // 
-            this.peakLabelNoneCheckBox.AutoSize = true;
-            this.peakLabelNoneCheckBox.Location = new System.Drawing.Point(131, 229);
-            this.peakLabelNoneCheckBox.Name = "peakLabelNoneCheckBox";
-            this.peakLabelNoneCheckBox.Size = new System.Drawing.Size(15, 14);
-            this.peakLabelNoneCheckBox.TabIndex = 63;
-            this.peakLabelNoneCheckBox.UseVisualStyleBackColor = true;
-            // 
             // label30
             // 
             this.label30.AutoSize = true;
@@ -427,15 +436,6 @@
             this.label29.TabIndex = 52;
             this.label29.Text = "NH";
             // 
-            // peakLabelMzCheckBox
-            // 
-            this.peakLabelMzCheckBox.AutoSize = true;
-            this.peakLabelMzCheckBox.Location = new System.Drawing.Point(81, 228);
-            this.peakLabelMzCheckBox.Name = "peakLabelMzCheckBox";
-            this.peakLabelMzCheckBox.Size = new System.Drawing.Size(15, 14);
-            this.peakLabelMzCheckBox.TabIndex = 61;
-            this.peakLabelMzCheckBox.UseVisualStyleBackColor = true;
-            // 
             // labelIons
             // 
             this.labelIons.AutoSize = true;
@@ -446,15 +446,6 @@
             this.labelIons.TabIndex = 0;
             this.labelIons.Text = "Ions:";
             // 
-            // peakLabelIonCheckBox
-            // 
-            this.peakLabelIonCheckBox.AutoSize = true;
-            this.peakLabelIonCheckBox.Location = new System.Drawing.Point(17, 228);
-            this.peakLabelIonCheckBox.Name = "peakLabelIonCheckBox";
-            this.peakLabelIonCheckBox.Size = new System.Drawing.Size(15, 14);
-            this.peakLabelIonCheckBox.TabIndex = 59;
-            this.peakLabelIonCheckBox.UseVisualStyleBackColor = true;
-            // 
             // aIonSinglyChargedCheckBox
             // 
             this.aIonSinglyChargedCheckBox.AutoSize = true;
@@ -464,15 +455,6 @@
             this.aIonSinglyChargedCheckBox.TabIndex = 1;
             this.aIonSinglyChargedCheckBox.UseVisualStyleBackColor = true;
             // 
-            // label35
-            // 
-            this.label35.AutoSize = true;
-            this.label35.Location = new System.Drawing.Point(32, 229);
-            this.label35.Name = "label35";
-            this.label35.Size = new System.Drawing.Size(22, 13);
-            this.label35.TabIndex = 60;
-            this.label35.Text = "Ion";
-            // 
             // neutralLossNH3CheckBox
             // 
             this.neutralLossNH3CheckBox.AutoSize = true;
@@ -481,15 +463,6 @@
             this.neutralLossNH3CheckBox.Size = new System.Drawing.Size(15, 14);
             this.neutralLossNH3CheckBox.TabIndex = 51;
             this.neutralLossNH3CheckBox.UseVisualStyleBackColor = true;
-            // 
-            // label34
-            // 
-            this.label34.AutoSize = true;
-            this.label34.Location = new System.Drawing.Point(96, 229);
-            this.label34.Name = "label34";
-            this.label34.Size = new System.Drawing.Size(25, 13);
-            this.label34.TabIndex = 62;
-            this.label34.Text = "m/z";
             // 
             // labelNeutralLoss
             // 
@@ -952,7 +925,7 @@
             this.massTolTextBox.AllowGroupSeparator = false;
             this.massTolTextBox.AllowNegative = false;
             this.massTolTextBox.AllowSpace = false;
-            this.massTolTextBox.Location = new System.Drawing.Point(9, 84);
+            this.massTolTextBox.Location = new System.Drawing.Point(17, 84);
             this.massTolTextBox.Name = "massTolTextBox";
             this.massTolTextBox.Size = new System.Drawing.Size(69, 20);
             this.massTolTextBox.TabIndex = 43;
@@ -960,7 +933,7 @@
             // massTypeMonoRadioButton
             // 
             this.massTypeMonoRadioButton.AutoSize = true;
-            this.massTypeMonoRadioButton.Location = new System.Drawing.Point(68, 32);
+            this.massTypeMonoRadioButton.Location = new System.Drawing.Point(81, 32);
             this.massTypeMonoRadioButton.Name = "massTypeMonoRadioButton";
             this.massTypeMonoRadioButton.Size = new System.Drawing.Size(52, 17);
             this.massTypeMonoRadioButton.TabIndex = 47;
@@ -971,7 +944,7 @@
             // massTypeAvgRadioButton
             // 
             this.massTypeAvgRadioButton.AutoSize = true;
-            this.massTypeAvgRadioButton.Location = new System.Drawing.Point(9, 32);
+            this.massTypeAvgRadioButton.Location = new System.Drawing.Point(17, 32);
             this.massTypeAvgRadioButton.Name = "massTypeAvgRadioButton";
             this.massTypeAvgRadioButton.Size = new System.Drawing.Size(44, 17);
             this.massTypeAvgRadioButton.TabIndex = 46;
@@ -1243,16 +1216,13 @@
         private System.Windows.Forms.Label label30;
         private System.Windows.Forms.Label label29;
         private System.Windows.Forms.Label label33;
-        private System.Windows.Forms.Label label37;
-        private System.Windows.Forms.CheckBox peakLabelNoneCheckBox;
-        private System.Windows.Forms.Label label34;
-        private System.Windows.Forms.CheckBox peakLabelMzCheckBox;
-        private System.Windows.Forms.Label label35;
-        private System.Windows.Forms.CheckBox peakLabelIonCheckBox;
         private System.Windows.Forms.Label labelPeakLabel;
         private BrightIdeasSoftware.ObjectListView spectrumGraphIonsTable;
         private System.Windows.Forms.Button updateBtn;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label27;
+        private System.Windows.Forms.RadioButton peakLabelIonRadioButton;
+        private System.Windows.Forms.RadioButton peakLabelMzRadioButton;
+        private System.Windows.Forms.RadioButton peakLabelNoneRadioButton;
     }
 }
