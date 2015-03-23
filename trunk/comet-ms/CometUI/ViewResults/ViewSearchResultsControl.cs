@@ -393,6 +393,8 @@ namespace CometUI.ViewResults
             SpectrumGraphUserOptions.NeutralLoss = MassSpecUtils.NeutralLoss.None;
             SpectrumGraphUserOptions.PeakLabel = PeakLabel.Ion;
 
+            SpectrumGraphUserOptions.UseIonsMap.Clear();
+
             if (SearchResultsMgr.SearchParams.UseAIons)
             {
                 SpectrumGraphUserOptions.UseIonsMap.Add(IonType.A, new Dictionary<IonCharge, int> { { IonCharge.Singly, 1 } });
@@ -504,6 +506,9 @@ namespace CometUI.ViewResults
 
             // Redraw the whole graph control for smooth transition
             spectrumGraphItem.Invalidate();
+
+            //var calculator = new PeptideFragmentCalculator();
+            //calculator.CalculateIons(result, SpectrumGraphUserOptions);
         }
 
         private void HideDetailsPanelButtonClick(object sender, EventArgs e)

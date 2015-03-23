@@ -60,7 +60,7 @@ namespace CometUI
                 S = 32.065;         // sulphur
             }
 
-            CommonCompoundsMassTable.Add("OH2", H * 2 + O);
+            CommonCompoundsMassTable.Add("H2O", H * 2 + O);
             CommonCompoundsMassTable.Add("NH", N + H);
             CommonCompoundsMassTable.Add("NH3", N + H * 3);
             CommonCompoundsMassTable.Add("CO", C + O);
