@@ -22,7 +22,7 @@
 #include "CometStatus.h"
 
 
-#include "decoys.inc"  // this is where decoyIons[DECOY_SIZE] is initialized
+#include "CometDecoys.h"  // this is where decoyIons[DECOY_SIZE] is initialized
 
 
 CometPostAnalysis::CometPostAnalysis()

@@ -19,7 +19,7 @@ CometPreprocess.o:    CometPreprocess.cpp Common.h CometData.h CometDataInternal
 	${CXX} ${CXXFLAGS} CometPreprocess.cpp -c
 CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometMassSpecUtils.cpp -c
-CometPostAnalysis.o:  CometPostAnalysis.cpp Common.h CometData.h CometDataInternal.h ThreadPool.h CometPostAnalysis.h CometMassSpecUtils.h CometInterfaces.h decoys.inc
+CometPostAnalysis.o:  CometPostAnalysis.cpp Common.h CometData.h CometDataInternal.h ThreadPool.h CometPostAnalysis.h CometMassSpecUtils.h CometInterfaces.h CometDecoys.h
 	${CXX} ${CXXFLAGS} CometPostAnalysis.cpp -c
 CometWriteOut.o:      CometWriteOut.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWriteOut.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometWriteOut.cpp -c
