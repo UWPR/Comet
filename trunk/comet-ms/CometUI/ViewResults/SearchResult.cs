@@ -52,7 +52,7 @@ namespace CometUI.ViewResults
                                     {"mzratio", new SearchResultColumn("MzRatio", "MZRATIO", "MZRATIO")},
                                     {"massdiff", new SearchResultColumn("MassDiff", "MASSDIFF", "MASSDIFF")},
                                     {"ppm", new SearchResultColumn("PPM", "PPM", "PPM")},
-                                    {"pi", new SearchResultColumn("PI", "PI", "PPM")}
+                                    {"pi", new SearchResultColumn("PI", "PI", "PI")}
                                 };
         }
 

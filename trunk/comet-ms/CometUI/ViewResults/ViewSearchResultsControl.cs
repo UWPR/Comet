@@ -131,7 +131,7 @@ namespace CometUI.ViewResults
             foreach (var item in CometUI.ViewResultsSettings.PickColumnsShowList)
             {
                 SearchResultColumn resultCol;
-                if (SearchResultsMgr.ResultColumns.TryGetValue(item, out resultCol))
+                if (SearchResultsMgr.ResultColumns.TryGetValue(item.ToLower(), out resultCol))
                 {
                     String columnHeader;
                     if (CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
@@ -508,8 +508,8 @@ namespace CometUI.ViewResults
             // Redraw the whole graph control for smooth transition
             spectrumGraphItem.Invalidate();
 
-            //var calculator = new PeptideFragmentCalculator();
-            //calculator.CalculateIons(result, SpectrumGraphUserOptions);
+            var calculator = new PeptideFragmentCalculator();
+            calculator.CalculateIons(result, SpectrumGraphUserOptions);
         }
 
         private void HideDetailsPanelButtonClick(object sender, EventArgs e)
@@ -566,13 +566,6 @@ namespace CometUI.ViewResults
         public Dictionary<IonType, List<int>> UseIonsMap { get; set; }
         public PeakLabel PeakLabel { get; set; }
 
-        //public bool UseAIons { get; set; }
-        //public bool UseBIons { get; set; }
-        //public bool UseCIons { get; set; }
-        //public bool UseXIons { get; set; }
-        //public bool UseYIons { get; set; }
-        //public bool UseZIons { get; set; }
-
         public SpectrumGraphUserOptions()
         {
             UseIonsMap = new Dictionary<IonType, List<int>>();
@@ -580,13 +573,6 @@ namespace CometUI.ViewResults
             MassTol = 0.5;
             NeutralLoss = MassSpecUtils.NeutralLoss.None;
             PeakLabel = PeakLabel.Ion;
-
-            //UseAIons = false;
-            //UseBIons = true;
-            //UseCIons = false;
-            //UseXIons = false;
-            //UseYIons = true;
-            //UseZIons = false;
         }
     }
 }

@@ -5,18 +5,96 @@ namespace CometUI.ViewResults
 {
     public class PeptideFragmentCalculator
     {
+        private void AddFragmentIon(SpectrumGraphUserOptions userOptions, List<FragmentIon> fragmentIons, double singlyChargedMass, int charge, IonType ionType, int ionNum, MassSpecUtils.NeutralLoss neutralLoss = MassSpecUtils.NeutralLoss.None)
+        {
+            // A few checks before adding the ion:
+            //      1) Make sure the user has specified this ion type
+            //      2) Make sure the user wants to see this charge on this ion
+            //      3) If this is a netural loss ion, make sure user wants to see the neutral loss ion
+            List<int> ionCharges;
+            if (userOptions.UseIonsMap.TryGetValue(ionType, out ionCharges) && 
+                ionCharges.Contains(charge) &&
+                (userOptions.NeutralLoss == neutralLoss))
+            {
+                var chargeStr = String.Empty;
+                for (int i = 0; i < charge; i++)
+                {
+                    chargeStr += "+";
+                }
+
+                var label = String.Empty;
+                switch (ionType)
+                {
+                    case IonType.A:
+                        label = String.Format("a{0}{1}", ionNum, chargeStr);
+                        break;
+
+                    case IonType.B:
+                        label = String.Format("b{0}{1}", ionNum, chargeStr);
+                        break;
+
+                    case IonType.C:
+                        label = String.Format("c{0}{1}", ionNum, chargeStr);
+                        break;
+
+                    case IonType.X:
+                        label = String.Format("x{0}{1}", ionNum, chargeStr);
+                        break;
+
+                    case IonType.Y:
+                        label = String.Format("y{0}{1}", ionNum, chargeStr);
+                        break;
+
+                    case IonType.Z:
+                        label = String.Format("z{0}{1}", ionNum, chargeStr);
+                        break;
+                }
+
+
+                double mass = singlyChargedMass;
+                if (charge == 1)
+                {
+                    switch (neutralLoss)
+                    {
+                        case MassSpecUtils.NeutralLoss.None:
+                            // Do nothing
+                            break;
+                        case MassSpecUtils.NeutralLoss.NH3:
+                            mass = mass - 17.0;
+                            label = label.Insert(0, "[");
+                            label += "]";
+                            break;
+                        case MassSpecUtils.NeutralLoss.H2O:
+                            mass = mass - 17.5;
+                            label = label.Insert(0, "<");
+                            label += ">";
+                            break;
+                    }
+                }
+                else if (charge > 1)
+                {
+                    mass = (mass + (Convert.ToDouble(charge - 1)*MassSpecUtils.ElementMassTable['h']))/
+                            Convert.ToDouble(charge);
+                }
+
+                fragmentIons.Add(new FragmentIon(mass, ionType, charge, label, neutralLoss));
+            }
+        }
+
         public void CalculateIons(SearchResult result, SpectrumGraphUserOptions userOptions)
         {
             MassSpecUtils.InitializeMassTables(userOptions.MassType == MassSpecUtils.MassType.Monoisotopic);
 
             double nTerm = result.ModifiedNTerm ? result.ModNTermMass : MassSpecUtils.ElementMassTable['h'];
-            double cterm = result.ModifiedCTerm ? result.ModCTermMass : MassSpecUtils.ElementMassTable['o'] + MassSpecUtils.ElementMassTable['h'];
+            // double cterm = result.ModifiedCTerm ? result.ModCTermMass : MassSpecUtils.ElementMassTable['o'] + MassSpecUtils.ElementMassTable['h'];
 
+            // Todo: Ask Jimmy why the calculated mass here is different for a given peptide than what's calculated via the UWPR peptide fragmentation calculator, for e.g. the peptide RGILTLKYPIEHGIITNWDDMEK
             double bIon = nTerm - MassSpecUtils.ElementMassTable['h'] + MassSpecUtils.ProtonMass;
             double yIon =  result.CalculatedMass - nTerm + MassSpecUtils.ProtonMass;
 
             var peptideArray = result.Peptide.ToCharArray();
-            var modArray = new double[result.Peptide.Length];
+            var peptideLen = peptideArray.Length;
+            var modArray = new double[peptideLen];
             for (int i = 0; i < modArray.Length; i++)
             {
                 modArray[i] = 0.0;
@@ -27,78 +105,74 @@ namespace CometUI.ViewResults
                 modArray[mod.Position - 1] = mod.Mass;
             }
 
-
-            // Todo: Ask Jimmy what this is all about
-            ///* correct y-ion calculation assuming neutral loss of phosphate */
-            //if (pEnvironment.bRemoveMods)
-            //{
-            //    for (i = 0; i < pEnvironment.iLenPeptide; i++)
-            //    {
-            //        if (pEnvironment.pdModPeptide[i] != 0.0)
-            //            dYion -= (pEnvironment.pdModPeptide[i] - pdMassAA[pEnvironment.szPeptide[i]] + pdMassAA['h'] + pdMassAA['h'] + pdMassAA['o']);
-            //    }
-            //}
-
             var fragmentIons = new List<FragmentIon>();
-            var fragmentIonsH2OLoss = new List<FragmentIon>();
-            var fragmentIonsNH3Loss = new List<FragmentIon>();
-
-            for (int i = 0; i < peptideArray.Length; i++)
+            for (int i = 0; i < peptideLen; i++)
             {
-                if (modArray[i].Equals(0.0))
+                if (i <= peptideLen)
                 {
-                    bIon += MassSpecUtils.AminoAcidMassTable[peptideArray[i]];
+                    if (modArray[i].Equals(0.0))
+                    {
+                        bIon += MassSpecUtils.AminoAcidMassTable[peptideArray[i]];
+                    }
+                    else
+                    {
+                        bIon += modArray[i];
+                    }
 
-                    // Todo: Ask Jimmy what this is all about
-                    //if (pEnvironment.bRemoveMods && pEnvironment.pdModPeptide[i] != 0.0)
-                    //    dBion -= 18.0;
+                    // a ions
+                    double aIon = bIon - MassSpecUtils.CommonCompoundsMassTable["CO"]; 
+                    AddFragmentIon(userOptions, fragmentIons, aIon, 1, IonType.A, i + 1);                                   // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, aIon, 1, IonType.A, i + 1, MassSpecUtils.NeutralLoss.NH3);    // Singly charged, NH3 neutral loss
+                    AddFragmentIon(userOptions, fragmentIons, aIon, 1, IonType.A, i + 1, MassSpecUtils.NeutralLoss.H2O);    // Singly charged, H2O neutral loss
+                    AddFragmentIon(userOptions, fragmentIons, aIon, 2, IonType.A, i + 1);                                   // Doubly charged
+                    AddFragmentIon(userOptions, fragmentIons, aIon, 3, IonType.A, i + 1);                                   // Triply charged
+
+                    // b ions
+                    AddFragmentIon(userOptions, fragmentIons, bIon, 1, IonType.B, i + 1);                                   // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, bIon, 1, IonType.B, i + 1, MassSpecUtils.NeutralLoss.NH3);    // Singly charged, NH3 neutral loss    
+                    AddFragmentIon(userOptions, fragmentIons, bIon, 1, IonType.B, i + 1, MassSpecUtils.NeutralLoss.H2O);    // Singly charged, H2O neutral loss    
+                    AddFragmentIon(userOptions, fragmentIons, bIon, 2, IonType.B, i + 1);                                   // Doubly charged  
+                    AddFragmentIon(userOptions, fragmentIons, bIon, 3, IonType.B, i + 1);                                   // Triply charged
+
+                    // c ions
+                    double cIon = bIon + MassSpecUtils.CommonCompoundsMassTable["NH3"];
+                    AddFragmentIon(userOptions, fragmentIons, cIon, 1, IonType.C, i + 1);                                   // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, cIon, 2, IonType.C, i + 1);                                   // Doubly charged
+                    AddFragmentIon(userOptions, fragmentIons, cIon, 3, IonType.C, i + 1);                                   // Triply charged  
                 }
-                else
+
+                if (i > 0)
                 {
-                    bIon += modArray[i];
+                    if (modArray[i-1].Equals(0.0))
+                    {
+                        yIon -= MassSpecUtils.AminoAcidMassTable[peptideArray[i-1]];
+                    }
+                    else
+                    {
+                        yIon -= modArray[i-1];
+                    }
+
+                    // x ions
+                    double xIon = yIon + MassSpecUtils.CommonCompoundsMassTable["CO"] - (2 * MassSpecUtils.ElementMassTable['h']);
+                    AddFragmentIon(userOptions, fragmentIons, xIon, 1, IonType.X, peptideLen - i);                                  // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, xIon, 2, IonType.X, peptideLen - i);                                  // Doubly charged
+                    AddFragmentIon(userOptions, fragmentIons, xIon, 3, IonType.X, peptideLen - i);                                  // Triply charged
+
+                    // y ions
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, peptideLen - i);                                  // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, peptideLen - i, MassSpecUtils.NeutralLoss.NH3);   // Singly charged, NH3 neutral loss
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, peptideLen - i, MassSpecUtils.NeutralLoss.H2O);   // Singly charged, H2O neutral loss
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 2, IonType.Y, peptideLen - i);                                  // Doubly charged
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 3, IonType.Y, peptideLen - i);                                  // Triply charged
+
+                    // z ions
+                    double zIon = yIon - MassSpecUtils.CommonCompoundsMassTable["NH3"] + MassSpecUtils.ElementMassTable['h'];
+                    AddFragmentIon(userOptions, fragmentIons, zIon, 1, IonType.Z, peptideLen - i);                                  // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, zIon, 2, IonType.Z, peptideLen - i);                                  // Doubly charged
+                    AddFragmentIon(userOptions, fragmentIons, zIon, 3, IonType.Z, peptideLen - i);                                  // Triply charged
                 }
-
-                // Singly charged a ion
-                double aIon = bIon - MassSpecUtils.CommonCompoundsMassTable["CO"];
-                fragmentIons.Add(new FragmentIon(aIon, IonType.A, 1, String.Format("a{0}+", i+1)));
-                fragmentIonsNH3Loss.Add(new FragmentIon(aIon-17.0, IonType.A, 1, String.Format("[a{0}+]", i+1)));
-                fragmentIonsH2OLoss.Add(new FragmentIon(aIon-17.5, IonType.A, 1, String.Format("<a{0}+>", i+1)));
-
-                // Doubly charged a ion
-                double aIonCharge2 = (aIon + MassSpecUtils.ElementMassTable['h'])/2.0;
-                fragmentIons.Add(new FragmentIon(aIonCharge2, IonType.A, 2, String.Format("a{0}++", i + 1)));
-      
-                // Triply charged a ion
-                double aIonCharge3 = (aIon + (2*MassSpecUtils.ElementMassTable['h'])) / 3.0;
-                fragmentIons.Add(new FragmentIon(aIonCharge3, IonType.A, 3, String.Format("a{0}+++", i + 1)));
-
-                // Singly charged b ion
-                fragmentIons.Add(new FragmentIon(bIon, IonType.B, 1, String.Format("b{0}+", i + 1)));
-                fragmentIonsNH3Loss.Add(new FragmentIon(bIon - 17.0, IonType.B, 1, String.Format("[b{0}+]", i + 1)));
-                fragmentIonsH2OLoss.Add(new FragmentIon(bIon - 17.5, IonType.B, 1, String.Format("<b{0}+>", i + 1)));
-
-                // Doubly charged b ion
-                double bIonCharge2 = (bIon + MassSpecUtils.ElementMassTable['h']) / 2.0;
-                fragmentIons.Add(new FragmentIon(bIonCharge2, IonType.B, 2, String.Format("b{0}++", i + 1)));
-
-                // Triply charged b ion
-                double bIonCharge3 = (bIon + (2 * MassSpecUtils.ElementMassTable['h'])) / 3.0;
-                fragmentIons.Add(new FragmentIon(bIonCharge3, IonType.B, 3, String.Format("b{0}+++", i + 1)));
-
-                // Singly charged c ion
-                double cIon = bIon + MassSpecUtils.CommonCompoundsMassTable["NH3"];
-                fragmentIons.Add(new FragmentIon(cIon, IonType.C, 1, String.Format("c{0}+", i + 1)));
-                
-                // Doubly charged c ion
-                double cIonCharge2 = (cIon + MassSpecUtils.ElementMassTable['h']) / 2.0;
-                fragmentIons.Add(new FragmentIon(cIonCharge2, IonType.C, 2, String.Format("c{0}++", i + 1)));
-
-                // Triply charged c ion
-                double cIonCharge3 = (cIon + (2 * MassSpecUtils.ElementMassTable['h'])) / 3.0;
-                fragmentIons.Add(new FragmentIon(cIonCharge3, IonType.C, 3, String.Format("c{0}+++", i + 1)));
-            
-                // Todo: X, Y, Z ions
             }
+
         }
     }
 
@@ -120,19 +194,24 @@ namespace CometUI.ViewResults
         public double Mass { get; set; }
         public IonType Type { get; set; }
         public int Charge { get; set; }
-        //public bool Used { get; set; }
+        public MassSpecUtils.NeutralLoss NeutralLoss { get; set; }
 
         public FragmentIon()
         {
+            Label = String.Empty;
+            Mass = 0.0;
+            Type = IonType.UNKNOWN;
+            Charge = 0;
+            NeutralLoss = MassSpecUtils.NeutralLoss.None;
         }
 
-        public FragmentIon(double mass, IonType type, int charge, String label)//, bool used)
+        public FragmentIon(double mass, IonType type, int charge, String label, MassSpecUtils.NeutralLoss neutralLoss = MassSpecUtils.NeutralLoss.None)
         {
             Label = label;
             Mass = mass;
             Type = type;
             Charge = charge;
-            //Used = used;
+            NeutralLoss = neutralLoss;
         }
     }
 }
