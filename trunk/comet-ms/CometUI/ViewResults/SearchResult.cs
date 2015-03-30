@@ -187,6 +187,11 @@ namespace CometUI.ViewResults
         {
             ReadMSLevel(pepXMLReader);
 
+            if (!ReadMassTypeFragment(pepXMLReader))
+            {
+                return false;
+            }
+
             if (!ReadUseIons(pepXMLReader))
             {
                 return false;
@@ -220,6 +225,25 @@ namespace CometUI.ViewResults
             {
                 SearchParams.MSLevel = DefaultMSLevel;
             }
+        }
+
+        private bool ReadMassTypeFragment(PepXMLReader pepXMLReader)
+        {
+            int massTypeFragment;
+            if (
+                pepXMLReader.ReadAttributeFromFirstMatchingNode(
+                    "/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='mass_type_fragment']", "value",
+                    out massTypeFragment))
+            {
+                SearchParams.MassTypeFragment = (MassSpecUtils.MassType)massTypeFragment;
+            }
+            else
+            {
+                ErrorMessage = "Could not read the mass_type_fragment attribute.";
+                return false;
+            }
+
+            return true;
         }
 
         private bool ReadUseIons(PepXMLReader pepXMLReader)
