@@ -3,12 +3,12 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
-               <li><a href="/release/release_201501/">Release 2015.01, next pending release</a></li>
-               <li><a href="/release/release_201402/">Release 2014.02, 2014/09/16</a></li>
-               <li><a href="/release/release_201401/">Release 2014.01, 2014/03/25</a></li>
-               <li><a href="/release/release_201302/">Release 2013.02, 2013/10/18</a></li>
+               <li><a href="/release/release_201501/">Release 2015.01, 2015/02/23</a></li>
+               <li><a href="/release/release_201402/">Release 2014.02, 2014/09/16, last revised 2014/09/25</a></li>
+               <li><a href="/release/release_201401/">Release 2014.01, 2014/03/25, last revised 2014/06/03</a></li>
+               <li><a href="/release/release_201302/">Release 2013.02, 2013/10/18, last revised 2014/01/23</a></li>
                <li><a href="/release/release_201301/">Release 2013.01, 2013/06/05</a></li>
-               <li><a href="/release/release_201201/">Release 2012.01, 2012/08/16 (last revised 2013/01/10)</a></li>
+               <li><a href="/release/release_201201/">Release 2012.01, 2012/08/16, last revised 2013/01/10</a></li>
             </ul>
       </div>
 
@@ -19,7 +19,7 @@
          <ul>
             <li><a target="new" href="http://chorusproject.org">Chorus</a>
             <li><a target="new" href="http://cruxtoolkit.sourceforge.net/">Crux</a>
-            <li><a target="new" href="https://registry.hub.docker.com/u/hexabio/comet/">Docker</a>
+            <li><a target="new" href="https://registry.hub.docker.com/u/hexabio/comet/">Bio Docker</a>
             <li><a target="new" href="http://www.labkey.org">LabKey</a>
             <li><a target="new" href="http://www.bioprocess.org/massypup/">MASSyPup</a>
             <li><a target="new" href="http://pcarvalho.com/patternlab/">PatternLab</a>

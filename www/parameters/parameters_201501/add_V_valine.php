@@ -17,7 +17,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_V_valine = 100.8</tt>
+         <br><tt>add_V_valine = 15.9949</tt>
 
       </div>
    </div>

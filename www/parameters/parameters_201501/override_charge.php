@@ -15,19 +15,22 @@
          charge state information when present in the files with the charge
          range specified by the
          "<a href="precursor_charge.php">precursor_charge</a>" parameter.
-         <li>Valid values are 0 and 1.
-         <li>To keep any known charge state values in the input files,
-         set the value to 0.
-         <li>To ignore any known charge values in the input files and instead
-         use the charge state range specified by the
-         "<a href="precursor_charge.php">precursor_charge</a>" parameter,
-         set the value to 1.
-         <li>The default value is "0" if this parameter is missing.
+         <li>Valid values are 0, 1, and 2:
+            <ul>
+            <li>0 = keep any known precursor charge state values in the input files
+            <li>1 = ignore known precursor charge state values in the input files 
+                and instead use the charge state range specified by the
+                "<a href="precursor_charge.php">precursor_charge</a>" parameter
+            <li>2 = only search precursor charge state values that are within the
+                range specified by the 
+                "<a href="precursor_charge.php">precursor_charge</a>" parameter
+            </ul>
          </ul>
 
          <p>Example:
          <br><tt>override_charge = 0</tt>
          <br><tt>override_charge = 1</tt>
+         <br><tt>override_charge = 2</tt>
 
       </div>
    </div>

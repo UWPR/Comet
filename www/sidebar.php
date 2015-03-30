@@ -2,9 +2,9 @@
       <div id="updates" class="orangebox">
          <h2><a href="/updates">Recent Updates</a></h2>
             <ul>
-               <li><b>2014/09/18</b>: <a href="/release/release_201402">Release 2014.02 rev. 2</a>
-               is available; this maintenance release addresses an SQT output issue.
-               <li><b>2014/09/16</b>: <a href="/release/release_201402">Release 2014.02 rev. 0</a>
+               <li><b>2015/03/06</b>: <a href="/release/release_201402">Release 2015.01 rev. 1</a>
+               is available; this maintenance release addresses slow search speeds.
+               <li><b>2015/02/23</b>: <a href="/release/release_201501">Release 2015.01 rev. 0</a>
                is available; this is a full release.
                <p/>
             </ul>

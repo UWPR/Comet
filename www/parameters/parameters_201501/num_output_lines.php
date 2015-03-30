@@ -18,8 +18,6 @@
          <li>This parameter value cannot be larger than the value
          entered for "<a href="num_results.php">num_results</a>"
          which itself is limited to a maximum value of 100.
-         <li>This parameter does not apply to the text output as
-         defined by "<a href="output_txtfile.php">output_txtfile</a>".
          <li>Valid values are any positive integer 1 or greater.
          <li>If a value less than 1 is entered, this parameter is set to 1.
          <li>The default value is "10" if this parameter is missing.

@@ -21,7 +21,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_X_user_amino_acid = 100.8</tt>
+         <br><tt>add_X_user_amino_acid = 15.9949</tt>
 
       </div>
    </div>

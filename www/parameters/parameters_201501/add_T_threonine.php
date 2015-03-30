@@ -17,7 +17,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_T_threonine = 100.8</tt>
+         <br><tt>add_T_threonine = 15.9949</tt>
 
       </div>
    </div>

@@ -22,39 +22,26 @@
 
          <p>Here's snippet of sample output below.  The first line of the output file is a
          header line which contains the Comet version, search start time/date, and search
-         database.  The second line contains the column headers.  Only the top hit for each
-         search is reported in the text output; the parameter
-         "<a href="num_output_lines.php">num_output_lines</a>" does not apply to the text output.
+         database.  The second line contains the column headers.
 
-<pre>CometVersion 2013.02 rev. 0   100  10/04/2013, 08:37:09 AM  /net/pr/vol1/ProteomicsResource/dbase/SGD/SGDyeast.fasta.20101117
-scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_score  ions_matched  ions_total  plain_peptide  peptide  prev_aa  next_aa  protein  duplicate_protein_count
-5129  1  599.9698  602.3136  1.73E+01  0.6847  0.0995  44.3  4  8  DAKNR  R.DAKNR.I   R  I  YML019W  0
-5385  1  601.3290  603.3228  1.73E+01  0.5316  0.1905  70.9  3  8  NLTEK  R.NLTEK.T   R  T  YBL024W  1
-5496  1  601.3358  599.3755  1.67E+01  0.4527  0.1315  6.6   2  8  VVNIR  R.VVNIR.L   R  L  YJL012C  0
-5430  1  602.3329  605.2591  2.33E+01  0.4222  0.0854  73.2  4  8  DVGCR  K.DVGCR.I   K  I  YER085C  0
-5829  1  616.4184  615.3414  5.26E+01  0.4321  0.0658  8.5   2  8  KPPMK  -.KPPM*K.Q  -  Q  DECOY__YBR025C  2
-
+<pre>CometVersion 2015.01 rev. 0     BASE_NAME_OF_FILE       02/23/2015, 12:15:44 PM /net/database/path/YEAST.fasta.20141030
+scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn sp_score ions_matched   ions_total  plain_peptide  peptide  prev_aa  next_aa  protein  duplicate_protein_count
+716     1       3       1312.605337     1311.614541     5.24E+00        0.7965  0.0126  163.4   9       44      PVSVMSLASPTK    R.PVSVM[16.0]SLAS[80.0]PTK.F    R       F       DECOY_sp|Q06108|RGC1_YEAST      0
+716     2       3       1312.605337     1311.614541     5.66E+00        0.7864  0.0239  163.4   9       44      PVSVMSLASPTK    R.PVSVM[16.0]S[80.0]LASPTK.F    R       F       DECOY_sp|Q06108|RGC1_YEAST      0
+716     3       3       1312.605337     1309.610124     6.07E+00        0.7774  0.0402  62.0    6       40      HASSTIMLVQK     K.HASST[80.0]IM[16.0]LVQK.K     K       K       DECOY_sp|Q99321|DDP1_YEAST      0
+716     4       3       1312.605337     1312.613644     6.71E+00        0.7645  0.0583  79.1    7       40      HKTTTSSTKSR     K.HKTTTSSTKS[80.0]R.T   K       T       sp|Q08931|PRM3_YEAST    0
+716     5       3       1312.605337     1312.613644     7.49E+00        0.7501  0.0589  111.3   8       40      HKTTTSSTKSR     K.HKTT[80.0]TSSTKSR.T   K       T       sp|Q08931|PRM3_YEAST    0
+720     1       3       1313.602896     1310.606404     2.40E+00        1.0726  0.0053  149.1   8       40      DPLDEFMTSLK     K.DPLDEFM[16.0]TSLK.E   K       E       sp|P21372|PRP5_YEAST    0
+720     2       3       1313.602896     1314.609819     2.50E+00        1.0669  0.1870  180.8   8       40      VNARPSLSAIK     K.VNARPS[80.0]LS[80.0]AIK.Y     K       Y       sp|Q12078|SMF3_YEAST    0
+720     3       3       1313.602896     1310.567285     1.04E+01        0.8720  0.1919  127.7   7       36      LVDIGSYRTK      K.LVDIGSY[80.0]RT[80.0]K.H      K       H       DECOY_sp|P37254|PABS_YEAST      0
+720     4       3       1313.602896     1310.567285     1.08E+01        0.8667  0.2093  127.7   7       36      LVDIGSYRTK      K.LVDIGS[80.0]YRT[80.0]K.H      K       H       DECOY_sp|P37254|PABS_YEAST      0
+720     5       3       1313.602896     1312.591177     1.23E+01        0.8481  0.2135  52.8    5       44      EDSSGIEGKALK    K.EDS[80.0]SGIEGKALK.T  K       T       DECOY_sp|Q06263|VTA1_YEAST      0
+724     1       2       1246.454929     1245.426708     1.32E+00        0.6254  0.0316  38.4    3       16      ALTCVSSLR       R.ALT[80.0]CVS[80.0]S[80.0]LR.T R       T       DECOY_sp|P38752|YHA5_YEAST      0
+724     2       2       1246.454929     1244.472716     1.64E+00        0.6056  0.2458  59.2    4       18      ASDKLSSSYK      R.ASDKLS[80.0]S[80.0]SYK.I      R       I       DECOY_sp|Q07351|STP4_YEAST      0
+724     3       2       1246.454929     1243.463548     7.18E+00        0.4717  0.3011  33.4    3       18      DDALAHSSIR      K.DDALAHS[80.0]S[80.0]IR.F      K       F       sp|P25374|NFS1_YEAST    0
+724     4       2       1246.454929     1244.460451     1.05E+01        0.4370  0.3113  37.6    3       16      SKQSISSLR       K.S[80.0]KQSIS[80.0]S[80.0]LR.S K       S       DECOY_sp|P38308|CS111_YEAST     0
+724     5       2       1246.454929     1244.460451     1.13E+01        0.4307  0.3268  37.6    3       16      SKQSISSLR       K.SKQS[80.0]IS[80.0]S[80.0]LR.S K       S       DECOY_sp|P38308|CS111_YEAST     0
 </pre></p>
-
-         <p>Comet's text output is different if Comet was compiled for
-         <a href="noble.gs.washington.edu/proj/crux/">Crux</a> compatibility.
-         Here's the example text output if you are running Comet in Crux.
-         Note that up to 5 hits per spectrum are reported and there is just
-         a single column header line.
-
-<pre>scan  charge  spectrum precursor m/z  spectrum neutral mass  matches/spectrum  peptide mass  e-value  xcorr score  xcorr rank  delta_cn  sp score  sp rank  b/y ions matched  b/y ions total  sequence  flanking aa  protein id
-5129  1  600.9771  599.9698  5440  602.3136  1.73E+01  0.6847  1  0.0995  44.3   19  4  8   DAKNR   RI  YML019W
-5129  1  600.9771  599.9698  5440  602.3249  1.96E+01  0.6714  2  0.1016  46.1   17  5  10  RTGGGR  RI  YGR054W
-5129  1  600.9771  599.9698  5440  602.3136  1.99E+01  0.6698  3  0.1131  77.6   6   5  8   NISNR   KV  YMR033W
-5129  1  600.9771  599.9698  5440  601.2820  2.16E+01  0.6612  4  0.1240  38.6   22  4  8   EPSNR   RD  YPL161C
-5129  1  600.9771  599.9698  5440  600.3231  0.00E+00  0.6532  5  0.1389  104.6  3   6  8   IESPR   KM  YLL021W
-5385  1  602.3363  601.3290  6518  603.3228  1.73E+01  0.5316  1  0.1905  70.9   2   3  8   NLTEK   RT  YBL024W
-5385  1  602.3363  601.3290  6518  600.3707  1.86E+01  0.5249  2  0.2022  31.0   8   3  8   ARNIK   KT  DECOY_YIL159W
-5385  1  602.3363  601.3290  6518  602.3249  2.02E+01  0.5173  3  0.2134  47.4   4   3  8   ARNSR   KI  DECOY_YLL040C
-5385  1  602.3363  601.3290  6518  601.3184  2.19E+01  0.5100  4  0.2148  7.1    19  2  10  GAVNNK  KS  DECOY_YMR125W
-5385  1  602.3363  601.3290  6518  599.4119  0.00E+00  0.5091  5  0.2148  28.3   9   3  8   ALLKR   RI  YML107C
-</pre></p>
-
 
       </div>
    </div>

@@ -56,7 +56,7 @@
             </ul>
 
             <p>Documentation for parameters for release 2012.01
-            <a href="http://comet-ms.sourceforge.net/parameters_201201/">can be found here</a>.
+            <a href="http://comet-ms.sourceforge.net/parameters/parameters_201201/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> link.
 

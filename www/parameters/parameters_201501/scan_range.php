@@ -16,6 +16,7 @@
          <li>This parameter works only with mzXML and mzML inputs files.
          <li>Two digits are specified for this parameter.  The first digit is the start scan and the
          second digit is the end scan.
+         <li>As of now, it looks like the first digit must be an MS/MS scan.
          <li>When the start scan is set to 0, this parameter setting is ignored irrespective of what
          the end scan is set to.
          <li>When the end scan is less than the start scan, this parameter setting is ignored.

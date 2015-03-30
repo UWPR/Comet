@@ -17,7 +17,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_Q_glutamine = 100.8</tt>
+         <br><tt>add_Q_glutamine = 15.9949</tt>
 
       </div>
    </div>

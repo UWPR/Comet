@@ -17,7 +17,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_L_leucine = 100.8</tt>
+         <br><tt>add_L_leucine = 15.9949</tt>
 
       </div>
    </div>

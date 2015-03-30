@@ -12,7 +12,7 @@
 
          <ul>
          <li>This parameter specifies the 1st of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -21,9 +21,9 @@
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -62,8 +62,8 @@
          <br><tt>variable_mod01 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod01 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
          <br><tt>variable_mod01 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod01 = -17.026549 Q 0 1 0 2</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
-         <br><tt>variable_mod01 = -18.010565 E 0 1 0 2</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
+         <br><tt>variable_mod01 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod01 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>

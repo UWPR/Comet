@@ -41,7 +41,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_A_alanine = 100.8</tt>
+         <br><tt>add_A_alanine = 15.9949</tt>
 
       </div>
    </div>
@@ -61,7 +61,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_B_user_amino_acid = 100.8</tt>
+         <br><tt>add_B_user_amino_acid = 15.9949</tt>
 
       </div>
    </div>
@@ -131,7 +131,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_D_cysteine = 100.8</tt>
+         <br><tt>add_D_cysteine = 15.9949</tt>
 
       </div>
    </div>
@@ -147,7 +147,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_E_cysteine = 100.8</tt>
+         <br><tt>add_E_cysteine = 15.9949</tt>
 
       </div>
    </div>
@@ -163,7 +163,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_F_phenylalanine = 100.8</tt>
+         <br><tt>add_F_phenylalanine = 15.9949</tt>
 
       </div>
    </div>
@@ -179,7 +179,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_G_cysteine = 100.8</tt>
+         <br><tt>add_G_cysteine = 15.9949</tt>
 
       </div>
    </div>
@@ -195,7 +195,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_H_histidine = 100.8</tt>
+         <br><tt>add_H_histidine = 15.9949</tt>
 
       </div>
    </div>
@@ -211,7 +211,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_I_isoleucine = 100.8</tt>
+         <br><tt>add_I_isoleucine = 15.9949</tt>
 
       </div>
    </div>
@@ -231,7 +231,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_J_user_amino_acid = 100.8</tt>
+         <br><tt>add_J_user_amino_acid = 15.9949</tt>
 
       </div>
    </div>
@@ -263,7 +263,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_L_leucine = 100.8</tt>
+         <br><tt>add_L_leucine = 15.9949</tt>
 
       </div>
    </div>
@@ -279,7 +279,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_M_methionine = 100.8</tt>
+         <br><tt>add_M_methionine = 15.9949</tt>
 
       </div>
    </div>
@@ -295,7 +295,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_N_cysteine = 100.8</tt>
+         <br><tt>add_N_cysteine = 15.9949</tt>
 
       </div>
    </div>
@@ -343,7 +343,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_O_ornithine = 100.8</tt>
+         <br><tt>add_O_ornithine = 15.9949</tt>
 
       </div>
    </div>
@@ -359,7 +359,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_P_proline = 100.8</tt>
+         <br><tt>add_P_proline = 15.9949</tt>
 
       </div>
    </div>
@@ -375,7 +375,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_Q_glutamine = 100.8</tt>
+         <br><tt>add_Q_glutamine = 15.9949</tt>
 
       </div>
    </div>
@@ -407,7 +407,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_S_serine = 100.8</tt>
+         <br><tt>add_S_serine = 15.9949</tt>
 
       </div>
    </div>
@@ -423,7 +423,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_T_threonine = 100.8</tt>
+         <br><tt>add_T_threonine = 15.9949</tt>
 
       </div>
    </div>
@@ -443,7 +443,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_U_user_amino_acid = 100.8</tt>
+         <br><tt>add_U_user_amino_acid = 15.9949</tt>
 
       </div>
    </div>
@@ -459,7 +459,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_V_valine = 100.8</tt>
+         <br><tt>add_V_valine = 15.9949</tt>
 
       </div>
    </div>
@@ -475,7 +475,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_W_tryptophan = 100.8</tt>
+         <br><tt>add_W_tryptophan = 15.9949</tt>
 
       </div>
    </div>
@@ -495,7 +495,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_X_user_amino_acid = 100.8</tt>
+         <br><tt>add_X_user_amino_acid = 15.9949</tt>
 
       </div>
    </div>
@@ -511,7 +511,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_Y_tyrosine = 100.8</tt>
+         <br><tt>add_Y_tyrosine = 15.9949</tt>
 
       </div>
    </div>
@@ -531,7 +531,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_Z_user_amino_acid = 100.8</tt>
+         <br><tt>add_Z_user_amino_acid = 15.9949</tt>
 
       </div>
    </div>
@@ -1040,8 +1040,6 @@
          <li>This parameter value cannot be larger than the value
          entered for "<a href="num_results.php">num_results</a>"
          which itself is limited to a maximum value of 100.
-         <li>This parameter does not apply to the text output as
-         defined by "<a href="output_txtfile.php">output_txtfile</a>".
          <li>Valid values are any positive integer 1 or greater.
          <li>If a value less than 1 is entered, this parameter is set to 1.
          <li>The default value is "10" if this parameter is missing.
@@ -1232,39 +1230,16 @@
 
          <p>Here's snippet of sample output below.  The first line of the output file is a
          header line which contains the Comet version, search start time/date, and search
-         database.  The second line contains the column headers.  Only the top hit for each
-         search is reported in the text output; the parameter
-         "<a href="num_output_lines.php">num_output_lines</a>" does not apply to the text output.
+         database.  The second line contains the column headers.
 
-<pre>CometVersion 2013.02 rev. 0   100  10/04/2013, 08:37:09 AM  /net/pr/vol1/ProteomicsResource/dbase/SGD/SGDyeast.fasta.20101117
-scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_score  ions_matched  ions_total  plain_peptide  peptide  prev_aa  next_aa  protein  duplicate_protein_count
-5129  1  599.9698  602.3136  1.73E+01  0.6847  0.0995  44.3  4  8  DAKNR  R.DAKNR.I   R  I  YML019W  0
-5385  1  601.3290  603.3228  1.73E+01  0.5316  0.1905  70.9  3  8  NLTEK  R.NLTEK.T   R  T  YBL024W  1
-5496  1  601.3358  599.3755  1.67E+01  0.4527  0.1315  6.6   2  8  VVNIR  R.VVNIR.L   R  L  YJL012C  0
-5430  1  602.3329  605.2591  2.33E+01  0.4222  0.0854  73.2  4  8  DVGCR  K.DVGCR.I   K  I  YER085C  0
-5829  1  616.4184  615.3414  5.26E+01  0.4321  0.0658  8.5   2  8  KPPMK  -.KPPM*K.Q  -  Q  DECOY__YBR025C  2
-
+<pre>CometVersion 2015.01 rev. 0     BASE_NAME_OF_FILE_0000000       02/23/2015, 12:15:44 PM /net/database/path/YEAST.fasta.20141030
+scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn sp_score ions_matched   ions_total  plain_peptide  peptide  prev_aa  next_aa  protein  duplicate_protein_count
+4  1  3  4916.768332 4917.845271 1.03E+01 0.8477   0.0015   31.8  10 164   NISMDDDDALNSPDMGQEYEGRDADDVVMMASSTNEELEELK   K.NISMDDDDALNSPDMGQEY[80.0]EGRDADDVVMMAS[80.0]ST[80.0]NEELEELK.K  K  K  sp|Q03954|SPC19_YEAST   0
+6  1  2  3454.696629 3452.657825 1.78E+01 0.8366   0.0133   44.2  7  52 ENFVFLQYQYESRNAQPYLQFYHLNNK   K.ENFVFLQYQYESRNAQPYLQFYHLNNK.D  K  D  sp|Q06682|UBX5_YEAST 0
+9  1  2  3081.173191 3079.219382 1.04E+00 0.9564   0.1603   33.3  7  48 TGGWIYSCNTRDMSGNPIMLEKGPR  R.T[80.0]GGWIY[80.0]S[80.0]CNTRDMSGNPIMLEKGPR.T R  T  sp|P40012|PPOX_YEAST 0
+19 1  2  3481.657810 3478.707612 8.53E+00 0.7803   0.0457   14.0  4  50 TKYLNYYTPLVLLIFTVLFITYNIWK R.TKYLNYYTPLVLLIFT[80.0]VLFIT[80.0]Y[80.0]NIWK.H   R  H  sp|P32386|YBT1_YEAST 0
+23 1  2  3277.656834 3274.649977 3.38E+00 0.9774   0.0012   28.2  8  64 LVAGGAAQNTARGAAYVLGAGQVVYFGSVGKDK   K.LVAGGAAQNTARGAAYVLGAGQVVY[80.0]FGSVGKDK.F  K  F  sp|P47143|ADK_YEAST  0
 </pre></p>
-
-         <p>Comet's text output is different if Comet was compiled for
-         <a href="noble.gs.washington.edu/proj/crux/">Crux</a> compatibility.
-         Here's the example text output if you are running Comet in Crux.
-         Note that up to 5 hits per spectrum are reported and there is just
-         a single column header line.
-
-<pre>scan  charge  spectrum precursor m/z  spectrum neutral mass  matches/spectrum  peptide mass  e-value  xcorr score  xcorr rank  delta_cn  sp score  sp rank  b/y ions matched  b/y ions total  sequence  flanking aa  protein id
-5129  1  600.9771  599.9698  5440  602.3136  1.73E+01  0.6847  1  0.0995  44.3   19  4  8   DAKNR   RI  YML019W
-5129  1  600.9771  599.9698  5440  602.3249  1.96E+01  0.6714  2  0.1016  46.1   17  5  10  RTGGGR  RI  YGR054W
-5129  1  600.9771  599.9698  5440  602.3136  1.99E+01  0.6698  3  0.1131  77.6   6   5  8   NISNR   KV  YMR033W
-5129  1  600.9771  599.9698  5440  601.2820  2.16E+01  0.6612  4  0.1240  38.6   22  4  8   EPSNR   RD  YPL161C
-5129  1  600.9771  599.9698  5440  600.3231  0.00E+00  0.6532  5  0.1389  104.6  3   6  8   IESPR   KM  YLL021W
-5385  1  602.3363  601.3290  6518  603.3228  1.73E+01  0.5316  1  0.1905  70.9   2   3  8   NLTEK   RT  YBL024W
-5385  1  602.3363  601.3290  6518  600.3707  1.86E+01  0.5249  2  0.2022  31.0   8   3  8   ARNIK   KT  DECOY_YIL159W
-5385  1  602.3363  601.3290  6518  602.3249  2.02E+01  0.5173  3  0.2134  47.4   4   3  8   ARNSR   KI  DECOY_YLL040C
-5385  1  602.3363  601.3290  6518  601.3184  2.19E+01  0.5100  4  0.2148  7.1    19  2  10  GAVNNK  KS  DECOY_YMR125W
-5385  1  602.3363  601.3290  6518  599.4119  0.00E+00  0.5091  5  0.2148  28.3   9   3  8   ALLKR   RI  YML107C
-</pre></p>
-
 
       </div>
    </div>
@@ -1278,14 +1253,16 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          charge state information when present in the files with the charge
          range specified by the
          "<a href="precursor_charge.php">precursor_charge</a>" parameter.
-         <li>Valid values are 0 and 1.
-         <li>To keep any known charge state values in the input files,
-         set the value to 0.
-         <li>To ignore any known charge values in the input files and instead
-         use the charge state range specified by the
-         "<a href="precursor_charge.php">precursor_charge</a>" parameter,
-         set the value to 1.
-         <li>The default value is "0" if this parameter is missing.
+         <li>Valid values are 0, 1, and 2:
+            <ul>
+            <li>0 = keep any known precursor charge state values in the input files
+            <li>1 = ignore known precursor charge state values in the input files
+                and instead use the charge state range specified by the
+                "<a href="precursor_charge.php">precursor_charge</a>" parameter
+            <li>2 = only search precursor charge state values that are within the
+                range specified by the
+                "<a href="precursor_charge.php">precursor_charge</a>" parameter
+            </ul>
          </ul>
 
          <p>Example:
@@ -1438,6 +1415,29 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
    <div id="content_full">
       <div class="post hr">
 
+         <h2>Comet parameter: require_variable_mod</h2>
+
+         <ul>
+         <li>This parameter takes in one input value.
+         <li>The input value is an integer that controls whether the analyzed peptides
+             must contain at least one variable modification i.e. force all reported peptides
+             to have a variable modifiation.
+             <ul>
+             <li>0 = consider both modified and unmodified peptides (default)
+             <li>1 = analyze only peptides that contain a variable modification
+             </ul>
+         </ul>
+
+         <p>Example:
+         <br><tt>require_variable_mod = 0</tt> &nbsp; &nbsp; ... <i>modifications not required</i>
+         <br><tt>require_variable_mod = 1</tt> &nbsp; &nbsp; ... <i>peptides must contain a variable modification</i>
+
+
+      </div>
+   </div>
+   <div id="content_full">
+      <div class="post hr">
+
          <h2>Comet parameter: sample_enzyme_number</h2>
 
          <ul>
@@ -1469,6 +1469,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <li>This parameter works only with mzXML and mzML inputs files.
          <li>Two digits are specified for this parameter.  The first digit is the start scan and the
          second digit is the end scan.
+         <li>As of now, it looks like the first digit must be an MS/MS scan.
          <li>When the start scan is set to 0, this parameter setting is ignored irrespective of what
          the end scan is set to.
          <li>When the end scan is less than the start scan, this parameter setting is ignored.
@@ -1805,7 +1806,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 1st of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -1814,9 +1815,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -1830,19 +1831,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '*' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod01 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod01 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod01 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod01 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod01 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod01 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod01 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod01 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod01 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod01 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod01 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod01 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod01 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod01 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>
@@ -1854,7 +1869,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 2nd of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -1863,9 +1878,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -1879,19 +1894,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '#' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod02 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod02 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod02 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod02 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod02 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod02 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod02 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod02 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod02 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod02 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod02 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod02 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod02 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod02 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>
@@ -1903,7 +1932,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 3rd of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -1912,9 +1941,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -1928,19 +1957,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '@' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod03 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod03 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod03 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod03 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod03 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod03 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod03 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod03 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod03 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod03 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod03 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod03 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod03 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod03 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>
@@ -1952,7 +1995,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 4th of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -1961,9 +2004,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -1977,19 +2020,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '^' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod04 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod04 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod04 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod04 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod04 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod04 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod04 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod04 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod04 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod04 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod04 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod04 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod04 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod04 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>
@@ -2001,7 +2058,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 5th of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -2010,9 +2067,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -2026,19 +2083,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '~' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod05 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod05 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod05 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod05 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod05 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod05 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod05 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod05 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod05 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod05 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod05 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod05 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod05 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod05 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>
@@ -2050,7 +2121,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 6th of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -2059,9 +2130,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -2075,19 +2146,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '$' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod06 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod06 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod06 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod06 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod06 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod06 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod06 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod06 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod06 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod06 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod06 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod06 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod06 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod06 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>
@@ -2099,7 +2184,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 7th of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -2108,9 +2193,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -2124,19 +2209,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '%' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod07 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod07 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod07 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod07 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod07 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod07 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod07 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod07 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod07 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod07 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod07 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod07 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod07 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod07 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>
@@ -2148,7 +2247,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 8th of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -2157,9 +2256,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -2173,19 +2272,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '!' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod08 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod08 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod08 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod08 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod08 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod08 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod08 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod08 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod08 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod08 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod08 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod08 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod08 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod08 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>
@@ -2197,7 +2310,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
 
          <ul>
          <li>This parameter specifies the 9th of 9 variable modifications.
-         <li>There are 6 entries/settings that are associated with this parameter:
+         <li>There are 7 entries/settings that are associated with this parameter:
             <ul>
             <li>The first entry is a decimal value specifying the modification mass difference.
             <li>The second entry is the residue(s) that the modifications are possibly applied to.
@@ -2206,9 +2319,9 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The third entry is a integer 0 or 1 to specify whether the modification is a
                 variable modification (0) or a binary modification (1).
                 <ul>
-                <li>A variable modification analyzes all permutations of modified and unmodified
+                <li>0 = variable modification analyzes all permutations of modified and unmodified
                     residues.
-                <li>A binary modification analyzes peptides where all residues are either
+                <li>1 = A binary modification analyzes peptides where all residues are either
                     modified or all residues are not modified.
                 </ul>
             <li>The fourth entry is an integer specifying the maximum number of modified residues
@@ -2222,19 +2335,33 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies which protein terminus the distance constraint is applied to N-terminus (0) or C-terminus (1).
+            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+                <ul>
+                <li>0 = protein N-terminus
+                <li>1 = protein C-terminus
+                <li>2 = peptide N-terminus
+                <li>3 = peptide C-terminus
+                </ul>
+            <li>The seventh entry specifies whether peptides are must contain this modification
+                <ul>
+                <li>0 = not forced to be present
+                <li>1 = modification is required 
+                </ul>
+
             </ul>
          <li>In the output, this first modification is encoded with the character '+' in the peptide string.
          <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>variable_mod09 = 15.9949 M 0 3 -1 0</tt>
-         <br><tt>variable_mod09 = 79.966331 STY 0 3 -1 0</tt>
-         <br><tt>variable_mod09 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
-         <br><tt>variable_mod09 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod09 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
-         <br><tt>variable_mod09 = -17.02549 Q 0 1 0 0</tt> &nbsp; &nbsp; ... <i>protein N-terminal Q eliminating NH3 to form N-terminal pyrolidone carboxylic acid</i>
+         <br><tt>variable_mod09 = 15.9949 M 0 3 -1 0 0</tt>
+         <br><tt>variable_mod09 = 79.966331 STY 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
+         <br><tt>variable_mod09 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
+         <br><tt>variable_mod09 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
+         <br><tt>variable_mod09 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
+         <br><tt>variable_mod09 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod09 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
+         <br><tt>variable_mod09 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
 
       </div>

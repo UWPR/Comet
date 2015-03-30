@@ -17,7 +17,7 @@
          </ul>
 
          <p>Example:
-         <br><tt>add_A_alanine = 100.8</tt>
+         <br><tt>add_A_alanine = 15.9949</tt>
 
       </div>
    </div>

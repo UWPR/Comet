@@ -55,7 +55,7 @@ use_X_ions = 0
 use_Y_ions = 1
 use_Z_ions = 0
 use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks
-use_sparse_matrix = 0
+use_sparse_matrix = 1
 
 #
 # output
@@ -86,7 +86,7 @@ activation_method = ALL                # activation method; used if activation m
 # misc parameters
 #
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze
-num_results = 50                       # number of search hits to store internally
+num_results = 100                      # number of search hits to store internally
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max 5)
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max 9)
