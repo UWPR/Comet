@@ -474,6 +474,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
             if (dExpect > 999.0)
                dExpect = 999.0;
 
+/*
             // Sanity constraints - no low e-values allowed for xcorr < 1.0.
             // I'll admit xcorr < 1.0 is an arbitrary cutoff but something is needed.
             if (dExpect < 1.0)
@@ -481,6 +482,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
                if (pQuery->_pResults[i].fXcorr < 1.0)
                   dExpect = 10.0;
             }
+*/
 
             pQuery->_pResults[i].dExpect = dExpect;
          }
@@ -491,11 +493,13 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
             if (dExpect > 999.0)
                dExpect = 999.0;
 
+/*
             if (dExpect < 1.0)
             {
                if (pQuery->_pDecoys[i].fXcorr < 1.0)
                   dExpect = 10.0;
             }
+*/
 
             pQuery->_pDecoys[i].dExpect = dExpect;
          }

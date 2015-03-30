@@ -922,7 +922,7 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
          pStr = g_staticParams.inputFile.szBaseName;
       }
       else
-         *pStr++;
+         (*pStr)++;
 
       sprintf(szOutputFileName, "%s/%s.%.5d.%.5d.%d.out",
             g_staticParams.inputFile.szBaseName,
@@ -1503,5 +1503,5 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
 
 bool CometPreprocess::IsValidInputType(int inputType)
 {
-   return inputType == InputType_MZXML || inputType == InputType_RAW;
+   return (inputType == InputType_MZXML || inputType == InputType_RAW);
 }

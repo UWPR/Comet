@@ -104,8 +104,6 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
    int  i,
         iNumPrintLines,
         iMinLength;
-   double dMZcalc,
-          dMZexp;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
@@ -121,12 +119,6 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       pOutput = pQuery->_pResults;
       iNumPrintLines = pQuery->iMatchPeptideCount;
    }
-
-   dMZexp = (pQuery->_pepMassInfo.dExpPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
-      / pQuery->_spectrumInfoInternal.iChargeState ;
-
-   dMZcalc = (pOutput[0].dPepMass + PROTON_MASS*(pQuery->_spectrumInfoInternal.iChargeState-1))
-      / pQuery->_spectrumInfoInternal.iChargeState;
 
    fprintf(fpout, "%s_%d_%d_1\t",    // id
          g_staticParams.inputFile.szBaseName,

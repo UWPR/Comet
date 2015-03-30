@@ -19,6 +19,7 @@ MSReader::MSReader(){
   headerIndex=0;
   sInstrument="unknown";
   sManufacturer="unknown";
+  lastReadScanNum=0;
 
   #ifndef _NOSQLITE
   db = NULL;
@@ -505,7 +506,7 @@ int MSReader::getPercent(){
 		case mzXMLgz:
 		case mzMLgz:
 			if(rampFileIn!=NULL){
-				return (int)((double)rampIndex/rampLastScan*100);
+				return (int)((double)lastReadScanNum/rampLastScan*100);
 			}
 			break;
 		case raw:
@@ -1140,7 +1141,7 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 		case cms1:
 		case cms2:
 			setCompression(true);
-			return readMSTFile(c,false,s,scNum);
+      return readMSTFile(c,false,s,scNum);
 			break;
 		case mz5:
     case mzXML:
@@ -1181,6 +1182,7 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 			break;
 		case dunno:
 		default:
+      cout << "Unknown file format" << endl;
 			return false;
 			break;
   }
@@ -1460,6 +1462,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		indexOffset = getIndexOffset(rampFileIn);
 		pScanIndex = readIndex(rampFileIn,indexOffset,&rampLastScan);
 		rampIndex=0;
+    lastReadScanNum=0;
 
 	} else {
 		//if no new file requested, check to see if one is open already
@@ -1526,6 +1529,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		  	s.add((double)pPeaks[j],(float)pPeaks[j+1]);
 			  j+=2;
 		  }
+      lastReadScanNum = scanHeader.acquisitionNum;
 		}	else {
 		  return false;
 		}
@@ -1537,10 +1541,11 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		//read next index
 	  while(true){
 	    rampIndex++;
-			if(pScanIndex[rampIndex]<0) continue;
 
-	    //reached end of file
+      //reached end of file
 	    if(rampIndex>rampLastScan) return false;
+			
+      if(pScanIndex[rampIndex]<0) continue;     
 
 			readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader);
 			switch(scanHeader.msLevel){
@@ -1589,6 +1594,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 			j+=2;
 		}
 	}
+  lastReadScanNum = scanHeader.acquisitionNum;
 
 	free(pPeaks);
 	return true;

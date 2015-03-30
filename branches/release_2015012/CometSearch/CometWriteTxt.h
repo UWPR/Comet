@@ -27,6 +27,9 @@ public:
                         FILE *fpoutd);
 
    static void PrintTxtHeader(FILE *fpout);
+   static void PrintModifications(FILE *fpout,
+                                  Results *pOutput,
+                                  int iWhichResult);
 
 private:
    static void PrintResults(int iWhichQuery,
