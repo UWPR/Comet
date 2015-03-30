@@ -86,11 +86,11 @@ namespace CometUI.ViewResults
             MassSpecUtils.InitializeMassTables(userOptions.MassType == MassSpecUtils.MassType.Monoisotopic);
 
             double nTerm = result.ModifiedNTerm ? result.ModNTermMass : MassSpecUtils.ElementMassTable['h'];
-            // double cterm = result.ModifiedCTerm ? result.ModCTermMass : MassSpecUtils.ElementMassTable['o'] + MassSpecUtils.ElementMassTable['h'];
+            double cterm = result.ModifiedCTerm ? result.ModCTermMass : MassSpecUtils.ElementMassTable['o'] + MassSpecUtils.ElementMassTable['h'];
 
-            // Todo: Ask Jimmy why the calculated mass here is different for a given peptide than what's calculated via the UWPR peptide fragmentation calculator, for e.g. the peptide RGILTLKYPIEHGIITNWDDMEK
             double bIon = nTerm - MassSpecUtils.ElementMassTable['h'] + MassSpecUtils.ProtonMass;
-            double yIon =  result.CalculatedMass - nTerm + MassSpecUtils.ProtonMass;
+            //double yIon =  result.CalculatedMass - nTerm + MassSpecUtils.ProtonMass;
+            double yIon = cterm + MassSpecUtils.ElementMassTable['h'] + MassSpecUtils.ProtonMass;
 
             var peptideArray = result.Peptide.ToCharArray();
             var peptideLen = peptideArray.Length;
@@ -143,36 +143,35 @@ namespace CometUI.ViewResults
 
                 if (i > 0)
                 {
-                    if (modArray[i-1].Equals(0.0))
+                    if (modArray[peptideLen - i].Equals(0.0))
                     {
-                        yIon -= MassSpecUtils.AminoAcidMassTable[peptideArray[i-1]];
+                        yIon += MassSpecUtils.AminoAcidMassTable[peptideArray[peptideLen - i]];
                     }
                     else
                     {
-                        yIon -= modArray[i-1];
+                        yIon += modArray[peptideLen - i];
                     }
 
                     // x ions
                     double xIon = yIon + MassSpecUtils.CommonCompoundsMassTable["CO"] - (2 * MassSpecUtils.ElementMassTable['h']);
-                    AddFragmentIon(userOptions, fragmentIons, xIon, 1, IonType.X, peptideLen - i);                                  // Singly charged
-                    AddFragmentIon(userOptions, fragmentIons, xIon, 2, IonType.X, peptideLen - i);                                  // Doubly charged
-                    AddFragmentIon(userOptions, fragmentIons, xIon, 3, IonType.X, peptideLen - i);                                  // Triply charged
+                    AddFragmentIon(userOptions, fragmentIons, xIon, 1, IonType.X, i);                                  // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, xIon, 2, IonType.X, i);                                  // Doubly charged
+                    AddFragmentIon(userOptions, fragmentIons, xIon, 3, IonType.X, i);                                  // Triply charged
 
                     // y ions
-                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, peptideLen - i);                                  // Singly charged
-                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, peptideLen - i, MassSpecUtils.NeutralLoss.NH3);   // Singly charged, NH3 neutral loss
-                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, peptideLen - i, MassSpecUtils.NeutralLoss.H2O);   // Singly charged, H2O neutral loss
-                    AddFragmentIon(userOptions, fragmentIons, yIon, 2, IonType.Y, peptideLen - i);                                  // Doubly charged
-                    AddFragmentIon(userOptions, fragmentIons, yIon, 3, IonType.Y, peptideLen - i);                                  // Triply charged
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, i);                                  // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, i, MassSpecUtils.NeutralLoss.NH3);   // Singly charged, NH3 neutral loss
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 1, IonType.Y, i, MassSpecUtils.NeutralLoss.H2O);   // Singly charged, H2O neutral loss
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 2, IonType.Y, i);                                  // Doubly charged
+                    AddFragmentIon(userOptions, fragmentIons, yIon, 3, IonType.Y, i);                                  // Triply charged
 
                     // z ions
                     double zIon = yIon - MassSpecUtils.CommonCompoundsMassTable["NH3"] + MassSpecUtils.ElementMassTable['h'];
-                    AddFragmentIon(userOptions, fragmentIons, zIon, 1, IonType.Z, peptideLen - i);                                  // Singly charged
-                    AddFragmentIon(userOptions, fragmentIons, zIon, 2, IonType.Z, peptideLen - i);                                  // Doubly charged
-                    AddFragmentIon(userOptions, fragmentIons, zIon, 3, IonType.Z, peptideLen - i);                                  // Triply charged
+                    AddFragmentIon(userOptions, fragmentIons, zIon, 1, IonType.Z, i);                                  // Singly charged
+                    AddFragmentIon(userOptions, fragmentIons, zIon, 2, IonType.Z, i);                                  // Doubly charged
+                    AddFragmentIon(userOptions, fragmentIons, zIon, 3, IonType.Z, i);                                  // Triply charged
                 }
             }
-
         }
     }
 
