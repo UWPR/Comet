@@ -41,12 +41,20 @@
             this.viewSpectraSplitContainer = new System.Windows.Forms.SplitContainer();
             this.graphOptionsPanel = new System.Windows.Forms.Panel();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.peakLabelNoneRadioButton = new System.Windows.Forms.RadioButton();
-            this.peakLabelMzRadioButton = new System.Windows.Forms.RadioButton();
+            this.peakLabelRadioButtonsPanel = new System.Windows.Forms.Panel();
             this.peakLabelIonRadioButton = new System.Windows.Forms.RadioButton();
+            this.peakLabelMzRadioButton = new System.Windows.Forms.RadioButton();
+            this.peakLabelNoneRadioButton = new System.Windows.Forms.RadioButton();
+            this.massTypeRadioButtonsPanel = new System.Windows.Forms.Panel();
+            this.massTypeAvgRadioButton = new System.Windows.Forms.RadioButton();
+            this.massTypeMonoRadioButton = new System.Windows.Forms.RadioButton();
+            this.massTolTextBox = new NumericTextBox();
+            this.label26 = new System.Windows.Forms.Label();
+            this.labelMassType = new System.Windows.Forms.Label();
+            this.updateBtn = new System.Windows.Forms.Button();
             this.label31 = new System.Windows.Forms.Label();
             this.label32 = new System.Windows.Forms.Label();
-            this.neutralLossH2OcheckBox = new System.Windows.Forms.CheckBox();
+            this.neutralLossH2OCheckBox = new System.Windows.Forms.CheckBox();
             this.labelPeakLabel = new System.Windows.Forms.Label();
             this.label30 = new System.Windows.Forms.Label();
             this.label29 = new System.Windows.Forms.Label();
@@ -98,13 +106,6 @@
             this.label33 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.label27 = new System.Windows.Forms.Label();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.updateBtn = new System.Windows.Forms.Button();
-            this.labelMassType = new System.Windows.Forms.Label();
-            this.label26 = new System.Windows.Forms.Label();
-            this.massTolTextBox = new NumericTextBox();
-            this.massTypeMonoRadioButton = new System.Windows.Forms.RadioButton();
-            this.massTypeAvgRadioButton = new System.Windows.Forms.RadioButton();
             this.spectrumGraphSplitContainer = new System.Windows.Forms.SplitContainer();
             this.spectrumGraphItem = new ZedGraph.ZedGraphControl();
             this.spectrumGraphIonsTable = new BrightIdeasSoftware.ObjectListView();
@@ -130,7 +131,8 @@
             this.viewSpectraSplitContainer.SuspendLayout();
             this.graphOptionsPanel.SuspendLayout();
             this.groupBox2.SuspendLayout();
-            this.groupBox1.SuspendLayout();
+            this.peakLabelRadioButtonsPanel.SuspendLayout();
+            this.massTypeRadioButtonsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.spectrumGraphSplitContainer)).BeginInit();
             this.spectrumGraphSplitContainer.Panel1.SuspendLayout();
             this.spectrumGraphSplitContainer.Panel2.SuspendLayout();
@@ -274,7 +276,6 @@
             this.graphOptionsPanel.AutoScroll = true;
             this.graphOptionsPanel.BackColor = System.Drawing.SystemColors.Window;
             this.graphOptionsPanel.Controls.Add(this.groupBox2);
-            this.graphOptionsPanel.Controls.Add(this.groupBox1);
             this.graphOptionsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.graphOptionsPanel.Location = new System.Drawing.Point(0, 0);
             this.graphOptionsPanel.Name = "graphOptionsPanel";
@@ -283,12 +284,15 @@
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.peakLabelNoneRadioButton);
-            this.groupBox2.Controls.Add(this.peakLabelMzRadioButton);
-            this.groupBox2.Controls.Add(this.peakLabelIonRadioButton);
+            this.groupBox2.Controls.Add(this.peakLabelRadioButtonsPanel);
+            this.groupBox2.Controls.Add(this.massTypeRadioButtonsPanel);
+            this.groupBox2.Controls.Add(this.massTolTextBox);
+            this.groupBox2.Controls.Add(this.label26);
+            this.groupBox2.Controls.Add(this.labelMassType);
+            this.groupBox2.Controls.Add(this.updateBtn);
             this.groupBox2.Controls.Add(this.label31);
             this.groupBox2.Controls.Add(this.label32);
-            this.groupBox2.Controls.Add(this.neutralLossH2OcheckBox);
+            this.groupBox2.Controls.Add(this.neutralLossH2OCheckBox);
             this.groupBox2.Controls.Add(this.labelPeakLabel);
             this.groupBox2.Controls.Add(this.label30);
             this.groupBox2.Controls.Add(this.label29);
@@ -340,44 +344,128 @@
             this.groupBox2.Controls.Add(this.label33);
             this.groupBox2.Controls.Add(this.label1);
             this.groupBox2.Controls.Add(this.label27);
-            this.groupBox2.Location = new System.Drawing.Point(7, 0);
+            this.groupBox2.Location = new System.Drawing.Point(7, -2);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(194, 262);
+            this.groupBox2.Size = new System.Drawing.Size(194, 390);
             this.groupBox2.TabIndex = 53;
             this.groupBox2.TabStop = false;
             // 
-            // peakLabelNoneRadioButton
+            // peakLabelRadioButtonsPanel
             // 
-            this.peakLabelNoneRadioButton.AutoSize = true;
-            this.peakLabelNoneRadioButton.Location = new System.Drawing.Point(137, 228);
-            this.peakLabelNoneRadioButton.Name = "peakLabelNoneRadioButton";
-            this.peakLabelNoneRadioButton.Size = new System.Drawing.Size(51, 17);
-            this.peakLabelNoneRadioButton.TabIndex = 69;
-            this.peakLabelNoneRadioButton.TabStop = true;
-            this.peakLabelNoneRadioButton.Text = "None";
-            this.peakLabelNoneRadioButton.UseVisualStyleBackColor = true;
-            // 
-            // peakLabelMzRadioButton
-            // 
-            this.peakLabelMzRadioButton.AutoSize = true;
-            this.peakLabelMzRadioButton.Location = new System.Drawing.Point(81, 228);
-            this.peakLabelMzRadioButton.Name = "peakLabelMzRadioButton";
-            this.peakLabelMzRadioButton.Size = new System.Drawing.Size(43, 17);
-            this.peakLabelMzRadioButton.TabIndex = 68;
-            this.peakLabelMzRadioButton.TabStop = true;
-            this.peakLabelMzRadioButton.Text = "m/z";
-            this.peakLabelMzRadioButton.UseVisualStyleBackColor = true;
+            this.peakLabelRadioButtonsPanel.Controls.Add(this.peakLabelIonRadioButton);
+            this.peakLabelRadioButtonsPanel.Controls.Add(this.peakLabelMzRadioButton);
+            this.peakLabelRadioButtonsPanel.Controls.Add(this.peakLabelNoneRadioButton);
+            this.peakLabelRadioButtonsPanel.Location = new System.Drawing.Point(6, 226);
+            this.peakLabelRadioButtonsPanel.Name = "peakLabelRadioButtonsPanel";
+            this.peakLabelRadioButtonsPanel.Size = new System.Drawing.Size(182, 24);
+            this.peakLabelRadioButtonsPanel.TabIndex = 73;
             // 
             // peakLabelIonRadioButton
             // 
             this.peakLabelIonRadioButton.AutoSize = true;
-            this.peakLabelIonRadioButton.Location = new System.Drawing.Point(17, 228);
+            this.peakLabelIonRadioButton.Location = new System.Drawing.Point(12, 2);
             this.peakLabelIonRadioButton.Name = "peakLabelIonRadioButton";
             this.peakLabelIonRadioButton.Size = new System.Drawing.Size(40, 17);
             this.peakLabelIonRadioButton.TabIndex = 67;
-            this.peakLabelIonRadioButton.TabStop = true;
             this.peakLabelIonRadioButton.Text = "Ion";
             this.peakLabelIonRadioButton.UseVisualStyleBackColor = true;
+            this.peakLabelIonRadioButton.CheckedChanged += new System.EventHandler(this.PeakLabelIonRadioButtonCheckedChanged);
+            // 
+            // peakLabelMzRadioButton
+            // 
+            this.peakLabelMzRadioButton.AutoSize = true;
+            this.peakLabelMzRadioButton.Location = new System.Drawing.Point(75, 2);
+            this.peakLabelMzRadioButton.Name = "peakLabelMzRadioButton";
+            this.peakLabelMzRadioButton.Size = new System.Drawing.Size(43, 17);
+            this.peakLabelMzRadioButton.TabIndex = 68;
+            this.peakLabelMzRadioButton.Text = "m/z";
+            this.peakLabelMzRadioButton.UseVisualStyleBackColor = true;
+            this.peakLabelMzRadioButton.CheckedChanged += new System.EventHandler(this.PeakLabelMzRadioButtonCheckedChanged);
+            // 
+            // peakLabelNoneRadioButton
+            // 
+            this.peakLabelNoneRadioButton.AutoSize = true;
+            this.peakLabelNoneRadioButton.Location = new System.Drawing.Point(125, 2);
+            this.peakLabelNoneRadioButton.Name = "peakLabelNoneRadioButton";
+            this.peakLabelNoneRadioButton.Size = new System.Drawing.Size(51, 17);
+            this.peakLabelNoneRadioButton.TabIndex = 69;
+            this.peakLabelNoneRadioButton.Text = "None";
+            this.peakLabelNoneRadioButton.UseVisualStyleBackColor = true;
+            this.peakLabelNoneRadioButton.CheckedChanged += new System.EventHandler(this.PeakLabelNoneRadioButtonCheckedChanged);
+            // 
+            // massTypeRadioButtonsPanel
+            // 
+            this.massTypeRadioButtonsPanel.Controls.Add(this.massTypeAvgRadioButton);
+            this.massTypeRadioButtonsPanel.Controls.Add(this.massTypeMonoRadioButton);
+            this.massTypeRadioButtonsPanel.Location = new System.Drawing.Point(6, 270);
+            this.massTypeRadioButtonsPanel.Name = "massTypeRadioButtonsPanel";
+            this.massTypeRadioButtonsPanel.Size = new System.Drawing.Size(182, 24);
+            this.massTypeRadioButtonsPanel.TabIndex = 72;
+            // 
+            // massTypeAvgRadioButton
+            // 
+            this.massTypeAvgRadioButton.AutoSize = true;
+            this.massTypeAvgRadioButton.Location = new System.Drawing.Point(75, 2);
+            this.massTypeAvgRadioButton.Name = "massTypeAvgRadioButton";
+            this.massTypeAvgRadioButton.Size = new System.Drawing.Size(44, 17);
+            this.massTypeAvgRadioButton.TabIndex = 71;
+            this.massTypeAvgRadioButton.TabStop = true;
+            this.massTypeAvgRadioButton.Text = "Avg";
+            this.massTypeAvgRadioButton.UseVisualStyleBackColor = true;
+            this.massTypeAvgRadioButton.CheckedChanged += new System.EventHandler(this.MassTypeAvgRadioButtonCheckedChanged);
+            // 
+            // massTypeMonoRadioButton
+            // 
+            this.massTypeMonoRadioButton.AutoSize = true;
+            this.massTypeMonoRadioButton.Location = new System.Drawing.Point(12, 2);
+            this.massTypeMonoRadioButton.Name = "massTypeMonoRadioButton";
+            this.massTypeMonoRadioButton.Size = new System.Drawing.Size(52, 17);
+            this.massTypeMonoRadioButton.TabIndex = 70;
+            this.massTypeMonoRadioButton.TabStop = true;
+            this.massTypeMonoRadioButton.Text = "Mono";
+            this.massTypeMonoRadioButton.UseVisualStyleBackColor = true;
+            this.massTypeMonoRadioButton.CheckedChanged += new System.EventHandler(this.MassTypeMonoRadioButtonCheckedChanged);
+            // 
+            // massTolTextBox
+            // 
+            this.massTolTextBox.AllowDecimal = true;
+            this.massTolTextBox.AllowGroupSeparator = false;
+            this.massTolTextBox.AllowNegative = false;
+            this.massTolTextBox.AllowSpace = false;
+            this.massTolTextBox.Location = new System.Drawing.Point(18, 317);
+            this.massTolTextBox.Name = "massTolTextBox";
+            this.massTolTextBox.Size = new System.Drawing.Size(69, 20);
+            this.massTolTextBox.TabIndex = 43;
+            // 
+            // label26
+            // 
+            this.label26.AutoSize = true;
+            this.label26.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold);
+            this.label26.Location = new System.Drawing.Point(3, 301);
+            this.label26.Name = "label26";
+            this.label26.Size = new System.Drawing.Size(62, 13);
+            this.label26.TabIndex = 44;
+            this.label26.Text = "Mass Tol:";
+            // 
+            // labelMassType
+            // 
+            this.labelMassType.AutoSize = true;
+            this.labelMassType.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold);
+            this.labelMassType.Location = new System.Drawing.Point(3, 256);
+            this.labelMassType.Name = "labelMassType";
+            this.labelMassType.Size = new System.Drawing.Size(72, 13);
+            this.labelMassType.TabIndex = 45;
+            this.labelMassType.Text = "Mass Type:";
+            // 
+            // updateBtn
+            // 
+            this.updateBtn.Location = new System.Drawing.Point(6, 356);
+            this.updateBtn.Name = "updateBtn";
+            this.updateBtn.Size = new System.Drawing.Size(59, 24);
+            this.updateBtn.TabIndex = 48;
+            this.updateBtn.Text = "&Update";
+            this.updateBtn.UseVisualStyleBackColor = true;
+            this.updateBtn.Click += new System.EventHandler(this.UpdateBtnClick);
             // 
             // label31
             // 
@@ -398,14 +486,15 @@
             this.label32.TabIndex = 55;
             this.label32.Text = "H";
             // 
-            // neutralLossH2OcheckBox
+            // neutralLossH2OCheckBox
             // 
-            this.neutralLossH2OcheckBox.AutoSize = true;
-            this.neutralLossH2OcheckBox.Location = new System.Drawing.Point(81, 185);
-            this.neutralLossH2OcheckBox.Name = "neutralLossH2OcheckBox";
-            this.neutralLossH2OcheckBox.Size = new System.Drawing.Size(15, 14);
-            this.neutralLossH2OcheckBox.TabIndex = 54;
-            this.neutralLossH2OcheckBox.UseVisualStyleBackColor = true;
+            this.neutralLossH2OCheckBox.AutoSize = true;
+            this.neutralLossH2OCheckBox.Location = new System.Drawing.Point(81, 185);
+            this.neutralLossH2OCheckBox.Name = "neutralLossH2OCheckBox";
+            this.neutralLossH2OCheckBox.Size = new System.Drawing.Size(15, 14);
+            this.neutralLossH2OCheckBox.TabIndex = 54;
+            this.neutralLossH2OCheckBox.UseVisualStyleBackColor = true;
+            this.neutralLossH2OCheckBox.CheckedChanged += new System.EventHandler(this.NeutralLossH2OcheckBoxCheckedChanged);
             // 
             // labelPeakLabel
             // 
@@ -454,6 +543,7 @@
             this.aIonSinglyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.aIonSinglyChargedCheckBox.TabIndex = 1;
             this.aIonSinglyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.aIonSinglyChargedCheckBox.CheckedChanged += new System.EventHandler(this.AIonSinglyChargedCheckBoxCheckedChanged);
             // 
             // neutralLossNH3CheckBox
             // 
@@ -463,6 +553,7 @@
             this.neutralLossNH3CheckBox.Size = new System.Drawing.Size(15, 14);
             this.neutralLossNH3CheckBox.TabIndex = 51;
             this.neutralLossNH3CheckBox.UseVisualStyleBackColor = true;
+            this.neutralLossNH3CheckBox.CheckedChanged += new System.EventHandler(this.NeutralLossNh3CheckBoxCheckedChanged);
             // 
             // labelNeutralLoss
             // 
@@ -482,6 +573,7 @@
             this.bIonSinglyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.bIonSinglyChargedCheckBox.TabIndex = 2;
             this.bIonSinglyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.bIonSinglyChargedCheckBox.CheckedChanged += new System.EventHandler(this.BIonSinglyChargedCheckBoxCheckedChanged);
             // 
             // cIonSinglyChargedCheckBox
             // 
@@ -491,6 +583,7 @@
             this.cIonSinglyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.cIonSinglyChargedCheckBox.TabIndex = 3;
             this.cIonSinglyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.cIonSinglyChargedCheckBox.CheckedChanged += new System.EventHandler(this.CIonSinglyChargedCheckBoxCheckedChanged);
             // 
             // label25
             // 
@@ -509,6 +602,7 @@
             this.xIonSinglyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.xIonSinglyChargedCheckBox.TabIndex = 4;
             this.xIonSinglyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.xIonSinglyChargedCheckBox.CheckedChanged += new System.EventHandler(this.XIonSinglyChargedCheckBoxCheckedChanged);
             // 
             // label24
             // 
@@ -527,6 +621,7 @@
             this.yIonSinglyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.yIonSinglyChargedCheckBox.TabIndex = 5;
             this.yIonSinglyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.yIonSinglyChargedCheckBox.CheckedChanged += new System.EventHandler(this.YIonSinglyChargedCheckBoxCheckedChanged);
             // 
             // label23
             // 
@@ -545,6 +640,7 @@
             this.zIonSinglyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.zIonSinglyChargedCheckBox.TabIndex = 6;
             this.zIonSinglyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.zIonSinglyChargedCheckBox.CheckedChanged += new System.EventHandler(this.ZIonSinglyChargedCheckBoxCheckedChanged);
             // 
             // label22
             // 
@@ -563,6 +659,7 @@
             this.aIonDoublyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.aIonDoublyChargedCheckBox.TabIndex = 7;
             this.aIonDoublyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.aIonDoublyChargedCheckBox.CheckedChanged += new System.EventHandler(this.AIonDoublyChargedCheckBoxCheckedChanged);
             // 
             // label21
             // 
@@ -581,6 +678,7 @@
             this.bIonDoublyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.bIonDoublyChargedCheckBox.TabIndex = 8;
             this.bIonDoublyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.bIonDoublyChargedCheckBox.CheckedChanged += new System.EventHandler(this.BIonDoublyChargedCheckBoxCheckedChanged);
             // 
             // label20
             // 
@@ -599,6 +697,7 @@
             this.cIonDoublyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.cIonDoublyChargedCheckBox.TabIndex = 9;
             this.cIonDoublyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.cIonDoublyChargedCheckBox.CheckedChanged += new System.EventHandler(this.CIonDoublyChargedCheckBoxCheckedChanged);
             // 
             // label19
             // 
@@ -617,6 +716,7 @@
             this.xIonDoublyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.xIonDoublyChargedCheckBox.TabIndex = 10;
             this.xIonDoublyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.xIonDoublyChargedCheckBox.CheckedChanged += new System.EventHandler(this.XIonDoublyChargedCheckBoxCheckedChanged);
             // 
             // label18
             // 
@@ -635,6 +735,7 @@
             this.yIonDoublyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.yIonDoublyChargedCheckBox.TabIndex = 11;
             this.yIonDoublyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.yIonDoublyChargedCheckBox.CheckedChanged += new System.EventHandler(this.YIonDoublyChargedCheckBoxCheckedChanged);
             // 
             // label17
             // 
@@ -653,6 +754,7 @@
             this.zIonDoublyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.zIonDoublyChargedCheckBox.TabIndex = 12;
             this.zIonDoublyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.zIonDoublyChargedCheckBox.CheckedChanged += new System.EventHandler(this.ZIonDoublyChargedCheckBoxCheckedChanged);
             // 
             // label16
             // 
@@ -671,6 +773,7 @@
             this.aIonTriplyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.aIonTriplyChargedCheckBox.TabIndex = 13;
             this.aIonTriplyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.aIonTriplyChargedCheckBox.CheckedChanged += new System.EventHandler(this.AIonTriplyChargedCheckBoxCheckedChanged);
             // 
             // label15
             // 
@@ -689,6 +792,7 @@
             this.bIonTriplyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.bIonTriplyChargedCheckBox.TabIndex = 14;
             this.bIonTriplyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.bIonTriplyChargedCheckBox.CheckedChanged += new System.EventHandler(this.BIonTriplyChargedCheckBoxCheckedChanged);
             // 
             // label14
             // 
@@ -707,6 +811,7 @@
             this.cIonTriplyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.cIonTriplyChargedCheckBox.TabIndex = 15;
             this.cIonTriplyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.cIonTriplyChargedCheckBox.CheckedChanged += new System.EventHandler(this.CIonTriplyChargedCheckBoxCheckedChanged);
             // 
             // label13
             // 
@@ -725,6 +830,7 @@
             this.xIonTriplyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.xIonTriplyChargedCheckBox.TabIndex = 16;
             this.xIonTriplyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.xIonTriplyChargedCheckBox.CheckedChanged += new System.EventHandler(this.XIonTriplyChargedCheckBoxCheckedChanged);
             // 
             // label12
             // 
@@ -743,6 +849,7 @@
             this.yIonTriplyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.yIonTriplyChargedCheckBox.TabIndex = 17;
             this.yIonTriplyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.yIonTriplyChargedCheckBox.CheckedChanged += new System.EventHandler(this.YIonTriplyChargedCheckBoxCheckedChanged);
             // 
             // label11
             // 
@@ -761,6 +868,7 @@
             this.zIonTriplyChargedCheckBox.Size = new System.Drawing.Size(15, 14);
             this.zIonTriplyChargedCheckBox.TabIndex = 18;
             this.zIonTriplyChargedCheckBox.UseVisualStyleBackColor = true;
+            this.zIonTriplyChargedCheckBox.CheckedChanged += new System.EventHandler(this.ZIonTriplyChargedCheckBoxCheckedChanged);
             // 
             // label10
             // 
@@ -875,82 +983,6 @@
             this.label27.Size = new System.Drawing.Size(19, 13);
             this.label27.TabIndex = 66;
             this.label27.Text = "(o)";
-            // 
-            // groupBox1
-            // 
-            this.groupBox1.Controls.Add(this.updateBtn);
-            this.groupBox1.Controls.Add(this.labelMassType);
-            this.groupBox1.Controls.Add(this.label26);
-            this.groupBox1.Controls.Add(this.massTolTextBox);
-            this.groupBox1.Controls.Add(this.massTypeMonoRadioButton);
-            this.groupBox1.Controls.Add(this.massTypeAvgRadioButton);
-            this.groupBox1.Location = new System.Drawing.Point(7, 262);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(194, 122);
-            this.groupBox1.TabIndex = 52;
-            this.groupBox1.TabStop = false;
-            // 
-            // updateBtn
-            // 
-            this.updateBtn.Location = new System.Drawing.Point(131, 83);
-            this.updateBtn.Name = "updateBtn";
-            this.updateBtn.Size = new System.Drawing.Size(57, 23);
-            this.updateBtn.TabIndex = 48;
-            this.updateBtn.Text = "&Update";
-            this.updateBtn.UseVisualStyleBackColor = true;
-            // 
-            // labelMassType
-            // 
-            this.labelMassType.AutoSize = true;
-            this.labelMassType.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold);
-            this.labelMassType.Location = new System.Drawing.Point(6, 16);
-            this.labelMassType.Name = "labelMassType";
-            this.labelMassType.Size = new System.Drawing.Size(72, 13);
-            this.labelMassType.TabIndex = 45;
-            this.labelMassType.Text = "Mass Type:";
-            // 
-            // label26
-            // 
-            this.label26.AutoSize = true;
-            this.label26.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold);
-            this.label26.Location = new System.Drawing.Point(6, 68);
-            this.label26.Name = "label26";
-            this.label26.Size = new System.Drawing.Size(62, 13);
-            this.label26.TabIndex = 44;
-            this.label26.Text = "Mass Tol:";
-            // 
-            // massTolTextBox
-            // 
-            this.massTolTextBox.AllowDecimal = true;
-            this.massTolTextBox.AllowGroupSeparator = false;
-            this.massTolTextBox.AllowNegative = false;
-            this.massTolTextBox.AllowSpace = false;
-            this.massTolTextBox.Location = new System.Drawing.Point(17, 84);
-            this.massTolTextBox.Name = "massTolTextBox";
-            this.massTolTextBox.Size = new System.Drawing.Size(69, 20);
-            this.massTolTextBox.TabIndex = 43;
-            // 
-            // massTypeMonoRadioButton
-            // 
-            this.massTypeMonoRadioButton.AutoSize = true;
-            this.massTypeMonoRadioButton.Location = new System.Drawing.Point(81, 32);
-            this.massTypeMonoRadioButton.Name = "massTypeMonoRadioButton";
-            this.massTypeMonoRadioButton.Size = new System.Drawing.Size(52, 17);
-            this.massTypeMonoRadioButton.TabIndex = 47;
-            this.massTypeMonoRadioButton.TabStop = true;
-            this.massTypeMonoRadioButton.Text = "Mono";
-            this.massTypeMonoRadioButton.UseVisualStyleBackColor = true;
-            // 
-            // massTypeAvgRadioButton
-            // 
-            this.massTypeAvgRadioButton.AutoSize = true;
-            this.massTypeAvgRadioButton.Location = new System.Drawing.Point(17, 32);
-            this.massTypeAvgRadioButton.Name = "massTypeAvgRadioButton";
-            this.massTypeAvgRadioButton.Size = new System.Drawing.Size(44, 17);
-            this.massTypeAvgRadioButton.TabIndex = 46;
-            this.massTypeAvgRadioButton.TabStop = true;
-            this.massTypeAvgRadioButton.Text = "Avg";
-            this.massTypeAvgRadioButton.UseVisualStyleBackColor = true;
             // 
             // spectrumGraphSplitContainer
             // 
@@ -1120,8 +1152,10 @@
             this.graphOptionsPanel.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
+            this.peakLabelRadioButtonsPanel.ResumeLayout(false);
+            this.peakLabelRadioButtonsPanel.PerformLayout();
+            this.massTypeRadioButtonsPanel.ResumeLayout(false);
+            this.massTypeRadioButtonsPanel.PerformLayout();
             this.spectrumGraphSplitContainer.Panel1.ResumeLayout(false);
             this.spectrumGraphSplitContainer.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.spectrumGraphSplitContainer)).EndInit();
@@ -1204,15 +1238,12 @@
         private NumericTextBox massTolTextBox;
         private System.Windows.Forms.Label label26;
         private System.Windows.Forms.Label labelMassType;
-        private System.Windows.Forms.RadioButton massTypeMonoRadioButton;
-        private System.Windows.Forms.RadioButton massTypeAvgRadioButton;
         private System.Windows.Forms.CheckBox neutralLossNH3CheckBox;
         private System.Windows.Forms.Label labelNeutralLoss;
-        private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Label label31;
         private System.Windows.Forms.Label label32;
-        private System.Windows.Forms.CheckBox neutralLossH2OcheckBox;
+        private System.Windows.Forms.CheckBox neutralLossH2OCheckBox;
         private System.Windows.Forms.Label label30;
         private System.Windows.Forms.Label label29;
         private System.Windows.Forms.Label label33;
@@ -1224,5 +1255,9 @@
         private System.Windows.Forms.RadioButton peakLabelIonRadioButton;
         private System.Windows.Forms.RadioButton peakLabelMzRadioButton;
         private System.Windows.Forms.RadioButton peakLabelNoneRadioButton;
+        private System.Windows.Forms.RadioButton massTypeAvgRadioButton;
+        private System.Windows.Forms.RadioButton massTypeMonoRadioButton;
+        private System.Windows.Forms.Panel massTypeRadioButtonsPanel;
+        private System.Windows.Forms.Panel peakLabelRadioButtonsPanel;
     }
 }

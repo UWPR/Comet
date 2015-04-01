@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace CometUI.ViewResults
 {
@@ -7,14 +8,12 @@ namespace CometUI.ViewResults
     {
         private void AddFragmentIon(SpectrumGraphUserOptions userOptions, List<FragmentIon> fragmentIons, double singlyChargedMass, int charge, IonType ionType, int ionNum, MassSpecUtils.NeutralLoss neutralLoss = MassSpecUtils.NeutralLoss.None)
         {
-            // A few checks before adding the ion:
-            //      1) Make sure the user has specified this ion type
-            //      2) Make sure the user wants to see this charge on this ion
-            //      3) If this is a netural loss ion, make sure user wants to see the neutral loss ion
-            List<int> ionCharges;
-            if (userOptions.UseIonsMap.TryGetValue(ionType, out ionCharges) && 
-                ionCharges.Contains(charge) &&
-                (userOptions.NeutralLoss == neutralLoss))
+            // Calculate this ion only if:
+            //   * the user wants to see this particular ion and charge combination
+            //   * either it is NOT a neutral loss ion, OR
+            //   * if it IS an neutral loss ion, and the user wants to see this particular neutral loss ion
+            if (IsShowThisIonAndCharge(userOptions, ionType, charge) &&
+                (!IsNeutralLossIon(neutralLoss) || IsShowThisNeutralLossIon(userOptions, neutralLoss)))
             {
                 var chargeStr = String.Empty;
                 for (int i = 0; i < charge; i++)
@@ -81,6 +80,22 @@ namespace CometUI.ViewResults
             }
         }
 
+        private bool IsShowThisIonAndCharge(SpectrumGraphUserOptions userOptions, IonType ionType, int charge)
+        {
+            List<int> ionCharges;
+            return userOptions.UseIonsMap.TryGetValue(ionType, out ionCharges) && ionCharges.Contains(charge);
+        }
+
+        private bool IsNeutralLossIon(MassSpecUtils.NeutralLoss neutralLoss)
+        {
+            return neutralLoss != MassSpecUtils.NeutralLoss.None;
+        }
+
+        private bool IsShowThisNeutralLossIon(SpectrumGraphUserOptions userOptions, MassSpecUtils.NeutralLoss neutralLoss)
+        {
+            return userOptions.NeutralLoss.Contains(neutralLoss);
+        }
+
         public void CalculateIons(SearchResult result, SpectrumGraphUserOptions userOptions)
         {
             MassSpecUtils.InitializeMassTables(userOptions.MassType == MassSpecUtils.MassType.Monoisotopic);
@@ -108,7 +123,7 @@ namespace CometUI.ViewResults
             var fragmentIons = new List<FragmentIon>();
             for (int i = 0; i < peptideLen; i++)
             {
-                if (i <= peptideLen)
+                if (i < peptideLen-1)
                 {
                     if (modArray[i].Equals(0.0))
                     {
@@ -172,6 +187,50 @@ namespace CometUI.ViewResults
                     AddFragmentIon(userOptions, fragmentIons, zIon, 3, IonType.Z, i);                                  // Triply charged
                 }
             }
+
+            //// Write to a test file to check the fragment ion calculations
+            //using (var file = new StreamWriter(@"C:\Projects\Comet\TestFiles\FragmentIons.txt"))
+            //{
+            //    WriteIonsToTestFile(file, fragmentIons, 1, IonType.A);
+            //    WriteIonsToTestFile(file, fragmentIons, 2, IonType.A);
+            //    WriteIonsToTestFile(file, fragmentIons, 3, IonType.A);
+
+            //    WriteIonsToTestFile(file, fragmentIons, 1, IonType.B);
+            //    WriteIonsToTestFile(file, fragmentIons, 2, IonType.B);
+            //    WriteIonsToTestFile(file, fragmentIons, 3, IonType.B);
+
+            //    WriteIonsToTestFile(file, fragmentIons, 1, IonType.C);
+            //    WriteIonsToTestFile(file, fragmentIons, 2, IonType.C);
+            //    WriteIonsToTestFile(file, fragmentIons, 3, IonType.C);
+
+            //    WriteIonsToTestFile(file, fragmentIons, 1, IonType.X);
+            //    WriteIonsToTestFile(file, fragmentIons, 2, IonType.X);
+            //    WriteIonsToTestFile(file, fragmentIons, 3, IonType.X);
+
+            //    WriteIonsToTestFile(file, fragmentIons, 1, IonType.Y);
+            //    WriteIonsToTestFile(file, fragmentIons, 2, IonType.Y);
+            //    WriteIonsToTestFile(file, fragmentIons, 3, IonType.Y);
+
+            //    WriteIonsToTestFile(file, fragmentIons, 1, IonType.Z);
+            //    WriteIonsToTestFile(file, fragmentIons, 2, IonType.Z);
+            //    WriteIonsToTestFile(file, fragmentIons, 3, IonType.Z);
+            //}
+
+        }
+
+        private void WriteIonsToTestFile(StreamWriter file, IEnumerable<FragmentIon> fragmentIons, int charge, IonType ionType)
+        {
+            var header = String.Format("\nCharge {0}\n", charge);
+            file.WriteLine(header);
+            foreach (var ion in fragmentIons)
+            {
+                if (ion.Charge == charge && ion.Type == ionType)
+                {
+                    var line = String.Format("{0}\t{1}", ion.Label, ion.Mass);
+                    file.WriteLine(line);
+                }
+            }
+            file.WriteLine("\n");
         }
     }
 

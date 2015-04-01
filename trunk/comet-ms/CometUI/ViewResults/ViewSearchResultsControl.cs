@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
 using CometUI.Properties;
@@ -21,14 +20,17 @@ namespace CometUI.ViewResults
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
         private ViewResultsPickColumnsControl ViewResultsPickColumnsControl { get; set; }
         private SearchResultsManager SearchResultsMgr { get; set; }
+        private SearchResult ViewSpectraSearchResult { get; set; }
         private SpectrumGraphUserOptions SpectrumGraphUserOptions { get; set; }
+        private List<Peak_T_Wrapper> Peaks { get; set; }
+        private PeptideFragmentCalculator IonCalculator { get; set; }
 
-        private const String BlastHttpLink = "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
+        private const String BlastHttpLink =
+            "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
+
         private const int DetailsPanelExtraHeight = 150;
 
         private const double DefaultMassTol = 0.5;
-
-        private const int MaxIonCharge = 3;
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -73,7 +75,7 @@ namespace CometUI.ViewResults
             InitializeFromDefaultSettings();
 
             ShowDetailsPanel(false);
-   
+
             UpdateViewSearchResults(String.Empty);
         }
 
@@ -85,7 +87,7 @@ namespace CometUI.ViewResults
             if (null != resultsPepXMLFile)
             {
                 ShowResultsListPanel(String.Empty != resultsPepXMLFile);
-                
+
                 if (!ViewResultsSummaryOptionsControl.UpdateSummaryOptions(resultsPepXMLFile))
                 {
                     ErrorMessage = SearchResultsMgr.ErrorMessage;
@@ -144,10 +146,10 @@ namespace CometUI.ViewResults
                     }
 
                     var olvColumn = new OLVColumn(columnHeader, resultCol.Aspect)
-                    {
-                        Hyperlink = resultCol.Hyperlink,
-                        MinimumWidth = 30
-                    };
+                                        {
+                                            Hyperlink = resultCol.Hyperlink,
+                                            MinimumWidth = 30
+                                        };
 
                     resultsListView.Columns.Add(olvColumn);
                 }
@@ -191,7 +193,7 @@ namespace CometUI.ViewResults
         private void ShowHideOptionsBtnClick(object sender, EventArgs e)
         {
             SettingsChanged = true;
-            
+
             if (OptionsPanelShown)
             {
                 HideViewOptionsPanel();
@@ -289,7 +291,7 @@ namespace CometUI.ViewResults
 
                     // Show the path of the protein database file
                     databaseLabel.Text = Resources.ViewSearchResultsControl_ShowProteinSequence_Database__
-                        + SearchResultsMgr.SearchDatabaseFile;
+                                         + SearchResultsMgr.SearchDatabaseFile;
 
                     // Show the protein
                     proteinSequenceTextBox.Text = proteinSequence;
@@ -306,19 +308,25 @@ namespace CometUI.ViewResults
                 ShowProteinSequenceUI(false);
                 ShowDetailsPanel(false);
 
-                if (DialogResult.Yes == MessageBox.Show(Resources.ViewSearchResultsControl_ShowProteinSequence_Could_not_find_the_protein_database_file__
-                    + exception.Message
-                    + Environment.NewLine + Environment.NewLine
-                    + Resources.ViewSearchResultsControl_ShowProteinSequence_Would_you_like_to_specify_an_alternate_path_to_the_file_,
-                                Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
+                if (DialogResult.Yes ==
+                    MessageBox.Show(
+                        Resources.
+                            ViewSearchResultsControl_ShowProteinSequence_Could_not_find_the_protein_database_file__
+                        + exception.Message
+                        + Environment.NewLine + Environment.NewLine
+                        +
+                        Resources.
+                            ViewSearchResultsControl_ShowProteinSequence_Would_you_like_to_specify_an_alternate_path_to_the_file_,
+                        Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error,
+                        MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
                 {
                     var findProteinDBDlg = new FindFileDlg
                                                {
                                                    OpenFileDlgTitle =
                                                        Resources.
                                                        ViewSearchResultsControl_Open_Protein_Database_File_Dlg_Title,
-                                                       DlgTitle = "Find Protein DB File",
-                                                       FileComboLabel = "Protein DB File:"
+                                                   DlgTitle = "Find Protein DB File",
+                                                   FileComboLabel = "Protein DB File:"
                                                };
                     if (DialogResult.OK == findProteinDBDlg.ShowDialog())
                     {
@@ -336,21 +344,32 @@ namespace CometUI.ViewResults
         private void OnIonsLinkClick(HyperlinkClickedEventArgs e)
         {
             // Make sure the protein sequence UI gets hidden first
-            ShowProteinSequenceUI(false); 
+            ShowProteinSequenceUI(false);
 
             var result = e.Model as SearchResult;
             if (null != result)
             {
-                InitializeSpectrumGraphUserOptions();
-                ViewSpectra(result);
+                ViewSpectraSearchResult = result;
+                ViewSpectra();
             }
         }
 
-        private void ViewSpectra(SearchResult result)
+        private void ViewSpectra()
         {
+            if (null == IonCalculator)
+            {
+                IonCalculator = new PeptideFragmentCalculator();
+            }
+
+            if (null != Peaks)
+            {
+                Peaks.Clear();
+            }
+
             var msFileReaderWrapper = new MSFileReaderWrapper();
-            var peaks = new List<Peak_T_Wrapper>();
-            if (msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, result.StartScan, SearchResultsMgr.SearchParams.MSLevel, peaks))
+            Peaks = new List<Peak_T_Wrapper>();
+            if (msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, ViewSpectraSearchResult.StartScan,
+                                              SearchResultsMgr.SearchParams.MSLevel, Peaks))
             {
                 InitializeSpectrumGraph();
 
@@ -362,122 +381,78 @@ namespace CometUI.ViewResults
                 // 2) draw the table of ions
                 // 3) provide the user options for the graph
 
-                DrawSpectrumGraph(result, peaks);
+                DrawSpectrumGraph();
             }
             else
             {
                 ShowViewSpectraUI(false);
                 ShowDetailsPanel(false);
 
-                if (DialogResult.Yes == MessageBox.Show(Resources.ViewSearchResultsControl_ViewSpectra_Could_not_read_the_spectra_file__Would_you_like_to_try_specifying_an_alternate_path_to_the_file_, 
-                    Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
+                if (DialogResult.Yes ==
+                    MessageBox.Show(
+                        Resources.
+                            ViewSearchResultsControl_ViewSpectra_Could_not_read_the_spectra_file__Would_you_like_to_try_specifying_an_alternate_path_to_the_file_,
+                        Resources.ViewSearchResultsControl_ShowProteinSequence_View_Results_Error,
+                        MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error))
                 {
                     var findSpectraFileDlg = new FindFileDlg
-                    {
-                        OpenFileDlgTitle = "Open Spectra File",
-                        DlgTitle = "Find Spectra File",
-                        FileComboLabel = "Spectra File:"
-                    };
+                                                 {
+                                                     OpenFileDlgTitle = "Open Spectra File",
+                                                     DlgTitle = "Find Spectra File",
+                                                     FileComboLabel = "Spectra File:"
+                                                 };
                     if (DialogResult.OK == findSpectraFileDlg.ShowDialog())
                     {
                         SearchResultsMgr.SpectraFile = findSpectraFileDlg.FileName;
 
-                        ViewSpectra(result);
+                        ViewSpectra();
                     }
                 }
             }
         }
 
-        private void InitializeSpectrumGraphUserOptions()
-        {
-            SpectrumGraphUserOptions.MassTol = DefaultMassTol;
-            SpectrumGraphUserOptions.MassType = SearchResultsMgr.SearchParams.MassTypeFragment;
-            SpectrumGraphUserOptions.NeutralLoss = MassSpecUtils.NeutralLoss.None;
-            SpectrumGraphUserOptions.PeakLabel = PeakLabel.Ion;
-
-            SpectrumGraphUserOptions.UseIonsMap.Clear();
-
-            if (SearchResultsMgr.SearchParams.UseAIons)
-            {
-                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.A, new List<int> { 1 });
-            }
-
-            if (SearchResultsMgr.SearchParams.UseBIons)
-            {
-                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.B, new List<int> { 1 });
-            }
-
-            if (SearchResultsMgr.SearchParams.UseCIons)
-            {
-                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.C, new List<int> { 1 });
-            }
-
-            if (SearchResultsMgr.SearchParams.UseXIons)
-            {
-                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.X, new List<int> { 1 });
-            }
-
-            if (SearchResultsMgr.SearchParams.UseYIons)
-            {
-                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.Y, new List<int> { 1 });
-            }
-
-            if (SearchResultsMgr.SearchParams.UseZIons)
-            {
-                SpectrumGraphUserOptions.UseIonsMap.Add(IonType.Z, new List<int> { 1 });
-            }
-        }
-
         private void InitializeSpectrumGraph()
         {
-            InitializeIonCharge(aIonSinglyChargedCheckBox, 1, IonType.A);
-            InitializeIonCharge(aIonDoublyChargedCheckBox, 2, IonType.A);
-            InitializeIonCharge(aIonTriplyChargedCheckBox, 3, IonType.A);
+            aIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseAIons;
+            aIonDoublyChargedCheckBox.Checked = false;
+            aIonTriplyChargedCheckBox.Checked = false;
 
-            InitializeIonCharge(bIonSinglyChargedCheckBox, 1, IonType.B);
-            InitializeIonCharge(bIonDoublyChargedCheckBox, 2, IonType.B);
-            InitializeIonCharge(bIonTriplyChargedCheckBox, 3, IonType.B);
+            bIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseBIons;
+            bIonDoublyChargedCheckBox.Checked = false;
+            bIonTriplyChargedCheckBox.Checked = false;
 
-            InitializeIonCharge(cIonSinglyChargedCheckBox, 1, IonType.C);
-            InitializeIonCharge(cIonDoublyChargedCheckBox, 2, IonType.C);
-            InitializeIonCharge(cIonTriplyChargedCheckBox, 3, IonType.C);
+            cIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseCIons;
+            cIonDoublyChargedCheckBox.Checked = false;
+            cIonTriplyChargedCheckBox.Checked = false;
 
-            InitializeIonCharge(xIonSinglyChargedCheckBox, 1, IonType.X);
-            InitializeIonCharge(xIonDoublyChargedCheckBox, 2, IonType.X);
-            InitializeIonCharge(xIonTriplyChargedCheckBox, 3, IonType.X);
+            xIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseXIons;
+            xIonDoublyChargedCheckBox.Checked = false;
+            xIonTriplyChargedCheckBox.Checked = false;
 
-            InitializeIonCharge(yIonSinglyChargedCheckBox, 1, IonType.Y);
-            InitializeIonCharge(yIonDoublyChargedCheckBox, 2, IonType.Y);
-            InitializeIonCharge(yIonTriplyChargedCheckBox, 3, IonType.Y);
+            yIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseYIons;
+            yIonDoublyChargedCheckBox.Checked = false;
+            yIonTriplyChargedCheckBox.Checked = false;
 
-            InitializeIonCharge(zIonSinglyChargedCheckBox, 1, IonType.Z);
-            InitializeIonCharge(zIonDoublyChargedCheckBox, 2, IonType.Z);
-            InitializeIonCharge(zIonTriplyChargedCheckBox, 3, IonType.Z);
+            zIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseZIons;
+            zIonDoublyChargedCheckBox.Checked = false;
+            zIonTriplyChargedCheckBox.Checked = false;
 
-
-            massTypeAvgRadioButton.Checked = SpectrumGraphUserOptions.MassType == MassSpecUtils.MassType.Average;
-            massTypeMonoRadioButton.Checked = SpectrumGraphUserOptions.MassType == MassSpecUtils.MassType.Monoisotopic;
-
-            massTolTextBox.Text = Convert.ToString(SpectrumGraphUserOptions.MassTol);
-
-            peakLabelIonRadioButton.Checked = SpectrumGraphUserOptions.PeakLabel == PeakLabel.Ion;
-            peakLabelMzRadioButton.Checked = SpectrumGraphUserOptions.PeakLabel == PeakLabel.Mz;
-            peakLabelNoneRadioButton.Checked = SpectrumGraphUserOptions.PeakLabel == PeakLabel.None;
-        }
-
-        private void InitializeIonCharge(CheckBox ionChargeCheckBox, int ionCharge, IonType ionType)
-        {
-            List<int> ionCharges;
-            if (SpectrumGraphUserOptions.UseIonsMap.TryGetValue(ionType, out ionCharges))
+            if (MassSpecUtils.MassType.Average == SearchResultsMgr.SearchParams.MassTypeFragment)
             {
-                if (ionCharges.Contains(ionCharge))
-                {
-                    ionChargeCheckBox.Checked = true;
-                }
+                massTypeAvgRadioButton.Checked = true;
             }
+
+            if (MassSpecUtils.MassType.Monoisotopic == SearchResultsMgr.SearchParams.MassTypeFragment)
+            {
+                massTypeMonoRadioButton.Checked = true;
+            }
+
+            massTolTextBox.Text = Convert.ToString(DefaultMassTol);
+
+            peakLabelIonRadioButton.Checked = true;
         }
 
-        private void DrawSpectrumGraph(SearchResult result, IEnumerable<Peak_T_Wrapper> peaks)
+        private void DrawSpectrumGraph()
         {
             // Todo: This is work in progress, there's lots left to do here!
             spectrumGraphItem.GraphPane.GraphObjList.Clear();
@@ -485,7 +460,8 @@ namespace CometUI.ViewResults
             GraphPane graphPane = spectrumGraphItem.GraphPane;
 
             // Set the titles and axis labels
-            graphPane.Title.Text = result.Peptide + Environment.NewLine + SearchResultsMgr.ResultsPepXMLFile;
+            graphPane.Title.Text = ViewSpectraSearchResult.Peptide + Environment.NewLine +
+                                   SearchResultsMgr.ResultsPepXMLFile;
             graphPane.XAxis.Title.Text = "m/z";
             //graphPane.XAxis.Scale.Max = Convert.ToDouble(XMaxTextBox.Text);
             //graphPane.XAxis.Scale.Min = Convert.ToDouble(XMinTextBox.Text);
@@ -494,12 +470,11 @@ namespace CometUI.ViewResults
             //graphPane.YAxis.Scale.Max = Convert.ToDouble(YMaxTextBox.Text);
 
             var peaksList = new PointPairList();
-            foreach (var peak in peaks)
+            foreach (var peak in Peaks)
             {
                 peaksList.Add(peak.get_mz(), peak.get_intensity());
             }
 
-            // Draw the QValue plot
             graphPane.AddCurve(null, peaksList, Color.Black, SymbolType.None);
 
             // Calculate the Axis Scale Ranges
@@ -508,8 +483,12 @@ namespace CometUI.ViewResults
             // Redraw the whole graph control for smooth transition
             spectrumGraphItem.Invalidate();
 
-            var calculator = new PeptideFragmentCalculator();
-            calculator.CalculateIons(result, SpectrumGraphUserOptions);
+            DrawIons();
+        }
+
+        private void DrawIons()
+        {
+            IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
         }
 
         private void HideDetailsPanelButtonClick(object sender, EventArgs e)
@@ -536,7 +515,7 @@ namespace CometUI.ViewResults
             {
                 ShrinkDetailsPanel();
             }
-            
+
             viewSpectraSplitContainer.Visible = show;
         }
 
@@ -548,6 +527,227 @@ namespace CometUI.ViewResults
         private void GrowDetailsPanel()
         {
             detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height + DetailsPanelExtraHeight);
+        }
+
+        private void NeutralLossNh3CheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            OnNeutralLossChanged(neutralLossNH3CheckBox, MassSpecUtils.NeutralLoss.NH3);
+        }
+
+        private void NeutralLossH2OcheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            OnNeutralLossChanged(neutralLossH2OCheckBox, MassSpecUtils.NeutralLoss.H2O);
+        }
+
+        private void OnNeutralLossChanged(CheckBox neutralLossCheckBox, MassSpecUtils.NeutralLoss neutralLoss)
+        {
+            if (neutralLossCheckBox.Checked)
+            {
+                SpectrumGraphUserOptions.NeutralLoss.Add(neutralLoss);
+            }
+            else
+            {
+                SpectrumGraphUserOptions.NeutralLoss.Remove(neutralLoss);
+            }
+        }
+
+        private void PeakLabelIonRadioButtonCheckedChanged(object sender, EventArgs e)
+        {
+            OnPeakLabelChanged(peakLabelIonRadioButton, PeakLabel.Ion);
+        }
+
+        private void PeakLabelMzRadioButtonCheckedChanged(object sender, EventArgs e)
+        {
+            OnPeakLabelChanged(peakLabelMzRadioButton, PeakLabel.Mz);
+        }
+
+        private void PeakLabelNoneRadioButtonCheckedChanged(object sender, EventArgs e)
+        {
+            OnPeakLabelChanged(peakLabelNoneRadioButton, PeakLabel.None);
+        }
+
+        private void OnPeakLabelChanged(RadioButton pealLabelRadioButton, PeakLabel peakLabel)
+        {
+            if (pealLabelRadioButton.Checked)
+            {
+                SpectrumGraphUserOptions.PeakLabel = peakLabel;
+            }
+        }
+
+        private void MassTypeAvgRadioButtonCheckedChanged(object sender, EventArgs e)
+        {
+            if (massTypeAvgRadioButton.Checked)
+            {
+                SpectrumGraphUserOptions.MassType = MassSpecUtils.MassType.Average;
+            }
+        }
+
+        private void MassTypeMonoRadioButtonCheckedChanged(object sender, EventArgs e)
+        {
+            if (massTypeMonoRadioButton.Checked)
+            {
+                SpectrumGraphUserOptions.MassType = MassSpecUtils.MassType.Monoisotopic;
+            }
+        }
+
+        private void UpdateBtnClick(object sender, EventArgs e)
+        {
+            SpectrumGraphUserOptions.MassTol = Convert.ToDouble(massTolTextBox.Text);
+            DrawIons();
+        }
+
+        private void AIonSinglyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(aIonSinglyChargedCheckBox.Checked, IonType.A, 1);
+        }
+
+        private void AIonDoublyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(aIonDoublyChargedCheckBox.Checked, IonType.A, 2);
+        }
+
+        private void AIonTriplyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(aIonTriplyChargedCheckBox.Checked, IonType.A, 3);
+        }
+
+        private void BIonSinglyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(bIonSinglyChargedCheckBox.Checked, IonType.B, 1);
+        }
+
+        private void BIonDoublyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(bIonDoublyChargedCheckBox.Checked, IonType.B, 2);
+        }
+
+        private void BIonTriplyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(bIonTriplyChargedCheckBox.Checked, IonType.B, 3);
+        }
+
+        private void CIonSinglyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(cIonSinglyChargedCheckBox.Checked, IonType.C, 1);
+        }
+
+        private void CIonDoublyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(cIonDoublyChargedCheckBox.Checked, IonType.C, 2);
+        }
+
+        private void CIonTriplyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(cIonTriplyChargedCheckBox.Checked, IonType.C, 3);
+        }
+
+        private void XIonSinglyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(xIonSinglyChargedCheckBox.Checked, IonType.X, 1);
+        }
+
+        private void XIonDoublyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(xIonDoublyChargedCheckBox.Checked, IonType.X, 2);
+        }
+
+        private void XIonTriplyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(xIonTriplyChargedCheckBox.Checked, IonType.X, 3);
+        }
+
+        private void YIonSinglyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(yIonSinglyChargedCheckBox.Checked, IonType.Y, 1);
+        }
+
+        private void YIonDoublyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(yIonDoublyChargedCheckBox.Checked, IonType.Y, 2);
+        }
+
+        private void YIonTriplyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(yIonTriplyChargedCheckBox.Checked, IonType.Y, 3);
+        }
+
+        private void ZIonSinglyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(zIonSinglyChargedCheckBox.Checked, IonType.Z, 1);
+        }
+
+        private void ZIonDoublyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(zIonDoublyChargedCheckBox.Checked, IonType.Z, 2);
+        }
+
+        private void ZIonTriplyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUseIonsMap(zIonTriplyChargedCheckBox.Checked, IonType.Z, 3);
+        }
+
+        private void UpdateUseIonsMap(bool useIonCharge, IonType ionType, int ionCharge)
+        {
+            if (useIonCharge)
+            {
+                List<int> charges;
+                if (!SpectrumGraphUserOptions.UseIonsMap.TryGetValue(ionType, out charges))
+                {
+                    // The IonType doesn't exist in the map at all, simply add the (IonType, charge) pair to it
+                    SpectrumGraphUserOptions.UseIonsMap.Add(ionType, new List<int> { ionCharge });
+                }
+                else
+                {
+                    // The IonType exists in the map, but check to see if the charge exists for the IonType
+                    // If the charge also exists, do nothing, since we already have this pair in the map.
+                    if (!charges.Contains(ionCharge))
+                    {
+                        // If the charge does NOT exist, we need to add it and associate it with the IonType
+                        var newUseIonsMap = new Dictionary<IonType, List<int>>();
+                        foreach (var item in SpectrumGraphUserOptions.UseIonsMap)
+                        {
+                            if (item.Key == ionType)
+                            {
+                                item.Value.Add(ionCharge);
+                            }
+
+                            newUseIonsMap.Add(item.Key, item.Value);
+                        }
+
+                        // Now overwrite the current UseIonsMap with the new one
+                        SpectrumGraphUserOptions.UseIonsMap = newUseIonsMap;
+                    }
+                }
+            }
+            else
+            {
+                // Here, the user has deselected this particular (IonType, charge) pair, so remove it if necessary
+                // If the (IonType, charge) pair isn't even found in the map, just do nothing
+                List<int> charges;
+                if (SpectrumGraphUserOptions.UseIonsMap.TryGetValue(ionType, out charges) && charges.Contains(ionCharge))
+                {
+                    // The (IonType, charge) pair was found, so we need to remove it
+                    var newUseIonsMap = new Dictionary<IonType, List<int>>();
+                    foreach (var item in SpectrumGraphUserOptions.UseIonsMap)
+                    {
+                        if (item.Key == ionType)
+                        {
+                            item.Value.Remove(ionCharge);
+                            if (item.Value.Count > 0)
+                            {
+                                newUseIonsMap.Add(item.Key, item.Value);
+                            }
+                        }
+                        else
+                        {
+                            newUseIonsMap.Add(item.Key, item.Value);
+                        }
+                    }
+
+                    // Now overwrite the current UseIonsMap with the new one
+                    SpectrumGraphUserOptions.UseIonsMap = newUseIonsMap;
+                }
+            }
         }
     }
 
@@ -562,7 +762,7 @@ namespace CometUI.ViewResults
     {
         public MassSpecUtils.MassType MassType { get; set; }
         public double MassTol { get; set; }
-        public MassSpecUtils.NeutralLoss NeutralLoss { get; set; }
+        public List<MassSpecUtils.NeutralLoss> NeutralLoss { get; set; }
         public Dictionary<IonType, List<int>> UseIonsMap { get; set; }
         public PeakLabel PeakLabel { get; set; }
 
@@ -571,7 +771,7 @@ namespace CometUI.ViewResults
             UseIonsMap = new Dictionary<IonType, List<int>>();
             MassType = MassSpecUtils.MassType.Monoisotopic;
             MassTol = 0.5;
-            NeutralLoss = MassSpecUtils.NeutralLoss.None;
+            NeutralLoss = new List<MassSpecUtils.NeutralLoss>();
             PeakLabel = PeakLabel.Ion;
         }
     }
