@@ -317,7 +317,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1 S %0.6f n", g_staticParams.staticModifications.dAddNterminusPeptide);
+      fprintf(fpout, "1 S %0.6f N", g_staticParams.staticModifications.dAddNterminusPeptide);
    }
 
    // static N-terminus peptide
@@ -328,7 +328,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1 S %0.6f N", g_staticParams.staticModifications.dAddNterminusProtein);
+      fprintf(fpout, "1 S %0.6f n", g_staticParams.staticModifications.dAddNterminusProtein);
    }
 
    // variable N-terminus peptide and protein
