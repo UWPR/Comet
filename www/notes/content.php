@@ -26,9 +26,10 @@
                <p>Specify the full path to the comet.exe binary in the batch file if it does not
                   reside in the same directory as the command is being executed.
 
-               <p>For linux, try <tt>find . -name '*.mzXML' -print | xargs comet</tt>.  Or
-                  try this simple <a href="runcomet.sh"><tt>runcomet.sh</tt></a> Bash script
-                  that you invoke as <tt>runcomet.sh *.mzXML</tt>.
+               <p>For linux, try: &nbsp; <tt>find . -name '*.mzXML' -print | xargs comet</tt>.
+               <br>Or try this simple <a href="runcomet.sh"><tt>runcomet.sh</tt></a> bash script.
+                  Download it, make it executable with "chmod +x runcomet.sh" and place it
+                  somewhere in your PATH.  Then run searches using "<tt>runcomet.sh *.mzXML</tt>".
 
 
             </div>
