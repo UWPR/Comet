@@ -109,7 +109,6 @@
             this.spectrumGraphSplitContainer = new System.Windows.Forms.SplitContainer();
             this.spectrumGraphItem = new ZedGraph.ZedGraphControl();
             this.spectrumGraphIonsTable = new BrightIdeasSoftware.ObjectListView();
-            this.viewSpectraIonsList = new BrightIdeasSoftware.ObjectListView();
             this.databaseLabel = new System.Windows.Forms.Label();
             this.proteinSequenceTextBox = new System.Windows.Forms.RichTextBox();
             this.hideDetailsPanelButton = new System.Windows.Forms.Button();
@@ -138,7 +137,6 @@
             this.spectrumGraphSplitContainer.Panel2.SuspendLayout();
             this.spectrumGraphSplitContainer.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.spectrumGraphIonsTable)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.viewSpectraIonsList)).BeginInit();
             this.SuspendLayout();
             // 
             // showOptionsPanel
@@ -998,7 +996,6 @@
             // spectrumGraphSplitContainer.Panel2
             // 
             this.spectrumGraphSplitContainer.Panel2.Controls.Add(this.spectrumGraphIonsTable);
-            this.spectrumGraphSplitContainer.Panel2.Controls.Add(this.viewSpectraIonsList);
             this.spectrumGraphSplitContainer.Size = new System.Drawing.Size(786, 138);
             this.spectrumGraphSplitContainer.SplitterDistance = 590;
             this.spectrumGraphSplitContainer.TabIndex = 0;
@@ -1020,23 +1017,22 @@
             // 
             // spectrumGraphIonsTable
             // 
+            this.spectrumGraphIonsTable.AlternateRowBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(222)))), ((int)(((byte)(254)))));
+            this.spectrumGraphIonsTable.BackColor = System.Drawing.Color.White;
+            this.spectrumGraphIonsTable.Cursor = System.Windows.Forms.Cursors.Default;
             this.spectrumGraphIonsTable.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.spectrumGraphIonsTable.HasCollapsibleGroups = false;
+            this.spectrumGraphIonsTable.IncludeColumnHeadersInCopy = true;
             this.spectrumGraphIonsTable.Location = new System.Drawing.Point(0, 0);
             this.spectrumGraphIonsTable.Name = "spectrumGraphIonsTable";
+            this.spectrumGraphIonsTable.ShowGroups = false;
+            this.spectrumGraphIonsTable.ShowSortIndicators = false;
             this.spectrumGraphIonsTable.Size = new System.Drawing.Size(188, 134);
-            this.spectrumGraphIonsTable.TabIndex = 1;
+            this.spectrumGraphIonsTable.TabIndex = 2;
+            this.spectrumGraphIonsTable.UseAlternatingBackColors = true;
             this.spectrumGraphIonsTable.UseCompatibleStateImageBehavior = false;
+            this.spectrumGraphIonsTable.UseHyperlinks = true;
             this.spectrumGraphIonsTable.View = System.Windows.Forms.View.Details;
-            // 
-            // viewSpectraIonsList
-            // 
-            this.viewSpectraIonsList.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.viewSpectraIonsList.Location = new System.Drawing.Point(0, 0);
-            this.viewSpectraIonsList.Name = "viewSpectraIonsList";
-            this.viewSpectraIonsList.Size = new System.Drawing.Size(188, 134);
-            this.viewSpectraIonsList.TabIndex = 0;
-            this.viewSpectraIonsList.UseCompatibleStateImageBehavior = false;
-            this.viewSpectraIonsList.View = System.Windows.Forms.View.Details;
             // 
             // databaseLabel
             // 
@@ -1161,7 +1157,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.spectrumGraphSplitContainer)).EndInit();
             this.spectrumGraphSplitContainer.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.spectrumGraphIonsTable)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.viewSpectraIonsList)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -1190,7 +1185,6 @@
         private System.Windows.Forms.SplitContainer viewSpectraSplitContainer;
         private System.Windows.Forms.SplitContainer spectrumGraphSplitContainer;
         private ZedGraph.ZedGraphControl spectrumGraphItem;
-        private BrightIdeasSoftware.ObjectListView viewSpectraIonsList;
         private System.Windows.Forms.Panel graphOptionsPanel;
         private System.Windows.Forms.Label labelIons;
         private System.Windows.Forms.CheckBox yIonSinglyChargedCheckBox;
@@ -1248,7 +1242,6 @@
         private System.Windows.Forms.Label label29;
         private System.Windows.Forms.Label label33;
         private System.Windows.Forms.Label labelPeakLabel;
-        private BrightIdeasSoftware.ObjectListView spectrumGraphIonsTable;
         private System.Windows.Forms.Button updateBtn;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label27;
@@ -1259,5 +1252,6 @@
         private System.Windows.Forms.RadioButton massTypeMonoRadioButton;
         private System.Windows.Forms.Panel massTypeRadioButtonsPanel;
         private System.Windows.Forms.Panel peakLabelRadioButtonsPanel;
+        private BrightIdeasSoftware.ObjectListView spectrumGraphIonsTable;
     }
 }

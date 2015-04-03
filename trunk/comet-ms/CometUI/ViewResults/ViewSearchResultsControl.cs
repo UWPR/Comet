@@ -489,6 +489,40 @@ namespace CometUI.ViewResults
         private void DrawIons()
         {
             IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
+
+            spectrumGraphIonsTable.BeginUpdate();
+
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("a", "ASinglyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("a2", "ADoublyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("a3", "ATriplyChargedIonMass"));
+
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("b", "BSinglyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("b2", "BDoublyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("b3", "BTriplyChargedIonMass"));
+
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("c", "CSinglyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("c2", "CDoublyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("c3", "CTriplyChargedIonMass"));
+
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "BIonCounter"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("AA", "AA"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "YIonCounter"));
+
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("x", "XSinglyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("x2", "XDoublyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("x3", "XTriplyChargedIonMass"));
+
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("y", "YSinglyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("y2", "YDoublyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("y3", "YTriplyChargedIonMass"));
+
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("z", "ZSinglyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("z2", "ZDoublyChargedIonMass"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("z3", "ZTriplyChargedIonMass"));
+
+            spectrumGraphIonsTable.SetObjects(IonCalculator.FragmentIonRows);
+            spectrumGraphIonsTable.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+            spectrumGraphIonsTable.EndUpdate();
         }
 
         private void HideDetailsPanelButtonClick(object sender, EventArgs e)

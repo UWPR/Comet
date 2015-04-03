@@ -62,7 +62,6 @@ namespace CometUI.ViewResults
             return ReadSearchResults();
         }
 
-
         private bool ReadSearchResults()
         {
             SearchResults.Clear();
