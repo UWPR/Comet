@@ -27,10 +27,9 @@ namespace CometUI.ViewResults
 
         private const String BlastHttpLink =
             "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
-
         private const int DetailsPanelExtraHeight = 150;
-
         private const double DefaultMassTol = 0.5;
+        private const int MaxIonCharge = 3;
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -489,40 +488,52 @@ namespace CometUI.ViewResults
         private void DrawIons()
         {
             IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
+            UpdateIonTable();
+        }
 
+        private void UpdateIonTable()
+        {
             spectrumGraphIonsTable.BeginUpdate();
+            spectrumGraphIonsTable.Clear();
 
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("a", "ASinglyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("a2", "ADoublyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("a3", "ATriplyChargedIonMass"));
-
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("b", "BSinglyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("b2", "BDoublyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("b3", "BTriplyChargedIonMass"));
-
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("c", "CSinglyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("c2", "CDoublyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("c3", "CTriplyChargedIonMass"));
+            for (var i = (int)IonType.A; i <= (int)IonType.C; i++)
+            {
+                for (int j = 0; j <= MaxIonCharge; j++)
+                {
+                    AddIonTableColumn((IonType)i, j);
+                }
+            }
 
             spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "BIonCounter"));
             spectrumGraphIonsTable.Columns.Add(new OLVColumn("AA", "AA"));
             spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "YIonCounter"));
 
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("x", "XSinglyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("x2", "XDoublyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("x3", "XTriplyChargedIonMass"));
-
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("y", "YSinglyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("y2", "YDoublyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("y3", "YTriplyChargedIonMass"));
-
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("z", "ZSinglyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("z2", "ZDoublyChargedIonMass"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("z3", "ZTriplyChargedIonMass"));
+            for (var i = (int)IonType.X; i <= (int)IonType.Z; i++)
+            {
+                for (int j = 0; j <= MaxIonCharge; j++)
+                {
+                    AddIonTableColumn((IonType)i, j);
+                }
+            }
 
             spectrumGraphIonsTable.SetObjects(IonCalculator.FragmentIonRows);
             spectrumGraphIonsTable.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
             spectrumGraphIonsTable.EndUpdate();
+        }
+
+        private void AddIonTableColumn(IonType ionType, int charge)
+        {
+            List<int> ionCharges;
+            if (SpectrumGraphUserOptions.UseIonsMap.TryGetValue(ionType, out ionCharges))
+            {
+                if (ionCharges.Contains(charge))
+                {
+                    var ionTypeStr = IonCalculator.IonTypeTable[ionType];
+                    var header = String.Format("{0}{1}+", ionTypeStr, charge);
+                    var aspect = ionTypeStr.ToUpper() + IonCalculator.IonChargeTable[charge] + "ChargedIonMass";
+                    spectrumGraphIonsTable.Columns.Add(new OLVColumn(header, aspect));
+                }
+            }
         }
 
         private void HideDetailsPanelButtonClick(object sender, EventArgs e)

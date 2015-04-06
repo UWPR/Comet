@@ -6,11 +6,25 @@ namespace CometUI.ViewResults
 {
     public class PeptideFragmentCalculator
     {
-        public List<FragmentIonRow> FragmentIonRows { get; set; }  
+        public List<FragmentIonRow> FragmentIonRows { get; set; }
+        public Dictionary<IonType, String> IonTypeTable { get; set; }
+        public Dictionary<int, String> IonChargeTable { get; set; } 
 
         public PeptideFragmentCalculator()
         {
             FragmentIonRows = new List<FragmentIonRow>();
+
+            IonTypeTable = new Dictionary<IonType, string>
+                               {
+                                   {IonType.A, "a"},
+                                   {IonType.B, "b"},
+                                   {IonType.C, "c"},
+                                   {IonType.X, "x"},
+                                   {IonType.Y, "y"},
+                                   {IonType.Z, "z"}
+                               };
+
+            IonChargeTable = new Dictionary<int, string> {{1, "Singly"}, {2, "Doubly"}, {3, "Triply"}};
         }
 
         private void AddFragmentIon(SpectrumGraphUserOptions userOptions, List<FragmentIon> fragmentIons, double singlyChargedMass, int charge, IonType ionType, int ionNum, MassSpecUtils.NeutralLoss neutralLoss = MassSpecUtils.NeutralLoss.None)
@@ -21,34 +35,7 @@ namespace CometUI.ViewResults
                 chargeStr += "+";
             }
 
-            var label = String.Empty;
-            switch (ionType)
-            {
-                case IonType.A:
-                    label = String.Format("a{0}{1}", ionNum, chargeStr);
-                    break;
-
-                case IonType.B:
-                    label = String.Format("b{0}{1}", ionNum, chargeStr);
-                    break;
-
-                case IonType.C:
-                    label = String.Format("c{0}{1}", ionNum, chargeStr);
-                    break;
-
-                case IonType.X:
-                    label = String.Format("x{0}{1}", ionNum, chargeStr);
-                    break;
-
-                case IonType.Y:
-                    label = String.Format("y{0}{1}", ionNum, chargeStr);
-                    break;
-
-                case IonType.Z:
-                    label = String.Format("z{0}{1}", ionNum, chargeStr);
-                    break;
-            }
-
+            var label = String.Format("{0}{1}{2}", IonTypeTable[ionType], ionNum, chargeStr);
 
             double mass = singlyChargedMass;
             if (charge == 1)
@@ -103,6 +90,8 @@ namespace CometUI.ViewResults
 
         public void CalculateIons(SearchResult result, SpectrumGraphUserOptions userOptions)
         {
+            FragmentIonRows.Clear();
+
             MassSpecUtils.InitializeMassTables(userOptions.MassType == MassSpecUtils.MassType.Monoisotopic);
 
             double nTerm = result.ModifiedNTerm ? result.ModNTermMass : MassSpecUtils.ElementMassTable['h'];
@@ -358,30 +347,6 @@ namespace CometUI.ViewResults
 
             BIonCounter = 0;
             YIonCounter = 0;
-        }
-    }
-
-    public class FragmentIonColumn
-    {
-        public String Aspect { get; set; }  // E.g. "SearchResult.AssumedCharge"
-        public String Header { get; set; }
-        public String CondensedHeader { get; set; }
-        public bool Hyperlink { get; set; }
-
-        public FragmentIonColumn(String aspect, String header, String condensedHeader)
-        {
-            Aspect = aspect;
-            Header = header;
-            CondensedHeader = condensedHeader;
-            Hyperlink = false;
-        }
-
-        public FragmentIonColumn(String aspect, String header, String condensedHeader, bool hyperlink)
-        {
-            Aspect = aspect;
-            Header = header;
-            CondensedHeader = condensedHeader;
-            Hyperlink = hyperlink;
         }
     }
 }
