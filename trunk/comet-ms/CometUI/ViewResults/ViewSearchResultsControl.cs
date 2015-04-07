@@ -453,6 +453,9 @@ namespace CometUI.ViewResults
 
         private void DrawSpectrumGraph()
         {
+            IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
+            UpdateIonTable();
+
             // Todo: This is work in progress, there's lots left to do here!
             spectrumGraphItem.GraphPane.GraphObjList.Clear();
 
@@ -469,26 +472,76 @@ namespace CometUI.ViewResults
             //graphPane.YAxis.Scale.Max = Convert.ToDouble(YMaxTextBox.Text);
 
             var peaksList = new PointPairList();
+            var aFragmentIonsList = new PointPairList();
+            var bFragmentIonsList = new PointPairList();
+            var cFragmentIonsList = new PointPairList();
+            var xFragmentIonsList = new PointPairList();
+            var yFragmentIonsList = new PointPairList();
+            var zFragmentIonsList = new PointPairList();
             foreach (var peak in Peaks)
             {
-                peaksList.Add(peak.get_mz(), peak.get_intensity());
+                bool isFragmentIon = false;
+                double mz = peak.get_mz();
+                foreach (var fragmentIon in IonCalculator.FragmentIons)
+                {
+                    if (fragmentIon.Show)
+                    {
+                        if (Math.Abs(mz - fragmentIon.Mass) <= (double) massTolTextBox.DecimalValue)
+                        {
+                            switch (fragmentIon.Type)
+                            {
+                                case IonType.A:
+                                    aFragmentIonsList.Add(mz, peak.get_intensity());
+                                    break;
+
+                                case IonType.B:
+                                    bFragmentIonsList.Add(mz, peak.get_intensity());
+                                    break;
+
+                                case IonType.C:
+                                    cFragmentIonsList.Add(mz, peak.get_intensity());
+                                    break;
+
+                                case IonType.X:
+                                    xFragmentIonsList.Add(mz, peak.get_intensity());
+                                    break;
+
+                                case IonType.Y:
+                                    yFragmentIonsList.Add(mz, peak.get_intensity());
+                                    break;
+
+                                case IonType.Z:
+                                    zFragmentIonsList.Add(mz, peak.get_intensity());
+                                    break;
+                            }
+
+                            isFragmentIon = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!isFragmentIon)
+                {
+                    peaksList.Add(mz, peak.get_intensity());
+                }
             }
 
-            graphPane.AddCurve(null, peaksList, Color.Black, SymbolType.None);
+            graphPane.AddStick(null, peaksList, Color.LightGray);
+
+            graphPane.AddStick(null, aFragmentIonsList, Color.DeepSkyBlue);
+            graphPane.AddStick(null, bFragmentIonsList, Color.Blue);
+            graphPane.AddStick(null, cFragmentIonsList, Color.CornflowerBlue);
+
+            graphPane.AddStick(null, xFragmentIonsList, Color.Pink);
+            graphPane.AddStick(null, yFragmentIonsList, Color.Red);
+            graphPane.AddStick(null, zFragmentIonsList, Color.PaleVioletRed);
 
             // Calculate the Axis Scale Ranges
             spectrumGraphItem.AxisChange();
 
             // Redraw the whole graph control for smooth transition
             spectrumGraphItem.Invalidate();
-
-            DrawIons();
-        }
-
-        private void DrawIons()
-        {
-            IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
-            UpdateIonTable();
         }
 
         private void UpdateIonTable()
@@ -638,7 +691,7 @@ namespace CometUI.ViewResults
         private void UpdateBtnClick(object sender, EventArgs e)
         {
             SpectrumGraphUserOptions.MassTol = Convert.ToDouble(massTolTextBox.Text);
-            DrawIons();
+            DrawSpectrumGraph();
         }
 
         private void AIonSinglyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
