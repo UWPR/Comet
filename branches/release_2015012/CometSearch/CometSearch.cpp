@@ -2223,7 +2223,7 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                           }
                                        }
 
-                                       if (bValid && HasVariableMod(piTmpVarModCounts, iStartPos, iEndPos))
+                                       if (bValid && HasVariableMod(piTmpVarModCounts, iStartPos, iTmpEnd))   //FIX:  iTmpEnd here vs. iEndPos before??
                                        {
                                           // mass including terminal mods that need to be tracked separately here
                                           // because we are considering multiple terminating positions in peptide
@@ -2798,7 +2798,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                if (pcVarModSites[iPos] > 0)
                   dYion += g_staticParams.variableModParameters.varModList[pcVarModSites[iPos]-1].dVarModMass;
 
-               _pdAAreverse[_varModInfo.iEndPos - i] = dYion;
+               _pdAAreverse[i - _varModInfo.iStartPos] = dYion;
 
             }
 

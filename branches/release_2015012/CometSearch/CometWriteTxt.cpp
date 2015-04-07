@@ -65,6 +65,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "b/y ions total\t");
    fprintf(fpout, "total matches/spectrum\t");
    fprintf(fpout, "sequence\t");
+   fprintf(fpout, "modified sequence\t");
    fprintf(fpout, "modifications\t");
    fprintf(fpout, "protein id\t");
    fprintf(fpout, "flanking aa\t");
@@ -156,11 +157,16 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%d\t", pOutput[iWhichResult].iTotalIons);
          fprintf(fpout, "%lu\t", num_matches);
 
-         //Print out peptide and give mass for variable mods.
+         // plain peptide
+         fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
+
+         // modified peptide
+         fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
+
          if (g_staticParams.variableModParameters.bVarModSearch
                && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
          {
-            fprintf(fpout, "n[%0.4f]",
+            fprintf(fpout, "n[%0.1f]",
                   g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass);
          }
 
@@ -170,7 +176,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
             if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].pcVarModSites[i] > 0)
             {
-               fprintf(fpout, "[%0.4f]",
+               fprintf(fpout, "[%0.1f]",
                      g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
             }
          }
@@ -178,10 +184,12 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          if (g_staticParams.variableModParameters.bVarModSearch
                && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
          {
-            fprintf(fpout, "c[%0.4f]", 
+            fprintf(fpout, "c[%0.1f]", 
                   g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass);
          }
-         fprintf(fpout, "\t");
+
+         fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
+
 
          // prints modification encoding
          PrintModifications(fpout, pOutput, iWhichResult);
@@ -317,7 +325,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1 S %0.6f N", g_staticParams.staticModifications.dAddNterminusPeptide);
+      fprintf(fpout, "1_S_%0.6f_N", g_staticParams.staticModifications.dAddNterminusPeptide);
    }
 
    // static N-terminus peptide
@@ -328,7 +336,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1 S %0.6f n", g_staticParams.staticModifications.dAddNterminusProtein);
+      fprintf(fpout, "1_S_%0.6f_n", g_staticParams.staticModifications.dAddNterminusProtein);
    }
 
    // variable N-terminus peptide and protein
@@ -340,13 +348,13 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1 V %0.6f ",
+      fprintf(fpout, "1_V_%0.6f",
             g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass);
 
       if (g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].iVarModTermDistance == 0)
-         fprintf(fpout, "N");
+         fprintf(fpout, "_N");
       else
-         fprintf(fpout, "n");
+         fprintf(fpout, "_n");
    }
    
    for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
@@ -359,7 +367,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          else
             bFirst=false;
 
-         fprintf(fpout, "%d S %0.6f",
+         fprintf(fpout, "%d_S_%0.6f",
                i+1,
                g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]]);
       }
@@ -373,7 +381,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          else
             bFirst=false;
 
-         fprintf(fpout, "%d V %0.6f",
+         fprintf(fpout, "%d_V_%0.6f",
                i+1,
                g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
       }
@@ -388,7 +396,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1 S %0.6f C", g_staticParams.staticModifications.dAddCterminusProtein);
+      fprintf(fpout, "1_S_%0.6f_C", g_staticParams.staticModifications.dAddCterminusProtein);
    }
 
    // static C-terminus peptide
@@ -399,7 +407,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1 S %0.6f c", g_staticParams.staticModifications.dAddCterminusPeptide);
+      fprintf(fpout, "1_S_%0.6f_c", g_staticParams.staticModifications.dAddCterminusPeptide);
    }
 
    // variable C-terminus peptide and protein
@@ -411,14 +419,14 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "%d V %0.6f ",
+      fprintf(fpout, "%d_V_%0.6f",
             pOutput[iWhichResult].iLenPeptide,
             g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass);
 
       if (g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].iVarModTermDistance == 0)
-         fprintf(fpout, "C");
+         fprintf(fpout, "_C");
       else
-         fprintf(fpout, "c");
+         fprintf(fpout, "_c");
    }
 
    fprintf(fpout, "\t");
