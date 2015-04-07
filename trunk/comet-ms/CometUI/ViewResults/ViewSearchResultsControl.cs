@@ -462,14 +462,14 @@ namespace CometUI.ViewResults
             GraphPane graphPane = spectrumGraphItem.GraphPane;
 
             // Set the titles and axis labels
-            graphPane.Title.Text = ViewSpectraSearchResult.Peptide + Environment.NewLine +
-                                   SearchResultsMgr.ResultsPepXMLFile;
+            var titleStrSecondLine = String.Format("{0}, Scan: {1}, Exp. m/z: {2}, Charge: {3}",
+                SearchResultsMgr.ResultsPepXMLFile,
+                ViewSpectraSearchResult.StartScan,
+                ViewSpectraSearchResult.ExperimentalMass,
+                ViewSpectraSearchResult.AssumedCharge);
+            graphPane.Title.Text = ViewSpectraSearchResult.Peptide + Environment.NewLine + titleStrSecondLine;
             graphPane.XAxis.Title.Text = "m/z";
-            //graphPane.XAxis.Scale.Max = Convert.ToDouble(XMaxTextBox.Text);
-            //graphPane.XAxis.Scale.Min = Convert.ToDouble(XMinTextBox.Text);
             graphPane.YAxis.Title.Text = "Intensity";
-            //graphPane.YAxis.Scale.Min = Convert.ToDouble(YMinTextBox.Text);
-            //graphPane.YAxis.Scale.Max = Convert.ToDouble(YMaxTextBox.Text);
 
             var peaksList = new PointPairList();
             var aFragmentIonsList = new PointPairList();
@@ -528,7 +528,6 @@ namespace CometUI.ViewResults
             }
 
             graphPane.AddStick(null, peaksList, Color.LightGray);
-
             graphPane.AddStick(null, aFragmentIonsList, Color.DeepSkyBlue);
             graphPane.AddStick(null, bFragmentIonsList, Color.Blue);
             graphPane.AddStick(null, cFragmentIonsList, Color.CornflowerBlue);
