@@ -375,7 +375,7 @@ namespace CometUI.ViewResults
                 ShowViewSpectraUI(true);
                 ShowDetailsPanel(true);
 
-                DrawSpectrumGraph();
+                UpdateViewSpectra();
             }
             else
             {
@@ -446,11 +446,15 @@ namespace CometUI.ViewResults
             peakLabelIonRadioButton.Checked = true;
         }
 
-        private void DrawSpectrumGraph()
+        private void UpdateViewSpectra()
         {
             IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
             UpdateIonTable();
+            DrawSpectrumGraph();
+        }
 
+        private void DrawSpectrumGraph()
+        {
             GraphPane graphPane = spectrumGraphItem.GraphPane;
             graphPane.CurveList.Clear();
             graphPane.GraphObjList.Clear();
@@ -727,7 +731,7 @@ namespace CometUI.ViewResults
         private void UpdateBtnClick(object sender, EventArgs e)
         {
             SpectrumGraphUserOptions.MassTol = Convert.ToDouble(massTolTextBox.Text);
-            DrawSpectrumGraph();
+            UpdateViewSpectra();
         }
 
         private void AIonSinglyChargedCheckBoxCheckedChanged(object sender, EventArgs e)
