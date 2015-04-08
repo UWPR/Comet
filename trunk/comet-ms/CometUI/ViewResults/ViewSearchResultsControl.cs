@@ -220,6 +220,14 @@ namespace CometUI.ViewResults
         private void ShowDetailsPanel(bool show)
         {
             detailsPanel.Visible = show;
+            if (show)
+            {
+                resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height / 4;
+            }
+            else
+            {
+                resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height;
+            }
         }
 
         private void ResultsListViewCellToolTipShowing(object sender, ToolTipShowingEventArgs e)
