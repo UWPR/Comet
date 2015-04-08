@@ -142,6 +142,12 @@ namespace CometUI.ViewResults
             // }
         }
 
+
+        public bool IsFragmentIonPeak(double peakMz, double fragmentIonMz, double massTol)
+        {
+            return Math.Abs(peakMz - fragmentIonMz) <= massTol;
+        }
+
         private double AddFragmentIon(SpectrumGraphUserOptions userOptions, double singlyChargedMass, int charge, IonType ionType, int ionNum, MassSpecUtils.NeutralLoss neutralLoss = MassSpecUtils.NeutralLoss.None)
         {
             var chargeStr = String.Empty;
