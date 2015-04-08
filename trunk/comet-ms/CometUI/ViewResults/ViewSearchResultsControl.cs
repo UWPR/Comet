@@ -375,11 +375,6 @@ namespace CometUI.ViewResults
                 ShowViewSpectraUI(true);
                 ShowDetailsPanel(true);
 
-                // Todo: Work in progress, need to:
-                // 1) calculate and add ions to the graph
-                // 2) draw the table of ions
-                // 3) provide the user options for the graph
-
                 DrawSpectrumGraph();
             }
             else
@@ -456,18 +451,19 @@ namespace CometUI.ViewResults
             IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
             UpdateIonTable();
 
-            // Todo: This is work in progress, there's lots left to do here!
-            spectrumGraphItem.GraphPane.GraphObjList.Clear();
-
             GraphPane graphPane = spectrumGraphItem.GraphPane;
+            graphPane.CurveList.Clear();
+            graphPane.GraphObjList.Clear();
 
-            // Set the titles and axis labels
+            // Set the title
             var titleStrSecondLine = String.Format("{0}, Scan: {1}, Exp. m/z: {2}, Charge: {3}",
                 SearchResultsMgr.ResultsPepXMLFile,
                 ViewSpectraSearchResult.StartScan,
                 ViewSpectraSearchResult.ExperimentalMass,
                 ViewSpectraSearchResult.AssumedCharge);
             graphPane.Title.Text = ViewSpectraSearchResult.Peptide + Environment.NewLine + titleStrSecondLine;
+
+            //  Set the axis labels
             graphPane.XAxis.Title.Text = "m/z";
             graphPane.YAxis.Title.Text = "Intensity";
 
@@ -482,36 +478,53 @@ namespace CometUI.ViewResults
             {
                 bool isFragmentIon = false;
                 double mz = peak.get_mz();
+                double intensity = peak.get_intensity();
+
                 foreach (var fragmentIon in IonCalculator.FragmentIons)
                 {
                     if (fragmentIon.Show)
                     {
                         if (Math.Abs(mz - fragmentIon.Mass) <= (double) massTolTextBox.DecimalValue)
                         {
+                            switch (SpectrumGraphUserOptions.PeakLabel)
+                            {
+                                case PeakLabel.Ion:
+                                    graphPane.GraphObjList.Add(new TextObj(fragmentIon.Label, mz, intensity));
+                                    break;
+
+                                case PeakLabel.Mz:
+                                    graphPane.GraphObjList.Add(new TextObj(Convert.ToString(Math.Round(mz, 2)), mz, intensity));
+                                    break;
+
+                                case PeakLabel.None:
+                                    // Do nothing, no label
+                                    break;
+                            }
+
                             switch (fragmentIon.Type)
                             {
                                 case IonType.A:
-                                    aFragmentIonsList.Add(mz, peak.get_intensity());
+                                    aFragmentIonsList.Add(mz, intensity);
                                     break;
 
                                 case IonType.B:
-                                    bFragmentIonsList.Add(mz, peak.get_intensity());
+                                    bFragmentIonsList.Add(mz, intensity);
                                     break;
 
                                 case IonType.C:
-                                    cFragmentIonsList.Add(mz, peak.get_intensity());
+                                    cFragmentIonsList.Add(mz, intensity);
                                     break;
 
                                 case IonType.X:
-                                    xFragmentIonsList.Add(mz, peak.get_intensity());
+                                    xFragmentIonsList.Add(mz, intensity);
                                     break;
 
                                 case IonType.Y:
-                                    yFragmentIonsList.Add(mz, peak.get_intensity());
+                                    yFragmentIonsList.Add(mz, intensity);
                                     break;
 
                                 case IonType.Z:
-                                    zFragmentIonsList.Add(mz, peak.get_intensity());
+                                    zFragmentIonsList.Add(mz, intensity);
                                     break;
                             }
 
@@ -528,13 +541,36 @@ namespace CometUI.ViewResults
             }
 
             graphPane.AddStick(null, peaksList, Color.LightGray);
-            graphPane.AddStick(null, aFragmentIonsList, Color.DeepSkyBlue);
-            graphPane.AddStick(null, bFragmentIonsList, Color.Blue);
-            graphPane.AddStick(null, cFragmentIonsList, Color.CornflowerBlue);
 
-            graphPane.AddStick(null, xFragmentIonsList, Color.Pink);
-            graphPane.AddStick(null, yFragmentIonsList, Color.Red);
-            graphPane.AddStick(null, zFragmentIonsList, Color.PaleVioletRed);
+            if (aFragmentIonsList.Count > 0)
+            {
+                graphPane.AddStick(null, aFragmentIonsList, Color.LawnGreen);
+            }
+
+            if (bFragmentIonsList.Count > 0)
+            {
+                graphPane.AddStick(null, bFragmentIonsList, Color.Blue);
+            }
+
+            if (cFragmentIonsList.Count > 0)
+            {
+                graphPane.AddStick(null, cFragmentIonsList, Color.DeepSkyBlue);
+            }
+
+            if (xFragmentIonsList.Count > 0)
+            {
+                graphPane.AddStick(null, xFragmentIonsList, Color.MediumPurple);
+            }
+
+            if (yFragmentIonsList.Count > 0)
+            {
+                graphPane.AddStick(null, yFragmentIonsList, Color.Red);
+            }
+
+            if (zFragmentIonsList.Count > 0)
+            {
+                graphPane.AddStick(null, zFragmentIonsList, Color.Orange);
+            }
 
             // Calculate the Axis Scale Ranges
             spectrumGraphItem.AxisChange();
