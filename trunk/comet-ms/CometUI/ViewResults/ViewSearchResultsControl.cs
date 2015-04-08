@@ -577,6 +577,7 @@ namespace CometUI.ViewResults
 
             // Redraw the whole graph control for smooth transition
             spectrumGraphItem.Invalidate();
+            spectrumGraphItem.Refresh();
         }
 
         private void UpdateIonTable()
