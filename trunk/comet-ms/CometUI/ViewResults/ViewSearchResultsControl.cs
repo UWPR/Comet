@@ -554,7 +554,7 @@ namespace CometUI.ViewResults
                     if (fragmentIon.Show && IonCalculator.IsFragmentIonPeak(mz, fragmentIon.Mass, (double)massTolTextBox.DecimalValue))
                     {
                         fragmentIonData[fragmentIon.Type].FragmentIonPeaks.Add(mz, intensity);
-                        AddPeakLabel(graphPane, fragmentIon.Label, mz, intensity);
+                        AddPeakLabel(graphPane, fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, mz, intensity);
                         isFragmentIon = true;
                         break;
                     }
@@ -588,16 +588,18 @@ namespace CometUI.ViewResults
             spectrumGraphItem.Refresh();
         }
 
-        private void AddPeakLabel(GraphPane graphPane, String label, double mz, double intensity)
+        private void AddPeakLabel(GraphPane graphPane, String label, Color labelColor, double mz, double intensity)
         {
+            var border = new Border {IsVisible = false};
+            var fontSpec = new FontSpec { Border = border, Angle = 90, FontColor = labelColor };
             switch (SpectrumGraphUserOptions.PeakLabel)
             {
                 case PeakLabel.Ion:
-                    graphPane.GraphObjList.Add(new TextObj(label, mz, intensity));
+                    graphPane.GraphObjList.Add(new TextObj(label, mz, intensity) {FontSpec = fontSpec});
                     break;
 
                 case PeakLabel.Mz:
-                    graphPane.GraphObjList.Add(new TextObj(Convert.ToString(Math.Round(mz, 2)), mz, intensity));
+                    graphPane.GraphObjList.Add(new TextObj(Convert.ToString(Math.Round(mz, 2)), mz, intensity) { FontSpec = fontSpec });
                     break;
 
                 case PeakLabel.None:
