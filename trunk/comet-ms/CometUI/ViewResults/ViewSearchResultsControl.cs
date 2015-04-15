@@ -24,6 +24,7 @@ namespace CometUI.ViewResults
         private SpectrumGraphUserOptions SpectrumGraphUserOptions { get; set; }
         private List<Peak_T_Wrapper> Peaks { get; set; }
         private PeptideFragmentCalculator IonCalculator { get; set; }
+        private List<TextObj> PeakLabels { get; set; } 
 
         private const String BlastHttpLink =
             "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
@@ -378,7 +379,7 @@ namespace CometUI.ViewResults
             if (msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, ViewSpectraSearchResult.StartScan,
                                               SearchResultsMgr.SearchParams.MSLevel, Peaks))
             {
-                InitializeSpectrumGraph();
+                InitializeSpectrumGraphOptions();
 
                 ShowViewSpectraUI(true);
                 ShowDetailsPanel(true);
@@ -413,7 +414,7 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void InitializeSpectrumGraph()
+        private void InitializeSpectrumGraphOptions()
         {
             aIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseAIons;
             aIonDoublyChargedCheckBox.Checked = false;
@@ -508,9 +509,9 @@ namespace CometUI.ViewResults
 
         private void DrawSpectrumGraph()
         {
+            InitializeSpectrumGraph();
+
             GraphPane graphPane = spectrumGraphItem.GraphPane;
-            graphPane.CurveList.Clear();
-            graphPane.GraphObjList.Clear();
 
             // Set the title
             var titleStrSecondLine = String.Format("{0}, Scan: {1}, Exp. m/z: {2}, Charge: {3}",
@@ -523,6 +524,10 @@ namespace CometUI.ViewResults
             //  Set the axis labels
             graphPane.XAxis.Title.Text = "m/z";
             graphPane.YAxis.Title.Text = "Intensity";
+
+            // Set the axis scale
+            graphPane.XAxis.Scale.Min = 0.0;
+            graphPane.YAxis.Scale.Min = 0.0;
 
             var peaksList = new PointPairList();
             var fragmentIonData = new Dictionary<IonType, FragmentIonGraphInfo>
@@ -554,7 +559,7 @@ namespace CometUI.ViewResults
                     if (fragmentIon.Show && IonCalculator.IsFragmentIonPeak(mz, fragmentIon.Mass, (double)massTolTextBox.DecimalValue))
                     {
                         fragmentIonData[fragmentIon.Type].FragmentIonPeaks.Add(mz, intensity);
-                        AddPeakLabel(graphPane, fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, mz, intensity);
+                        AddPeakLabel(fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, mz, intensity);
                         isFragmentIon = true;
                         break;
                     }
@@ -581,6 +586,12 @@ namespace CometUI.ViewResults
                 }
             }
 
+            // Draw the peak labels
+            foreach (var peakLabel in PeakLabels)
+            {
+                graphPane.GraphObjList.Add(peakLabel);
+            }
+
             // Calculate the Axis Scale Ranges and redraw the whole graph 
             // control for smooth transition
             spectrumGraphItem.AxisChange();
@@ -588,24 +599,50 @@ namespace CometUI.ViewResults
             spectrumGraphItem.Refresh();
         }
 
-        private void AddPeakLabel(GraphPane graphPane, String label, Color labelColor, double mz, double intensity)
+        private void InitializeSpectrumGraph()
+        {
+            if (null == PeakLabels)
+            {
+                PeakLabels = new List<TextObj>();
+            }
+            else
+            {
+                PeakLabels.Clear();
+            }
+
+            spectrumGraphItem.GraphPane.CurveList.Clear();
+            spectrumGraphItem.GraphPane.GraphObjList.Clear();
+        }
+
+        private void AddPeakLabel(String label, Color labelColor, double mz, double intensity)
         {
             var border = new Border {IsVisible = false};
-            var fontSpec = new FontSpec { Border = border, Angle = 90, FontColor = labelColor };
+            var fill = new Fill {IsVisible = false};
+            var fontSpec = new FontSpec { Border = border, Fill = fill, Angle = 90, FontColor = labelColor, IsDropShadow = false};
             switch (SpectrumGraphUserOptions.PeakLabel)
             {
                 case PeakLabel.Ion:
-                    graphPane.GraphObjList.Add(new TextObj(label, mz, intensity) {FontSpec = fontSpec});
+                    // Add a few spaces in front of the label string so that it
+                    // doesn't cover any part of the stick plot.
+                    PeakLabels.Add(new TextObj(PadPeakLabel(label), mz, intensity) { FontSpec = fontSpec, ZOrder = ZOrder.A_InFront });
                     break;
 
                 case PeakLabel.Mz:
-                    graphPane.GraphObjList.Add(new TextObj(Convert.ToString(Math.Round(mz, 2)), mz, intensity) { FontSpec = fontSpec });
+                    // Add a few spaces in front of the m/z string so that it
+                    // doesn't cover any part of the stick plot.
+                    PeakLabels.Add(new TextObj(PadPeakLabel(Convert.ToString(Math.Round(mz, 2))), mz, intensity) { FontSpec = fontSpec, ZOrder = ZOrder.A_InFront });
                     break;
 
                 case PeakLabel.None:
                     // Do nothing, no label
                     break;
             }
+        }
+
+        private String PadPeakLabel(String label)
+        {
+            var numSpacesToAdd = label.Length * 3;
+            return label.PadLeft(numSpacesToAdd);
         }
 
         private void HideDetailsPanelButtonClick(object sender, EventArgs e)
@@ -865,6 +902,44 @@ namespace CometUI.ViewResults
                     SpectrumGraphUserOptions.UseIonsMap = newUseIonsMap;
                 }
             }
+        }
+
+        private void SpectrumGraphItemZoomEvent(ZedGraphControl sender, ZoomState oldState, ZoomState newState)
+        {
+            OnSpectrumGraphItemZoom();
+        }
+
+        private void OnSpectrumGraphItemZoom()
+        {
+            var pane = spectrumGraphItem.GraphPane;
+
+            // Don't allow X-axis scale to go negative
+            if (pane.XAxis.Scale.Min < 0)
+            {
+                pane.XAxis.Scale.Min = 0;
+            }
+
+            // Don't allo the Y-axis scale to go negative
+            if (pane.YAxis.Scale.Min < 0)
+            {
+                pane.YAxis.Scale.Min = 0;
+            }
+
+            // Only show the peak labels if they are on the graph pane
+            if (null != PeakLabels)
+            {
+                foreach (var peakLabel in PeakLabels)
+                {
+                    peakLabel.IsVisible = IsPointOnGraphPane(pane, new PointPair(peakLabel.Location.X, peakLabel.Location.Y));
+                }
+            }
+        }
+
+        private static bool IsPointOnGraphPane(GraphPane pane, PointPair point)
+        {
+            Scale xScale = pane.XAxis.Scale;
+            Scale yScale = pane.YAxis.Scale;
+            return point.X > xScale.Min && point.X < xScale.Max && point.Y > yScale.Min && point.Y < yScale.Max;
         }
     }
 

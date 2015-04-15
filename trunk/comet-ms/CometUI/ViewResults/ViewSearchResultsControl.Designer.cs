@@ -49,6 +49,7 @@
             this.massTypeRadioButtonsPanel = new System.Windows.Forms.Panel();
             this.massTypeAvgRadioButton = new System.Windows.Forms.RadioButton();
             this.massTypeMonoRadioButton = new System.Windows.Forms.RadioButton();
+            this.massTolTextBox = new NumericTextBox();
             this.label26 = new System.Windows.Forms.Label();
             this.labelMassType = new System.Windows.Forms.Label();
             this.updateBtn = new System.Windows.Forms.Button();
@@ -118,7 +119,6 @@
             this.resultsPanelFull = new System.Windows.Forms.Panel();
             this.resultsPanelNormal = new System.Windows.Forms.Panel();
             this.viewResultsToolTip = new System.Windows.Forms.ToolTip(this.components);
-            this.massTolTextBox = new NumericTextBox();
             this.showOptionsPanel.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.resultsPanel.SuspendLayout();
@@ -447,6 +447,17 @@
             this.massTypeMonoRadioButton.Text = "Mono";
             this.massTypeMonoRadioButton.UseVisualStyleBackColor = true;
             this.massTypeMonoRadioButton.CheckedChanged += new System.EventHandler(this.MassTypeMonoRadioButtonCheckedChanged);
+            // 
+            // massTolTextBox
+            // 
+            this.massTolTextBox.AllowDecimal = true;
+            this.massTolTextBox.AllowGroupSeparator = false;
+            this.massTolTextBox.AllowNegative = false;
+            this.massTolTextBox.AllowSpace = false;
+            this.massTolTextBox.Location = new System.Drawing.Point(18, 317);
+            this.massTolTextBox.Name = "massTolTextBox";
+            this.massTolTextBox.Size = new System.Drawing.Size(69, 20);
+            this.massTolTextBox.TabIndex = 43;
             // 
             // label26
             // 
@@ -1016,6 +1027,8 @@
             // spectrumGraphItem
             // 
             this.spectrumGraphItem.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.spectrumGraphItem.IsEnableHPan = false;
+            this.spectrumGraphItem.IsEnableVPan = false;
             this.spectrumGraphItem.Location = new System.Drawing.Point(0, 0);
             this.spectrumGraphItem.Name = "spectrumGraphItem";
             this.spectrumGraphItem.ScrollGrace = 0D;
@@ -1027,6 +1040,7 @@
             this.spectrumGraphItem.ScrollMinY2 = 0D;
             this.spectrumGraphItem.Size = new System.Drawing.Size(585, 136);
             this.spectrumGraphItem.TabIndex = 0;
+            this.spectrumGraphItem.ZoomEvent += new ZedGraph.ZedGraphControl.ZoomEventHandler(this.SpectrumGraphItemZoomEvent);
             // 
             // spectrumGraphIonsTable
             // 
@@ -1134,17 +1148,6 @@
             // viewResultsToolTip
             // 
             this.viewResultsToolTip.UseFading = false;
-            // 
-            // massTolTextBox
-            // 
-            this.massTolTextBox.AllowDecimal = true;
-            this.massTolTextBox.AllowGroupSeparator = false;
-            this.massTolTextBox.AllowNegative = false;
-            this.massTolTextBox.AllowSpace = false;
-            this.massTolTextBox.Location = new System.Drawing.Point(18, 317);
-            this.massTolTextBox.Name = "massTolTextBox";
-            this.massTolTextBox.Size = new System.Drawing.Size(69, 20);
-            this.massTolTextBox.TabIndex = 43;
             // 
             // ViewSearchResultsControl
             // 
