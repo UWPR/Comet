@@ -362,6 +362,44 @@ namespace CometUI.ViewResults
             }
         }
 
+        private void HideDetailsPanelButtonClick(object sender, EventArgs e)
+        {
+            ShowProteinSequenceUI(false);
+            ShowViewSpectraUI(false);
+            ShowDetailsPanel(false);
+        }
+
+        private void ShowProteinSequenceUI(bool show)
+        {
+            databaseLabel.Visible = show;
+            proteinSequenceTextBox.Visible = show;
+        }
+
+        private void ShowViewSpectraUI(bool show)
+        {
+            if (show && !viewSpectraSplitContainer.Visible)
+            {
+                GrowDetailsPanel();
+            }
+
+            if (!show && viewSpectraSplitContainer.Visible)
+            {
+                ShrinkDetailsPanel();
+            }
+
+            viewSpectraSplitContainer.Visible = show;
+        }
+
+        private void ShrinkDetailsPanel()
+        {
+            detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height - DetailsPanelExtraHeight);
+        }
+
+        private void GrowDetailsPanel()
+        {
+            detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height + DetailsPanelExtraHeight);
+        }
+
         private void ViewSpectra()
         {
             if (null == IonCalculator)
@@ -645,42 +683,42 @@ namespace CometUI.ViewResults
             return label.PadLeft(numSpacesToAdd);
         }
 
-        private void HideDetailsPanelButtonClick(object sender, EventArgs e)
+        private void SpectrumGraphItemZoomEvent(ZedGraphControl sender, ZoomState oldState, ZoomState newState)
         {
-            ShowProteinSequenceUI(false);
-            ShowViewSpectraUI(false);
-            ShowDetailsPanel(false);
+            OnSpectrumGraphItemZoom();
         }
 
-        private void ShowProteinSequenceUI(bool show)
+        private void OnSpectrumGraphItemZoom()
         {
-            databaseLabel.Visible = show;
-            proteinSequenceTextBox.Visible = show;
-        }
+            var pane = spectrumGraphItem.GraphPane;
 
-        private void ShowViewSpectraUI(bool show)
-        {
-            if (show && !viewSpectraSplitContainer.Visible)
+            // Don't allow X-axis scale to go negative
+            if (pane.XAxis.Scale.Min < 0)
             {
-                GrowDetailsPanel();
+                pane.XAxis.Scale.Min = 0;
             }
 
-            if (!show && viewSpectraSplitContainer.Visible)
+            // Don't allo the Y-axis scale to go negative
+            if (pane.YAxis.Scale.Min < 0)
             {
-                ShrinkDetailsPanel();
+                pane.YAxis.Scale.Min = 0;
             }
 
-            viewSpectraSplitContainer.Visible = show;
+            // Only show the peak labels if they are on the graph pane
+            if (null != PeakLabels)
+            {
+                foreach (var peakLabel in PeakLabels)
+                {
+                    peakLabel.IsVisible = IsPointOnGraphPane(pane, new PointPair(peakLabel.Location.X, peakLabel.Location.Y));
+                }
+            }
         }
 
-        private void ShrinkDetailsPanel()
+        private static bool IsPointOnGraphPane(GraphPane pane, PointPair point)
         {
-            detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height - DetailsPanelExtraHeight);
-        }
-
-        private void GrowDetailsPanel()
-        {
-            detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height + DetailsPanelExtraHeight);
+            Scale xScale = pane.XAxis.Scale;
+            Scale yScale = pane.YAxis.Scale;
+            return point.X > xScale.Min && point.X < xScale.Max && point.Y > yScale.Min && point.Y < yScale.Max;
         }
 
         private void NeutralLossNh3CheckBoxCheckedChanged(object sender, EventArgs e)
@@ -902,44 +940,6 @@ namespace CometUI.ViewResults
                     SpectrumGraphUserOptions.UseIonsMap = newUseIonsMap;
                 }
             }
-        }
-
-        private void SpectrumGraphItemZoomEvent(ZedGraphControl sender, ZoomState oldState, ZoomState newState)
-        {
-            OnSpectrumGraphItemZoom();
-        }
-
-        private void OnSpectrumGraphItemZoom()
-        {
-            var pane = spectrumGraphItem.GraphPane;
-
-            // Don't allow X-axis scale to go negative
-            if (pane.XAxis.Scale.Min < 0)
-            {
-                pane.XAxis.Scale.Min = 0;
-            }
-
-            // Don't allo the Y-axis scale to go negative
-            if (pane.YAxis.Scale.Min < 0)
-            {
-                pane.YAxis.Scale.Min = 0;
-            }
-
-            // Only show the peak labels if they are on the graph pane
-            if (null != PeakLabels)
-            {
-                foreach (var peakLabel in PeakLabels)
-                {
-                    peakLabel.IsVisible = IsPointOnGraphPane(pane, new PointPair(peakLabel.Location.X, peakLabel.Location.Y));
-                }
-            }
-        }
-
-        private static bool IsPointOnGraphPane(GraphPane pane, PointPair point)
-        {
-            Scale xScale = pane.XAxis.Scale;
-            Scale yScale = pane.YAxis.Scale;
-            return point.X > xScale.Min && point.X < xScale.Max && point.Y > yScale.Min && point.Y < yScale.Max;
         }
     }
 
