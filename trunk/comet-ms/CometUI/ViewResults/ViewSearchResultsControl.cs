@@ -407,13 +407,16 @@ namespace CometUI.ViewResults
                 IonCalculator = new PeptideFragmentCalculator();
             }
 
-            if (null != Peaks)
+            if (null == Peaks)
+            {
+                Peaks = new List<Peak_T_Wrapper>();
+            }
+            else
             {
                 Peaks.Clear();
             }
 
             var msFileReaderWrapper = new MSFileReaderWrapper();
-            Peaks = new List<Peak_T_Wrapper>();
             if (msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, ViewSpectraSearchResult.StartScan,
                                               SearchResultsMgr.SearchParams.MSLevel, Peaks))
             {
@@ -578,8 +581,12 @@ namespace CometUI.ViewResults
                                            {IonType.Z, new FragmentIonGraphInfo(new PointPairList(), Color.Orange)}
                                   };
 
-            foreach (var peak in Peaks)
+            // Todo: This is in development, here for testing purposes only right now
+            var topIntensities = GetTopIntensities(50);
+
+            for (int i = 0; i < Peaks.Count; i++)
             {
+                var peak = Peaks[i];
                 bool isFragmentIon = false;
                 double mz = peak.get_mz();
                 double intensity = peak.get_intensity();
@@ -590,16 +597,21 @@ namespace CometUI.ViewResults
                     continue;
                 }
 
-                // Check to see if any of the fragment ions we're supposed to 
-                // show match this peak
-                foreach (var fragmentIon in IonCalculator.FragmentIons)
+                // Ensure the pick is actually a peak, not merely noise
+                if (PickPeak(i, new Peak(mz, intensity), topIntensities))
                 {
-                    if (fragmentIon.Show && IonCalculator.IsFragmentIonPeak(mz, fragmentIon.Mass, (double)massTolTextBox.DecimalValue))
+                    // Check to see if any of the fragment ions we're supposed to 
+                    // show match this peak
+                    foreach (var fragmentIon in IonCalculator.FragmentIons)
                     {
-                        fragmentIonData[fragmentIon.Type].FragmentIonPeaks.Add(mz, intensity);
-                        AddPeakLabel(fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, mz, intensity);
-                        isFragmentIon = true;
-                        break;
+                        if (fragmentIon.Show &&
+                            IonCalculator.IsFragmentIonPeak(mz, fragmentIon.Mass, (double) massTolTextBox.DecimalValue))
+                        {
+                            fragmentIonData[fragmentIon.Type].FragmentIonPeaks.Add(mz, intensity);
+                            AddPeakLabel(fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, mz, intensity);
+                            isFragmentIon = true;
+                            break;
+                        }
                     }
                 }
 
@@ -650,6 +662,106 @@ namespace CometUI.ViewResults
 
             spectrumGraphItem.GraphPane.CurveList.Clear();
             spectrumGraphItem.GraphPane.GraphObjList.Clear();
+        }
+
+        private double[] GetTopIntensities(int numTopIntensities)
+        {
+            var intensitySortedPeaks = new List<Peak_T_Wrapper>(Peaks);
+            intensitySortedPeaks.Sort(new Peak_T_Wrapper_IntensityComparer());
+            var totalNumPeaks = intensitySortedPeaks.Count;
+            var topIntensities = new double[numTopIntensities];
+            for (int i = 0; i < numTopIntensities; i++)
+            {
+                topIntensities[i] = intensitySortedPeaks[totalNumPeaks - numTopIntensities + i].get_intensity();
+            }
+
+            return topIntensities;
+        }
+
+        private bool PickPeak(int peakIndex, Peak peak, double[] topIntensities)
+        {
+            // If the intensity of this peak is one of the top intensities,
+            // then we definitely want to pick this one.
+            if (peak.Intensity >= topIntensities[0])
+            {
+                return true;
+            }
+
+            // sum up the intensities in the +/- 50Da window of this peak
+            const double window = 50.0;
+            var totalIntensity = peak.Intensity;
+            var peakCount = 1;
+            var maxIntensity = peak.Intensity;
+            var minIndex = peakIndex;
+            var maxIndex = peakIndex;
+            var j = peakIndex - 1;
+            while (j >= 0)
+            {
+                var mz = Peaks[j].get_mz();
+                if (mz < peak.Mz - window)
+                {
+                    break;
+                }
+
+                var intensity = Peaks[j].get_intensity();
+                if (intensity > maxIntensity)
+                {
+                    maxIntensity = intensity;
+                }
+
+                totalIntensity += intensity;
+
+                minIndex = j;
+                j--;
+                peakCount++;
+            }
+
+            j = peakIndex + 1;
+            while (j < Peaks.Count)
+            {
+                var mz = Peaks[j].get_mz();
+                if (mz > mz + window)
+                {
+                    break;
+                }
+
+                var intensity = Peaks[j].get_intensity();
+                if (intensity > maxIntensity)
+                {
+                    maxIntensity = intensity;
+                }
+
+                totalIntensity += intensity;
+
+                maxIndex = j;
+                j++;
+                peakCount++;
+            }
+
+            var mean = totalIntensity / peakCount;
+
+            if (peakCount <= 10 && peak.Intensity.Equals(maxIntensity))
+            {
+                return true;
+            }
+
+            // calculate the standard deviation
+            double sdev = 0.0;
+            for (var k = minIndex; k <= maxIndex; k++)
+            {
+                var intensity = Peaks[k].get_intensity();
+                sdev += Math.Pow((intensity - mean), 2);
+            }
+            sdev = Math.Sqrt(sdev/peakCount);
+
+            // If the intensity is greater than 2 standard deviations away,
+            // we want to pick this peak
+            if (peak.Intensity >= mean + 2 * sdev)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private void AddPeakLabel(String label, Color labelColor, double mz, double intensity)

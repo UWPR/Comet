@@ -102,6 +102,7 @@
     <Compile Include="CometParam.cs" />
     <Compile Include="CometParamsIO.cs" />
     <Compile Include="MassSpecUtils.cs" />
+    <Compile Include="Peak.cs" />
     <Compile Include="Search\CometSearch.cs" />
     <Compile Include="CometUI.cs">
       <SubType>Form</SubType>
