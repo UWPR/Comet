@@ -581,9 +581,7 @@ namespace CometUI.ViewResults
                                            {IonType.Z, new FragmentIonGraphInfo(new PointPairList(), Color.Orange)}
                                   };
 
-            // Todo: This is in development, here for testing purposes only right now
             var topIntensities = GetTopIntensities(50);
-
             for (int i = 0; i < Peaks.Count; i++)
             {
                 var peak = Peaks[i];
