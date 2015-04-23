@@ -584,29 +584,27 @@ namespace CometUI.ViewResults
             var topIntensities = GetTopIntensities(50);
             for (int i = 0; i < Peaks.Count; i++)
             {
-                var peak = Peaks[i];
+                var peak = new Peak(Peaks[i]);
                 bool isFragmentIon = false;
-                double mz = peak.get_mz();
-                double intensity = peak.get_intensity();
 
                 // Ignore the peaks with zero intensity
-                if (intensity.Equals(0.0))
+                if (peak.Intensity.Equals(0.0))
                 {
                     continue;
                 }
 
                 // Ensure the pick is actually a peak, not merely noise
-                if (PickPeak(i, new Peak(mz, intensity), topIntensities))
+                if (PickPeak(i, peak, topIntensities))
                 {
                     // Check to see if any of the fragment ions we're supposed to 
                     // show match this peak
                     foreach (var fragmentIon in IonCalculator.FragmentIons)
                     {
                         if (fragmentIon.Show &&
-                            IonCalculator.IsFragmentIonPeak(mz, fragmentIon.Mass, (double) massTolTextBox.DecimalValue))
+                            IonCalculator.IsFragmentIonPeak(peak.Mz, fragmentIon.Mass, (double) massTolTextBox.DecimalValue))
                         {
-                            fragmentIonData[fragmentIon.Type].FragmentIonPeaks.Add(mz, intensity);
-                            AddPeakLabel(fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, mz, intensity);
+                            fragmentIonData[fragmentIon.Type].FragmentIonPeaks.Add(peak.Mz, peak.Intensity);
+                            AddPeakLabel(fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, peak.Mz, peak.Intensity);
                             isFragmentIon = true;
                             break;
                         }
@@ -617,7 +615,7 @@ namespace CometUI.ViewResults
                 // supposed to show, then it's just a regular peak to plot.
                 if (!isFragmentIon)
                 {
-                    peaksList.Add(mz, peak.get_intensity());
+                    peaksList.Add(peak.Mz, peak.Intensity);
                 }
             }
 
@@ -676,7 +674,7 @@ namespace CometUI.ViewResults
             return topIntensities;
         }
 
-        private bool PickPeak(int peakIndex, Peak peak, double[] topIntensities)
+        private bool PickPeak(int peakIndex, Peak peak, double[] topIntensities, double window = 50.0)
         {
             // If the intensity of this peak is one of the top intensities,
             // then we definitely want to pick this one.
@@ -686,7 +684,6 @@ namespace CometUI.ViewResults
             }
 
             // sum up the intensities in the +/- 50Da window of this peak
-            const double window = 50.0;
             var totalIntensity = peak.Intensity;
             var peakCount = 1;
             var maxIntensity = peak.Intensity;
@@ -695,19 +692,19 @@ namespace CometUI.ViewResults
             var j = peakIndex - 1;
             while (j >= 0)
             {
-                var mz = Peaks[j].get_mz();
-                if (mz < peak.Mz - window)
+                var currentPeak = new Peak(Peaks[j]);
+
+                if (currentPeak.Mz < peak.Mz - window)
                 {
                     break;
                 }
 
-                var intensity = Peaks[j].get_intensity();
-                if (intensity > maxIntensity)
+                if (currentPeak.Intensity > maxIntensity)
                 {
-                    maxIntensity = intensity;
+                    maxIntensity = currentPeak.Intensity;
                 }
 
-                totalIntensity += intensity;
+                totalIntensity += currentPeak.Intensity;
 
                 minIndex = j;
                 j--;
@@ -717,19 +714,18 @@ namespace CometUI.ViewResults
             j = peakIndex + 1;
             while (j < Peaks.Count)
             {
-                var mz = Peaks[j].get_mz();
-                if (mz > mz + window)
+                var currentPeak = new Peak(Peaks[j]);
+                if (currentPeak.Mz > peak.Mz + window)
                 {
                     break;
                 }
 
-                var intensity = Peaks[j].get_intensity();
-                if (intensity > maxIntensity)
+                if (currentPeak.Intensity > maxIntensity)
                 {
-                    maxIntensity = intensity;
+                    maxIntensity = currentPeak.Intensity;
                 }
 
-                totalIntensity += intensity;
+                totalIntensity += currentPeak.Intensity;
 
                 maxIndex = j;
                 j++;
