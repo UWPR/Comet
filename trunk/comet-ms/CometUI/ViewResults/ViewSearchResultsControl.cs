@@ -576,11 +576,13 @@ namespace CometUI.ViewResults
                                            {IonType.A, new FragmentIonGraphInfo(new PointPairList(), Color.LawnGreen)},
                                            {IonType.B, new FragmentIonGraphInfo(new PointPairList(), Color.Blue)},
                                            {IonType.C, new FragmentIonGraphInfo(new PointPairList(), Color.DeepSkyBlue)},
-                                           {IonType.X, new FragmentIonGraphInfo(new PointPairList(), Color.MediumPurple)},
+                                           {IonType.X, new FragmentIonGraphInfo(new PointPairList(), Color.Fuchsia)},
                                            {IonType.Y, new FragmentIonGraphInfo(new PointPairList(), Color.Red)},
                                            {IonType.Z, new FragmentIonGraphInfo(new PointPairList(), Color.Orange)}
                                   };
 
+            var precursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.CalculatedMass,
+                                                                 ViewSpectraSearchResult.AssumedCharge);
             var topIntensities = GetTopIntensities(50);
             for (int i = 0; i < Peaks.Count; i++)
             {
@@ -593,7 +595,22 @@ namespace CometUI.ViewResults
                     continue;
                 }
 
-                // Ensure the pick is actually a peak, not merely noise
+                // Todo: Ask Jimmy if I should move this into it's own graph, or keep it as it is and change the labelling a bit?
+                // Check to see if this is the precursor peak, and draw it as
+                // the precursor if it is.
+                if (MassSpecUtils.IsPeakPresent(peak.Mz, precursorMz, (double)massTolTextBox.DecimalValue))
+                {
+                    var border = new Border { IsVisible = false };
+                    var fill = new Fill { IsVisible = false };
+                    var fontSpec = new FontSpec { Border = border, Fill = fill, Angle = 90, FontColor = Color.Brown, IsDropShadow = false };
+                    PeakLabels.Add(new TextObj(PadPeakLabel(Convert.ToString(Math.Round(peak.Mz, 2))), peak.Mz, peak.Intensity) { FontSpec = fontSpec, ZOrder = ZOrder.A_InFront });
+
+                    var precursorPointPairList = new PointPairList {{peak.Mz, peak.Intensity}};
+                    graphPane.AddStick(null, precursorPointPairList, Color.Brown);
+                    continue;
+                }
+
+                // Ensure the peak is actually a peak, not merely noise
                 if (PickPeak(i, peak, topIntensities))
                 {
                     // Check to see if any of the fragment ions we're supposed to 
@@ -601,7 +618,7 @@ namespace CometUI.ViewResults
                     foreach (var fragmentIon in IonCalculator.FragmentIons)
                     {
                         if (fragmentIon.Show &&
-                            IonCalculator.IsFragmentIonPeak(peak.Mz, fragmentIon.Mass, (double) massTolTextBox.DecimalValue))
+                            MassSpecUtils.IsPeakPresent(peak.Mz, fragmentIon.Mass, (double) massTolTextBox.DecimalValue))
                         {
                             fragmentIonData[fragmentIon.Type].FragmentIonPeaks.Add(peak.Mz, peak.Intensity);
                             AddPeakLabel(fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, peak.Mz, peak.Intensity);

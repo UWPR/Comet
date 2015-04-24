@@ -735,7 +735,7 @@ namespace CometUI.ViewResults
         {
             get
             {
-                double mzRatio = MassSpecUtils.CalculateMzRatio(CalculatedMass, AssumedCharge);
+                double mzRatio = MassSpecUtils.CalculatePrecursorMz(CalculatedMass, AssumedCharge);
                 mzRatio = Math.Round(mzRatio, 4);
                 return mzRatio;
             }

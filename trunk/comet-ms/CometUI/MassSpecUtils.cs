@@ -217,12 +217,6 @@ namespace CometUI
             return phMid;
         }
 
-        public static double CalculateMzRatio(double calcNeutralMass, int assumedCharge)
-        {
-            double mzRatio = (calcNeutralMass + (assumedCharge * ProtonMass)) / assumedCharge;
-            return mzRatio;
-        }
-
         public static double CalculateMassDiff(double calcNeutralMass, double expMass)
         {
             var massDiff = calcNeutralMass - expMass;
@@ -233,6 +227,17 @@ namespace CometUI
         {
             var ppm = ((calcNeutralMass - expMass) / calcNeutralMass) * Math.Pow(10, 6);
             return ppm;
+        }
+
+        public static double CalculatePrecursorMz(double neutralMass, int charge)
+        {
+            double precursorMz = (neutralMass + (ProtonMass*charge))/charge;
+            return precursorMz;
+        }
+
+        public static bool IsPeakPresent(double peakMz, double mz, double massTol)
+        {
+            return Math.Abs(peakMz - mz) <= massTol;
         }
     }
 }
