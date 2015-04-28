@@ -159,6 +159,7 @@
   <ItemGroup>
     <ClInclude Include="CometData.h" />
     <ClInclude Include="CometDataInternal.h" />
+    <ClInclude Include="CometDecoys.h" />
     <ClInclude Include="CometInterfaces.h" />
     <ClInclude Include="CometMassSpecUtils.h" />
     <ClInclude Include="CometPostAnalysis.h" />
