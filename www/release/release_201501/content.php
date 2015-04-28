@@ -4,6 +4,26 @@
          <h1>Comet release 2015.01</h1>
                               
             <ul>
+               <b>release 2015.01 rev. 2 (2015.01.2), release date 2015/04/XX</b>
+               <li>Change decoy generation for E-value calculation when a small number of
+                   candidate peptides are searched.  The E-value histogram now includes
+                   3000 decoys, up from hundreds.  Decoys fragments are generated from
+                   actual peptides vs. previously "rotating" fragment ions from the
+                   database candidates that were scored.  This should improve E-value
+                   calculation for high-res MS/MS searches.
+               <li>Modified how the xcorr histogram tail is defined for the E-value calculation.
+               <li>Remove low xcorr + low E-value exception.  Previously, any peptide with a xcorr
+                   less than 1.0 could not receive a low E-value.
+               <li>Fix protein c-terminal modification searches which were not functioning properly.
+               <li>Fix cms2 file support which was broken in 2015.01.1.
+               <li>Add modification column to text output.  The encoding includes position, static or
+                   variable modification, and mass change for each modification in the peptide.
+                   Requested by Noble lab.
+               <li>Fix terminal modification reporting in pep.xml header.  Reported by D. Hernandez.
+               <li>Update MSToolkit to address progress percentage that could go beyond 100%.
+                   Reported by M. Askenazi.
+            </ul>
+            <ul>
                <b>release 2015.01 rev. 1 (2015.01.1), release date 2015/03/06</b>
                <li>Remove some error status checks, implemented for upcoming Windows GUI,
                    that were severely impacting search performance.
