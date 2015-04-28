@@ -83,7 +83,8 @@ static InputType GetInputType(const char *pszFileName)
    {
       return InputType_RAW;
    }
-   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".ms2"))
+   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".ms2")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".cms2"))
    {
       return InputType_MS2;
    }
