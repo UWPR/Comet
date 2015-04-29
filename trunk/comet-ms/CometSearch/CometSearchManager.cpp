@@ -72,6 +72,7 @@ static InputType GetInputType(const char *pszFileName)
 
    if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 6, ".mzXML")
          || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".mzML")
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".mz5")
          || !STRCMP_IGNORE_CASE(pszFileName + iLen - 9, ".mzXML.gz")
          || !STRCMP_IGNORE_CASE(pszFileName + iLen - 8, ".mzML.gz"))
 
@@ -83,8 +84,7 @@ static InputType GetInputType(const char *pszFileName)
       return InputType_RAW;
    }
    else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".ms2")
-         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".cms2")
-         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".bms2"))
+         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".cms2"))
    {
       return InputType_MS2;
    }
@@ -110,11 +110,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
    if (InputType_UNKNOWN == g_staticParams.inputFile.iInputType)
    {
-      sprintf(szTmpBaseName, " Unknown input file type, skipping:  %s\n\n", g_staticParams.inputFile.szFileName);
-      logout(szTmpBaseName);
-      return false;
+       return false;
    }
-
    int iLen = strlen(g_staticParams.inputFile.szFileName);
 
    // per request, perform quick check to validate file still exists
@@ -1435,8 +1432,7 @@ bool CometSearchManager::DoSearch()
       bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
       if (!bSucceeded)
       {
-//       break;
-         continue;
+         break;
       }
 
       time_t tStartTime;
@@ -1832,6 +1828,7 @@ bool CometSearchManager::DoSearch()
                sprintf(szOut, " - Start RunSearch:  %s\n", szTimeBuffer);
                logout(szOut);
                fflush(stdout);
+
             }
 #endif
      

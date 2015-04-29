@@ -339,39 +339,21 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
    MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
 
-   if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
-   {
-      // Make fast xcorr spectrum.
-      double dSum=0.0;
+   // Make fast xcorr spectrum.
+   double dSum=0.0;
+   int iTmpRange = 2*g_staticParams.iXcorrProcessingOffset + 1;
+   double dTmp = 1.0 / (double)(iTmpRange - 1);
 
-      dSum=0.0;
-      for (i=0; i<75; i++)
-         dSum += pdTmpCorrelationData[i];
-      for (i=75; i < pScoring->_spectrumInfoInternal.iArraySize +75; i++)
-      {
-         if (i<pScoring->_spectrumInfoInternal.iArraySize)
-            dSum += pdTmpCorrelationData[i];
-         if (i>=151)
-            dSum -= pdTmpCorrelationData[i-151];
-         pdTmpFastXcorrData[i-75] = (dSum - pdTmpCorrelationData[i-75])* 0.0066666667;
-      }
-   }
-   else
+   dSum=0.0;
+   for (i=0; i<g_staticParams.iXcorrProcessingOffset; i++)
+      dSum += pdTmpCorrelationData[i];
+   for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; i++)
    {
-      // Make fast xcorr spectrum.
-      double dSum=0.0;
-
-      dSum=0.0;
-      for (i=0; i<g_staticParams.iXcorrProcessingOffset; i++)
+      if (i<pScoring->_spectrumInfoInternal.iArraySize)
          dSum += pdTmpCorrelationData[i];
-      for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; i++)
-      {
-         if (i<pScoring->_spectrumInfoInternal.iArraySize)
-            dSum += pdTmpCorrelationData[i];
-         if (i>=(2*g_staticParams.iXcorrProcessingOffset + 1))
-            dSum -= pdTmpCorrelationData[i-(2*g_staticParams.iXcorrProcessingOffset + 1)];
-         pdTmpFastXcorrData[i-g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i-g_staticParams.iXcorrProcessingOffset])* 0.02;
-      }
+      if (i>=iTmpRange)
+         dSum -= pdTmpCorrelationData[i-iTmpRange];
+      pdTmpFastXcorrData[i-g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i-g_staticParams.iXcorrProcessingOffset])* dTmp;
    }
 
    pScoring->pfFastXcorrData[0] = 0.0;
@@ -732,7 +714,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    }
 
    if (iAnalysisType == AnalysisType_EntireFile
-         && /*g_staticParams.inputFile.iInputType == InputType_MZXML*/IsValidInputType(g_staticParams.inputFile.iInputType)
+         && IsValidInputType(g_staticParams.inputFile.iInputType)
          && iScanNum == 0)
    {
       _bDoneProcessingAllSpectra = true;
@@ -742,8 +724,8 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    // Horrible way to exit as this typically requires a quick cycle through
    // while loop but not sure what else to do when getScanNumber() returns 0
    // for non MS/MS scans.
-   if (/*g_staticParams.inputFile.iInputType == InputType_MZXML*/ IsValidInputType(g_staticParams.inputFile.iInputType) 
-       && iTotalScans > iReaderLastScan)
+   if (IsValidInputType(g_staticParams.inputFile.iInputType) 
+         && iTotalScans > iReaderLastScan)
    {
       _bDoneProcessingAllSpectra = true;
       return true;
@@ -922,7 +904,7 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
          pStr = g_staticParams.inputFile.szBaseName;
       }
       else
-         *pStr++;
+         (*pStr)++;
 
       sprintf(szOutputFileName, "%s/%s.%.5d.%.5d.%d.out",
             g_staticParams.inputFile.szBaseName,
@@ -1503,6 +1485,5 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
 
 bool CometPreprocess::IsValidInputType(int inputType)
 {
-   return g_staticParams.inputFile.iInputType == InputType_MZXML ||
-          g_staticParams.inputFile.iInputType == InputType_RAW;
+   return (inputType == InputType_MZXML || inputType == InputType_RAW);
 }

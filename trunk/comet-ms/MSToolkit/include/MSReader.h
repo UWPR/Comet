@@ -14,7 +14,6 @@
 //#include "MSToolkitInterface.h"
 
 #ifdef _MSC_VER
-//#import "progid:MSFileReader.XRawfile" rename_namespace("XRawfile")
 #import "libid:F0C5F3E3-4F2A-443E-A74D-0AABE3237494" rename_namespace("XRawfile")
 using namespace XRawfile;
 #endif
@@ -22,7 +21,6 @@ using namespace XRawfile;
 #ifndef _NOSQLITE
 #include <sqlite3.h>
 #endif
-
 
 //Macros for 64-bit file support
 #ifdef _MSC_VER
@@ -116,6 +114,7 @@ class MSReader {
   int iMZPrecision;
   int iVersion;
   int iFType;
+  int lastReadScanNum;
   MSFileFormat lastFileFormat;
   string sInstrument;
   string sManufacturer;

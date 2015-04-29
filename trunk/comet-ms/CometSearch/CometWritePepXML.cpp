@@ -178,7 +178,8 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       if (!isEqual(dMass, 0.0))
       {
          fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"N\"/>\n",
-               dMass, g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
+               dMass, g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
+
       }
    }
 
@@ -189,6 +190,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       {
          fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"N\"/>\n",
                dMass, g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
+
       }
    }
 
@@ -198,7 +200,8 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       if (!isEqual(dMass, 0.0))
       {
          fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
-               dMass, dMass + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
+               dMass, dMass + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
+
       }
    }
 
@@ -208,7 +211,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       if (!isEqual(dMass, 0.0))
       {
          fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"N\" protein_terminus=\"Y\"/>\n",
-               dMass, dMass + g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']); //FIX??
+               dMass, dMass + g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
       }
    }
 
@@ -289,27 +292,55 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
          {
             if (varModsParam.szVarModChar[i]=='n')
             {
-               fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\"",
-                     varModsParam.dVarModMass,
-                     varModsParam.dVarModMass +  g_staticParams.precalcMasses.dNtermProton - PROTON_MASS);
-
                if (varModsParam.iVarModTermDistance == 0)
-                  fprintf(fpout, " protein_terminus=\"Y\" />\n");
+               {
+                  double dMass = 0.0;
+                  searchMgr.GetParamValue("add_Nterm_protein", dMass);
+
+                  // massdiff = mod mass + h
+                  fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\"",
+                        varModsParam.dVarModMass,
+                        varModsParam.dVarModMass
+                           + dMass
+                           + g_staticParams.precalcMasses.dNtermProton
+                           - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
+               }
                else
-                  fprintf(fpout, " protein_terminus=\"N\" />\n");
+               {
+                  fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\"",
+                        varModsParam.dVarModMass,
+                        varModsParam.dVarModMass
+                           + g_staticParams.precalcMasses.dNtermProton
+                           - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
+               }
 
                fprintf(fpout, " symbol=\"%c\"/>\n", cSymbol);
             }
             else if (varModsParam.szVarModChar[i]=='c')
             {
-               fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\"",
-                     varModsParam.dVarModMass,
-                     varModsParam.dVarModMass +  g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS);
-
                if (varModsParam.iVarModTermDistance == 0)
-                  fprintf(fpout, " protein_terminus=\"Y\" />\n");
+               {
+                  double dMass = 0.0;
+                  searchMgr.GetParamValue("add_Cterm_protein", dMass);
+
+                  // massdiff = mod mass + oh
+                  fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\"",
+                        varModsParam.dVarModMass,
+                        varModsParam.dVarModMass
+                           + dMass
+                           + g_staticParams.precalcMasses.dCtermOH2Proton
+                           - PROTON_MASS
+                           - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
+               }
                else
-                  fprintf(fpout, " protein_terminus=\"N\" />\n");
+               {
+                  fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\"",
+                        varModsParam.dVarModMass,
+                        varModsParam.dVarModMass
+                           + g_staticParams.precalcMasses.dCtermOH2Proton
+                           - PROTON_MASS
+                           - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
+               }
 
                fprintf(fpout, " symbol=\"%c\"/>\n", cSymbol);
             }

@@ -21,6 +21,10 @@
 #include "CometMassSpecUtils.h"
 #include "CometStatus.h"
 
+
+#include "CometDecoys.h"  // this is where decoyIons[DECOY_SIZE] is initialized
+
+
 CometPostAnalysis::CometPostAnalysis()
 {
 }
@@ -470,6 +474,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
             if (dExpect > 999.0)
                dExpect = 999.0;
 
+/*
             // Sanity constraints - no low e-values allowed for xcorr < 1.0.
             // I'll admit xcorr < 1.0 is an arbitrary cutoff but something is needed.
             if (dExpect < 1.0)
@@ -477,6 +482,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
                if (pQuery->_pResults[i].fXcorr < 1.0)
                   dExpect = 10.0;
             }
+*/
 
             pQuery->_pResults[i].dExpect = dExpect;
          }
@@ -487,11 +493,13 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
             if (dExpect > 999.0)
                dExpect = 999.0;
 
+/*
             if (dExpect < 1.0)
             {
                if (pQuery->_pDecoys[i].fXcorr < 1.0)
                   dExpect = 10.0;
             }
+*/
 
             pQuery->_pDecoys[i].dExpect = dExpect;
          }
@@ -535,9 +543,13 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    {
       if (piHistogram[i]==0)
       {
-         if (i>0)
-            iNextCorr = i-1;
-         break;
+         // register iNextCorr if there's a histo value of 0 consecutively
+         if (piHistogram[i+1]==0 || i+1 == iMaxCorr)
+         {
+            if (i>0)
+               iNextCorr = i-1;
+            break;
+         }
       }
    }
 
@@ -547,7 +559,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       if (iMaxCorr>12)
          iNextCorr = iMaxCorr-2;
    }
-
+ 
    // Create cummulative distribution function from iNextCorr down, skipping the outliers.
    dCummulative[iNextCorr] = piHistogram[iNextCorr];
    for (i=iNextCorr-1; i>=0; i--)
@@ -565,8 +577,10 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    }
 
    iStartCorr = 0;
-   if (iNextCorr > 12)
-      iStartCorr = iNextCorr - 12 ;
+   if (iNextCorr >= 30)
+      iStartCorr = iNextCorr - iNextCorr*0.25;
+   else if (iNextCorr >= 15)
+      iStartCorr = iNextCorr - iNextCorr*0.5;
 
    Mx=My=a=b=0.0;
 
@@ -639,14 +653,10 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
    int ii;
    int j;
    int k;
-   int iLastFastXcorrIndex;
    int iMaxFragCharge;
    int ctCharge;
    double dBion;
    double dYion;
-   double dTmp1 = g_staticParams.precalcMasses.dNtermProton;
-   double dTmp2 = g_staticParams.precalcMasses.dCtermOH2Proton;
-   double dShift = 5.432;  // a random number
    double dFastXcorr;
    double dFragmentIonMass = 0.0;
 
@@ -660,13 +670,9 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
    iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
 
- 
    // DECOY_SIZE is the minimum # of decoys required or else this function is
    // called.  So need generate iLoopMax more xcorr scores for the histogram.
    int iLoopMax = DECOY_SIZE - pQuery->iHistogramCount;
-   int iLenPeptide=0;
-   char *szPeptide;
-   double dPepMass;
    bool bDecoy;
    int iLastEntry;
 
@@ -686,119 +692,82 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
       iLastEntry = g_staticParams.options.iNumStored;
 
    j=0;
-   for (i=0; i<iLoopMax; i++)
+   for (i=0; i<iLoopMax; i++)  // iterate through required # decoys
    {
-      if (j == iLastEntry)      // j is rotating index through stored peptides
-      {
-         j=0;
-         dShift += 5.8524;      // Some random shift value.
-      }
-
-      if (bDecoy)
-      {
-         iLenPeptide = pQuery->_pDecoys[j].iLenPeptide;
-         szPeptide = pQuery->_pDecoys[j].szPeptide;
-         dPepMass = pQuery->_pDecoys[j].dPepMass;
-      }
-      else
-      {
-         iLenPeptide = pQuery->_pResults[j].iLenPeptide;
-         szPeptide = pQuery->_pResults[j].szPeptide;
-         dPepMass = pQuery->_pResults[j].dPepMass;
-      }
-
       dFastXcorr = 0.0;
 
-      for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
+      for (j=0; j<MAX_DECOY_PEP_LEN; j++)  // iterate through decoy fragment ions
       {
-         dBion = dTmp1 + dShift;  // Ignore variable mods and rotate plain fragment ions.
-         dYion = dTmp2 + dShift;
+         dBion = decoyIons[i].pdIonsN[j];
+         dYion = decoyIons[i].pdIonsC[j];
 
          for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
             int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
-            iLastFastXcorrIndex=0;
-            for (k=0; k<iLenPeptide; k++)
+
+            dFragmentIonMass =  0.0;
+            switch (iWhichIonSeries)
             {
-               int iPos = iLenPeptide - k - 1;
+               case ION_SERIES_A:
+                  dFragmentIonMass = dBion - g_staticParams.massUtility.dCO;
+                  break;
+               case ION_SERIES_B:
+                  dFragmentIonMass = dBion;
+                  break;
+               case ION_SERIES_C:
+                  dFragmentIonMass = dBion + g_staticParams.massUtility.dNH3;
+                  break;
+               case ION_SERIES_X:
+                  dFragmentIonMass = dYion + g_staticParams.massUtility.dCOminusH2;
+                  break;
+               case ION_SERIES_Y:
+                  dFragmentIonMass = dYion;
+                  break;
+               case ION_SERIES_Z:
+                  dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2;
+                  break;
+            }
 
-               dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szPeptide[k]];
-               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szPeptide[iPos]];
-
-               dFragmentIonMass =  0.0;
-               switch (iWhichIonSeries)
-               {
-                  case ION_SERIES_A:
-                     dFragmentIonMass = dBion - g_staticParams.massUtility.dCO;
-                     break;
-                  case ION_SERIES_B:
-                     dFragmentIonMass = dBion;
-                     break;
-                  case ION_SERIES_C:
-                     dFragmentIonMass = dBion + g_staticParams.massUtility.dNH3;
-                     break;
-                  case ION_SERIES_X:
-                     dFragmentIonMass = dYion + g_staticParams.massUtility.dCOminusH2;
-                     break;
-                  case ION_SERIES_Y:
-                     dFragmentIonMass = dYion;
-                     break;
-                  case ION_SERIES_Z:
-                     dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2;
-                     break;
-               }
-
-               while (dFragmentIonMass >= pQuery->_pepMassInfo.dExpPepMass)
-               {
-                  iLastFastXcorrIndex=0;
-                  dFragmentIonMass -= pQuery->_pepMassInfo.dExpPepMass;
-               }
-
+            for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
+            {
                dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
-               iFragmentIonMass = BIN(dFragmentIonMass);
 
-               if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
+               if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
                {
-                  if (g_staticParams.options.bSparseMatrix)
+                  iFragmentIonMass = BIN(dFragmentIonMass);
+
+                  if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
-                     int x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
-                     if (pQuery->ppfSparseFastXcorrData[x]!=NULL)
+                     if (g_staticParams.options.bSparseMatrix)
                      {
-                        int y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
-                        dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
+                        int x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
+                        if (pQuery->ppfSparseFastXcorrData[x]!=NULL)
+                        {
+                           int y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
+                           dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
+                        }
+                     }
+                     else
+                     {
+                        dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
                      }
                   }
                   else
                   {
-                     dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
-                  }
-               }
-               else
-               {
-                  char szErrorMsg[256];
-                  sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
-                        dFragmentIonMass,
-                        iFragmentIonMass,
-                        pQuery->_spectrumInfoInternal.iArraySize,
-                        pQuery->_pepMassInfo.dExpPepMass,
-                        pQuery->_spectrumInfoInternal.iScanNumber,
-                        ctCharge);
+                     char szErrorMsg[256];
+                     sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
+                           dFragmentIonMass,
+                           iFragmentIonMass,
+                           pQuery->_spectrumInfoInternal.iArraySize,
+                           pQuery->_pepMassInfo.dExpPepMass,
+                           pQuery->_spectrumInfoInternal.iScanNumber,
+                           ctCharge);
                   
-                  string strErrorMsg(szErrorMsg);
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(szErrorMsg);
-                  return false;
-               }
-
-               if (dBion > dPepMass)
-               {
-                  dBion -= dPepMass;
-                  iLastFastXcorrIndex=0;
-               }
-               if (dYion > dPepMass)
-               {
-                  dYion -= dPepMass;
-                  iLastFastXcorrIndex=0;
+                     string strErrorMsg(szErrorMsg);
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                     logerr(szErrorMsg);
+                     return false;
+                  }
                }
             }
          }
@@ -812,8 +781,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
          k = HISTO_SIZE-1;
 
       piHistogram[k] += 1;
-
-      j++;  // Go to next candidate peptide.
    }
 
    return true;
