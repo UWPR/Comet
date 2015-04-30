@@ -24,13 +24,20 @@ namespace CometUI.ViewResults
         private SpectrumGraphUserOptions SpectrumGraphUserOptions { get; set; }
         private List<Peak_T_Wrapper> Peaks { get; set; }
         private PeptideFragmentCalculator IonCalculator { get; set; }
-        private List<TextObj> PeakLabels { get; set; } 
+        private List<TextObj> SpectrumGraphPeakLabels { get; set; }
+        private List<TextObj> PrecursorGraphPeakLabels { get; set; }
+        private Dictionary<IonType, FragmentIonGraphInfo> FragmentIonPeaks { get; set; }
+        private PointPairList SpectrumGraphPeaksList { get; set; }
+        private PointPairList PrecursorGraphPeaksList { get; set; }
+        private PointPair AcquiredPrecursorPeak { get; set; }
+        private PointPair TheoreticalPrecursorPeak { get; set; }
 
         private const String BlastHttpLink =
             "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
-        private const int DetailsPanelExtraHeight = 150;
+        //private const int DetailsPanelExtraHeight = 500;
         private const double DefaultMassTol = 0.5;
         private const int MaxIonCharge = 3;
+        
 
         public ViewSearchResultsControl(CometUI parent)
         {
@@ -224,10 +231,16 @@ namespace CometUI.ViewResults
             if (show)
             {
                 resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height / 4;
+                resultsSubPanelSplitContainer.Panel2.Visible = true;
+                resultsSubPanelSplitContainer.IsSplitterFixed = false;
+                resultsSubPanelSplitContainer.FixedPanel = FixedPanel.None;
             }
             else
             {
                 resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height;
+                resultsSubPanelSplitContainer.Panel2.Visible = false;
+                resultsSubPanelSplitContainer.IsSplitterFixed = true;
+                resultsSubPanelSplitContainer.FixedPanel = FixedPanel.Panel1;
             }
         }
 
@@ -377,27 +390,7 @@ namespace CometUI.ViewResults
 
         private void ShowViewSpectraUI(bool show)
         {
-            if (show && !viewSpectraSplitContainer.Visible)
-            {
-                GrowDetailsPanel();
-            }
-
-            if (!show && viewSpectraSplitContainer.Visible)
-            {
-                ShrinkDetailsPanel();
-            }
-
             viewSpectraSplitContainer.Visible = show;
-        }
-
-        private void ShrinkDetailsPanel()
-        {
-            detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height - DetailsPanelExtraHeight);
-        }
-
-        private void GrowDetailsPanel()
-        {
-            detailsPanel.Size = new Size(detailsPanel.Size.Width, detailsPanel.Size.Height + DetailsPanelExtraHeight);
         }
 
         private void ViewSpectra()
@@ -500,7 +493,7 @@ namespace CometUI.ViewResults
         {
             IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
             UpdateIonTable();
-            DrawSpectrumGraph();
+            DrawGraphs();
         }
 
         private void UpdateIonTable()
@@ -548,42 +541,16 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void DrawSpectrumGraph()
+        private void DrawGraphs()
         {
             InitializeSpectrumGraph();
-
-            GraphPane graphPane = spectrumGraphItem.GraphPane;
-
-            // Set the title
-            var titleStrSecondLine = String.Format("{0}, Scan: {1}, Exp. m/z: {2}, Charge: {3}",
-                SearchResultsMgr.ResultsPepXMLFile,
-                ViewSpectraSearchResult.StartScan,
-                ViewSpectraSearchResult.ExperimentalMass,
-                ViewSpectraSearchResult.AssumedCharge);
-            graphPane.Title.Text = ViewSpectraSearchResult.Peptide + Environment.NewLine + titleStrSecondLine;
-
-            //  Set the axis labels
-            graphPane.XAxis.Title.Text = "m/z";
-            graphPane.YAxis.Title.Text = "Intensity";
-
-            // Set the axis scale
-            graphPane.XAxis.Scale.Min = 0.0;
-            graphPane.YAxis.Scale.Min = 0.0;
-
-            var peaksList = new PointPairList();
-            var fragmentIonData = new Dictionary<IonType, FragmentIonGraphInfo>
-                                  {
-                                           {IonType.A, new FragmentIonGraphInfo(new PointPairList(), Color.LawnGreen)},
-                                           {IonType.B, new FragmentIonGraphInfo(new PointPairList(), Color.Blue)},
-                                           {IonType.C, new FragmentIonGraphInfo(new PointPairList(), Color.DeepSkyBlue)},
-                                           {IonType.X, new FragmentIonGraphInfo(new PointPairList(), Color.Fuchsia)},
-                                           {IonType.Y, new FragmentIonGraphInfo(new PointPairList(), Color.Red)},
-                                           {IonType.Z, new FragmentIonGraphInfo(new PointPairList(), Color.Orange)}
-                                  };
-
+            
             var precursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.CalculatedMass,
                                                                  ViewSpectraSearchResult.AssumedCharge);
+            InitializePrecursorGraph(precursorMz);
+
             var topIntensities = GetTopIntensities(50);
+            bool foundPrecursor = false;
             for (int i = 0; i < Peaks.Count; i++)
             {
                 var peak = new Peak(Peaks[i]);
@@ -595,19 +562,25 @@ namespace CometUI.ViewResults
                     continue;
                 }
 
-                // Todo: Ask Jimmy if I should move this into it's own graph, or keep it as it is and change the labelling a bit?
-                // Check to see if this is the precursor peak, and draw it as
-                // the precursor if it is.
-                if (MassSpecUtils.IsPeakPresent(peak.Mz, precursorMz, (double)massTolTextBox.DecimalValue))
+                // Check to see if this is the precursor peak
+                if (!foundPrecursor && MassSpecUtils.IsPeakPresent(peak.Mz, precursorMz, (double)massTolTextBox.DecimalValue))
                 {
+                    foundPrecursor = true;
+
                     var border = new Border { IsVisible = false };
                     var fill = new Fill { IsVisible = false };
-                    var fontSpec = new FontSpec { Border = border, Fill = fill, Angle = 90, FontColor = Color.Brown, IsDropShadow = false };
-                    PeakLabels.Add(new TextObj(PadPeakLabel(Convert.ToString(Math.Round(peak.Mz, 2))), peak.Mz, peak.Intensity) { FontSpec = fontSpec, ZOrder = ZOrder.A_InFront });
 
-                    var precursorPointPairList = new PointPairList {{peak.Mz, peak.Intensity}};
-                    graphPane.AddStick(null, precursorPointPairList, Color.Brown);
-                    continue;
+                    var acquiredFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.Red, IsDropShadow = false };
+                    PrecursorGraphPeakLabels.Add(new TextObj(PadPeakLabel("A: " + Convert.ToString(Math.Round(peak.Mz, 2))), peak.Mz, peak.Intensity) { FontSpec = acquiredFontSpec, ZOrder = ZOrder.A_InFront });
+                    AcquiredPrecursorPeak = new PointPair(peak.Mz, peak.Intensity);
+                    
+                    var theoreticalFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.DeepSkyBlue, IsDropShadow = false };
+                    PrecursorGraphPeakLabels.Add(new TextObj(PadPeakLabel("T: " + Convert.ToString(Math.Round(precursorMz, 2))), precursorMz, peak.Intensity * 0.9) { FontSpec = theoreticalFontSpec, ZOrder = ZOrder.A_InFront });
+                    TheoreticalPrecursorPeak = new PointPair(precursorMz, peak.Intensity * 0.9);
+                }
+                else
+                {
+                    PrecursorGraphPeaksList.Add(peak.Mz, peak.Intensity);
                 }
 
                 // Ensure the peak is actually a peak, not merely noise
@@ -620,8 +593,8 @@ namespace CometUI.ViewResults
                         if (fragmentIon.Show &&
                             MassSpecUtils.IsPeakPresent(peak.Mz, fragmentIon.Mass, (double) massTolTextBox.DecimalValue))
                         {
-                            fragmentIonData[fragmentIon.Type].FragmentIonPeaks.Add(peak.Mz, peak.Intensity);
-                            AddPeakLabel(fragmentIon.Label, fragmentIonData[fragmentIon.Type].PeakColor, peak.Mz, peak.Intensity);
+                            FragmentIonPeaks[fragmentIon.Type].FragmentIonPeaks.Add(peak.Mz, peak.Intensity);
+                            AddPeakLabel(fragmentIon.Label, FragmentIonPeaks[fragmentIon.Type].PeakColor, peak.Mz, peak.Intensity);
                             isFragmentIon = true;
                             break;
                         }
@@ -632,27 +605,119 @@ namespace CometUI.ViewResults
                 // supposed to show, then it's just a regular peak to plot.
                 if (!isFragmentIon)
                 {
-                    peaksList.Add(peak.Mz, peak.Intensity);
+                    SpectrumGraphPeaksList.Add(peak.Mz, peak.Intensity);
                 }
             }
 
+            DrawSpectrumGraph();
+            DrawPrecursorGraph(foundPrecursor);
+        }
+
+        private void InitializeSpectrumGraph()
+        {
+            if (null == SpectrumGraphPeakLabels)
+            {
+                SpectrumGraphPeakLabels = new List<TextObj>();
+            }
+            else
+            {
+                SpectrumGraphPeakLabels.Clear();
+            }
+
+            if (null == SpectrumGraphPeaksList)
+            {
+                SpectrumGraphPeaksList = new PointPairList();
+            }
+            else
+            {
+                SpectrumGraphPeaksList.Clear();
+            }
+
+            FragmentIonPeaks = new Dictionary<IonType, FragmentIonGraphInfo>
+                                {
+                                        {IonType.A, new FragmentIonGraphInfo(new PointPairList(), Color.LawnGreen)},
+                                        {IonType.B, new FragmentIonGraphInfo(new PointPairList(), Color.Blue)},
+                                        {IonType.C, new FragmentIonGraphInfo(new PointPairList(), Color.DeepSkyBlue)},
+                                        {IonType.X, new FragmentIonGraphInfo(new PointPairList(), Color.Fuchsia)},
+                                        {IonType.Y, new FragmentIonGraphInfo(new PointPairList(), Color.Red)},
+                                        {IonType.Z, new FragmentIonGraphInfo(new PointPairList(), Color.Orange)}
+                                };
+            
+            GraphPane spectrumGraphPane = spectrumGraphItem.GraphPane;
+
+            spectrumGraphPane.CurveList.Clear();
+            spectrumGraphPane.GraphObjList.Clear();
+
+            // Set the spectrum graph title
+            var titleStrSecondLine = String.Format("{0}, Scan: {1}, Exp. m/z: {2}, Charge: {3}",
+                SearchResultsMgr.ResultsPepXMLFile,
+                ViewSpectraSearchResult.StartScan,
+                ViewSpectraSearchResult.ExperimentalMass,
+                ViewSpectraSearchResult.AssumedCharge);
+            spectrumGraphPane.Title.Text = ViewSpectraSearchResult.Peptide + Environment.NewLine + titleStrSecondLine;
+
+            //  Set the axis labels for the spectrum graph
+            spectrumGraphPane.XAxis.Title.Text = "m/z";
+            spectrumGraphPane.YAxis.Title.Text = "Intensity";
+
+            // Set the spectrum graph axis scale
+            spectrumGraphPane.XAxis.Scale.Min = 0.0;
+            spectrumGraphPane.YAxis.Scale.Min = 0.0;
+        }
+
+        private void InitializePrecursorGraph(double precursorMz)
+        {
+            if (null == PrecursorGraphPeakLabels)
+            {
+                PrecursorGraphPeakLabels = new List<TextObj>();
+            }
+            else
+            {
+                PrecursorGraphPeakLabels.Clear();
+            }
+
+            if (null == PrecursorGraphPeaksList)
+            {
+                PrecursorGraphPeaksList = new PointPairList();
+            }
+            else
+            {
+                PrecursorGraphPeaksList.Clear();
+            }
+
+            GraphPane precursorGraphPane = precursorGraphItem.GraphPane;
+
+            precursorGraphPane.CurveList.Clear();
+            precursorGraphPane.GraphObjList.Clear();
+            
+            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", precursorMz);
+            precursorGraphPane.XAxis.Title.Text = "m/z";
+            precursorGraphPane.YAxis.Title.Text = "Intensity";
+            precursorGraphPane.YAxis.Scale.Min = 0.0;
+            precursorGraphPane.XAxis.Scale.Min = precursorMz - (double)massTolTextBox.DecimalValue * 10;
+            precursorGraphPane.XAxis.Scale.Max = precursorMz + (double)massTolTextBox.DecimalValue * 10;
+            precursorGraphPane.Legend.Position = LegendPos.InsideTopRight;
+        }
+
+        private void DrawSpectrumGraph()
+        {
             // Plot the regular peaks
-            graphPane.AddStick(null, peaksList, Color.LightGray);
+            spectrumGraphItem.GraphPane.AddStick(null, SpectrumGraphPeaksList, Color.LightGray);
 
             // Plot the fragment ion peaks
-            foreach (var fragmentIon in fragmentIonData)
+            foreach (var fragmentIon in FragmentIonPeaks)
             {
                 var fragmentIonGraphInfo = fragmentIon.Value;
                 if (fragmentIonGraphInfo.FragmentIonPeaks.Count > 0)
                 {
-                    graphPane.AddStick(null, fragmentIonGraphInfo.FragmentIonPeaks, fragmentIonGraphInfo.PeakColor);
+                    spectrumGraphItem.GraphPane.AddStick(null, fragmentIonGraphInfo.FragmentIonPeaks, fragmentIonGraphInfo.PeakColor);
                 }
             }
 
-            // Draw the peak labels
-            foreach (var peakLabel in PeakLabels)
+            // Draw the peak labels for the spectrum graph
+            foreach (var peakLabel in SpectrumGraphPeakLabels)
             {
-                graphPane.GraphObjList.Add(peakLabel);
+                spectrumGraphItem.GraphPane.GraphObjList.Add(peakLabel);
             }
 
             // Calculate the Axis Scale Ranges and redraw the whole graph 
@@ -662,19 +727,36 @@ namespace CometUI.ViewResults
             spectrumGraphItem.Refresh();
         }
 
-        private void InitializeSpectrumGraph()
+        private void DrawPrecursorGraph(bool foundPrecursor)
         {
-            if (null == PeakLabels)
+            // Plot the regular peaks on the precursor graph
+            precursorGraphItem.GraphPane.AddStick(null, PrecursorGraphPeaksList, Color.LightGray);
+
+            if (foundPrecursor)
             {
-                PeakLabels = new List<TextObj>();
-            }
-            else
-            {
-                PeakLabels.Clear();
+                // Draw the theoretical and acquired precursor peaks
+                precursorGraphItem.GraphPane.AddStick("T = theoretical m/z",
+                                                      new PointPairList {TheoreticalPrecursorPeak},
+                                                      Color.DeepSkyBlue);
+                precursorGraphItem.GraphPane.AddStick("A = acquired m/z", new PointPairList {AcquiredPrecursorPeak},
+                                                      Color.Red);
+
+
+                // To zoom in on the precursor sticks
+                precursorGraphItem.GraphPane.YAxis.Scale.Max = AcquiredPrecursorPeak.Y*2;
+
+                // Draw the peak labels for the precursor graph
+                foreach (var precursorPeakLabel in PrecursorGraphPeakLabels)
+                {
+                    precursorGraphItem.GraphPane.GraphObjList.Add(precursorPeakLabel);
+                }
             }
 
-            spectrumGraphItem.GraphPane.CurveList.Clear();
-            spectrumGraphItem.GraphPane.GraphObjList.Clear();
+            // Calculate the Axis Scale Ranges and redraw the whole graph 
+            // control for smooth transition
+            precursorGraphItem.AxisChange();
+            precursorGraphItem.Invalidate();
+            precursorGraphItem.Refresh();
         }
 
         private double[] GetTopIntensities(int numTopIntensities)
@@ -785,13 +867,13 @@ namespace CometUI.ViewResults
                 case PeakLabel.Ion:
                     // Add a few spaces in front of the label string so that it
                     // doesn't cover any part of the stick plot.
-                    PeakLabels.Add(new TextObj(PadPeakLabel(label), mz, intensity) { FontSpec = fontSpec, ZOrder = ZOrder.A_InFront });
+                    SpectrumGraphPeakLabels.Add(new TextObj(PadPeakLabel(label), mz, intensity) { FontSpec = fontSpec, ZOrder = ZOrder.A_InFront });
                     break;
 
                 case PeakLabel.Mz:
                     // Add a few spaces in front of the m/z string so that it
                     // doesn't cover any part of the stick plot.
-                    PeakLabels.Add(new TextObj(PadPeakLabel(Convert.ToString(Math.Round(mz, 2))), mz, intensity) { FontSpec = fontSpec, ZOrder = ZOrder.A_InFront });
+                    SpectrumGraphPeakLabels.Add(new TextObj(PadPeakLabel(Convert.ToString(Math.Round(mz, 2))), mz, intensity) { FontSpec = fontSpec, ZOrder = ZOrder.A_InFront });
                     break;
 
                 case PeakLabel.None:
@@ -808,13 +890,30 @@ namespace CometUI.ViewResults
 
         private void SpectrumGraphItemZoomEvent(ZedGraphControl sender, ZoomState oldState, ZoomState newState)
         {
-            OnSpectrumGraphItemZoom();
+            OnGraphItemZoom(spectrumGraphItem.GraphPane, SpectrumGraphPeakLabels);
         }
 
-        private void OnSpectrumGraphItemZoom()
+        private void PrecursorGraphItemZoomEvent(ZedGraphControl sender, ZoomState oldState, ZoomState newState)
         {
-            var pane = spectrumGraphItem.GraphPane;
+            OnGraphItemZoom(precursorGraphItem.GraphPane, PrecursorGraphPeakLabels);
+        }
 
+        private void OnGraphItemZoom(GraphPane pane, IEnumerable<TextObj> peakLabels)
+        {
+            ResetAxesToPositive(pane);
+
+            // Only show the peak labels if they are on the graph pane
+            if (null != peakLabels)
+            {
+                foreach (var peakLabel in peakLabels)
+                {
+                    peakLabel.IsVisible = IsPointOnGraphPane(pane, new PointPair(peakLabel.Location.X, peakLabel.Location.Y));
+                }
+            }
+        }
+
+        private void ResetAxesToPositive(GraphPane pane)
+        {
             // Don't allow X-axis scale to go negative
             if (pane.XAxis.Scale.Min < 0)
             {
@@ -825,15 +924,6 @@ namespace CometUI.ViewResults
             if (pane.YAxis.Scale.Min < 0)
             {
                 pane.YAxis.Scale.Min = 0;
-            }
-
-            // Only show the peak labels if they are on the graph pane
-            if (null != PeakLabels)
-            {
-                foreach (var peakLabel in PeakLabels)
-                {
-                    peakLabel.IsVisible = IsPointOnGraphPane(pane, new PointPair(peakLabel.Location.X, peakLabel.Location.Y));
-                }
             }
         }
 
