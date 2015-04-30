@@ -18,9 +18,6 @@ namespace CometUI.ViewResults
 
         private void InitializeFromDefaultSettings()
         {
-            highlightPeptideIncludeModCheckBox.Checked =
-                CometUI.ViewResultsSettings.DisplayOptionsInlcudeModsWhenHighlightingPeptides;
-
             if (CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
             {
                 columnHeadersCondensedRadioButton.Checked = true;
@@ -28,22 +25,6 @@ namespace CometUI.ViewResults
             else
             {
                 columnHeadersRegularRadioButton.Checked = true;
-            }
-        }
-
-        private void HighlightPeptideIncludeModCheckBoxCheckedChanged(object sender, System.EventArgs e)
-        {
-            VerifyAndUpdateHighlightPeptideIncludeModSetting();
-        }
-
-        private void VerifyAndUpdateHighlightPeptideIncludeModSetting()
-        {
-            if (highlightPeptideIncludeModCheckBox.Checked !=
-                CometUI.ViewResultsSettings.DisplayOptionsInlcudeModsWhenHighlightingPeptides)
-            {
-                CometUI.ViewResultsSettings.DisplayOptionsInlcudeModsWhenHighlightingPeptides =
-                    highlightPeptideIncludeModCheckBox.Checked;
-                ViewSearchResultsControl.SettingsChanged = true;
             }
         }
 
