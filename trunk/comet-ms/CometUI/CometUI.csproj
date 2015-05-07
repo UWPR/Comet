@@ -100,7 +100,20 @@
       <DependentUpon>About Dlg.cs</DependentUpon>
     </Compile>
     <Compile Include="CometParam.cs" />
-    <Compile Include="CometParamsIO.cs" />
+    <Compile Include="CometParamsReader.cs" />
+    <Compile Include="CometParamsWriter.cs" />
+    <Compile Include="CustomControls\ExportFileDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CustomControls\ExportFileDlg.Designer.cs">
+      <DependentUpon>ExportFileDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CustomControls\FindFileDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CustomControls\FindFileDlg.Designer.cs">
+      <DependentUpon>FindFileDlg.cs</DependentUpon>
+    </Compile>
     <Compile Include="MassSpecUtils.cs" />
     <Compile Include="Peak.cs" />
     <Compile Include="Search\CometSearch.cs" />
@@ -223,14 +236,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ViewResults\FindFileDlg.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ViewResults\FindFileDlg.Designer.cs">
-      <DependentUpon>FindFileDlg.cs</DependentUpon>
-    </Compile>
     <Compile Include="ViewResults\ProteinDBReader.cs" />
     <Compile Include="ViewResults\SearchResult.cs" />
+    <Compile Include="ViewResults\ExportSearchResults.cs" />
     <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -260,6 +268,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="CometUI.resx">
       <DependentUpon>CometUI.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CustomControls\ExportFileDlg.resx">
+      <DependentUpon>ExportFileDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CustomControls\FindFileDlg.resx">
+      <DependentUpon>FindFileDlg.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="CustomControls\ProgressDlg.resx">
       <DependentUpon>ProgressDlg.cs</DependentUpon>
@@ -314,9 +328,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
-    <EmbeddedResource Include="ViewResults\FindFileDlg.resx">
-      <DependentUpon>FindFileDlg.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="ViewResults\ViewResultsDisplayOptionsControl.resx">
       <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
     </EmbeddedResource>
@@ -378,9 +389,6 @@
       <ProductName>Windows Installer 3.1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\comet.jpeg" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\comet.jpg" />

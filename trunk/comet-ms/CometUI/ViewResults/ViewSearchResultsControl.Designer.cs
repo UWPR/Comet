@@ -38,7 +38,10 @@
             this.resultsSubPanel = new System.Windows.Forms.Panel();
             this.resultsSubPanelSplitContainer = new System.Windows.Forms.SplitContainer();
             this.resultsListView = new BrightIdeasSoftware.ObjectListView();
+            this.resultsListContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.resultsListContextMenuItemExport = new System.Windows.Forms.ToolStripMenuItem();
             this.detailsPanel = new System.Windows.Forms.Panel();
+            this.hideDetailsPanelButton = new System.Windows.Forms.Button();
             this.viewSpectraSplitContainer = new System.Windows.Forms.SplitContainer();
             this.graphOptionsPanel = new System.Windows.Forms.Panel();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
@@ -49,6 +52,7 @@
             this.massTypeRadioButtonsPanel = new System.Windows.Forms.Panel();
             this.massTypeAvgRadioButton = new System.Windows.Forms.RadioButton();
             this.massTypeMonoRadioButton = new System.Windows.Forms.RadioButton();
+            this.massTolTextBox = new NumericTextBox();
             this.label26 = new System.Windows.Forms.Label();
             this.labelMassType = new System.Windows.Forms.Label();
             this.updateBtn = new System.Windows.Forms.Button();
@@ -113,14 +117,12 @@
             this.spectrumGraphIonsTable = new BrightIdeasSoftware.ObjectListView();
             this.databaseLabel = new System.Windows.Forms.Label();
             this.proteinSequenceTextBox = new System.Windows.Forms.RichTextBox();
-            this.hideDetailsPanelButton = new System.Windows.Forms.Button();
             this.hideOptionsGroupBox = new System.Windows.Forms.GroupBox();
             this.showHideOptionsLabel = new System.Windows.Forms.Label();
             this.showHideOptionsBtn = new System.Windows.Forms.Button();
             this.resultsPanelFull = new System.Windows.Forms.Panel();
             this.resultsPanelNormal = new System.Windows.Forms.Panel();
             this.viewResultsToolTip = new System.Windows.Forms.ToolTip(this.components);
-            this.massTolTextBox = new NumericTextBox();
             this.showOptionsPanel.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.resultsPanel.SuspendLayout();
@@ -130,6 +132,7 @@
             this.resultsSubPanelSplitContainer.Panel2.SuspendLayout();
             this.resultsSubPanelSplitContainer.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).BeginInit();
+            this.resultsListContextMenuStrip.SuspendLayout();
             this.detailsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewSpectraSplitContainer)).BeginInit();
             this.viewSpectraSplitContainer.Panel1.SuspendLayout();
@@ -251,6 +254,7 @@
             // 
             this.resultsListView.AlternateRowBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(222)))), ((int)(((byte)(254)))));
             this.resultsListView.BackColor = System.Drawing.Color.White;
+            this.resultsListView.ContextMenuStrip = this.resultsListContextMenuStrip;
             this.resultsListView.Cursor = System.Windows.Forms.Cursors.Default;
             this.resultsListView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.resultsListView.IncludeColumnHeadersInCopy = true;
@@ -266,6 +270,20 @@
             this.resultsListView.CellToolTipShowing += new System.EventHandler<BrightIdeasSoftware.ToolTipShowingEventArgs>(this.ResultsListViewCellToolTipShowing);
             this.resultsListView.HyperlinkClicked += new System.EventHandler<BrightIdeasSoftware.HyperlinkClickedEventArgs>(this.ResultsListViewHyperlinkClicked);
             // 
+            // resultsListContextMenuStrip
+            // 
+            this.resultsListContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.resultsListContextMenuItemExport});
+            this.resultsListContextMenuStrip.Name = "resultsListContextMenuStrip";
+            this.resultsListContextMenuStrip.Size = new System.Drawing.Size(153, 48);
+            // 
+            // resultsListContextMenuItemExport
+            // 
+            this.resultsListContextMenuItemExport.Name = "resultsListContextMenuItemExport";
+            this.resultsListContextMenuItemExport.Size = new System.Drawing.Size(152, 22);
+            this.resultsListContextMenuItemExport.Text = "&Export Results";
+            this.resultsListContextMenuItemExport.Click += new System.EventHandler(this.ResultsListContextMenuItemExportClick);
+            // 
             // detailsPanel
             // 
             this.detailsPanel.Controls.Add(this.hideDetailsPanelButton);
@@ -277,6 +295,20 @@
             this.detailsPanel.Name = "detailsPanel";
             this.detailsPanel.Size = new System.Drawing.Size(1015, 190);
             this.detailsPanel.TabIndex = 1;
+            // 
+            // hideDetailsPanelButton
+            // 
+            this.hideDetailsPanelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.hideDetailsPanelButton.BackColor = System.Drawing.SystemColors.Control;
+            this.hideDetailsPanelButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.hideDetailsPanelButton.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.hideDetailsPanelButton.Location = new System.Drawing.Point(993, 28);
+            this.hideDetailsPanelButton.Name = "hideDetailsPanelButton";
+            this.hideDetailsPanelButton.Size = new System.Drawing.Size(22, 20);
+            this.hideDetailsPanelButton.TabIndex = 0;
+            this.hideDetailsPanelButton.Text = "X";
+            this.hideDetailsPanelButton.UseVisualStyleBackColor = false;
+            this.hideDetailsPanelButton.Click += new System.EventHandler(this.HideDetailsPanelButtonClick);
             // 
             // viewSpectraSplitContainer
             // 
@@ -454,6 +486,17 @@
             this.massTypeMonoRadioButton.Text = "Mono";
             this.massTypeMonoRadioButton.UseVisualStyleBackColor = true;
             this.massTypeMonoRadioButton.CheckedChanged += new System.EventHandler(this.MassTypeMonoRadioButtonCheckedChanged);
+            // 
+            // massTolTextBox
+            // 
+            this.massTolTextBox.AllowDecimal = true;
+            this.massTolTextBox.AllowGroupSeparator = false;
+            this.massTolTextBox.AllowNegative = false;
+            this.massTolTextBox.AllowSpace = false;
+            this.massTolTextBox.Location = new System.Drawing.Point(18, 317);
+            this.massTolTextBox.Name = "massTolTextBox";
+            this.massTolTextBox.Size = new System.Drawing.Size(69, 20);
+            this.massTolTextBox.TabIndex = 43;
             // 
             // label26
             // 
@@ -1116,20 +1159,6 @@
             this.proteinSequenceTextBox.TabIndex = 2;
             this.proteinSequenceTextBox.Text = "";
             // 
-            // hideDetailsPanelButton
-            // 
-            this.hideDetailsPanelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.hideDetailsPanelButton.BackColor = System.Drawing.SystemColors.Control;
-            this.hideDetailsPanelButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.hideDetailsPanelButton.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.hideDetailsPanelButton.Location = new System.Drawing.Point(993, 28);
-            this.hideDetailsPanelButton.Name = "hideDetailsPanelButton";
-            this.hideDetailsPanelButton.Size = new System.Drawing.Size(22, 20);
-            this.hideDetailsPanelButton.TabIndex = 0;
-            this.hideDetailsPanelButton.Text = "X";
-            this.hideDetailsPanelButton.UseVisualStyleBackColor = false;
-            this.hideDetailsPanelButton.Click += new System.EventHandler(this.HideDetailsPanelButtonClick);
-            // 
             // hideOptionsGroupBox
             // 
             this.hideOptionsGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
@@ -1184,17 +1213,6 @@
             // 
             this.viewResultsToolTip.UseFading = false;
             // 
-            // massTolTextBox
-            // 
-            this.massTolTextBox.AllowDecimal = true;
-            this.massTolTextBox.AllowGroupSeparator = false;
-            this.massTolTextBox.AllowNegative = false;
-            this.massTolTextBox.AllowSpace = false;
-            this.massTolTextBox.Location = new System.Drawing.Point(18, 317);
-            this.massTolTextBox.Name = "massTolTextBox";
-            this.massTolTextBox.Size = new System.Drawing.Size(69, 20);
-            this.massTolTextBox.TabIndex = 43;
-            // 
             // ViewSearchResultsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1217,6 +1235,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.resultsSubPanelSplitContainer)).EndInit();
             this.resultsSubPanelSplitContainer.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).EndInit();
+            this.resultsListContextMenuStrip.ResumeLayout(false);
             this.detailsPanel.ResumeLayout(false);
             this.detailsPanel.PerformLayout();
             this.viewSpectraSplitContainer.Panel1.ResumeLayout(false);
@@ -1338,5 +1357,7 @@
         private System.Windows.Forms.SplitContainer resultsSubPanelSplitContainer;
         private System.Windows.Forms.SplitContainer precursorGraphSplitContainer;
         private ZedGraph.ZedGraphControl precursorGraphItem;
+        private System.Windows.Forms.ContextMenuStrip resultsListContextMenuStrip;
+        private System.Windows.Forms.ToolStripMenuItem resultsListContextMenuItemExport;
     }
 }

@@ -46,7 +46,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxName.Location = new System.Drawing.Point(15, 36);
             this.textBoxName.Name = "textBoxName";
-            this.textBoxName.Size = new System.Drawing.Size(352, 20);
+            this.textBoxName.Size = new System.Drawing.Size(403, 20);
             this.textBoxName.TabIndex = 10;
             this.textBoxName.TextChanged += new System.EventHandler(this.TextBoxNameTextChanged);
             // 
@@ -57,7 +57,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxPath.Location = new System.Drawing.Point(15, 86);
             this.textBoxPath.Name = "textBoxPath";
-            this.textBoxPath.Size = new System.Drawing.Size(352, 20);
+            this.textBoxPath.Size = new System.Drawing.Size(403, 20);
             this.textBoxPath.TabIndex = 11;
             this.textBoxPath.TextChanged += new System.EventHandler(this.TextBoxPathTextChanged);
             // 
@@ -111,12 +111,14 @@
             // btnExportPath
             // 
             this.btnExportPath.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.btnExportPath.Location = new System.Drawing.Point(373, 84);
+            this.btnExportPath.BackColor = System.Drawing.Color.Transparent;
+            this.btnExportPath.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("btnExportPath.BackgroundImage")));
+            this.btnExportPath.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.btnExportPath.Location = new System.Drawing.Point(424, 84);
             this.btnExportPath.Name = "btnExportPath";
-            this.btnExportPath.Size = new System.Drawing.Size(75, 23);
+            this.btnExportPath.Size = new System.Drawing.Size(24, 24);
             this.btnExportPath.TabIndex = 9;
-            this.btnExportPath.Text = "&Browse...";
-            this.btnExportPath.UseVisualStyleBackColor = true;
+            this.btnExportPath.UseVisualStyleBackColor = false;
             this.btnExportPath.Click += new System.EventHandler(this.BtnExportPathClick);
             // 
             // btnSettings

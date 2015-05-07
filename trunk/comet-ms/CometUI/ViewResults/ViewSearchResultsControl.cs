@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
+using CometUI.CustomControls;
 using CometUI.Properties;
 using CometWrapper;
 using ZedGraph;
@@ -34,7 +35,6 @@ namespace CometUI.ViewResults
 
         private const String BlastHttpLink =
             "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
-        //private const int DetailsPanelExtraHeight = 500;
         private const double DefaultMassTol = 0.5;
         private const int MaxIonCharge = 3;
         
@@ -240,7 +240,7 @@ namespace CometUI.ViewResults
                 resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height;
                 resultsSubPanelSplitContainer.Panel2.Visible = false;
                 resultsSubPanelSplitContainer.IsSplitterFixed = true;
-                resultsSubPanelSplitContainer.FixedPanel = FixedPanel.Panel1;
+                resultsSubPanelSplitContainer.FixedPanel = FixedPanel.Panel2;
             }
         }
 
@@ -650,7 +650,7 @@ namespace CometUI.ViewResults
 
             // Set the spectrum graph title
             var titleStrSecondLine = String.Format("{0}, Scan: {1}, Exp. m/z: {2}, Charge: {3}",
-                SearchResultsMgr.ResultsPepXMLFile,
+                SearchResultsMgr.ResultsFile,
                 ViewSpectraSearchResult.StartScan,
                 ViewSpectraSearchResult.ExperimentalMass,
                 ViewSpectraSearchResult.AssumedCharge);
@@ -1152,6 +1152,22 @@ namespace CometUI.ViewResults
                     // Now overwrite the current UseIonsMap with the new one
                     SpectrumGraphUserOptions.UseIonsMap = newUseIonsMap;
                 }
+            }
+        }
+
+        private void ResultsListContextMenuItemExportClick(object sender, EventArgs e)
+        {
+            var exportFileDlg = new ExportFileDlg
+                                    {
+                                        FileExtension = ".txt",
+                                        DlgTitle = "Export Search Results",
+                                        FileNameText = SearchResultsMgr.ResultsFileBaseName,
+                                        FilePathText = SearchResultsMgr.ResultsFilePath
+                                    };
+            if (exportFileDlg.ShowDialog() == DialogResult.OK)
+            {
+                var resultsExporter = new ExportSearchResults();
+                resultsExporter.Export(resultsListView, exportFileDlg.FileFullPath);
             }
         }
     }

@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ViewResultsSummaryOptionsControl));
             this.btnBrowsePepXMLFile = new System.Windows.Forms.Button();
             this.pepXMLFileCombo = new System.Windows.Forms.ComboBox();
             this.pepXMLFileLabel = new System.Windows.Forms.Label();
@@ -40,12 +41,14 @@
             // btnBrowsePepXMLFile
             // 
             this.btnBrowsePepXMLFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowsePepXMLFile.Location = new System.Drawing.Point(908, 40);
+            this.btnBrowsePepXMLFile.BackColor = System.Drawing.Color.Transparent;
+            this.btnBrowsePepXMLFile.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("btnBrowsePepXMLFile.BackgroundImage")));
+            this.btnBrowsePepXMLFile.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.btnBrowsePepXMLFile.Location = new System.Drawing.Point(959, 39);
             this.btnBrowsePepXMLFile.Name = "btnBrowsePepXMLFile";
-            this.btnBrowsePepXMLFile.Size = new System.Drawing.Size(75, 23);
+            this.btnBrowsePepXMLFile.Size = new System.Drawing.Size(24, 24);
             this.btnBrowsePepXMLFile.TabIndex = 42;
-            this.btnBrowsePepXMLFile.Text = "&Browse";
-            this.btnBrowsePepXMLFile.UseVisualStyleBackColor = true;
+            this.btnBrowsePepXMLFile.UseVisualStyleBackColor = false;
             this.btnBrowsePepXMLFile.Click += new System.EventHandler(this.BtnBrowsePepXMLFileClick);
             // 
             // pepXMLFileCombo
@@ -58,7 +61,7 @@
             this.pepXMLFileCombo.FormattingEnabled = true;
             this.pepXMLFileCombo.Location = new System.Drawing.Point(93, 40);
             this.pepXMLFileCombo.Name = "pepXMLFileCombo";
-            this.pepXMLFileCombo.Size = new System.Drawing.Size(809, 23);
+            this.pepXMLFileCombo.Size = new System.Drawing.Size(860, 23);
             this.pepXMLFileCombo.TabIndex = 41;
             // 
             // pepXMLFileLabel

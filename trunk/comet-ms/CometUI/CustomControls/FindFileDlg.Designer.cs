@@ -1,4 +1,4 @@
-﻿namespace CometUI.ViewResults
+namespace CometUI.CustomControls
 {
     partial class FindFileDlg
     {
@@ -52,12 +52,14 @@
             // 
             this.btnBrowseFile.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnBrowseFile.Location = new System.Drawing.Point(481, 36);
+            this.btnBrowseFile.BackColor = System.Drawing.Color.Transparent;
+            this.btnBrowseFile.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("btnBrowseFile.BackgroundImage")));
+            this.btnBrowseFile.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.btnBrowseFile.Location = new System.Drawing.Point(532, 35);
             this.btnBrowseFile.Name = "btnBrowseFile";
-            this.btnBrowseFile.Size = new System.Drawing.Size(75, 23);
+            this.btnBrowseFile.Size = new System.Drawing.Size(24, 24);
             this.btnBrowseFile.TabIndex = 106;
-            this.btnBrowseFile.Text = "&Browse";
-            this.btnBrowseFile.UseVisualStyleBackColor = true;
+            this.btnBrowseFile.UseVisualStyleBackColor = false;
             this.btnBrowseFile.Click += new System.EventHandler(this.BtnBrowseSearchDBFileClick);
             // 
             // findFileLabel
@@ -87,7 +89,7 @@
             this.findFileCombo.FormattingEnabled = true;
             this.findFileCombo.Location = new System.Drawing.Point(15, 36);
             this.findFileCombo.Name = "findFileCombo";
-            this.findFileCombo.Size = new System.Drawing.Size(460, 23);
+            this.findFileCombo.Size = new System.Drawing.Size(511, 23);
             this.findFileCombo.TabIndex = 105;
             // 
             // FindFileDlg

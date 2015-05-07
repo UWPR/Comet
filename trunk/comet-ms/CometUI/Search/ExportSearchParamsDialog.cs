@@ -72,6 +72,8 @@ namespace CometUI.Search
                 {
                     return false;
                 }
+
+                File.Delete(FilePath);
             }
 
             var paramsMap = new CometParamsMap(CometUI.SearchSettings);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Xml.XPath;
 using CometUI.Properties;
 using CometWrapper;
@@ -9,12 +10,47 @@ namespace CometUI.ViewResults
     public class SearchResultsManager
     {
         public String ErrorMessage { get; set; }
-        public String ResultsPepXMLFile { get; set; }
+        public String ResultsFile { get; set; }
         public String SearchDatabaseFile { get; set; }
         public String SpectraFile { get; set; }
         public List<SearchResult> SearchResults { get; set; }
         public Dictionary<String, SearchResultColumn> ResultColumns { get; set; }
         public SearchResultParams SearchParams { get; private set; }
+
+        public String ResultsFileBaseName
+        {
+            get
+            {
+                var resultsFileBaseName = Path.GetFileName(ResultsFile);
+                if (null != resultsFileBaseName)
+                {
+                    const String pepXmlExtension = ".pep.xml";
+                    if (resultsFileBaseName.Contains(pepXmlExtension))
+                    {
+                        resultsFileBaseName = resultsFileBaseName.Remove(resultsFileBaseName.Length - pepXmlExtension.Length);
+                    }
+                    else
+                    {
+                        resultsFileBaseName = Path.GetFileNameWithoutExtension(resultsFileBaseName);
+                    }
+                }
+                else
+                {
+                    resultsFileBaseName = String.Empty;
+                }
+                
+                return resultsFileBaseName;
+            }
+        }
+
+        public String ResultsFilePath
+        {
+            get
+            {
+                return Path.GetDirectoryName(ResultsFile);
+            }
+        }
+
 
         private const MSSpectrumTypeWrapper DefaultMSLevel = MSSpectrumTypeWrapper.MS2;
 
@@ -58,7 +94,7 @@ namespace CometUI.ViewResults
 
         public bool UpdateResults(String resultsPepXMLFile)
         {
-            ResultsPepXMLFile = resultsPepXMLFile;
+            ResultsFile = resultsPepXMLFile;
             return ReadSearchResults();
         }
 
@@ -66,7 +102,7 @@ namespace CometUI.ViewResults
         {
             SearchResults.Clear();
 
-            String resultsFile = ResultsPepXMLFile;
+            String resultsFile = ResultsFile;
             if (String.Empty == resultsFile)
             {
                 return true;

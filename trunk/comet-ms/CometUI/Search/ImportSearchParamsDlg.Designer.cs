@@ -56,19 +56,21 @@
             this.paramsFileCombo.FormattingEnabled = true;
             this.paramsFileCombo.Location = new System.Drawing.Point(15, 32);
             this.paramsFileCombo.Name = "paramsFileCombo";
-            this.paramsFileCombo.Size = new System.Drawing.Size(360, 23);
+            this.paramsFileCombo.Size = new System.Drawing.Size(411, 23);
             this.paramsFileCombo.TabIndex = 100;
             this.paramsFileCombo.SelectedIndexChanged += new System.EventHandler(this.ParamsFileComboSelectedIndexChanged);
             this.paramsFileCombo.TextChanged += new System.EventHandler(this.ParamsFileComboTextChanged);
             // 
             // btnBrowseParams
             // 
-            this.btnBrowseParams.Location = new System.Drawing.Point(381, 32);
+            this.btnBrowseParams.BackColor = System.Drawing.Color.Transparent;
+            this.btnBrowseParams.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("btnBrowseParams.BackgroundImage")));
+            this.btnBrowseParams.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.btnBrowseParams.Location = new System.Drawing.Point(432, 31);
             this.btnBrowseParams.Name = "btnBrowseParams";
-            this.btnBrowseParams.Size = new System.Drawing.Size(75, 23);
+            this.btnBrowseParams.Size = new System.Drawing.Size(24, 24);
             this.btnBrowseParams.TabIndex = 101;
-            this.btnBrowseParams.Text = "&Browse";
-            this.btnBrowseParams.UseVisualStyleBackColor = true;
+            this.btnBrowseParams.UseVisualStyleBackColor = false;
             this.btnBrowseParams.Click += new System.EventHandler(this.BtnBrowseParamsClick);
             // 
             // paramsDbLabel
