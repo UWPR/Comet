@@ -769,6 +769,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No results to export..
+        /// </summary>
+        internal static string ViewSearchResultsControl_ExportResultsList_No_results_to_export_ {
+            get {
+                return ResourceManager.GetString("ViewSearchResultsControl_ExportResultsList_No_results_to_export_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to +.
         /// </summary>
         internal static string ViewSearchResultsControl_HideViewOptionsPanel__ {

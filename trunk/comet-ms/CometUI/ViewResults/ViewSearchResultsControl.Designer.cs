@@ -54,7 +54,7 @@ namespace CometUI.ViewResults
             this.massTypeRadioButtonsPanel = new System.Windows.Forms.Panel();
             this.massTypeAvgRadioButton = new System.Windows.Forms.RadioButton();
             this.massTypeMonoRadioButton = new System.Windows.Forms.RadioButton();
-            this.massTolTextBox = new NumericTextBox();
+            this.massTolTextBox = new SharedUI.NumericTextBox();
             this.label26 = new System.Windows.Forms.Label();
             this.labelMassType = new System.Windows.Forms.Label();
             this.updateBtn = new System.Windows.Forms.Button();
@@ -125,6 +125,7 @@ namespace CometUI.ViewResults
             this.resultsPanelFull = new System.Windows.Forms.Panel();
             this.resultsPanelNormal = new System.Windows.Forms.Panel();
             this.viewResultsToolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.otherActionsTabPage = new System.Windows.Forms.TabPage();
             this.showOptionsPanel.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.resultsPanel.SuspendLayout();
@@ -173,6 +174,7 @@ namespace CometUI.ViewResults
             this.viewOptionsTab.Controls.Add(this.summaryTabPage);
             this.viewOptionsTab.Controls.Add(this.displayOptionsTabPage);
             this.viewOptionsTab.Controls.Add(this.pickColumnsTabPage);
+            this.viewOptionsTab.Controls.Add(this.otherActionsTabPage);
             this.viewOptionsTab.Location = new System.Drawing.Point(18, 3);
             this.viewOptionsTab.Name = "viewOptionsTab";
             this.viewOptionsTab.SelectedIndex = 0;
@@ -277,12 +279,12 @@ namespace CometUI.ViewResults
             this.resultsListContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.resultsListContextMenuItemExport});
             this.resultsListContextMenuStrip.Name = "resultsListContextMenuStrip";
-            this.resultsListContextMenuStrip.Size = new System.Drawing.Size(153, 48);
+            this.resultsListContextMenuStrip.Size = new System.Drawing.Size(148, 26);
             // 
             // resultsListContextMenuItemExport
             // 
             this.resultsListContextMenuItemExport.Name = "resultsListContextMenuItemExport";
-            this.resultsListContextMenuItemExport.Size = new System.Drawing.Size(152, 22);
+            this.resultsListContextMenuItemExport.Size = new System.Drawing.Size(147, 22);
             this.resultsListContextMenuItemExport.Text = "&Export Results";
             this.resultsListContextMenuItemExport.Click += new System.EventHandler(this.ResultsListContextMenuItemExportClick);
             // 
@@ -1215,6 +1217,16 @@ namespace CometUI.ViewResults
             // 
             this.viewResultsToolTip.UseFading = false;
             // 
+            // otherActionsTabPage
+            // 
+            this.otherActionsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.otherActionsTabPage.Name = "otherActionsTabPage";
+            this.otherActionsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.otherActionsTabPage.Size = new System.Drawing.Size(1011, 197);
+            this.otherActionsTabPage.TabIndex = 3;
+            this.otherActionsTabPage.Text = "Other Actions";
+            this.otherActionsTabPage.UseVisualStyleBackColor = true;
+            // 
             // ViewSearchResultsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1361,5 +1373,6 @@ namespace CometUI.ViewResults
         private ZedGraph.ZedGraphControl precursorGraphItem;
         private System.Windows.Forms.ContextMenuStrip resultsListContextMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem resultsListContextMenuItemExport;
+        private System.Windows.Forms.TabPage otherActionsTabPage;
     }
 }

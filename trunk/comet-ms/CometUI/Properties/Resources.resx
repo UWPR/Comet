@@ -385,4 +385,7 @@
   <data name="ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Search_results_exported_to_">
     <value xml:space="preserve">Search results exported to </value>
   </data>
+  <data name="ViewSearchResultsControl_ExportResultsList_No_results_to_export_">
+    <value xml:space="preserve">No results to export.</value>
+  </data>
 </root>
