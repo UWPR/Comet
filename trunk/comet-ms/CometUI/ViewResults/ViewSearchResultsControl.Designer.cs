@@ -1,4 +1,6 @@
-﻿namespace CometUI.ViewResults
+﻿using CometUI.SharedUI;
+
+namespace CometUI.ViewResults
 {
     partial class ViewSearchResultsControl
     {

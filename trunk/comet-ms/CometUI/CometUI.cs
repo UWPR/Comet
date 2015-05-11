@@ -133,10 +133,10 @@ namespace CometUI
 
         private void SearchSettingsExportToolStripMenuItemClick(object sender, EventArgs e)
         {
-            var exportParamsDlg = new ExportParamsDlg(this);
+            var exportParamsDlg = new ExportSearchParamsDlg(this);
             if (DialogResult.OK == exportParamsDlg.ShowDialog())
             {
-                MessageBox.Show(Resources.ExportParamsDlg_BtnExportClick_Settings_exported_to_ + exportParamsDlg.FilePath,
+                MessageBox.Show(Resources.ExportParamsDlg_BtnExportClick_Settings_exported_to_ + exportParamsDlg.FileFullPath,
                 Resources.ExportParamsDlg_BtnExportClick_Export_Search_Settings, MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             }

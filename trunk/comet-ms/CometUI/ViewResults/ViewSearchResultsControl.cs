@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
-using CometUI.CustomControls;
 using CometUI.Properties;
+using CometUI.SharedUI;
 using CometWrapper;
 using ZedGraph;
 
@@ -1160,7 +1160,7 @@ namespace CometUI.ViewResults
             var exportFileDlg = new ExportFileDlg
                                     {
                                         FileExtension = ".txt",
-                                        DlgTitle = "Export Search Results",
+                                        DlgTitle = Resources.ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Export_Search_Results,
                                         FileNameText = SearchResultsMgr.ResultsFileBaseName,
                                         FilePathText = SearchResultsMgr.ResultsFilePath
                                     };
@@ -1168,6 +1168,10 @@ namespace CometUI.ViewResults
             {
                 var resultsExporter = new ExportSearchResults();
                 resultsExporter.Export(resultsListView, exportFileDlg.FileFullPath);
+                MessageBox.Show(Resources.ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Search_results_exported_to_ + exportFileDlg.FileFullPath,
+                    Resources.ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Export_Search_Results, 
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
         }
     }

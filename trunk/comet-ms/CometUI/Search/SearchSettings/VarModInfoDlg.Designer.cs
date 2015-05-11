@@ -1,4 +1,4 @@
-﻿using CometUI.CustomControls;
+﻿using CometUI.SharedUI;
 
 namespace CometUI.Search.SearchSettings
 {

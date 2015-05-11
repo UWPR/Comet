@@ -367,4 +367,22 @@
   <data name="ViewSearchResultsControl_ViewSpectra_Could_not_read_the_spectra_file__Would_you_like_to_try_specifying_an_alternate_path_to_the_file_">
     <value xml:space="preserve">Could not read the spectra file. Would you like to try specifying an alternate path to the file?</value>
   </data>
+  <data name="ExportFileDlg_ExportFile__alreay_exists__Would_you_like_to_overwrite_it_">
+    <value xml:space="preserve"> alreay exists. Would you like to overwrite it?</value>
+  </data>
+  <data name="ExportFileDlg_ExportFile_Export_File">
+    <value xml:space="preserve">Export File</value>
+  </data>
+  <data name="ExportFileDlg_ExportFile_Invalid_characters_found_in_the_file_name_provided_">
+    <value xml:space="preserve">Invalid characters found in the file name provided.</value>
+  </data>
+  <data name="ExportFileDlg_ExportFile_Export_Failed">
+    <value xml:space="preserve">Export Failed</value>
+  </data>
+  <data name="ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Export_Search_Results">
+    <value xml:space="preserve">Export Search Results</value>
+  </data>
+  <data name="ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Search_results_exported_to_">
+    <value xml:space="preserve">Search results exported to </value>
+  </data>
 </root>

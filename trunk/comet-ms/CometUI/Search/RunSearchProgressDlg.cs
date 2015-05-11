@@ -1,8 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Windows.Forms;
-using CometUI.CustomControls;
 using CometUI.Properties;
+using CometUI.SharedUI;
 
 namespace CometUI.Search
 {

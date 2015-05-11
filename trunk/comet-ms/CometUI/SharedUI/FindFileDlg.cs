@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Windows.Forms;
 
-namespace CometUI.CustomControls
+namespace CometUI.SharedUI
 {
     public partial class FindFileDlg : Form
     {

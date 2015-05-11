@@ -102,16 +102,19 @@
     <Compile Include="CometParam.cs" />
     <Compile Include="CometParamsReader.cs" />
     <Compile Include="CometParamsWriter.cs" />
-    <Compile Include="CustomControls\ExportFileDlg.cs">
+    <Compile Include="Search\ExportSearchParamsDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="CustomControls\ExportFileDlg.Designer.cs">
+    <Compile Include="SharedUI\ExportFileDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SharedUI\ExportFileDlg.Designer.cs">
       <DependentUpon>ExportFileDlg.cs</DependentUpon>
     </Compile>
-    <Compile Include="CustomControls\FindFileDlg.cs">
+    <Compile Include="SharedUI\FindFileDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="CustomControls\FindFileDlg.Designer.cs">
+    <Compile Include="SharedUI\FindFileDlg.Designer.cs">
       <DependentUpon>FindFileDlg.cs</DependentUpon>
     </Compile>
     <Compile Include="MassSpecUtils.cs" />
@@ -123,17 +126,11 @@
     <Compile Include="CometUI.Designer.cs">
       <DependentUpon>CometUI.cs</DependentUpon>
     </Compile>
-    <Compile Include="CustomControls\ProgressDlg.cs">
+    <Compile Include="SharedUI\ProgressDlg.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="CustomControls\ProgressDlg.designer.cs">
+    <Compile Include="SharedUI\ProgressDlg.designer.cs">
       <DependentUpon>ProgressDlg.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Search\ExportSearchParamsDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Search\ExportSearchParamsDialog.Designer.cs">
-      <DependentUpon>ExportSearchParamsDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="Search\ImportSearchParamsDlg.cs">
       <SubType>Form</SubType>
@@ -186,7 +183,7 @@
     <Compile Include="Search\SearchSettings\MiscSettingsControl.Designer.cs">
       <DependentUpon>MiscSettingsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="CustomControls\NumericTextBox.cs">
+    <Compile Include="SharedUI\NumericTextBox.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Search\SearchSettings\StaticModSettingsControl.cs">
@@ -269,17 +266,17 @@
     <EmbeddedResource Include="CometUI.resx">
       <DependentUpon>CometUI.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="CustomControls\ExportFileDlg.resx">
+    <EmbeddedResource Include="Search\ExportSearchParamsDlg.resx">
+      <DependentUpon>ExportSearchParamsDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SharedUI\ExportFileDlg.resx">
       <DependentUpon>ExportFileDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="CustomControls\FindFileDlg.resx">
+    <EmbeddedResource Include="SharedUI\FindFileDlg.resx">
       <DependentUpon>FindFileDlg.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="CustomControls\ProgressDlg.resx">
+    <EmbeddedResource Include="SharedUI\ProgressDlg.resx">
       <DependentUpon>ProgressDlg.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Search\ExportSearchParamsDialog.resx">
-      <DependentUpon>ExportSearchParamsDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Search\ImportSearchParamsDlg.resx">
       <DependentUpon>ImportSearchParamsDlg.cs</DependentUpon>

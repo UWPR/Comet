@@ -1,8 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Windows.Forms;
+using CometUI.Properties;
 
-namespace CometUI.CustomControls
+namespace CometUI.SharedUI
 {
     public partial class ExportFileDlg : Form
     {
@@ -64,14 +65,14 @@ namespace CometUI.CustomControls
             DialogResult = DialogResult.OK;
         }
 
-        private bool ExportFile()
+        protected virtual bool ExportFile()
         {
             // If there are any invalid characters in the file name, cancel and display warning
-            var fileName = fileNameTextBox.Text;
+            var fileName = fileNameTextBox.Text + FileExtension;
             if (!IsValidFileName(fileName))
             {
-                MessageBox.Show("Invalid characters found in the file name provided.",
-                                "File Export Failed", MessageBoxButtons.OK,
+                MessageBox.Show(Resources.ExportFileDlg_ExportFile_Invalid_characters_found_in_the_file_name_provided_,
+                                Resources.ExportFileDlg_ExportFile_Export_Failed, MessageBoxButtons.OK,
                                 MessageBoxIcon.Error);
                 return false;
             }
@@ -84,9 +85,9 @@ namespace CometUI.CustomControls
             if (File.Exists(FileFullPath))
             {
                 if (DialogResult.Yes !=
-                MessageBox.Show('"' + fileName + FileExtension + '"' +
-                                " alreay exists. Would you like to overwrite it?",
-                                "Export File",
+                MessageBox.Show('"' + fileName + '"' +
+                                Resources.ExportFileDlg_ExportFile__alreay_exists__Would_you_like_to_overwrite_it_,
+                                Resources.ExportFileDlg_ExportFile_Export_File,
                                 MessageBoxButtons.YesNo,
                                 MessageBoxIcon.Warning))
                 {

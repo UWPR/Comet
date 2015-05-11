@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Windows.Forms;
 using CometUI.Properties;
 
-namespace CometUI.CustomControls
+namespace CometUI.SharedUI
 {
     public partial class ProgressDlg : Form
     {
