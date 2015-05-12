@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CometUI", "CometUI\CometUI.
 		{7BF9EDBE-35BD-4D2D-94B8-151532E71432} = {7BF9EDBE-35BD-4D2D-94B8-151532E71432}
 	EndProjectSection
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "CometUI_Installer", "CometUI_Installer\CometUI_Installer.vdproj", "{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -123,6 +125,17 @@ Global
 		{93BEAB5A-61BB-40F1-BC55-B7CFCC262535}.Release|Win32.ActiveCfg = Release|x86
 		{93BEAB5A-61BB-40F1-BC55-B7CFCC262535}.Release|x64.ActiveCfg = Release|x64
 		{93BEAB5A-61BB-40F1-BC55-B7CFCC262535}.Release|x86.ActiveCfg = Release|x86
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Debug|Any CPU.ActiveCfg = Debug
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Debug|Mixed Platforms.ActiveCfg = Debug
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Debug|Win32.ActiveCfg = Debug
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Debug|x64.ActiveCfg = Debug
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Debug|x86.ActiveCfg = Debug
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Release|Any CPU.ActiveCfg = Release
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Release|Mixed Platforms.ActiveCfg = Release
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Release|Mixed Platforms.Build.0 = Release
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Release|Win32.ActiveCfg = Release
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Release|x64.ActiveCfg = Release
+		{0BDDB67B-1F88-4A17-9D35-AEC0BC918E03}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
