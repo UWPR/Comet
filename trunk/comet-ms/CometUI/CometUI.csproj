@@ -69,6 +69,9 @@
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
     <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>comet.jpg</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="CometWrapper">
       <HintPath>..\Release\CometWrapper.dll</HintPath>
@@ -400,6 +403,7 @@
     <None Include="Resources\comet.jpg" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="comet.jpg" />
     <Content Include="License-LGPL.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
