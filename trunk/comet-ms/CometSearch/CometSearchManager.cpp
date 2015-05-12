@@ -2030,6 +2030,18 @@ bool CometSearchManager::DoSearch()
          fpoutd_sqt = NULL;
       }     
 
+      if (NULL != fpout_txt)
+      {
+         fclose(fpout_txt);
+         fpout_txt = NULL;
+      }
+
+      if (NULL != fpoutd_txt)
+      {
+         fclose(fpoutd_txt);
+         fpoutd_txt = NULL;
+      }     
+
       if (!bSucceeded)
       {
          break;
