@@ -21,6 +21,24 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_10E18563BCF7411B8FB924340EE1D929"
+        "OwnerKey" = "8:_20818D6A145F4C5A918B89B7E5632C85"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_10E18563BCF7411B8FB924340EE1D929"
+        "OwnerKey" = "8:_7B406D19BEAE4A089938D431D74A3B5F"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_1ADF68E6F4B6D148E4D2C3579FCB4AAC"
+        "OwnerKey" = "8:_F97D3A41D7234C60A557F8EF8FCEFABF"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_20818D6A145F4C5A918B89B7E5632C85"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -35,18 +53,6 @@
         {
         "MsmKey" = "8:_7B406D19BEAE4A089938D431D74A3B5F"
         "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_93A762DE091748499124E6868CE0AA7C"
-        "OwnerKey" = "8:_7B406D19BEAE4A089938D431D74A3B5F"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_93A762DE091748499124E6868CE0AA7C"
-        "OwnerKey" = "8:_BD6D68DD833E43F599C2EEBDDDA155FB"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -69,26 +75,14 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_BD6D68DD833E43F599C2EEBDDDA155FB"
+        "MsmKey" = "8:_E7CCCA0C595C46609ACD1091D94B9CEE"
         "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_E92C093FEFD046C2948CFE6854FCBBD1"
-        "OwnerKey" = "8:_20818D6A145F4C5A918B89B7E5632C85"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_F97D3A41D7234C60A557F8EF8FCEFABF"
         "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_FCAB5582998FB2F4A33C2406A4D3498F"
-        "OwnerKey" = "8:_F97D3A41D7234C60A557F8EF8FCEFABF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -100,19 +94,13 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_BD6D68DD833E43F599C2EEBDDDA155FB"
+        "OwnerKey" = "8:_1ADF68E6F4B6D148E4D2C3579FCB4AAC"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_F97D3A41D7234C60A557F8EF8FCEFABF"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_FCAB5582998FB2F4A33C2406A4D3498F"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -136,12 +124,6 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_20818D6A145F4C5A918B89B7E5632C85"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_AE51821E092A42C19EFF190C852FC267"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -149,6 +131,12 @@
         {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_ABD4303918274EBF807972941E5549FC"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_20818D6A145F4C5A918B89B7E5632C85"
         "MsmSig" = "8:_UNDEFINED"
         }
     }
@@ -169,13 +157,21 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+            }
         }
         "Release"
         {
         "DisplayName" = "8:Release"
         "IsDebugOnly" = "11:FALSE"
         "IsReleaseOnly" = "11:TRUE"
-        "OutputFilename" = "8:Release\\CometUI.msi"
+        "OutputFilename" = "8:Release\\Comet.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -185,6 +181,27 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.0,Profile=Client"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4 Client Profile (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.0,Profile=Client"
+                    }
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:Microsoft.Windows.Installer.3.1"
+                    {
+                    "Name" = "8:Windows Installer 3.1"
+                    "ProductCode" = "8:Microsoft.Windows.Installer.3.1"
+                    }
+                }
+            }
         }
     }
     "Deployable"
@@ -228,6 +245,37 @@
                     }
                 }
             "SourcePath" = "8:Microsoft.VisualBasic.PowerPacks.Vs.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_1ADF68E6F4B6D148E4D2C3579FCB4AAC"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:CometWrapper, Version=1.0.5610.31226, Culture=neutral, processorArchitecture=AMD64"
+                "ScatterAssemblies"
+                {
+                    "_1ADF68E6F4B6D148E4D2C3579FCB4AAC"
+                    {
+                    "Name" = "8:CometWrapper.dll"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:CometWrapper.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
@@ -307,21 +355,10 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_FCAB5582998FB2F4A33C2406A4D3498F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E7CCCA0C595C46609ACD1091D94B9CEE"
             {
-            "AssemblyRegister" = "3:1"
-            "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:CometWrapper, Version=1.0.5609.23951, Culture=neutral, processorArchitecture=x86"
-                "ScatterAssemblies"
-                {
-                    "_FCAB5582998FB2F4A33C2406A4D3498F"
-                    {
-                    "Name" = "8:CometWrapper.dll"
-                    "Attributes" = "3:512"
-                    }
-                }
-            "SourcePath" = "8:CometWrapper.dll"
-            "TargetName" = "8:"
+            "SourcePath" = "8:..\\CometUI\\Resources\\comet.jpg"
+            "TargetName" = "8:comet.jpg"
             "Tag" = "8:"
             "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
             "Condition" = "8:"
@@ -335,7 +372,7 @@
             "PackageAs" = "3:1"
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
-            "IsDependency" = "11:TRUE"
+            "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
         }
@@ -378,7 +415,7 @@
                 {
                     "{9EF0B969-E518-4E46-987F-47570745A589}:_7149102E36694E43A11CEA7602413A54"
                     {
-                    "Name" = "8:CometUI"
+                    "Name" = "8:Comet"
                     "AlwaysCreate" = "11:FALSE"
                     "Condition" = "8:"
                     "Transitive" = "11:FALSE"
@@ -404,9 +441,9 @@
         "Product"
         {
         "Name" = "8:Microsoft Visual Studio"
-        "ProductName" = "8:CometUI"
+        "ProductName" = "8:Comet"
         "ProductCode" = "8:{0B70AD63-C510-4E8A-B917-669520BC0D46}"
-        "PackageCode" = "8:{8AD7ABC8-F30F-4AA2-AF8C-7179C99492E7}"
+        "PackageCode" = "8:{99DB2972-4C40-472D-AF1F-2545F39C6EB5}"
         "UpgradeCode" = "8:{9B45DAEF-3016-4994-9DF4-40C68A56C2D8}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
@@ -417,7 +454,7 @@
         "Manufacturer" = "8:UW Proteomics Resource"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
-        "Title" = "8:CometUI"
+        "Title" = "8:Comet"
         "Subject" = "8:"
         "ARPCONTACT" = "8:UW Proteomics Resource"
         "Keywords" = "8:"
@@ -526,6 +563,20 @@
         }
         "Shortcut"
         {
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_C8217E5BB3C44A8B959D5795172D2917"
+            {
+            "Name" = "8:CometUI"
+            "Arguments" = "8:"
+            "Description" = "8:"
+            "ShowCmd" = "3:1"
+            "IconIndex" = "3:0"
+            "Transitive" = "11:FALSE"
+            "Target" = "8:_F97D3A41D7234C60A557F8EF8FCEFABF"
+            "Folder" = "8:_7149102E36694E43A11CEA7602413A54"
+            "WorkingFolder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
+            "Icon" = "8:_E7CCCA0C595C46609ACD1091D94B9CEE"
+            "Feature" = "8:"
+            }
         }
         "UserInterface"
         {
@@ -922,25 +973,11 @@
         }
         "MergeModule"
         {
-            "{CEE29DC0-9FBA-4B99-8D47-5BC643D9B626}:_93A762DE091748499124E6868CE0AA7C"
+            "{CEE29DC0-9FBA-4B99-8D47-5BC643D9B626}:_10E18563BCF7411B8FB924340EE1D929"
             {
             "UseDynamicProperties" = "11:TRUE"
             "IsDependency" = "11:TRUE"
             "SourcePath" = "8:Microsoft_VC100_CRT_x64.msm"
-                "Properties"
-                {
-                }
-            "LanguageId" = "3:0"
-            "Exclude" = "11:FALSE"
-            "Folder" = "8:"
-            "Feature" = "8:"
-            "IsolateTo" = "8:"
-            }
-            "{CEE29DC0-9FBA-4B99-8D47-5BC643D9B626}:_E92C093FEFD046C2948CFE6854FCBBD1"
-            {
-            "UseDynamicProperties" = "11:TRUE"
-            "IsDependency" = "11:TRUE"
-            "SourcePath" = "8:Microsoft_VC100_CRT_x86.msm"
                 "Properties"
                 {
                 }
@@ -983,7 +1020,7 @@
             }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_20818D6A145F4C5A918B89B7E5632C85"
             {
-            "SourcePath" = "8:..\\Win32\\Release\\CometWrapper.dll"
+            "SourcePath" = "8:..\\x64\\Release\\CometWrapper.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
@@ -1319,7 +1356,7 @@
             }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_AE51821E092A42C19EFF190C852FC267"
             {
-            "SourcePath" = "8:..\\Win32\\Release\\CometSearch.lib"
+            "SourcePath" = "8:..\\x64\\Release\\CometSearch.lib"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
@@ -1368,34 +1405,6 @@
             "OutputConfiguration" = "8:"
             "OutputGroupCanonicalName" = "8:LocalizedResourceDlls"
             "OutputProjectGuid" = "8:{7BF9EDBE-35BD-4D2D-94B8-151532E71432}"
-            "ShowKeyOutput" = "11:TRUE"
-                "ExcludeFilters"
-                {
-                }
-            }
-            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_BD6D68DD833E43F599C2EEBDDDA155FB"
-            {
-            "SourcePath" = "8:..\\x64\\Release\\Comet.exe"
-            "TargetName" = "8:"
-            "Tag" = "8:"
-            "Folder" = "8:_7149102E36694E43A11CEA7602413A54"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            "ProjectOutputGroupRegister" = "3:1"
-            "OutputConfiguration" = "8:"
-            "OutputGroupCanonicalName" = "8:Built"
-            "OutputProjectGuid" = "8:{EC89AD31-11AD-4CE2-AA1D-FFFFF716DE33}"
             "ShowKeyOutput" = "11:TRUE"
                 "ExcludeFilters"
                 {
@@ -1515,7 +1524,7 @@
             }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_F97D3A41D7234C60A557F8EF8FCEFABF"
             {
-            "SourcePath" = "8:..\\CometUI\\obj\\x86\\Release\\CometUI.exe"
+            "SourcePath" = "8:..\\CometUI\\obj\\x64\\Release\\CometUI.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
