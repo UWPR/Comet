@@ -332,6 +332,15 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to &amp;Settings....
+        /// </summary>
+        internal static string ExportSearchParamsDlg_InitializeComponent__Settings___ {
+            get {
+                return ResourceManager.GetString("ExportSearchParamsDlg_InitializeComponent__Settings___", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Comet Params Files (*.params)|*.params.
         /// </summary>
         internal static string ImportParamsDlg_BtnBrowseProteomeDbFileClick_Comet_Params_Files____params____params {

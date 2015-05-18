@@ -39,24 +39,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_87825BF2747F9BDD53E513369AF8EAEB"
-        "OwnerKey" = "8:_F97D3A41D7234C60A557F8EF8FCEFABF"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_9A9868CA7DF744FFB6622D5A378FAF6D"
-        "OwnerKey" = "8:_20818D6A145F4C5A918B89B7E5632C85"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_9A9868CA7DF744FFB6622D5A378FAF6D"
-        "OwnerKey" = "8:_7B406D19BEAE4A089938D431D74A3B5F"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_ABD4303918274EBF807972941E5549FC"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -75,6 +57,24 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_BD76BE133045404D8287311FEDD17BC9"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_DC8D94B0308847BDA9DC021E7330C50A"
+        "OwnerKey" = "8:_20818D6A145F4C5A918B89B7E5632C85"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_DC8D94B0308847BDA9DC021E7330C50A"
+        "OwnerKey" = "8:_7B406D19BEAE4A089938D431D74A3B5F"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_E7CCCA0C595C46609ACD1091D94B9CEE"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -83,6 +83,12 @@
         {
         "MsmKey" = "8:_F97D3A41D7234C60A557F8EF8FCEFABF"
         "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_FCAB5582998FB2F4A33C2406A4D3498F"
+        "OwnerKey" = "8:_F97D3A41D7234C60A557F8EF8FCEFABF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -100,7 +106,7 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_87825BF2747F9BDD53E513369AF8EAEB"
+        "OwnerKey" = "8:_FCAB5582998FB2F4A33C2406A4D3498F"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -306,37 +312,6 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_87825BF2747F9BDD53E513369AF8EAEB"
-            {
-            "AssemblyRegister" = "3:1"
-            "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:CometWrapper, Version=1.0.5610.32045, Culture=neutral, processorArchitecture=AMD64"
-                "ScatterAssemblies"
-                {
-                    "_87825BF2747F9BDD53E513369AF8EAEB"
-                    {
-                    "Name" = "8:CometWrapper.dll"
-                    "Attributes" = "3:512"
-                    }
-                }
-            "SourcePath" = "8:CometWrapper.dll"
-            "TargetName" = "8:"
-            "Tag" = "8:"
-            "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:TRUE"
-            "IsolateTo" = "8:"
-            }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_B65E03DDB437920EDD5580E082D7EDC1"
             {
             "AssemblyRegister" = "3:1"
@@ -368,6 +343,26 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BD76BE133045404D8287311FEDD17BC9"
+            {
+            "SourcePath" = "8:..\\CometUI\\License-LGPL.txt"
+            "TargetName" = "8:License-LGPL.txt"
+            "Tag" = "8:"
+            "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E7CCCA0C595C46609ACD1091D94B9CEE"
             {
             "SourcePath" = "8:..\\CometUI\\Resources\\comet.jpg"
@@ -386,6 +381,37 @@
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
             "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_FCAB5582998FB2F4A33C2406A4D3498F"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:CometWrapper, Version=1.0.5616.18769, Culture=neutral, processorArchitecture=x86"
+                "ScatterAssemblies"
+                {
+                    "_FCAB5582998FB2F4A33C2406A4D3498F"
+                    {
+                    "Name" = "8:CometWrapper.dll"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:CometWrapper.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_73F60CE182C2486A99AF1B78FC0251D0"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
         }
@@ -986,11 +1012,11 @@
         }
         "MergeModule"
         {
-            "{CEE29DC0-9FBA-4B99-8D47-5BC643D9B626}:_9A9868CA7DF744FFB6622D5A378FAF6D"
+            "{CEE29DC0-9FBA-4B99-8D47-5BC643D9B626}:_DC8D94B0308847BDA9DC021E7330C50A"
             {
             "UseDynamicProperties" = "11:TRUE"
             "IsDependency" = "11:TRUE"
-            "SourcePath" = "8:Microsoft_VC100_CRT_x64.msm"
+            "SourcePath" = "8:Microsoft_VC100_CRT_x86.msm"
                 "Properties"
                 {
                 }

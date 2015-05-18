@@ -388,4 +388,7 @@
   <data name="ViewSearchResultsControl_ExportResultsList_No_results_to_export_">
     <value xml:space="preserve">No results to export.</value>
   </data>
+  <data name="ExportSearchParamsDlg_InitializeComponent__Settings___">
+    <value xml:space="preserve">&amp;Settings...</value>
+  </data>
 </root>
