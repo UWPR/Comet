@@ -152,8 +152,11 @@ namespace CometUI.Search.SearchSettings
                 if (textBoxCell != null)
                 {
                     string strValue = textBoxCell.Value.ToString();
-                    double massDiff;
-                    if (!SearchSettingsDlg.ConvertStrToDouble(strValue, out massDiff))
+                    try
+                    {
+                        Convert.ToDouble(strValue);
+                    }
+                    catch (Exception)
                     {
                         MessageBox.Show(this,
                                       Resources.

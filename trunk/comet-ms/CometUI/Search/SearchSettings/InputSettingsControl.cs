@@ -22,8 +22,15 @@ using CometUI.Properties;
 
 namespace CometUI.Search.SearchSettings
 {
+    /// <summary>
+    /// This class is the tab page control for allowing the user to change 
+    /// the input settings search parameters, such as the FASTA file. 
+    /// </summary>
     public partial class InputSettingsControl : UserControl
     {
+        /// <summary>
+        /// The FASTA database file to be used in the search.
+        /// </summary>
         public string DatabaseFile
         {
             get { return proteomeDbFileCombo.Text; }
@@ -31,6 +38,9 @@ namespace CometUI.Search.SearchSettings
             set { proteomeDbFileCombo.Text = value; }
         }
 
+        /// <summary>
+        /// The type of search to run, e.g. target or decoy.
+        /// </summary>
         private enum SearchType
         {
             SearchTypeTarget = 0,
@@ -38,8 +48,13 @@ namespace CometUI.Search.SearchSettings
             SearchTypeDecoyTwo
             
         }
+
         private new SearchSettingsDlg  Parent { get; set; }
 
+        /// <summary>
+        /// Constructor for the input settings tab page.
+        /// </summary>
+        /// <param name="parent"> The parent tab control hosting this tab page. </param>
         public InputSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
@@ -47,11 +62,18 @@ namespace CometUI.Search.SearchSettings
             Parent = parent;
         }
 
+        /// <summary>
+        /// Initializes the input settings tab page from the settings saved in the registry. 
+        /// </summary>
         public void Initialize()
         {
             InitializeFromDefaultSettings();
         }
 
+        /// <summary>
+        /// Allows users to browse to a FASTA file on their computer. 
+        /// </summary>
+        /// <returns> The full path to the file the user chose. </returns>
         public static string ShowOpenDatabaseFile()
         {
             const string filter = "All Files (*.*)|*.*";
@@ -73,7 +95,73 @@ namespace CometUI.Search.SearchSettings
             return null;
         }
 
+        /// <summary>
+        /// Saves the settings the user modified to the registry.
+        /// </summary>
+        /// <returns> True if settings were updated successfully; False for error. </returns>
         public bool VerifyAndUpdateSettings()
+        {
+            if (!VerifyAndUpdateDatabaseFile())
+            {
+                return false;
+            }
+
+            if (!VerifyAndUpdateDatabaseType())
+            {
+                return false;
+            }
+
+            if (!VerifyAndUpdateSearchType())
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Initializes the input settings tab page from the settings saved
+        /// in the registry.
+        /// </summary>
+        private void InitializeFromDefaultSettings()
+        {
+            proteomeDbFileCombo.Text = CometUI.SearchSettings.ProteomeDatabaseFile;
+
+            comboBoxReadingFrame.Text = CometUI.SearchSettings.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
+            if (CometUI.SearchSettings.IsProteinDB)
+            {
+                radioButtonProtein.Checked = true;
+            }
+            else
+            {
+                radioButtonNucleotide.Checked = true;
+            }
+
+            switch ((SearchType)CometUI.SearchSettings.SearchType)
+            {
+                case SearchType.SearchTypeDecoyOne:
+                    radioButtonDecoyOne.Checked = true;
+                    break;
+                case SearchType.SearchTypeDecoyTwo:
+                    radioButtonDecoyTwo.Checked = true;
+                    break;
+                case SearchType.SearchTypeTarget:
+                    radioButtonTarget.Checked = true;
+                    break;
+                default:
+                    radioButtonTarget.Checked = true;
+                    break;
+            }
+
+            textBoxDecoyPrefix.Text = CometUI.SearchSettings.DecoyPrefix;
+        }
+
+        /// <summary>
+        /// Ensures the database file specified by the user is valid, and
+        /// stores the new path in the user's settings. 
+        /// </summary>
+        /// <returns> True for valid file; False for invalid file. </returns>
+        private bool VerifyAndUpdateDatabaseFile()
         {
             if (!String.Equals(CometUI.SearchSettings.ProteomeDatabaseFile, proteomeDbFileCombo.Text))
             {
@@ -102,6 +190,16 @@ namespace CometUI.Search.SearchSettings
                 }
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// Updates the database type (protein vs. nucleotide) in the 
+        /// user's settings if changed.
+        /// </summary>
+        /// <returns> True for success</returns>
+        private bool VerifyAndUpdateDatabaseType()
+        {
             if (CometUI.SearchSettings.IsProteinDB != radioButtonProtein.Checked)
             {
                 CometUI.SearchSettings.IsProteinDB = radioButtonProtein.Checked;
@@ -118,6 +216,16 @@ namespace CometUI.Search.SearchSettings
                 }
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// Updates the search type (target vs. decoy) and decoy prefix in 
+        /// the user's settings if changed.
+        /// </summary>
+        /// <returns> True for success</returns>
+        private bool VerifyAndUpdateSearchType()
+        {
             SearchType searchType;
             if (radioButtonDecoyOne.Checked)
             {
@@ -148,39 +256,6 @@ namespace CometUI.Search.SearchSettings
             return true;
         }
 
-        private void InitializeFromDefaultSettings()
-        {
-            proteomeDbFileCombo.Text = CometUI.SearchSettings.ProteomeDatabaseFile;
-
-            comboBoxReadingFrame.Text = CometUI.SearchSettings.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
-            if (CometUI.SearchSettings.IsProteinDB)
-            {
-                radioButtonProtein.Checked = true;
-            }
-            else
-            {
-                radioButtonNucleotide.Checked = true;
-            }
-
-            switch ((SearchType)CometUI.SearchSettings.SearchType)
-            {
-                case SearchType.SearchTypeDecoyOne:
-                    radioButtonDecoyOne.Checked = true;
-                    break;
-                case SearchType.SearchTypeDecoyTwo:
-                    radioButtonDecoyTwo.Checked = true;
-                    break;
-                    case SearchType.SearchTypeTarget:
-                    radioButtonTarget.Checked = true;
-                    break;
-                default:
-                    radioButtonTarget.Checked = true;
-                    break;
-            }
-
-            textBoxDecoyPrefix.Text = CometUI.SearchSettings.DecoyPrefix;
-        }
-
         private void BtnBrowseProteomeDbFileClick(object sender, EventArgs e)
         {
             string databaseFile = ShowOpenDatabaseFile();
@@ -192,6 +267,10 @@ namespace CometUI.Search.SearchSettings
             ProteomeDbFileNameChanged();
         }
 
+        /// <summary>
+        /// Stores a "history" or proteome database names in the drop-down
+        /// for convenience.
+        /// </summary>
         private void ProteomeDbFileNameChanged()
         {
             if (-1 == proteomeDbFileCombo.FindStringExact(proteomeDbFileCombo.Text))

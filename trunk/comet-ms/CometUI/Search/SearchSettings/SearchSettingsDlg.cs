@@ -21,17 +21,60 @@ using System.Drawing;
 
 namespace CometUI.Search.SearchSettings
 {
+    /// <summary>
+    /// This is the main dialog window for search settings, accessed via:
+    /// "Settings" menu --> "Search Settings..." menu item
+    /// It hosts a tab control, and each tab on the control contains a group
+    /// of search settings the user can modify.
+    /// </summary>
     public partial class SearchSettingsDlg : Form
     {
+        /// <summary>
+        /// The controls hosted by the SearchSettingsDlg uses this
+        /// property to notify the dialog that the user settings 
+        /// have changed.
+        /// </summary>
         public bool SettingsChanged { get; set; }
+        
+        /// <summary>
+        /// The control that represents the "Input Settings" params.
+        /// </summary>
         private InputSettingsControl InputSettingsControl { get; set; }
+
+        /// <summary>
+        /// The control that represents the "Output Settings" params.
+        /// </summary>
         private OutputSettingsControl OutputSettingsControl { get; set; }
+
+        /// <summary>
+        /// The control that represents the "Enzyme Settings" params.
+        /// </summary>
         private EnzymeSettingsControl EnzymeSettingsControl { get; set; }
+
+        /// <summary>
+        /// The control that represents the "Mass Settings" params.
+        /// </summary>
         private MassSettingsControl MassSettingsControl { get; set; }
+
+        /// <summary>
+        /// The control that represents the "Static Mod Settings" params.
+        /// </summary>
         private StaticModSettingsControl StaticModSettingsControl { get; set; }
+
+        /// <summary>
+        /// The control that represents the "Variable Mod Settings" params.
+        /// </summary>
         private VarModSettingsControl VarModSettingsControl { get; set; }
+        
+        /// <summary>
+        /// The control that represents the "Miscellaneous Settings" params.
+        /// </summary>
         private MiscSettingsControl MiscSettingsControl { get; set; }
         
+        /// <summary>
+        /// Constructor for the SearchSettingsDlg that sets up the hosting
+        /// of the various settings group tab page controls.
+        /// </summary>
         public SearchSettingsDlg()
         {
             InitializeComponent();
@@ -104,44 +147,6 @@ namespace CometUI.Search.SearchSettings
             OutputSettingsControl.Initialize();
             StaticModSettingsControl.Initialize();
             VarModSettingsControl.Initialize();
-        }
-
-        public static bool ConvertStrToDouble(string strValue, out double doubleValueOut)
-        {
-            var doubleValue = 0.0;
-            try
-            {
-                doubleValue = Convert.ToDouble(strValue);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            finally
-            {
-                doubleValueOut = doubleValue;
-            }
-
-            return true;
-        }
-
-        public static bool ConvertStrToInt32(string strValue, out int intValueOut)
-        {
-            var intValue = 0;
-            try
-            {
-                intValue = Convert.ToInt32(strValue);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            finally
-            {
-                intValueOut = intValue;
-            }
-
-            return true;
         }
 
         private void BtnCancelClick(object sender, EventArgs e)
