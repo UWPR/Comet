@@ -20,10 +20,19 @@ using System.Windows.Forms;
 
 namespace CometUI.Search.SearchSettings
 {
+    /// <summary>
+    /// This class represents the tab page control for allowing the user to
+    /// change the output settings search parameters, such as which output 
+    /// files to generate. 
+    /// </summary>
     public partial class OutputSettingsControl : UserControl
     {
         private new SearchSettingsDlg Parent { get; set; }
 
+        /// <summary>
+        /// Constructor for the output settings tab page.
+        /// </summary>
+        /// <param name="parent"> The tab control hosting this tab page. </param>
         public OutputSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
@@ -31,11 +40,19 @@ namespace CometUI.Search.SearchSettings
             Parent = parent;
         }
 
+        /// <summary>
+        /// Public method to initialize the output settings tab page from the
+        /// user's settings.
+        /// </summary>
         public void Initialize()
         {
             InitializeFromDefaultSettings();
         }
 
+        /// <summary>
+        /// Saves the settings the user modified to the user's settings.
+        /// </summary>
+        /// <returns> True if settings were updated successfully; False for error. </returns>
         public bool VerifyAndUpdateSettings()
         {
             if (pepXMLCheckBox.Checked != CometUI.SearchSettings.OutputFormatPepXML)
@@ -108,6 +125,10 @@ namespace CometUI.Search.SearchSettings
             return true;
         }
 
+        /// <summary>
+        /// Initializes the input settings tab page from the settings saved
+        /// in the user's settings.
+        /// </summary>
         private void InitializeFromDefaultSettings()
         {
             pepXMLCheckBox.Checked = CometUI.SearchSettings.OutputFormatPepXML;

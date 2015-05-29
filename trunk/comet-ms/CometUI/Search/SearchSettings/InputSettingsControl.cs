@@ -23,8 +23,8 @@ using CometUI.Properties;
 namespace CometUI.Search.SearchSettings
 {
     /// <summary>
-    /// This class is the tab page control for allowing the user to change 
-    /// the input settings search parameters, such as the FASTA file. 
+    /// This class represents the tab page control for allowing the user to
+    /// change the input settings search parameters, such as the FASTA file. 
     /// </summary>
     public partial class InputSettingsControl : UserControl
     {
@@ -54,7 +54,7 @@ namespace CometUI.Search.SearchSettings
         /// <summary>
         /// Constructor for the input settings tab page.
         /// </summary>
-        /// <param name="parent"> The parent tab control hosting this tab page. </param>
+        /// <param name="parent"> The tab control hosting this tab page. </param>
         public InputSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
@@ -63,7 +63,8 @@ namespace CometUI.Search.SearchSettings
         }
 
         /// <summary>
-        /// Initializes the input settings tab page from the settings saved in the registry. 
+        /// Public method to initialize the output settings tab page from the
+        /// user's settings.
         /// </summary>
         public void Initialize()
         {
@@ -96,7 +97,7 @@ namespace CometUI.Search.SearchSettings
         }
 
         /// <summary>
-        /// Saves the settings the user modified to the registry.
+        /// Saves the settings the user modified to the user's settings.
         /// </summary>
         /// <returns> True if settings were updated successfully; False for error. </returns>
         public bool VerifyAndUpdateSettings()
@@ -121,7 +122,7 @@ namespace CometUI.Search.SearchSettings
 
         /// <summary>
         /// Initializes the input settings tab page from the settings saved
-        /// in the registry.
+        /// in the user's settings.
         /// </summary>
         private void InitializeFromDefaultSettings()
         {
