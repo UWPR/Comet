@@ -444,7 +444,7 @@ namespace CometUI.Search
             }
 
             var useYIons = CometUI.SearchSettings.UseYIons ? 1 : 0;
-            if (!SearchMgr.SetParam("use_Y_ions", useXIons.ToString(CultureInfo.InvariantCulture), useYIons))
+            if (!SearchMgr.SetParam("use_Y_ions", useYIons.ToString(CultureInfo.InvariantCulture), useYIons))
             {
                 SearchStatusMessage = "Could not set the use_Y_ions parameter.";
                 return false;
