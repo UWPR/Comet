@@ -178,7 +178,7 @@ namespace CometUI.Search
         private static IEnumerable<string> ShowAddInputFile()
         {
             const string filter =
-                "Search Input Files (*.mzXML, *.mzML, *.ms2, *.cms2)|*.mzXML;*.mzML;*.ms2;*.cms2|All Files (*.*)|*.*";
+                "Search Input Files (*.mzXML, *.mzML, *.ms2, *.cms2, *.raw)|*.mzXML;*.mzML;*.ms2;*.cms2;*.raw|All Files (*.*)|*.*";
             var fdlg = new OpenFileDialog
                            {
                                Title = Resources.InputFilesControl_ShowAddInputFile_Open_Input_File,
@@ -209,7 +209,7 @@ namespace CometUI.Search
             {
                 string fileExt = extension.ToLower();
                 return File.Exists(fileName) &&
-                       (fileExt == ".mzxml" || fileExt == ".mzml" || fileExt == ".ms2" || fileExt == ".cms2");
+                       (fileExt == ".mzxml" || fileExt == ".mzml" || fileExt == ".ms2" || fileExt == ".cms2" || fileExt == ".raw");
             }
             return false;
         }
