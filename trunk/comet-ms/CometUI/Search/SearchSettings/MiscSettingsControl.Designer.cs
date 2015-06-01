@@ -49,6 +49,8 @@ namespace CometUI.Search.SearchSettings
             this.label11 = new System.Windows.Forms.Label();
             this.mzxmlActivationLevelCombo = new System.Windows.Forms.ComboBox();
             this.mzXMLGroupBox = new System.Windows.Forms.GroupBox();
+            this.mzxmlOverrideChargeCombo = new System.Windows.Forms.ComboBox();
+            this.label18 = new System.Windows.Forms.Label();
             this.mzxmlPrecursorChargeMaxTextBox = new NumericTextBox();
             this.mzxmlPrecursorChargeMinTextBox = new NumericTextBox();
             this.mzxmlScanRangeMaxTextBox = new NumericTextBox();
@@ -115,15 +117,15 @@ namespace CometUI.Search.SearchSettings
             "30",
             "31",
             "32"});
-            this.numThreadsCombo.Location = new System.Drawing.Point(32, 339);
+            this.numThreadsCombo.Location = new System.Drawing.Point(32, 375);
             this.numThreadsCombo.Name = "numThreadsCombo";
             this.numThreadsCombo.Size = new System.Drawing.Size(65, 21);
-            this.numThreadsCombo.TabIndex = 14;
+            this.numThreadsCombo.TabIndex = 15;
             // 
             // searchEnzymeLabel
             // 
             this.searchEnzymeLabel.AutoSize = true;
-            this.searchEnzymeLabel.Location = new System.Drawing.Point(29, 323);
+            this.searchEnzymeLabel.Location = new System.Drawing.Point(29, 359);
             this.searchEnzymeLabel.Name = "searchEnzymeLabel";
             this.searchEnzymeLabel.Size = new System.Drawing.Size(74, 13);
             this.searchEnzymeLabel.TabIndex = 3;
@@ -135,7 +137,7 @@ namespace CometUI.Search.SearchSettings
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(29, 270);
+            this.label1.Location = new System.Drawing.Point(29, 306);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(109, 13);
             this.label1.TabIndex = 8;
@@ -147,7 +149,7 @@ namespace CometUI.Search.SearchSettings
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(123, 323);
+            this.label2.Location = new System.Drawing.Point(123, 359);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(70, 13);
             this.label2.TabIndex = 10;
@@ -157,7 +159,7 @@ namespace CometUI.Search.SearchSettings
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(277, 273);
+            this.label3.Location = new System.Drawing.Point(277, 309);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(114, 13);
             this.label3.TabIndex = 11;
@@ -166,7 +168,7 @@ namespace CometUI.Search.SearchSettings
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(277, 309);
+            this.label4.Location = new System.Drawing.Point(277, 345);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(115, 13);
             this.label4.TabIndex = 12;
@@ -186,10 +188,10 @@ namespace CometUI.Search.SearchSettings
             "3",
             "4",
             "5"});
-            this.maxFragmentChargeCombo.Location = new System.Drawing.Point(397, 270);
+            this.maxFragmentChargeCombo.Location = new System.Drawing.Point(397, 306);
             this.maxFragmentChargeCombo.Name = "maxFragmentChargeCombo";
             this.maxFragmentChargeCombo.Size = new System.Drawing.Size(43, 21);
-            this.maxFragmentChargeCombo.TabIndex = 16;
+            this.maxFragmentChargeCombo.TabIndex = 17;
             // 
             // maxPrecursorChargeCombo
             // 
@@ -209,18 +211,18 @@ namespace CometUI.Search.SearchSettings
             "7",
             "8",
             "9"});
-            this.maxPrecursorChargeCombo.Location = new System.Drawing.Point(397, 306);
+            this.maxPrecursorChargeCombo.Location = new System.Drawing.Point(397, 342);
             this.maxPrecursorChargeCombo.Name = "maxPrecursorChargeCombo";
             this.maxPrecursorChargeCombo.Size = new System.Drawing.Size(43, 21);
-            this.maxPrecursorChargeCombo.TabIndex = 17;
+            this.maxPrecursorChargeCombo.TabIndex = 18;
             // 
             // clipNTermMethionineCheckBox
             // 
             this.clipNTermMethionineCheckBox.AutoSize = true;
-            this.clipNTermMethionineCheckBox.Location = new System.Drawing.Point(280, 344);
+            this.clipNTermMethionineCheckBox.Location = new System.Drawing.Point(280, 380);
             this.clipNTermMethionineCheckBox.Name = "clipNTermMethionineCheckBox";
             this.clipNTermMethionineCheckBox.Size = new System.Drawing.Size(131, 17);
-            this.clipNTermMethionineCheckBox.TabIndex = 18;
+            this.clipNTermMethionineCheckBox.TabIndex = 19;
             this.clipNTermMethionineCheckBox.Text = "Clip N-term methionine";
             this.clipNTermMethionineCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -247,7 +249,7 @@ namespace CometUI.Search.SearchSettings
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(15, 85);
+            this.label8.Location = new System.Drawing.Point(15, 80);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(92, 13);
             this.label8.TabIndex = 22;
@@ -257,7 +259,7 @@ namespace CometUI.Search.SearchSettings
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(101, 103);
+            this.label9.Location = new System.Drawing.Point(101, 99);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(16, 13);
             this.label9.TabIndex = 25;
@@ -266,10 +268,10 @@ namespace CometUI.Search.SearchSettings
             // label10
             // 
             this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(15, 139);
+            this.label10.Location = new System.Drawing.Point(15, 197);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(55, 13);
-            this.label10.TabIndex = 27;
+            this.label10.TabIndex = 7;
             this.label10.Text = "MS Level:";
             // 
             // mzxmlMsLevelCombo
@@ -282,18 +284,18 @@ namespace CometUI.Search.SearchSettings
             this.mzxmlMsLevelCombo.Items.AddRange(new object[] {
             "2",
             "3"});
-            this.mzxmlMsLevelCombo.Location = new System.Drawing.Point(18, 155);
+            this.mzxmlMsLevelCombo.Location = new System.Drawing.Point(18, 214);
             this.mzxmlMsLevelCombo.Name = "mzxmlMsLevelCombo";
             this.mzxmlMsLevelCombo.Size = new System.Drawing.Size(52, 21);
-            this.mzxmlMsLevelCombo.TabIndex = 5;
+            this.mzxmlMsLevelCombo.TabIndex = 6;
             // 
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(117, 139);
+            this.label11.Location = new System.Drawing.Point(117, 197);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(86, 13);
-            this.label11.TabIndex = 29;
+            this.label11.TabIndex = 9;
             this.label11.Text = "Activation Level:";
             // 
             // mzxmlActivationLevelCombo
@@ -311,13 +313,15 @@ namespace CometUI.Search.SearchSettings
             "PQD",
             "HCD",
             "IRMPD"});
-            this.mzxmlActivationLevelCombo.Location = new System.Drawing.Point(120, 155);
+            this.mzxmlActivationLevelCombo.Location = new System.Drawing.Point(120, 213);
             this.mzxmlActivationLevelCombo.Name = "mzxmlActivationLevelCombo";
             this.mzxmlActivationLevelCombo.Size = new System.Drawing.Size(83, 21);
-            this.mzxmlActivationLevelCombo.TabIndex = 6;
+            this.mzxmlActivationLevelCombo.TabIndex = 7;
             // 
             // mzXMLGroupBox
             // 
+            this.mzXMLGroupBox.Controls.Add(this.mzxmlOverrideChargeCombo);
+            this.mzXMLGroupBox.Controls.Add(this.label18);
             this.mzXMLGroupBox.Controls.Add(this.mzxmlPrecursorChargeMaxTextBox);
             this.mzXMLGroupBox.Controls.Add(this.mzxmlPrecursorChargeMinTextBox);
             this.mzXMLGroupBox.Controls.Add(this.mzxmlScanRangeMaxTextBox);
@@ -332,10 +336,34 @@ namespace CometUI.Search.SearchSettings
             this.mzXMLGroupBox.Controls.Add(this.label9);
             this.mzXMLGroupBox.Location = new System.Drawing.Point(28, 24);
             this.mzXMLGroupBox.Name = "mzXMLGroupBox";
-            this.mzXMLGroupBox.Size = new System.Drawing.Size(218, 216);
+            this.mzXMLGroupBox.Size = new System.Drawing.Size(218, 255);
             this.mzXMLGroupBox.TabIndex = 0;
             this.mzXMLGroupBox.TabStop = false;
             this.mzXMLGroupBox.Text = "mzXML";
+            // 
+            // mzxmlOverrideChargeCombo
+            // 
+            this.mzxmlOverrideChargeCombo.DropDownHeight = 80;
+            this.mzxmlOverrideChargeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.mzxmlOverrideChargeCombo.DropDownWidth = 40;
+            this.mzxmlOverrideChargeCombo.FormattingEnabled = true;
+            this.mzxmlOverrideChargeCombo.IntegralHeight = false;
+            this.mzxmlOverrideChargeCombo.Location = new System.Drawing.Point(18, 151);
+            this.mzxmlOverrideChargeCombo.Name = "mzxmlOverrideChargeCombo";
+            this.mzxmlOverrideChargeCombo.Size = new System.Drawing.Size(185, 21);
+            this.mzxmlOverrideChargeCombo.TabIndex = 5;
+            this.mzxmlOverrideChargeCombo.DropDown += new System.EventHandler(this.MzxmlOverrideChargeComboDropDown);
+            // 
+            // label18
+            // 
+            this.label18.AutoSize = true;
+            this.label18.Location = new System.Drawing.Point(15, 135);
+            this.label18.Name = "label18";
+            this.label18.Size = new System.Drawing.Size(87, 13);
+            this.label18.TabIndex = 5;
+            this.label18.Text = "Override Charge:";
+            this.miscSettingsToolTip.SetToolTip(this.label18, "Specify whether to exclude/remove any precursor signals from the input MS/MS spec" +
+        "trum.");
             // 
             // mzxmlPrecursorChargeMaxTextBox
             // 
@@ -343,7 +371,7 @@ namespace CometUI.Search.SearchSettings
             this.mzxmlPrecursorChargeMaxTextBox.AllowGroupSeparator = false;
             this.mzxmlPrecursorChargeMaxTextBox.AllowNegative = false;
             this.mzxmlPrecursorChargeMaxTextBox.AllowSpace = false;
-            this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(123, 100);
+            this.mzxmlPrecursorChargeMaxTextBox.Location = new System.Drawing.Point(123, 96);
             this.mzxmlPrecursorChargeMaxTextBox.Name = "mzxmlPrecursorChargeMaxTextBox";
             this.mzxmlPrecursorChargeMaxTextBox.Size = new System.Drawing.Size(80, 20);
             this.mzxmlPrecursorChargeMaxTextBox.TabIndex = 4;
@@ -354,7 +382,7 @@ namespace CometUI.Search.SearchSettings
             this.mzxmlPrecursorChargeMinTextBox.AllowGroupSeparator = false;
             this.mzxmlPrecursorChargeMinTextBox.AllowNegative = false;
             this.mzxmlPrecursorChargeMinTextBox.AllowSpace = false;
-            this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(18, 100);
+            this.mzxmlPrecursorChargeMinTextBox.Location = new System.Drawing.Point(18, 96);
             this.mzxmlPrecursorChargeMinTextBox.Name = "mzxmlPrecursorChargeMinTextBox";
             this.mzxmlPrecursorChargeMinTextBox.Size = new System.Drawing.Size(80, 20);
             this.mzxmlPrecursorChargeMinTextBox.TabIndex = 3;
@@ -398,7 +426,7 @@ namespace CometUI.Search.SearchSettings
             this.spectralProcessingGroupBox.Controls.Add(this.label5);
             this.spectralProcessingGroupBox.Location = new System.Drawing.Point(267, 24);
             this.spectralProcessingGroupBox.Name = "spectralProcessingGroupBox";
-            this.spectralProcessingGroupBox.Size = new System.Drawing.Size(234, 216);
+            this.spectralProcessingGroupBox.Size = new System.Drawing.Size(234, 255);
             this.spectralProcessingGroupBox.TabIndex = 7;
             this.spectralProcessingGroupBox.TabStop = false;
             this.spectralProcessingGroupBox.Text = "Spectral Processing";
@@ -412,12 +440,12 @@ namespace CometUI.Search.SearchSettings
             this.spectralProcessingMinPeaksTextBox.Location = new System.Drawing.Point(20, 45);
             this.spectralProcessingMinPeaksTextBox.Name = "spectralProcessingMinPeaksTextBox";
             this.spectralProcessingMinPeaksTextBox.Size = new System.Drawing.Size(80, 20);
-            this.spectralProcessingMinPeaksTextBox.TabIndex = 7;
+            this.spectralProcessingMinPeaksTextBox.TabIndex = 8;
             // 
             // label16
             // 
             this.label16.AutoSize = true;
-            this.label16.Location = new System.Drawing.Point(17, 156);
+            this.label16.Location = new System.Drawing.Point(17, 197);
             this.label16.Name = "label16";
             this.label16.Size = new System.Drawing.Size(90, 13);
             this.label16.TabIndex = 30;
@@ -431,15 +459,15 @@ namespace CometUI.Search.SearchSettings
             this.spectralProcessingClearMZRangeMaxTextBox.AllowGroupSeparator = false;
             this.spectralProcessingClearMZRangeMaxTextBox.AllowNegative = false;
             this.spectralProcessingClearMZRangeMaxTextBox.AllowSpace = false;
-            this.spectralProcessingClearMZRangeMaxTextBox.Location = new System.Drawing.Point(135, 172);
+            this.spectralProcessingClearMZRangeMaxTextBox.Location = new System.Drawing.Point(135, 213);
             this.spectralProcessingClearMZRangeMaxTextBox.Name = "spectralProcessingClearMZRangeMaxTextBox";
             this.spectralProcessingClearMZRangeMaxTextBox.Size = new System.Drawing.Size(80, 20);
-            this.spectralProcessingClearMZRangeMaxTextBox.TabIndex = 12;
+            this.spectralProcessingClearMZRangeMaxTextBox.TabIndex = 13;
             // 
             // label17
             // 
             this.label17.AutoSize = true;
-            this.label17.Location = new System.Drawing.Point(109, 175);
+            this.label17.Location = new System.Drawing.Point(109, 216);
             this.label17.Name = "label17";
             this.label17.Size = new System.Drawing.Size(16, 13);
             this.label17.TabIndex = 33;
@@ -451,10 +479,10 @@ namespace CometUI.Search.SearchSettings
             this.spectralProcessingClearMZRangeMinTextBox.AllowGroupSeparator = false;
             this.spectralProcessingClearMZRangeMinTextBox.AllowNegative = false;
             this.spectralProcessingClearMZRangeMinTextBox.AllowSpace = false;
-            this.spectralProcessingClearMZRangeMinTextBox.Location = new System.Drawing.Point(20, 172);
+            this.spectralProcessingClearMZRangeMinTextBox.Location = new System.Drawing.Point(20, 213);
             this.spectralProcessingClearMZRangeMinTextBox.Name = "spectralProcessingClearMZRangeMinTextBox";
             this.spectralProcessingClearMZRangeMinTextBox.Size = new System.Drawing.Size(80, 20);
-            this.spectralProcessingClearMZRangeMinTextBox.TabIndex = 11;
+            this.spectralProcessingClearMZRangeMinTextBox.TabIndex = 12;
             // 
             // spectralProcessingRemovePrecursorPeakCombo
             // 
@@ -463,15 +491,15 @@ namespace CometUI.Search.SearchSettings
             this.spectralProcessingRemovePrecursorPeakCombo.DropDownWidth = 40;
             this.spectralProcessingRemovePrecursorPeakCombo.FormattingEnabled = true;
             this.spectralProcessingRemovePrecursorPeakCombo.IntegralHeight = false;
-            this.spectralProcessingRemovePrecursorPeakCombo.Location = new System.Drawing.Point(147, 119);
+            this.spectralProcessingRemovePrecursorPeakCombo.Location = new System.Drawing.Point(20, 151);
             this.spectralProcessingRemovePrecursorPeakCombo.Name = "spectralProcessingRemovePrecursorPeakCombo";
-            this.spectralProcessingRemovePrecursorPeakCombo.Size = new System.Drawing.Size(68, 21);
-            this.spectralProcessingRemovePrecursorPeakCombo.TabIndex = 10;
+            this.spectralProcessingRemovePrecursorPeakCombo.Size = new System.Drawing.Size(123, 21);
+            this.spectralProcessingRemovePrecursorPeakCombo.TabIndex = 11;
             // 
             // label15
             // 
             this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(17, 122);
+            this.label15.Location = new System.Drawing.Point(17, 135);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(126, 13);
             this.label15.TabIndex = 28;
@@ -485,15 +513,15 @@ namespace CometUI.Search.SearchSettings
             this.spectralProcessingPrecursorRemovalTolTextBox.AllowGroupSeparator = false;
             this.spectralProcessingPrecursorRemovalTolTextBox.AllowNegative = false;
             this.spectralProcessingPrecursorRemovalTolTextBox.AllowSpace = false;
-            this.spectralProcessingPrecursorRemovalTolTextBox.Location = new System.Drawing.Point(149, 82);
+            this.spectralProcessingPrecursorRemovalTolTextBox.Location = new System.Drawing.Point(149, 92);
             this.spectralProcessingPrecursorRemovalTolTextBox.Name = "spectralProcessingPrecursorRemovalTolTextBox";
             this.spectralProcessingPrecursorRemovalTolTextBox.Size = new System.Drawing.Size(66, 20);
-            this.spectralProcessingPrecursorRemovalTolTextBox.TabIndex = 9;
+            this.spectralProcessingPrecursorRemovalTolTextBox.TabIndex = 10;
             // 
             // label14
             // 
             this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(17, 85);
+            this.label14.Location = new System.Drawing.Point(15, 95);
             this.label14.Name = "label14";
             this.label14.Size = new System.Drawing.Size(118, 13);
             this.label14.TabIndex = 26;
@@ -506,7 +534,7 @@ namespace CometUI.Search.SearchSettings
             this.label13.AutoSize = true;
             this.label13.BackColor = System.Drawing.Color.Transparent;
             this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label13.Location = new System.Drawing.Point(134, 84);
+            this.label13.Location = new System.Drawing.Point(132, 94);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(13, 13);
             this.label13.TabIndex = 25;
@@ -531,7 +559,7 @@ namespace CometUI.Search.SearchSettings
             this.spectralProcessingMinIntensityTextBox.Location = new System.Drawing.Point(135, 46);
             this.spectralProcessingMinIntensityTextBox.Name = "spectralProcessingMinIntensityTextBox";
             this.spectralProcessingMinIntensityTextBox.Size = new System.Drawing.Size(80, 20);
-            this.spectralProcessingMinIntensityTextBox.TabIndex = 8;
+            this.spectralProcessingMinIntensityTextBox.TabIndex = 9;
             // 
             // label5
             // 
@@ -550,10 +578,10 @@ namespace CometUI.Search.SearchSettings
             this.spectrumBatchSizeTextBox.AllowGroupSeparator = false;
             this.spectrumBatchSizeTextBox.AllowNegative = false;
             this.spectrumBatchSizeTextBox.AllowSpace = false;
-            this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 287);
+            this.spectrumBatchSizeTextBox.Location = new System.Drawing.Point(32, 323);
             this.spectrumBatchSizeTextBox.Name = "spectrumBatchSizeTextBox";
             this.spectrumBatchSizeTextBox.Size = new System.Drawing.Size(103, 20);
-            this.spectrumBatchSizeTextBox.TabIndex = 13;
+            this.spectrumBatchSizeTextBox.TabIndex = 14;
             // 
             // numResultsTextBox
             // 
@@ -561,10 +589,10 @@ namespace CometUI.Search.SearchSettings
             this.numResultsTextBox.AllowGroupSeparator = false;
             this.numResultsTextBox.AllowNegative = false;
             this.numResultsTextBox.AllowSpace = false;
-            this.numResultsTextBox.Location = new System.Drawing.Point(126, 339);
+            this.numResultsTextBox.Location = new System.Drawing.Point(126, 375);
             this.numResultsTextBox.Name = "numResultsTextBox";
             this.numResultsTextBox.Size = new System.Drawing.Size(67, 20);
-            this.numResultsTextBox.TabIndex = 15;
+            this.numResultsTextBox.TabIndex = 16;
             // 
             // miscSettingsToolTip
             // 
@@ -640,5 +668,7 @@ namespace CometUI.Search.SearchSettings
         private NumericTextBox numResultsTextBox;
         private NumericTextBox spectralProcessingMinPeaksTextBox;
         private System.Windows.Forms.ToolTip miscSettingsToolTip;
+        private System.Windows.Forms.ComboBox mzxmlOverrideChargeCombo;
+        private System.Windows.Forms.Label label18;
     }
 }

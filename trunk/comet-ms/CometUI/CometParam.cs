@@ -413,6 +413,13 @@ namespace CometUI
             cometSettings.mzxmlPrecursorChargeRangeMin = mzxmlPrecursorChargeRange.Start;
             cometSettings.mzxmlPrecursorChargeRangeMax = mzxmlPrecursorChargeRange.End;
 
+            int mzxmlOverrideCharge;
+            if (!GetCometParamValue("override_charge", out mzxmlOverrideCharge, out paramValueStr))
+            {
+                return false;
+            }
+            cometSettings.mzxmlOverrideCharge = mzxmlOverrideCharge;
+
             int mzxmlMSLevel;
             if (!GetCometParamValue("ms_level", out mzxmlMSLevel, out paramValueStr))
             {
@@ -961,6 +968,15 @@ namespace CometUI
                              new TypedCometParam<IntRange>(CometParamType.IntRange,
                                                            mzxmlPrecursorChargeRageString,
                                                            mzxmlPrecursorChargeRange)))
+            {
+                return false;
+            }
+
+            var mzxmlOverrideCharge = settings.mzxmlOverrideCharge;
+            if (!UpdateCometParam("override_charge",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                      mzxmlOverrideCharge.ToString(CultureInfo.InvariantCulture),
+                                                      mzxmlOverrideCharge)))
             {
                 return false;
             }

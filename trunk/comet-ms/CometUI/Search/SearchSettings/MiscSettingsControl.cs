@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
 
@@ -26,6 +27,7 @@ namespace CometUI.Search.SearchSettings
         private new SearchSettingsDlg Parent { get; set; }
 
         private readonly Dictionary<int, string> _removePrecursorPeak = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> _overrideCharge = new Dictionary<int, string>();
 
         public MiscSettingsControl(SearchSettingsDlg parent)
         {
@@ -33,15 +35,9 @@ namespace CometUI.Search.SearchSettings
 
             Parent = parent;
 
-            _removePrecursorPeak.Add(0, "No");
-            _removePrecursorPeak.Add(1, "Yes");
-            _removePrecursorPeak.Add(2, "Yes/ETD");
+            InitializePrecursorPeakMap();
 
-            Dictionary<int, string>.KeyCollection remPrecursorPeakKeys = _removePrecursorPeak.Keys;
-            foreach (var key in remPrecursorPeakKeys)
-            {
-                spectralProcessingRemovePrecursorPeakCombo.Items.Add(_removePrecursorPeak[key]);
-            }
+            InitializeOverrideChargeMap();
         }
 
         public void Initialize()
@@ -78,6 +74,13 @@ namespace CometUI.Search.SearchSettings
             if (precursorChargeMax != CometUI.SearchSettings.mzxmlPrecursorChargeRangeMax)
             {
                 CometUI.SearchSettings.mzxmlPrecursorChargeRangeMax = precursorChargeMax;
+                Parent.SettingsChanged = true;
+            }
+
+            var overrideCharge = mzxmlOverrideChargeCombo.SelectedIndex;
+            if (overrideCharge != CometUI.SearchSettings.mzxmlOverrideCharge)
+            {
+                CometUI.SearchSettings.mzxmlOverrideCharge = overrideCharge;
                 Parent.SettingsChanged = true;
             }
 
@@ -193,6 +196,32 @@ namespace CometUI.Search.SearchSettings
             return true;
         }
 
+        private void InitializePrecursorPeakMap()
+        {
+            _removePrecursorPeak.Add(0, "No");
+            _removePrecursorPeak.Add(1, "Yes");
+            _removePrecursorPeak.Add(2, "Yes/ETD");
+
+            Dictionary<int, string>.KeyCollection remPrecursorPeakKeys = _removePrecursorPeak.Keys;
+            foreach (var key in remPrecursorPeakKeys)
+            {
+                spectralProcessingRemovePrecursorPeakCombo.Items.Add(_removePrecursorPeak[key]);
+            }
+        }
+
+        private void InitializeOverrideChargeMap()
+        {
+            _overrideCharge.Add(0, "Keep known charges");
+            _overrideCharge.Add(1, "Always use charge range");
+            _overrideCharge.Add(2, "Use charge range as charge filter");
+
+            Dictionary<int, string>.KeyCollection overrideChargeKeys = _overrideCharge.Keys;
+            foreach (var key in overrideChargeKeys)
+            {
+                mzxmlOverrideChargeCombo.Items.Add(_overrideCharge[key]);
+            }
+        }
+
         private void InitializeFromDefaultSettings()
         {
             numThreadsCombo.SelectedItem = CometUI.SearchSettings.NumThreads.ToString(CultureInfo.InvariantCulture);
@@ -223,6 +252,30 @@ namespace CometUI.Search.SearchSettings
             
             spectralProcessingRemovePrecursorPeakCombo.SelectedItem =
                 _removePrecursorPeak[CometUI.SearchSettings.spectralProcessingRemovePrecursorPeak];
+
+            mzxmlOverrideChargeCombo.SelectedItem = _overrideCharge[CometUI.SearchSettings.mzxmlOverrideCharge];
+        }
+
+        private void MzxmlOverrideChargeComboDropDown(object sender, EventArgs e)
+        {
+            var senderComboBox = (ComboBox)sender;
+            int width = senderComboBox.DropDownWidth;
+            Graphics g = senderComboBox.CreateGraphics();
+            Font font = senderComboBox.Font;
+            int vertScrollBarWidth =
+                (senderComboBox.Items.Count > senderComboBox.MaxDropDownItems)
+                ? SystemInformation.VerticalScrollBarWidth : 0;
+
+            foreach (string s in ((ComboBox)sender).Items)
+            {
+                int newWidth = (int)g.MeasureString(s, font).Width
+                               + vertScrollBarWidth;
+                if (width < newWidth)
+                {
+                    width = newWidth;
+                }
+            }
+            senderComboBox.DropDownWidth = width;
         }
     }
 }

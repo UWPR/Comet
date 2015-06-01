@@ -654,6 +654,13 @@ namespace CometUI.Search
                 return false;
             }
 
+            var mzxmlOverrideCharge = CometUI.SearchSettings.mzxmlOverrideCharge;
+            if (!SearchMgr.SetParam("override_charge", mzxmlOverrideCharge.ToString(CultureInfo.InvariantCulture), mzxmlOverrideCharge))
+            {
+                SearchStatusMessage = "Could not set the override_charge parameter.";
+                return false;
+            }
+
             var mzxmlMSLevel = CometUI.SearchSettings.mzxmlMsLevel;
             if (!SearchMgr.SetParam("ms_level", mzxmlMSLevel.ToString(CultureInfo.InvariantCulture), mzxmlMSLevel))
             {
