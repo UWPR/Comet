@@ -302,6 +302,13 @@ namespace CometUI.Search
                 return false;
             }
 
+            var outputSuffix = CometUIMainForm.SearchSettings.OutputSuffix;
+            if (!SearchMgr.SetParam("output_suffix", outputSuffix, outputSuffix))
+            {
+                SearchStatusMessage = "Could not set the output_suffix parameter.";
+                return false;
+            }
+
             return true;
         }
 

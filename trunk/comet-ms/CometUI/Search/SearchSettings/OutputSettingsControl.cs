@@ -122,6 +122,12 @@ namespace CometUI.Search.SearchSettings
                 Parent.SettingsChanged = true;
             }
 
+            if (!textBoxOutputSuffix.Text.Equals(CometUIMainForm.SearchSettings.OutputSuffix))
+            {
+                CometUIMainForm.SearchSettings.OutputSuffix = textBoxOutputSuffix.Text;
+                Parent.SettingsChanged = true;
+            }
+
             return true;
         }
 
@@ -146,6 +152,8 @@ namespace CometUI.Search.SearchSettings
             numOutputLinesSpinner.Text = CometUIMainForm.SearchSettings.NumOutputLines.ToString(CultureInfo.InvariantCulture);
 
             outSkipReSearchingCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatSkipReSearching;
+
+            textBoxOutputSuffix.Text = CometUIMainForm.SearchSettings.OutputSuffix;
         }
 
         private void SqtCheckBoxCheckedChanged(object sender, EventArgs e)
@@ -158,6 +166,17 @@ namespace CometUI.Search.SearchSettings
             outExpectScoreCheckBox.Enabled = outFileCheckBox.Checked;
             outShowFragmentIonsCheckBox.Enabled = outFileCheckBox.Checked;
             outSkipReSearchingCheckBox.Enabled = outFileCheckBox.Checked;
+        }
+
+        private void TextBoxOutputSuffixKeyPress(object sender, KeyPressEventArgs e)
+        {
+            base.OnKeyPress(e);
+
+            // Don't allow spaces in the output suffix
+            if (e.KeyChar == ' ')
+            {
+                e.Handled = true;
+            }
         }
     }
 }

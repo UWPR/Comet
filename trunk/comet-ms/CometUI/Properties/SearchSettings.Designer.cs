@@ -854,5 +854,17 @@ namespace CometUI.Properties {
                 this["mzxmlOverrideCharge"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string OutputSuffix {
+            get {
+                return ((string)(this["OutputSuffix"]));
+            }
+            set {
+                this["OutputSuffix"] = value;
+            }
+        }
     }
 }

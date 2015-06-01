@@ -193,6 +193,13 @@ namespace CometUI
             }
             cometSettings.NumOutputLines = numOutputLines;
 
+            String outputSuffix;
+            if (!GetCometParamValue("output_suffix", out outputSuffix, out paramValueStr))
+            {
+                return false;
+            }
+            cometSettings.OutputSuffix = outputSuffix;
+
             int searchEnzymeNumber;
             if (!GetCometParamValue("search_enzyme_number", out searchEnzymeNumber, out paramValueStr))
             {
@@ -646,6 +653,15 @@ namespace CometUI
                              new TypedCometParam<int>(CometParamType.Int,
                                                       numOutputLines.ToString(CultureInfo.InvariantCulture),
                                                       numOutputLines)))
+            {
+                return false;
+            }
+
+            var outputSuffix = settings.OutputSuffix;
+            if (!UpdateCometParam("output_suffix",
+                             new TypedCometParam<string>(CometParamType.String,
+                                                         outputSuffix,
+                                                         outputSuffix)))
             {
                 return false;
             }

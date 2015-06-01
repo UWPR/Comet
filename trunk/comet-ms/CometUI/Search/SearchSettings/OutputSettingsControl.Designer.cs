@@ -44,6 +44,8 @@
             this.outSkipReSearchingCheckBox = new System.Windows.Forms.CheckBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.outputSettingsToolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.textBoxOutputSuffix = new System.Windows.Forms.TextBox();
+            this.labelOutputSuffix = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.numOutputLinesSpinner)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -204,6 +206,8 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.textBoxOutputSuffix);
+            this.groupBox2.Controls.Add(this.labelOutputSuffix);
             this.groupBox2.Controls.Add(this.numOutputLinesSpinner);
             this.groupBox2.Controls.Add(this.label1);
             this.groupBox2.Location = new System.Drawing.Point(274, 21);
@@ -217,6 +221,23 @@
             // 
             this.outputSettingsToolTip.AutomaticDelay = 400;
             this.outputSettingsToolTip.IsBalloon = true;
+            // 
+            // textBoxOutputSuffix
+            // 
+            this.textBoxOutputSuffix.Location = new System.Drawing.Point(20, 87);
+            this.textBoxOutputSuffix.Name = "textBoxOutputSuffix";
+            this.textBoxOutputSuffix.Size = new System.Drawing.Size(166, 20);
+            this.textBoxOutputSuffix.TabIndex = 11;
+            this.textBoxOutputSuffix.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TextBoxOutputSuffixKeyPress);
+            // 
+            // labelOutputSuffix
+            // 
+            this.labelOutputSuffix.AutoSize = true;
+            this.labelOutputSuffix.Location = new System.Drawing.Point(17, 71);
+            this.labelOutputSuffix.Name = "labelOutputSuffix";
+            this.labelOutputSuffix.Size = new System.Drawing.Size(71, 13);
+            this.labelOutputSuffix.TabIndex = 42;
+            this.labelOutputSuffix.Text = "Output Suffix:";
             // 
             // OutputSettingsControl
             // 
@@ -252,5 +273,7 @@
         private System.Windows.Forms.CheckBox outSkipReSearchingCheckBox;
         private System.Windows.Forms.CheckBox sqtToStdoutCheckBox;
         private System.Windows.Forms.ToolTip outputSettingsToolTip;
+        private System.Windows.Forms.TextBox textBoxOutputSuffix;
+        private System.Windows.Forms.Label labelOutputSuffix;
     }
 }
