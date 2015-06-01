@@ -39,7 +39,7 @@ namespace CometUI.ViewResults
 
         private void BtnBrowsePepXMLFileClick(object sender, EventArgs e)
         {
-            var pepXMLFile = CometUI.ShowOpenPepXMLFile();
+            var pepXMLFile = CometUIMainForm.ShowOpenPepXMLFile();
             if (null != pepXMLFile)
             {
                 pepXMLFileCombo.Text = pepXMLFile;

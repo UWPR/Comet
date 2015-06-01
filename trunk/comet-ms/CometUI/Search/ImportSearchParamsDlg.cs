@@ -24,9 +24,9 @@ namespace CometUI.Search
 {
     public partial class ImportSearchParamsDlg : Form
     {
-        private new CometUI Parent { get; set; }
+        private new CometUIMainForm Parent { get; set; }
 
-        public ImportSearchParamsDlg(CometUI parent)
+        public ImportSearchParamsDlg(CometUIMainForm parent)
         {
             InitializeComponent();
 
@@ -70,7 +70,7 @@ namespace CometUI.Search
             cometParamsReader.Close();
             if (succeeded)
             {
-                succeeded = paramsMap.GetSettingsFromCometParams(CometUI.SearchSettings);
+                succeeded = paramsMap.GetSettingsFromCometParams(CometUIMainForm.SearchSettings);
             }
 
             if (succeeded)

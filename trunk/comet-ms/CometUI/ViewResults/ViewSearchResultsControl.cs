@@ -31,7 +31,7 @@ namespace CometUI.ViewResults
         public bool SettingsChanged { get; set; }
         public String ErrorMessage { get; private set; }
 
-        private CometUI CometUI { get; set; }
+        private CometUIMainForm CometUIMainForm { get; set; }
         private bool OptionsPanelShown { get; set; }
         private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
@@ -57,11 +57,11 @@ namespace CometUI.ViewResults
         private const int MaxIonCharge = 3;
 
 
-        public ViewSearchResultsControl(CometUI parent)
+        public ViewSearchResultsControl(CometUIMainForm parent)
         {
             InitializeComponent();
 
-            CometUI = parent;
+            CometUIMainForm = parent;
 
             SearchResultsMgr = new SearchResultsManager();
 
@@ -145,7 +145,7 @@ namespace CometUI.ViewResults
         {
             if (SettingsChanged)
             {
-                CometUI.ViewResultsSettings.Save();
+                CometUIMainForm.ViewResultsSettings.Save();
                 SettingsChanged = false;
             }
         }
@@ -193,13 +193,13 @@ namespace CometUI.ViewResults
         {
             resultsListView.Columns.Clear();
 
-            foreach (var item in CometUI.ViewResultsSettings.PickColumnsShowList)
+            foreach (var item in CometUIMainForm.ViewResultsSettings.PickColumnsShowList)
             {
                 SearchResultColumn resultCol;
                 if (SearchResultsMgr.ResultColumns.TryGetValue(item.ToLower(), out resultCol))
                 {
                     String columnHeader;
-                    if (CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
+                    if (CometUIMainForm.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
                     {
                         columnHeader = resultCol.CondensedHeader;
                     }
@@ -221,7 +221,7 @@ namespace CometUI.ViewResults
 
         private void InitializeFromDefaultSettings()
         {
-            if (CometUI.ViewResultsSettings.ShowOptions)
+            if (CometUIMainForm.ViewResultsSettings.ShowOptions)
             {
                 ShowViewOptionsPanel();
             }
@@ -260,12 +260,12 @@ namespace CometUI.ViewResults
             if (OptionsPanelShown)
             {
                 HideViewOptionsPanel();
-                CometUI.ViewResultsSettings.ShowOptions = false;
+                CometUIMainForm.ViewResultsSettings.ShowOptions = false;
             }
             else
             {
                 ShowViewOptionsPanel();
-                CometUI.ViewResultsSettings.ShowOptions = true;
+                CometUIMainForm.ViewResultsSettings.ShowOptions = true;
             }
         }
 

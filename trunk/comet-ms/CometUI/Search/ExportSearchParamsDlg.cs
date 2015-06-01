@@ -24,11 +24,11 @@ namespace CometUI.Search
 {
     class ExportSearchParamsDlg : ExportFileDlg
     {
-        private new CometUI Parent { get; set; }
+        private new CometUIMainForm Parent { get; set; }
 
         private Button _btnSettings;
 
-        public ExportSearchParamsDlg(CometUI parent)
+        public ExportSearchParamsDlg(CometUIMainForm parent)
         {
             InitializeComponent();
 
@@ -83,7 +83,7 @@ namespace CometUI.Search
                 return false;
             }
 
-            var paramsMap = new CometParamsMap(CometUI.SearchSettings);
+            var paramsMap = new CometParamsMap(CometUIMainForm.SearchSettings);
 
             if (!CheckProteomeDatabaseFile(paramsMap))
             {

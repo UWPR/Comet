@@ -29,7 +29,7 @@ namespace CometUI
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new CometUI());
+            Application.Run(new CometUIMainForm());
         }
     }
 }

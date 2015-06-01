@@ -39,103 +39,103 @@ namespace CometUI.Search.SearchSettings
         {
             // Verify and save the precursor mass settings
             var precursorMassTol = (double) precursorMassTolTextBox.DecimalValue;
-            if (!CometUI.SearchSettings.PrecursorMassTolerance.Equals(precursorMassTol))
+            if (!CometUIMainForm.SearchSettings.PrecursorMassTolerance.Equals(precursorMassTol))
             {
-                CometUI.SearchSettings.PrecursorMassTolerance = precursorMassTol;
+                CometUIMainForm.SearchSettings.PrecursorMassTolerance = precursorMassTol;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.PrecursorMassUnit != precursorMassUnitCombo.SelectedIndex)
+            if (CometUIMainForm.SearchSettings.PrecursorMassUnit != precursorMassUnitCombo.SelectedIndex)
             {
-                CometUI.SearchSettings.PrecursorMassUnit = precursorMassUnitCombo.SelectedIndex;
+                CometUIMainForm.SearchSettings.PrecursorMassUnit = precursorMassUnitCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.PrecursorMassType != precursorMassTypeCombo.SelectedIndex)
+            if (CometUIMainForm.SearchSettings.PrecursorMassType != precursorMassTypeCombo.SelectedIndex)
             {
-                CometUI.SearchSettings.PrecursorMassType = precursorMassTypeCombo.SelectedIndex;
+                CometUIMainForm.SearchSettings.PrecursorMassType = precursorMassTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.PrecursorIsotopeError != precursorIsotopeErrorCombo.SelectedIndex)
+            if (CometUIMainForm.SearchSettings.PrecursorIsotopeError != precursorIsotopeErrorCombo.SelectedIndex)
             {
-                CometUI.SearchSettings.PrecursorIsotopeError = precursorIsotopeErrorCombo.SelectedIndex;
+                CometUIMainForm.SearchSettings.PrecursorIsotopeError = precursorIsotopeErrorCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
             // Set up defaults for fragment settings
             var fragmentBinSize = (double) fragmentBinSizeTextBox.DecimalValue;
-            if (!CometUI.SearchSettings.FragmentBinSize.Equals(fragmentBinSize))
+            if (!CometUIMainForm.SearchSettings.FragmentBinSize.Equals(fragmentBinSize))
             {
-                CometUI.SearchSettings.FragmentBinSize = fragmentBinSize;
+                CometUIMainForm.SearchSettings.FragmentBinSize = fragmentBinSize;
                 Parent.SettingsChanged = true;
             }
 
             var fragmentOffset = (double) fragmentOffsetTextBox.DecimalValue;
-            if (!CometUI.SearchSettings.FragmentBinOffset.Equals(fragmentOffset))
+            if (!CometUIMainForm.SearchSettings.FragmentBinOffset.Equals(fragmentOffset))
             {
-                CometUI.SearchSettings.FragmentBinOffset = fragmentOffset;
+                CometUIMainForm.SearchSettings.FragmentBinOffset = fragmentOffset;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.FragmentMassType != fragmentMassTypeCombo.SelectedIndex)
+            if (CometUIMainForm.SearchSettings.FragmentMassType != fragmentMassTypeCombo.SelectedIndex)
             {
-                CometUI.SearchSettings.FragmentMassType = fragmentMassTypeCombo.SelectedIndex;
+                CometUIMainForm.SearchSettings.FragmentMassType = fragmentMassTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.UseSparseMatrix != sparseMatrixCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.UseSparseMatrix != sparseMatrixCheckBox.Checked)
             {
-                CometUI.SearchSettings.UseSparseMatrix = sparseMatrixCheckBox.Checked;
+                CometUIMainForm.SearchSettings.UseSparseMatrix = sparseMatrixCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
             // Set up defaults for ion settings
-            if (CometUI.SearchSettings.UseAIons != aIonCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.UseAIons != aIonCheckBox.Checked)
             {
-                CometUI.SearchSettings.UseAIons = aIonCheckBox.Checked;
+                CometUIMainForm.SearchSettings.UseAIons = aIonCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.UseBIons != bIonCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.UseBIons != bIonCheckBox.Checked)
             {
-                CometUI.SearchSettings.UseBIons = bIonCheckBox.Checked;
+                CometUIMainForm.SearchSettings.UseBIons = bIonCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.UseCIons != cIonCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.UseCIons != cIonCheckBox.Checked)
             {
-                CometUI.SearchSettings.UseCIons = cIonCheckBox.Checked;
+                CometUIMainForm.SearchSettings.UseCIons = cIonCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.UseXIons != xIonCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.UseXIons != xIonCheckBox.Checked)
             {
-                CometUI.SearchSettings.UseXIons = xIonCheckBox.Checked;
+                CometUIMainForm.SearchSettings.UseXIons = xIonCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.UseYIons != yIonCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.UseYIons != yIonCheckBox.Checked)
             {
-                CometUI.SearchSettings.UseYIons = yIonCheckBox.Checked;
+                CometUIMainForm.SearchSettings.UseYIons = yIonCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.UseZIons != zIonCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.UseZIons != zIonCheckBox.Checked)
             {
-                CometUI.SearchSettings.UseZIons = zIonCheckBox.Checked;
+                CometUIMainForm.SearchSettings.UseZIons = zIonCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.UseNLIons != useNLCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.UseNLIons != useNLCheckBox.Checked)
             {
-                CometUI.SearchSettings.UseNLIons = useNLCheckBox.Checked;
+                CometUIMainForm.SearchSettings.UseNLIons = useNLCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUI.SearchSettings.TheoreticalFragmentIons != flankCheckBox.Checked)
+            if (CometUIMainForm.SearchSettings.TheoreticalFragmentIons != flankCheckBox.Checked)
             {
-                CometUI.SearchSettings.TheoreticalFragmentIons = flankCheckBox.Checked;
+                CometUIMainForm.SearchSettings.TheoreticalFragmentIons = flankCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
@@ -145,26 +145,26 @@ namespace CometUI.Search.SearchSettings
         private void InitializeFromDefaultSettings()
         {
             // Set up defaults for the precursor mass settings
-            precursorMassTolTextBox.Text = CometUI.SearchSettings.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
-            precursorMassUnitCombo.SelectedIndex = CometUI.SearchSettings.PrecursorMassUnit;
-            precursorMassTypeCombo.SelectedIndex = CometUI.SearchSettings.PrecursorMassType;
-            precursorIsotopeErrorCombo.SelectedIndex = CometUI.SearchSettings.PrecursorIsotopeError;
+            precursorMassTolTextBox.Text = CometUIMainForm.SearchSettings.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
+            precursorMassUnitCombo.SelectedIndex = CometUIMainForm.SearchSettings.PrecursorMassUnit;
+            precursorMassTypeCombo.SelectedIndex = CometUIMainForm.SearchSettings.PrecursorMassType;
+            precursorIsotopeErrorCombo.SelectedIndex = CometUIMainForm.SearchSettings.PrecursorIsotopeError;
 
             // Set up defaults for fragment settings
-            fragmentBinSizeTextBox.Text = CometUI.SearchSettings.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
-            fragmentOffsetTextBox.Text = CometUI.SearchSettings.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
-            fragmentMassTypeCombo.SelectedIndex = CometUI.SearchSettings.FragmentMassType;
-            sparseMatrixCheckBox.Checked = CometUI.SearchSettings.UseSparseMatrix;
+            fragmentBinSizeTextBox.Text = CometUIMainForm.SearchSettings.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
+            fragmentOffsetTextBox.Text = CometUIMainForm.SearchSettings.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
+            fragmentMassTypeCombo.SelectedIndex = CometUIMainForm.SearchSettings.FragmentMassType;
+            sparseMatrixCheckBox.Checked = CometUIMainForm.SearchSettings.UseSparseMatrix;
         
             // Set up defaults for ion settings
-            aIonCheckBox.Checked = CometUI.SearchSettings.UseAIons;
-            bIonCheckBox.Checked = CometUI.SearchSettings.UseBIons;
-            cIonCheckBox.Checked = CometUI.SearchSettings.UseCIons;
-            xIonCheckBox.Checked = CometUI.SearchSettings.UseXIons;
-            yIonCheckBox.Checked = CometUI.SearchSettings.UseYIons;
-            zIonCheckBox.Checked = CometUI.SearchSettings.UseZIons;
-            useNLCheckBox.Checked = CometUI.SearchSettings.UseNLIons;
-            flankCheckBox.Checked = CometUI.SearchSettings.TheoreticalFragmentIons;
+            aIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseAIons;
+            bIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseBIons;
+            cIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseCIons;
+            xIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseXIons;
+            yIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseYIons;
+            zIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseZIons;
+            useNLCheckBox.Checked = CometUIMainForm.SearchSettings.UseNLIons;
+            flankCheckBox.Checked = CometUIMainForm.SearchSettings.TheoreticalFragmentIons;
         }
     }
 }

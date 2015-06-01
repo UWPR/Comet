@@ -79,7 +79,7 @@ namespace CometUI
         public CometParamsMap()
         {
             CometParams = new Dictionary<string, CometParam>();
-            UpdateCometParamsFromSettings(CometUI.SearchSettings);
+            UpdateCometParamsFromSettings(CometUIMainForm.SearchSettings);
         }
 
         public CometParamsMap(SearchSettings settings)

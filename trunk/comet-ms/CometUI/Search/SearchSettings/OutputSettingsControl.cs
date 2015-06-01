@@ -55,70 +55,70 @@ namespace CometUI.Search.SearchSettings
         /// <returns> True if settings were updated successfully; False for error. </returns>
         public bool VerifyAndUpdateSettings()
         {
-            if (pepXMLCheckBox.Checked != CometUI.SearchSettings.OutputFormatPepXML)
+            if (pepXMLCheckBox.Checked != CometUIMainForm.SearchSettings.OutputFormatPepXML)
             {
-                CometUI.SearchSettings.OutputFormatPepXML = pepXMLCheckBox.Checked;
+                CometUIMainForm.SearchSettings.OutputFormatPepXML = pepXMLCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (percolatorCheckBox.Checked != CometUI.SearchSettings.OutputFormatPercolator)
+            if (percolatorCheckBox.Checked != CometUIMainForm.SearchSettings.OutputFormatPercolator)
             {
-                CometUI.SearchSettings.OutputFormatPercolator = percolatorCheckBox.Checked;
+                CometUIMainForm.SearchSettings.OutputFormatPercolator = percolatorCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (outFileCheckBox.Checked != CometUI.SearchSettings.OutputFormatOutFiles)
+            if (outFileCheckBox.Checked != CometUIMainForm.SearchSettings.OutputFormatOutFiles)
             {
-                CometUI.SearchSettings.OutputFormatOutFiles = outFileCheckBox.Checked;
+                CometUIMainForm.SearchSettings.OutputFormatOutFiles = outFileCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (textCheckBox.Checked != CometUI.SearchSettings.OutputFormatTextFile)
+            if (textCheckBox.Checked != CometUIMainForm.SearchSettings.OutputFormatTextFile)
             {
-                CometUI.SearchSettings.OutputFormatTextFile = textCheckBox.Checked;
+                CometUIMainForm.SearchSettings.OutputFormatTextFile = textCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (sqtToStdoutCheckBox.Checked != CometUI.SearchSettings.OutputFormatSqtToStandardOutput)
+            if (sqtToStdoutCheckBox.Checked != CometUIMainForm.SearchSettings.OutputFormatSqtToStandardOutput)
             {
-                CometUI.SearchSettings.OutputFormatSqtToStandardOutput = sqtToStdoutCheckBox.Checked;
+                CometUIMainForm.SearchSettings.OutputFormatSqtToStandardOutput = sqtToStdoutCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (sqtCheckBox.Checked != CometUI.SearchSettings.OutputFormatSqtFile)
+            if (sqtCheckBox.Checked != CometUIMainForm.SearchSettings.OutputFormatSqtFile)
             {
-                CometUI.SearchSettings.OutputFormatSqtFile = sqtCheckBox.Checked;
+                CometUIMainForm.SearchSettings.OutputFormatSqtFile = sqtCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (sqtExpectScoreCheckBox.Checked != CometUI.SearchSettings.PrintExpectScoreInPlaceOfSP)
+            if (sqtExpectScoreCheckBox.Checked != CometUIMainForm.SearchSettings.PrintExpectScoreInPlaceOfSP)
             {
-                CometUI.SearchSettings.PrintExpectScoreInPlaceOfSP = sqtExpectScoreCheckBox.Checked;
+                CometUIMainForm.SearchSettings.PrintExpectScoreInPlaceOfSP = sqtExpectScoreCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (outExpectScoreCheckBox.Checked != CometUI.SearchSettings.PrintExpectScoreInPlaceOfSP)
+            if (outExpectScoreCheckBox.Checked != CometUIMainForm.SearchSettings.PrintExpectScoreInPlaceOfSP)
             {
-                CometUI.SearchSettings.PrintExpectScoreInPlaceOfSP = outExpectScoreCheckBox.Checked;
+                CometUIMainForm.SearchSettings.PrintExpectScoreInPlaceOfSP = outExpectScoreCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
-            if (outShowFragmentIonsCheckBox.Checked != CometUI.SearchSettings.OutputFormatShowFragmentIons)
+            if (outShowFragmentIonsCheckBox.Checked != CometUIMainForm.SearchSettings.OutputFormatShowFragmentIons)
             {
-                CometUI.SearchSettings.OutputFormatShowFragmentIons = outShowFragmentIonsCheckBox.Checked;
+                CometUIMainForm.SearchSettings.OutputFormatShowFragmentIons = outShowFragmentIonsCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
             var numOutputLines = (int) numOutputLinesSpinner.Value;
-            if (numOutputLines != CometUI.SearchSettings.NumOutputLines)
+            if (numOutputLines != CometUIMainForm.SearchSettings.NumOutputLines)
             {
-                CometUI.SearchSettings.NumOutputLines = numOutputLines;
+                CometUIMainForm.SearchSettings.NumOutputLines = numOutputLines;
                 Parent.SettingsChanged = true;
             }
 
-            if (outSkipReSearchingCheckBox.Checked != CometUI.SearchSettings.OutputFormatSkipReSearching)
+            if (outSkipReSearchingCheckBox.Checked != CometUIMainForm.SearchSettings.OutputFormatSkipReSearching)
             {
-                CometUI.SearchSettings.OutputFormatSkipReSearching = outSkipReSearchingCheckBox.Checked;
+                CometUIMainForm.SearchSettings.OutputFormatSkipReSearching = outSkipReSearchingCheckBox.Checked;
                 Parent.SettingsChanged = true;
             }
 
@@ -131,21 +131,21 @@ namespace CometUI.Search.SearchSettings
         /// </summary>
         private void InitializeFromDefaultSettings()
         {
-            pepXMLCheckBox.Checked = CometUI.SearchSettings.OutputFormatPepXML;
-            percolatorCheckBox.Checked = CometUI.SearchSettings.OutputFormatPercolator;
-            outFileCheckBox.Checked = CometUI.SearchSettings.OutputFormatOutFiles;
-            textCheckBox.Checked = CometUI.SearchSettings.OutputFormatTextFile;
-            sqtToStdoutCheckBox.Checked = CometUI.SearchSettings.OutputFormatSqtToStandardOutput;
-            sqtCheckBox.Checked = CometUI.SearchSettings.OutputFormatSqtFile;
+            pepXMLCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatPepXML;
+            percolatorCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatPercolator;
+            outFileCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatOutFiles;
+            textCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatTextFile;
+            sqtToStdoutCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatSqtToStandardOutput;
+            sqtCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatSqtFile;
 
-            sqtExpectScoreCheckBox.Checked = CometUI.SearchSettings.PrintExpectScoreInPlaceOfSP;
-            outExpectScoreCheckBox.Checked = CometUI.SearchSettings.PrintExpectScoreInPlaceOfSP;
+            sqtExpectScoreCheckBox.Checked = CometUIMainForm.SearchSettings.PrintExpectScoreInPlaceOfSP;
+            outExpectScoreCheckBox.Checked = CometUIMainForm.SearchSettings.PrintExpectScoreInPlaceOfSP;
 
-            outShowFragmentIonsCheckBox.Checked = CometUI.SearchSettings.OutputFormatShowFragmentIons;
+            outShowFragmentIonsCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatShowFragmentIons;
 
-            numOutputLinesSpinner.Text = CometUI.SearchSettings.NumOutputLines.ToString(CultureInfo.InvariantCulture);
+            numOutputLinesSpinner.Text = CometUIMainForm.SearchSettings.NumOutputLines.ToString(CultureInfo.InvariantCulture);
 
-            outSkipReSearchingCheckBox.Checked = CometUI.SearchSettings.OutputFormatSkipReSearching;
+            outSkipReSearchingCheckBox.Checked = CometUIMainForm.SearchSettings.OutputFormatSkipReSearching;
         }
 
         private void SqtCheckBoxCheckedChanged(object sender, EventArgs e)

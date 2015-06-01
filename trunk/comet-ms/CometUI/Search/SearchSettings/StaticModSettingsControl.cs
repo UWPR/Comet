@@ -45,39 +45,39 @@ namespace CometUI.Search.SearchSettings
             StaticMods = StaticModsDataGridViewToStringCollection();
             for (int i = 0; i < StaticMods.Count; i++ )
             {
-                if (!StaticMods[i].Equals(CometUI.SearchSettings.StaticMods[i]))
+                if (!StaticMods[i].Equals(CometUIMainForm.SearchSettings.StaticMods[i]))
                 {
-                    CometUI.SearchSettings.StaticMods = StaticMods;
+                    CometUIMainForm.SearchSettings.StaticMods = StaticMods;
                     Parent.SettingsChanged = true;
                     break;
                 }
             }
 
             var staticNTermPeptide = (double)staticNTermPeptideTextBox.DecimalValue;
-            if (!staticNTermPeptide.Equals(CometUI.SearchSettings.StaticModNTermPeptide))
+            if (!staticNTermPeptide.Equals(CometUIMainForm.SearchSettings.StaticModNTermPeptide))
             {
-                CometUI.SearchSettings.StaticModNTermPeptide = staticNTermPeptide;
+                CometUIMainForm.SearchSettings.StaticModNTermPeptide = staticNTermPeptide;
                 Parent.SettingsChanged = true;
             }
 
             var staticCTermPeptide = (double) staticCTermPeptideTextBox.DecimalValue;
-            if (!staticCTermPeptide.Equals(CometUI.SearchSettings.StaticModCTermPeptide))
+            if (!staticCTermPeptide.Equals(CometUIMainForm.SearchSettings.StaticModCTermPeptide))
             {
-                CometUI.SearchSettings.StaticModCTermPeptide = staticCTermPeptide;
+                CometUIMainForm.SearchSettings.StaticModCTermPeptide = staticCTermPeptide;
                 Parent.SettingsChanged = true;
             }
 
             var staticNTermProtein = (double)staticNTermProteinTextBox.DecimalValue;
-            if (!staticNTermProtein.Equals(CometUI.SearchSettings.StaticModNTermProtein))
+            if (!staticNTermProtein.Equals(CometUIMainForm.SearchSettings.StaticModNTermProtein))
             {
-                CometUI.SearchSettings.StaticModNTermProtein = staticNTermProtein;
+                CometUIMainForm.SearchSettings.StaticModNTermProtein = staticNTermProtein;
                 Parent.SettingsChanged = true;
             }
 
             var staticCTermProtein = (double) staticCTermProteinTextBox.DecimalValue;
-            if (!staticCTermProtein.Equals(CometUI.SearchSettings.StaticModCTermProtein))
+            if (!staticCTermProtein.Equals(CometUIMainForm.SearchSettings.StaticModCTermProtein))
             {
-                CometUI.SearchSettings.StaticModCTermProtein = staticCTermProtein;
+                CometUIMainForm.SearchSettings.StaticModCTermProtein = staticCTermProtein;
                 Parent.SettingsChanged = true;
             }
 
@@ -112,15 +112,15 @@ namespace CometUI.Search.SearchSettings
         private void InitializeFromDefaultSettings()
         {
             StaticMods = new StringCollection();
-            foreach (var item in CometUI.SearchSettings.StaticMods)
+            foreach (var item in CometUIMainForm.SearchSettings.StaticMods)
             {
                 StaticMods.Add(item);
             }
 
-            staticNTermPeptideTextBox.Text = CometUI.SearchSettings.StaticModNTermPeptide.ToString(CultureInfo.InvariantCulture);
-            staticCTermPeptideTextBox.Text = CometUI.SearchSettings.StaticModCTermPeptide.ToString(CultureInfo.InvariantCulture);
-            staticNTermProteinTextBox.Text = CometUI.SearchSettings.StaticModNTermProtein.ToString(CultureInfo.InvariantCulture);
-            staticCTermProteinTextBox.Text = CometUI.SearchSettings.StaticModCTermProtein.ToString(CultureInfo.InvariantCulture);
+            staticNTermPeptideTextBox.Text = CometUIMainForm.SearchSettings.StaticModNTermPeptide.ToString(CultureInfo.InvariantCulture);
+            staticCTermPeptideTextBox.Text = CometUIMainForm.SearchSettings.StaticModCTermPeptide.ToString(CultureInfo.InvariantCulture);
+            staticNTermProteinTextBox.Text = CometUIMainForm.SearchSettings.StaticModNTermProtein.ToString(CultureInfo.InvariantCulture);
+            staticCTermProteinTextBox.Text = CometUIMainForm.SearchSettings.StaticModCTermProtein.ToString(CultureInfo.InvariantCulture);
         }
 
         private void UpdateStatidModsDataGridView()

@@ -74,7 +74,7 @@ namespace CometUI.Search.SearchSettings
             {
                 String varModInfoStr = GetVarModStr(NamedVarModsList[i].VarModInfo);
                 varModsStrCollection.Add(varModInfoStr);
-                if (!varModInfoStr.Equals(CometUI.SearchSettings.VariableMods[i]))
+                if (!varModInfoStr.Equals(CometUIMainForm.SearchSettings.VariableMods[i]))
                 {
                     varModsChanged = true;
                 }
@@ -83,16 +83,16 @@ namespace CometUI.Search.SearchSettings
             if (varModsChanged)
             {
                 Parent.SettingsChanged = true;
-                CometUI.SearchSettings.VariableMods = varModsStrCollection;
+                CometUIMainForm.SearchSettings.VariableMods = varModsStrCollection;
             }
         }
 
         private void VerifyAndUpdateMaxModsInPeptide()
         {
             var maxModsInPeptide = (int)maxModsInPeptideTextBox.Value;
-            if (!maxModsInPeptide.Equals(CometUI.SearchSettings.MaxVarModsInPeptide))
+            if (!maxModsInPeptide.Equals(CometUIMainForm.SearchSettings.MaxVarModsInPeptide))
             {
-                CometUI.SearchSettings.MaxVarModsInPeptide = maxModsInPeptide;
+                CometUIMainForm.SearchSettings.MaxVarModsInPeptide = maxModsInPeptide;
                 Parent.SettingsChanged = true;
             }
         }
@@ -100,9 +100,9 @@ namespace CometUI.Search.SearchSettings
         private void VerifyAndUpdateRequireVarMod()
         {
             var requireVarMod = requireVarModCheckBox.Checked;
-            if (requireVarMod != CometUI.SearchSettings.RequireVariableMod)
+            if (requireVarMod != CometUIMainForm.SearchSettings.RequireVariableMod)
             {
-                CometUI.SearchSettings.RequireVariableMod = requireVarMod;
+                CometUIMainForm.SearchSettings.RequireVariableMod = requireVarMod;
                 Parent.SettingsChanged = true;
             }
         }
@@ -131,7 +131,7 @@ namespace CometUI.Search.SearchSettings
 
         private void InitializeFromDefaultSettings()
         {
-            foreach (var item in CometUI.SearchSettings.VariableMods)
+            foreach (var item in CometUIMainForm.SearchSettings.VariableMods)
             {
                 var varMod = CometParamsMap.GetVarModFromString(item);
                 if (null != varMod)
@@ -141,9 +141,9 @@ namespace CometUI.Search.SearchSettings
                 }
             }
 
-            maxModsInPeptideTextBox.Text = CometUI.SearchSettings.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);
+            maxModsInPeptideTextBox.Text = CometUIMainForm.SearchSettings.MaxVarModsInPeptide.ToString(CultureInfo.InvariantCulture);
 
-            requireVarModCheckBox.Checked = CometUI.SearchSettings.RequireVariableMod;
+            requireVarModCheckBox.Checked = CometUIMainForm.SearchSettings.RequireVariableMod;
         }
 
         private void UpdateVarModsListBox(String selectedItem = null)

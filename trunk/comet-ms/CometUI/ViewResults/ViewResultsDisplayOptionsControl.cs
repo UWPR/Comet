@@ -33,7 +33,7 @@ namespace CometUI.ViewResults
 
         private void InitializeFromDefaultSettings()
         {
-            if (CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
+            if (CometUIMainForm.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
             {
                 columnHeadersCondensedRadioButton.Checked = true;
             }
@@ -56,9 +56,9 @@ namespace CometUI.ViewResults
         private void VerifyAndUpdateColumnHeaderCondensedSetting()
         {
             if (columnHeadersCondensedRadioButton.Checked !=
-                CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
+                CometUIMainForm.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders)
             {
-                CometUI.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders =
+                CometUIMainForm.ViewResultsSettings.DisplayOptionsCondensedColumnHeaders =
                     columnHeadersCondensedRadioButton.Checked;
                 ViewSearchResultsControl.SettingsChanged = true;
             } 

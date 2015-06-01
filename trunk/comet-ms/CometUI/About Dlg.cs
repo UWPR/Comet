@@ -51,7 +51,7 @@ namespace CometUI
                 labelCometEngineVersion.Text = cometVersion;
             }
 
-            Version version = typeof(CometUI).Assembly.GetName().Version;
+            Version version = typeof(CometUIMainForm).Assembly.GetName().Version;
             labelCometUIVersion.Text = version.ToString();
         }
 

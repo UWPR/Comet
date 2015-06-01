@@ -36,12 +36,12 @@ namespace CometUI.ViewResults
 
         private void InitializeFromDefaultSettings()
         {
-            foreach (var item in CometUI.ViewResultsSettings.PickColumnsHideList)
+            foreach (var item in CometUIMainForm.ViewResultsSettings.PickColumnsHideList)
             {
                 hiddenColumnsListBox.Items.Add(item);
             }
 
-            foreach (var item in CometUI.ViewResultsSettings.PickColumnsShowList)
+            foreach (var item in CometUIMainForm.ViewResultsSettings.PickColumnsShowList)
             {
                 showColumnsListBox.Items.Add(item);
             }
@@ -50,9 +50,9 @@ namespace CometUI.ViewResults
         private void VerifyAndUpdateHideColumnsSetting()
         {
             var currentHiddenColumnsStringCollection = ListBoxToStringCollection(hiddenColumnsListBox);
-            if (HasPickColumnsListChanged(currentHiddenColumnsStringCollection, CometUI.ViewResultsSettings.PickColumnsHideList))
+            if (HasPickColumnsListChanged(currentHiddenColumnsStringCollection, CometUIMainForm.ViewResultsSettings.PickColumnsHideList))
             {
-                CometUI.ViewResultsSettings.PickColumnsHideList = currentHiddenColumnsStringCollection;
+                CometUIMainForm.ViewResultsSettings.PickColumnsHideList = currentHiddenColumnsStringCollection;
                 ViewSearchResultsControl.SettingsChanged = true;
             }
         }
@@ -60,9 +60,9 @@ namespace CometUI.ViewResults
         private void VerifyAndUpdateShowColumnsSetting()
         {
             var currentShowColumnsStringCollection = ListBoxToStringCollection(showColumnsListBox);
-            if (HasPickColumnsListChanged(currentShowColumnsStringCollection, CometUI.ViewResultsSettings.PickColumnsShowList))
+            if (HasPickColumnsListChanged(currentShowColumnsStringCollection, CometUIMainForm.ViewResultsSettings.PickColumnsShowList))
             {
-                CometUI.ViewResultsSettings.PickColumnsShowList = currentShowColumnsStringCollection;
+                CometUIMainForm.ViewResultsSettings.PickColumnsShowList = currentShowColumnsStringCollection;
                 ViewSearchResultsControl.SettingsChanged = true;
             }
         }

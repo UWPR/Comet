@@ -24,7 +24,7 @@ using CometUI.ViewResults;
 
 namespace CometUI
 {
-    public partial class CometUI : Form
+    public partial class CometUIMainForm : Form
     {
         public static SearchSettings SearchSettings { get; set; }
         public static RunSearchSettings RunSearchSettings { get; set; }
@@ -33,7 +33,7 @@ namespace CometUI
 
         private ViewSearchResultsControl ViewSearchResultsControl { get; set; }
 
-        public CometUI()
+        public CometUIMainForm()
         {
             InitializeComponent();
 

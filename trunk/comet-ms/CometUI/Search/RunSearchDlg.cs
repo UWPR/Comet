@@ -27,10 +27,10 @@ namespace CometUI.Search
 {
     public partial class RunSearchDlg : Form
     {
-        private new CometUI Parent { get; set; }
+        private new CometUIMainForm Parent { get; set; }
         private string[] _inputFiles = new string[0];
 
-        public RunSearchDlg(CometUI parent)
+        public RunSearchDlg(CometUIMainForm parent)
         {
             InitializeComponent();
 
@@ -125,11 +125,11 @@ namespace CometUI.Search
 
         private void InitializeFromDefaultSettings()
         {
-            if (null != CometUI.RunSearchSettings.InputFiles)
+            if (null != CometUIMainForm.RunSearchSettings.InputFiles)
             {
                 var filesList = new List<string>();
                 var inputFilesChecked = new List<bool>();
-                foreach (var item in CometUI.RunSearchSettings.InputFiles)
+                foreach (var item in CometUIMainForm.RunSearchSettings.InputFiles)
                 {
                     string[] row = item.Split(',');
                     filesList.Add(row[0]);
@@ -143,7 +143,7 @@ namespace CometUI.Search
                 }
             }
 
-            proteomeDbFileCombo.Text = CometUI.SearchSettings.ProteomeDatabaseFile;
+            proteomeDbFileCombo.Text = CometUIMainForm.SearchSettings.ProteomeDatabaseFile;
         }
 
         private void BtnSettingsClick(object sender, EventArgs e)
@@ -281,11 +281,11 @@ namespace CometUI.Search
 
         private void ProteomeDbFileNameChanged()
         {
-            if (File.Exists(proteomeDbFileCombo.Text) && !String.Equals(proteomeDbFileCombo.Text, CometUI.SearchSettings.ProteomeDatabaseFile))
+            if (File.Exists(proteomeDbFileCombo.Text) && !String.Equals(proteomeDbFileCombo.Text, CometUIMainForm.SearchSettings.ProteomeDatabaseFile))
             {
                 if (DialogResult.OK == MessageBox.Show(Resources.RunSearchDlg_ProteomeDbFileNameChanged_Would_you_like_to_update_the_proteome_database_file_name_in_the_search_settings_with_the_one_you_have_specified_here_, Resources.RunSearchDlg_ProteomeDbFileNameChanged_Run_Search, MessageBoxButtons.OKCancel, MessageBoxIcon.Question))
                 {
-                    CometUI.SearchSettings.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
+                    CometUIMainForm.SearchSettings.ProteomeDatabaseFile = proteomeDbFileCombo.Text;
                 }
             }
 
@@ -322,8 +322,8 @@ namespace CometUI.Search
                 inputFiles.Add(inputFileInfo);
             }
 
-            CometUI.RunSearchSettings.InputFiles = inputFiles;
-            CometUI.RunSearchSettings.Save();
+            CometUIMainForm.RunSearchSettings.InputFiles = inputFiles;
+            CometUIMainForm.RunSearchSettings.Save();
         }
 
     }
