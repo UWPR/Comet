@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using CometWrapper;
@@ -328,6 +329,11 @@ namespace CometUI.Search
                 return false;
             }
 
+            if (!SetEnzymeInfo(searchEnzymeNumber, sampleEnzymeNumber))
+            {
+                return false;
+            }
+
             var allowedMissedCleavages = CometUIMainForm.SearchSettings.AllowedMissedCleavages;
             if (!SearchMgr.SetParam("allowed_missed_cleavage", allowedMissedCleavages.ToString(CultureInfo.InvariantCulture), allowedMissedCleavages))
             {
@@ -353,6 +359,72 @@ namespace CometUI.Search
                 return false;
             }
 
+
+            return true;
+        }
+
+        private bool SetEnzymeInfo(int searchEnzymeNumber, int sampleEnzymeNumber)
+        {
+            const int enzymeInfoNumColumns = 5;
+            const int enzymeNumberColumn = 0;
+            const int enzymeNameColumn = 1;
+            const int enzymeOffsetColumn = 2;
+            const int enzymeBreakAAColumn = 3;
+            const int enzymeNoBreakAAColumn = 4;
+
+            StringCollection enzymeInfoStrCollection = CometUIMainForm.SearchSettings.EnzymeInfo;
+            var enzymeInfoLines = new String[enzymeInfoStrCollection.Count];
+            enzymeInfoStrCollection.CopyTo(enzymeInfoLines, 0);
+            var formattedEnzymeInfoStr = String.Empty;
+            var enzymeInfo = new EnzymeInfoWrapper();
+
+            foreach (var line in enzymeInfoLines)
+            {
+                if (!String.IsNullOrEmpty(line))
+                {
+                    String[] enzymeInfoColumns = line.Split(',');
+                    if (enzymeInfoColumns.Length != enzymeInfoNumColumns)
+                    {
+                        SearchStatusMessage = "Invalid enzyme info in settings.";
+                        return false;
+                    }
+
+                    int enzymeNumber = Convert.ToInt32(enzymeInfoColumns[enzymeNumberColumn]);
+                    if (enzymeNumber == searchEnzymeNumber)
+                    {
+                        enzymeInfo.set_SearchEnzymeName(enzymeInfoColumns[enzymeNameColumn]);
+                        enzymeInfo.set_SearchEnzymeBreakAA(enzymeInfoColumns[enzymeBreakAAColumn]);
+                        enzymeInfo.set_SearchEnzymeNoBreakAA(enzymeInfoColumns[enzymeNoBreakAAColumn]);
+
+                        int enzymeOffset = Convert.ToInt32(enzymeInfoColumns[enzymeOffsetColumn]);
+                        enzymeInfo.set_SearchEnzymeOffSet(enzymeOffset);
+                    }
+
+                    if (enzymeNumber == sampleEnzymeNumber)
+                    {
+                        enzymeInfo.set_SampleEnzymeName(enzymeInfoColumns[enzymeNameColumn]);
+                        enzymeInfo.set_SampleEnzymeBreakAA(enzymeInfoColumns[enzymeBreakAAColumn]);
+                        enzymeInfo.set_SampleEnzymeNoBreakAA(enzymeInfoColumns[enzymeNoBreakAAColumn]);
+
+                        int enzymeOffset = Convert.ToInt32(enzymeInfoColumns[enzymeOffsetColumn]);
+                        enzymeInfo.set_SampleEnzymeOffSet(enzymeOffset);
+                    }
+
+                    String enzymeInfoFormattedRow = enzymeInfoColumns[enzymeNumberColumn] + ".";
+                    for (int i = enzymeNameColumn; i < enzymeInfoColumns.Length; i++)
+                    {
+                        enzymeInfoFormattedRow += " " + enzymeInfoColumns[i];
+                    }
+
+                    formattedEnzymeInfoStr += enzymeInfoFormattedRow + Environment.NewLine;
+                }
+            }
+
+            if (!SearchMgr.SetParam("[COMET_ENZYME_INFO]", formattedEnzymeInfoStr, enzymeInfo))
+            {
+                SearchStatusMessage = "Could not set the [COMET_ENZYME_INFO] parameter.";
+                return false;
+            }
 
             return true;
         }

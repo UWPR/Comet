@@ -34,8 +34,6 @@
             this.panelNucleotideReadingFrame = new System.Windows.Forms.Panel();
             this.comboBoxReadingFrame = new System.Windows.Forms.ComboBox();
             this.labelReadingFrame = new System.Windows.Forms.Label();
-            this.radioButtonProtein = new System.Windows.Forms.RadioButton();
-            this.radioButtonNucleotide = new System.Windows.Forms.RadioButton();
             this.panelTargetDecoy = new System.Windows.Forms.Panel();
             this.radioButtonTarget = new System.Windows.Forms.RadioButton();
             this.radioButtonDecoyOne = new System.Windows.Forms.RadioButton();
@@ -46,6 +44,8 @@
             this.protDbLabel = new System.Windows.Forms.Label();
             this.proteomeDbFileCombo = new System.Windows.Forms.ComboBox();
             this.inputSettingsToolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.radioButtonNucleotide = new System.Windows.Forms.RadioButton();
+            this.radioButtonProtein = new System.Windows.Forms.RadioButton();
             this.panelProteinNucleotide.SuspendLayout();
             this.panelNucleotideReadingFrame.SuspendLayout();
             this.panelTargetDecoy.SuspendLayout();
@@ -91,6 +91,7 @@
             this.comboBoxReadingFrame.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxReadingFrame.FormattingEnabled = true;
             this.comboBoxReadingFrame.Items.AddRange(new object[] {
+            "0",
             "1",
             "2",
             "3",
@@ -114,32 +115,6 @@
             this.labelReadingFrame.TabIndex = 0;
             this.labelReadingFrame.Text = "Reading Frame:";
             this.inputSettingsToolTip.SetToolTip(this.labelReadingFrame, "Specify which sets of reading frames are translated.");
-            // 
-            // radioButtonProtein
-            // 
-            this.radioButtonProtein.AutoSize = true;
-            this.radioButtonProtein.Checked = true;
-            this.radioButtonProtein.Location = new System.Drawing.Point(3, 4);
-            this.radioButtonProtein.Name = "radioButtonProtein";
-            this.radioButtonProtein.Size = new System.Drawing.Size(58, 17);
-            this.radioButtonProtein.TabIndex = 12;
-            this.radioButtonProtein.TabStop = true;
-            this.radioButtonProtein.Text = "Protein";
-            this.inputSettingsToolTip.SetToolTip(this.radioButtonProtein, "Search protein sequence database.");
-            this.radioButtonProtein.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonNucleotide
-            // 
-            this.radioButtonNucleotide.AutoSize = true;
-            this.radioButtonNucleotide.Location = new System.Drawing.Point(65, 4);
-            this.radioButtonNucleotide.Name = "radioButtonNucleotide";
-            this.radioButtonNucleotide.Size = new System.Drawing.Size(76, 17);
-            this.radioButtonNucleotide.TabIndex = 13;
-            this.radioButtonNucleotide.TabStop = true;
-            this.radioButtonNucleotide.Text = "Nucleotide";
-            this.inputSettingsToolTip.SetToolTip(this.radioButtonNucleotide, "Search nucleotide sequence database.");
-            this.radioButtonNucleotide.UseVisualStyleBackColor = true;
-            this.radioButtonNucleotide.CheckedChanged += new System.EventHandler(this.RadioButtonNucleotideCheckedChanged);
             // 
             // panelTargetDecoy
             // 
@@ -251,6 +226,32 @@
             this.inputSettingsToolTip.AutomaticDelay = 400;
             this.inputSettingsToolTip.IsBalloon = true;
             // 
+            // radioButtonNucleotide
+            // 
+            this.radioButtonNucleotide.AutoSize = true;
+            this.radioButtonNucleotide.Location = new System.Drawing.Point(65, 4);
+            this.radioButtonNucleotide.Name = "radioButtonNucleotide";
+            this.radioButtonNucleotide.Size = new System.Drawing.Size(76, 17);
+            this.radioButtonNucleotide.TabIndex = 13;
+            this.radioButtonNucleotide.TabStop = true;
+            this.radioButtonNucleotide.Text = "Nucleotide";
+            this.inputSettingsToolTip.SetToolTip(this.radioButtonNucleotide, "Search nucleotide sequence database.");
+            this.radioButtonNucleotide.UseVisualStyleBackColor = true;
+            this.radioButtonNucleotide.CheckedChanged += new System.EventHandler(this.RadioButtonNucleotideCheckedChanged);
+            // 
+            // radioButtonProtein
+            // 
+            this.radioButtonProtein.AutoSize = true;
+            this.radioButtonProtein.Checked = true;
+            this.radioButtonProtein.Location = new System.Drawing.Point(3, 4);
+            this.radioButtonProtein.Name = "radioButtonProtein";
+            this.radioButtonProtein.Size = new System.Drawing.Size(58, 17);
+            this.radioButtonProtein.TabIndex = 12;
+            this.radioButtonProtein.TabStop = true;
+            this.radioButtonProtein.Text = "Protein";
+            this.inputSettingsToolTip.SetToolTip(this.radioButtonProtein, "Search protein sequence database.");
+            this.radioButtonProtein.UseVisualStyleBackColor = true;
+            // 
             // InputSettingsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -283,8 +284,6 @@
         private System.Windows.Forms.Panel panelNucleotideReadingFrame;
         private System.Windows.Forms.ComboBox comboBoxReadingFrame;
         private System.Windows.Forms.Label labelReadingFrame;
-        private System.Windows.Forms.RadioButton radioButtonProtein;
-        private System.Windows.Forms.RadioButton radioButtonNucleotide;
         private System.Windows.Forms.Panel panelTargetDecoy;
         private System.Windows.Forms.RadioButton radioButtonTarget;
         private System.Windows.Forms.RadioButton radioButtonDecoyOne;
@@ -295,5 +294,7 @@
         private System.Windows.Forms.Label protDbLabel;
         private System.Windows.Forms.ComboBox proteomeDbFileCombo;
         private System.Windows.Forms.ToolTip inputSettingsToolTip;
+        private System.Windows.Forms.RadioButton radioButtonProtein;
+        private System.Windows.Forms.RadioButton radioButtonNucleotide;
     }
 }

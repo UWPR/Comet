@@ -6,7 +6,7 @@
       <Value Profile="(Default)" />
     </Setting>
     <Setting Name="NucleotideReadingFrame" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">1</Value>
+      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="IsProteinDB" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
@@ -21,7 +21,7 @@
       <Value Profile="(Default)">2</Value>
     </Setting>
     <Setting Name="AllowedMissedCleavages" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">1</Value>
+      <Value Profile="(Default)">2</Value>
     </Setting>
     <Setting Name="EnzymeInfo" Type="System.Collections.Specialized.StringCollection" Scope="User">
       <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
