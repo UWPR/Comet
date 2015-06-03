@@ -31,9 +31,6 @@
             this.components = new System.ComponentModel.Container();
             this.btnBrowseProteomeDbFile = new System.Windows.Forms.Button();
             this.panelProteinNucleotide = new System.Windows.Forms.Panel();
-            this.panelNucleotideReadingFrame = new System.Windows.Forms.Panel();
-            this.comboBoxReadingFrame = new System.Windows.Forms.ComboBox();
-            this.labelReadingFrame = new System.Windows.Forms.Label();
             this.panelTargetDecoy = new System.Windows.Forms.Panel();
             this.radioButtonTarget = new System.Windows.Forms.RadioButton();
             this.radioButtonDecoyOne = new System.Windows.Forms.RadioButton();
@@ -44,10 +41,9 @@
             this.protDbLabel = new System.Windows.Forms.Label();
             this.proteomeDbFileCombo = new System.Windows.Forms.ComboBox();
             this.inputSettingsToolTip = new System.Windows.Forms.ToolTip(this.components);
-            this.radioButtonNucleotide = new System.Windows.Forms.RadioButton();
-            this.radioButtonProtein = new System.Windows.Forms.RadioButton();
+            this.comboBoxReadingFrame = new System.Windows.Forms.ComboBox();
+            this.labelReadingFrame = new System.Windows.Forms.Label();
             this.panelProteinNucleotide.SuspendLayout();
-            this.panelNucleotideReadingFrame.SuspendLayout();
             this.panelTargetDecoy.SuspendLayout();
             this.panelDecoyPrefix.SuspendLayout();
             this.SuspendLayout();
@@ -67,54 +63,12 @@
             // 
             this.panelProteinNucleotide.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.panelProteinNucleotide.Controls.Add(this.panelNucleotideReadingFrame);
-            this.panelProteinNucleotide.Controls.Add(this.radioButtonProtein);
-            this.panelProteinNucleotide.Controls.Add(this.radioButtonNucleotide);
+            this.panelProteinNucleotide.Controls.Add(this.comboBoxReadingFrame);
+            this.panelProteinNucleotide.Controls.Add(this.labelReadingFrame);
             this.panelProteinNucleotide.Location = new System.Drawing.Point(21, 141);
             this.panelProteinNucleotide.Name = "panelProteinNucleotide";
-            this.panelProteinNucleotide.Size = new System.Drawing.Size(401, 53);
+            this.panelProteinNucleotide.Size = new System.Drawing.Size(401, 102);
             this.panelProteinNucleotide.TabIndex = 39;
-            // 
-            // panelNucleotideReadingFrame
-            // 
-            this.panelNucleotideReadingFrame.Controls.Add(this.comboBoxReadingFrame);
-            this.panelNucleotideReadingFrame.Controls.Add(this.labelReadingFrame);
-            this.panelNucleotideReadingFrame.Enabled = false;
-            this.panelNucleotideReadingFrame.Location = new System.Drawing.Point(77, 23);
-            this.panelNucleotideReadingFrame.Name = "panelNucleotideReadingFrame";
-            this.panelNucleotideReadingFrame.Size = new System.Drawing.Size(195, 28);
-            this.panelNucleotideReadingFrame.TabIndex = 14;
-            // 
-            // comboBoxReadingFrame
-            // 
-            this.comboBoxReadingFrame.BackColor = System.Drawing.SystemColors.Window;
-            this.comboBoxReadingFrame.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBoxReadingFrame.FormattingEnabled = true;
-            this.comboBoxReadingFrame.Items.AddRange(new object[] {
-            "0",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9"});
-            this.comboBoxReadingFrame.Location = new System.Drawing.Point(88, 3);
-            this.comboBoxReadingFrame.Name = "comboBoxReadingFrame";
-            this.comboBoxReadingFrame.Size = new System.Drawing.Size(62, 21);
-            this.comboBoxReadingFrame.TabIndex = 15;
-            // 
-            // labelReadingFrame
-            // 
-            this.labelReadingFrame.AutoSize = true;
-            this.labelReadingFrame.Location = new System.Drawing.Point(4, 6);
-            this.labelReadingFrame.Name = "labelReadingFrame";
-            this.labelReadingFrame.Size = new System.Drawing.Size(82, 13);
-            this.labelReadingFrame.TabIndex = 0;
-            this.labelReadingFrame.Text = "Reading Frame:";
-            this.inputSettingsToolTip.SetToolTip(this.labelReadingFrame, "Specify which sets of reading frames are translated.");
             // 
             // panelTargetDecoy
             // 
@@ -226,31 +180,25 @@
             this.inputSettingsToolTip.AutomaticDelay = 400;
             this.inputSettingsToolTip.IsBalloon = true;
             // 
-            // radioButtonNucleotide
+            // comboBoxReadingFrame
             // 
-            this.radioButtonNucleotide.AutoSize = true;
-            this.radioButtonNucleotide.Location = new System.Drawing.Point(65, 4);
-            this.radioButtonNucleotide.Name = "radioButtonNucleotide";
-            this.radioButtonNucleotide.Size = new System.Drawing.Size(76, 17);
-            this.radioButtonNucleotide.TabIndex = 13;
-            this.radioButtonNucleotide.TabStop = true;
-            this.radioButtonNucleotide.Text = "Nucleotide";
-            this.inputSettingsToolTip.SetToolTip(this.radioButtonNucleotide, "Search nucleotide sequence database.");
-            this.radioButtonNucleotide.UseVisualStyleBackColor = true;
-            this.radioButtonNucleotide.CheckedChanged += new System.EventHandler(this.RadioButtonNucleotideCheckedChanged);
+            this.comboBoxReadingFrame.BackColor = System.Drawing.SystemColors.Window;
+            this.comboBoxReadingFrame.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxReadingFrame.FormattingEnabled = true;
+            this.comboBoxReadingFrame.Location = new System.Drawing.Point(6, 34);
+            this.comboBoxReadingFrame.Name = "comboBoxReadingFrame";
+            this.comboBoxReadingFrame.Size = new System.Drawing.Size(223, 21);
+            this.comboBoxReadingFrame.TabIndex = 17;
             // 
-            // radioButtonProtein
+            // labelReadingFrame
             // 
-            this.radioButtonProtein.AutoSize = true;
-            this.radioButtonProtein.Checked = true;
-            this.radioButtonProtein.Location = new System.Drawing.Point(3, 4);
-            this.radioButtonProtein.Name = "radioButtonProtein";
-            this.radioButtonProtein.Size = new System.Drawing.Size(58, 17);
-            this.radioButtonProtein.TabIndex = 12;
-            this.radioButtonProtein.TabStop = true;
-            this.radioButtonProtein.Text = "Protein";
-            this.inputSettingsToolTip.SetToolTip(this.radioButtonProtein, "Search protein sequence database.");
-            this.radioButtonProtein.UseVisualStyleBackColor = true;
+            this.labelReadingFrame.AutoSize = true;
+            this.labelReadingFrame.Location = new System.Drawing.Point(3, 18);
+            this.labelReadingFrame.Name = "labelReadingFrame";
+            this.labelReadingFrame.Size = new System.Drawing.Size(83, 13);
+            this.labelReadingFrame.TabIndex = 16;
+            this.labelReadingFrame.Text = "Database Type:";
+            this.inputSettingsToolTip.SetToolTip(this.labelReadingFrame, "Specify which sets of reading frames are translated.");
             // 
             // InputSettingsControl
             // 
@@ -266,8 +214,6 @@
             this.Size = new System.Drawing.Size(527, 450);
             this.panelProteinNucleotide.ResumeLayout(false);
             this.panelProteinNucleotide.PerformLayout();
-            this.panelNucleotideReadingFrame.ResumeLayout(false);
-            this.panelNucleotideReadingFrame.PerformLayout();
             this.panelTargetDecoy.ResumeLayout(false);
             this.panelTargetDecoy.PerformLayout();
             this.panelDecoyPrefix.ResumeLayout(false);
@@ -281,9 +227,6 @@
 
         private System.Windows.Forms.Button btnBrowseProteomeDbFile;
         private System.Windows.Forms.Panel panelProteinNucleotide;
-        private System.Windows.Forms.Panel panelNucleotideReadingFrame;
-        private System.Windows.Forms.ComboBox comboBoxReadingFrame;
-        private System.Windows.Forms.Label labelReadingFrame;
         private System.Windows.Forms.Panel panelTargetDecoy;
         private System.Windows.Forms.RadioButton radioButtonTarget;
         private System.Windows.Forms.RadioButton radioButtonDecoyOne;
@@ -294,7 +237,7 @@
         private System.Windows.Forms.Label protDbLabel;
         private System.Windows.Forms.ComboBox proteomeDbFileCombo;
         private System.Windows.Forms.ToolTip inputSettingsToolTip;
-        private System.Windows.Forms.RadioButton radioButtonProtein;
-        private System.Windows.Forms.RadioButton radioButtonNucleotide;
+        private System.Windows.Forms.ComboBox comboBoxReadingFrame;
+        private System.Windows.Forms.Label labelReadingFrame;
     }
 }

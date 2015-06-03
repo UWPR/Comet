@@ -15,6 +15,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
 using System.IO;
@@ -38,6 +39,8 @@ namespace CometUI.Search.SearchSettings
             set { proteomeDbFileCombo.Text = value; }
         }
 
+        private readonly List<String> _databaseTypes = new List<String>();
+
         /// <summary>
         /// The type of search to run, e.g. target or decoy.
         /// </summary>
@@ -60,6 +63,22 @@ namespace CometUI.Search.SearchSettings
             InitializeComponent();
 
             Parent = parent;
+
+            _databaseTypes.Add("Protein");
+            _databaseTypes.Add("Nucleotide: 1st Forward Reading Frame");
+            _databaseTypes.Add("Nucleotide: 2nd Forward Reading Frame");
+            _databaseTypes.Add("Nucleotide: 3rd Forward Reading Frame");
+            _databaseTypes.Add("Nucleotide: 1st Reverse Reading Frame");
+            _databaseTypes.Add("Nucleotide: 2nd Reverse Reading Frame");
+            _databaseTypes.Add("Nucleotide: 3rd Reverse Reading Frame");
+            _databaseTypes.Add("Nucleotide: All 3 Forward Reading Frames");
+            _databaseTypes.Add("Nucleotide: All 3 Reverse Reading Frames");
+            _databaseTypes.Add("Nucleotide: All 6 Reading Frames");
+
+            foreach (var dbType in _databaseTypes)
+            {
+                comboBoxReadingFrame.Items.Add(dbType);
+            }
         }
 
         /// <summary>
@@ -128,16 +147,8 @@ namespace CometUI.Search.SearchSettings
         {
             proteomeDbFileCombo.Text = CometUIMainForm.SearchSettings.ProteomeDatabaseFile;
 
-            comboBoxReadingFrame.Text = CometUIMainForm.SearchSettings.NucleotideReadingFrame.ToString(CultureInfo.InvariantCulture);
-            if (CometUIMainForm.SearchSettings.IsProteinDB)
-            {
-                radioButtonProtein.Checked = true;
-            }
-            else
-            {
-                radioButtonNucleotide.Checked = true;
-            }
-
+            comboBoxReadingFrame.Text = _databaseTypes[CometUIMainForm.SearchSettings.NucleotideReadingFrame];
+            
             switch ((SearchType)CometUIMainForm.SearchSettings.SearchType)
             {
                 case SearchType.SearchTypeDecoyOne:
@@ -201,22 +212,12 @@ namespace CometUI.Search.SearchSettings
         /// <returns> True for success</returns>
         private bool VerifyAndUpdateDatabaseType()
         {
-            if (CometUIMainForm.SearchSettings.IsProteinDB != radioButtonProtein.Checked)
+            var nucleotideReadingFrame = comboBoxReadingFrame.SelectedIndex;
+            if (nucleotideReadingFrame != CometUIMainForm.SearchSettings.NucleotideReadingFrame)
             {
-                CometUIMainForm.SearchSettings.IsProteinDB = radioButtonProtein.Checked;
+                CometUIMainForm.SearchSettings.NucleotideReadingFrame = nucleotideReadingFrame;
                 Parent.SettingsChanged = true;
             }
-
-            if (radioButtonNucleotide.Checked)
-            {
-                var nucleotideReadingFrame = Convert.ToInt32(comboBoxReadingFrame.SelectedItem);
-                if (nucleotideReadingFrame != CometUIMainForm.SearchSettings.NucleotideReadingFrame)
-                {
-                    CometUIMainForm.SearchSettings.NucleotideReadingFrame = nucleotideReadingFrame;
-                    Parent.SettingsChanged = true;
-                }
-            }
-
             return true;
         }
 
@@ -288,11 +289,6 @@ namespace CometUI.Search.SearchSettings
         private void RadioButtonDecoyTwoCheckedChanged(object sender, EventArgs e)
         {
             panelDecoyPrefix.Enabled = radioButtonDecoyTwo.Checked;
-        }
-
-        private void RadioButtonNucleotideCheckedChanged(object sender, EventArgs e)
-        {
-            panelNucleotideReadingFrame.Enabled = radioButtonNucleotide.Checked;
         }
 
         private void ProteomeDbFileComboSelectedIndexChanged(object sender, EventArgs e)
