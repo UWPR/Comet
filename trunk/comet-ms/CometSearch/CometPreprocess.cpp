@@ -749,63 +749,135 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                          double *pdTmpPeakExtracted)
 {
    int z;
-   int zStart;
    int zStop;
 
    int iScanNumber = spec.getScanNumber();
 
-   // Since we have no filter, just add zlines.
-   // WARNING: only good up to charge state 3
-   if (spec.sizeZ() == 0 || g_staticParams.options.bOverrideCharge == 1)
+   int iAddCharge = -1;  // specifies how charge states are going to be applied
+                         //-1 = should never apply
+                         // 0 = use charge in file, else use range
+                         // 1 = use precursor_charge range
+                         // 2 = search only charge state in file within precursor_charge
+                         // 3 = use charge in file else use 1+ or precursor_charge range 
+   int bFileHasCharge = 0;
+   if (spec.sizeZ() > 0)
+      bFileHasCharge = 1;
+
+   if (g_staticParams.options.iStartCharge > 0)
    {
-      if (g_staticParams.options.bOverrideCharge == 1)
+      if (!bFileHasCharge)    // override_charge specified, no charge in file
       {
-         for (z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
+         if (g_staticParams.options.bOverrideCharge == 0
+               || g_staticParams.options.bOverrideCharge == 1
+               || g_staticParams.options.bOverrideCharge == 2)
          {
-            spec.addZState(z,spec.getMZ()*z-(z-1)*PROTON_MASS);
+            iAddCharge = 2;
+         }
+         else if (g_staticParams.options.bOverrideCharge == 3)
+         {
+            iAddCharge = 3;
          }
       }
-      else // Use +1 or +2/+3 rule.
+      else                    // have a charge from file //
       {
-         int i=0;
-         double dSumBelow = 0.0;
-         double dSumTotal = 0.0;
-
-         while (true)
+         // bOverrideCharge == 0, 2, 3 are not relevant here
+         if (g_staticParams.options.bOverrideCharge == 1)
          {
-            if (i >= spec.size())
-               break;
-
-            dSumTotal += spec.at(i).intensity;
-
-            if (spec.at(i).mz < spec.getMZ())
-               dSumBelow += spec.at(i).intensity;
-
-            i++;
-         }
-
-         if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
-         {
-            z = 1;
-            spec.addZState(z, spec.getMZ() * z - (z-1) * PROTON_MASS);
+            iAddCharge = 2;
          }
          else
          {
-            z = 2;
-            spec.addZState(z,spec.getMZ()*z-(z-1)*PROTON_MASS);
-            z = 3;
-            spec.addZState(z,spec.getMZ()*z-(z-1)*PROTON_MASS);
+            iAddCharge = 0;   // do nothing
          }
       }
    }
+   else  // precursor_charge range not specified
+   {
+      if (!bFileHasCharge)    // no charge in file
+      {
+         iAddCharge = 1;
+      }
+      else
+      {
+         iAddCharge = 0;      // have a charge from file; nothing to do
+      }
+   }
+
+   if (iAddCharge == 2)  // use specific charge range
+   {
+      // if charge is already specified, don't re-add it here when overriding charge range
+      int iChargeFromFile = 0;
+      if (bFileHasCharge)                  // FIX: no reason that file only has one charge so iChargeFromFile should be an array
+         iChargeFromFile= spec.atZ(0).z;   // should read all charge states up to spec.sizeZ();
+
+      for (z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
+      {
+         if (z != iChargeFromFile)
+            spec.addZState(z, spec.getMZ() * z - (z-1) * PROTON_MASS);
+      }
+   }
+   else if (iAddCharge == 1 || iAddCharge == 3)  // do 1+ or charge range rule
+   {
+      int i=0;
+      double dSumBelow = 0.0;
+      double dSumTotal = 0.0;
+
+      while (true)
+      {
+         if (i >= spec.size())
+            break;
+
+         dSumTotal += spec.at(i).intensity;
+
+         if (spec.at(i).mz < spec.getMZ())
+            dSumBelow += spec.at(i).intensity;
+
+         i++;
+      }
+
+      if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
+      {
+         z = 1;
+         spec.addZState(z, spec.getMZ() * z - (z-1) * PROTON_MASS);
+      }
+      else
+      {
+         if (iAddCharge == 1)  // 2+ and 3+
+         {
+            z=2;
+            spec.addZState(z, spec.getMZ() * z - (z-1) * PROTON_MASS);
+            z=3;
+            spec.addZState(z, spec.getMZ() * z - (z-1) * PROTON_MASS);
+         }
+         else // iAddCharge == 3
+         {
+            // This option will either use charge from file or
+            // charge_range with 1+ rule.  So no redundant addition
+            // of charges possible
+
+            for (z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
+            {
+               spec.addZState(z, spec.getMZ() * z - (z-1) * PROTON_MASS);
+            }
+         }
+      }
+   }
+   else if (iAddCharge == -1)  // should never get here
+   {
+      char szErrorMsg[256];
+      sprintf(szErrorMsg,  " Error - iAddCharge=%d\n",  iAddCharge);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
 
    // Set our boundaries for multiple z lines.
-   zStart = 0;
    zStop = spec.sizeZ();
 
-   for (z=zStart; z<zStop; z++)
+   for (z=0; z<zStop; z++)
    {
-      if (g_staticParams.options.bOverrideCharge == 2)
+      if (g_staticParams.options.bOverrideCharge == 2 && g_staticParams.options.iStartCharge > 0)
       {
          // ignore spectra that aren't 2+ or 3+.
          if (spec.atZ(z).z < g_staticParams.options.iStartCharge || z > g_staticParams.options.iEndCharge)
@@ -818,8 +890,13 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       double dMass = spec.atZ(z).mz;
 
       if (!g_staticParams.options.bOverrideCharge
-            || (iPrecursorCharge>=g_staticParams.options.iStartCharge
-               && iPrecursorCharge<=g_staticParams.options.iEndCharge ) )
+            || g_staticParams.options.iStartCharge == 0
+            || (g_staticParams.options.bOverrideCharge == 3 && bFileHasCharge)
+            || (g_staticParams.options.bOverrideCharge
+               && (g_staticParams.options.iStartCharge > 0
+                  && ((iPrecursorCharge>=g_staticParams.options.iStartCharge
+                        && iPrecursorCharge<=g_staticParams.options.iEndCharge )
+                     || (iPrecursorCharge == 1 && g_staticParams.options.bOverrideCharge == 3)))))
       {
          if (CheckExistOutFile(iPrecursorCharge, iScanNumber)
                && (isEqual(g_staticParams.options.dLowPeptideMass, 0.0)
@@ -930,10 +1007,20 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
    {
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+      {
+         pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
+      }
    }
    else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
    {
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance * 0.001;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+      {  
+         pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
+      }  
    }
    else // ppm
    {

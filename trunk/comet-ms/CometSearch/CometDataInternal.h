@@ -348,6 +348,7 @@ struct MassUtil
 struct ToleranceParams
 {
    int    iMassToleranceUnits;    // 0=ppm, 1=da (default)
+   int    iMassToleranceType;     // 0=MH+ (default), 1=precursor m/z; only valid if iMassToleranceUnits > 0
    int    iIsotopeError;
    double dInputTolerance;        // tolerance from param file
    double dFragmentBinSize;
@@ -357,6 +358,7 @@ struct ToleranceParams
    ToleranceParams& operator=(ToleranceParams& a) 
    {
       iMassToleranceUnits = a.iMassToleranceUnits;
+      iMassToleranceType = a.iMassToleranceType;
       iIsotopeError = a.iIsotopeError;
       dInputTolerance = a.dInputTolerance;
       dFragmentBinSize = a.dFragmentBinSize;
@@ -550,6 +552,7 @@ struct StaticParams
       staticModifications.dAddNterminusProtein = 0.0;
 
       tolerances.iMassToleranceUnits = 0;
+      tolerances.iMassToleranceType = 0;
       tolerances.iIsotopeError = 0;
       tolerances.dInputTolerance = 1.0;                     // peptide_mass_tolerance
       tolerances.dFragmentBinSize = 1.0005;

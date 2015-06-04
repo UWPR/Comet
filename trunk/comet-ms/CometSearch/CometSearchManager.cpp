@@ -402,12 +402,13 @@ static void PrintParameters()
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
       strcpy(szPeak, "PEAK1");
 
-   sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s",
+   sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
          g_staticParams.options.iNumPeptideOutputLines,
          szRemovePrecursor,
          szReadingFrame,
          szPeak,
          szUnits,
+         (g_staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
          szIsotope,
          szDecoy,
          (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
@@ -614,6 +615,13 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
 
    GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerance);
+
+   GetParamValue("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
+   if ((g_staticParams.tolerances.iMassToleranceType < 0)
+         || (g_staticParams.tolerances.iMassToleranceType > 1))
+   {
+      g_staticParams.tolerances.iMassToleranceType = 0;
+   }
 
    GetParamValue("peptide_mass_units", g_staticParams.tolerances.iMassToleranceUnits);
    if ((g_staticParams.tolerances.iMassToleranceUnits < 0)
@@ -844,17 +852,9 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("precursor_charge", intRangeData))
    {
-      if ((intRangeData.iEnd >= intRangeData.iStart) && (intRangeData.iStart >= 0) && (intRangeData.iEnd > 0))
+      if ((intRangeData.iStart > 0) && (intRangeData.iEnd >= intRangeData.iStart))
       {
-         if (intRangeData.iStart==0)
-         {
-            g_staticParams.options.iStartCharge = 1;
-         }
-         else
-         {
-            g_staticParams.options.iStartCharge = intRangeData.iStart;
-         }
-
+         g_staticParams.options.iStartCharge = intRangeData.iStart;
          g_staticParams.options.iEndCharge = intRangeData.iEnd;
       }
    }
