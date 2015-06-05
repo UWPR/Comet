@@ -35,13 +35,13 @@ namespace CometUI.Search.SearchSettings
             this.fragmentMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label9 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
-            this.fragmentOffsetTextBox = new NumericTextBox();
+            this.fragmentOffsetTextBox = new CometUI.SharedUI.NumericTextBox();
             this.label7 = new System.Windows.Forms.Label();
-            this.fragmentBinSizeTextBox = new NumericTextBox();
+            this.fragmentBinSizeTextBox = new CometUI.SharedUI.NumericTextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.precursorGroupBox = new System.Windows.Forms.GroupBox();
-            this.precursorMassTolTextBox = new NumericTextBox();
+            this.precursorMassTolTextBox = new CometUI.SharedUI.NumericTextBox();
             this.precursorIsotopeErrorCombo = new System.Windows.Forms.ComboBox();
             this.precursorMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label3 = new System.Windows.Forms.Label();
@@ -121,6 +121,8 @@ namespace CometUI.Search.SearchSettings
             // fragmentOffsetTextBox
             // 
             this.fragmentOffsetTextBox.AllowDecimal = true;
+            this.fragmentOffsetTextBox.AllowGroupSeparator = false;
+            this.fragmentOffsetTextBox.AllowNegative = false;
             this.fragmentOffsetTextBox.AllowSpace = false;
             this.fragmentOffsetTextBox.Location = new System.Drawing.Point(131, 45);
             this.fragmentOffsetTextBox.Name = "fragmentOffsetTextBox";
@@ -139,6 +141,8 @@ namespace CometUI.Search.SearchSettings
             // fragmentBinSizeTextBox
             // 
             this.fragmentBinSizeTextBox.AllowDecimal = true;
+            this.fragmentBinSizeTextBox.AllowGroupSeparator = false;
+            this.fragmentBinSizeTextBox.AllowNegative = false;
             this.fragmentBinSizeTextBox.AllowSpace = false;
             this.fragmentBinSizeTextBox.Location = new System.Drawing.Point(18, 45);
             this.fragmentBinSizeTextBox.Name = "fragmentBinSizeTextBox";
@@ -186,6 +190,8 @@ namespace CometUI.Search.SearchSettings
             // precursorMassTolTextBox
             // 
             this.precursorMassTolTextBox.AllowDecimal = true;
+            this.precursorMassTolTextBox.AllowGroupSeparator = false;
+            this.precursorMassTolTextBox.AllowNegative = false;
             this.precursorMassTolTextBox.AllowSpace = false;
             this.precursorMassTolTextBox.Location = new System.Drawing.Point(23, 45);
             this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
@@ -229,10 +235,6 @@ namespace CometUI.Search.SearchSettings
             // 
             this.precursorMassUnitCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.precursorMassUnitCombo.FormattingEnabled = true;
-            this.precursorMassUnitCombo.Items.AddRange(new object[] {
-            "amu",
-            "ppm",
-            "mmu"});
             this.precursorMassUnitCombo.Location = new System.Drawing.Point(133, 45);
             this.precursorMassUnitCombo.Name = "precursorMassUnitCombo";
             this.precursorMassUnitCombo.Size = new System.Drawing.Size(83, 21);

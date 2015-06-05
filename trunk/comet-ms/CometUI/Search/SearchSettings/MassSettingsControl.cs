@@ -28,6 +28,11 @@ namespace CometUI.Search.SearchSettings
             InitializeComponent();
 
             Parent = parent;
+
+            // Add the mass unit types: 0 = amu; 1 = mmu; 2 = ppm
+            precursorMassUnitCombo.Items.Add("amu");
+            precursorMassUnitCombo.Items.Add("mmu");
+            precursorMassUnitCombo.Items.Add("ppm");
         }
 
         public void Initialize()
@@ -133,9 +138,10 @@ namespace CometUI.Search.SearchSettings
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUIMainForm.SearchSettings.TheoreticalFragmentIons != flankCheckBox.Checked)
+            var theoreticalFragmentIons = !flankCheckBox.Checked;
+            if (CometUIMainForm.SearchSettings.TheoreticalFragmentIons != theoreticalFragmentIons)
             {
-                CometUIMainForm.SearchSettings.TheoreticalFragmentIons = flankCheckBox.Checked;
+                CometUIMainForm.SearchSettings.TheoreticalFragmentIons = theoreticalFragmentIons;
                 Parent.SettingsChanged = true;
             }
 
@@ -164,7 +170,7 @@ namespace CometUI.Search.SearchSettings
             yIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseYIons;
             zIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseZIons;
             useNLCheckBox.Checked = CometUIMainForm.SearchSettings.UseNLIons;
-            flankCheckBox.Checked = CometUIMainForm.SearchSettings.TheoreticalFragmentIons;
+            flankCheckBox.Checked = !CometUIMainForm.SearchSettings.TheoreticalFragmentIons;
         }
     }
 }

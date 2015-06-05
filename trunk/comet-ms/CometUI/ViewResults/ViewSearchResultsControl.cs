@@ -565,9 +565,9 @@ namespace CometUI.ViewResults
                 }
             }
 
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "BIonCounter"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("AA", "AA"));
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "YIonCounter"));
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "BIonCounter") { TextAlign = HorizontalAlignment.Center });
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("AA", "AA") { TextAlign = HorizontalAlignment.Center });
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "YIonCounter") { TextAlign = HorizontalAlignment.Center });
 
             for (var i = (int)IonType.X; i <= (int)IonType.Z; i++)
             {
@@ -592,7 +592,7 @@ namespace CometUI.ViewResults
                     var ionTypeStr = IonCalculator.IonTypeTable[ionType];
                     var header = String.Format("{0}{1}+", ionTypeStr, charge);
                     var aspect = ionTypeStr.ToUpper() + IonCalculator.IonChargeTable[charge] + "ChargedIonMass";
-                    spectrumGraphIonsTable.Columns.Add(new OLVColumn(header, aspect));
+                    spectrumGraphIonsTable.Columns.Add(new OLVColumn(header, aspect) { TextAlign = HorizontalAlignment.Center });
                 }
             }
         }
