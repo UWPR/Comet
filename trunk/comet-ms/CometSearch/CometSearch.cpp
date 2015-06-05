@@ -63,7 +63,7 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
       {
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
-         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -389,7 +389,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.\n", seqSize, ba.what());
-            sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\" or \"use_sparse_matrix\"\n");
+            sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
             sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
@@ -1242,27 +1242,19 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             pFastXcorrData = pQuery->pfFastXcorrData;
          }
 
-         if (g_staticParams.options.bSparseMatrix)
+         int bin,x,y;
+         for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
          {
-            int bin,x,y;
-            for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
-            {
-               //MH: newer sparse matrix converts bin to sparse matrix bin
-               bin = *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen);
-               x = bin / SPARSE_MATRIX_SIZE;
-               if (ppSparseFastXcorrData[x]==NULL) 
-                  continue;
-               y = bin - (x*SPARSE_MATRIX_SIZE);
-               dXcorr += ppSparseFastXcorrData[x][y];
-            }
+            //MH: newer sparse matrix converts bin to sparse matrix bin
+            bin = *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen);
+            x = bin / SPARSE_MATRIX_SIZE;
+            if (ppSparseFastXcorrData[x]==NULL) 
+               continue;
+            y = bin - (x*SPARSE_MATRIX_SIZE);
+            dXcorr += ppSparseFastXcorrData[x][y];
          }
-         else
-         {
-            for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
-               dXcorr += pFastXcorrData[ *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) ];
 
-            // *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen].
-         }
+         // *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen].
       }
    }
 

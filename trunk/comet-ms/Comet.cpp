@@ -398,13 +398,6 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("use_NL_ions", szParamStringVal, iIntParam);
             }
-            else if (!strcmp(szParamName, "use_sparse_matrix"))
-            {
-               sscanf(szParamVal, "%d", &iIntParam);
-               szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%d", iIntParam);
-               pSearchMgr->SetParam("use_sparse_matrix", szParamStringVal, iIntParam);
-            }
             else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
             {
                varModsParam.szVarModChar[0] = '\0';
@@ -1257,7 +1250,6 @@ use_X_ions = 0\n\
 use_Y_ions = 1\n\
 use_Z_ions = 0\n\
 use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
-use_sparse_matrix = 1\n\
 \n\
 #\n\
 # output\n\

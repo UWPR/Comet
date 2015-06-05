@@ -576,8 +576,6 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("use_NL_ions", g_staticParams.ionInformation.bUseNeutralLoss);
 
-   GetParamValue("use_sparse_matrix", g_staticParams.options.bSparseMatrix);
-
    GetParamValue("variable_mod01", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
 
    GetParamValue("variable_mod02", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);

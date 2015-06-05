@@ -321,10 +321,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   int iFragmentIonMass = BIN(dFragmentIonMass);
                   float fSpScore;
 
-                  if (g_staticParams.options.bSparseMatrix)
-                     fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
-                  else
-                     fSpScore = g_pvQuery.at(iWhichQuery)->pfSpScoreData[iFragmentIonMass];
+                  fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
 
                   if (fSpScore > FLOAT_ZERO)
                   {
@@ -738,18 +735,11 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
                   if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
-                     if (g_staticParams.options.bSparseMatrix)
+                     int x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
+                     if (pQuery->ppfSparseFastXcorrData[x]!=NULL)
                      {
-                        int x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
-                        if (pQuery->ppfSparseFastXcorrData[x]!=NULL)
-                        {
-                           int y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
-                           dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
-                        }
-                     }
-                     else
-                     {
-                        dFastXcorr += pQuery->pfFastXcorrData[iFragmentIonMass];
+                        int y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
+                        dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
                      }
                   }
                   else

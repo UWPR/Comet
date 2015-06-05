@@ -99,7 +99,6 @@ struct Options             // output parameters
    int bNoEnzymeSelected;
    int bShowFragmentIons;
    int bPrintExpectScore;
-   int bSparseMatrix;
    double dMinIntensity;
    double dRemovePrecursorTol;
    double dLowPeptideMass;       // MH+ mass
@@ -139,7 +138,6 @@ struct Options             // output parameters
       bNoEnzymeSelected = a.bNoEnzymeSelected;
       bShowFragmentIons = a.bShowFragmentIons;
       bPrintExpectScore = a.bPrintExpectScore;
-      bSparseMatrix = a.bSparseMatrix;
       dRemovePrecursorTol = a.dRemovePrecursorTol;
       clearMzRange = a.clearMzRange;
       dLowPeptideMass = a.dLowPeptideMass;
@@ -525,7 +523,6 @@ struct StaticParams
       options.iDecoySearch = 0;
       options.iNumThreads = 0;
       options.bClipNtermMet = 0;
-      options.bSparseMatrix = 0;
 
       // These parameters affect mzXML/RAMP spectra only.
       options.scanRange.iStart = 0;
@@ -699,58 +696,35 @@ struct Query
 
    ~Query()
    {
-      if (g_staticParams.options.bSparseMatrix)
+      int i;
+      for (i=0;i<iSpScoreData;i++) 
       {
-         int i;
-         for (i=0;i<iSpScoreData;i++) 
-         {
-            if (ppfSparseSpScoreData[i] != NULL)
-               delete[] ppfSparseSpScoreData[i];
-         }
-         delete[] ppfSparseSpScoreData;
-         ppfSparseSpScoreData = NULL;
-         
-         for (i=0;i<iFastXcorrData;i++) 
-         {
-            if (ppfSparseFastXcorrData[i] != NULL)
-               delete[] ppfSparseFastXcorrData[i];
-         }
-         delete[] ppfSparseFastXcorrData;
-         ppfSparseFastXcorrData = NULL;
-
-         if (g_staticParams.ionInformation.bUseNeutralLoss
-               && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-         {
-            for (i=0;i<iFastXcorrDataNL;i++) 
-            {
-               if (ppfSparseFastXcorrDataNL[i]!=NULL)
-                  delete[] ppfSparseFastXcorrDataNL[i];
-            }
-            delete[] ppfSparseFastXcorrDataNL;
-            ppfSparseFastXcorrDataNL = NULL;
-         }
+         if (ppfSparseSpScoreData[i] != NULL)
+            delete[] ppfSparseSpScoreData[i];
       }
-      else
+      delete[] ppfSparseSpScoreData;
+      ppfSparseSpScoreData = NULL;
+      
+      for (i=0;i<iFastXcorrData;i++) 
       {
-         delete[] pfSpScoreData;
-         pfSpScoreData = NULL;
+         if (ppfSparseFastXcorrData[i] != NULL)
+            delete[] ppfSparseFastXcorrData[i];
+      }
+      delete[] ppfSparseFastXcorrData;
+      ppfSparseFastXcorrData = NULL;
 
-         if (pfFastXcorrData!=NULL)
+      if (g_staticParams.ionInformation.bUseNeutralLoss
+            && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+               || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+               || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+      {
+         for (i=0;i<iFastXcorrDataNL;i++) 
          {
-            delete[] pfFastXcorrData;
-            pfFastXcorrData = NULL;
+            if (ppfSparseFastXcorrDataNL[i]!=NULL)
+               delete[] ppfSparseFastXcorrDataNL[i];
          }
-
-         if (g_staticParams.ionInformation.bUseNeutralLoss
-               && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-         {
-            delete[] pfFastXcorrDataNL;
-            pfFastXcorrDataNL = NULL;
-         }
+         delete[] ppfSparseFastXcorrDataNL;
+         ppfSparseFastXcorrDataNL = NULL;
       }
 
       delete[] _pResults;
