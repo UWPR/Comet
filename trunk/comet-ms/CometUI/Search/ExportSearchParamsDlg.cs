@@ -41,29 +41,30 @@ namespace CometUI.Search
 
         private void InitializeComponent()
         {
-            _btnSettings = new Button();
-            SuspendLayout();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ExportSearchParamsDlg));
+            this._btnSettings = new System.Windows.Forms.Button();
+            this.SuspendLayout();
             // 
             // _btnSettings
             // 
-            _btnSettings.Anchor = ((AnchorStyles.Bottom | AnchorStyles.Right));
-            _btnSettings.Location = new System.Drawing.Point(205, 137);
-            _btnSettings.Name = "_btnSettings";
-            _btnSettings.Size = new System.Drawing.Size(75, 23);
-            _btnSettings.TabIndex = 108;
-            _btnSettings.Text = Resources.ExportSearchParamsDlg_InitializeComponent__Settings___;
-            _btnSettings.UseVisualStyleBackColor = true;
-            _btnSettings.Click += BtnSettingsClick;
+            this._btnSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this._btnSettings.Location = new System.Drawing.Point(205, 137);
+            this._btnSettings.Name = "_btnSettings";
+            this._btnSettings.Size = new System.Drawing.Size(75, 23);
+            this._btnSettings.TabIndex = 108;
+            this._btnSettings.Text = global::CometUI.Properties.Resources.ExportSearchParamsDlg_InitializeComponent__Settings___;
+            this._btnSettings.UseVisualStyleBackColor = true;
             // 
             // ExportSearchParamsDlg
             // 
-            AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            ClientSize = new System.Drawing.Size(454, 172);
-            Controls.Add(_btnSettings);
-            Name = "ExportSearchParamsDlg";
-            Controls.SetChildIndex(_btnSettings, 0);
-            ResumeLayout(false);
-            PerformLayout();
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.ClientSize = new System.Drawing.Size(454, 172);
+            this.Controls.Add(this._btnSettings);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.Name = "ExportSearchParamsDlg";
+            this.Controls.SetChildIndex(this._btnSettings, 0);
+            this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
