@@ -312,7 +312,8 @@ enum CometParamType
    CometParamType_VarMods,
    CometParamType_DoubleRange,
    CometParamType_IntRange,
-   CometParamType_EnzymeInfo
+   CometParamType_EnzymeInfo,
+   CometParamType_DoubleVector
 };
 
 

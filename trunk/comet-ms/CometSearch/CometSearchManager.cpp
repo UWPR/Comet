@@ -1358,6 +1358,32 @@ bool CometSearchManager::GetParamValue(const string &name, EnzymeInfo &value)
    return true;
 }
 
+void CometSearchManager::SetParam(const string &name, const string &strValue, const vector<double> &value)
+{
+   CometParam *pParam = new TypedCometParam<vector<double>>(CometParamType_DoubleVector, strValue, value);
+   pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+   if (false == ret.second)
+   {
+      _mapStaticParams.erase(name);
+      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+   }
+}
+   
+bool CometSearchManager::GetParamValue(const string &name,  vector<double> &value)
+{
+   std::map<string, CometParam*>::iterator it;
+   it = _mapStaticParams.find(name);
+   if (it == _mapStaticParams.end())
+   {
+      return false;
+   }
+
+   TypedCometParam<vector<double>> *pParam = static_cast<TypedCometParam<vector<double>>*>(it->second);
+   value = pParam->GetValue();
+   
+   return true;
+}
+
 bool CometSearchManager::IsSearchError()
 {
     return g_cometStatus.IsError();

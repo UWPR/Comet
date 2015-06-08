@@ -48,6 +48,8 @@ public:
    virtual bool GetParamValue(const string &name, IntRange &value);
    virtual void SetParam(const string &name, const string &strValue, const EnzymeInfo &value);
    virtual bool GetParamValue(const string &name, EnzymeInfo &value);
+   virtual void SetParam(const string &name, const string &strValue, const vector<double> &value);
+   virtual bool GetParamValue(const string &name, vector<double> &value);
    virtual bool IsValidCometVersion(const string &version);
    virtual bool IsSearchError();
    virtual void GetStatusMessage(string &strStatusMsg);
