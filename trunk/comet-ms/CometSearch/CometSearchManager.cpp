@@ -1360,7 +1360,7 @@ bool CometSearchManager::GetParamValue(const string &name, EnzymeInfo &value)
 
 void CometSearchManager::SetParam(const string &name, const string &strValue, const vector<double> &value)
 {
-   CometParam *pParam = new TypedCometParam<vector<double>>(CometParamType_DoubleVector, strValue, value);
+   CometParam *pParam = new TypedCometParam< vector<double> >(CometParamType_DoubleVector, strValue, value);
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
@@ -1378,7 +1378,7 @@ bool CometSearchManager::GetParamValue(const string &name,  vector<double> &valu
       return false;
    }
 
-   TypedCometParam<vector<double>> *pParam = static_cast<TypedCometParam<vector<double>>*>(it->second);
+   TypedCometParam< vector<double> > *pParam = static_cast<TypedCometParam< vector<double> >*>(it->second);
    value = pParam->GetValue();
    
    return true;
