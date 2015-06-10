@@ -264,6 +264,13 @@ namespace CometUI
             }
             cometSettings.PrecursorIsotopeError = isotopeError;
 
+            int toleranceType;
+            if (!GetCometParamValue("precursor_tolerance_type", out toleranceType, out paramValueStr))
+            {
+                return false;
+            }
+            cometSettings.PrecursorToleranceType = toleranceType;
+
             double fragmentBinSize;
             if (!GetCometParamValue("fragment_bin_tol", out fragmentBinSize, out paramValueStr))
             {
@@ -739,6 +746,15 @@ namespace CometUI
                              new TypedCometParam<int>(CometParamType.Int,
                                                          isotopeError.ToString(CultureInfo.InvariantCulture),
                                                          isotopeError)))
+            {
+                return false;
+            }
+
+            var toleranceType = settings.PrecursorToleranceType;
+            if (!UpdateCometParam("precursor_tolerance_type",
+                             new TypedCometParam<int>(CometParamType.Int,
+                                                         toleranceType.ToString(CultureInfo.InvariantCulture),
+                                                         toleranceType)))
             {
                 return false;
             }

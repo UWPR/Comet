@@ -461,6 +461,13 @@ namespace CometUI.Search
                 return false;
             }
 
+            var toleranceType = CometUIMainForm.SearchSettings.PrecursorToleranceType;
+            if (!SearchMgr.SetParam("precursor_tolerance_type", toleranceType.ToString(CultureInfo.InvariantCulture), toleranceType))
+            {
+                SearchStatusMessage = "Could not set the precursor_tolerance_type parameter.";
+                return false;
+            }
+
 
             // Configure fragment mass settings
 

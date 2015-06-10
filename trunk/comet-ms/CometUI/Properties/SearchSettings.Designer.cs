@@ -842,5 +842,17 @@ namespace CometUI.Properties {
                 this["OutputSuffix"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int PrecursorToleranceType {
+            get {
+                return ((int)(this["PrecursorToleranceType"]));
+            }
+            set {
+                this["PrecursorToleranceType"] = value;
+            }
+        }
     }
 }

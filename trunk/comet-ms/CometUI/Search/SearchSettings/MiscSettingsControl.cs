@@ -15,7 +15,6 @@
 */
 
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
@@ -26,18 +25,15 @@ namespace CometUI.Search.SearchSettings
     {
         private new SearchSettingsDlg Parent { get; set; }
 
-        private readonly Dictionary<int, string> _removePrecursorPeak = new Dictionary<int, string>();
-        private readonly Dictionary<int, string> _overrideCharge = new Dictionary<int, string>();
-
         public MiscSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
 
             Parent = parent;
 
-            InitializePrecursorPeakMap();
+            InitializePrecursorPeakCombo();
 
-            InitializeOverrideChargeMap();
+            InitializeOverrideChargeCombo();
         }
 
         public void Initialize()
@@ -123,18 +119,11 @@ namespace CometUI.Search.SearchSettings
 
             // Check each key in the dictionary to see which matches the value
             // currently selected in the combo box.
-            foreach (var key in _removePrecursorPeak.Keys)
+            var removePrecursorPeak = spectralProcessingRemovePrecursorPeakCombo.SelectedIndex;
+            if (CometUIMainForm.SearchSettings.spectralProcessingRemovePrecursorPeak != removePrecursorPeak)
             {
-                if (_removePrecursorPeak[key].Equals(spectralProcessingRemovePrecursorPeakCombo.SelectedItem.ToString()))
-                {
-                    if (CometUIMainForm.SearchSettings.spectralProcessingRemovePrecursorPeak != key)
-                    {
-                        CometUIMainForm.SearchSettings.spectralProcessingRemovePrecursorPeak = key;
-                        Parent.SettingsChanged = true;
-                    }
-
-                    break;
-                }
+                CometUIMainForm.SearchSettings.spectralProcessingRemovePrecursorPeak = removePrecursorPeak;
+                Parent.SettingsChanged = true;
             }
 
             var clearMzMin = (double) spectralProcessingClearMZRangeMinTextBox.DecimalValue;
@@ -196,31 +185,23 @@ namespace CometUI.Search.SearchSettings
             return true;
         }
 
-        private void InitializePrecursorPeakMap()
+        private void InitializePrecursorPeakCombo()
         {
-            _removePrecursorPeak.Add(0, "No");
-            _removePrecursorPeak.Add(1, "Yes");
-            _removePrecursorPeak.Add(2, "Yes/ETD");
-
-            Dictionary<int, string>.KeyCollection remPrecursorPeakKeys = _removePrecursorPeak.Keys;
-            foreach (var key in remPrecursorPeakKeys)
-            {
-                spectralProcessingRemovePrecursorPeakCombo.Items.Add(_removePrecursorPeak[key]);
-            }
+            // MUST be added in the following order since the value of this 
+            // parameter corresponds to the index of the string in the combo
+            spectralProcessingRemovePrecursorPeakCombo.Items.Add("No");
+            spectralProcessingRemovePrecursorPeakCombo.Items.Add("Yes");
+            spectralProcessingRemovePrecursorPeakCombo.Items.Add("Yes/ETD");
         }
 
-        private void InitializeOverrideChargeMap()
+        private void InitializeOverrideChargeCombo()
         {
-            _overrideCharge.Add(0, "Keep known charges");
-            _overrideCharge.Add(1, "Always use charge range");
-            _overrideCharge.Add(2, "Use charge range as charge filter");
-            _overrideCharge.Add(3, "Keep charges & use 1+ rule");
-
-            Dictionary<int, string>.KeyCollection overrideChargeKeys = _overrideCharge.Keys;
-            foreach (var key in overrideChargeKeys)
-            {
-                mzxmlOverrideChargeCombo.Items.Add(_overrideCharge[key]);
-            }
+            // MUST be added in the following order since the value of this
+            // parameter corresponds to the index of the string in the combo
+            mzxmlOverrideChargeCombo.Items.Add("Keep known charges");
+            mzxmlOverrideChargeCombo.Items.Add("Always use charge range");           
+            mzxmlOverrideChargeCombo.Items.Add("Use charge range as charge filter");
+            mzxmlOverrideChargeCombo.Items.Add("Keep charges & use 1+ rule");
         }
 
         private void InitializeFromDefaultSettings()
@@ -251,10 +232,9 @@ namespace CometUI.Search.SearchSettings
             spectralProcessingClearMZRangeMinTextBox.Text = CometUIMainForm.SearchSettings.spectralProcessingClearMzMin.ToString(CultureInfo.InvariantCulture);
             spectralProcessingClearMZRangeMaxTextBox.Text = CometUIMainForm.SearchSettings.spectralProcessingClearMzMax.ToString(CultureInfo.InvariantCulture);
             
-            spectralProcessingRemovePrecursorPeakCombo.SelectedItem =
-                _removePrecursorPeak[CometUIMainForm.SearchSettings.spectralProcessingRemovePrecursorPeak];
+            spectralProcessingRemovePrecursorPeakCombo.SelectedIndex = CometUIMainForm.SearchSettings.spectralProcessingRemovePrecursorPeak;
 
-            mzxmlOverrideChargeCombo.SelectedItem = _overrideCharge[CometUIMainForm.SearchSettings.mzxmlOverrideCharge];
+            mzxmlOverrideChargeCombo.SelectedIndex = CometUIMainForm.SearchSettings.mzxmlOverrideCharge;
         }
 
         private void MzxmlOverrideChargeComboDropDown(object sender, EventArgs e)

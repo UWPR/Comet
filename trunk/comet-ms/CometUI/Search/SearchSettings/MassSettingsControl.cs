@@ -22,17 +22,16 @@ namespace CometUI.Search.SearchSettings
     public partial class MassSettingsControl : UserControl
     {
         private new SearchSettingsDlg Parent { get; set; }
-     
+
         public MassSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
 
             Parent = parent;
 
-            // Add the mass unit types: 0 = amu; 1 = mmu; 2 = ppm
-            precursorMassUnitCombo.Items.Add("amu");
-            precursorMassUnitCombo.Items.Add("mmu");
-            precursorMassUnitCombo.Items.Add("ppm");
+            InitializeMassUnitCombo();
+
+            InitializePrecursorToleranceType();
         }
 
         public void Initialize()
@@ -65,6 +64,12 @@ namespace CometUI.Search.SearchSettings
             if (CometUIMainForm.SearchSettings.PrecursorIsotopeError != precursorIsotopeErrorCombo.SelectedIndex)
             {
                 CometUIMainForm.SearchSettings.PrecursorIsotopeError = precursorIsotopeErrorCombo.SelectedIndex;
+                Parent.SettingsChanged = true;
+            }
+
+            if (CometUIMainForm.SearchSettings.PrecursorToleranceType != precursorToleranceTypeCombo.SelectedIndex)
+            {
+                CometUIMainForm.SearchSettings.PrecursorToleranceType = precursorToleranceTypeCombo.SelectedIndex;
                 Parent.SettingsChanged = true;
             }
 
@@ -145,16 +150,20 @@ namespace CometUI.Search.SearchSettings
         private void InitializeFromDefaultSettings()
         {
             // Set up defaults for the precursor mass settings
-            precursorMassTolTextBox.Text = CometUIMainForm.SearchSettings.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
+            precursorMassTolTextBox.Text =
+                CometUIMainForm.SearchSettings.PrecursorMassTolerance.ToString(CultureInfo.InvariantCulture);
             precursorMassUnitCombo.SelectedIndex = CometUIMainForm.SearchSettings.PrecursorMassUnit;
             precursorMassTypeCombo.SelectedIndex = CometUIMainForm.SearchSettings.PrecursorMassType;
             precursorIsotopeErrorCombo.SelectedIndex = CometUIMainForm.SearchSettings.PrecursorIsotopeError;
+            precursorToleranceTypeCombo.SelectedIndex = CometUIMainForm.SearchSettings.PrecursorToleranceType;
 
             // Set up defaults for fragment settings
-            fragmentBinSizeTextBox.Text = CometUIMainForm.SearchSettings.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
-            fragmentOffsetTextBox.Text = CometUIMainForm.SearchSettings.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
+            fragmentBinSizeTextBox.Text =
+                CometUIMainForm.SearchSettings.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
+            fragmentOffsetTextBox.Text =
+                CometUIMainForm.SearchSettings.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
             fragmentMassTypeCombo.SelectedIndex = CometUIMainForm.SearchSettings.FragmentMassType;
-        
+
             // Set up defaults for ion settings
             aIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseAIons;
             bIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseBIons;
@@ -164,6 +173,24 @@ namespace CometUI.Search.SearchSettings
             zIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseZIons;
             useNLCheckBox.Checked = CometUIMainForm.SearchSettings.UseNLIons;
             flankCheckBox.Checked = !CometUIMainForm.SearchSettings.TheoreticalFragmentIons;
+        }
+
+        private void InitializeMassUnitCombo()
+        {
+            // MUST be added in the following order since the value or this
+            // parameter corresponds to the index of the string in the combo
+            // Add the mass unit types: 0 = amu; 1 = mmu; 2 = ppm
+            precursorMassUnitCombo.Items.Add("amu");
+            precursorMassUnitCombo.Items.Add("mmu");
+            precursorMassUnitCombo.Items.Add("ppm");
+        }
+
+        private void InitializePrecursorToleranceType()
+        {
+            // MUST be added in the following order since the value or this
+            // parameter corresponds to the index of the string in the combo
+            precursorToleranceTypeCombo.Items.Add("Apply to mass");
+            precursorToleranceTypeCombo.Items.Add("Apply to m/z");
         }
     }
 }
