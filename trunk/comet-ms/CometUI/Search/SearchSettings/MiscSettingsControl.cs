@@ -214,6 +214,7 @@ namespace CometUI.Search.SearchSettings
             _overrideCharge.Add(0, "Keep known charges");
             _overrideCharge.Add(1, "Always use charge range");
             _overrideCharge.Add(2, "Use charge range as charge filter");
+            _overrideCharge.Add(3, "Keep charges & use 1+ rule");
 
             Dictionary<int, string>.KeyCollection overrideChargeKeys = _overrideCharge.Keys;
             foreach (var key in overrideChargeKeys)
