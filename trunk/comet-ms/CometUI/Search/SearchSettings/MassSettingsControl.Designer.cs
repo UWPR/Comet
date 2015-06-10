@@ -31,7 +31,6 @@ namespace CometUI.Search.SearchSettings
         private void InitializeComponent()
         {
             this.fragmentGroupBox = new System.Windows.Forms.GroupBox();
-            this.sparseMatrixCheckBox = new System.Windows.Forms.CheckBox();
             this.fragmentMassTypeCombo = new System.Windows.Forms.ComboBox();
             this.label9 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
@@ -64,7 +63,6 @@ namespace CometUI.Search.SearchSettings
             // 
             // fragmentGroupBox
             // 
-            this.fragmentGroupBox.Controls.Add(this.sparseMatrixCheckBox);
             this.fragmentGroupBox.Controls.Add(this.fragmentMassTypeCombo);
             this.fragmentGroupBox.Controls.Add(this.label9);
             this.fragmentGroupBox.Controls.Add(this.label8);
@@ -73,20 +71,10 @@ namespace CometUI.Search.SearchSettings
             this.fragmentGroupBox.Controls.Add(this.fragmentBinSizeTextBox);
             this.fragmentGroupBox.Location = new System.Drawing.Point(272, 17);
             this.fragmentGroupBox.Name = "fragmentGroupBox";
-            this.fragmentGroupBox.Size = new System.Drawing.Size(234, 202);
+            this.fragmentGroupBox.Size = new System.Drawing.Size(234, 177);
             this.fragmentGroupBox.TabIndex = 1;
             this.fragmentGroupBox.TabStop = false;
             this.fragmentGroupBox.Text = "Fragment";
-            // 
-            // sparseMatrixCheckBox
-            // 
-            this.sparseMatrixCheckBox.AutoSize = true;
-            this.sparseMatrixCheckBox.Location = new System.Drawing.Point(18, 162);
-            this.sparseMatrixCheckBox.Name = "sparseMatrixCheckBox";
-            this.sparseMatrixCheckBox.Size = new System.Drawing.Size(109, 17);
-            this.sparseMatrixCheckBox.TabIndex = 33;
-            this.sparseMatrixCheckBox.Text = "Use sparse matrix";
-            this.sparseMatrixCheckBox.UseVisualStyleBackColor = true;
             // 
             // fragmentMassTypeCombo
             // 
@@ -268,9 +256,9 @@ namespace CometUI.Search.SearchSettings
             this.groupBox1.Controls.Add(this.xIonCheckBox);
             this.groupBox1.Controls.Add(this.cIonCheckBox);
             this.groupBox1.Controls.Add(this.aIonCheckBox);
-            this.groupBox1.Location = new System.Drawing.Point(272, 235);
+            this.groupBox1.Location = new System.Drawing.Point(272, 200);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(234, 98);
+            this.groupBox1.Size = new System.Drawing.Size(234, 133);
             this.groupBox1.TabIndex = 2;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Ions";
@@ -399,7 +387,6 @@ namespace CometUI.Search.SearchSettings
         private System.Windows.Forms.CheckBox bIonCheckBox;
         private System.Windows.Forms.CheckBox useNLCheckBox;
         private System.Windows.Forms.CheckBox flankCheckBox;
-        private System.Windows.Forms.CheckBox sparseMatrixCheckBox;
         private NumericTextBox fragmentBinSizeTextBox;
         private NumericTextBox fragmentOffsetTextBox;
         private NumericTextBox precursorMassTolTextBox;

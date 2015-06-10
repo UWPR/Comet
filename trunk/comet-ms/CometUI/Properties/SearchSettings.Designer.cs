@@ -773,18 +773,6 @@ namespace CometUI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool UseSparseMatrix {
-            get {
-                return ((bool)(this["UseSparseMatrix"]));
-            }
-            set {
-                this["UseSparseMatrix"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("600")]
         public double digestMassRangeMin {
             get {

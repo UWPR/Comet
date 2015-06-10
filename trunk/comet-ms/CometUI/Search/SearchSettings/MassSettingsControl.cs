@@ -89,12 +89,6 @@ namespace CometUI.Search.SearchSettings
                 Parent.SettingsChanged = true;
             }
 
-            if (CometUIMainForm.SearchSettings.UseSparseMatrix != sparseMatrixCheckBox.Checked)
-            {
-                CometUIMainForm.SearchSettings.UseSparseMatrix = sparseMatrixCheckBox.Checked;
-                Parent.SettingsChanged = true;
-            }
-
             // Set up defaults for ion settings
             if (CometUIMainForm.SearchSettings.UseAIons != aIonCheckBox.Checked)
             {
@@ -160,7 +154,6 @@ namespace CometUI.Search.SearchSettings
             fragmentBinSizeTextBox.Text = CometUIMainForm.SearchSettings.FragmentBinSize.ToString(CultureInfo.InvariantCulture);
             fragmentOffsetTextBox.Text = CometUIMainForm.SearchSettings.FragmentBinOffset.ToString(CultureInfo.InvariantCulture);
             fragmentMassTypeCombo.SelectedIndex = CometUIMainForm.SearchSettings.FragmentMassType;
-            sparseMatrixCheckBox.Checked = CometUIMainForm.SearchSettings.UseSparseMatrix;
         
             // Set up defaults for ion settings
             aIonCheckBox.Checked = CometUIMainForm.SearchSettings.UseAIons;

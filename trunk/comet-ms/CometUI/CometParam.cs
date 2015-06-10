@@ -285,13 +285,6 @@ namespace CometUI
             }
             cometSettings.FragmentMassType = fragmentMassType;
 
-            int useSparseMatrix;
-            if (!GetCometParamValue("use_sparse_matrix", out useSparseMatrix, out paramValueStr))
-            {
-                return false;
-            }
-            cometSettings.UseSparseMatrix = useSparseMatrix == 1;
-
             int useAIons;
             if (!GetCometParamValue("use_A_ions", out useAIons, out paramValueStr))
             {
@@ -773,15 +766,6 @@ namespace CometUI
                              new TypedCometParam<int>(CometParamType.Int,
                                                          fragmentMassType.ToString(CultureInfo.InvariantCulture),
                                                          fragmentMassType)))
-            {
-                return false;
-            }
-
-            var useSparseMatrix = settings.UseSparseMatrix ? 1 : 0;
-            if (!UpdateCometParam("use_sparse_matrix",
-                             new TypedCometParam<int>(CometParamType.Int,
-                                                      useSparseMatrix.ToString(CultureInfo.InvariantCulture),
-                                                      useSparseMatrix)))
             {
                 return false;
             }

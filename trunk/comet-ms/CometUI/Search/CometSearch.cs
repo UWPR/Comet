@@ -485,13 +485,6 @@ namespace CometUI.Search
                 return false;
             }
 
-            var useSparseMatrix = CometUIMainForm.SearchSettings.UseSparseMatrix ? 1 : 0;
-            if (!SearchMgr.SetParam("use_sparse_matrix", useSparseMatrix.ToString(CultureInfo.InvariantCulture), useSparseMatrix))
-            {
-                SearchStatusMessage = "Could not set the use_sparse_matrix parameter.";
-                return false;
-            }
-
             // Configure fragment ions
 
             var useAIons = CometUIMainForm.SearchSettings.UseAIons ? 1 : 0;
