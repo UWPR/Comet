@@ -300,6 +300,45 @@ void LoadParameters(char *pszParamsFile,
                sscanf(szParamVal, "%256s", szOutputSuffix);
                pSearchMgr->SetParam("output_suffix", szOutputSuffix, szOutputSuffix);
             }
+            else if (!strcmp(szParamName, "mass_offsets"))
+            {
+               // Remove white spaces at beginning/end of szParamVal
+               int iLen = strlen(szParamVal);
+               char *szTrimmed = szParamVal;
+
+               while (isspace(szTrimmed[iLen -1]))  // trim end
+                  szTrimmed[--iLen] = 0;
+               while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
+               {
+                  ++szTrimmed;
+                  --iLen;
+               }
+
+               memmove(szParamVal, szTrimmed, iLen+1);
+
+               char szMassOffsets[256];
+               vector<double> vectorSetMassOffsets;
+
+               char *tok;
+               char delims[] = " \t";  // tokenize by space and tab
+               double dMass;
+
+               strcpy(szMassOffsets, szParamVal);  // need to copy as strtok below destroys szParamVal
+
+               tok = strtok(szParamVal, delims);
+               while (tok != NULL)
+               {
+                  sscanf(tok, "%lf", &dMass);
+                  printf("token '%s', dMass %f\n", tok, dMass);
+
+                  vectorSetMassOffsets.push_back(dMass);
+                  tok = strtok(NULL, delims);
+               }
+
+               sort(vectorSetMassOffsets.begin(), vectorSetMassOffsets.end());
+
+               pSearchMgr->SetParam("mass_offsets", szMassOffsets, vectorSetMassOffsets);
+            }
             else if (!strcmp(szParamName, "nucleotide_reading_frame"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1293,6 +1332,7 @@ clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also conside
 spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
 output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\
+mass_offsets =                         # one or more mass offsets to search (values substracted from deconvoluted precursor mass)\n\
 \n\
 #\n\
 # spectral processing\n\

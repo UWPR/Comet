@@ -432,6 +432,7 @@ struct StaticParams
    PeaksInfo       peaksInformation;
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
+   vector<double>  vectorMassOffsets;
 
    StaticParams()
    {
@@ -566,6 +567,7 @@ struct StaticParams
       strcpy(szMod, a.szMod);
       strcpy(szDecoyPrefix, a.szDecoyPrefix);
       strcpy(szOutputSuffix, a.szOutputSuffix);
+      vectorMassOffsets = a.vectorMassOffsets;
       iElapseTime = a.iElapseTime;
       strcpy(szDate, a.szDate);
       options = a.options;

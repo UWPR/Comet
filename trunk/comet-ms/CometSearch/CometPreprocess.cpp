@@ -1055,6 +1055,14 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       return false;
    }
 
+   if (g_staticParams.vectorMassOffsets.size() > 0)
+   {
+      pScoring->_pepMassInfo.dPeptideMassToleranceMinus -= g_staticParams.vectorMassOffsets[0];
+      if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 100.0;
+      pScoring->_pepMassInfo.dPeptideMassTolerancePlus += g_staticParams.vectorMassOffsets[g_staticParams.vectorMassOffsets.size()-1];
+   }
+
    return true;
 }
 
