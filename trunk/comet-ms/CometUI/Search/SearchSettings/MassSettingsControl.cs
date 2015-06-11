@@ -31,6 +31,8 @@ namespace CometUI.Search.SearchSettings
 
             InitializeMassUnitCombo();
 
+            InitializeIsotopeErrorCombo();
+
             InitializePrecursorToleranceType();
         }
 
@@ -183,6 +185,14 @@ namespace CometUI.Search.SearchSettings
             precursorMassUnitCombo.Items.Add("amu");
             precursorMassUnitCombo.Items.Add("mmu");
             precursorMassUnitCombo.Items.Add("ppm");
+        }
+
+        private void InitializeIsotopeErrorCombo()
+        {
+            // MUST be added in the following order since the value or this
+            // parameter corresponds to the index of the string in the combo
+            precursorIsotopeErrorCombo.Items.Add("no C13");
+            precursorIsotopeErrorCombo.Items.Add("C13 offsets");
         }
 
         private void InitializePrecursorToleranceType()

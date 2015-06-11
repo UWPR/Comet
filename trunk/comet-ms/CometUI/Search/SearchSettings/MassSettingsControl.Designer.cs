@@ -40,6 +40,8 @@ namespace CometUI.Search.SearchSettings
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.precursorGroupBox = new System.Windows.Forms.GroupBox();
+            this.precursorToleranceTypeCombo = new System.Windows.Forms.ComboBox();
+            this.label4 = new System.Windows.Forms.Label();
             this.precursorMassTolTextBox = new CometUI.SharedUI.NumericTextBox();
             this.precursorIsotopeErrorCombo = new System.Windows.Forms.ComboBox();
             this.precursorMassTypeCombo = new System.Windows.Forms.ComboBox();
@@ -56,8 +58,6 @@ namespace CometUI.Search.SearchSettings
             this.xIonCheckBox = new System.Windows.Forms.CheckBox();
             this.cIonCheckBox = new System.Windows.Forms.CheckBox();
             this.aIonCheckBox = new System.Windows.Forms.CheckBox();
-            this.precursorToleranceTypeCombo = new System.Windows.Forms.ComboBox();
-            this.label4 = new System.Windows.Forms.Label();
             this.fragmentGroupBox.SuspendLayout();
             this.precursorGroupBox.SuspendLayout();
             this.groupBox1.SuspendLayout();
@@ -87,7 +87,7 @@ namespace CometUI.Search.SearchSettings
             "mono"});
             this.fragmentMassTypeCombo.Location = new System.Drawing.Point(18, 104);
             this.fragmentMassTypeCombo.Name = "fragmentMassTypeCombo";
-            this.fragmentMassTypeCombo.Size = new System.Drawing.Size(83, 21);
+            this.fragmentMassTypeCombo.Size = new System.Drawing.Size(92, 21);
             this.fragmentMassTypeCombo.TabIndex = 8;
             // 
             // label9
@@ -102,7 +102,7 @@ namespace CometUI.Search.SearchSettings
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(128, 30);
+            this.label8.Location = new System.Drawing.Point(125, 30);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(38, 13);
             this.label8.TabIndex = 27;
@@ -114,9 +114,9 @@ namespace CometUI.Search.SearchSettings
             this.fragmentOffsetTextBox.AllowGroupSeparator = false;
             this.fragmentOffsetTextBox.AllowNegative = false;
             this.fragmentOffsetTextBox.AllowSpace = false;
-            this.fragmentOffsetTextBox.Location = new System.Drawing.Point(131, 45);
+            this.fragmentOffsetTextBox.Location = new System.Drawing.Point(128, 45);
             this.fragmentOffsetTextBox.Name = "fragmentOffsetTextBox";
-            this.fragmentOffsetTextBox.Size = new System.Drawing.Size(83, 20);
+            this.fragmentOffsetTextBox.Size = new System.Drawing.Size(92, 20);
             this.fragmentOffsetTextBox.TabIndex = 7;
             // 
             // label7
@@ -136,7 +136,7 @@ namespace CometUI.Search.SearchSettings
             this.fragmentBinSizeTextBox.AllowSpace = false;
             this.fragmentBinSizeTextBox.Location = new System.Drawing.Point(18, 45);
             this.fragmentBinSizeTextBox.Name = "fragmentBinSizeTextBox";
-            this.fragmentBinSizeTextBox.Size = new System.Drawing.Size(83, 20);
+            this.fragmentBinSizeTextBox.Size = new System.Drawing.Size(92, 20);
             this.fragmentBinSizeTextBox.TabIndex = 6;
             // 
             // label1
@@ -179,6 +179,24 @@ namespace CometUI.Search.SearchSettings
             this.precursorGroupBox.TabStop = false;
             this.precursorGroupBox.Text = "Precursor";
             // 
+            // precursorToleranceTypeCombo
+            // 
+            this.precursorToleranceTypeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.precursorToleranceTypeCombo.FormattingEnabled = true;
+            this.precursorToleranceTypeCombo.Location = new System.Drawing.Point(16, 163);
+            this.precursorToleranceTypeCombo.Name = "precursorToleranceTypeCombo";
+            this.precursorToleranceTypeCombo.Size = new System.Drawing.Size(92, 21);
+            this.precursorToleranceTypeCombo.TabIndex = 5;
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(13, 147);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(85, 13);
+            this.label4.TabIndex = 32;
+            this.label4.Text = "Tolerance Type:";
+            // 
             // precursorMassTolTextBox
             // 
             this.precursorMassTolTextBox.AllowDecimal = true;
@@ -187,7 +205,7 @@ namespace CometUI.Search.SearchSettings
             this.precursorMassTolTextBox.AllowSpace = false;
             this.precursorMassTolTextBox.Location = new System.Drawing.Point(23, 45);
             this.precursorMassTolTextBox.Name = "precursorMassTolTextBox";
-            this.precursorMassTolTextBox.Size = new System.Drawing.Size(76, 20);
+            this.precursorMassTolTextBox.Size = new System.Drawing.Size(85, 20);
             this.precursorMassTolTextBox.TabIndex = 1;
             // 
             // precursorIsotopeErrorCombo
@@ -197,9 +215,9 @@ namespace CometUI.Search.SearchSettings
             this.precursorIsotopeErrorCombo.Items.AddRange(new object[] {
             "no C13",
             "C13 offsets"});
-            this.precursorIsotopeErrorCombo.Location = new System.Drawing.Point(133, 104);
+            this.precursorIsotopeErrorCombo.Location = new System.Drawing.Point(127, 104);
             this.precursorIsotopeErrorCombo.Name = "precursorIsotopeErrorCombo";
-            this.precursorIsotopeErrorCombo.Size = new System.Drawing.Size(83, 21);
+            this.precursorIsotopeErrorCombo.Size = new System.Drawing.Size(92, 21);
             this.precursorIsotopeErrorCombo.TabIndex = 4;
             // 
             // precursorMassTypeCombo
@@ -211,13 +229,13 @@ namespace CometUI.Search.SearchSettings
             "mono"});
             this.precursorMassTypeCombo.Location = new System.Drawing.Point(16, 104);
             this.precursorMassTypeCombo.Name = "precursorMassTypeCombo";
-            this.precursorMassTypeCombo.Size = new System.Drawing.Size(83, 21);
+            this.precursorMassTypeCombo.Size = new System.Drawing.Size(92, 21);
             this.precursorMassTypeCombo.TabIndex = 3;
             // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(130, 30);
+            this.label3.Location = new System.Drawing.Point(124, 30);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(57, 13);
             this.label3.TabIndex = 30;
@@ -227,15 +245,15 @@ namespace CometUI.Search.SearchSettings
             // 
             this.precursorMassUnitCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.precursorMassUnitCombo.FormattingEnabled = true;
-            this.precursorMassUnitCombo.Location = new System.Drawing.Point(133, 45);
+            this.precursorMassUnitCombo.Location = new System.Drawing.Point(127, 45);
             this.precursorMassUnitCombo.Name = "precursorMassUnitCombo";
-            this.precursorMassUnitCombo.Size = new System.Drawing.Size(83, 21);
+            this.precursorMassUnitCombo.Size = new System.Drawing.Size(92, 21);
             this.precursorMassUnitCombo.TabIndex = 2;
             // 
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(130, 88);
+            this.label6.Location = new System.Drawing.Point(124, 88);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(70, 13);
             this.label6.TabIndex = 27;
@@ -346,27 +364,6 @@ namespace CometUI.Search.SearchSettings
             this.aIonCheckBox.TabIndex = 9;
             this.aIonCheckBox.Text = "a";
             this.aIonCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // precursorToleranceTypeCombo
-            // 
-            this.precursorToleranceTypeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.precursorToleranceTypeCombo.FormattingEnabled = true;
-            this.precursorToleranceTypeCombo.Items.AddRange(new object[] {
-            "no C13",
-            "C13 offsets"});
-            this.precursorToleranceTypeCombo.Location = new System.Drawing.Point(16, 163);
-            this.precursorToleranceTypeCombo.Name = "precursorToleranceTypeCombo";
-            this.precursorToleranceTypeCombo.Size = new System.Drawing.Size(82, 21);
-            this.precursorToleranceTypeCombo.TabIndex = 5;
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(13, 147);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(85, 13);
-            this.label4.TabIndex = 32;
-            this.label4.Text = "Tolerance Type:";
             // 
             // MassSettingsControl
             // 
