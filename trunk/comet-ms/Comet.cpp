@@ -329,8 +329,6 @@ void LoadParameters(char *pszParamsFile,
                while (tok != NULL)
                {
                   sscanf(tok, "%lf", &dMass);
-                  printf("token '%s', dMass %f\n", tok, dMass);
-
                   vectorSetMassOffsets.push_back(dMass);
                   tok = strtok(NULL, delims);
                }
