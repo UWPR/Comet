@@ -53,6 +53,8 @@ namespace CometWrapper {
         bool GetParamValue(String^ name, VarModsWrapper^% value);
         bool SetParam(String^ name, String^ strValue, EnzymeInfoWrapper^ value);
         bool GetParamValue(String^ name, EnzymeInfoWrapper^% value);
+        bool SetParam(String^ name, String^ strValue, List<double>^ value);
+        bool GetParamValue(String^ name, List<double>^% value);
         bool ValidateCometVersion(String^ version, bool% isValid);
         bool IsSearchError(bool% bError);
         bool GetStatusMessage(String^% strStatusMsg);

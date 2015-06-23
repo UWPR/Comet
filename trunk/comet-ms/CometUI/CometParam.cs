@@ -56,7 +56,8 @@ namespace CometUI
         VarMod,
         DoubleRange,
         IntRange,
-        StrCollection
+        StrCollection,
+        DoubleList
     }
 
     public class CometParamsMap
@@ -270,6 +271,13 @@ namespace CometUI
                 return false;
             }
             cometSettings.PrecursorToleranceType = toleranceType;
+
+            var massOffsets = new List<double>();
+            if (!GetCometParamValue("mass_offsets", out massOffsets, out paramValueStr))
+            {
+                return false;
+            }
+            cometSettings.PrecursorMassOffsets = paramValueStr;
 
             double fragmentBinSize;
             if (!GetCometParamValue("fragment_bin_tol", out fragmentBinSize, out paramValueStr))
@@ -759,6 +767,16 @@ namespace CometUI
                 return false;
             }
 
+            var massOffsetsStr = settings.PrecursorMassOffsets;
+            if (!UpdateCometParam("mass_offsets",
+                             new TypedCometParam<List<double>>(CometParamType.DoubleList,
+                                                         massOffsetsStr,
+                                                         CometParamsMap.GetMassOffsetsListFromString(massOffsetsStr))))
+            {
+                return false;
+            }
+
+
             var fragmentBinSize = settings.FragmentBinSize;
             if (!UpdateCometParam("fragment_bin_tol",
                              new TypedCometParam<double>(CometParamType.Double,
@@ -1151,6 +1169,23 @@ namespace CometUI
                                       Convert.ToInt32(varModsStrArray[VarModsColRequireThisMod]));
         }
 
+        public static List<double> GetMassOffsetsListFromString(String massOffsetsString)
+        {
+            var massOffsetsStr = massOffsetsString;
+            var massOffsetsList = new List<double>();
+            string[] offsets = massOffsetsStr.Split(' ');
+            foreach (var offset in offsets)
+            {
+                double doubleValue;
+                if (Double.TryParse(offset, out doubleValue))
+                {
+                    massOffsetsList.Add(doubleValue);
+                }
+            }
+
+            return massOffsetsList;
+        }
+
         public bool GetCometParamValue(String name, out int value, out String strValue)
         {
             value = 0;
@@ -1305,6 +1340,28 @@ namespace CometUI
             return true;
         }
 
+        public bool GetCometParamValue(String name, out List<double> value, out String strValue)
+        {
+            value = null;
+            strValue = String.Empty;
+
+            CometParam param;
+            if (!CometParams.TryGetValue(name, out param))
+            {
+                return false;
+            }
+
+            var typedParam = param as TypedCometParam<List<double>>;
+            if (null == typedParam)
+            {
+                return false;
+            }
+
+            value = typedParam.Value;
+            strValue = param.Value;
+            return true;
+        }
+
         public bool SetCometParam(String paramName, String strValue)
         {
             CometParam cometParam;
@@ -1336,6 +1393,9 @@ namespace CometUI
                     break;
                 case CometParamType.StrCollection:
                     cometParam = ParseCometStringCollectionParam(strValue);
+                    break;
+                    case CometParamType.DoubleList:
+                    cometParam = ParseCometDoubleListParam(strValue);
                     break;
                 default:
                     return false;
@@ -1784,6 +1844,11 @@ namespace CometUI
                 }
             }
             return new TypedCometParam<StringCollection>(CometParamType.StrCollection, newStrValue, strCollectionParam);
+        }
+
+        private CometParam ParseCometDoubleListParam(String strValue)
+        {
+            return new TypedCometParam<List<double>>(CometParamType.DoubleList, strValue, GetMassOffsetsListFromString(strValue));
         }
 
         private string RemoveDuplicateChars(string src, char[] dupes)

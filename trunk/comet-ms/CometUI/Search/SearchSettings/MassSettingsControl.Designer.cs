@@ -58,6 +58,8 @@ namespace CometUI.Search.SearchSettings
             this.xIonCheckBox = new System.Windows.Forms.CheckBox();
             this.cIonCheckBox = new System.Windows.Forms.CheckBox();
             this.aIonCheckBox = new System.Windows.Forms.CheckBox();
+            this.label10 = new System.Windows.Forms.Label();
+            this.precursorMassOffsetsTextBox = new CometUI.SharedUI.NumericTextBox();
             this.fragmentGroupBox.SuspendLayout();
             this.precursorGroupBox.SuspendLayout();
             this.groupBox1.SuspendLayout();
@@ -88,7 +90,7 @@ namespace CometUI.Search.SearchSettings
             this.fragmentMassTypeCombo.Location = new System.Drawing.Point(18, 104);
             this.fragmentMassTypeCombo.Name = "fragmentMassTypeCombo";
             this.fragmentMassTypeCombo.Size = new System.Drawing.Size(92, 21);
-            this.fragmentMassTypeCombo.TabIndex = 8;
+            this.fragmentMassTypeCombo.TabIndex = 9;
             // 
             // label9
             // 
@@ -117,7 +119,7 @@ namespace CometUI.Search.SearchSettings
             this.fragmentOffsetTextBox.Location = new System.Drawing.Point(128, 45);
             this.fragmentOffsetTextBox.Name = "fragmentOffsetTextBox";
             this.fragmentOffsetTextBox.Size = new System.Drawing.Size(92, 20);
-            this.fragmentOffsetTextBox.TabIndex = 7;
+            this.fragmentOffsetTextBox.TabIndex = 8;
             // 
             // label7
             // 
@@ -137,7 +139,7 @@ namespace CometUI.Search.SearchSettings
             this.fragmentBinSizeTextBox.Location = new System.Drawing.Point(18, 45);
             this.fragmentBinSizeTextBox.Name = "fragmentBinSizeTextBox";
             this.fragmentBinSizeTextBox.Size = new System.Drawing.Size(92, 20);
-            this.fragmentBinSizeTextBox.TabIndex = 6;
+            this.fragmentBinSizeTextBox.TabIndex = 7;
             // 
             // label1
             // 
@@ -161,6 +163,8 @@ namespace CometUI.Search.SearchSettings
             // 
             // precursorGroupBox
             // 
+            this.precursorGroupBox.Controls.Add(this.precursorMassOffsetsTextBox);
+            this.precursorGroupBox.Controls.Add(this.label10);
             this.precursorGroupBox.Controls.Add(this.precursorToleranceTypeCombo);
             this.precursorGroupBox.Controls.Add(this.label4);
             this.precursorGroupBox.Controls.Add(this.precursorMassTolTextBox);
@@ -291,7 +295,7 @@ namespace CometUI.Search.SearchSettings
             this.useNLCheckBox.Location = new System.Drawing.Point(120, 40);
             this.useNLCheckBox.Name = "useNLCheckBox";
             this.useNLCheckBox.Size = new System.Drawing.Size(62, 17);
-            this.useNLCheckBox.TabIndex = 16;
+            this.useNLCheckBox.TabIndex = 17;
             this.useNLCheckBox.Text = "Use NL";
             this.useNLCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -301,7 +305,7 @@ namespace CometUI.Search.SearchSettings
             this.flankCheckBox.Location = new System.Drawing.Point(120, 20);
             this.flankCheckBox.Name = "flankCheckBox";
             this.flankCheckBox.Size = new System.Drawing.Size(52, 17);
-            this.flankCheckBox.TabIndex = 15;
+            this.flankCheckBox.TabIndex = 16;
             this.flankCheckBox.Text = "Flank";
             this.flankCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -311,7 +315,7 @@ namespace CometUI.Search.SearchSettings
             this.zIonCheckBox.Location = new System.Drawing.Point(70, 60);
             this.zIonCheckBox.Name = "zIonCheckBox";
             this.zIonCheckBox.Size = new System.Drawing.Size(31, 17);
-            this.zIonCheckBox.TabIndex = 14;
+            this.zIonCheckBox.TabIndex = 15;
             this.zIonCheckBox.Text = "z";
             this.zIonCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -321,7 +325,7 @@ namespace CometUI.Search.SearchSettings
             this.yIonCheckBox.Location = new System.Drawing.Point(70, 40);
             this.yIonCheckBox.Name = "yIonCheckBox";
             this.yIonCheckBox.Size = new System.Drawing.Size(31, 17);
-            this.yIonCheckBox.TabIndex = 13;
+            this.yIonCheckBox.TabIndex = 14;
             this.yIonCheckBox.Text = "y";
             this.yIonCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -331,7 +335,7 @@ namespace CometUI.Search.SearchSettings
             this.bIonCheckBox.Location = new System.Drawing.Point(20, 40);
             this.bIonCheckBox.Name = "bIonCheckBox";
             this.bIonCheckBox.Size = new System.Drawing.Size(32, 17);
-            this.bIonCheckBox.TabIndex = 10;
+            this.bIonCheckBox.TabIndex = 11;
             this.bIonCheckBox.Text = "b";
             this.bIonCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -341,7 +345,7 @@ namespace CometUI.Search.SearchSettings
             this.xIonCheckBox.Location = new System.Drawing.Point(70, 20);
             this.xIonCheckBox.Name = "xIonCheckBox";
             this.xIonCheckBox.Size = new System.Drawing.Size(31, 17);
-            this.xIonCheckBox.TabIndex = 12;
+            this.xIonCheckBox.TabIndex = 13;
             this.xIonCheckBox.Text = "x";
             this.xIonCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -351,7 +355,7 @@ namespace CometUI.Search.SearchSettings
             this.cIonCheckBox.Location = new System.Drawing.Point(20, 60);
             this.cIonCheckBox.Name = "cIonCheckBox";
             this.cIonCheckBox.Size = new System.Drawing.Size(32, 17);
-            this.cIonCheckBox.TabIndex = 11;
+            this.cIonCheckBox.TabIndex = 12;
             this.cIonCheckBox.Text = "c";
             this.cIonCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -361,9 +365,30 @@ namespace CometUI.Search.SearchSettings
             this.aIonCheckBox.Location = new System.Drawing.Point(20, 20);
             this.aIonCheckBox.Name = "aIonCheckBox";
             this.aIonCheckBox.Size = new System.Drawing.Size(32, 17);
-            this.aIonCheckBox.TabIndex = 9;
+            this.aIonCheckBox.TabIndex = 10;
             this.aIonCheckBox.Text = "a";
             this.aIonCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(13, 206);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(71, 13);
+            this.label10.TabIndex = 34;
+            this.label10.Text = "Mass Offsets:";
+            // 
+            // precursorMassOffsetsTextBox
+            // 
+            this.precursorMassOffsetsTextBox.AllowDecimal = true;
+            this.precursorMassOffsetsTextBox.AllowGroupSeparator = false;
+            this.precursorMassOffsetsTextBox.AllowNegative = true;
+            this.precursorMassOffsetsTextBox.AllowSpace = true;
+            this.precursorMassOffsetsTextBox.Location = new System.Drawing.Point(16, 222);
+            this.precursorMassOffsetsTextBox.Name = "precursorMassOffsetsTextBox";
+            this.precursorMassOffsetsTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Horizontal;
+            this.precursorMassOffsetsTextBox.Size = new System.Drawing.Size(203, 20);
+            this.precursorMassOffsetsTextBox.TabIndex = 6;
             // 
             // MassSettingsControl
             // 
@@ -414,6 +439,8 @@ namespace CometUI.Search.SearchSettings
         private NumericTextBox precursorMassTolTextBox;
         private System.Windows.Forms.ComboBox precursorToleranceTypeCombo;
         private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.Label label10;
+        private NumericTextBox precursorMassOffsetsTextBox;
 
     }
 }

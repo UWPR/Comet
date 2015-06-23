@@ -335,6 +335,52 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, EnzymeInfoWr
     return true;
 }
 
+bool CometSearchManagerWrapper::SetParam(String^ name, String^ strValue, List<double>^ value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name); 
+    std::string stdStringStrValue = marshal_as<std::string>(strValue);
+    
+    vector<double> vectorMassOffsets;
+    int numItems = value->Count;
+    for (int i = 0; i < numItems; i++)
+    {
+        vectorMassOffsets.push_back(value[i]);
+    }
+    sort(vectorMassOffsets.begin(), vectorMassOffsets.end());
+
+    _pSearchMgr->SetParam(stdStringName, stdStringStrValue, vectorMassOffsets);
+
+    return true;
+}
+
+bool CometSearchManagerWrapper::GetParamValue(String^ name, List<double>^% value)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    std::string stdStringName = marshal_as<std::string>(name);
+    vector<double> vectorMassOffsets;
+    if (!_pSearchMgr->GetParamValue(stdStringName, vectorMassOffsets))
+    {
+        return false;
+    }
+
+    int numItems = vectorMassOffsets.size();
+    for (int i = 0; i < numItems; i++)
+    {
+        value->Add(vectorMassOffsets[i]);
+    }
+
+    return true;
+}
+
 bool CometSearchManagerWrapper::ValidateCometVersion(String^ version, bool% isValid)
 {
     if (!_pSearchMgr)
