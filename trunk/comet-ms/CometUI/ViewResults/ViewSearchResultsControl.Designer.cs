@@ -36,6 +36,7 @@ namespace CometUI.ViewResults
             this.summaryTabPage = new System.Windows.Forms.TabPage();
             this.displayOptionsTabPage = new System.Windows.Forms.TabPage();
             this.pickColumnsTabPage = new System.Windows.Forms.TabPage();
+            this.otherActionsTabPage = new System.Windows.Forms.TabPage();
             this.resultsPanel = new System.Windows.Forms.Panel();
             this.resultsSubPanel = new System.Windows.Forms.Panel();
             this.resultsSubPanelSplitContainer = new System.Windows.Forms.SplitContainer();
@@ -54,7 +55,7 @@ namespace CometUI.ViewResults
             this.massTypeRadioButtonsPanel = new System.Windows.Forms.Panel();
             this.massTypeAvgRadioButton = new System.Windows.Forms.RadioButton();
             this.massTypeMonoRadioButton = new System.Windows.Forms.RadioButton();
-            this.massTolTextBox = new SharedUI.NumericTextBox();
+            this.massTolTextBox = new CometUI.SharedUI.NumericTextBox();
             this.label26 = new System.Windows.Forms.Label();
             this.labelMassType = new System.Windows.Forms.Label();
             this.updateBtn = new System.Windows.Forms.Button();
@@ -110,8 +111,6 @@ namespace CometUI.ViewResults
             this.label5 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
             this.label33 = new System.Windows.Forms.Label();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label27 = new System.Windows.Forms.Label();
             this.spectrumGraphSplitContainer = new System.Windows.Forms.SplitContainer();
             this.precursorGraphSplitContainer = new System.Windows.Forms.SplitContainer();
             this.spectrumGraphItem = new ZedGraph.ZedGraphControl();
@@ -125,7 +124,6 @@ namespace CometUI.ViewResults
             this.resultsPanelFull = new System.Windows.Forms.Panel();
             this.resultsPanelNormal = new System.Windows.Forms.Panel();
             this.viewResultsToolTip = new System.Windows.Forms.ToolTip(this.components);
-            this.otherActionsTabPage = new System.Windows.Forms.TabPage();
             this.showOptionsPanel.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
             this.resultsPanel.SuspendLayout();
@@ -210,6 +208,16 @@ namespace CometUI.ViewResults
             this.pickColumnsTabPage.TabIndex = 2;
             this.pickColumnsTabPage.Text = "Pick Columns";
             this.pickColumnsTabPage.UseVisualStyleBackColor = true;
+            // 
+            // otherActionsTabPage
+            // 
+            this.otherActionsTabPage.Location = new System.Drawing.Point(4, 22);
+            this.otherActionsTabPage.Name = "otherActionsTabPage";
+            this.otherActionsTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.otherActionsTabPage.Size = new System.Drawing.Size(1011, 197);
+            this.otherActionsTabPage.TabIndex = 3;
+            this.otherActionsTabPage.Text = "Other Actions";
+            this.otherActionsTabPage.UseVisualStyleBackColor = true;
             // 
             // resultsPanel
             // 
@@ -407,8 +415,6 @@ namespace CometUI.ViewResults
             this.groupBox2.Controls.Add(this.label5);
             this.groupBox2.Controls.Add(this.label6);
             this.groupBox2.Controls.Add(this.label33);
-            this.groupBox2.Controls.Add(this.label1);
-            this.groupBox2.Controls.Add(this.label27);
             this.groupBox2.Location = new System.Drawing.Point(7, -2);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(194, 390);
@@ -1031,24 +1037,6 @@ namespace CometUI.ViewResults
             this.label33.TabIndex = 57;
             this.label33.Text = "O";
             // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(58, 185);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(17, 13);
-            this.label1.TabIndex = 65;
-            this.label1.Text = "(*)";
-            // 
-            // label27
-            // 
-            this.label27.AutoSize = true;
-            this.label27.Location = new System.Drawing.Point(126, 185);
-            this.label27.Name = "label27";
-            this.label27.Size = new System.Drawing.Size(19, 13);
-            this.label27.TabIndex = 66;
-            this.label27.Text = "(o)";
-            // 
             // spectrumGraphSplitContainer
             // 
             this.spectrumGraphSplitContainer.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
@@ -1217,16 +1205,6 @@ namespace CometUI.ViewResults
             // 
             this.viewResultsToolTip.UseFading = false;
             // 
-            // otherActionsTabPage
-            // 
-            this.otherActionsTabPage.Location = new System.Drawing.Point(4, 22);
-            this.otherActionsTabPage.Name = "otherActionsTabPage";
-            this.otherActionsTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.otherActionsTabPage.Size = new System.Drawing.Size(1011, 197);
-            this.otherActionsTabPage.TabIndex = 3;
-            this.otherActionsTabPage.Text = "Other Actions";
-            this.otherActionsTabPage.UseVisualStyleBackColor = true;
-            // 
             // ViewSearchResultsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1358,8 +1336,6 @@ namespace CometUI.ViewResults
         private System.Windows.Forms.Label label33;
         private System.Windows.Forms.Label labelPeakLabel;
         private System.Windows.Forms.Button updateBtn;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label27;
         private System.Windows.Forms.RadioButton peakLabelIonRadioButton;
         private System.Windows.Forms.RadioButton peakLabelMzRadioButton;
         private System.Windows.Forms.RadioButton peakLabelNoneRadioButton;

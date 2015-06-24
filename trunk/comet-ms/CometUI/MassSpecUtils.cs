@@ -241,7 +241,7 @@ namespace CometUI
 
         public static double CalculateMassErrorPPM(double calcNeutralMass, double expMass)
         {
-            var ppm = ((calcNeutralMass - expMass) / calcNeutralMass) * Math.Pow(10, 6);
+            var ppm = ((expMass - calcNeutralMass) / calcNeutralMass) * Math.Pow(10, 6);
             return ppm;
         }
 
