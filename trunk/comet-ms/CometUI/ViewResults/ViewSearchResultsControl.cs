@@ -757,10 +757,9 @@ namespace CometUI.ViewResults
 
         private void DrawSpectrumGraph()
         {
-            // Plot the regular peaks
-            spectrumGraphItem.GraphPane.AddStick(null, SpectrumGraphPeaksList, Color.LightGray);
-
-            // Plot the fragment ion peaks
+            // Plot the fragment ion peaks (Note: Do this BEFORE plotting 
+            // the regular peaks, otherwise the regular peaks show up over
+            // the colored peaks when they are overlayed on top of each other)
             foreach (var fragmentIon in FragmentIonPeaks)
             {
                 var fragmentIonGraphInfo = fragmentIon.Value;
@@ -769,6 +768,9 @@ namespace CometUI.ViewResults
                     spectrumGraphItem.GraphPane.AddStick(null, fragmentIonGraphInfo.FragmentIonPeaks, fragmentIonGraphInfo.PeakColor);
                 }
             }
+
+            // Plot the regular peaks
+            spectrumGraphItem.GraphPane.AddStick(null, SpectrumGraphPeaksList, Color.LightGray);
 
             // Draw the peak labels for the spectrum graph
             foreach (var peakLabel in SpectrumGraphPeakLabels)
@@ -785,21 +787,18 @@ namespace CometUI.ViewResults
 
         private void DrawPrecursorGraph(bool foundPrecursor)
         {
-            // Plot the regular peaks on the precursor graph
-            precursorGraphItem.GraphPane.AddStick(null, PrecursorGraphPeaksList, Color.LightGray);
-
             if (foundPrecursor)
             {
                 // Draw the theoretical and acquired precursor peaks
                 precursorGraphItem.GraphPane.AddStick("T = theoretical m/z",
-                                                      new PointPairList {TheoreticalPrecursorPeak},
+                                                      new PointPairList { TheoreticalPrecursorPeak },
                                                       Color.DeepSkyBlue);
-                precursorGraphItem.GraphPane.AddStick("A = acquired m/z", new PointPairList {AcquiredPrecursorPeak},
+                precursorGraphItem.GraphPane.AddStick("A = acquired m/z", new PointPairList { AcquiredPrecursorPeak },
                                                       Color.Red);
 
 
                 // To zoom in on the precursor sticks
-                precursorGraphItem.GraphPane.YAxis.Scale.Max = AcquiredPrecursorPeak.Y*2;
+                precursorGraphItem.GraphPane.YAxis.Scale.Max = AcquiredPrecursorPeak.Y * 2;
 
                 // Draw the peak labels for the precursor graph
                 foreach (var precursorPeakLabel in PrecursorGraphPeakLabels)
@@ -807,6 +806,9 @@ namespace CometUI.ViewResults
                     precursorGraphItem.GraphPane.GraphObjList.Add(precursorPeakLabel);
                 }
             }
+
+            // Plot the regular peaks on the precursor graph
+            precursorGraphItem.GraphPane.AddStick(null, PrecursorGraphPeaksList, Color.LightGray);
 
             // Calculate the Axis Scale Ranges and redraw the whole graph 
             // control for smooth transition
