@@ -16,6 +16,7 @@
 
 using System;
 using System.Windows.Forms;
+using CometUI.Properties;
 
 namespace CometUI.ViewResults
 {
@@ -33,6 +34,24 @@ namespace CometUI.ViewResults
         private void ExportResultsBtnClick(object sender, EventArgs e)
         {
             ViewSearchResultsControl.ExportResultsList();
+        }
+
+        private void FDRCutoffBtnClick(object sender, EventArgs e)
+        {
+            if (!ViewSearchResultsControl.HasSearchResults)
+            {
+                MessageBox.Show(Resources.ViewResultsOtherActionsControl_FDRCutoffBtnClick_No_results_to_apply_the_FDR_cutoff_to_,
+                    Resources.ViewResultsOtherActionsControl_FDRCutoffBtnClick_Apply_FDR_Cutoff,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            var fdrDlg = new FDRDlg();
+            if (DialogResult.OK == fdrDlg.ShowDialog())
+            {
+                // Todo: Apply FDR cutoff to view results list
+            }
         }
     }
 }

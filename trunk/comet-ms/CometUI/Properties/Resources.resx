@@ -391,4 +391,10 @@
   <data name="ExportSearchParamsDlg_InitializeComponent__Settings___">
     <value xml:space="preserve">&amp;Settings...</value>
   </data>
+  <data name="ViewResultsOtherActionsControl_FDRCutoffBtnClick_No_results_to_apply_the_FDR_cutoff_to_">
+    <value xml:space="preserve">No results to apply the FDR cutoff to.</value>
+  </data>
+  <data name="ViewResultsOtherActionsControl_FDRCutoffBtnClick_Apply_FDR_Cutoff">
+    <value xml:space="preserve">Apply FDR Cutoff</value>
+  </data>
 </root>

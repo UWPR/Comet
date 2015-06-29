@@ -29,12 +29,14 @@
         private void InitializeComponent()
         {
             this.otherActionsMainPanel = new System.Windows.Forms.Panel();
+            this.fdrCutoffBtn = new System.Windows.Forms.Button();
             this.exportResultsBtn = new System.Windows.Forms.Button();
             this.otherActionsMainPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // otherActionsMainPanel
             // 
+            this.otherActionsMainPanel.Controls.Add(this.fdrCutoffBtn);
             this.otherActionsMainPanel.Controls.Add(this.exportResultsBtn);
             this.otherActionsMainPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.otherActionsMainPanel.Location = new System.Drawing.Point(0, 0);
@@ -42,13 +44,23 @@
             this.otherActionsMainPanel.Size = new System.Drawing.Size(1000, 210);
             this.otherActionsMainPanel.TabIndex = 1;
             // 
+            // fdrCutoffBtn
+            // 
+            this.fdrCutoffBtn.Location = new System.Drawing.Point(182, 37);
+            this.fdrCutoffBtn.Name = "fdrCutoffBtn";
+            this.fdrCutoffBtn.Size = new System.Drawing.Size(125, 35);
+            this.fdrCutoffBtn.TabIndex = 4;
+            this.fdrCutoffBtn.Text = "&Apply FDR Cutoff...";
+            this.fdrCutoffBtn.UseVisualStyleBackColor = true;
+            this.fdrCutoffBtn.Click += new System.EventHandler(this.FDRCutoffBtnClick);
+            // 
             // exportResultsBtn
             // 
-            this.exportResultsBtn.Location = new System.Drawing.Point(18, 26);
+            this.exportResultsBtn.Location = new System.Drawing.Point(24, 37);
             this.exportResultsBtn.Name = "exportResultsBtn";
-            this.exportResultsBtn.Size = new System.Drawing.Size(112, 23);
+            this.exportResultsBtn.Size = new System.Drawing.Size(125, 35);
             this.exportResultsBtn.TabIndex = 0;
-            this.exportResultsBtn.Text = "&Export Results List";
+            this.exportResultsBtn.Text = "&Export Results List...";
             this.exportResultsBtn.UseVisualStyleBackColor = true;
             this.exportResultsBtn.Click += new System.EventHandler(this.ExportResultsBtnClick);
             // 
@@ -68,5 +80,6 @@
 
         private System.Windows.Forms.Panel otherActionsMainPanel;
         private System.Windows.Forms.Button exportResultsBtn;
+        private System.Windows.Forms.Button fdrCutoffBtn;
     }
 }

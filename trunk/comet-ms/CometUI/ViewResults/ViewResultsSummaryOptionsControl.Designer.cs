@@ -34,6 +34,8 @@
             this.pepXMLFileLabel = new System.Windows.Forms.Label();
             this.btnUpdateResults = new System.Windows.Forms.Button();
             this.viewResultsSummaryMainPanel = new System.Windows.Forms.Panel();
+            this.textBoxCustomDecoyPrefix = new System.Windows.Forms.TextBox();
+            this.customDecoyPrefixCheckBox = new System.Windows.Forms.CheckBox();
             this.searchResultsSummaryLabel = new System.Windows.Forms.Label();
             this.viewResultsSummaryMainPanel.SuspendLayout();
             this.SuspendLayout();
@@ -44,10 +46,10 @@
             this.btnBrowsePepXMLFile.BackColor = System.Drawing.Color.Transparent;
             this.btnBrowsePepXMLFile.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("btnBrowsePepXMLFile.BackgroundImage")));
             this.btnBrowsePepXMLFile.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
-            this.btnBrowsePepXMLFile.Location = new System.Drawing.Point(959, 39);
+            this.btnBrowsePepXMLFile.Location = new System.Drawing.Point(654, 53);
             this.btnBrowsePepXMLFile.Name = "btnBrowsePepXMLFile";
             this.btnBrowsePepXMLFile.Size = new System.Drawing.Size(24, 24);
-            this.btnBrowsePepXMLFile.TabIndex = 42;
+            this.btnBrowsePepXMLFile.TabIndex = 2;
             this.btnBrowsePepXMLFile.UseVisualStyleBackColor = false;
             this.btnBrowsePepXMLFile.Click += new System.EventHandler(this.BtnBrowsePepXMLFileClick);
             // 
@@ -59,16 +61,16 @@
             this.pepXMLFileCombo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.AllSystemSources;
             this.pepXMLFileCombo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
             this.pepXMLFileCombo.FormattingEnabled = true;
-            this.pepXMLFileCombo.Location = new System.Drawing.Point(93, 40);
+            this.pepXMLFileCombo.Location = new System.Drawing.Point(21, 54);
             this.pepXMLFileCombo.Name = "pepXMLFileCombo";
-            this.pepXMLFileCombo.Size = new System.Drawing.Size(860, 23);
-            this.pepXMLFileCombo.TabIndex = 41;
+            this.pepXMLFileCombo.Size = new System.Drawing.Size(627, 23);
+            this.pepXMLFileCombo.TabIndex = 1;
             // 
             // pepXMLFileLabel
             // 
             this.pepXMLFileLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.pepXMLFileLabel.AutoSize = true;
-            this.pepXMLFileLabel.Location = new System.Drawing.Point(18, 45);
+            this.pepXMLFileLabel.Location = new System.Drawing.Point(18, 36);
             this.pepXMLFileLabel.Name = "pepXMLFileLabel";
             this.pepXMLFileLabel.Size = new System.Drawing.Size(69, 13);
             this.pepXMLFileLabel.TabIndex = 43;
@@ -80,13 +82,15 @@
             this.btnUpdateResults.Location = new System.Drawing.Point(908, 163);
             this.btnUpdateResults.Name = "btnUpdateResults";
             this.btnUpdateResults.Size = new System.Drawing.Size(75, 23);
-            this.btnUpdateResults.TabIndex = 44;
+            this.btnUpdateResults.TabIndex = 5;
             this.btnUpdateResults.Text = "&Update";
             this.btnUpdateResults.UseVisualStyleBackColor = true;
             this.btnUpdateResults.Click += new System.EventHandler(this.BtnUpdateResultsClick);
             // 
             // viewResultsSummaryMainPanel
             // 
+            this.viewResultsSummaryMainPanel.Controls.Add(this.textBoxCustomDecoyPrefix);
+            this.viewResultsSummaryMainPanel.Controls.Add(this.customDecoyPrefixCheckBox);
             this.viewResultsSummaryMainPanel.Controls.Add(this.searchResultsSummaryLabel);
             this.viewResultsSummaryMainPanel.Controls.Add(this.btnUpdateResults);
             this.viewResultsSummaryMainPanel.Controls.Add(this.btnBrowsePepXMLFile);
@@ -98,10 +102,30 @@
             this.viewResultsSummaryMainPanel.Size = new System.Drawing.Size(1000, 210);
             this.viewResultsSummaryMainPanel.TabIndex = 46;
             // 
+            // textBoxCustomDecoyPrefix
+            // 
+            this.textBoxCustomDecoyPrefix.Enabled = false;
+            this.textBoxCustomDecoyPrefix.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
+            this.textBoxCustomDecoyPrefix.Location = new System.Drawing.Point(849, 56);
+            this.textBoxCustomDecoyPrefix.Name = "textBoxCustomDecoyPrefix";
+            this.textBoxCustomDecoyPrefix.Size = new System.Drawing.Size(134, 21);
+            this.textBoxCustomDecoyPrefix.TabIndex = 4;
+            // 
+            // customDecoyPrefixCheckBox
+            // 
+            this.customDecoyPrefixCheckBox.AutoSize = true;
+            this.customDecoyPrefixCheckBox.Location = new System.Drawing.Point(728, 58);
+            this.customDecoyPrefixCheckBox.Name = "customDecoyPrefixCheckBox";
+            this.customDecoyPrefixCheckBox.Size = new System.Drawing.Size(124, 17);
+            this.customDecoyPrefixCheckBox.TabIndex = 3;
+            this.customDecoyPrefixCheckBox.Text = "Custom decoy prefix:";
+            this.customDecoyPrefixCheckBox.UseVisualStyleBackColor = true;
+            this.customDecoyPrefixCheckBox.CheckedChanged += new System.EventHandler(this.CustomDecoyPrefixCheckBoxCheckedChanged);
+            // 
             // searchResultsSummaryLabel
             // 
             this.searchResultsSummaryLabel.AutoSize = true;
-            this.searchResultsSummaryLabel.Location = new System.Drawing.Point(18, 122);
+            this.searchResultsSummaryLabel.Location = new System.Drawing.Point(18, 89);
             this.searchResultsSummaryLabel.Name = "searchResultsSummaryLabel";
             this.searchResultsSummaryLabel.Size = new System.Drawing.Size(35, 13);
             this.searchResultsSummaryLabel.TabIndex = 45;
@@ -128,5 +152,7 @@
         private System.Windows.Forms.Button btnUpdateResults;
         private System.Windows.Forms.Panel viewResultsSummaryMainPanel;
         private System.Windows.Forms.Label searchResultsSummaryLabel;
+        private System.Windows.Forms.CheckBox customDecoyPrefixCheckBox;
+        private System.Windows.Forms.TextBox textBoxCustomDecoyPrefix;
     }
 }

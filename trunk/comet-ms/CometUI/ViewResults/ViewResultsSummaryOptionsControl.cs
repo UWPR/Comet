@@ -26,14 +26,30 @@ namespace CometUI.ViewResults
     {
         public String ErrorMessage { get; private set; }
 
+        public String PepXMLFile
+        {
+            set { pepXMLFileCombo.Text = value; }
+        }
+        
+        public String DecoyPrefix
+        {
+            get
+            {
+                return customDecoyPrefixCheckBox.Checked ? textBoxCustomDecoyPrefix.Text : CometUIMainForm.SearchSettings.DecoyPrefix;
+            }
+        }
+
         private static readonly string[] QuantitationTools = new[] {"xpress","asapratio","libra"};
 
         private ViewSearchResultsControl ViewSearchResultsControl { get; set; }
+
 
         public ViewResultsSummaryOptionsControl(ViewSearchResultsControl parent)
         {
             InitializeComponent();
 
+            customDecoyPrefixCheckBox.Checked = false;
+            
             ViewSearchResultsControl = parent;
         }
 
@@ -138,7 +154,12 @@ namespace CometUI.ViewResults
             {
                 pepXMLFileCombo.Text = String.Empty;
             }
-            ViewSearchResultsControl.UpdateViewSearchResults(pepXMLFileCombo.Text);
+            ViewSearchResultsControl.UpdateViewSearchResults(pepXMLFileCombo.Text, DecoyPrefix);
+        }
+
+        private void CustomDecoyPrefixCheckBoxCheckedChanged(object sender, EventArgs e)
+        {
+            textBoxCustomDecoyPrefix.Enabled = customDecoyPrefixCheckBox.Checked;
         }
     }
 }

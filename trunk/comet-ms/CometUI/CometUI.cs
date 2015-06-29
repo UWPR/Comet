@@ -166,7 +166,7 @@ namespace CometUI
 
         private void OpenToolStripMenuItemClick(object sender, EventArgs e)
         {
-            ViewSearchResultsControl.UpdateViewSearchResults(ShowOpenPepXMLFile());
+            ViewSearchResultsControl.ViewResultsSummaryOptionsControl.PepXMLFile = ShowOpenPepXMLFile();
         }
 
         private void ViewResultsSettingsToolStripMenuItemClick(object sender, EventArgs e)

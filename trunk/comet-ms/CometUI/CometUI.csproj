@@ -168,6 +168,12 @@
     <Compile Include="Search\SearchSettings\VarModInfoDlg.Designer.cs">
       <DependentUpon>VarModInfoDlg.cs</DependentUpon>
     </Compile>
+    <Compile Include="ViewResults\FDRDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ViewResults\FDRDlg.Designer.cs">
+      <DependentUpon>FDRDlg.cs</DependentUpon>
+    </Compile>
     <Compile Include="ViewResults\PeptideFragmentCalculator.cs" />
     <Compile Include="ViewResults\PepXMLReader.cs" />
     <Compile Include="Properties\SearchSettings.Designer.cs">
@@ -350,6 +356,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="ViewResults\FDRDlg.resx">
+      <DependentUpon>FDRDlg.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="ViewResults\ViewResultsDisplayOptionsControl.resx">
       <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
     </EmbeddedResource>

@@ -30,14 +30,15 @@ namespace CometUI.ViewResults
     {
         public bool SettingsChanged { get; set; }
         public String ErrorMessage { get; private set; }
-
+        public ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
+        public bool HasSearchResults { get { return SearchResultsMgr.SearchResults.Count > 0; } }
+        
+        private SearchResultsManager SearchResultsMgr { get; set; }
         private CometUIMainForm CometUIMainForm { get; set; }
         private bool OptionsPanelShown { get; set; }
-        private ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
         private ViewResultsPickColumnsControl ViewResultsPickColumnsControl { get; set; }
         private ViewResultsOtherActionsControl ViewResultsOtherActionsControl { get; set; }
-        private SearchResultsManager SearchResultsMgr { get; set; }
         private SearchResult ViewSpectraSearchResult { get; set; }
         private SpectrumGraphUserOptions SpectrumGraphUserOptions { get; set; }
         private List<Peak_T_Wrapper> Peaks { get; set; }
@@ -110,10 +111,10 @@ namespace CometUI.ViewResults
 
             ShowDetailsPanel(false);
 
-            UpdateViewSearchResults(String.Empty);
+            UpdateViewSearchResults(String.Empty, String.Empty);
         }
 
-        public void UpdateViewSearchResults(String resultsPepXMLFile)
+        public void UpdateViewSearchResults(String resultsPepXMLFile, String decoyPrefix)
         {
             ShowDetailsPanel(false);
 
@@ -152,7 +153,7 @@ namespace CometUI.ViewResults
 
         public void ExportResultsList()
         {
-            if (SearchResultsMgr.SearchResults.Count == 0)
+            if (!HasSearchResults)
             {
                 MessageBox.Show(Resources.ViewSearchResultsControl_ExportResultsList_No_results_to_export_,
                     Resources.ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Export_Search_Results,
@@ -178,7 +179,7 @@ namespace CometUI.ViewResults
                     MessageBoxIcon.Information);
             }
         }
-        
+
         public void UpdateSearchResultsList()
         {
             resultsListView.BeginUpdate();
