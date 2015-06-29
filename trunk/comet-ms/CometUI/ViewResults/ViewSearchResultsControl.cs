@@ -131,7 +131,7 @@ namespace CometUI.ViewResults
                                     MessageBoxIcon.Error);
                 }
 
-                if (!SearchResultsMgr.UpdateResults(resultsPepXMLFile))
+                if (!SearchResultsMgr.UpdateResults(resultsPepXMLFile, decoyPrefix))
                 {
                     ErrorMessage = SearchResultsMgr.ErrorMessage;
                     MessageBox.Show(ErrorMessage, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,

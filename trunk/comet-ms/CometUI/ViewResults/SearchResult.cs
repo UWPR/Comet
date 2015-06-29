@@ -69,10 +69,12 @@ namespace CometUI.ViewResults
 
 
         private const MSSpectrumTypeWrapper DefaultMSLevel = MSSpectrumTypeWrapper.MS2;
+        private String DecoyPrefix { get; set; }
 
         public SearchResultsManager()
         {
             ErrorMessage = String.Empty;
+            DecoyPrefix = SearchSettings.Default.DecoyPrefix;
             SearchResults = new List<SearchResult>();
             SearchParams = new SearchResultParams();
             InitializeResultsColumns();
@@ -108,10 +110,28 @@ namespace CometUI.ViewResults
                                 };
         }
 
-        public bool UpdateResults(String resultsPepXMLFile)
+        public bool UpdateResults(String resultsPepXMLFile, String decoyPrefix)
         {
+            DecoyPrefix = decoyPrefix;
             ResultsFile = resultsPepXMLFile;
-            return ReadSearchResults();
+
+            if (!ReadSearchResults())
+            {
+                return false;
+            }
+
+            if (SearchResults.Count > 0)
+            {
+                // Calculate the FDR ONCE for a given results list, and use
+                // these to later filter the list by a cutoff if the user 
+                // wants to.
+                SearchResults.Sort(new SearchResultAscendingExpectScoreComparer());
+                CalculateFDR();
+                CalculateQValue();
+                SearchResults.Sort(new SearchResultAscendingScanNumberComparer());
+            }
+
+            return true;
         }
 
         private bool ReadSearchResults()
@@ -437,8 +457,7 @@ namespace CometUI.ViewResults
 
             return true;
         }
-
-
+        
         private bool ReadSearchHitAttributes(PepXMLReader pepXMLReader, XPathNavigator searchHitNavigator, SearchResult result)
         {
             double calculatedMass;
@@ -493,6 +512,8 @@ namespace CometUI.ViewResults
                 ErrorMessage = "Could not read the protein attribute.";
                 return false;
             }
+
+            result.FDRInfo = new FDRInfo(!proteinName.Contains(DecoyPrefix));
 
             var proteinDescr = pepXMLReader.ReadAttribute(searchHitNavigator, "protein_descr");
 
@@ -675,7 +696,52 @@ namespace CometUI.ViewResults
             return true;
         }
 
+        private void CalculateFDR()
+        {
+            // Calculate simple FDR = #decoy/#forward
+            var iDecoy = 0;
+            var iTarget = 0;
+            foreach (var searchResult in SearchResults)
+            {
+                if (searchResult.Expect <= 0)
+                {
+                    break;
+                }
 
+                if (searchResult.FDRInfo.IsTarget)
+                {
+                    iTarget++;
+                }
+                else
+                {
+                    iDecoy++;
+                }
+
+                searchResult.FDRInfo.Targets = iTarget;
+                searchResult.FDRInfo.Decoys = iDecoy;
+                searchResult.FDRInfo.FDR = (double)iDecoy / iTarget;
+            }
+        }
+
+        private void CalculateQValue()
+        {
+            var numItems = SearchResults.Count;
+            double dPrevFDR = SearchResults[numItems - 1].FDRInfo.FDR;
+            SearchResults[numItems - 1].FDRInfo.QValue = SearchResults[numItems - 1].FDRInfo.FDR;
+            for (int i = numItems - 2; i >= 0; i--)
+            {
+                SearchResults[i].FDRInfo.QValue = SearchResults[i].FDRInfo.FDR;
+
+                if (SearchResults[i].FDRInfo.QValue > dPrevFDR)
+                {
+                    SearchResults[i].FDRInfo.QValue = dPrevFDR;
+                }
+                else if (SearchResults[i].FDRInfo.QValue < dPrevFDR)
+                {
+                    dPrevFDR = SearchResults[i].FDRInfo.QValue;
+                }
+            }
+        }
     }
 
     public class SearchResult
@@ -705,6 +771,7 @@ namespace CometUI.ViewResults
         public double ModCTermMass { get; set; }
         public bool ModifiedNTerm { get { return ModNTermMass > 0.0; } }
         public bool ModifiedCTerm { get { return ModCTermMass > 0.0; } }
+        public FDRInfo FDRInfo { get; set; }
 
 
         public String ProteinDisplayStr
@@ -872,6 +939,24 @@ namespace CometUI.ViewResults
         }
     }
 
+    public class FDRInfo
+    {
+        public double FDR { get; set; }
+        public double QValue { get; set; }
+        public bool IsTarget { get; set; }
+        public int Targets { get; set; }
+        public int Decoys { get; set; }
+
+        public FDRInfo(bool isTarget)
+        {
+            IsTarget = isTarget;
+            FDR = 9999.99;
+            QValue = 9999.99;
+            Targets = 0;
+            Decoys = 0;
+        }
+    }
+
     public class SearchResultColumn
     {
         public String Aspect { get; set; }  // E.g. "SearchResult.AssumedCharge"
@@ -906,5 +991,41 @@ namespace CometUI.ViewResults
         public bool UseXIons { get; set; }
         public bool UseYIons { get; set; }
         public bool UseZIons { get; set; }
+    }
+
+    public class SearchResultAscendingExpectScoreComparer : IComparer<SearchResult>
+    {
+        public int Compare(SearchResult sr1, SearchResult sr2)
+        {
+            if (sr1.Expect > sr2.Expect)
+            {
+                return 1;
+            }
+
+            if (sr1.Expect < sr2.Expect)
+            {
+                return -1;
+            }
+
+            return 0;
+        }
+    }
+
+    public class SearchResultAscendingScanNumberComparer : IComparer<SearchResult>
+    {
+        public int Compare(SearchResult sr1, SearchResult sr2)
+        {
+            if (sr1.StartScan > sr2.StartScan)
+            {
+                return 1;
+            }
+
+            if (sr1.StartScan < sr2.StartScan)
+            {
+                return -1;
+            }
+
+            return 0;
+        }
     }
 }
