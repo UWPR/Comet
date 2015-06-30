@@ -908,7 +908,7 @@ namespace CometUI.ViewResults
 
         public double QValue
         {
-            get { return Math.Round(FDRInfo.QValue, 4); }
+            get { return Math.Round(FDRInfo.QValue, 2); }
         }
 
         public SearchResult()
