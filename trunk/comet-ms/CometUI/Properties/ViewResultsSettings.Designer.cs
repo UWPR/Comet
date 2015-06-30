@@ -92,6 +92,7 @@ namespace CometUI.Properties {
   <string>sprank</string>
   <string>massdiff</string>
   <string>xpress</string>
+  <string>q-value</string>
 </ArrayOfString>")]
         public global::System.Collections.Specialized.StringCollection PickColumnsHideList {
             get {

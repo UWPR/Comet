@@ -50,7 +50,7 @@ namespace CometUI.ViewResults
             var fdrDlg = new FDRDlg();
             if (DialogResult.OK == fdrDlg.ShowDialog())
             {
-                // Todo: Apply FDR cutoff to view results list
+                ViewSearchResultsControl.FilterResultsListByQValue(fdrDlg.FDRCutoff);
             }
         }
     }

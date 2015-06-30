@@ -104,6 +104,7 @@
             // 
             // textBoxCustomDecoyPrefix
             // 
+            this.textBoxCustomDecoyPrefix.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxCustomDecoyPrefix.Enabled = false;
             this.textBoxCustomDecoyPrefix.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
             this.textBoxCustomDecoyPrefix.Location = new System.Drawing.Point(849, 56);
@@ -113,6 +114,7 @@
             // 
             // customDecoyPrefixCheckBox
             // 
+            this.customDecoyPrefixCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.customDecoyPrefixCheckBox.AutoSize = true;
             this.customDecoyPrefixCheckBox.Location = new System.Drawing.Point(728, 58);
             this.customDecoyPrefixCheckBox.Name = "customDecoyPrefixCheckBox";

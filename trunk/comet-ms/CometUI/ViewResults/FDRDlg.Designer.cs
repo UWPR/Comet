@@ -66,7 +66,7 @@
             this.fdrCutoffTextBox.Name = "fdrCutoffTextBox";
             this.fdrCutoffTextBox.Size = new System.Drawing.Size(124, 20);
             this.fdrCutoffTextBox.TabIndex = 1;
-            this.fdrCutoffTextBox.Text = "0.0";
+            this.fdrCutoffTextBox.Text = "100";
             // 
             // applyFDRCutoffBtn
             // 

@@ -31,8 +31,9 @@ namespace CometUI.ViewResults
         public bool SettingsChanged { get; set; }
         public String ErrorMessage { get; private set; }
         public ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
-        public bool HasSearchResults { get { return SearchResultsMgr.SearchResults.Count > 0; } }
-        
+        public bool HasSearchResults { get { return SearchResults.Count > 0; } }
+
+        private List<SearchResult> SearchResults { get; set; }
         private SearchResultsManager SearchResultsMgr { get; set; }
         private CometUIMainForm CometUIMainForm { get; set; }
         private bool OptionsPanelShown { get; set; }
@@ -137,6 +138,10 @@ namespace CometUI.ViewResults
                     MessageBox.Show(ErrorMessage, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
                                     MessageBoxIcon.Error);
                 }
+                else
+                {
+                    SearchResults = SearchResultsMgr.SearchResults;
+                }
             }
 
             UpdateSearchResultsList();
@@ -180,12 +185,18 @@ namespace CometUI.ViewResults
             }
         }
 
+        public void FilterResultsListByQValue(double cutoffValue)
+        {
+            SearchResults = SearchResultsMgr.ApplyFDRCutoff(cutoffValue);
+            UpdateSearchResultsList();
+        }
+
         public void UpdateSearchResultsList()
         {
             resultsListView.BeginUpdate();
             resultsListView.Clear();
             UpdateColumnHeaders();
-            resultsListView.SetObjects(SearchResultsMgr.SearchResults);
+            resultsListView.SetObjects(SearchResults);
             resultsListView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
             resultsListView.EndUpdate();
         }

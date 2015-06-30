@@ -106,7 +106,8 @@ namespace CometUI.ViewResults
                                     {"mzratio", new SearchResultColumn("MzRatio", "MZRATIO", "MZRATIO")},
                                     {"massdiff", new SearchResultColumn("MassDiff", "MASSDIFF", "MASSDIFF")},
                                     {"ppm", new SearchResultColumn("PPM", "PPM", "PPM")},
-                                    {"pi", new SearchResultColumn("PI", "PI", "PI")}
+                                    {"pi", new SearchResultColumn("PI", "PI", "PI")},
+                                    {"q-value", new SearchResultColumn("QValue", "Q-VALUE", "Q-VALUE")}
                                 };
         }
 
@@ -132,6 +133,22 @@ namespace CometUI.ViewResults
             }
 
             return true;
+        }
+
+        public List<SearchResult> ApplyFDRCutoff(double cutoffValue)
+        {
+            var filteredList = new List<SearchResult>();
+
+            // Go through each result and apply the cutoff to it.
+            foreach(var result in SearchResults)
+            {
+                if (result.FDRInfo.IsTarget &&
+                    (result.FDRInfo.QValue <= cutoffValue))
+                {
+                    filteredList.Add(new SearchResult(result));
+                }
+            }
+            return filteredList;
         }
 
         private bool ReadSearchResults()
@@ -767,11 +784,11 @@ namespace CometUI.ViewResults
         public double Expect { get; set; }
         public double Probability { get; set; }
         public double PrecursorIntensity { get; set; }
+        public FDRInfo FDRInfo { get; set; }
         public double ModNTermMass { get; set; }
         public double ModCTermMass { get; set; }
         public bool ModifiedNTerm { get { return ModNTermMass > 0.0; } }
         public bool ModifiedCTerm { get { return ModCTermMass > 0.0; } }
-        public FDRInfo FDRInfo { get; set; }
 
 
         public String ProteinDisplayStr
@@ -845,7 +862,6 @@ namespace CometUI.ViewResults
         {
             get
             {
-                // Eventually, clicking this value should show something like Vagisha's "lorikeet" tool to show graphical drawing: https://code.google.com/p/lorikeet/
                 return String.Format("{0}/{1}", NumMatchedIons, TotalNumIons);
             }
         }
@@ -890,10 +906,43 @@ namespace CometUI.ViewResults
             }
         }
 
+        public double QValue
+        {
+            get { return Math.Round(FDRInfo.QValue, 4); }
+        }
+
         public SearchResult()
         {
             AltProteins = new List<ProteinInfo>();
             Modifications = new List<ModificationInfo>();
+        }
+
+        public SearchResult(SearchResult result)
+        {
+            Index = result.Index;
+            AssumedCharge = result.AssumedCharge;
+            StartScan = result.StartScan;
+            Spectrum = result.Spectrum;
+            Peptide = result.Peptide;
+            ProteinInfo = new ProteinInfo(result.ProteinInfo);
+            AltProteins = new List<ProteinInfo>(result.AltProteins);
+            Modifications = new List<ModificationInfo>(result.Modifications);
+            ExperimentalMass = result.ExperimentalMass;
+            CalculatedMass = result.CalculatedMass;
+            RetentionTimeSec = result.RetentionTimeSec;
+            NumMatchedIons = result.NumMatchedIons;
+            TotalNumIons = result.TotalNumIons;
+            XCorr = result.XCorr;
+            DeltaCN = result.DeltaCN;
+            DeltaCNStar = result.DeltaCNStar;
+            SpScore = result.SpScore;
+            SpRank = result.SpRank;
+            Expect = result.Expect;
+            Probability = result.Probability;
+            PrecursorIntensity = result.PrecursorIntensity;
+            FDRInfo = new FDRInfo(result.FDRInfo);
+            ModNTermMass = result.ModNTermMass;
+            ModCTermMass = result.ModCTermMass;
         }
     }
 
@@ -919,6 +968,15 @@ namespace CometUI.ViewResults
             PeptidePrevAA = prevAA;
             PeptideNextAA = nextAA;
         }
+
+        public ProteinInfo(ProteinInfo proteinInfo)
+        {
+            Name = proteinInfo.Name;
+            ProteinDescr = proteinInfo.ProteinDescr;
+            PeptidePrevAA = proteinInfo.PeptidePrevAA;
+            PeptideNextAA = proteinInfo.PeptideNextAA;
+        }
+
     }
 
     public class ModificationInfo
@@ -954,6 +1012,15 @@ namespace CometUI.ViewResults
             QValue = 9999.99;
             Targets = 0;
             Decoys = 0;
+        }
+
+        public FDRInfo(FDRInfo fdrInfo)
+        {
+            FDR = fdrInfo.FDR;
+            QValue = fdrInfo.QValue;
+            IsTarget = fdrInfo.IsTarget;
+            Targets = fdrInfo.Targets;
+            Decoys = fdrInfo.Decoys;
         }
     }
 

@@ -34,6 +34,7 @@
   &lt;string&gt;sprank&lt;/string&gt;
   &lt;string&gt;massdiff&lt;/string&gt;
   &lt;string&gt;xpress&lt;/string&gt;
+  &lt;string&gt;q-value&lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>
     </Setting>
     <Setting Name="PickColumnsShowList" Type="System.Collections.Specialized.StringCollection" Scope="User">
