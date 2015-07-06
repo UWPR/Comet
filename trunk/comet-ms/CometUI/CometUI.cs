@@ -164,11 +164,6 @@ namespace CometUI
             aboutDlg.ShowDialog();
         }
 
-        private void OpenToolStripMenuItemClick(object sender, EventArgs e)
-        {
-            ViewSearchResultsControl.ViewResultsSummaryOptionsControl.PepXMLFile = ShowOpenPepXMLFile();
-        }
-
         private void ViewResultsSettingsToolStripMenuItemClick(object sender, EventArgs e)
         {
             if (MessageBox.Show(Resources.CometUI_ViewResultsSettingsToolStripMenuItemClick_Are_you_sure_you_want_to_overwrite_the_current_settings_, 

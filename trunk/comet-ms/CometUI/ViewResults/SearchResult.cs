@@ -905,7 +905,7 @@ namespace CometUI.ViewResults
                 return pI;
             }
         }
-
+         
         public double QValue
         {
             get { return Math.Round(FDRInfo.QValue, 2); }
