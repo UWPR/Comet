@@ -37,6 +37,7 @@
             this.textBoxCustomDecoyPrefix = new System.Windows.Forms.TextBox();
             this.customDecoyPrefixCheckBox = new System.Windows.Forms.CheckBox();
             this.searchResultsSummaryLabel = new System.Windows.Forms.Label();
+            this.resultsListSummaryLabel = new System.Windows.Forms.Label();
             this.viewResultsSummaryMainPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -89,6 +90,7 @@
             // 
             // viewResultsSummaryMainPanel
             // 
+            this.viewResultsSummaryMainPanel.Controls.Add(this.resultsListSummaryLabel);
             this.viewResultsSummaryMainPanel.Controls.Add(this.textBoxCustomDecoyPrefix);
             this.viewResultsSummaryMainPanel.Controls.Add(this.customDecoyPrefixCheckBox);
             this.viewResultsSummaryMainPanel.Controls.Add(this.searchResultsSummaryLabel);
@@ -133,6 +135,15 @@
             this.searchResultsSummaryLabel.TabIndex = 45;
             this.searchResultsSummaryLabel.Text = "label1";
             // 
+            // resultsListSummaryLabel
+            // 
+            this.resultsListSummaryLabel.AutoSize = true;
+            this.resultsListSummaryLabel.Location = new System.Drawing.Point(18, 113);
+            this.resultsListSummaryLabel.Name = "resultsListSummaryLabel";
+            this.resultsListSummaryLabel.Size = new System.Drawing.Size(35, 13);
+            this.resultsListSummaryLabel.TabIndex = 46;
+            this.resultsListSummaryLabel.Text = "label1";
+            // 
             // ViewResultsSummaryOptionsControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -156,5 +167,6 @@
         private System.Windows.Forms.Label searchResultsSummaryLabel;
         private System.Windows.Forms.CheckBox customDecoyPrefixCheckBox;
         private System.Windows.Forms.TextBox textBoxCustomDecoyPrefix;
+        private System.Windows.Forms.Label resultsListSummaryLabel;
     }
 }

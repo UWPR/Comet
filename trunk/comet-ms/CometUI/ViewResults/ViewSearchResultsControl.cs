@@ -32,7 +32,9 @@ namespace CometUI.ViewResults
         public String ErrorMessage { get; private set; }
         public ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
         public bool HasSearchResults { get { return SearchResults.Count > 0; } }
-
+        
+        private int NumResultsShown { get { return SearchResults.Count; } }
+        private int TotalNumResults { get { return SearchResultsMgr.SearchResults.Count; } }
         private List<SearchResult> SearchResults { get; set; }
         private SearchResultsManager SearchResultsMgr { get; set; }
         private CometUIMainForm CometUIMainForm { get; set; }
@@ -199,6 +201,19 @@ namespace CometUI.ViewResults
             resultsListView.SetObjects(SearchResults);
             resultsListView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
             resultsListView.EndUpdate();
+            UpdateResultsListSummaryText();
+        }
+
+        private void UpdateResultsListSummaryText()
+        {
+            var resultsListSummary = String.Empty;
+            if (TotalNumResults > 0)
+            {
+                resultsListSummary = "Displaying " + NumResultsShown + " of " +
+                                                                          TotalNumResults + " total spectra.";
+            }
+
+            ViewResultsSummaryOptionsControl.ResultsListSummaryText = resultsListSummary;
         }
 
         private void UpdateColumnHeaders()

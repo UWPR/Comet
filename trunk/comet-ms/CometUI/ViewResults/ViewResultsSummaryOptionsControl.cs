@@ -39,6 +39,11 @@ namespace CometUI.ViewResults
             }
         }
 
+        public String ResultsListSummaryText
+        {
+            set { resultsListSummaryLabel.Text = value; }
+        }
+
         private static readonly string[] QuantitationTools = new[] {"xpress","asapratio","libra"};
 
         private ViewSearchResultsControl ViewSearchResultsControl { get; set; }
@@ -87,6 +92,7 @@ namespace CometUI.ViewResults
             {
                 // If there is no results file, clear the search summary display
                 searchResultsSummaryLabel.Text = String.Empty;
+                resultsListSummaryLabel.Text = String.Empty;
                 return true;
             }
 
