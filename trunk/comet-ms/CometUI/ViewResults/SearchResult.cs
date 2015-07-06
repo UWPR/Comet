@@ -135,14 +135,14 @@ namespace CometUI.ViewResults
             return true;
         }
 
-        public List<SearchResult> ApplyFDRCutoff(double cutoffValue)
+        public List<SearchResult> ApplyFDRCutoff(double cutoffValue, bool showDecoyHits)
         {
             var filteredList = new List<SearchResult>();
 
             // Go through each result and apply the cutoff to it.
             foreach(var result in SearchResults)
             {
-                if (result.FDRInfo.IsTarget &&
+                if ((result.FDRInfo.IsTarget || showDecoyHits) &&
                     (result.FDRInfo.QValue <= cutoffValue))
                 {
                     filteredList.Add(new SearchResult(result));

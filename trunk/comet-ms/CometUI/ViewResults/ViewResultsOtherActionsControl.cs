@@ -50,7 +50,7 @@ namespace CometUI.ViewResults
             var fdrDlg = new FDRDlg();
             if (DialogResult.OK == fdrDlg.ShowDialog())
             {
-                ViewSearchResultsControl.FilterResultsListByQValue(fdrDlg.FDRCutoff);
+                ViewSearchResultsControl.FilterResultsListByQValue(fdrDlg.FDRCutoff, fdrDlg.ShowDecoyHits);
             }
         }
     }

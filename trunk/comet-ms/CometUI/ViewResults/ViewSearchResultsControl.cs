@@ -185,9 +185,9 @@ namespace CometUI.ViewResults
             }
         }
 
-        public void FilterResultsListByQValue(double cutoffValue)
+        public void FilterResultsListByQValue(double cutoffValue, bool showDecoyHits)
         {
-            SearchResults = SearchResultsMgr.ApplyFDRCutoff(cutoffValue);
+            SearchResults = SearchResultsMgr.ApplyFDRCutoff(cutoffValue, showDecoyHits);
             UpdateSearchResultsList();
         }
 
