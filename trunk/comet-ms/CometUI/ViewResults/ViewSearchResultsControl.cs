@@ -626,74 +626,42 @@ namespace CometUI.ViewResults
 
         private void DrawGraphs()
         {
+            DrawSpectrumGraph();
+            DrawPrecursorGraph();
+        }
+
+        private void DrawSpectrumGraph()
+        {
             InitializeSpectrumGraph();
-            
-            var precursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.CalculatedMass,
-                                                                 ViewSpectraSearchResult.AssumedCharge);
-            InitializePrecursorGraph(precursorMz);
 
-            var topIntensities = GetTopIntensities(50);
-            bool foundPrecursor = false;
-            for (int i = 0; i < Peaks.Count; i++)
+            CreateSpectrumGraphPeakLists();
+
+            // Plot the fragment ion peaks (Note: Do this BEFORE plotting 
+            // the regular peaks, otherwise the regular peaks show up over
+            // the colored peaks when they are overlayed on top of each other)
+            foreach (var fragmentIon in FragmentIonPeaks)
             {
-                var peak = new Peak(Peaks[i]);
-                bool isFragmentIon = false;
-
-                // Ignore the peaks with zero intensity
-                if (peak.Intensity.Equals(0.0))
+                var fragmentIonGraphInfo = fragmentIon.Value;
+                if (fragmentIonGraphInfo.FragmentIonPeaks.Count > 0)
                 {
-                    continue;
-                }
-
-                // Check to see if this is the precursor peak
-                if (!foundPrecursor && MassSpecUtils.IsPeakPresent(peak.Mz, precursorMz, (double)massTolTextBox.DecimalValue))
-                {
-                    foundPrecursor = true;
-
-                    var border = new Border { IsVisible = false };
-                    var fill = new Fill { IsVisible = false };
-
-                    var acquiredFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.Red, IsDropShadow = false };
-                    PrecursorGraphPeakLabels.Add(new TextObj(PadPeakLabel("A: " + Convert.ToString(Math.Round(peak.Mz, 2))), peak.Mz, peak.Intensity) { FontSpec = acquiredFontSpec, ZOrder = ZOrder.A_InFront });
-                    AcquiredPrecursorPeak = new PointPair(peak.Mz, peak.Intensity);
-                    
-                    var theoreticalFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.DeepSkyBlue, IsDropShadow = false };
-                    PrecursorGraphPeakLabels.Add(new TextObj(PadPeakLabel("T: " + Convert.ToString(Math.Round(precursorMz, 2))), precursorMz, peak.Intensity * 0.9) { FontSpec = theoreticalFontSpec, ZOrder = ZOrder.A_InFront });
-                    TheoreticalPrecursorPeak = new PointPair(precursorMz, peak.Intensity * 0.9);
-                }
-                else
-                {
-                    PrecursorGraphPeaksList.Add(peak.Mz, peak.Intensity);
-                }
-
-                // Ensure the peak is actually a peak, not merely noise
-                if (PickPeak(i, peak, topIntensities))
-                {
-                    // Check to see if any of the fragment ions we're supposed to 
-                    // show match this peak
-                    foreach (var fragmentIon in IonCalculator.FragmentIons)
-                    {
-                        if (fragmentIon.Show &&
-                            MassSpecUtils.IsPeakPresent(peak.Mz, fragmentIon.Mass, (double) massTolTextBox.DecimalValue))
-                        {
-                            FragmentIonPeaks[fragmentIon.Type].FragmentIonPeaks.Add(peak.Mz, peak.Intensity);
-                            AddPeakLabel(fragmentIon.Label, FragmentIonPeaks[fragmentIon.Type].PeakColor, peak.Mz, peak.Intensity);
-                            isFragmentIon = true;
-                            break;
-                        }
-                    }
-                }
-
-                // If this peak doesn't match any of the fragment ions we're 
-                // supposed to show, then it's just a regular peak to plot.
-                if (!isFragmentIon)
-                {
-                    SpectrumGraphPeaksList.Add(peak.Mz, peak.Intensity);
+                    spectrumGraphItem.GraphPane.AddStick(null, fragmentIonGraphInfo.FragmentIonPeaks, fragmentIonGraphInfo.PeakColor);
                 }
             }
 
-            DrawSpectrumGraph();
-            DrawPrecursorGraph(foundPrecursor);
+            // Plot the regular peaks
+            spectrumGraphItem.GraphPane.AddStick(null, SpectrumGraphPeaksList, Color.LightGray);
+
+            // Draw the peak labels for the spectrum graph
+            foreach (var peakLabel in SpectrumGraphPeakLabels)
+            {
+                spectrumGraphItem.GraphPane.GraphObjList.Add(peakLabel);
+            }
+
+            // Calculate the Axis Scale Ranges and redraw the whole graph 
+            // control for smooth transition
+            spectrumGraphItem.AxisChange();
+            spectrumGraphItem.Invalidate();
+            spectrumGraphItem.Refresh();
         }
 
         private void InitializeSpectrumGraph()
@@ -725,7 +693,7 @@ namespace CometUI.ViewResults
                                         {IonType.Y, new FragmentIonGraphInfo(new PointPairList(), Color.Red)},
                                         {IonType.Z, new FragmentIonGraphInfo(new PointPairList(), Color.Orange)}
                                 };
-            
+
             GraphPane spectrumGraphPane = spectrumGraphItem.GraphPane;
 
             spectrumGraphPane.CurveList.Clear();
@@ -746,6 +714,123 @@ namespace CometUI.ViewResults
             // Set the spectrum graph axis scale
             spectrumGraphPane.XAxis.Scale.Min = 0.0;
             spectrumGraphPane.YAxis.Scale.Min = 0.0;
+        }
+
+        private void CreateSpectrumGraphPeakLists()
+        {
+            var topIntensities = MassSpecUtils.GetTopIntensities(Peaks, 50);
+            for (int i = 0; i < Peaks.Count; i++)
+            {
+                var peak = new Peak(Peaks[i]);
+                bool isFragmentIon = false;
+
+                // Ignore the peaks with zero intensity
+                if (peak.Intensity.Equals(0.0))
+                {
+                    continue;
+                }
+
+                // Ensure the peak is actually a peak, not merely noise
+                if (MassSpecUtils.PickPeak(Peaks, i, peak, topIntensities))
+                {
+                    // Check to see if any of the fragment ions we're supposed to 
+                    // show match this peak
+                    foreach (var fragmentIon in IonCalculator.FragmentIons)
+                    {
+                        if (fragmentIon.Show &&
+                            MassSpecUtils.IsPeakPresent(peak.Mz, fragmentIon.Mass, (double)massTolTextBox.DecimalValue))
+                        {
+                            FragmentIonPeaks[fragmentIon.Type].FragmentIonPeaks.Add(peak.Mz, peak.Intensity);
+                            AddPeakLabel(fragmentIon.Label, FragmentIonPeaks[fragmentIon.Type].PeakColor, peak.Mz, peak.Intensity);
+                            isFragmentIon = true;
+                            break;
+                        }
+                    }
+                }
+
+                // If this peak doesn't match any of the fragment ions we're 
+                // supposed to show, then it's just a regular peak to plot.
+                if (!isFragmentIon)
+                {
+                    SpectrumGraphPeaksList.Add(peak.Mz, peak.Intensity);
+                }
+            }
+        }
+
+        private void DrawPrecursorGraph()
+        {
+            var precursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.CalculatedMass,
+                                                                 ViewSpectraSearchResult.AssumedCharge);
+
+            InitializePrecursorGraph(precursorMz);
+
+            // var topIntensities = MassSpecUtils.GetTopIntensities(PECURSOR_PEAKS, 50);
+            // bool foundPrecursor = false;
+
+            //for (int i = 0; i < PECURSOR_PEAKS.Count; i++)
+            //{
+            //    var peak = new Peak(PECURSOR_PEAKS[i]);
+            //    
+            //    // Ignore the peaks with zero intensity
+            //    if (peak.Intensity.Equals(0.0))
+            //    {
+            //        continue;
+            //    }
+
+                //if (MassSpecUtils.PickPeak(Peaks, i, peak, topIntensities))
+                //{
+                    //// Check to see if this is the precursor peak
+                    //if (!foundPrecursor && MassSpecUtils.IsPeakPresent(peak.Mz, precursorMz, (double)massTolTextBox.DecimalValue))
+                    //{
+                    //    foundPrecursor = true;
+
+                    //    var border = new Border { IsVisible = false };
+                    //    var fill = new Fill { IsVisible = false };
+
+                    //    var acquiredFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.Red, IsDropShadow = false };
+                    //    PrecursorGraphPeakLabels.Add(new TextObj(PadPeakLabel("A: " + Convert.ToString(Math.Round(peak.Mz, 2))), peak.Mz, peak.Intensity) { FontSpec = acquiredFontSpec, ZOrder = ZOrder.A_InFront });
+                    //    AcquiredPrecursorPeak = new PointPair(peak.Mz, peak.Intensity);
+
+                    //    var theoreticalFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.DeepSkyBlue, IsDropShadow = false };
+                    //    PrecursorGraphPeakLabels.Add(new TextObj(PadPeakLabel("T: " + Convert.ToString(Math.Round(precursorMz, 2))), precursorMz, peak.Intensity * 0.9) { FontSpec = theoreticalFontSpec, ZOrder = ZOrder.A_InFront });
+                    //    TheoreticalPrecursorPeak = new PointPair(precursorMz, peak.Intensity * 0.9);
+                    //}
+                    //else
+                    //{
+                    //    PrecursorGraphPeaksList.Add(peak.Mz, peak.Intensity);
+                    //}
+                //}
+            //}
+
+
+            //if (foundPrecursor)
+            //{
+            //    // Draw the theoretical and acquired precursor peaks
+            //    precursorGraphItem.GraphPane.AddStick("T = theoretical m/z",
+            //                                          new PointPairList { TheoreticalPrecursorPeak },
+            //                                          Color.DeepSkyBlue);
+            //    precursorGraphItem.GraphPane.AddStick("A = acquired m/z", new PointPairList { AcquiredPrecursorPeak },
+            //                                          Color.Red);
+
+
+            //    // To zoom in on the precursor sticks
+            //    precursorGraphItem.GraphPane.YAxis.Scale.Max = AcquiredPrecursorPeak.Y * 2;
+
+            //    // Draw the peak labels for the precursor graph
+            //    foreach (var precursorPeakLabel in PrecursorGraphPeakLabels)
+            //    {
+            //        precursorGraphItem.GraphPane.GraphObjList.Add(precursorPeakLabel);
+            //    }
+            //}
+
+            //// Plot the regular peaks on the precursor graph
+            //precursorGraphItem.GraphPane.AddStick(null, PrecursorGraphPeaksList, Color.LightGray);
+
+            //// Calculate the Axis Scale Ranges and redraw the whole graph 
+            //// control for smooth transition
+            //precursorGraphItem.AxisChange();
+            //precursorGraphItem.Invalidate();
+            //precursorGraphItem.Refresh();
         }
 
         private void InitializePrecursorGraph(double precursorMz)
@@ -772,7 +857,7 @@ namespace CometUI.ViewResults
 
             precursorGraphPane.CurveList.Clear();
             precursorGraphPane.GraphObjList.Clear();
-            
+
             precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", precursorMz);
             precursorGraphPane.XAxis.Title.Text = "m/z";
             precursorGraphPane.YAxis.Title.Text = "Intensity";
@@ -780,166 +865,6 @@ namespace CometUI.ViewResults
             precursorGraphPane.XAxis.Scale.Min = precursorMz - (double)massTolTextBox.DecimalValue * 10;
             precursorGraphPane.XAxis.Scale.Max = precursorMz + (double)massTolTextBox.DecimalValue * 10;
             precursorGraphPane.Legend.Position = LegendPos.InsideTopRight;
-        }
-
-        private void DrawSpectrumGraph()
-        {
-            // Plot the fragment ion peaks (Note: Do this BEFORE plotting 
-            // the regular peaks, otherwise the regular peaks show up over
-            // the colored peaks when they are overlayed on top of each other)
-            foreach (var fragmentIon in FragmentIonPeaks)
-            {
-                var fragmentIonGraphInfo = fragmentIon.Value;
-                if (fragmentIonGraphInfo.FragmentIonPeaks.Count > 0)
-                {
-                    spectrumGraphItem.GraphPane.AddStick(null, fragmentIonGraphInfo.FragmentIonPeaks, fragmentIonGraphInfo.PeakColor);
-                }
-            }
-
-            // Plot the regular peaks
-            spectrumGraphItem.GraphPane.AddStick(null, SpectrumGraphPeaksList, Color.LightGray);
-
-            // Draw the peak labels for the spectrum graph
-            foreach (var peakLabel in SpectrumGraphPeakLabels)
-            {
-                spectrumGraphItem.GraphPane.GraphObjList.Add(peakLabel);
-            }
-
-            // Calculate the Axis Scale Ranges and redraw the whole graph 
-            // control for smooth transition
-            spectrumGraphItem.AxisChange();
-            spectrumGraphItem.Invalidate();
-            spectrumGraphItem.Refresh();
-        }
-
-        private void DrawPrecursorGraph(bool foundPrecursor)
-        {
-            if (foundPrecursor)
-            {
-                // Draw the theoretical and acquired precursor peaks
-                precursorGraphItem.GraphPane.AddStick("T = theoretical m/z",
-                                                      new PointPairList { TheoreticalPrecursorPeak },
-                                                      Color.DeepSkyBlue);
-                precursorGraphItem.GraphPane.AddStick("A = acquired m/z", new PointPairList { AcquiredPrecursorPeak },
-                                                      Color.Red);
-
-
-                // To zoom in on the precursor sticks
-                precursorGraphItem.GraphPane.YAxis.Scale.Max = AcquiredPrecursorPeak.Y * 2;
-
-                // Draw the peak labels for the precursor graph
-                foreach (var precursorPeakLabel in PrecursorGraphPeakLabels)
-                {
-                    precursorGraphItem.GraphPane.GraphObjList.Add(precursorPeakLabel);
-                }
-            }
-
-            // Plot the regular peaks on the precursor graph
-            precursorGraphItem.GraphPane.AddStick(null, PrecursorGraphPeaksList, Color.LightGray);
-
-            // Calculate the Axis Scale Ranges and redraw the whole graph 
-            // control for smooth transition
-            precursorGraphItem.AxisChange();
-            precursorGraphItem.Invalidate();
-            precursorGraphItem.Refresh();
-        }
-
-        private double[] GetTopIntensities(int numTopIntensities)
-        {
-            var intensitySortedPeaks = new List<Peak_T_Wrapper>(Peaks);
-            intensitySortedPeaks.Sort(new Peak_T_Wrapper_IntensityComparer());
-            var totalNumPeaks = intensitySortedPeaks.Count;
-            var topIntensities = new double[numTopIntensities];
-            for (int i = 0; i < numTopIntensities; i++)
-            {
-                topIntensities[i] = intensitySortedPeaks[totalNumPeaks - numTopIntensities + i].get_intensity();
-            }
-
-            return topIntensities;
-        }
-
-        private bool PickPeak(int peakIndex, Peak peak, double[] topIntensities, double window = 50.0)
-        {
-            // If the intensity of this peak is one of the top intensities,
-            // then we definitely want to pick this one.
-            if (peak.Intensity >= topIntensities[0])
-            {
-                return true;
-            }
-
-            // sum up the intensities in the +/- 50Da window of this peak
-            var totalIntensity = peak.Intensity;
-            var peakCount = 1;
-            var maxIntensity = peak.Intensity;
-            var minIndex = peakIndex;
-            var maxIndex = peakIndex;
-            var j = peakIndex - 1;
-            while (j >= 0)
-            {
-                var currentPeak = new Peak(Peaks[j]);
-
-                if (currentPeak.Mz < peak.Mz - window)
-                {
-                    break;
-                }
-
-                if (currentPeak.Intensity > maxIntensity)
-                {
-                    maxIntensity = currentPeak.Intensity;
-                }
-
-                totalIntensity += currentPeak.Intensity;
-
-                minIndex = j;
-                j--;
-                peakCount++;
-            }
-
-            j = peakIndex + 1;
-            while (j < Peaks.Count)
-            {
-                var currentPeak = new Peak(Peaks[j]);
-                if (currentPeak.Mz > peak.Mz + window)
-                {
-                    break;
-                }
-
-                if (currentPeak.Intensity > maxIntensity)
-                {
-                    maxIntensity = currentPeak.Intensity;
-                }
-
-                totalIntensity += currentPeak.Intensity;
-
-                maxIndex = j;
-                j++;
-                peakCount++;
-            }
-
-            var mean = totalIntensity / peakCount;
-
-            if (peakCount <= 10 && peak.Intensity.Equals(maxIntensity))
-            {
-                return true;
-            }
-
-            // calculate the standard deviation
-            double sdev = 0.0;
-            for (var k = minIndex; k <= maxIndex; k++)
-            {
-                var intensity = Peaks[k].get_intensity();
-                sdev += Math.Pow((intensity - mean), 2);
-            }
-            sdev = Math.Sqrt(sdev/peakCount);
-
-            // If the intensity is greater than 2 standard deviations away,
-            // we want to pick this peak
-            if (peak.Intensity >= mean + 2 * sdev)
-            {
-                return true;
-            }
-
-            return false;
         }
 
         private void AddPeakLabel(String label, Color labelColor, double mz, double intensity)

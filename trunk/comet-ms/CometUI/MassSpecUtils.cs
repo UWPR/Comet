@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CometWrapper;
 
 namespace CometUI
 {
@@ -254,6 +255,104 @@ namespace CometUI
         public static bool IsPeakPresent(double peakMz, double mz, double massTol)
         {
             return Math.Abs(peakMz - mz) <= massTol;
+        }
+
+        public static double[] GetTopIntensities(IEnumerable<Peak_T_Wrapper> peaks, int numTopIntensities)
+        {
+            var intensitySortedPeaks = new List<Peak_T_Wrapper>(peaks);
+            intensitySortedPeaks.Sort(new Peak_T_Wrapper_IntensityComparer());
+            var totalNumPeaks = intensitySortedPeaks.Count;
+            var topIntensities = new double[numTopIntensities];
+            for (int i = 0; i < numTopIntensities; i++)
+            {
+                topIntensities[i] = intensitySortedPeaks[totalNumPeaks - numTopIntensities + i].get_intensity();
+            }
+
+            return topIntensities;
+        }
+
+        public static bool PickPeak(List<Peak_T_Wrapper> peaks, int peakIndex, Peak peak, double[] topIntensities, double window = 50.0)
+        {
+            // If the intensity of this peak is one of the top intensities,
+            // then we definitely want to pick this one.
+            if (peak.Intensity >= topIntensities[0])
+            {
+                return true;
+            }
+
+            // sum up the intensities in the +/- 50Da window of this peak
+            var totalIntensity = peak.Intensity;
+            var peakCount = 1;
+            var maxIntensity = peak.Intensity;
+            var minIndex = peakIndex;
+            var maxIndex = peakIndex;
+            var j = peakIndex - 1;
+            while (j >= 0)
+            {
+                var currentPeak = new Peak(peaks[j]);
+
+                if (currentPeak.Mz < peak.Mz - window)
+                {
+                    break;
+                }
+
+                if (currentPeak.Intensity > maxIntensity)
+                {
+                    maxIntensity = currentPeak.Intensity;
+                }
+
+                totalIntensity += currentPeak.Intensity;
+
+                minIndex = j;
+                j--;
+                peakCount++;
+            }
+
+            j = peakIndex + 1;
+            while (j < peaks.Count)
+            {
+                var currentPeak = new Peak(peaks[j]);
+                if (currentPeak.Mz > peak.Mz + window)
+                {
+                    break;
+                }
+
+                if (currentPeak.Intensity > maxIntensity)
+                {
+                    maxIntensity = currentPeak.Intensity;
+                }
+
+                totalIntensity += currentPeak.Intensity;
+
+                maxIndex = j;
+                j++;
+                peakCount++;
+            }
+
+            var mean = totalIntensity / peakCount;
+
+            if (peakCount <= 10 && peak.Intensity.Equals(maxIntensity))
+            {
+                return true;
+            }
+
+            // calculate the standard deviation
+            double sdev = 0.0;
+            for (var k = minIndex; k <= maxIndex; k++)
+            {
+                var intensity = peaks[k].get_intensity();
+                sdev += Math.Pow((intensity - mean), 2);
+            }
+            sdev = Math.Sqrt(sdev / peakCount);
+
+            // If the intensity is greater than 2 standard deviations away,
+            // we want to pick this peak
+            if (peak.Intensity >= mean + 2 * sdev)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
