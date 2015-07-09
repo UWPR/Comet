@@ -79,3 +79,48 @@ bool MSFileReaderWrapper::ReadPeaks(String^ msFileName, int scanNum, MSSpectrumT
     return true;
 }
 
+bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentScanNum, MSSpectrumTypeWrapper msFragmentSpectrumType, List<Peak_T_Wrapper^> ^precursorPeaks)
+{
+    if (NULL == _pMSReader)
+    {
+        return false;
+    }
+
+    const char* pszMSFileName = _marshalContext.marshal_as<const char*>(msFileName);
+    char szMSFileName[512];
+    szMSFileName[0] = '\0';
+    strcpy(szMSFileName, pszMSFileName);
+
+    int scanNum = fragmentScanNum;
+    if (scanNum <= 0)
+    {
+        return false;
+    }
+
+    // The MS level of the precursor is one less than that of the fragment
+    vector<MSSpectrumType> msLevel;
+    int iMsLevel = (int)msFragmentSpectrumType - 1;
+    msLevel.push_back((MSSpectrumType)iMsLevel);
+    _pMSReader->setFilter(msLevel);
+
+    // Starting at the fragment scan number (which will fail), loop and 
+    // decrement the scanNum, trying each time to get the precursor peaks at 
+    // that scan. When it finally succeeds, that is the closest precursor scan.
+    Spectrum spec;
+    while ((!_pMSReader->readFile(szMSFileName, spec, scanNum)) && (scanNum > 0))
+    {
+        scanNum--;
+    }
+
+    if (0 == spec.size())
+    {
+        return false;
+    }
+
+    for (int i = 0; i < spec.size(); i++)
+    {
+        precursorPeaks->Add(gcnew Peak_T_Wrapper(spec.at(i)));
+    }
+
+    return true;
+}

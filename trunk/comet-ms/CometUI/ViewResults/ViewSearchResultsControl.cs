@@ -51,8 +51,7 @@ namespace CometUI.ViewResults
         private Dictionary<IonType, FragmentIonGraphInfo> FragmentIonPeaks { get; set; }
         private PointPairList SpectrumGraphPeaksList { get; set; }
         private PointPairList PrecursorGraphPeaksList { get; set; }
-        private PointPair AcquiredPrecursorPeak { get; set; }
-        private PointPair TheoreticalPrecursorPeak { get; set; }
+        private MSFileReaderWrapper MsFileReader { get; set; }
 
         private const String BlastHttpLink =
             "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
@@ -492,8 +491,12 @@ namespace CometUI.ViewResults
                 Peaks.Clear();
             }
 
-            var msFileReaderWrapper = new MSFileReaderWrapper();
-            if (msFileReaderWrapper.ReadPeaks(SearchResultsMgr.SpectraFile, ViewSpectraSearchResult.StartScan,
+            if (null == MsFileReader)
+            {
+                MsFileReader = new MSFileReaderWrapper();
+            }
+
+            if (MsFileReader.ReadPeaks(SearchResultsMgr.SpectraFile, ViewSpectraSearchResult.StartScan,
                                               SearchResultsMgr.SearchParams.MSLevel, Peaks))
             {
                 InitializeSpectrumGraphOptions();
@@ -759,81 +762,136 @@ namespace CometUI.ViewResults
 
         private void DrawPrecursorGraph()
         {
-            var precursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.CalculatedMass,
+            var theoreticalPrecursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.CalculatedMass,
                                                                  ViewSpectraSearchResult.AssumedCharge);
 
-            InitializePrecursorGraph(precursorMz);
-
-            // var topIntensities = MassSpecUtils.GetTopIntensities(PECURSOR_PEAKS, 50);
-            // bool foundPrecursor = false;
-
-            //for (int i = 0; i < PECURSOR_PEAKS.Count; i++)
-            //{
-            //    var peak = new Peak(PECURSOR_PEAKS[i]);
-            //    
-            //    // Ignore the peaks with zero intensity
-            //    if (peak.Intensity.Equals(0.0))
-            //    {
-            //        continue;
-            //    }
-
-                //if (MassSpecUtils.PickPeak(Peaks, i, peak, topIntensities))
-                //{
-                    //// Check to see if this is the precursor peak
-                    //if (!foundPrecursor && MassSpecUtils.IsPeakPresent(peak.Mz, precursorMz, (double)massTolTextBox.DecimalValue))
-                    //{
-                    //    foundPrecursor = true;
-
-                    //    var border = new Border { IsVisible = false };
-                    //    var fill = new Fill { IsVisible = false };
-
-                    //    var acquiredFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.Red, IsDropShadow = false };
-                    //    PrecursorGraphPeakLabels.Add(new TextObj(PadPeakLabel("A: " + Convert.ToString(Math.Round(peak.Mz, 2))), peak.Mz, peak.Intensity) { FontSpec = acquiredFontSpec, ZOrder = ZOrder.A_InFront });
-                    //    AcquiredPrecursorPeak = new PointPair(peak.Mz, peak.Intensity);
-
-                    //    var theoreticalFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.DeepSkyBlue, IsDropShadow = false };
-                    //    PrecursorGraphPeakLabels.Add(new TextObj(PadPeakLabel("T: " + Convert.ToString(Math.Round(precursorMz, 2))), precursorMz, peak.Intensity * 0.9) { FontSpec = theoreticalFontSpec, ZOrder = ZOrder.A_InFront });
-                    //    TheoreticalPrecursorPeak = new PointPair(precursorMz, peak.Intensity * 0.9);
-                    //}
-                    //else
-                    //{
-                    //    PrecursorGraphPeaksList.Add(peak.Mz, peak.Intensity);
-                    //}
-                //}
-            //}
+            var acquiredPrecursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.ExperimentalMass,
+                                         ViewSpectraSearchResult.AssumedCharge);
 
 
-            //if (foundPrecursor)
-            //{
-            //    // Draw the theoretical and acquired precursor peaks
-            //    precursorGraphItem.GraphPane.AddStick("T = theoretical m/z",
-            //                                          new PointPairList { TheoreticalPrecursorPeak },
-            //                                          Color.DeepSkyBlue);
-            //    precursorGraphItem.GraphPane.AddStick("A = acquired m/z", new PointPairList { AcquiredPrecursorPeak },
-            //                                          Color.Red);
+            InitializePrecursorGraph(theoreticalPrecursorMz, acquiredPrecursorMz);
 
+            var precursorPeaks = new List<Peak_T_Wrapper>();
+            if (!MsFileReader.ReadPrecursorPeaks(SearchResultsMgr.SpectraFile, 
+                                                 ViewSpectraSearchResult.StartScan, 
+                                                 SearchResultsMgr.SearchParams.MSLevel, 
+                                                 precursorPeaks))
+            {
+                // If there are no MS1 scans, just exit, nothing to do.
+                return;
+            }
 
-            //    // To zoom in on the precursor sticks
-            //    precursorGraphItem.GraphPane.YAxis.Scale.Max = AcquiredPrecursorPeak.Y * 2;
+            PointPair acquiredPrecursorPeak = null;
+            PointPair theoreticalPrecursorPeak = null;
 
-            //    // Draw the peak labels for the precursor graph
-            //    foreach (var precursorPeakLabel in PrecursorGraphPeakLabels)
-            //    {
-            //        precursorGraphItem.GraphPane.GraphObjList.Add(precursorPeakLabel);
-            //    }
-            //}
+            for (int i = 0; i < precursorPeaks.Count; i++)
+            {
+                var peak = new Peak(precursorPeaks[i]);
+                
+                // Ignore the peaks with zero intensity
+                if (peak.Intensity.Equals(0.0))
+                {
+                    continue;
+                }
 
-            //// Plot the regular peaks on the precursor graph
-            //precursorGraphItem.GraphPane.AddStick(null, PrecursorGraphPeaksList, Color.LightGray);
+                // Add this peak to the list to draw later
+                PrecursorGraphPeaksList.Add(peak.Mz, peak.Intensity);
 
-            //// Calculate the Axis Scale Ranges and redraw the whole graph 
-            //// control for smooth transition
-            //precursorGraphItem.AxisChange();
-            //precursorGraphItem.Invalidate();
-            //precursorGraphItem.Refresh();
+                // See if this peak is a good fit for the theoretical precursor peak
+                UpdatePrecursorPeak(peak, theoreticalPrecursorMz, ref theoreticalPrecursorPeak);
+
+                // See if this peak is a good fit for the acquired precursor peak
+                UpdatePrecursorPeak(peak, acquiredPrecursorMz, ref acquiredPrecursorPeak);
+            }
+
+            var border = new Border { IsVisible = false };
+            var fill = new Fill { IsVisible = false };
+
+            // Draw the theoretical precursor peak and get the label for it
+            // Check to see if the theoretical and acquired peaks are the same,
+            // and if they are, draw the theoretical peak a little shorter
+            // so we can see the two peaks overlayed on top of each other.
+            double peakHeightFraction = 1;
+            if (null != acquiredPrecursorPeak && null != theoreticalPrecursorPeak)
+            {
+                if (theoreticalPrecursorPeak.Equals(acquiredPrecursorPeak))
+                {
+                    peakHeightFraction = 0.9;
+                }
+            }
+            var theoreticalFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.DeepSkyBlue, IsDropShadow = false };
+            var theoreticalPeakLabel = DrawPrecursorPeak(theoreticalPrecursorMz, theoreticalPrecursorPeak, "T: ",
+                                                         theoreticalFontSpec, "T = theoretical m/z", peakHeightFraction);
+            PrecursorGraphPeakLabels.Add(theoreticalPeakLabel);
+
+            // Draw the acquired precursor peak and get the label for it
+            var acquiredFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.Red, IsDropShadow = false };
+            var acquiredPeakLabel = DrawPrecursorPeak(acquiredPrecursorMz, acquiredPrecursorPeak, "A: ",
+                                             acquiredFontSpec, "A = acquired m/z");
+            PrecursorGraphPeakLabels.Add(acquiredPeakLabel);
+
+            // Draw the peak labels for the precursor graph
+            foreach (var precursorPeakLabel in PrecursorGraphPeakLabels)
+            {
+                precursorGraphItem.GraphPane.GraphObjList.Add(precursorPeakLabel);
+            }
+            
+            // Plot the regular peaks on the precursor graph
+            precursorGraphItem.GraphPane.AddStick(null, PrecursorGraphPeaksList, Color.LightGray);
+
+            // Calculate the Axis Scale Ranges and redraw the whole graph 
+            // control for smooth transition
+            precursorGraphItem.AxisChange();
+            precursorGraphItem.Invalidate();
+            precursorGraphItem.Refresh();
         }
 
-        private void InitializePrecursorGraph(double precursorMz)
+        private void UpdatePrecursorPeak(Peak peak, double precursorMz, ref PointPair precursorPeak)
+        {
+            if (MassSpecUtils.IsPeakPresent(peak.Mz, precursorMz, (double)massTolTextBox.DecimalValue))
+            {
+                if (null == precursorPeak)
+                {
+                    precursorPeak = new PointPair(peak.Mz, peak.Intensity);
+                }
+                else
+                {
+                    double thisPeakDistance = Math.Abs(peak.Mz - precursorMz);
+                    double theoreticalPrecursorPeakDistance =
+                        Math.Abs(precursorPeak.X - precursorMz);
+                    if (thisPeakDistance < theoreticalPrecursorPeakDistance)
+                    {
+                        precursorPeak.X = peak.Mz;
+                        precursorPeak.Y = peak.Intensity;
+                    }
+                }
+            }
+        }
+
+        private TextObj DrawPrecursorPeak(double precursorMz, PointPair precursorPeak, String peakLabelText, FontSpec fontSpec, String peakLegend, double peakHeightFraction = 1)
+        {
+            TextObj peakLabel;
+            if (null != precursorPeak)
+            {
+                peakLabel =
+                    new TextObj(PadPeakLabel(peakLabelText + Convert.ToString(Math.Round(precursorPeak.X, 2))),
+                                precursorPeak.X, precursorPeak.Y * peakHeightFraction) { FontSpec = fontSpec };
+
+                // Draw the precursor peak
+                precursorPeak.Y = precursorPeak.Y*peakHeightFraction;
+                precursorGraphItem.GraphPane.AddStick(peakLegend,
+                                                      new PointPairList { precursorPeak },
+                                                      fontSpec.FontColor);
+            }
+            else
+            {
+                peakLabel = new TextObj(PadPeakLabel(peakLabelText + Convert.ToString(Math.Round(precursorMz, 2))), precursorMz, 1) { FontSpec = fontSpec };
+            }
+
+            return peakLabel;
+        }
+
+        private void InitializePrecursorGraph(double theoreticalPrecursorMz, double acquiredPrecursorMz)
         {
             if (null == PrecursorGraphPeakLabels)
             {
@@ -858,12 +916,12 @@ namespace CometUI.ViewResults
             precursorGraphPane.CurveList.Clear();
             precursorGraphPane.GraphObjList.Clear();
 
-            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", precursorMz);
+            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", theoreticalPrecursorMz);
             precursorGraphPane.XAxis.Title.Text = "m/z";
             precursorGraphPane.YAxis.Title.Text = "Intensity";
             precursorGraphPane.YAxis.Scale.Min = 0.0;
-            precursorGraphPane.XAxis.Scale.Min = precursorMz - (double)massTolTextBox.DecimalValue * 10;
-            precursorGraphPane.XAxis.Scale.Max = precursorMz + (double)massTolTextBox.DecimalValue * 10;
+            precursorGraphPane.XAxis.Scale.Min = Math.Min(theoreticalPrecursorMz, acquiredPrecursorMz) - ((double)massTolTextBox.DecimalValue * 20);
+            precursorGraphPane.XAxis.Scale.Max = Math.Max(theoreticalPrecursorMz, acquiredPrecursorMz) + ((double)massTolTextBox.DecimalValue * 20);
             precursorGraphPane.Legend.Position = LegendPos.InsideTopRight;
         }
 
