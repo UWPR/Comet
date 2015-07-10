@@ -103,9 +103,10 @@ namespace CometUI.Search
 
             String msg = String.Empty;
             MessageBoxIcon msgIcon = MessageBoxIcon.None;
+            CometSearch cometSearch = null;
             try
             {
-                var cometSearch = e.Result as CometSearch;
+                cometSearch = e.Result as CometSearch;
                 if (cometSearch != null)
                 {
                     if (!e.Cancelled && CometSearch.SearchSucceeded)
@@ -134,6 +135,11 @@ namespace CometUI.Search
             MessageBox.Show(msg, Resources.RunSearchBackgroundWorker_RunSearchBackgroundWorkerRunWorkerCompleted_Run_Search, MessageBoxButtons.OK, msgIcon);
 
             _runSearchResetEvent.Set();
+
+            if (null != cometSearch)
+            {
+                cometSearch.ViewResults();
+            }
         }
     }
 }

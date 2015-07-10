@@ -81,6 +81,24 @@ namespace CometUI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No pep.xml file found to display in the viewer..
+        /// </summary>
+        internal static string CometSearch_ViewResults_No_pep_xml_file_found_to_display_in_the_viewer_ {
+            get {
+                return ResourceManager.GetString("CometSearch_ViewResults_No_pep_xml_file_found_to_display_in_the_viewer_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to View Results.
+        /// </summary>
+        internal static string CometSearch_ViewResults_View_Results {
+            get {
+                return ResourceManager.GetString("CometSearch_ViewResults_View_Results", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Search Settings Changed.
         /// </summary>
         internal static string CometUI_CometUIFormClosing_Search_Settings_Changed {

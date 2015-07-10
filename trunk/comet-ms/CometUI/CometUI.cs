@@ -73,6 +73,11 @@ namespace CometUI
             return null;
         }
 
+        public void UpdateViewSearchResults(String resultsPepXMLFile)
+        {
+            ViewSearchResultsControl.UpdateViewSearchResults(resultsPepXMLFile, SearchSettings.DecoyPrefix);
+        }
+
         private void SaveSearchSettings()
         {
             if (SearchSettingsChanged)
@@ -96,7 +101,7 @@ namespace CometUI
             var runSearchDlg = new RunSearchDlg(this);
             if (DialogResult.OK == runSearchDlg.ShowDialog())
             {
-                var cometSearch = new CometSearch(runSearchDlg.InputFiles);
+                var cometSearch = new CometSearch(runSearchDlg.InputFiles, this);
                 var runSearchWorker = new RunSearchBackgroundWorker(cometSearch);
                 runSearchWorker.DoWork();
             }

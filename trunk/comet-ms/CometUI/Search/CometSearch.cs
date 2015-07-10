@@ -19,6 +19,9 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
+using System.Windows.Forms;
+using CometUI.Properties;
+using CometUI.ViewResults;
 using CometWrapper;
 
 namespace CometUI.Search
@@ -26,16 +29,18 @@ namespace CometUI.Search
     public class CometSearch
     {
         private CometSearchManagerWrapper SearchMgr { get; set; }
-        private string[] InputFiles { get; set; }
         private Properties.SearchSettings SearchSettings { get { return CometUIMainForm.SearchSettings; } }
+        private CometUIMainForm Parent { get; set; }
 
         public String SearchStatusMessage { get; private set; }
         public bool SearchSucceeded { get; private set; }
+        public string[] InputFiles { get; set; }
 
-        public CometSearch(string[] inputFiles)
+        public CometSearch(string[] inputFiles, CometUIMainForm parent)
         {
             InputFiles = inputFiles;
             SearchMgr = new CometSearchManagerWrapper();
+            Parent = parent;
         }
 
         public bool RunSearch()
@@ -133,6 +138,26 @@ namespace CometUI.Search
         public void ResetCancel()
         {
             SearchMgr.ResetSearchStatus();
+        }
+
+        public void ViewResults()
+        {
+            if (SearchSettings.OutputFormatPepXML)
+            {
+                var fileName = InputFiles[0];
+                int fileExtPos = fileName.LastIndexOf(".", StringComparison.Ordinal);
+                if (fileExtPos >= 0)
+                {
+                    fileName = fileName.Substring(0, fileExtPos);
+                }
+                String outputPepXML = fileName + ".pep.xml";
+                Parent.UpdateViewSearchResults(outputPepXML);
+            }
+            else
+            {
+                MessageBox.Show(Resources.CometSearch_ViewResults_No_pep_xml_file_found_to_display_in_the_viewer_, Resources.CometSearch_ViewResults_View_Results, MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            }
         }
 
         private bool ConfigureInputFiles()

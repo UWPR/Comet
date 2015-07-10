@@ -397,4 +397,10 @@
   <data name="ViewResultsOtherActionsControl_FDRCutoffBtnClick_Apply_FDR_Cutoff">
     <value xml:space="preserve">Apply FDR Cutoff</value>
   </data>
+  <data name="CometSearch_ViewResults_No_pep_xml_file_found_to_display_in_the_viewer_">
+    <value xml:space="preserve">No pep.xml file found to display in the viewer.</value>
+  </data>
+  <data name="CometSearch_ViewResults_View_Results">
+    <value xml:space="preserve">View Results</value>
+  </data>
 </root>
