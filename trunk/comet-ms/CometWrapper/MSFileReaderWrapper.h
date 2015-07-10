@@ -75,7 +75,7 @@ namespace CometWrapper {
         MSFileReaderWrapper();
         virtual ~MSFileReaderWrapper();
         bool ReadPeaks(String^ msFileName, int scanNum, MSSpectrumTypeWrapper msSpectrumType, List<Peak_T_Wrapper^> ^peaks);
-        bool ReadPrecursorPeaks(String^ msFileName, int fragmentScanNum, MSSpectrumTypeWrapper msFragmentSpectrumType, List<Peak_T_Wrapper^> ^precursorPeaks);
+        bool ReadPrecursorPeaks(String^ msFileName, int fragmentScanNum, List<Peak_T_Wrapper^> ^precursorPeaks);
 		
     private:
         MSReader* _pMSReader;

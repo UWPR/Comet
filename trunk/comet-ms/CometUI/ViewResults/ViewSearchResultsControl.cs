@@ -778,8 +778,7 @@ namespace CometUI.ViewResults
 
             var precursorPeaks = new List<Peak_T_Wrapper>();
             if (!MsFileReader.ReadPrecursorPeaks(SearchResultsMgr.SpectraFile, 
-                                                 ViewSpectraSearchResult.StartScan, 
-                                                 SearchResultsMgr.SearchParams.MSLevel, 
+                                                 ViewSpectraSearchResult.StartScan,
                                                  precursorPeaks))
             {
                 // If there are no MS1 scans, just exit, nothing to do.

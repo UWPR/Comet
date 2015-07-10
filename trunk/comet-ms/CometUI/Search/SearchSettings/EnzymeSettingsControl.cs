@@ -22,6 +22,10 @@ using System.Collections.Specialized;
 
 namespace CometUI.Search.SearchSettings
 {
+    /// <summary>
+    /// This class represents the tab page control for allowing the user to
+    /// change the enzyme settings search parameters. 
+    /// </summary>
     public partial class EnzymeSettingsControl : UserControl
     {
         public StringCollection EnzymeInfo { get; set; }
@@ -35,6 +39,10 @@ namespace CometUI.Search.SearchSettings
         private EnzymeInfoDlg EnzymeInfoDlg { get; set; }
         private readonly Dictionary<int, string> _enzymeTermini = new Dictionary<int, string>();
 
+        /// <summary>
+        /// Constructor for the enzyme settings tab page.
+        /// </summary>
+        /// <param name="parent"> The tab control hosting this tab page. </param>
         public EnzymeSettingsControl(SearchSettingsDlg parent)
         {
             InitializeComponent();
@@ -53,6 +61,10 @@ namespace CometUI.Search.SearchSettings
             }
         }
 
+        /// <summary>
+        /// Public method to initialize the output settings tab page from the
+        /// user's settings.
+        /// </summary>
         public void Initialize()
         {
             InitializeFromDefaultSettings();
@@ -60,6 +72,10 @@ namespace CometUI.Search.SearchSettings
             EnzymeInfoDlg = new EnzymeInfoDlg(this);
         }
 
+        /// <summary>
+        /// Saves the enzyme settings the user modified to the user's settings.
+        /// </summary>
+        /// <returns> True if settings were updated successfully; False for error. </returns>
         public bool VerifyAndUpdateSettings()
         {
             if (CometUIMainForm.SearchSettings.SearchEnzymeNumber != SearchEnzymeCurrentSelectedIndex)
@@ -120,6 +136,10 @@ namespace CometUI.Search.SearchSettings
             return true;
         }
 
+        /// <summary>
+        /// Initializes the input settings tab page from the settings saved
+        /// in the user's settings.
+        /// </summary>
         private void InitializeFromDefaultSettings()
         {
             enzymeTerminiCombo.SelectedItem = _enzymeTermini[CometUIMainForm.SearchSettings.EnzymeTermini];
