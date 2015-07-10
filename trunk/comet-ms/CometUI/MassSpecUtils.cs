@@ -246,10 +246,10 @@ namespace CometUI
             return ppm;
         }
 
-        public static double CalculatePrecursorMz(double neutralMass, int charge)
+        public static double CalculateMz(double neutralMass, int charge)
         {
-            double precursorMz = (neutralMass + (ProtonMass*charge))/charge;
-            return precursorMz;
+            double calculatedMz = (neutralMass + (ProtonMass*charge))/charge;
+            return calculatedMz;
         }
 
         public static bool IsPeakPresent(double peakMz, double mz, double massTol)

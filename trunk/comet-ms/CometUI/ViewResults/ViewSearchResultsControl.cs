@@ -703,12 +703,17 @@ namespace CometUI.ViewResults
             spectrumGraphPane.GraphObjList.Clear();
 
             // Set the spectrum graph title
+            var expMz = MassSpecUtils.CalculateMz(ViewSpectraSearchResult.ExperimentalMass,
+                                                  ViewSpectraSearchResult.AssumedCharge);
             var titleStrSecondLine = String.Format("{0}, Scan: {1}, Exp. m/z: {2}, Charge: {3}",
                 SearchResultsMgr.ResultsFile,
                 ViewSpectraSearchResult.StartScan,
-                ViewSpectraSearchResult.ExperimentalMass,
+                Math.Round(expMz, 4),
                 ViewSpectraSearchResult.AssumedCharge);
             spectrumGraphPane.Title.Text = ViewSpectraSearchResult.Peptide + Environment.NewLine + titleStrSecondLine;
+            var border = new Border { IsVisible = false };
+            var fill = new Fill { IsVisible = false };
+            spectrumGraphPane.Title.FontSpec = new FontSpec { Size = 12, Border = border , Fill =  fill};
 
             //  Set the axis labels for the spectrum graph
             spectrumGraphPane.XAxis.Title.Text = "m/z";
@@ -762,10 +767,10 @@ namespace CometUI.ViewResults
 
         private void DrawPrecursorGraph()
         {
-            var theoreticalPrecursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.CalculatedMass,
+            var theoreticalPrecursorMz = MassSpecUtils.CalculateMz(ViewSpectraSearchResult.CalculatedMass,
                                                                  ViewSpectraSearchResult.AssumedCharge);
 
-            var acquiredPrecursorMz = MassSpecUtils.CalculatePrecursorMz(ViewSpectraSearchResult.ExperimentalMass,
+            var acquiredPrecursorMz = MassSpecUtils.CalculateMz(ViewSpectraSearchResult.ExperimentalMass,
                                          ViewSpectraSearchResult.AssumedCharge);
 
 
@@ -916,7 +921,10 @@ namespace CometUI.ViewResults
             precursorGraphPane.CurveList.Clear();
             precursorGraphPane.GraphObjList.Clear();
 
-            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", theoreticalPrecursorMz);
+            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", Math.Round(theoreticalPrecursorMz, 4));
+            var border = new Border { IsVisible = false };
+            var fill = new Fill { IsVisible = false };
+            precursorGraphPane.Title.FontSpec = new FontSpec { Size = 14, Border = border, Fill = fill };
             precursorGraphPane.XAxis.Title.Text = "m/z";
             precursorGraphPane.YAxis.Title.Text = "Intensity";
             precursorGraphPane.YAxis.Scale.Min = 0.0;

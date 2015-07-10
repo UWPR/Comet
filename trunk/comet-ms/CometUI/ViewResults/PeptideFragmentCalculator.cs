@@ -201,7 +201,7 @@ namespace CometUI.ViewResults
             bool showIon = (IsShowThisIonAndCharge(userOptions, ionType, charge) &&
                             (!IsNeutralLossIon(neutralLoss) || IsShowThisNeutralLossIon(userOptions, neutralLoss)));
             FragmentIons.Add(new FragmentIon(mass, ionType, charge, label, showIon, neutralLoss));
-            return Math.Round(mass, 6);
+            return Math.Round(mass, 4);
         }
 
         private bool IsShowThisIonAndCharge(SpectrumGraphUserOptions userOptions, IonType ionType, int charge)
