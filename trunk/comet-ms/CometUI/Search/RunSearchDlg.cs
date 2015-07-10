@@ -36,7 +36,7 @@ namespace CometUI.Search
 
             InitializeFromDefaultSettings();
 
-            UpdateButtons(inputFilesList.CheckedItems.Count);
+            UpdateButtons();
 
             Parent = parent;
         }
@@ -47,13 +47,6 @@ namespace CometUI.Search
 
             set
             {
-                // Store checked state for existing files
-                var checkStates = new Dictionary<String, bool>();
-                for (int i = 0; i < _inputFiles.Length; i++)
-                {
-                    checkStates.Add(_inputFiles[i], inputFilesList.GetItemChecked(i));
-                }
-
                 // Set new value
                 _inputFiles = value;
 
@@ -63,18 +56,13 @@ namespace CometUI.Search
                 inputFilesList.Items.Clear();
                 foreach (String fileName in _inputFiles)
                 {
-                    bool checkFile;
-                    if (!checkStates.TryGetValue(fileName, out checkFile))
-                    {
-                        checkFile = true; // New files start out checked
-                    }
-                    inputFilesList.Items.Add(fileName, checkFile);
+                    inputFilesList.Items.Add(fileName);
                 }
 
                 inputFilesList.EndUpdate();
 
-                btnRunSearch.Enabled = inputFilesList.CheckedItems.Count > 0 && File.Exists(proteomeDbFileCombo.Text);
-                btnRemInputFile.Enabled = inputFilesList.CheckedItems.Count > 0;
+                btnRunSearch.Enabled = inputFilesList.Items.Count > 0 && File.Exists(proteomeDbFileCombo.Text);
+                btnRemInputFile.Enabled = inputFilesList.SelectedItems.Count > 0;
             }
         }
 
@@ -127,20 +115,7 @@ namespace CometUI.Search
         {
             if (null != CometUIMainForm.RunSearchSettings.InputFiles)
             {
-                var filesList = new List<string>();
-                var inputFilesChecked = new List<bool>();
-                foreach (var item in CometUIMainForm.RunSearchSettings.InputFiles)
-                {
-                    string[] row = item.Split(',');
-                    filesList.Add(row[0]);
-                    inputFilesChecked.Add(row[1].Equals("1"));
-                }
-
-                InputFiles = filesList.ToArray();
-                for (int i = 0; i < inputFilesList.Items.Count; i++)
-                {
-                    inputFilesList.SetItemChecked(i, inputFilesChecked[i]);
-                }
+                InputFiles = CometUIMainForm.RunSearchSettings.InputFiles.Cast<string>().ToArray();
             }
 
             proteomeDbFileCombo.Text = CometUIMainForm.SearchSettings.ProteomeDatabaseFile;
@@ -216,9 +191,9 @@ namespace CometUI.Search
 
         private void BtnRemInputFileClick(object sender, EventArgs e)
         {
-            var checkedIndices = inputFilesList.CheckedIndices;
+            var selectedIndices = inputFilesList.SelectedIndices;
             var inputFileNames = InputFiles.ToList();
-            for (int i = checkedIndices.Count - 1; i >= 0; i--)
+            for (int i = selectedIndices.Count - 1; i >= 0; i--)
             {
                 inputFileNames.RemoveAt(i);
             }
@@ -226,25 +201,10 @@ namespace CometUI.Search
             InputFiles = inputFileNames.ToArray();
         }
 
-        private void InputFilesListItemCheck(object sender, ItemCheckEventArgs e)
+        private void UpdateButtons()
         {
-            int checkedItemsCount = inputFilesList.CheckedItems.Count;
-            if (e.NewValue == CheckState.Checked)
-            {
-                checkedItemsCount += 1;
-            }
-            else if (e.NewValue == CheckState.Unchecked)
-            {
-                checkedItemsCount -= 1;
-            }
-
-            UpdateButtons(checkedItemsCount);
-        }
-
-        private void UpdateButtons(int checkedItemsCount)
-        {
-            btnRemInputFile.Enabled = checkedItemsCount > 0;
-            btnRunSearch.Enabled = checkedItemsCount > 0 && File.Exists(proteomeDbFileCombo.Text);
+            btnRemInputFile.Enabled = inputFilesList.SelectedItems.Count > 0;
+            btnRunSearch.Enabled = inputFilesList.Items.Count > 0 && File.Exists(proteomeDbFileCombo.Text);
         }
 
         private void BtnRunSearchClick(object sender, EventArgs e)
@@ -271,7 +231,7 @@ namespace CometUI.Search
                 }
             }
 
-            UpdateButtons(inputFilesList.CheckedItems.Count);
+            UpdateButtons();
         }
 
         private void ProteomeDbFileComboTextUpdate(object sender, EventArgs e)
@@ -303,7 +263,7 @@ namespace CometUI.Search
         private void RunSearchDlgLoad(object sender, EventArgs e)
         {
             InitializeFromDefaultSettings();
-            UpdateButtons(inputFilesList.CheckedItems.Count);
+            UpdateButtons();
         }
 
         private void RunSearchDlgFormClosing(object sender, FormClosingEventArgs e)
@@ -314,16 +274,18 @@ namespace CometUI.Search
         private void SaveInputFilesToSettings()
         {
             var inputFiles = new StringCollection();
-            for (int i = 0; i < inputFilesList.Items.Count; i++)
+            for (var i = 0; i < inputFilesList.Items.Count; i++)
             {
-                String inputFileInfo = InputFiles[i];
-                inputFileInfo += ",";
-                inputFileInfo += inputFilesList.GetItemChecked(i) ? "1" : "0";
-                inputFiles.Add(inputFileInfo);
+                inputFiles.Add(InputFiles[i]);
             }
 
             CometUIMainForm.RunSearchSettings.InputFiles = inputFiles;
             CometUIMainForm.RunSearchSettings.Save();
+        }
+
+        private void InputFilesListSelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateButtons();
         }
 
     }
