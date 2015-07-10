@@ -846,9 +846,47 @@ namespace CometUI.ViewResults
 
             // Calculate the Axis Scale Ranges and redraw the whole graph 
             // control for smooth transition
+            AdjustPrecursorGraphYAxis();
             precursorGraphItem.AxisChange();
             precursorGraphItem.Invalidate();
             precursorGraphItem.Refresh();
+        }
+
+        private void InitializePrecursorGraph(double theoreticalPrecursorMz, double acquiredPrecursorMz)
+        {
+            if (null == PrecursorGraphPeakLabels)
+            {
+                PrecursorGraphPeakLabels = new List<TextObj>();
+            }
+            else
+            {
+                PrecursorGraphPeakLabels.Clear();
+            }
+
+            if (null == PrecursorGraphPeaksList)
+            {
+                PrecursorGraphPeaksList = new PointPairList();
+            }
+            else
+            {
+                PrecursorGraphPeaksList.Clear();
+            }
+
+            GraphPane precursorGraphPane = precursorGraphItem.GraphPane;
+
+            precursorGraphPane.CurveList.Clear();
+            precursorGraphPane.GraphObjList.Clear();
+
+            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", Math.Round(theoreticalPrecursorMz, 4));
+            var border = new Border { IsVisible = false };
+            var fill = new Fill { IsVisible = false };
+            precursorGraphPane.Title.FontSpec = new FontSpec { Size = 14, Border = border, Fill = fill };
+            precursorGraphPane.XAxis.Title.Text = "m/z";
+            precursorGraphPane.YAxis.Title.Text = "Intensity";
+            precursorGraphPane.YAxis.Scale.Min = 0.0;
+            precursorGraphPane.XAxis.Scale.Min = Math.Min(theoreticalPrecursorMz, acquiredPrecursorMz) - ((double)massTolTextBox.DecimalValue * 20);
+            precursorGraphPane.XAxis.Scale.Max = Math.Max(theoreticalPrecursorMz, acquiredPrecursorMz) + ((double)massTolTextBox.DecimalValue * 20);
+            precursorGraphPane.Legend.Position = LegendPos.InsideTopRight;
         }
 
         private void UpdatePrecursorPeak(Peak peak, double precursorMz, ref PointPair precursorPeak)
@@ -896,41 +934,25 @@ namespace CometUI.ViewResults
             return peakLabel;
         }
 
-        private void InitializePrecursorGraph(double theoreticalPrecursorMz, double acquiredPrecursorMz)
+        private void AdjustPrecursorGraphYAxis()
         {
-            if (null == PrecursorGraphPeakLabels)
+            // Adjust the Y-axis to ensure we zoom in on the theoretical and 
+            // acquired precursor peaks
+            var highestIntensity = 0.0;
+            foreach (var peak in PrecursorGraphPeaksList)
             {
-                PrecursorGraphPeakLabels = new List<TextObj>();
-            }
-            else
-            {
-                PrecursorGraphPeakLabels.Clear();
-            }
+                if ((peak.X < precursorGraphItem.GraphPane.XAxis.Scale.Min) ||
+                    (peak.X > precursorGraphItem.GraphPane.XAxis.Scale.Max))
+                {
+                    continue;
+                }
 
-            if (null == PrecursorGraphPeaksList)
-            {
-                PrecursorGraphPeaksList = new PointPairList();
+                if (peak.Y > highestIntensity)
+                {
+                    highestIntensity = peak.Y;
+                }
             }
-            else
-            {
-                PrecursorGraphPeaksList.Clear();
-            }
-
-            GraphPane precursorGraphPane = precursorGraphItem.GraphPane;
-
-            precursorGraphPane.CurveList.Clear();
-            precursorGraphPane.GraphObjList.Clear();
-
-            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", Math.Round(theoreticalPrecursorMz, 4));
-            var border = new Border { IsVisible = false };
-            var fill = new Fill { IsVisible = false };
-            precursorGraphPane.Title.FontSpec = new FontSpec { Size = 14, Border = border, Fill = fill };
-            precursorGraphPane.XAxis.Title.Text = "m/z";
-            precursorGraphPane.YAxis.Title.Text = "Intensity";
-            precursorGraphPane.YAxis.Scale.Min = 0.0;
-            precursorGraphPane.XAxis.Scale.Min = Math.Min(theoreticalPrecursorMz, acquiredPrecursorMz) - ((double)massTolTextBox.DecimalValue * 20);
-            precursorGraphPane.XAxis.Scale.Max = Math.Max(theoreticalPrecursorMz, acquiredPrecursorMz) + ((double)massTolTextBox.DecimalValue * 20);
-            precursorGraphPane.Legend.Position = LegendPos.InsideTopRight;
+            precursorGraphItem.GraphPane.YAxis.Scale.Max = highestIntensity * 1.25;
         }
 
         private void AddPeakLabel(String label, Color labelColor, double mz, double intensity)
