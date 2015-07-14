@@ -86,21 +86,27 @@ bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentSca
         return false;
     }
 
-    const char* pszMSFileName = _marshalContext.marshal_as<const char*>(msFileName);
-    char szMSFileName[512];
-    szMSFileName[0] = '\0';
-    strcpy(szMSFileName, pszMSFileName);
-
     int scanNum = fragmentScanNum;
     if (scanNum <= 0)
     {
         return false;
     }
 
+    int msLevelFragment = (int)msFragmentSpectrumType;
+    if (msLevelFragment == 0)
+    {
+        return false;
+    }
+
+    const char* pszMSFileName = _marshalContext.marshal_as<const char*>(msFileName);
+    char szMSFileName[512];
+    szMSFileName[0] = '\0';
+    strcpy(szMSFileName, pszMSFileName);
+
     // The MS level of the precursor is one less than that of the fragment
     vector<MSSpectrumType> msLevel;
-    int iMsLevel = (int)msFragmentSpectrumType - 1;
-    msLevel.push_back((MSSpectrumType)iMsLevel);
+    int msLevelPrecursor = msLevelFragment - 1;
+    msLevel.push_back((MSSpectrumType)msLevelPrecursor);
     _pMSReader->setFilter(msLevel);
 
     // Loop and decrement the scanNum, trying each time to get the precursor 
