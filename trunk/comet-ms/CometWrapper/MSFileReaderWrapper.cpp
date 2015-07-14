@@ -79,7 +79,7 @@ bool MSFileReaderWrapper::ReadPeaks(String^ msFileName, int scanNum, MSSpectrumT
     return true;
 }
 
-bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentScanNum, List<Peak_T_Wrapper^> ^precursorPeaks)
+bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentScanNum, MSSpectrumTypeWrapper msFragmentSpectrumType, List<Peak_T_Wrapper^> ^precursorPeaks)
 {
     if (NULL == _pMSReader)
     {
@@ -91,65 +91,38 @@ bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentSca
     szMSFileName[0] = '\0';
     strcpy(szMSFileName, pszMSFileName);
 
-    RAMPFILE *fpRampFile = NULL;
-    fpRampFile = rampOpenFile(szMSFileName);
-    if (NULL == fpRampFile)
+    int scanNum = fragmentScanNum;
+    if (scanNum <= 0)
     {
         return false;
     }
 
-    ramp_fileoffset_t indexOffset;
-    indexOffset = getIndexOffset(fpRampFile);
+    // The MS level of the precursor is one less than that of the fragment
+    vector<MSSpectrumType> msLevel;
+    int iMsLevel = (int)msFragmentSpectrumType - 1;
+    msLevel.push_back((MSSpectrumType)iMsLevel);
+    _pMSReader->setFilter(msLevel);
 
-    int rampLastScan;
-    ramp_fileoffset_t  *pScanIndex = readIndex(fpRampFile, indexOffset, &rampLastScan);
+    // Loop and decrement the scanNum, trying each time to get the precursor 
+    // peaks at that scan. When it finally succeeds, that is the closest 
+    // precursor scan.
+    Spectrum spec;
+    scanNum--;
+    while ((!_pMSReader->readFile(szMSFileName, spec, scanNum)) && (scanNum > 0))
+    {
+        scanNum--;
+    }
 
-    if (fragmentScanNum > rampLastScan || fragmentScanNum <= 0)
+    if (0 == spec.size())
     {
         return false;
     }
 
-    int iScanNum = fragmentScanNum;
-    struct ScanHeaderStruct scanHeader;
-    readHeader(fpRampFile, pScanIndex[iScanNum], &scanHeader);
-    iScanNum--;
-
-    // loop back through scans to find MS1 scan; break if greater than 60 seconds away
-    struct ScanHeaderStruct scanHeaderMS;
-    while (iScanNum > 0)
+    for (int i = 0; i < spec.size(); i++)
     {
-        readHeader(fpRampFile, pScanIndex[iScanNum], &scanHeaderMS);
-        if ((scanHeaderMS.msLevel == (scanHeader.msLevel - 1)) || 
-            (fabs(scanHeaderMS.retentionTime - scanHeader.retentionTime) > 60.0))
-        {
-            break;
-        }
-        iScanNum--;
-    }
-
-    if (scanHeaderMS.msLevel != (scanHeader.msLevel - 1))
-    {
-        return false;
-    }
-
-    RAMPREAL *pPeaks;
-    int n = 0;
-    pPeaks = readPeaks(fpRampFile, pScanIndex[iScanNum]);
-    while (pPeaks != NULL && pPeaks[n] != -1)
-    {
-        RAMPREAL fMass;
-        RAMPREAL fInten;
-
-        fMass = pPeaks[n];
-        n++;
-        fInten = pPeaks[n];
-        n++;
-
-        Peak_T peak;
-        peak.mz = fMass;
-        peak.intensity = fInten;
-        precursorPeaks->Add(gcnew Peak_T_Wrapper(peak));
+        precursorPeaks->Add(gcnew Peak_T_Wrapper(spec.at(i)));
     }
 
     return true;
 }
+

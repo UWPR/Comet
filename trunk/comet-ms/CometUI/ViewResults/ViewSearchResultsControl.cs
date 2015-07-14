@@ -51,7 +51,6 @@ namespace CometUI.ViewResults
         private Dictionary<IonType, FragmentIonGraphInfo> FragmentIonPeaks { get; set; }
         private PointPairList SpectrumGraphPeaksList { get; set; }
         private PointPairList PrecursorGraphPeaksList { get; set; }
-        private MSFileReaderWrapper MsFileReader { get; set; }
 
         private const String BlastHttpLink =
             "http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&LAYOUT=TwoWindows&AUTO_FORMAT=Semiauto&ALIGNMENTS=50&ALIGNMENT_VIEW=Pairwise&CDD_SEARCH=on&CLIENT=web&COMPOSITION_BASED_STATISTICS=on&DATABASE=nr&DESCRIPTIONS=100&ENTREZ_QUERY=(none)&EXPECT=1000&FILTER=L&FORMAT_OBJECT=Alignment&FORMAT_TYPE=HTML&I_THRESH=0.005&MATRIX_NAME=BLOSUM62&NCBI_GI=on&PAGE=Proteins&PROGRAM=blastp&SERVICE=plain&SET_DEFAULTS.x=41&SET_DEFAULTS.y=5&SHOW_OVERVIEW=on&END_OF_HTTPGET=Yes&SHOW_LINKOUT=yes&QUERY=";
@@ -491,12 +490,8 @@ namespace CometUI.ViewResults
                 Peaks.Clear();
             }
 
-            if (null == MsFileReader)
-            {
-                MsFileReader = new MSFileReaderWrapper();
-            }
-
-            if (MsFileReader.ReadPeaks(SearchResultsMgr.SpectraFile, ViewSpectraSearchResult.StartScan,
+            var msFileReader = new MSFileReaderWrapper();
+            if (msFileReader.ReadPeaks(SearchResultsMgr.SpectraFile, ViewSpectraSearchResult.StartScan,
                                               SearchResultsMgr.SearchParams.MSLevel, Peaks))
             {
                 InitializeSpectrumGraphOptions();
@@ -777,9 +772,11 @@ namespace CometUI.ViewResults
             InitializePrecursorGraph(theoreticalPrecursorMz, acquiredPrecursorMz);
 
             var precursorPeaks = new List<Peak_T_Wrapper>();
-            if (!MsFileReader.ReadPrecursorPeaks(SearchResultsMgr.SpectraFile, 
-                                                 ViewSpectraSearchResult.StartScan,
-                                                 precursorPeaks))
+            var msFileReader = new MSFileReaderWrapper();
+            if (!msFileReader.ReadPrecursorPeaks(SearchResultsMgr.SpectraFile, 
+                                                ViewSpectraSearchResult.StartScan, 
+                                                SearchResultsMgr.SearchParams.MSLevel,
+                                                precursorPeaks))
             {
                 // If there are no MS1 scans, just exit, nothing to do.
                 return;
