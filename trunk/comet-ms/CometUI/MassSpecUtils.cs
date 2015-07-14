@@ -262,6 +262,17 @@ namespace CometUI
             var intensitySortedPeaks = new List<Peak_T_Wrapper>(peaks);
             intensitySortedPeaks.Sort(new Peak_T_Wrapper_IntensityComparer());
             var totalNumPeaks = intensitySortedPeaks.Count;
+
+            if (numTopIntensities > totalNumPeaks)
+            {
+                var intensities = new double[totalNumPeaks];
+                for (int i = 0; i < totalNumPeaks; i++)
+                {
+                    intensities[i] = intensitySortedPeaks[i].get_intensity();
+                }
+                return intensities;
+            }
+
             var topIntensities = new double[numTopIntensities];
             for (int i = 0; i < numTopIntensities; i++)
             {
