@@ -156,7 +156,7 @@
             this.inputFilesList.HorizontalScrollbar = true;
             this.inputFilesList.Location = new System.Drawing.Point(15, 93);
             this.inputFilesList.Name = "inputFilesList";
-            this.inputFilesList.SelectionMode = System.Windows.Forms.SelectionMode.MultiSimple;
+            this.inputFilesList.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
             this.inputFilesList.Size = new System.Drawing.Size(352, 121);
             this.inputFilesList.TabIndex = 3;
             this.inputFilesList.SelectedIndexChanged += new System.EventHandler(this.InputFilesListSelectedIndexChanged);
