@@ -31,10 +31,12 @@ namespace CometUI.Search.SearchSettings
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(VarModInfoDlg));
             this.varModInfoDlgMainSplitContainer = new System.Windows.Forms.SplitContainer();
-            this.maxModsNumericTextBox = new NumericTextBox();
-            this.massDiffNumericTextBox = new NumericTextBox();
-            this.termDistNumericTextBox = new NumericTextBox();
+            this.requireModCheckBox = new System.Windows.Forms.CheckBox();
+            this.maxModsNumericTextBox = new CometUI.SharedUI.NumericTextBox();
+            this.massDiffNumericTextBox = new CometUI.SharedUI.NumericTextBox();
+            this.termDistNumericTextBox = new CometUI.SharedUI.NumericTextBox();
             this.termDistLabel = new System.Windows.Forms.Label();
             this.whichTermCombo = new System.Windows.Forms.ComboBox();
             this.whichTermLabel = new System.Windows.Forms.Label();
@@ -46,7 +48,6 @@ namespace CometUI.Search.SearchSettings
             this.okBtn = new System.Windows.Forms.Button();
             this.cancelBtn = new System.Windows.Forms.Button();
             this.varModInfoDlgToolTip = new System.Windows.Forms.ToolTip(this.components);
-            this.requireModCheckBox = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.varModInfoDlgMainSplitContainer)).BeginInit();
             this.varModInfoDlgMainSplitContainer.Panel1.SuspendLayout();
             this.varModInfoDlgMainSplitContainer.Panel2.SuspendLayout();
@@ -84,6 +85,16 @@ namespace CometUI.Search.SearchSettings
             this.varModInfoDlgMainSplitContainer.Size = new System.Drawing.Size(472, 249);
             this.varModInfoDlgMainSplitContainer.SplitterDistance = 201;
             this.varModInfoDlgMainSplitContainer.TabIndex = 0;
+            // 
+            // requireModCheckBox
+            // 
+            this.requireModCheckBox.AutoSize = true;
+            this.requireModCheckBox.Location = new System.Drawing.Point(168, 155);
+            this.requireModCheckBox.Name = "requireModCheckBox";
+            this.requireModCheckBox.Size = new System.Drawing.Size(141, 17);
+            this.requireModCheckBox.TabIndex = 22;
+            this.requireModCheckBox.Text = "Require this modification";
+            this.requireModCheckBox.UseVisualStyleBackColor = true;
             // 
             // maxModsNumericTextBox
             // 
@@ -236,16 +247,6 @@ namespace CometUI.Search.SearchSettings
             this.varModInfoDlgToolTip.AutomaticDelay = 400;
             this.varModInfoDlgToolTip.IsBalloon = true;
             // 
-            // requireModCheckBox
-            // 
-            this.requireModCheckBox.AutoSize = true;
-            this.requireModCheckBox.Location = new System.Drawing.Point(168, 155);
-            this.requireModCheckBox.Name = "requireModCheckBox";
-            this.requireModCheckBox.Size = new System.Drawing.Size(141, 17);
-            this.requireModCheckBox.TabIndex = 22;
-            this.requireModCheckBox.Text = "Require this modification";
-            this.requireModCheckBox.UseVisualStyleBackColor = true;
-            // 
             // VarModInfoDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -253,6 +254,7 @@ namespace CometUI.Search.SearchSettings
             this.ClientSize = new System.Drawing.Size(472, 249);
             this.Controls.Add(this.varModInfoDlgMainSplitContainer);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "VarModInfoDlg";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.varModInfoDlgMainSplitContainer.Panel1.ResumeLayout(false);
