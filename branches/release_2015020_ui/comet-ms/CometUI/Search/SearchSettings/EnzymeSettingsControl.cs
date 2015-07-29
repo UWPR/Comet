@@ -24,7 +24,7 @@ namespace CometUI.Search.SearchSettings
 {
     /// <summary>
     /// This class represents the tab page control for allowing the user to
-    /// change the enzyme settings search parameters. 
+    /// change the enzyme settings search parameters.
     /// </summary>
     public partial class EnzymeSettingsControl : UserControl
     {
