@@ -26,7 +26,6 @@ using ZedGraph;
 
 namespace CometUI.ViewResults
 {
-    // Test comment for dummy checkin
     public partial class ViewSearchResultsControl : UserControl
     {
         public bool SettingsChanged { get; set; }
