@@ -15,6 +15,7 @@
 
 #ifdef _MSC_VER
 #import "libid:F0C5F3E3-4F2A-443E-A74D-0AABE3237494" rename_namespace("XRawfile")
+//#import "libid:5FE970A2-29C3-11D3-811D-00104B304896" rename_namespace("XRawfile")
 using namespace XRawfile;
 #endif
 
@@ -76,6 +77,7 @@ class MSReader {
   void writeFile(const char* c, bool text, MSObject& m);
   void writeFile(const char* c, MSFileFormat ff, MSObject& m, char* sha1Report='\0');
 
+  bool readMGFFile(const char* c, Spectrum& s); //Note, no random-access of MGF files.
   bool readMSTFile(const char* c, bool text, Spectrum& s, int scNum=0);
   bool readMZPFile(const char* c, Spectrum& s, int scNum=0);
   bool readFile(const char* c, Spectrum& s, int scNum=0);
@@ -92,6 +94,7 @@ class MSReader {
 
   //For MGF files
   void setHighResMGF(bool b);
+  void setOnePlusMGF(bool b);
 
   //File compression
   void setCompression(bool b);
@@ -133,9 +136,13 @@ class MSReader {
   //for RAW file support (even if not on windows)
   bool rawFileOpen;
 
-  //for mgf output
+  //for mgf support
+  char strMGF[1024];
   bool exportMGF;
   bool highResMGF;
+  bool mgfOnePlus;
+  int mgfIndex;
+  vector<int> mgfGlobalCharge;
 
   //Functions
   void closeFile();

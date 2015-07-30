@@ -76,7 +76,7 @@ void Usage(char *pszCmd)
    sprintf(szErrorMsg, " Comet usage:  %s [options] <input_files>\n", pszCmd);
    logout(szErrorMsg);
    logout("\n");
-   logout(" Supported input formats include mzXML, mzXML, and ms2 variants (cms2, bms2, ms2)\n");
+   logout(" Supported input formats include mzXML, mzXML, mgf, and ms2 variants (cms2, bms2, ms2)\n");
    logout("\n");
    logout("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
    logout("                 -P<params> to specify an alternate parameters file (default comet.params)\n");

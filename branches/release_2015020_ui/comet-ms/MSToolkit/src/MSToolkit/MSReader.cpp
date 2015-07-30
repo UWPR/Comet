@@ -13,6 +13,7 @@ MSReader::MSReader(){
   rawFileOpen=false;
   exportMGF=false;
   highResMGF=false;
+  mgfOnePlus=false;
   iFType=0;
   iVersion=0;
   for(int i=0;i<16;i++)	strcpy(header.header[i],"\0");
@@ -109,6 +110,204 @@ MSSpectrumType MSReader::getFileType(){
   return fileType;
 }
 
+
+bool MSReader::readMGFFile(const char* c, Spectrum& s){
+
+  char* tok;
+  char str[1024];
+  char num[6];
+  unsigned int i;
+  int ch=0;
+  double mz;
+  float intensity;
+
+  //clear any spectrum data
+  s.clear();
+
+  s.setCentroidStatus(2); //unknown if centroided with MGF format.
+
+  //check for valid file and if we can access it
+  //Supplying a file name always resets file pointer to the start of the file
+  //Otherwise, next scan is read.
+  if(c!=NULL){
+    closeFile();
+    if(openFile(c,true)==1) return false;
+    mgfIndex=1;
+  } else if(fileIn==NULL) {
+    cout << "fileIn is NULL" << endl;
+    return false;
+  }
+
+  s.setFileType(MS2);
+
+  //Read global header information
+  if(c!=NULL){
+    if(!fgets(strMGF,1024,fileIn)) return false;
+    while(true){
+
+      tok=strtok(strMGF,"=\n\r");
+
+      if(strcmp(tok,"CHARGE")==0) {
+        mgfGlobalCharge.clear();
+        tok=strtok(NULL,"=\n\r");
+        strcpy(str,tok);
+        tok=strtok(str," \t\n\r");
+        while(tok!=NULL){
+          for(i=0;i<strlen(tok);i++){
+            if(isdigit(tok[i])) {
+              num[i]=tok[i];
+              continue;
+            }
+            if(tok[i]=='+') {
+              num[i]='\0';
+              mgfGlobalCharge.push_back(atoi(num));
+            }
+            if(tok[i]=='-') {
+              num[i]='\0';
+              mgfGlobalCharge.push_back(-atoi(num));
+            }
+            break;
+          }
+          tok=strtok(NULL," \t\n\r");
+        }
+      } 
+
+      if(strstr(strMGF,"BEGIN IONS")!=NULL) break;
+      if(!fgets(strMGF,1024,fileIn)) break;
+
+    }
+  } else {
+    if(!fgets(strMGF,1024,fileIn)) return false;
+  }
+
+  //Sanity check that we are at next spectrum
+  if(strstr(strMGF,"BEGIN IONS")==NULL) {
+    cout << "Malformed MGF spectrum entry. Exiting." << endl;
+    exit(-10);
+  }
+
+  //Read [next] spectrum header
+  while(isalpha(strMGF[0])){
+
+    tok=strtok(strMGF,"=\n\r");
+
+    if(strcmp(tok,"CHARGE")==0) {
+      tok=strtok(NULL,"= \t\n\r");
+      if(tok==NULL) {
+        cout << "Bad CHARGE line in MGF file." << endl;
+        exit(-11);
+      } else {
+        for(i=0;i<strlen(tok);i++){
+          if(isdigit(tok[i])) {
+            num[i]=tok[i];
+            continue;
+          }
+          if(tok[i]=='+') {
+            num[i]='\0';
+            ch=atoi(num);
+          }
+          if(tok[i]=='-') {
+            num[i]='\0';
+            ch=-atoi(num);
+          }
+          break;
+        }
+      }
+    } else if(strcmp(tok,"PEPMASS")==0){
+      tok=strtok(NULL,"= \t\n\r");
+      if(tok==NULL) {
+        cout << "Bad PEPMASS line in MGF file." << endl;
+        exit(-11);
+      } else {
+        s.setMZ(atof(tok));
+      }
+    } else if(strcmp(tok,"SCANS")==0){
+      tok=strtok(NULL,"=- \t\n\r");
+      if(tok==NULL) {
+        cout << "Bad SCANS line in MGF file." << endl;
+        exit(-11);
+      } else {
+        s.setScanNumber(atoi(tok));
+        tok=strtok(NULL,"=- \t\n\r");
+        if(tok!=NULL) s.setScanNumber(atoi(tok),true);
+        else s.setScanNumber(s.getScanNumber(),true);
+      }
+    } else if(strcmp(tok,"RTINSECONDS")==0){
+      tok=strtok(NULL,"= \t\n\r");
+      if(tok==NULL) {
+        cout << "Bad RTINSECONDS line in MGF file." << endl;
+        exit(-11);
+      } else {
+        s.setRTime((float)(atof(tok)/60.0));
+      }
+    } else if(strcmp(tok,"TITLE")==0){
+      tok=strtok(NULL,"=\t\n\r");
+      if(tok==NULL) {
+        cout << "Bad TITLE line in MGF file." << endl;
+        exit(-11);
+      } else {
+        s.setNativeID(tok);
+      }
+    }
+
+    if(!fgets(strMGF,1024,fileIn)) break;
+  }
+
+  //Process header information
+  if(s.getMZ()==0) {
+    cout << "Error in MGF file: no PEPMASS found." << endl;
+    exit(-12);
+  }
+  if(ch!=0){
+    s.addZState(ch,s.getMZ()*ch-1.007276466*(ch-1));
+  } else {
+    for(i=0;i<mgfGlobalCharge.size();i++){
+      s.addZState(mgfGlobalCharge[i],s.getMZ()*mgfGlobalCharge[i]-1.007276466*(mgfGlobalCharge[i]-1));
+    }
+  }
+  if(s.getScanNumber()==0){
+    s.setScanNumber(mgfIndex);
+    s.setScanNumber(mgfIndex,true);
+    mgfIndex++;
+  }
+
+  //Read peak data
+  while(!isalpha(strMGF[0])){
+
+    tok=strtok(strMGF," \t\n\r");
+    if(tok==NULL){
+      cout << "Error in MGF file: bad m/z or intensity value." << endl;
+      exit(-13);
+    }
+    mz=atof(tok);
+    tok=strtok(NULL," \t\n\r");
+    if(tok==NULL){
+      cout << "Error in MGF file: bad m/z or intensity value." << endl;
+      exit(-13);
+    }
+    intensity=(float)atof(tok);
+    if(!mgfOnePlus){
+      tok=strtok(NULL," \t\n\r");
+      if(tok!=NULL) {
+        ch=atoi(tok);
+        mz+=(ch-1)*1.007276466;
+        mz/=ch;
+      }
+    }
+    s.add(mz,intensity);
+
+    if(!fgets(strMGF,1024,fileIn)) break;
+  }
+
+  //Sanity check
+  if(strstr(strMGF,"END IONS")==NULL){
+    cout << "WARNING: Unexpected lines at end of MGF spectrum." << endl;
+  }
+
+  if(mgfOnePlus) s.sortMZ();
+
+  return true;
+}
 
 bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
   MSScanInfo ms;
@@ -490,6 +689,7 @@ int MSReader::getPercent(){
 	switch(lastFileFormat){
 		case ms1:
 		case ms2:
+    case mgf:
 		case  zs:
 		case uzs:
 		case bms1:
@@ -1150,6 +1350,10 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 		case mzMLgz:
 			return readMZPFile(c,s,scNum);
 			break;
+    case mgf:
+      if(scNum>0) cout << "Warning: random-access spectrum reads not allowed with MGF format." << endl;
+      return readMGFFile(c,s);
+      break;
 		case raw:
 			#ifdef _MSC_VER
 			//only read the raw file if the dll was present and loaded.
@@ -1162,7 +1366,7 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
         }
 				return b;
 			} else {
-				cerr << "Could not read Thermo RAW file. The Thermo .dll likely was not loaded." << endl;
+				cerr << "Could not read Thermo RAW file. The Thermo .dll likely was not loaded or out of date." << endl;
 				return false;
 			}
 			#else
@@ -1623,6 +1827,10 @@ void MSReader::setRawFilter(char *c){
 
 void MSReader::setHighResMGF(bool b){
   highResMGF=b;
+}
+
+void MSReader::setOnePlusMGF(bool b){
+  mgfOnePlus=b;
 }
 
 void MSReader::writeCompressSpec(FILE* fileOut, Spectrum& s){

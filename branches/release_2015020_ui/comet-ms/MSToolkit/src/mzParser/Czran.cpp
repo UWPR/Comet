@@ -244,12 +244,15 @@ int Czran::extract(FILE *in, f_off offset) {
     point *here;
 		z_stream strm;
     unsigned char input[READCHUNK];
+    f_off marker;
 
 		/* find where in stream to start */
 		here = index->list;
 		ret = index->have;
 		while (--ret && here[1].out <= offset)
 				here++;
+    if(ret>0) marker=here[1].out;
+    else marker=0;
 
 		/* initialize file and inflate state to start there */
 		strm.zalloc = Z_NULL;
@@ -273,7 +276,7 @@ int Czran::extract(FILE *in, f_off offset) {
 		}
 		(void)inflateSetDictionary(&strm, here->window, WINSIZE);
 
-		if(here[1].out>0) len = (int)(here[1].out-here->out);
+		if(marker>0) len = (int)(marker-here->out);
 		else len = (int)(fileSize-here->out);
 
 		if(buffer!=NULL) free(buffer);
