@@ -76,7 +76,7 @@ void Usage(char *pszCmd)
    sprintf(szErrorMsg, " Comet usage:  %s [options] <input_files>\n", pszCmd);
    logout(szErrorMsg);
    logout("\n");
-   logout(" Supported input formats include mzXML, mzXML, and ms2 variants (cms2, bms2, ms2)\n");
+   logout(" Supported input formats include mzXML, mzXML, mgf, and ms2 variants (cms2, bms2, ms2)\n");
    logout("\n");
    logout("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
    logout("                 -P<params> to specify an alternate parameters file (default comet.params)\n");
@@ -1310,7 +1310,7 @@ sample_enzyme_number = 1               # Sample enzyme which is possibly differe
 #\n\
 scan_range = 0 0                       # start and scan scan range to search; 0 as 1st entry ignores parameter\n\
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override any existing charge; 0 as 1st entry ignores parameter\n\
-override_charge = 0                    # 0=no, 1=override precursor charge states, 2=ignore precursor charges outside precursor_charge range\n\
+override_charge = 0                    # 0=no, 1=override precursor charge states, 2=ignore precursor charges outside precursor_charge range, 3=see online\n\
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3\n\
 activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, PQD, HCD, IRMPD\n\
 \n\

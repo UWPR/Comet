@@ -759,6 +759,7 @@ f_off mzpSAXMzmlHandler::readIndexOffset() {
 		stop=strstr(buffer,"</indexListOffset>");
 	} else {
 		readBytes = gzObj.extract(fptr, gzObj.getfilesize()-200, (unsigned char*)chunk, CHUNK);
+    chunk[200]='\0';
 		start=strstr(chunk,"<indexListOffset>");
 		stop=strstr(chunk,"</indexListOffset>");
 	}

@@ -87,6 +87,10 @@ static InputType GetInputType(const char *pszFileName)
    {
       return InputType_MS2;
    }
+   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".mgf"))
+   {
+      return InputType_MGF;
+   }
 
    return InputType_UNKNOWN;
 }
