@@ -21,7 +21,6 @@ using System.Globalization;
 using System.IO;
 using System.Windows.Forms;
 using CometUI.Properties;
-using CometUI.ViewResults;
 using CometWrapper;
 
 namespace CometUI.Search
@@ -31,14 +30,16 @@ namespace CometUI.Search
         private CometSearchManagerWrapper SearchMgr { get; set; }
         private Properties.SearchSettings SearchSettings { get { return CometUIMainForm.SearchSettings; } }
         private CometUIMainForm Parent { get; set; }
+        private string[] InputFiles { get; set; }
+        private String DatabaseFileName { get; set; }
 
         public String SearchStatusMessage { get; private set; }
         public bool SearchSucceeded { get; private set; }
-        public string[] InputFiles { get; set; }
 
-        public CometSearch(string[] inputFiles, CometUIMainForm parent)
+        public CometSearch(String[] inputFiles, String dbFile, CometUIMainForm parent)
         {
             InputFiles = inputFiles;
+            DatabaseFileName = dbFile;
             SearchMgr = new CometSearchManagerWrapper();
             Parent = parent;
         }
@@ -225,7 +226,7 @@ namespace CometUI.Search
         private bool ConfigureInputSettings()
         {
             // Set up the proteome database
-            var dbFileName = SearchSettings.ProteomeDatabaseFile;
+            var dbFileName = DatabaseFileName;
             if (!SearchMgr.SetParam("database_name", dbFileName, dbFileName))
             {
                 SearchStatusMessage = "Could not set the database_name parameter.";

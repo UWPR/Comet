@@ -101,7 +101,7 @@ namespace CometUI
             var runSearchDlg = new RunSearchDlg(this);
             if (DialogResult.OK == runSearchDlg.ShowDialog())
             {
-                var cometSearch = new CometSearch(runSearchDlg.InputFiles, this);
+                var cometSearch = new CometSearch(runSearchDlg.InputFiles, runSearchDlg.DatabaseFileName, this);
                 var runSearchWorker = new RunSearchBackgroundWorker(cometSearch);
                 runSearchWorker.DoWork();
             }
