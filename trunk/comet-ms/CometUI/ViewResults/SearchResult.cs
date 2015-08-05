@@ -97,7 +97,7 @@ namespace CometUI.ViewResults
                                     {"spscore", new SearchResultColumn("SpScore", "SPSCORE", "SPSCORE")},
                                     {"sprank", new SearchResultColumn("SpRank", "SPRANK", "SPRANK")},
                                     {"expect", new SearchResultColumn("Expect", "EXPECT", "EXPECT")},
-                                    {"probability", new SearchResultColumn("Probability", "PROBABILITY", "PROB", true)},
+                                    {"probability", new SearchResultColumn("Probability", "PROBABILITY", "PROB")},
                                     {"precursor_intensity", new SearchResultColumn("PrecursorIntensity", "PRECURSOR_INTENSITY", "INTENSITY")},
                                     {"protein", new SearchResultColumn("ProteinDisplayStr", "PROTEIN", "PROTEIN", true)},
                                     {"protein_descr", new SearchResultColumn("ProteinDescr", "PROTEIN_DESCR", "PROTEIN_DESCR")},
