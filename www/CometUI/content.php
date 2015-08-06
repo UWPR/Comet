@@ -11,7 +11,7 @@
          through PeptideProphet of the TPP.  This software will be further
          developed if there is demand for it.
 
-         <p>Install the program using this <a href="Install/setup.exe" onClick="_gaq.push(['_trackEvent', 'CometUI', 'Download', 'setup.exe']);" >setup.exe</a>.
+         <p>Install the program using this <a href="setup.exe" onClick="_gaq.push(['_trackEvent', 'CometUI', 'Download', 'setup.exe']);" >setup.exe</a>.
 
          <p>A work-in-progress user guide can be found <a href="CometUI-User-Guide.pdf" onClick="_gaq.push(['_trackEvent', 'CometUI', 'Download', 'user guide]);" >here</a>.
 
