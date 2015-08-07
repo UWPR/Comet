@@ -119,7 +119,7 @@
          this.textBoxEValueCutoff.Name = "textBoxEValueCutoff";
          this.textBoxEValueCutoff.Size = new System.Drawing.Size(134, 20);
          this.textBoxEValueCutoff.TabIndex = 49;
-         this.textBoxEValueCutoff.Text = "50.0";
+         this.textBoxEValueCutoff.Text = "10.0";
          // 
          // eValueCheckBox
          // 
