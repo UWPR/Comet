@@ -56,7 +56,10 @@ namespace CometUI.ViewResults
             double cterm = result.ModifiedCTerm ? result.ModCTermMass : MassSpecUtils.ElementMassTable['o'] + MassSpecUtils.ElementMassTable['h'];
 
             double bIon = nTerm - MassSpecUtils.ElementMassTable['h'] + MassSpecUtils.ProtonMass;
-            double yIon = cterm + MassSpecUtils.ElementMassTable['h'] + MassSpecUtils.ProtonMass;
+            //double yIon = cterm + MassSpecUtils.ElementMassTable['h'] + MassSpecUtils.ProtonMass;
+            //Need y-ion series to be calculated in reverse order for proper display in table
+            double yIon = result.CalculatedMass - nTerm + MassSpecUtils.ElementMassTable['h'] + MassSpecUtils.ProtonMass;
+
 
             var peptideArray = result.Peptide.ToCharArray();
             var peptideLen = peptideArray.Length;
@@ -113,13 +116,13 @@ namespace CometUI.ViewResults
 
                 if (i > 0)
                 {
-                    if (modArray[peptideLen - i].Equals(0.0))
+                    if (modArray[i - 1].Equals(0.0))
                     {
-                        yIon += MassSpecUtils.AminoAcidMassTable[peptideArray[peptideLen - i]];
+                       yIon -= MassSpecUtils.AminoAcidMassTable[peptideArray[i - 1]];
                     }
                     else
                     {
-                        yIon += modArray[peptideLen - i];
+                       yIon -= modArray[i - 1];
                     }
 
                     // x ions

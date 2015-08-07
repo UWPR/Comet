@@ -19,6 +19,7 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using CometUI.Properties;
 using CometWrapper;
+using System.Deployment.Application;
 
 namespace CometUI
 {
@@ -33,6 +34,14 @@ namespace CometUI
             SetCometVersion();
 
             SetLinks();
+        }
+
+        public Version AssemblyVersion
+        {
+           get
+           {
+              return ApplicationDeployment.CurrentDeployment.CurrentVersion;
+           }
         }
 
         private void SetAboutText()
@@ -51,8 +60,9 @@ namespace CometUI
                 labelCometEngineVersion.Text = cometVersion;
             }
 
-            Version version = typeof(CometUIMainForm).Assembly.GetName().Version;
-            labelCometUIVersion.Text = version.ToString();
+            //Version version = typeof(CometUIMainForm).Assembly.GetName().Version;
+            //labelCometUIVersion.Text = version.ToString();
+            labelCometUIVersion.Text = AssemblyVersion.ToString(4);
         }
 
         private void SetLinks()
