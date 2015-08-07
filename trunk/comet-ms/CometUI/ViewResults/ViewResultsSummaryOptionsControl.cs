@@ -167,5 +167,15 @@ namespace CometUI.ViewResults
         {
             textBoxCustomDecoyPrefix.Enabled = customDecoyPrefixCheckBox.Checked;
         }
+
+        private void eValueCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+           textBoxEValueCutoff.Enabled = eValueCheckBox.Checked;
+        }
+
+        private void textBoxCustomDecoyPrefix_TextChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }

@@ -144,6 +144,12 @@ namespace CometUI.ViewResults
                 }
             }
 
+            if (ViewResultsSummaryOptionsControl.eValueCheckBox.Checked)
+            {
+               double dEvalueCutoff = Convert.ToDouble(ViewResultsSummaryOptionsControl.textBoxEValueCutoff.Text);
+               SearchResults = SearchResultsMgr.ApplyEValueCutoff(dEvalueCutoff);
+            }
+
             UpdateSearchResultsList();
         }
 

@@ -151,6 +151,21 @@ namespace CometUI.ViewResults
             return filteredList;
         }
 
+        public List<SearchResult> ApplyEValueCutoff(double cutoffValue)
+        {
+           var filteredList = new List<SearchResult>();
+
+           // Go through each result and apply the cutoff to it.
+           foreach (var result in SearchResults)
+           {
+              if (result.Expect <= cutoffValue)
+              {
+                 filteredList.Add(new SearchResult(result));
+              }
+           }
+           return filteredList;
+        }
+
         private bool ReadSearchResults()
         {
             SearchResults.Clear();
