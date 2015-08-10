@@ -34,15 +34,15 @@ namespace CometUI.ViewResults
             this.showOptionsPanel = new System.Windows.Forms.Panel();
             this.viewOptionsTab = new System.Windows.Forms.TabControl();
             this.summaryTabPage = new System.Windows.Forms.TabPage();
+            this.resultsListContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.resultsListContextMenuItemExport = new System.Windows.Forms.ToolStripMenuItem();
             this.displayOptionsTabPage = new System.Windows.Forms.TabPage();
             this.pickColumnsTabPage = new System.Windows.Forms.TabPage();
             this.otherActionsTabPage = new System.Windows.Forms.TabPage();
             this.resultsPanel = new System.Windows.Forms.Panel();
             this.resultsSubPanel = new System.Windows.Forms.Panel();
             this.resultsSubPanelSplitContainer = new System.Windows.Forms.SplitContainer();
-            this.resultsListView = new BrightIdeasSoftware.ObjectListView();
-            this.resultsListContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.resultsListContextMenuItemExport = new System.Windows.Forms.ToolStripMenuItem();
+            this.resultsFastObjectListView = new BrightIdeasSoftware.FastObjectListView();
             this.detailsPanel = new System.Windows.Forms.Panel();
             this.hideDetailsPanelButton = new System.Windows.Forms.Button();
             this.viewSpectraSplitContainer = new System.Windows.Forms.SplitContainer();
@@ -126,14 +126,14 @@ namespace CometUI.ViewResults
             this.viewResultsToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.showOptionsPanel.SuspendLayout();
             this.viewOptionsTab.SuspendLayout();
+            this.resultsListContextMenuStrip.SuspendLayout();
             this.resultsPanel.SuspendLayout();
             this.resultsSubPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resultsSubPanelSplitContainer)).BeginInit();
             this.resultsSubPanelSplitContainer.Panel1.SuspendLayout();
             this.resultsSubPanelSplitContainer.Panel2.SuspendLayout();
             this.resultsSubPanelSplitContainer.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).BeginInit();
-            this.resultsListContextMenuStrip.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.resultsFastObjectListView)).BeginInit();
             this.detailsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewSpectraSplitContainer)).BeginInit();
             this.viewSpectraSplitContainer.Panel1.SuspendLayout();
@@ -188,6 +188,20 @@ namespace CometUI.ViewResults
             this.summaryTabPage.TabIndex = 0;
             this.summaryTabPage.Text = "Summary";
             this.summaryTabPage.UseVisualStyleBackColor = true;
+            // 
+            // resultsListContextMenuStrip
+            // 
+            this.resultsListContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.resultsListContextMenuItemExport});
+            this.resultsListContextMenuStrip.Name = "resultsListContextMenuStrip";
+            this.resultsListContextMenuStrip.Size = new System.Drawing.Size(148, 26);
+            // 
+            // resultsListContextMenuItemExport
+            // 
+            this.resultsListContextMenuItemExport.Name = "resultsListContextMenuItemExport";
+            this.resultsListContextMenuItemExport.Size = new System.Drawing.Size(147, 22);
+            this.resultsListContextMenuItemExport.Text = "&Export Results";
+            this.resultsListContextMenuItemExport.Click += new System.EventHandler(this.ResultsListContextMenuItemExportClick);
             // 
             // displayOptionsTabPage
             // 
@@ -253,7 +267,7 @@ namespace CometUI.ViewResults
             // 
             // resultsSubPanelSplitContainer.Panel1
             // 
-            this.resultsSubPanelSplitContainer.Panel1.Controls.Add(this.resultsListView);
+            this.resultsSubPanelSplitContainer.Panel1.Controls.Add(this.resultsFastObjectListView);
             // 
             // resultsSubPanelSplitContainer.Panel2
             // 
@@ -262,39 +276,24 @@ namespace CometUI.ViewResults
             this.resultsSubPanelSplitContainer.SplitterDistance = 198;
             this.resultsSubPanelSplitContainer.TabIndex = 4;
             // 
-            // resultsListView
+            // resultsFastObjectListView
             // 
-            this.resultsListView.AlternateRowBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(222)))), ((int)(((byte)(254)))));
-            this.resultsListView.BackColor = System.Drawing.Color.White;
-            this.resultsListView.ContextMenuStrip = this.resultsListContextMenuStrip;
-            this.resultsListView.Cursor = System.Windows.Forms.Cursors.Default;
-            this.resultsListView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.resultsListView.IncludeColumnHeadersInCopy = true;
-            this.resultsListView.Location = new System.Drawing.Point(0, 0);
-            this.resultsListView.Name = "resultsListView";
-            this.resultsListView.ShowGroups = false;
-            this.resultsListView.Size = new System.Drawing.Size(1015, 194);
-            this.resultsListView.TabIndex = 1;
-            this.resultsListView.UseAlternatingBackColors = true;
-            this.resultsListView.UseCompatibleStateImageBehavior = false;
-            this.resultsListView.UseHyperlinks = true;
-            this.resultsListView.View = System.Windows.Forms.View.Details;
-            this.resultsListView.CellToolTipShowing += new System.EventHandler<BrightIdeasSoftware.ToolTipShowingEventArgs>(this.ResultsListViewCellToolTipShowing);
-            this.resultsListView.HyperlinkClicked += new System.EventHandler<BrightIdeasSoftware.HyperlinkClickedEventArgs>(this.ResultsListViewHyperlinkClicked);
-            // 
-            // resultsListContextMenuStrip
-            // 
-            this.resultsListContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.resultsListContextMenuItemExport});
-            this.resultsListContextMenuStrip.Name = "resultsListContextMenuStrip";
-            this.resultsListContextMenuStrip.Size = new System.Drawing.Size(148, 26);
-            // 
-            // resultsListContextMenuItemExport
-            // 
-            this.resultsListContextMenuItemExport.Name = "resultsListContextMenuItemExport";
-            this.resultsListContextMenuItemExport.Size = new System.Drawing.Size(147, 22);
-            this.resultsListContextMenuItemExport.Text = "&Export Results";
-            this.resultsListContextMenuItemExport.Click += new System.EventHandler(this.ResultsListContextMenuItemExportClick);
+            this.resultsFastObjectListView.AlternateRowBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(222)))), ((int)(((byte)(254)))));
+            this.resultsFastObjectListView.ContextMenuStrip = this.resultsListContextMenuStrip;
+            this.resultsFastObjectListView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.resultsFastObjectListView.IncludeColumnHeadersInCopy = true;
+            this.resultsFastObjectListView.Location = new System.Drawing.Point(0, 0);
+            this.resultsFastObjectListView.Name = "resultsFastObjectListView";
+            this.resultsFastObjectListView.ShowGroups = false;
+            this.resultsFastObjectListView.Size = new System.Drawing.Size(1015, 194);
+            this.resultsFastObjectListView.TabIndex = 1;
+            this.resultsFastObjectListView.UseAlternatingBackColors = true;
+            this.resultsFastObjectListView.UseCompatibleStateImageBehavior = false;
+            this.resultsFastObjectListView.UseHyperlinks = true;
+            this.resultsFastObjectListView.View = System.Windows.Forms.View.Details;
+            this.resultsFastObjectListView.VirtualMode = true;
+            this.resultsFastObjectListView.CellToolTipShowing += new System.EventHandler<BrightIdeasSoftware.ToolTipShowingEventArgs>(this.ResultsListViewCellToolTipShowing);
+            this.resultsFastObjectListView.HyperlinkClicked += new System.EventHandler<BrightIdeasSoftware.HyperlinkClickedEventArgs>(this.ResultsListViewHyperlinkClicked);
             // 
             // detailsPanel
             // 
@@ -1220,14 +1219,14 @@ namespace CometUI.ViewResults
             this.Size = new System.Drawing.Size(1084, 725);
             this.showOptionsPanel.ResumeLayout(false);
             this.viewOptionsTab.ResumeLayout(false);
+            this.resultsListContextMenuStrip.ResumeLayout(false);
             this.resultsPanel.ResumeLayout(false);
             this.resultsSubPanel.ResumeLayout(false);
             this.resultsSubPanelSplitContainer.Panel1.ResumeLayout(false);
             this.resultsSubPanelSplitContainer.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.resultsSubPanelSplitContainer)).EndInit();
             this.resultsSubPanelSplitContainer.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.resultsListView)).EndInit();
-            this.resultsListContextMenuStrip.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.resultsFastObjectListView)).EndInit();
             this.detailsPanel.ResumeLayout(false);
             this.detailsPanel.PerformLayout();
             this.viewSpectraSplitContainer.Panel1.ResumeLayout(false);
@@ -1269,7 +1268,6 @@ namespace CometUI.ViewResults
         private System.Windows.Forms.Panel resultsPanelFull;
         private System.Windows.Forms.Panel resultsPanelNormal;
         private System.Windows.Forms.ToolTip viewResultsToolTip;
-        private BrightIdeasSoftware.ObjectListView resultsListView;
         private System.Windows.Forms.Panel detailsPanel;
         private System.Windows.Forms.Panel resultsSubPanel;
         private System.Windows.Forms.Button hideDetailsPanelButton;
@@ -1350,5 +1348,6 @@ namespace CometUI.ViewResults
         private System.Windows.Forms.ContextMenuStrip resultsListContextMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem resultsListContextMenuItemExport;
         private System.Windows.Forms.TabPage otherActionsTabPage;
+        private BrightIdeasSoftware.FastObjectListView resultsFastObjectListView;
     }
 }

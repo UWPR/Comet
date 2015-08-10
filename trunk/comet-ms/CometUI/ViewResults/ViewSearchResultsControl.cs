@@ -184,7 +184,7 @@ namespace CometUI.ViewResults
             if (exportFileDlg.ShowDialog() == DialogResult.OK)
             {
                 var resultsExporter = new ExportSearchResults();
-                resultsExporter.Export(resultsListView, exportFileDlg.FileFullPath);
+                resultsExporter.Export(resultsFastObjectListView, exportFileDlg.FileFullPath);
                 MessageBox.Show(Resources.ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Search_results_exported_to_ + exportFileDlg.FileFullPath,
                     Resources.ViewSearchResultsControl_ResultsListContextMenuItemExportClick_Export_Search_Results,
                     MessageBoxButtons.OK,
@@ -200,12 +200,12 @@ namespace CometUI.ViewResults
 
         public void UpdateSearchResultsList()
         {
-            resultsListView.BeginUpdate();
-            resultsListView.Clear();
+            resultsFastObjectListView.BeginUpdate();
+            resultsFastObjectListView.Clear();
             UpdateColumnHeaders();
-            resultsListView.SetObjects(SearchResults);
-            resultsListView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-            resultsListView.EndUpdate();
+            resultsFastObjectListView.SetObjects(SearchResults);
+            resultsFastObjectListView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+            resultsFastObjectListView.EndUpdate();
             UpdateResultsListSummaryText();
         }
 
@@ -223,7 +223,7 @@ namespace CometUI.ViewResults
 
         private void UpdateColumnHeaders()
         {
-            resultsListView.Columns.Clear();
+            resultsFastObjectListView.Columns.Clear();
 
             foreach (var item in CometUIMainForm.ViewResultsSettings.PickColumnsShowList)
             {
@@ -246,7 +246,7 @@ namespace CometUI.ViewResults
                                             MinimumWidth = 30
                                         };
 
-                    resultsListView.Columns.Add(olvColumn);
+                    resultsFastObjectListView.Columns.Add(olvColumn);
                 }
             }
         }
