@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
 using CometUI.Properties;
@@ -110,14 +111,14 @@ namespace CometUI.ViewResults
 
             InitializeFromDefaultSettings();
 
-            ShowDetailsPanel(false);
+            HideDetailsPanel();
 
             UpdateViewSearchResults(String.Empty, String.Empty);
         }
 
         public void UpdateViewSearchResults(String resultsPepXMLFile, String decoyPrefix)
         {
-            ShowDetailsPanel(false);
+            HideDetailsPanel();
 
             ErrorMessage = String.Empty;
             if (null != resultsPepXMLFile)
@@ -312,26 +313,47 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void ShowDetailsPanel(bool show)
+        //private void ShowDetailsPanel(bool show)
+        //{
+        //    detailsPanel.Visible = show;
+        //    if (show)
+        //    {
+        //       if (!detailsPanel.Visible)
+        //       {
+        //          resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height / 4;
+        //          resultsSubPanelSplitContainer.Panel2.Visible = true;
+        //          resultsSubPanelSplitContainer.IsSplitterFixed = false;
+        //          resultsSubPanelSplitContainer.FixedPanel = FixedPanel.None;
+        //       }
+        //    }
+        //    else
+        //    {
+        //        resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height;
+        //        resultsSubPanelSplitContainer.Panel2.Visible = false;
+        //        resultsSubPanelSplitContainer.IsSplitterFixed = true;
+        //        resultsSubPanelSplitContainer.FixedPanel = FixedPanel.Panel2;
+        //    }
+        //}
+
+        private void ShowDetailsPanel()
         {
-            detailsPanel.Visible = show;
-            if (show)
+            if (!detailsPanel.Visible)
             {
-               if (!detailsPanel.Visible)
-               {
-                  resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height / 4;
-                  resultsSubPanelSplitContainer.Panel2.Visible = true;
-                  resultsSubPanelSplitContainer.IsSplitterFixed = false;
-                  resultsSubPanelSplitContainer.FixedPanel = FixedPanel.None;
-               }
+                resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height / 4;
+                resultsSubPanelSplitContainer.Panel2.Visible = true;
+                resultsSubPanelSplitContainer.IsSplitterFixed = false;
+                resultsSubPanelSplitContainer.FixedPanel = FixedPanel.None;
+                detailsPanel.Visible = true;
             }
-            else
-            {
-                resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height;
-                resultsSubPanelSplitContainer.Panel2.Visible = false;
-                resultsSubPanelSplitContainer.IsSplitterFixed = true;
-                resultsSubPanelSplitContainer.FixedPanel = FixedPanel.Panel2;
-            }
+        }
+
+        private void HideDetailsPanel()
+        {
+            resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height;
+            resultsSubPanelSplitContainer.Panel2.Visible = false;
+            resultsSubPanelSplitContainer.IsSplitterFixed = true;
+            resultsSubPanelSplitContainer.FixedPanel = FixedPanel.Panel2;
+            detailsPanel.Visible = false;
         }
 
         private void ResultsListViewCellToolTipShowing(object sender, ToolTipShowingEventArgs e)
@@ -380,7 +402,7 @@ namespace CometUI.ViewResults
         private void OnProteinLinkClick(HyperlinkClickedEventArgs e)
         {
             // Make sure the View Spectrum UI gets hidden first
-            ShowViewSpectraUI(false);
+            HideViewSpectraUI();
 
             var result = e.Model as SearchResult;
             if (null != result)
@@ -397,8 +419,8 @@ namespace CometUI.ViewResults
                 var proteinSequence = dbReader.ReadProtein(result.ProteinInfo.Name);
                 if (null != proteinSequence)
                 {
-                    ShowDetailsPanel(true);
-                    ShowProteinSequenceUI(true);
+                    ShowDetailsPanel();
+                    ShowProteinSequenceUI();
 
                     // Show the path of the protein database file
                     databaseLabel.Text = Resources.ViewSearchResultsControl_ShowProteinSequence_Database__
@@ -416,8 +438,8 @@ namespace CometUI.ViewResults
             }
             catch (Exception exception)
             {
-                ShowProteinSequenceUI(false);
-                ShowDetailsPanel(false);
+                HideProteinSequenceUI();
+                HideDetailsPanel();
 
                 if (DialogResult.Yes ==
                     MessageBox.Show(
@@ -455,7 +477,7 @@ namespace CometUI.ViewResults
         private void OnIonsLinkClick(HyperlinkClickedEventArgs e)
         {
             // Make sure the protein sequence UI gets hidden first
-            ShowProteinSequenceUI(false);
+            HideProteinSequenceUI();
 
             var result = e.Model as SearchResult;
             if (null != result)
@@ -467,20 +489,31 @@ namespace CometUI.ViewResults
 
         private void HideDetailsPanelButtonClick(object sender, EventArgs e)
         {
-            ShowProteinSequenceUI(false);
-            ShowViewSpectraUI(false);
-            ShowDetailsPanel(false);
+            HideProteinSequenceUI();
+            HideViewSpectraUI();
+            HideDetailsPanel();
         }
 
-        private void ShowProteinSequenceUI(bool show)
+        private void ShowProteinSequenceUI()
         {
-            databaseLabel.Visible = show;
-            proteinSequenceTextBox.Visible = show;
+            databaseLabel.Visible = true;
+            proteinSequenceTextBox.Visible = true;
         }
 
-        private void ShowViewSpectraUI(bool show)
+        private void HideProteinSequenceUI()
         {
-            viewSpectraSplitContainer.Visible = show;
+            databaseLabel.Visible = false;
+            proteinSequenceTextBox.Visible = false;
+        }
+
+        private void ShowViewSpectraUI()
+        {
+            viewSpectraSplitContainer.Visible = true;
+        }
+
+        private void HideViewSpectraUI()
+        {
+            viewSpectraSplitContainer.Visible = false;
         }
 
         private void ViewSpectra()
@@ -504,17 +537,14 @@ namespace CometUI.ViewResults
                                               SearchResultsMgr.SearchParams.MSLevel, Peaks))
             {
                 InitializeSpectrumGraphOptions();
-
-                ShowViewSpectraUI(true);
-
-                ShowDetailsPanel(true);
-
+                ShowViewSpectraUI();
+                ShowDetailsPanel();
                 UpdateViewSpectra();
             }
             else
             {
-                ShowViewSpectraUI(false);
-                ShowDetailsPanel(false);
+                HideViewSpectraUI();
+                HideDetailsPanel();
 
                 if (DialogResult.Yes ==
                     MessageBox.Show(
@@ -635,7 +665,18 @@ namespace CometUI.ViewResults
         private void DrawGraphs()
         {
             DrawSpectrumGraph();
-            DrawPrecursorGraph();
+
+            // Don't show the precursor graph for spectra files that do NOT
+            // contain MS1 scans.
+            if (NoMs1ScansInSpectraFile())
+            {
+                HidePrecursorGraph();
+            }
+            else
+            {
+                DrawPrecursorGraph();
+                ShowPrecursorGraph();
+            }
         }
 
         private void DrawSpectrumGraph()
@@ -768,6 +809,30 @@ namespace CometUI.ViewResults
                     SpectrumGraphPeaksList.Add(peak.Mz, peak.Intensity);
                 }
             }
+        }
+
+        private bool NoMs1ScansInSpectraFile()
+        {
+            var spectraFileExtension = Path.GetExtension(SearchResultsMgr.SpectraFile);
+            spectraFileExtension = null == spectraFileExtension ? String.Empty : spectraFileExtension.ToLower();
+            return spectraFileExtension.Equals(".mgf") || spectraFileExtension.Equals(".ms2") ||
+                   spectraFileExtension.Equals(".cms2") || spectraFileExtension.Equals(".bms2");
+        }
+
+        private void ShowPrecursorGraph()
+        {
+            precursorGraphSplitContainer.SplitterDistance = precursorGraphSplitContainer.Height/2;
+            precursorGraphSplitContainer.Panel2.Visible = true;
+            precursorGraphSplitContainer.IsSplitterFixed = false;
+            precursorGraphSplitContainer.FixedPanel = FixedPanel.None;
+        }
+
+        private void HidePrecursorGraph()
+        {
+            precursorGraphSplitContainer.SplitterDistance = precursorGraphSplitContainer.Height;
+            precursorGraphSplitContainer.Panel2.Visible = false;
+            precursorGraphSplitContainer.IsSplitterFixed = true;
+            precursorGraphSplitContainer.FixedPanel = FixedPanel.Panel2;
         }
 
         private void DrawPrecursorGraph()
