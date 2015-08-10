@@ -317,10 +317,13 @@ namespace CometUI.ViewResults
             detailsPanel.Visible = show;
             if (show)
             {
-                resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height / 4;
-                resultsSubPanelSplitContainer.Panel2.Visible = true;
-                resultsSubPanelSplitContainer.IsSplitterFixed = false;
-                resultsSubPanelSplitContainer.FixedPanel = FixedPanel.None;
+               if (!detailsPanel.Visible)
+               {
+                  resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height / 4;
+                  resultsSubPanelSplitContainer.Panel2.Visible = true;
+                  resultsSubPanelSplitContainer.IsSplitterFixed = false;
+                  resultsSubPanelSplitContainer.FixedPanel = FixedPanel.None;
+               }
             }
             else
             {
@@ -503,6 +506,7 @@ namespace CometUI.ViewResults
                 InitializeSpectrumGraphOptions();
 
                 ShowViewSpectraUI(true);
+
                 ShowDetailsPanel(true);
 
                 UpdateViewSpectra();
