@@ -821,11 +821,8 @@ namespace CometUI.ViewResults
 
         private void ShowPrecursorGraph()
         {
-            if (!precursorGraphSplitContainer.Panel2.Visible)
-            {
-                precursorGraphSplitContainer.SplitterDistance = (int)(precursorGraphSplitContainer.Height / 1.33);
-                precursorGraphSplitContainer.Panel2.Visible = true;
-            }
+            //precursorGraphSplitContainer.SplitterDistance = (int)(precursorGraphSplitContainer.Height / 2);
+            precursorGraphSplitContainer.Panel2.Visible = true;
             precursorGraphSplitContainer.IsSplitterFixed = false;
             precursorGraphSplitContainer.FixedPanel = FixedPanel.None;
         }

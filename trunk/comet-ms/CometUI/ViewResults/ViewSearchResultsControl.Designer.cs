@@ -1069,7 +1069,7 @@ namespace CometUI.ViewResults
             // 
             this.precursorGraphSplitContainer.Panel2.Controls.Add(this.precursorGraphItem);
             this.precursorGraphSplitContainer.Size = new System.Drawing.Size(582, 132);
-            this.precursorGraphSplitContainer.SplitterDistance = 69;
+            this.precursorGraphSplitContainer.SplitterDistance = 95;
             this.precursorGraphSplitContainer.TabIndex = 2;
             // 
             // spectrumGraphItem

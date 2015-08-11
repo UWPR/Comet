@@ -26,7 +26,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>http://comet-ms.sourceforge.net/CometUI/</InstallUrl>
-    <ApplicationRevision>19</ApplicationRevision>
+    <ApplicationRevision>28</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <CreateDesktopShortcut>true</CreateDesktopShortcut>
@@ -428,6 +428,7 @@
   <ItemGroup>
     <Content Include="CometUI.ico" />
     <Content Include="License-LGPL.txt" />
+    <None Include="Resources\cometpng.png" />
     <Content Include="Resources\CometUI.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
