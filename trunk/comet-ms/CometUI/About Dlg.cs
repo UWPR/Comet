@@ -40,7 +40,20 @@ namespace CometUI
         {
            get
            {
-              return ApplicationDeployment.CurrentDeployment.CurrentVersion;
+               Version version;
+               try
+               {
+                   version = ApplicationDeployment.CurrentDeployment.CurrentVersion;
+               }
+               catch (Exception)
+               {
+                   // If this application hasn't been one click deployed yet,
+                   // "ApplicationDeployment" will thrown an exception, so 
+                   // default to the current Assembly version.
+                   version = typeof(CometUIMainForm).Assembly.GetName().Version;
+               }
+
+               return version;
            }
         }
 
@@ -60,8 +73,6 @@ namespace CometUI
                 labelCometEngineVersion.Text = cometVersion;
             }
 
-            //Version version = typeof(CometUIMainForm).Assembly.GetName().Version;
-            //labelCometUIVersion.Text = version.ToString();
             labelCometUIVersion.Text = AssemblyVersion.ToString(4);
         }
 
