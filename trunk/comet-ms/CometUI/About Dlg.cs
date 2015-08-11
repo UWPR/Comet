@@ -78,8 +78,8 @@ namespace CometUI
 
         private void SetLinks()
         {
-            const string uwprLink = "http://proteomicsresource.washington.edu/";
-            linkLabelUWPR.Links.Add(0, uwprLink.Length, uwprLink);
+            const string cometSFLink = "http://comet-ms.sourceforge.net/";
+            linkLabelCometSF.Links.Add(0, cometSFLink.Length, cometSFLink);
         }
 
         private void BtnOkClick(object sender, EventArgs e)

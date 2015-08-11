@@ -37,7 +37,7 @@
          this.labelCometUIVersion = new System.Windows.Forms.Label();
          this.label4 = new System.Windows.Forms.Label();
          this.label9 = new System.Windows.Forms.Label();
-         this.linkLabelUWPR = new System.Windows.Forms.LinkLabel();
+         this.linkLabelCometSF = new System.Windows.Forms.LinkLabel();
          this.btnOK = new System.Windows.Forms.Button();
          this.label10 = new System.Windows.Forms.Label();
          this.textBoxAboutComet = new System.Windows.Forms.TextBox();
@@ -121,21 +121,21 @@
          this.label9.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
          this.label9.Location = new System.Drawing.Point(36, 257);
          this.label9.Name = "label9";
-         this.label9.Size = new System.Drawing.Size(343, 14);
+         this.label9.Size = new System.Drawing.Size(231, 14);
          this.label9.TabIndex = 12;
-         this.label9.Text = "All contact information and more can be found at";
+         this.label9.Text = "More information can be found at";
          // 
-         // linkLabelUWPR
+         // linkLabelCometSF
          // 
-         this.linkLabelUWPR.AutoSize = true;
-         this.linkLabelUWPR.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-         this.linkLabelUWPR.Location = new System.Drawing.Point(37, 271);
-         this.linkLabelUWPR.Name = "linkLabelUWPR";
-         this.linkLabelUWPR.Size = new System.Drawing.Size(294, 14);
-         this.linkLabelUWPR.TabIndex = 13;
-         this.linkLabelUWPR.TabStop = true;
-         this.linkLabelUWPR.Text = "http://proteomicsresource.washington.edu/";
-         this.linkLabelUWPR.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabelUWPRLinkClicked);
+         this.linkLabelCometSF.AutoSize = true;
+         this.linkLabelCometSF.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+         this.linkLabelCometSF.Location = new System.Drawing.Point(37, 271);
+         this.linkLabelCometSF.Name = "linkLabelCometSF";
+         this.linkLabelCometSF.Size = new System.Drawing.Size(231, 14);
+         this.linkLabelCometSF.TabIndex = 13;
+         this.linkLabelCometSF.TabStop = true;
+         this.linkLabelCometSF.Text = "http://comet-ms.sourceforge.net/";
+         this.linkLabelCometSF.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabelUWPRLinkClicked);
          // 
          // btnOK
          // 
@@ -179,7 +179,7 @@
          this.Controls.Add(this.textBoxAboutComet);
          this.Controls.Add(this.label10);
          this.Controls.Add(this.btnOK);
-         this.Controls.Add(this.linkLabelUWPR);
+         this.Controls.Add(this.linkLabelCometSF);
          this.Controls.Add(this.label9);
          this.Controls.Add(this.label4);
          this.Controls.Add(this.labelCometUIVersion);
@@ -210,7 +210,7 @@
         private System.Windows.Forms.Label labelCometUIVersion;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.LinkLabel linkLabelUWPR;
+        private System.Windows.Forms.LinkLabel linkLabelCometSF;
         private System.Windows.Forms.Button btnOK;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.TextBox textBoxAboutComet;
