@@ -125,14 +125,6 @@ namespace CometUI.ViewResults
             {
                 ShowResultsListPanel(String.Empty != resultsPepXMLFile);
 
-                if (!ViewResultsSummaryOptionsControl.UpdateSummaryOptions(resultsPepXMLFile))
-                {
-                    ErrorMessage = SearchResultsMgr.ErrorMessage;
-                    MessageBox.Show(ViewResultsSummaryOptionsControl.ErrorMessage,
-                                    Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
-                                    MessageBoxIcon.Error);
-                }
-
                 if (!SearchResultsMgr.UpdateResults(resultsPepXMLFile, decoyPrefix))
                 {
                     ErrorMessage = SearchResultsMgr.ErrorMessage;
@@ -142,6 +134,17 @@ namespace CometUI.ViewResults
                 else
                 {
                     SearchResults = SearchResultsMgr.SearchResults;
+                }
+
+                // We *MUST* call this AFTER calling "SearchResultMgr.UpdateResults" above.
+                // Otherwise, the SearchResultsMgr.ResultsFileReader we use below will reflect 
+                // the OLD results file, NOT the updated one.
+                if (!ViewResultsSummaryOptionsControl.UpdateSummaryOptions(resultsPepXMLFile, SearchResultsMgr.ResultsFileReader))
+                {
+                    ErrorMessage = SearchResultsMgr.ErrorMessage;
+                    MessageBox.Show(ViewResultsSummaryOptionsControl.ErrorMessage,
+                                    Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
+                                    MessageBoxIcon.Error);
                 }
             }
 

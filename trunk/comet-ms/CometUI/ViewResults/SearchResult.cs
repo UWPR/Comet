@@ -27,11 +27,43 @@ namespace CometUI.ViewResults
     {
         public String ErrorMessage { get; set; }
         public String ResultsFile { get; set; }
+        
         public String SearchDatabaseFile { get; set; }
         public String SpectraFile { get; set; }
         public List<SearchResult> SearchResults { get; set; }
         public Dictionary<String, SearchResultColumn> ResultColumns { get; set; }
         public SearchResultParams SearchParams { get; private set; }
+
+        private PepXMLReader _resultsFileReader;
+        public PepXMLReader ResultsFileReader
+        {
+            get
+            {
+                if (null != _resultsFileReader)
+                {
+                    return _resultsFileReader;
+                }
+
+                if (String.IsNullOrEmpty(ResultsFile))
+                {
+                    return null;
+                }
+
+                try
+                {
+                    _resultsFileReader = new PepXMLReader(ResultsFile);
+                }
+                catch (Exception e)
+                {
+                    ErrorMessage =
+                        "Could not read the results pep.xml file. " +
+                        e.Message;
+                    return null;
+                }
+
+                return _resultsFileReader;
+            }
+        }
 
         public String ResultsFileBaseName
         {
@@ -115,6 +147,7 @@ namespace CometUI.ViewResults
         {
             DecoyPrefix = decoyPrefix;
             ResultsFile = resultsPepXMLFile;
+            _resultsFileReader = null;
 
             if (!ReadSearchResults())
             {
@@ -176,21 +209,7 @@ namespace CometUI.ViewResults
                 return true;
             }
 
-            // Create a reader for the results file
-            PepXMLReader pepXMLReader;
-            try
-            {
-                pepXMLReader = new PepXMLReader(resultsFile);
-            }
-            catch (Exception e)
-            {
-                ErrorMessage =
-                    Resources.ViewSearchResultsControl_UpdateSearchResultsList_Could_not_read_the_results_pep_xml_file__ +
-                    e.Message;
-                return false;
-            }
-
-            if (!ReadResultsFromPepXML(pepXMLReader))
+            if (!ReadResultsFromPepXML(ResultsFileReader))
             {
                 ErrorMessage = "Could not read the search results. " + ErrorMessage;
                 return false;

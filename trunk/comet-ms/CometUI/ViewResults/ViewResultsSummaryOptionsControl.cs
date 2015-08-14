@@ -67,12 +67,12 @@ namespace CometUI.ViewResults
             }
         }
 
-        public bool UpdateSummaryOptions(String resultsPepXMLFile)
+        public bool UpdateSummaryOptions(String resultsPepXMLFile, PepXMLReader pepXMLReader)
         {
             ErrorMessage = String.Empty;
             UpdatePepXMLFileCombo(resultsPepXMLFile);
 
-            if (!UpdateSearchSummaryLabel(resultsPepXMLFile))
+            if (!UpdateSearchSummaryLabel(pepXMLReader))
             {
                 return false;
             }
@@ -85,10 +85,9 @@ namespace CometUI.ViewResults
             pepXMLFileCombo.Text = resultsPepXMLFile;
         }
 
-        private bool UpdateSearchSummaryLabel(String resultsPepXMLFile)
+        private bool UpdateSearchSummaryLabel(PepXMLReader pepXMLReader)
         {
-            String resultsFile = resultsPepXMLFile;
-            if (String.Empty == resultsFile)
+            if (null == pepXMLReader)
             {
                 // If there is no results file, clear the search summary display
                 searchResultsSummaryLabel.Text = String.Empty;
@@ -97,21 +96,6 @@ namespace CometUI.ViewResults
             }
 
             var searchSummary = String.Empty;
-            PepXMLReader pepXMLReader;
-            // Create a reader for the results file
-            try
-            {
-                pepXMLReader = new PepXMLReader(resultsFile);
-            }
-            catch (Exception e)
-            {
-                ErrorMessage =
-                    Resources.
-                        ViewResultsSummaryOptionsControl_UpdateSearchSummaryLabel_Could_not_read_the_results_pep_xml_file__ +
-                    e.Message;
-                return false;
-            }
-
             searchSummary += pepXMLReader.ReadAttributeFromFirstMatchingNode("/msms_pipeline_analysis/msms_run_summary/sample_enzyme", "name");
             searchSummary += " digest, ";
 
