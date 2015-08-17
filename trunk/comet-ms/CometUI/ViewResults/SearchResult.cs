@@ -27,6 +27,7 @@ namespace CometUI.ViewResults
     {
         public String ErrorMessage { get; set; }
         public String ResultsFile { get; set; }
+        public String DecoyPrefix { get; set; }
         
         public String SearchDatabaseFile { get; set; }
         public String SpectraFile { get; set; }
@@ -101,8 +102,7 @@ namespace CometUI.ViewResults
 
 
         private const MSSpectrumTypeWrapper DefaultMSLevel = MSSpectrumTypeWrapper.MS2;
-        private String DecoyPrefix { get; set; }
-
+        
         public SearchResultsManager()
         {
             ErrorMessage = String.Empty;

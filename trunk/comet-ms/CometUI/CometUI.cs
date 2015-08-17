@@ -73,9 +73,9 @@ namespace CometUI
             return null;
         }
 
-        public void UpdateViewSearchResults(String resultsPepXMLFile)
+        public void UpdateViewSearchResults(String resultsPepXMLFile, String decoyPrefix)
         {
-            ViewSearchResultsControl.UpdateViewSearchResults(resultsPepXMLFile, SearchSettings.DecoyPrefix);
+            ViewSearchResultsControl.UpdateViewSearchResults(resultsPepXMLFile, decoyPrefix);
         }
 
         private void SaveSearchSettings()

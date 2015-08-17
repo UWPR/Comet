@@ -261,6 +261,7 @@
     <Compile Include="ViewResults\ProteinDBReader.cs" />
     <Compile Include="ViewResults\SearchResult.cs" />
     <Compile Include="ViewResults\ExportSearchResults.cs" />
+    <Compile Include="ViewResults\ViewResultsBackgroundWorker.cs" />
     <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -278,6 +279,12 @@
     </Compile>
     <Compile Include="ViewResults\ViewResultsPickColumnsControl.Designer.cs">
       <DependentUpon>ViewResultsPickColumnsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsProgressDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsProgressDlg.Designer.cs">
+      <DependentUpon>ViewResultsProgressDlg.cs</DependentUpon>
     </Compile>
     <Compile Include="ViewResults\ViewResultsSummaryOptionsControl.cs">
       <SubType>UserControl</SubType>

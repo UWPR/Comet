@@ -18,7 +18,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using CometUI.Properties;
 
 namespace CometUI.ViewResults
 {

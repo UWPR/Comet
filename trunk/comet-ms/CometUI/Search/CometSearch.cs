@@ -152,7 +152,7 @@ namespace CometUI.Search
                     fileName = fileName.Substring(0, fileExtPos);
                 }
                 String outputPepXML = fileName + ".pep.xml";
-                Parent.UpdateViewSearchResults(outputPepXML);
+                Parent.UpdateViewSearchResults(outputPepXML, SearchSettings.DecoyPrefix);
             }
             else
             {

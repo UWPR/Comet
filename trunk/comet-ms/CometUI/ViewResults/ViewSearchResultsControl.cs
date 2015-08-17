@@ -29,15 +29,17 @@ namespace CometUI.ViewResults
 {
     public partial class ViewSearchResultsControl : UserControl
     {
+        public String ResultsFile { get; set; }
+        public String DecoyPrefix { get; set; }
         public bool SettingsChanged { get; set; }
         public String ErrorMessage { get; private set; }
         public ViewResultsSummaryOptionsControl ViewResultsSummaryOptionsControl { get; set; }
         public bool HasSearchResults { get { return SearchResults.Count > 0; } }
         
         private int NumResultsShown { get { return SearchResults.Count; } }
+        private SearchResultsManager SearchResultsMgr { get; set; }
         private int TotalNumResults { get { return SearchResultsMgr.SearchResults.Count; } }
         private List<SearchResult> SearchResults { get; set; }
-        private SearchResultsManager SearchResultsMgr { get; set; }
         private CometUIMainForm CometUIMainForm { get; set; }
         private bool OptionsPanelShown { get; set; }
         private ViewResultsDisplayOptionsControl ViewResultsDisplayOptionsControl { get; set; }
@@ -113,48 +115,94 @@ namespace CometUI.ViewResults
 
             HideDetailsPanel();
 
+            ResultsFile = String.Empty;
+            DecoyPrefix = SearchSettings.Default.DecoyPrefix;
+
             UpdateViewSearchResults(String.Empty, String.Empty);
         }
 
         public void UpdateViewSearchResults(String resultsPepXMLFile, String decoyPrefix)
         {
             HideDetailsPanel();
+            HideResultsListPanel();
+
+            ResultsFile = resultsPepXMLFile;
+            DecoyPrefix = decoyPrefix;
 
             ErrorMessage = String.Empty;
-            if (null != resultsPepXMLFile)
+            if (null != ResultsFile)
             {
-                ShowResultsListPanel(String.Empty != resultsPepXMLFile);
-
-                if (!SearchResultsMgr.UpdateResults(resultsPepXMLFile, decoyPrefix))
+                if (String.Empty == ResultsFile)
                 {
-                    ErrorMessage = SearchResultsMgr.ErrorMessage;
-                    MessageBox.Show(ErrorMessage, Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
-                                    MessageBoxIcon.Error);
+                    ClearResults();
                 }
                 else
                 {
-                    SearchResults = SearchResultsMgr.SearchResults;
+                    // We have a valid results file, so launch the results 
+                    // loader to load the file into the UI. Note that we need
+                    // to disable the options panel to make sure the user
+                    // doesn't try to load another set of results while we're
+                    // already trying to load one set.
+                    DisableViewOptionsPanel();
+                    HideResultsListPanel();
+                    var viewResultsWorker = new ViewResultsBackgroundWorker(this);
+                    viewResultsWorker.DoWork();
                 }
+            }
+        }
 
-                // We *MUST* call this AFTER calling "SearchResultMgr.UpdateResults" above.
-                // Otherwise, the SearchResultsMgr.ResultsFileReader we use below will reflect 
-                // the OLD results file, NOT the updated one.
-                if (!ViewResultsSummaryOptionsControl.UpdateSummaryOptions(resultsPepXMLFile, SearchResultsMgr.ResultsFileReader))
-                {
-                    ErrorMessage = SearchResultsMgr.ErrorMessage;
-                    MessageBox.Show(ViewResultsSummaryOptionsControl.ErrorMessage,
-                                    Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
-                                    MessageBoxIcon.Error);
-                }
+        public bool BeginUpdatingResults()
+        {
+            bool res = SearchResultsMgr.UpdateResults(ResultsFile, DecoyPrefix);
+            if (!res)
+            {
+                ErrorMessage = SearchResultsMgr.ErrorMessage;
+            }
+
+            return res;
+        }
+
+        public void FinishUpdatingResults()
+        {
+            SearchResults = SearchResultsMgr.SearchResults;
+            // We *MUST* call this AFTER calling "SearchResultMgr.UpdateResults" above.
+            // Otherwise, the SearchResultsMgr.ResultsFileReader we use below will reflect 
+            // the OLD results file, NOT the updated one.
+            if (!ViewResultsSummaryOptionsControl.UpdateSummaryOptions(ResultsFile, SearchResultsMgr.ResultsFileReader))
+            {
+                ErrorMessage = SearchResultsMgr.ErrorMessage;
+                MessageBox.Show(ViewResultsSummaryOptionsControl.ErrorMessage,
+                                Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
             }
 
             if (ViewResultsSummaryOptionsControl.eValueCheckBox.Checked)
             {
-               double dEvalueCutoff = Convert.ToDouble(ViewResultsSummaryOptionsControl.textBoxEValueCutoff.Text);
-               SearchResults = SearchResultsMgr.ApplyEValueCutoff(dEvalueCutoff);
+                double dEvalueCutoff = Convert.ToDouble(ViewResultsSummaryOptionsControl.textBoxEValueCutoff.Text);
+                SearchResults = SearchResultsMgr.ApplyEValueCutoff(dEvalueCutoff);
+            }
+
+            if (ViewResultsSummaryOptionsControl.eValueCheckBox.Checked)
+            {
+                double dEvalueCutoff = Convert.ToDouble(ViewResultsSummaryOptionsControl.textBoxEValueCutoff.Text);
+                SearchResults = SearchResultsMgr.ApplyEValueCutoff(dEvalueCutoff);
             }
 
             UpdateSearchResultsList();
+
+            if (HasSearchResults)
+            {
+                ShowResultsListPanel();
+            }
+
+            EnableViewOptionsPanel();
+        }
+
+        public void ClearResults()
+        {
+            ResultsFile = String.Empty;
+            BeginUpdatingResults();
+            FinishUpdatingResults();
         }
 
         public void SaveViewResultsSettings()
@@ -288,6 +336,16 @@ namespace CometUI.ViewResults
             showHideOptionsBtn.Text = Resources.ViewSearchResultsControl_HideViewOptionsPanel__;
         }
 
+        private void DisableViewOptionsPanel()
+        {
+            showOptionsPanel.Enabled = false;
+        }
+
+        private void EnableViewOptionsPanel()
+        {
+            showOptionsPanel.Enabled = true;
+        }
+
         private void ShowHideOptionsBtnClick(object sender, EventArgs e)
         {
             SettingsChanged = true;
@@ -304,39 +362,15 @@ namespace CometUI.ViewResults
             }
         }
 
-        private void ShowResultsListPanel(bool show)
+        private void ShowResultsListPanel()
         {
-            if (show)
-            {
-                resultsPanel.Show();
-            }
-            else
-            {
-                resultsPanel.Hide();
-            }
+            resultsPanel.Show();
         }
 
-        //private void ShowDetailsPanel(bool show)
-        //{
-        //    detailsPanel.Visible = show;
-        //    if (show)
-        //    {
-        //       if (!detailsPanel.Visible)
-        //       {
-        //          resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height / 4;
-        //          resultsSubPanelSplitContainer.Panel2.Visible = true;
-        //          resultsSubPanelSplitContainer.IsSplitterFixed = false;
-        //          resultsSubPanelSplitContainer.FixedPanel = FixedPanel.None;
-        //       }
-        //    }
-        //    else
-        //    {
-        //        resultsSubPanelSplitContainer.SplitterDistance = resultsSubPanelSplitContainer.Height;
-        //        resultsSubPanelSplitContainer.Panel2.Visible = false;
-        //        resultsSubPanelSplitContainer.IsSplitterFixed = true;
-        //        resultsSubPanelSplitContainer.FixedPanel = FixedPanel.Panel2;
-        //    }
-        //}
+        private void HideResultsListPanel()
+        {
+            resultsPanel.Hide();
+        }
 
         private void ShowDetailsPanel()
         {
