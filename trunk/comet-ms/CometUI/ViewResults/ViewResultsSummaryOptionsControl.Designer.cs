@@ -134,7 +134,7 @@
             this.eValueCheckBox.TabIndex = 47;
             this.eValueCheckBox.Text = "E-Value cutoff:";
             this.eValueCheckBox.UseVisualStyleBackColor = true;
-            this.eValueCheckBox.CheckedChanged += new System.EventHandler(this.eValueCheckBox_CheckedChanged);
+            this.eValueCheckBox.CheckedChanged += new System.EventHandler(this.EValueCheckBoxCheckedChanged);
             // 
             // resultsListSummaryLabel
             // 
@@ -154,7 +154,6 @@
             this.textBoxCustomDecoyPrefix.Name = "textBoxCustomDecoyPrefix";
             this.textBoxCustomDecoyPrefix.Size = new System.Drawing.Size(134, 21);
             this.textBoxCustomDecoyPrefix.TabIndex = 4;
-            this.textBoxCustomDecoyPrefix.TextChanged += new System.EventHandler(this.textBoxCustomDecoyPrefix_TextChanged);
             // 
             // customDecoyPrefixCheckBox
             // 
