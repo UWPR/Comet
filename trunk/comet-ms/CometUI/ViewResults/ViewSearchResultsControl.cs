@@ -878,14 +878,18 @@ namespace CometUI.ViewResults
 
             var precursorPeaks = new List<Peak_T_Wrapper>();
             var msFileReader = new MSFileReaderWrapper();
+            int ms1ScanNum = 0;
             if (!msFileReader.ReadPrecursorPeaks(SearchResultsMgr.SpectraFile, 
                                                 ViewSpectraSearchResult.StartScan, 
                                                 SearchResultsMgr.SearchParams.MSLevel,
-                                                precursorPeaks))
+                                                precursorPeaks,
+                                                ref ms1ScanNum))
             {
                 // If there are no MS1 scans, just exit, nothing to do.
                 return;
             }
+
+            SetPrecursorGraphTitle(theoreticalPrecursorMz, ms1ScanNum);
 
             PointPair acquiredPrecursorPeak = null;
             PointPair theoreticalPrecursorPeak = null;
@@ -978,16 +982,21 @@ namespace CometUI.ViewResults
             precursorGraphPane.CurveList.Clear();
             precursorGraphPane.GraphObjList.Clear();
 
-            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}", Math.Round(theoreticalPrecursorMz, 4));
-            var border = new Border { IsVisible = false };
-            var fill = new Fill { IsVisible = false };
-            precursorGraphPane.Title.FontSpec = new FontSpec { Size = 14, Border = border, Fill = fill };
             precursorGraphPane.XAxis.Title.Text = "m/z";
             precursorGraphPane.YAxis.Title.Text = "Intensity";
             precursorGraphPane.YAxis.Scale.Min = 0.0;
             precursorGraphPane.XAxis.Scale.Min = Math.Min(theoreticalPrecursorMz, acquiredPrecursorMz) - ((double)massTolTextBox.DecimalValue * 20);
             precursorGraphPane.XAxis.Scale.Max = Math.Max(theoreticalPrecursorMz, acquiredPrecursorMz) + ((double)massTolTextBox.DecimalValue * 20);
             precursorGraphPane.Legend.Position = LegendPos.InsideTopRight;
+        }
+
+        private void SetPrecursorGraphTitle(double theoreticalPrecursorMz, int ms1ScanNum)
+        {
+            GraphPane precursorGraphPane = precursorGraphItem.GraphPane;
+            precursorGraphPane.Title.Text = String.Format("Zoomed in Precursor Plot: m/z {0}, scan {1}", Math.Round(theoreticalPrecursorMz, 4), ms1ScanNum);
+            var border = new Border { IsVisible = false };
+            var fill = new Fill { IsVisible = false };
+            precursorGraphPane.Title.FontSpec = new FontSpec { Size = 14, Border = border, Fill = fill };
         }
 
         private void UpdatePrecursorPeak(Peak peak, double precursorMz, ref PointPair precursorPeak)

@@ -79,8 +79,10 @@ bool MSFileReaderWrapper::ReadPeaks(String^ msFileName, int scanNum, MSSpectrumT
     return true;
 }
 
-bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentScanNum, MSSpectrumTypeWrapper msFragmentSpectrumType, List<Peak_T_Wrapper^> ^precursorPeaks)
+bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentScanNum, MSSpectrumTypeWrapper msFragmentSpectrumType, List<Peak_T_Wrapper^> ^precursorPeaks, int% ms1ScanNum)
 {
+    ms1ScanNum = 0;
+
     if (NULL == _pMSReader)
     {
         return false;
@@ -123,6 +125,8 @@ bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentSca
     {
         return false;
     }
+
+    ms1ScanNum = scanNum;
 
     for (int i = 0; i < spec.size(); i++)
     {
