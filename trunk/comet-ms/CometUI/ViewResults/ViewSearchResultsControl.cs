@@ -648,7 +648,20 @@ namespace CometUI.ViewResults
         {
             IonCalculator.CalculateIons(ViewSpectraSearchResult, SpectrumGraphUserOptions);
             UpdateIonTable();
-            DrawGraphs();
+
+            DrawSpectrumGraph();
+
+            // Don't show the precursor graph for spectra files that do NOT
+            // contain MS1 scans.
+            if (NoMs1ScansInSpectraFile())
+            {
+                HidePrecursorGraph();
+            }
+            else
+            {
+                DrawPrecursorGraph();
+                ShowPrecursorGraph();
+            }
         }
 
         private void UpdateIonTable()
@@ -693,23 +706,6 @@ namespace CometUI.ViewResults
                     var aspect = ionTypeStr.ToUpper() + IonCalculator.IonChargeTable[charge] + "ChargedIonMass";
                     spectrumGraphIonsTable.Columns.Add(new OLVColumn(header, aspect) { TextAlign = HorizontalAlignment.Center });
                 }
-            }
-        }
-
-        private void DrawGraphs()
-        {
-            DrawSpectrumGraph();
-
-            // Don't show the precursor graph for spectra files that do NOT
-            // contain MS1 scans.
-            if (NoMs1ScansInSpectraFile())
-            {
-                HidePrecursorGraph();
-            }
-            else
-            {
-                DrawPrecursorGraph();
-                ShowPrecursorGraph();
             }
         }
 
