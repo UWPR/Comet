@@ -96,32 +96,32 @@ namespace CometUI.ViewResults
         {
             _progressDialog.Hide();
 
-            String msg;
-            MessageBoxIcon msgIcon;
             try
             {
                 var viewResultsControl = e.Result as ViewSearchResultsControl;
                 if (viewResultsControl != null)
                 {
                     viewResultsControl.FinishUpdatingResults();
-                    msg = Resources.ViewResultsBackgroundWorker_ViewResultsBackgroundWorkerRunWorkerCompleted_Done_loading_results_;
-                    msgIcon = MessageBoxIcon.Information;
                 }
                 else
                 {
                     ViewResultsControl.ClearResults();
-                    msg = Resources.ViewResultsBackgroundWorker_ViewResultsBackgroundWorkerRunWorkerCompleted_Failed_to_load_results_;
-                    msgIcon = MessageBoxIcon.Error;
+                    MessageBox.Show(
+                        Resources.
+                            ViewResultsBackgroundWorker_ViewResultsBackgroundWorkerRunWorkerCompleted_Failed_to_load_results_,
+                        Resources.ViewResultsBackgroundWorker_DoWork_View_Results, MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
             }
             catch (Exception exception)
             {
                 ViewResultsControl.ClearResults();
-                msg = Resources.ViewResultsBackgroundWorker_ViewResultsBackgroundWorkerRunWorkerCompleted_Failed_to_load_results__ + exception.Message;
-                msgIcon = MessageBoxIcon.Error;
+                MessageBox.Show(
+                    Resources.
+                        ViewResultsBackgroundWorker_ViewResultsBackgroundWorkerRunWorkerCompleted_Failed_to_load_results__ +
+                    exception.Message, Resources.ViewResultsBackgroundWorker_DoWork_View_Results, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
-
-            MessageBox.Show(msg, Resources.ViewResultsBackgroundWorker_DoWork_View_Results, MessageBoxButtons.OK, msgIcon);
 
             _viewResultsResetEvent.Set();
         }
