@@ -126,10 +126,11 @@ namespace CometUI.ViewResults
             HideDetailsPanel();
             HideResultsListPanel();
 
-            ResultsFile = resultsPepXMLFile;
             DecoyPrefix = decoyPrefix;
 
             ErrorMessage = String.Empty;
+
+            ResultsFile = resultsPepXMLFile;
             if (null != ResultsFile)
             {
                 if (String.Empty == ResultsFile)
@@ -144,14 +145,13 @@ namespace CometUI.ViewResults
                     // doesn't try to load another set of results while we're
                     // already trying to load one set.
                     DisableViewOptionsPanel();
-                    HideResultsListPanel();
                     var viewResultsWorker = new ViewResultsBackgroundWorker(this);
                     viewResultsWorker.DoWork();
                 }
             }
         }
 
-        public bool BeginUpdatingResults()
+        public bool ReadResults()
         {
             bool res = SearchResultsMgr.UpdateResults(ResultsFile, DecoyPrefix);
             if (!res)
@@ -162,11 +162,12 @@ namespace CometUI.ViewResults
             return res;
         }
 
-        public void FinishUpdatingResults()
+        public void UpdateResultsUI()
         {
             SearchResults = SearchResultsMgr.SearchResults;
-            // We *MUST* call this AFTER calling "SearchResultMgr.UpdateResults" above.
-            // Otherwise, the SearchResultsMgr.ResultsFileReader we use below will reflect 
+
+            // We *MUST* call this AFTER calling "SearchResultMgr.UpdateResults".
+            // Otherwise, the SearchResultsMgr.ResultsFileReader we use later will reflect 
             // the OLD results file, NOT the updated one.
             if (!ViewResultsSummaryOptionsControl.UpdateSummaryOptions(ResultsFile, SearchResultsMgr.ResultsFileReader))
             {
@@ -174,12 +175,6 @@ namespace CometUI.ViewResults
                 MessageBox.Show(ViewResultsSummaryOptionsControl.ErrorMessage,
                                 Resources.ViewResults_View_Results_Title, MessageBoxButtons.OK,
                                 MessageBoxIcon.Error);
-            }
-
-            if (ViewResultsSummaryOptionsControl.eValueCheckBox.Checked)
-            {
-                double dEvalueCutoff = Convert.ToDouble(ViewResultsSummaryOptionsControl.textBoxEValueCutoff.Text);
-                SearchResults = SearchResultsMgr.ApplyEValueCutoff(dEvalueCutoff);
             }
 
             if (ViewResultsSummaryOptionsControl.eValueCheckBox.Checked)
@@ -201,8 +196,10 @@ namespace CometUI.ViewResults
         public void ClearResults()
         {
             ResultsFile = String.Empty;
-            BeginUpdatingResults();
-            FinishUpdatingResults();
+            SearchResultsMgr.ClearResults();
+            SearchResults = SearchResultsMgr.SearchResults;
+            ViewResultsSummaryOptionsControl.ClearSummaryOptions();
+            EnableViewOptionsPanel();
         }
 
         public void SaveViewResultsSettings()

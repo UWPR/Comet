@@ -79,9 +79,20 @@ namespace CometUI.ViewResults
             return true;
         }
 
+        public void ClearSummaryOptions()
+        {
+            ClearPepXMLFileCombo();
+            ClearSearchSummaryLabel();
+        }
+
         private void UpdatePepXMLFileCombo(String resultsPepXMLFile)
         {
             pepXMLFileCombo.Text = resultsPepXMLFile;
+        }
+
+        private void ClearPepXMLFileCombo()
+        {
+            pepXMLFileCombo.Text = String.Empty;
         }
 
         private bool UpdateSearchSummaryLabel(PepXMLReader pepXMLReader)
@@ -89,8 +100,7 @@ namespace CometUI.ViewResults
             if (null == pepXMLReader)
             {
                 // If there is no results file, clear the search summary display
-                searchResultsSummaryLabel.Text = String.Empty;
-                resultsListSummaryLabel.Text = String.Empty;
+                ClearSearchSummaryLabel();
                 return true;
             }
 
@@ -113,6 +123,12 @@ namespace CometUI.ViewResults
             searchResultsSummaryLabel.Text = searchSummary;
 
             return true;
+        }
+
+        private void ClearSearchSummaryLabel()
+        {
+            searchResultsSummaryLabel.Text = String.Empty;
+            resultsListSummaryLabel.Text = String.Empty;
         }
 
         private String GetQuantitationTool(PepXMLReader pepXMLReader)

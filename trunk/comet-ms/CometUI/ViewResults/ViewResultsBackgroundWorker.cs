@@ -73,7 +73,7 @@ namespace CometUI.ViewResults
             var viewResultsControl = e.Argument as ViewSearchResultsControl;
             if (viewResultsControl != null)
             {
-                if (viewResultsControl.BeginUpdatingResults())
+                if (viewResultsControl.ReadResults())
                 {
                     e.Result = viewResultsControl;
                 }
@@ -101,7 +101,7 @@ namespace CometUI.ViewResults
                 var viewResultsControl = e.Result as ViewSearchResultsControl;
                 if (viewResultsControl != null)
                 {
-                    viewResultsControl.FinishUpdatingResults();
+                    viewResultsControl.UpdateResultsUI();
                 }
                 else
                 {

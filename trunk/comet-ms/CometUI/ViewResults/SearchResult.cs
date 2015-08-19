@@ -168,6 +168,13 @@ namespace CometUI.ViewResults
             return true;
         }
 
+        public void ClearResults()
+        {
+            DecoyPrefix = SearchSettings.Default.DecoyPrefix;
+            ResultsFile = String.Empty;
+            _resultsFileReader = null;
+        }
+
         public List<SearchResult> ApplyFDRCutoff(double cutoffValue, bool showDecoyHits)
         {
             var filteredList = new List<SearchResult>();
