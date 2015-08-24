@@ -7,8 +7,8 @@
 <div id="page">
    <div id="content_full">
       <div class="post hr">
-         <h1>Search parameters (2013.02)</h1>
-         <p><strong>Comet</strong> search parameters are defined here.  These are valid for Comet version 2013.02.X.
+         <h1>Search parameters (2014.01)</h1>
+         <p><strong>Comet</strong> search parameters are defined here.  These are valid for Comet version 2014.01.X.
       </div>
 
       <div class="post hr">

@@ -1906,7 +1906,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '*' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
@@ -1969,7 +1969,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '#' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
@@ -2032,7 +2032,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '@' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
@@ -2095,7 +2095,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '^' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
@@ -2158,7 +2158,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '~' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
@@ -2221,7 +2221,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '$' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
@@ -2284,7 +2284,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '%' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
@@ -2347,7 +2347,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '!' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
@@ -2410,7 +2410,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
 
             </ul>
          <li>In the output, this first modification is encoded with the character '+' in the peptide string.
-         <li>The default value is "0.0 null 0 4 -1 0" if this parameter is missing.
+         <li>The default value is "0.0 null 0 4 -1 0 0" if this parameter is missing.
          </ul>
 
          <p>Example:
