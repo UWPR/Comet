@@ -14,7 +14,7 @@ peptide_mass_tolerance = 20.00
 peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses
-precursor_tolerance_type = 0           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances
+precursor_tolerance_type = 1           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances
 isotope_error = 1                      # 0=off, 1=on -1/0/1/2/3 (standard C13 error), 2= -8/-4/0/4/8 (for +4/+8 labeling)
 
 #
