@@ -906,7 +906,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       }
 
       int iPrecursorCharge = spec.atZ(z).z;  // I need this before iChargeState gets assigned.
-      double dMass = spec.atZ(z).mh;
+      double dMass = spec.atZ(z).mz;
 
       if (!g_staticParams.options.bOverrideCharge
             || g_staticParams.options.iStartCharge == 0
