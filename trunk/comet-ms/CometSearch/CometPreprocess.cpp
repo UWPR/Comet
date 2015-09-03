@@ -276,8 +276,34 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
 
+   //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
+   // very wide mass tolerance searches (i.e. 500 Da).
+   double dCushion = 0.0;
+   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+      {
+        dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+      }
+   }
+   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+      {  
+         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+      }  
+   }
+   else // ppm
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dHighPeptideMass / 1000000.0;
+   }
+
    // initialize these temporary arrays before re-using
-   size_t iTmp= (size_t)((g_staticParams.options.dHighPeptideMass + 100.0) * g_staticParams.dInverseBinWidth)*sizeof(double);
+   size_t iTmp= (size_t)((g_staticParams.options.dHighPeptideMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth)*sizeof(double);
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
    memset(pdTmpCorrelationData, 0, iTmp);
@@ -880,7 +906,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       }
 
       int iPrecursorCharge = spec.atZ(z).z;  // I need this before iChargeState gets assigned.
-      double dMass = spec.atZ(z).mz;
+      double dMass = spec.atZ(z).mh;
 
       if (!g_staticParams.options.bOverrideCharge
             || g_staticParams.options.iStartCharge == 0
@@ -900,7 +926,6 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             Query *pScoring = new Query();
 
             pScoring->_pepMassInfo.dExpPepMass = dMass;
-            pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + 100.0) * g_staticParams.dInverseBinWidth);
             pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
             pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
             pScoring->_spectrumInfoInternal.dRTime = 60.0*spec.getRTime();;
@@ -915,6 +940,33 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
                   pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
             }
+
+            //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
+            // very wide mass tolerance searches (i.e. 500 Da).
+            double dCushion = 0.0;
+            if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
+            {
+               dCushion = g_staticParams.tolerances.dInputTolerance;
+
+               if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+               {
+                  dCushion *= pScoring->_spectrumInfoInternal.iChargeState;
+               }
+            }
+            else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
+            {
+               dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
+
+               if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+               {  
+                  dCushion *= pScoring->_spectrumInfoInternal.iChargeState;
+               }  
+            }
+            else // ppm
+            {
+               dCushion = g_staticParams.tolerances.dInputTolerance * dMass / 1000000.0;
+            }
+            pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
             Threading::LockMutex(_maxChargeMutex);
 
@@ -1426,8 +1478,34 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
 {
    int i;
 
+   //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
+   // very wide mass tolerance searches (i.e. 500 Da).
+   double dCushion = 0.0;
+   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+      {
+        dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+      }
+   }
+   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+      {  
+         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+      }  
+   }
+   else // ppm
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dHighPeptideMass / 1000000.0;
+   }
+
    //MH: Must be equal to largest possible array
-   int iArraySize = (int)((g_staticParams.options.dHighPeptideMass + 100.0) * g_staticParams.dInverseBinWidth);
+   int iArraySize = (int)((g_staticParams.options.dHighPeptideMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
    //MH: Initally mark all arrays as available (i.e. false=not inuse).
    pbMemoryPool = new bool[maxNumThreads];
