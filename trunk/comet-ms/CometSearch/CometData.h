@@ -97,7 +97,7 @@ struct IntRange
 struct VarMods 
 {
    double dVarModMass;
-   int    bBinaryMod;
+   int    iBinaryMod;
    int    bRequireThisMod;
    int    iMaxNumVarModAAPerMod;
    int    iVarModTermDistance;
@@ -106,7 +106,7 @@ struct VarMods
 
    VarMods()
    {
-      bBinaryMod = 0;
+      iBinaryMod = 0;
       bRequireThisMod = 0;
       iMaxNumVarModAAPerMod = 0;
       iVarModTermDistance = -1;
@@ -117,7 +117,7 @@ struct VarMods
 
    VarMods(const VarMods& a)
    {
-      bBinaryMod = a.bBinaryMod;
+      iBinaryMod = a.iBinaryMod;
       bRequireThisMod = a.bRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
@@ -128,7 +128,7 @@ struct VarMods
 
    VarMods& operator=(VarMods& a) 
    {
-      bBinaryMod = a.bBinaryMod;
+      iBinaryMod = a.iBinaryMod;
       bRequireThisMod = a.bRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;

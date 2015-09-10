@@ -99,11 +99,11 @@ struct Options             // output parameters
    int bNoEnzymeSelected;
    int bShowFragmentIons;
    int bPrintExpectScore;
+   int bOverrideCharge; 
    double dMinIntensity;
    double dRemovePrecursorTol;
    double dLowPeptideMass;       // MH+ mass
    double dHighPeptideMass;      // MH+ mass
-   int bOverrideCharge; 
 
    IntRange scanRange;
    DoubleRange clearMzRange;
@@ -286,8 +286,9 @@ struct PrecalcMasses
 
 struct VarModParams
 {
-   bool    bVarModSearch; 
-   int     bRequireVarMod;               // also set to true if any individual bRequireThisMod is true
+   bool    bVarModSearch;            // set to true if variable mods are specified
+   bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
+   int     bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
    int     iMaxVarModPerPeptide;
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
@@ -472,7 +473,7 @@ struct StaticParams
       for (i=0; i<VMODS; i++)
       {
          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 4;
-         variableModParameters.varModList[i].bBinaryMod = 0;
+         variableModParameters.varModList[i].iBinaryMod = 0;
          variableModParameters.varModList[i].bRequireThisMod = 0;
          variableModParameters.varModList[i].dVarModMass = 0.0;
          variableModParameters.varModList[i].szVarModChar[0] = '\0';

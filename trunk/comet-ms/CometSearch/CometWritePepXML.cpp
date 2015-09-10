@@ -369,7 +369,7 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
                      varModsParam.szVarModChar[i],
                      varModsParam.dVarModMass,
                      g_staticParams.massUtility.pdAAMassParent[(int)varModsParam.szVarModChar[i]] + varModsParam.dVarModMass,
-                     (varModsParam.bBinaryMod?"binary=\"Y\" ":""),
+                     (varModsParam.iBinaryMod?"binary=\"Y\" ":""),
                      cSymbol);
             }
          }

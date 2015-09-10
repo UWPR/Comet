@@ -178,7 +178,8 @@ private:
 private:
    struct VarModStat
    {
-       int iTotVarModCt;
+       int iTotVarModCt;                     // # mod positions in peptide
+       int iTotBinaryModCt;                  // # mod positions of all binary mods in group in the peptide
        int iMatchVarModCt;
        int iVarModSites[MAX_PEPTIDE_LEN+2];  // last 2 positions are for n- and c-term
    };
