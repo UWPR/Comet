@@ -114,8 +114,8 @@ namespace CometWrapper {
             }
         }
 
-        int get_BinaryMod() {return _pVarMods->bBinaryMod;}
-        void set_BinaryMod(int bBinaryMod) {_pVarMods->bBinaryMod = bBinaryMod;}
+        int get_BinaryMod() {return _pVarMods->iBinaryMod;}
+        void set_BinaryMod(int iBinaryMod) {_pVarMods->iBinaryMod = iBinaryMod;}
 
         int get_RequireThisMod() {return _pVarMods->bRequireThisMod;}
         void set_RequireThisMod(int bRequireThisMod) {_pVarMods->bRequireThisMod = bRequireThisMod;}
