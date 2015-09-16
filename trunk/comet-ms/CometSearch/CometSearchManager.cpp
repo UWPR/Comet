@@ -1070,9 +1070,7 @@ bool CometSearchManager::InitializeStaticParams()
    }
 
    // Do Sp scoring after search based on how many lines to print out.
-   if (g_staticParams.options.iNumStored > NUM_STORED)
-      g_staticParams.options.iNumStored = NUM_STORED;
-   else if (g_staticParams.options.iNumStored < 1)
+   if (g_staticParams.options.iNumStored < 1)
       g_staticParams.options.iNumStored = 1;
 
    if (g_staticParams.options.iNumPeptideOutputLines > g_staticParams.options.iNumStored)
@@ -1854,12 +1852,17 @@ bool CometSearchManager::DoSearch()
             g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
             g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
+            
+/* FIX: confirm that this code is not needed and is redundant with code at line 1653 of CometPreprocess.cpp
+   where vector mass offsets are already taken into account in dPeptideMassToleranceMinus
+
             if (g_staticParams.vectorMassOffsets.size() > 0)
             {
                g_massRange.dMinMass -= g_staticParams.vectorMassOffsets[g_staticParams.vectorMassOffsets.size()-1];
                if (g_massRange.dMinMass < 100.0)
                   g_massRange.dMinMass = 100.0;
             }
+*/
 
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)

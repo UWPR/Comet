@@ -2156,7 +2156,6 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                           }
                                        }
 
-
                                        if (g_staticParams.variableModParameters.bBinaryModSearch)
                                        {
                                           bool bMatched=false;
@@ -2438,7 +2437,9 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
 
                                        if (bValid && g_staticParams.variableModParameters.bRequireVarMod)
                                        {
-                                          // Check to see if required mods are satisfied
+                                          // Check to see if required mods are satisfied; here, we're just making
+                                          // sure the number of possible modified residues for each mod is non-zero
+                                          // so don't worry about distance constraint issues yet.
                                           for (i=0; i<VMODS; i++)
                                           {
                                              if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod
@@ -2774,6 +2775,7 @@ void CometSearch::inittwiddle(int m, int n, int *p)
 }
 
 
+// FIX: 'false' is never returned by this function, why?
 bool CometSearch::CalcVarModIons(char *szProteinSeq,
                                  int iWhichQuery,
                                  bool *pbDuplFragment)

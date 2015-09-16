@@ -28,9 +28,8 @@ class CometSearchManager;
 #define FLOAT_ZERO                  0.000001
 #define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
 #define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
-#define SIZE_MASS                   128
+#define SIZE_MASS                   128      // ascii value size
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
-#define NUM_STORED                  100      // number of internal search results to store
 #define NUM_ION_SERIES              9
 
 #define WIDTH_REFERENCE             512      // size of the protein accession field to store
@@ -505,7 +504,7 @@ struct StaticParams
       options.iNumPeptideOutputLines = 10;
       options.iWhichReadingFrame = 0;
       options.iEnzymeTermini = 2;
-      options.iNumStored = NUM_STORED;                  // # of search results to store for xcorr analysis.
+      options.iNumStored = 100;                         // default # of search results to store for xcorr analysis.
 
       options.bNoEnzymeSelected = 1;
       options.bShowFragmentIons = 0;

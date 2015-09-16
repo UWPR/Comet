@@ -1257,7 +1257,7 @@ allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n
 \n\
 #\n\
 # Up to 9 variable modifications are supported\n\
-# format:  <mass> <residues> <0=variable/1=binary> <max_mods_per_peptide> <term_distance> <n/c-term> <required>\n\
+# format:  <mass> <residues> <0=variable/else binary> <max_mods_per_peptide> <term_distance> <n/c-term> <required>\n\
 #     e.g. 79.966331 STY 0 3 -1 0 0\n\
 #\n\
 variable_mod01 = 15.9949 M 0 3 -1 0 0\n\
