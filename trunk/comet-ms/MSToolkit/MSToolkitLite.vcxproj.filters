@@ -132,6 +132,9 @@
     <ClCompile Include="src\mzParser\MSNumpress.cpp">
       <Filter>Source Files\mzParser</Filter>
     </ClCompile>
+    <ClCompile Include="src\MSToolkit\mzMLWriter.cpp">
+      <Filter>Source Files\MSToolkit</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -231,6 +234,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\szlib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mzMLWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

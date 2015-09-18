@@ -179,6 +179,7 @@
     <ClCompile Include="src\expat-2.0.1\xmltok_ns.cpp" />
     <ClCompile Include="src\MSToolkit\MSObject.cpp" />
     <ClCompile Include="src\MSToolkit\MSReader.cpp" />
+    <ClCompile Include="src\MSToolkit\mzMLWriter.cpp" />
     <ClCompile Include="src\MSToolkit\RAWReader.cpp" />
     <ClCompile Include="src\MSToolkit\Spectrum.cpp" />
     <ClCompile Include="src\mzParser\BasicChromatogram.cpp" />
@@ -230,6 +231,7 @@
     <ClInclude Include="include\MSObject.h" />
     <ClInclude Include="include\MSReader.h" />
     <ClInclude Include="include\MSToolkitTypes.h" />
+    <ClInclude Include="include\mzMLWriter.h" />
     <ClInclude Include="include\mzParser.h" />
     <ClInclude Include="include\nametab.h" />
     <ClInclude Include="include\RAWReader.h" />
