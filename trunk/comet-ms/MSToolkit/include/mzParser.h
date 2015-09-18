@@ -187,6 +187,51 @@ public:
 	}
 };
 
+typedef struct sPrecursorIon{
+  double intensity;
+  double mz;
+  double monoMZ;
+  vector<int>* possibleCharges;
+  int charge;
+  sPrecursorIon(){
+    intensity=0;
+    mz=0;
+    monoMZ=0;
+    possibleCharges=new vector<int>;
+    charge=0;
+  }
+  sPrecursorIon(const sPrecursorIon& p){
+    intensity=p.intensity;
+    mz=p.mz;
+    monoMZ=p.monoMZ;
+    possibleCharges=new vector<int>;
+    for(size_t i=0;i<p.possibleCharges->size();i++) possibleCharges->push_back(p.possibleCharges->at(i));
+    charge=p.charge;
+  }
+  ~sPrecursorIon(){
+    delete possibleCharges;
+  }
+  sPrecursorIon& operator=(const sPrecursorIon& p){
+    if(this!=&p){
+      intensity=p.intensity;
+      mz=p.mz;
+      monoMZ=p.monoMZ;
+      delete possibleCharges;
+      possibleCharges=new vector<int>;
+      for(size_t i=0;i<p.possibleCharges->size();i++) possibleCharges->push_back(p.possibleCharges->at(i));
+      charge=p.charge;
+    }
+    return *this;
+  }
+  void clear(){
+    intensity=0;
+    mz=0;
+    monoMZ=0;
+    possibleCharges->clear();
+    charge=0;
+  }
+} sPrecursorIon;
+
 class BasicSpectrum	{
 public:
 
@@ -215,10 +260,12 @@ public:
 	void setMSLevel(int level);
 	void setPeaksCount(int i);
 	void setPositiveScan(bool b);
-	void setPrecursorCharge(int z);
-	void setPrecursorIntensity(double d);
-  void setPrecursorMonoMZ(double mz);
-	void setPrecursorMZ(double mz);
+  void setPrecursorIon(sPrecursorIon& pi);
+  void setPrecursorIon(double mz, double monoMZ, double intensity, int charge, int possibleChargeCount, int* possibleCharges);
+	//void setPrecursorCharge(int z, bool bAlt=false);
+	//void setPrecursorIntensity(double d);
+  //void setPrecursorMonoMZ(double mz);
+	//void setPrecursorMZ(double mz);
 	void setPrecursorScanNum(int i);
 	void setRTime(float t);
 	void setScanIndex(int num);
@@ -239,16 +286,19 @@ public:
 	int						getMSLevel();
 	int						getPeaksCount();
 	bool					getPositiveScan();
-	int						getPrecursorCharge();
-	double				getPrecursorIntensity();
-  double        getPrecursorMonoMZ();
-	double				getPrecursorMZ();
+  sPrecursorIon getPrecursorIon(int i=0);
+  int           getPrecursorIonCount();
+	int						getPrecursorCharge(int i=0);
+  int           getPrecursorChargeCount(int i=0);
+	double				getPrecursorIntensity(int i=0);
+  double        getPrecursorMonoMZ(int i=0);
+	double				getPrecursorMZ(int i=0);
 	int						getPrecursorScanNum();
 	float					getRTime(bool min=true);
 	int						getScanIndex();
 	int						getScanNum();
 	double				getTotalIonCurrent();
-	unsigned int	size();
+	size_t      	size();
 
 protected:
 
@@ -266,16 +316,18 @@ protected:
 	int							msLevel;
 	int							peaksCount;
 	bool						positiveScan;
-	int							precursorCharge;			//Precursor ion charge; 0 if no precursor or unknown
-	double					precursorIntensity;		//Precursor ion intensity; 0 if no precursor or unknown
-  double          precursorMonoMZ;      //Might be reported in Thermo data
-	double					precursorMZ;					//Precursor ion m/z value; 0 if no precursor or unknown
+	//int							precursorCharge[5];		//Precursor ion charge; 0 if no precursor or unknown
+  //int             precursorChargeCount; //Ion may have multiple possible precursor charges
+	//double					precursorIntensity;		//Precursor ion intensity; 0 if no precursor or unknown
+  //double          precursorMonoMZ;      //Might be reported in Thermo data
+	//double					precursorMZ;					//Precursor ion m/z value; 0 if no precursor or unknown
 	int							precursorScanNum;			//Precursor scan number; 0 if no precursor or unknown
 	float						rTime;								//always stored in minutes
 	int							scanIndex;						//when scan numbers aren't enough, there are indexes (start at 1)
 	int							scanNum;							//identifying scan number
 	double					totalIonCurrent;
-	vector<specDP>	vData;								//Spectrum data points
+	vector<specDP>*	vData;								//Spectrum data points
+  vector<sPrecursorIon>* vPrecursor;
 	   
 };
 
@@ -369,6 +421,7 @@ private:
 //------------------------------------------------
 
 int b64_decode_mio (char *dest, char *src, size_t size);
+int b64_encode (char *dest, const char *src, int len);
 
 class mzpSAXHandler{
 public:
@@ -512,6 +565,7 @@ private:
 	string									m_ccurrentRefGroupName;
 	long										m_encodedLen;					  // For compressed data
 	instrumentInfo					m_instrument;
+  sPrecursorIon           m_precursorIon;
 	int											m_peaksCount;						// Count of peaks in spectrum
 	vector<cvParam>					m_refGroupCvParams;
 	int											m_scanSPECCount;
@@ -594,6 +648,7 @@ private:
 	uLong										m_compressLen;	// For compressed data
 	instrumentInfo					m_instrument;
 	int											m_peaksCount;		// Count of peaks in spectrum
+  sPrecursorIon           m_precursorIon;
 	string									m_strData;			// For collecting character data.
 	vector<instrumentInfo>	m_vInstrument;
 	BasicSpectrum*					spec;
@@ -1173,6 +1228,7 @@ private:
 #define INSTRUMENT_LENGTH 2000
 #define SCANTYPE_LENGTH 32
 #define CHARGEARRAY_LENGTH 128
+#define PRECURSORARRAY_LENGTH 256
 
 typedef double RAMPREAL; 
 typedef f_off ramp_fileoffset_t;
@@ -1218,40 +1274,42 @@ static vector<const char *> data_Ext;
 
 struct ScanHeaderStruct {
    
-	int						acquisitionNum; // scan number as declared in File (may be gaps)
-	int						mergedScan;  /* only if MS level > 1 */
-	int						mergedResultScanNum; /* scan number of the resultant merged scan */
-	int						mergedResultStartScanNum; /* smallest scan number of the scanOrigin for merged scan */
-	int						mergedResultEndScanNum; /* largest scan number of the scanOrigin for merged scan */
-	int						msLevel;
-	int						numPossibleCharges;
-	int						peaksCount;
-	int						precursorCharge;  /* only if MS level > 1 */
-	int						precursorScanNum; /* only if MS level > 1 */
-	int						scanIndex; //a sequential index for non-sequential scan numbers (1-based)
-	int						seqNum; // number in sequence observed file (1-based)
+	int    acquisitionNum; // scan number as declared in File (may be gaps)
+	int    mergedScan;  /* only if MS level > 1 */
+	int    mergedResultScanNum; /* scan number of the resultant merged scan */
+	int    mergedResultStartScanNum; /* smallest scan number of the scanOrigin for merged scan */
+	int    mergedResultEndScanNum; /* largest scan number of the scanOrigin for merged scan */
+	int    msLevel;
+	int    numPossibleCharges;
+	int    peaksCount;
+	int    precursorCharge;  /* only if MS level > 1 */
+  int    precursorCount;   
+	int    precursorScanNum; /* only if MS level > 1 */
+	int    scanIndex; //a sequential index for non-sequential scan numbers (1-based)
+	int    seqNum; // number in sequence observed file (1-based)
 	 
-	double					basePeakIntensity;
-	double					basePeakMZ;
-	double					collisionEnergy;
-	double					compensationVoltage;  /* only if MS level > 1 */
-	double					highMZ;
-	double					ionisationEnergy;
-	double					lowMZ;
-	double					precursorIntensity;  /* only if MS level > 1 */
-  double          precursorMonoMZ;
-	double					precursorMZ;  /* only if MS level > 1 */
-	double					retentionTime;        /* in seconds */
-	double					totIonCurrent;
+	double basePeakIntensity;
+	double basePeakMZ;
+	double collisionEnergy;
+	double compensationVoltage;  /* only if MS level > 1 */
+	double highMZ;
+	double ionisationEnergy;
+	double lowMZ;
+	double precursorIntensity;  /* only if MS level > 1 */
+  double precursorMonoMZ;
+	double precursorMZ;  /* only if MS level > 1 */
+	double retentionTime;        /* in seconds */
+	double totIonCurrent;
    
-	char					activationMethod[SCANTYPE_LENGTH];
-	char					filterLine[CHARGEARRAY_LENGTH];
-	char					possibleCharges[SCANTYPE_LENGTH];
-	char					scanType[SCANTYPE_LENGTH];
-	char					idString[CHARGEARRAY_LENGTH];
-   
-	bool					centroid; //true if spectrum is centroided
-	bool					possibleChargesArray[CHARGEARRAY_LENGTH]; /* NOTE: does NOT include "precursorCharge" information; only from "possibleCharges" */
+	char   activationMethod[SCANTYPE_LENGTH];
+  char   additionalPrecursors[PRECURSORARRAY_LENGTH];
+	char   filterLine[CHARGEARRAY_LENGTH];
+  char   idString[CHARGEARRAY_LENGTH];
+	char   possibleCharges[SCANTYPE_LENGTH];
+	char   scanType[SCANTYPE_LENGTH];
+	      
+	bool   centroid; //true if spectrum is centroided
+//	bool					possibleChargesArray[CHARGEARRAY_LENGTH]; /* NOTE: does NOT include "precursorCharge" information; only from "possibleCharges" */
    
 	ramp_fileoffset_t		filePosition; /* where in the file is this header? */
 };
@@ -1285,6 +1343,7 @@ struct ScanCacheStruct {
 int									checkFileType(const char* fname);
 ramp_fileoffset_t		getIndexOffset(RAMPFILE *pFI);
 InstrumentStruct*		getInstrumentStruct(RAMPFILE *pFI);
+void                getPrecursor(const struct ScanHeaderStruct *scanHeader, int index, double &mz, double &monoMZ, double &intensity, int &charge, int &possibleCharges, int *&possibleChargeArray);
 void								getScanSpanRange(const struct ScanHeaderStruct *scanHeader, int *startScanNum, int *endScanNum);
 void								rampCloseFile(RAMPFILE *pFI);
 string							rampConstructInputFileName(const string &basename);

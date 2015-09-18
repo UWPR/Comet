@@ -123,6 +123,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 	string tStr;
 	string mzVal;
 	int stop;
+  bool bSA=false;
 
 	//For non-ATL and non-MFC conversions
 	int sl;
@@ -164,6 +165,8 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 		} else if(strcmp(tok,"p")==0){
       bCentroid=false;
     } else if(strcmp(tok,"r")==0){ //appears in fusion data, no documentation
+    } else if(strcmp(tok,"sa")==0){
+      bSA=true;
 		} else if(strncmp(tok,"sid",3)==0){
 		} else if(strcmp(tok,"SRM")==0){
 			mst=SRM;
@@ -185,7 +188,8 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
       } else if(mzVal.compare("hcd")==0){
         act=mstHCD;
       } else if(mzVal.compare("etd")==0){
-        act=mstETD;
+        if(bSA) act=mstETDSA;
+        else act=mstETD;
       } else {
         cout << "Unknown activation method: " << &mzVal[0] << endl;
         act=mstNA;

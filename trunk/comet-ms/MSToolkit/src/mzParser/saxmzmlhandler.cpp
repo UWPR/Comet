@@ -228,7 +228,7 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     const char* dtype = getAttrValue("type", attr);
     const char* value = getAttrValue("value", attr);
     if(strcmp(name,"[Thermo Trailer Extra]Monoisotopic M/Z:")==0){
-      spec->setPrecursorMonoMZ(atof(value));
+      m_precursorIon.monoMZ=atof(value);
     }
   }
 
@@ -292,8 +292,12 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
 
 	} else if(isElement("precursorList",el)){
 		
-	} else if (isElement("referenceableParamGroup", el)) {
+	} else if(isElement("referenceableParamGroup", el)) {
 		m_bInRefGroup = false;
+
+  } else if(isElement("selectedIon",el)) {
+    spec->setPrecursorIon(m_precursorIon);
+    m_precursorIon.clear();
 
 	}	else if(isElement("spectrum", el)) {
 		pushSpectrum();
@@ -329,7 +333,7 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 		spec->setCentroid(true);
 
 	} else if(!strcmp(name, "charge state") || !strcmp(accession,"MS:1000041"))	{
-		spec->setPrecursorCharge(atoi(value));
+		m_precursorIon.charge = atoi(value);
 
 	} else if(!strcmp(name, "collision-induced dissociation") || !strcmp(accession,"MS:1000133"))	{
 		if(spec->getActivation()==ETD) spec->setActivation(ETDSA);
@@ -396,10 +400,13 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 		m_instrument.analyzer=name;
 
 	} else if(!strcmp(name,"peak intensity") || !strcmp(accession,"MS:1000042")) {
-		spec->setPrecursorIntensity(atof(value));
+    m_precursorIon.intensity=atof(value);
 
 	} else if(!strcmp(name,"positive scan") || !strcmp(accession,"MS:1000130")) {
 		spec->setPositiveScan(true);
+
+  } else if(!strcmp(name,"possible charge state") || !strcmp(accession,"MS:1000633")) {
+    m_precursorIon.possibleCharges->push_back(atoi(value));
 
 	} else if(!strcmp(name,"profile spectrum") || !strcmp(accession,"MS:1000128")) {
 		spec->setCentroid(false);
@@ -423,7 +430,7 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 	    spec->setHighMZ(atof(value));
 		
 	} else if(!strcmp(name, "selected ion m/z") || !strcmp(accession,"MS:1000744"))	{
-		spec->setPrecursorMZ(atof(value));
+		m_precursorIon.mz=atof(value);
 
 	} else if(!strcmp(name, "time array") || !strcmp(accession,"MS:1000595"))	{
 		m_bInmzArrayBinary = true; //note that this uses the m/z designation, although it is a time series
@@ -495,9 +502,9 @@ bool mzpSAXMzmlHandler::readHeader(int num){
 	}
 
 	//Assumes scan numbers are in order
-	int mid=m_vIndex.size()/2;
-	int upper=m_vIndex.size();
-	int lower=0;
+	size_t mid=m_vIndex.size()/2;
+	size_t upper=m_vIndex.size();
+	size_t lower=0;
 	while(m_vIndex[mid].scanNum!=num){
 		if(lower==upper) break;
 		if(m_vIndex[mid].scanNum>num){
@@ -514,9 +521,9 @@ bool mzpSAXMzmlHandler::readHeader(int num){
 		parseOffset(m_vIndex[mid].offset);
 		//force scan number; this was done for files where scan events are not numbered
 		if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum(m_vIndex[mid].scanNum);
-		spec->setScanIndex(mid+1); //set the index, which starts from 1, so offset by 1
+		spec->setScanIndex((int)mid+1); //set the index, which starts from 1, so offset by 1
 		m_bHeaderOnly=false;
-		posIndex=mid;
+		posIndex=(int)mid;
 		return true;
 	}
 	return false;
@@ -540,9 +547,9 @@ bool mzpSAXMzmlHandler::readSpectrum(int num){
 	}
 
 	//Assumes scan numbers are in order
-	int mid=m_vIndex.size()/2;
-	int upper=m_vIndex.size();
-	int lower=0;
+	size_t mid=m_vIndex.size()/2;
+	size_t upper=m_vIndex.size();
+	size_t lower=0;
 	while(m_vIndex[mid].scanNum!=num){
 		if(lower==upper) break;
 		if(m_vIndex[mid].scanNum>num){
@@ -560,8 +567,8 @@ bool mzpSAXMzmlHandler::readSpectrum(int num){
 			parseOffset(m_vIndex[mid].offset);
 			//force scan number; this was done for files where scan events are not numbered
 			if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum(m_vIndex[mid].scanNum);
-			spec->setScanIndex(mid+1); //set the index, which starts from 1, so offset by 1
-			posIndex=mid;
+			spec->setScanIndex((int)mid+1); //set the index, which starts from 1, so offset by 1
+			posIndex=(int)mid;
 			return true;
 		}
 	//}
@@ -644,21 +651,21 @@ void mzpSAXMzmlHandler::decode(vector<double>& d){
   if(m_bNumpressLinear || m_bNumpressSlof || m_bNumpressPic){
     double* unpressed=new double[m_peaksCount];
   
-	try{
-      if(m_bNumpressLinear){
-        if(m_bZlib) ms::numpress::MSNumpress::decodeLinear((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
-        else ms::numpress::MSNumpress::decodeLinear((unsigned char*)decoded,decodeLen,unpressed);
-      } else if(m_bNumpressSlof){
-        if(m_bZlib) ms::numpress::MSNumpress::decodeSlof((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
-        else ms::numpress::MSNumpress::decodeSlof((unsigned char*)decoded,decodeLen,unpressed);
-      } else if(m_bNumpressPic){
-        if(m_bZlib) ms::numpress::MSNumpress::decodePic((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
-        else ms::numpress::MSNumpress::decodePic((unsigned char*)decoded,decodeLen,unpressed);
-      }
-	} catch (const char* ch){
-	  cout << "Exception: " << ch << endl;
-	  exit(EXIT_FAILURE);
-	}
+	  try{
+        if(m_bNumpressLinear){
+          if(m_bZlib) ms::numpress::MSNumpress::decodeLinear((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
+          else ms::numpress::MSNumpress::decodeLinear((unsigned char*)decoded,decodeLen,unpressed);
+        } else if(m_bNumpressSlof){
+          if(m_bZlib) ms::numpress::MSNumpress::decodeSlof((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
+          else ms::numpress::MSNumpress::decodeSlof((unsigned char*)decoded,decodeLen,unpressed);
+        } else if(m_bNumpressPic){
+          if(m_bZlib) ms::numpress::MSNumpress::decodePic((unsigned char*)unzipped,(const size_t)unzippedLen,unpressed);
+          else ms::numpress::MSNumpress::decodePic((unsigned char*)decoded,decodeLen,unpressed);
+        }
+	  } catch (const char* ch){
+	    cout << "Exception: " << ch << endl;
+	    exit(EXIT_FAILURE);
+	  }
 
     if(m_bZlib) delete [] unzipped;
     else delete [] decoded;
@@ -818,7 +825,7 @@ void mzpSAXMzmlHandler::stopParser(){
 }
 
 int mzpSAXMzmlHandler::highChromat() {
-	return m_vChromatIndex.size();
+	return (int)m_vChromatIndex.size();
 }
 
 int mzpSAXMzmlHandler::highScan() {

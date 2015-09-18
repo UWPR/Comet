@@ -33,6 +33,42 @@ int checkFileType(const char* fname){
 	return 0;
 }
 
+void getPrecursor(const struct ScanHeaderStruct *scanHeader,int index,double &mz,double &monoMZ,double &intensity,int &charge,int &possibleCharges,int *&possibleChargeArray){
+  int i,j,k;
+  
+  if(index==0){
+    mz=scanHeader->precursorMZ;
+    monoMZ=scanHeader->precursorMonoMZ;
+    intensity=scanHeader->precursorIntensity;
+    charge=scanHeader->precursorCharge;
+    possibleCharges=scanHeader->numPossibleCharges;
+    if(possibleChargeArray!=NULL) delete[] possibleChargeArray;
+    if(possibleCharges>0){
+      possibleChargeArray = new int[possibleCharges];
+      for(i=0;i<possibleCharges;i++) memcpy(&possibleChargeArray[i],&scanHeader->possibleCharges[i*4],sizeof(int));
+    } else {
+      possibleChargeArray = NULL;
+    }
+  } else {
+    j=0;
+    for(i=1;i<scanHeader->precursorCount;i++){
+      memcpy(&mz,&scanHeader->additionalPrecursors[j+=8],sizeof(double));
+      memcpy(&monoMZ,&scanHeader->additionalPrecursors[j+=8],sizeof(double));
+      memcpy(&intensity,&scanHeader->additionalPrecursors[j+=8],sizeof(double));
+      memcpy(&charge,&scanHeader->additionalPrecursors[j+=4],sizeof(int));
+      memcpy(&possibleCharges,&scanHeader->additionalPrecursors[j+=4],sizeof(int));
+      if(possibleChargeArray!=NULL) delete[] possibleChargeArray;
+      if(possibleCharges>0){
+        possibleChargeArray = new int[possibleCharges];
+        for(k=0;k<possibleCharges;k++) memcpy(&possibleChargeArray[k],&scanHeader->additionalPrecursors[j+=4],sizeof(int));
+      } else {
+        possibleChargeArray = NULL;
+      }
+      if(i==index) break;
+    }
+  }
+}
+
 ramp_fileoffset_t getIndexOffset(RAMPFILE *pFI){
 	switch(pFI->fileType){
 		case 1:
@@ -281,10 +317,12 @@ char* rampValidFileType(const char *buf){
 void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader){
 
 	vector<cindex>* v;
+  sPrecursorIon p;
+	unsigned int i;
+
 #ifdef MZP_MZ5
 	vector<cMz5Index>* v2;
 #endif
-	unsigned int i;
 
 	//memset(scanHeader,0,sizeof(struct ScanHeaderStruct));
 	scanHeader->acquisitionNum=-1;
@@ -377,20 +415,51 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	scanHeader->basePeakMZ=pFI->bs->getBasePeakMZ();
 	scanHeader->centroid=pFI->bs->getCentroid();
 	scanHeader->collisionEnergy=pFI->bs->getCollisionEnergy();
+  scanHeader->compensationVoltage=pFI->bs->getCompensationVoltage();
 	scanHeader->highMZ=pFI->bs->getHighMZ();
 	scanHeader->lowMZ=pFI->bs->getLowMZ();
 	scanHeader->msLevel=pFI->bs->getMSLevel();
 	scanHeader->peaksCount=pFI->bs->getPeaksCount();
-	scanHeader->precursorCharge=pFI->bs->getPrecursorCharge();
-	scanHeader->precursorIntensity=pFI->bs->getPrecursorIntensity();
-	scanHeader->compensationVoltage=pFI->bs->getCompensationVoltage();
-  scanHeader->precursorMonoMZ=pFI->bs->getPrecursorMonoMZ();
-	scanHeader->precursorMZ=pFI->bs->getPrecursorMZ();
 	scanHeader->precursorScanNum=pFI->bs->getPrecursorScanNum();
 	scanHeader->retentionTime=(double)pFI->bs->getRTime(false);
 	scanHeader->totIonCurrent=pFI->bs->getTotalIonCurrent();
 	scanHeader->scanIndex=pFI->bs->getScanIndex();
 	scanHeader->seqNum=pFI->bs->getScanIndex();
+
+  int j=0;
+  int k;
+  scanHeader->precursorCount=pFI->bs->getPrecursorIonCount();
+  for(i=0;i<(unsigned int)scanHeader->precursorCount;i++){
+    p=pFI->bs->getPrecursorIon(i);
+    if(i==0){
+	    scanHeader->precursorCharge=p.charge;
+	    scanHeader->precursorIntensity=p.intensity;
+      scanHeader->precursorMonoMZ=p.monoMZ;
+	    scanHeader->precursorMZ=p.mz;
+      scanHeader->numPossibleCharges=(int)p.possibleCharges->size();
+      for(k=0;k<scanHeader->numPossibleCharges;k++){
+        memcpy(&scanHeader->possibleCharges[k*4],&p.possibleCharges->at(k),sizeof(int));
+        if(k==7){
+          cout << "Warning: too many possible charges for precursor in scan " << scanHeader->acquisitionNum << endl;
+          break;
+        }
+      }
+    } else {
+      if( (j+32+p.possibleCharges->size()*4) > 255) {
+        cout << "Warning: too many precursors. Must improve RAMP interface." << endl;
+        break;
+      }
+      memcpy(&scanHeader->additionalPrecursors[j+=8],&p.mz,sizeof(double));
+      memcpy(&scanHeader->additionalPrecursors[j+=8],&p.monoMZ,sizeof(double));
+      memcpy(&scanHeader->additionalPrecursors[j+=8],&p.intensity,sizeof(double));
+      memcpy(&scanHeader->additionalPrecursors[j+=4],&p.charge,sizeof(int));
+      k=(int)p.possibleCharges->size();
+      memcpy(&scanHeader->additionalPrecursors[j+=4],&k,sizeof(int));
+      for(k=0;k<(int)p.possibleCharges->size();k++){
+        memcpy(&scanHeader->additionalPrecursors[j+=k*4],&p.possibleCharges->at(k),sizeof(int));
+      }
+    }
+  }
 	
 	pFI->bs->getFilterLine(scanHeader->filterLine);
 	pFI->bs->getIDString(scanHeader->idString);
@@ -529,7 +598,7 @@ void readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 		case 1:
 		case 3:
 			v=pFI->mzML->getSpecIndex();
-			runHeader->scanCount=v->size();
+			runHeader->scanCount=(int)v->size();
 			pFI->mzML->readHeader(v->at(0).scanNum);
 			runHeader->dStartTime=pFI->bs->getRTime(false);
 			pFI->mzML->readHeader(v->at(v->size()-1).scanNum);
@@ -540,7 +609,7 @@ void readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 		case 2:
 		case 4:
 			v=pFI->mzXML->getIndex();
-			runHeader->scanCount=v->size();
+			runHeader->scanCount=(int)v->size();
 			pFI->mzXML->readHeader(v->at(0).scanNum);
 			runHeader->dStartTime=pFI->bs->getRTime(false);
 			pFI->mzXML->readHeader(v->at(v->size()-1).scanNum);
@@ -659,7 +728,7 @@ void readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeade
 		case 1:
 		case 3:
 			v=pFI->mzML->getSpecIndex();
-			runHeader->scanCount=v->size();
+			runHeader->scanCount=(int)v->size();
 			
 			pFI->mzML->readHeader(v->at(0).scanNum);
 			runHeader->dStartTime=(double)pFI->bs->getRTime(false);
@@ -685,7 +754,7 @@ void readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeade
 		case 2:
 		case 4:
 			v=pFI->mzXML->getIndex();
-			runHeader->scanCount=v->size();
+			runHeader->scanCount=(int)v->size();
 			
 			pFI->mzXML->readHeader(v->at(0).scanNum);
 			runHeader->dStartTime=(double)pFI->bs->getRTime(false);

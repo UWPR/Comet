@@ -679,14 +679,14 @@ namespace ms {
 
         ri = 8;
         for (i = 0; i<dataSize; i++) {
-          temp = log(data[i] + 1) * fixedPoint + 0.5;
+          temp = log(data[i] + 1) * fixedPoint;
 
           if (THROW_ON_OVERFLOW &&
             temp > USHRT_MAX) {
             throw "[MSNumpress::encodeSlof] Cannot encode a number that overflows USHRT_MAX.";
           }
 
-          x = static_cast<unsigned short>(temp);
+          x = static_cast<unsigned short>(temp + 0.5);
           result[ri++] = x & 0xff;
           result[ri++] = (x >> 8) & 0xff;
         }

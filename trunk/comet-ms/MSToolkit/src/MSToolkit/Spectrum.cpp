@@ -192,7 +192,7 @@ void Spectrum::addZState(ZState& z){
 void Spectrum::addZState(int i, double d){
 	ZState z;
 	z.z=i;
-	z.mz=d;
+	z.mh=d;
 	vZ->push_back(z);
 }
 

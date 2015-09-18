@@ -37,6 +37,24 @@ static void encode_group (unsigned char output[],
 
 }
 
+int b64_encode (char *dest,
+                const char *src,
+                int len)
+{
+  int outsz = 0;
+
+  while (len > 0)
+  {
+    encode_group ( (unsigned char*) dest + outsz, (const unsigned char*) src, len > 3 ? 3 : len);
+    len -= 3;
+    src += 3;
+    outsz += 4;
+  }
+
+  return outsz;
+
+}
+
 
 
 /* base64 decode a group of 4 input chars into a group of between 0 and

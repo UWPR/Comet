@@ -53,6 +53,7 @@ enum MSActivation {
   mstCID,
   mstECD,
   mstETD,
+  mstETDSA,
   mstPQD,
   mstHCD,
 	mstIRMPD,
@@ -107,7 +108,7 @@ struct Peak_T {
 
 struct ZState {
   int z;
-  double mz;   //M+H, not mz
+  double mh;   //M+H, not mz
 };
 
 struct EZState {

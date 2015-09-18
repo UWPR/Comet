@@ -13,16 +13,16 @@ MZPARSERLITE = mzp.MSNumpress.o mzp.mzp_base64_lite.o mzp.BasicSpectrum_lite.o m
   mzp.saxmzxmlhandler_lite.o mzp.Czran_lite.o mzp.mz5handler_lite.o mzp.mzpMz5Config_lite.o mzp.mzpMz5Structs_lite.o mzp.BasicChromatogram_lite.o mzp.PWIZface_lite.o
 EXPAT = xmlparse.o xmlrole.o xmltok.o
 ZLIB = adler32.o compress.o crc32.o deflate.o inffast.o inflate.o infback.o inftrees.o trees.o uncompr.o zutil.o
-MSTOOLKIT = Spectrum.o MSObject.o
+MSTOOLKIT = Spectrum.o MSObject.o mzMLWriter.o
 READER = MSReader.o
 READERLITE = MSReaderLite.o
-SQLITE = sqlite3.o 
+#SQLITE = sqlite3.o 
 
 CC = g++
 GCC = gcc
 NOSQLITE = -D_NOSQLITE
 
-CFLAGS = -O3 -static -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H -D__LINUX__
+CFLAGS = -O3 -static -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H
 LIBS = -lm -lpthread -ldl
 
 all:  $(ZLIB) $(MZPARSER) $(MZPARSERLITE) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) $(SQLITE)
@@ -115,6 +115,10 @@ MSReaderLite.o : $(MST_PATH)/MSReader.cpp
 
 MSObject.o : $(MST_PATH)/MSObject.cpp
 	$(CC) $(CFLAGS) $(MST_PATH)/MSObject.cpp -c
+
+mzMLWriter.o : $(MST_PATH)/mzMLWriter.cpp
+	$(CC) $(CFLAGS) $(MST_PATH)/mzMLWriter.cpp -c
+
 
 
 

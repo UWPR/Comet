@@ -112,11 +112,11 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
 	else if (isElement("precursorMz", el)) {
 		m_strData.clear();
 		s=getAttrValue("precursorCharge", attr);
-		if(s.length()>0) spec->setPrecursorCharge(atoi(&s[0]));
-		else spec->setPrecursorCharge(0);
+		if(s.length()>0) m_precursorIon.charge=atoi(&s[0]);
+    else  m_precursorIon.charge=0;
 		s=getAttrValue("precursorIntensity", attr);
-		if(s.length()>0) spec->setPrecursorIntensity(atof(&s[0]));
-		else spec->setPrecursorIntensity(0.0);
+		if(s.length()>0) m_precursorIon.intensity=atof(&s[0]);
+    else  m_precursorIon.intensity=0.0;
 		s=getAttrValue("precursorScanNum", attr);
 		if(s.length()>0) spec->setPrecursorScanNum(atoi(&s[0]));
 		else spec->setPrecursorScanNum(0);
@@ -222,7 +222,8 @@ void mzpSAXMzxmlHandler::endElement(const XML_Char *el) {
 		m_bInPeaks = false;
 
 	}	else if(isElement("precursorMz", el)) {
-		spec->setPrecursorMZ(atof(&m_strData[0]));
+		m_precursorIon.mz=atof(&m_strData[0]);
+    spec->setPrecursorIon(m_precursorIon);
 		m_bInPrecursorMz=false;
 		
 	} else if(isElement("scan",el)) {
@@ -256,9 +257,9 @@ bool mzpSAXMzxmlHandler::readHeader(int num){
 	}
 
 	//Assumes scan numbers are in order
-	int mid=m_vIndex.size()/2;
-	int upper=m_vIndex.size();
-	int lower=0;
+	size_t mid=m_vIndex.size()/2;
+  size_t upper=m_vIndex.size();
+  size_t lower=0;
 	while(m_vIndex[mid].scanNum!=num){
 		if(lower==upper) break;
 		if(m_vIndex[mid].scanNum>num){
@@ -276,9 +277,9 @@ bool mzpSAXMzxmlHandler::readHeader(int num){
 		parseOffset(m_vIndex[mid].offset);
 		//force scan number; this was done for files where scan events are not numbered
 		if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum(m_vIndex[mid].scanNum);
-		spec->setScanIndex(mid+1); //set the index, which starts from 1, so offset by 1
+		spec->setScanIndex((int)mid+1); //set the index, which starts from 1, so offset by 1
 		m_bHeaderOnly=false;
-		posIndex=mid;
+		posIndex=(int)mid;
 		return true;
 	}
 	return false;
@@ -301,9 +302,9 @@ bool mzpSAXMzxmlHandler::readSpectrum(int num){
 	}
 
 	//Assumes scan numbers are in order
-	int mid=m_vIndex.size()/2;
-	int upper=m_vIndex.size();
-	int lower=0;
+  size_t mid=m_vIndex.size()/2;
+  size_t upper=m_vIndex.size();
+  size_t lower=0;
 	while(m_vIndex[mid].scanNum!=num){
 		if(lower==upper) break;
 		if(m_vIndex[mid].scanNum>num){
@@ -320,8 +321,8 @@ bool mzpSAXMzxmlHandler::readSpectrum(int num){
 		parseOffset(m_vIndex[mid].offset);
 		//force scan number; this was done for files where scan events are not numbered
 		if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum(m_vIndex[mid].scanNum);
-		spec->setScanIndex(mid+1); //set the index, which starts from 1, so offset by 1
-		posIndex=mid;
+		spec->setScanIndex((int)mid+1); //set the index, which starts from 1, so offset by 1
+		posIndex=(int)mid;
 		return true;
 	}
 	return false;

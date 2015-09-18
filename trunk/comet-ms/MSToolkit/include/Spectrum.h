@@ -141,12 +141,12 @@ class Spectrum {
 	double           convE;
 	double           convI;
   double           TIC;
-  double           BPM;          //Base Peak Mass
-  float            rTimeApex;    //retention time of precursor apex (MS2)
-  float            area;         //summed peak areas of precursor (MS2)
-  char             nativeID[256]; //spectrumNativeID in mzML files
-  char             rawFilter[256]; //RAW file header line
-  int              centroidStatus; //0=profile, 1=centroid, 2=unknown
+  double           BPM;             //Base Peak Mass
+  float            rTimeApex;       //retention time of precursor apex (MS2)
+  float            area;            //summed peak areas of precursor (MS2)
+  char             nativeID[256];   //spectrumNativeID in mzML files
+  char             rawFilter[256];  //RAW file header line
+  int              centroidStatus;  //0=profile, 1=centroid, 2=unknown
 
   //private:
   //Functions
