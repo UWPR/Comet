@@ -4,6 +4,24 @@
          <h1>Comet release 2015.02</h1>
                               
             <ul>
+               <b>release 2015.02 rev. 1 (2015.02.1), release date 2015/09/XX</b>
+               <li>Modify behavior the binary modifications which is controlled by the
+                   third parameter entry in the variable modifications 
+                   (e.g. "<a href="http://comet-ms.sourceforge.net/parameters/parameters_201502/variable_mod01.php">variable_mod01</a>").
+                   Instead of a binary 0 or 1 value to turn off or on each binary modification,
+                   one can now set the third parameter entry to the same value across multiple
+                   variable modifications effectively allowing an all-modified binary
+                   behavior across multiple variable modifications.  See the examples at
+                   the bottom of the variable modification help pages for further explanation.
+               <li>Wide mass tolerance searches, such as those performed by the
+                   <a href="http://www.ncbi.nlm.nih.gov/pubmed/26076430">Gygi lab's
+                   mass-tolerant searches</a>, are now supported by Comet.  Previous versions
+                   of Comet would crash when given large tolerances.
+               <li>Update MSToolkit to support "possible charge state" cvParam in mzML files as
+                   implemented by M. Hoopmann.
+            </ul>
+
+            <ul>
                <b>release 2015.02 rev. 0 (2015.02.0), release date 2015/07/31</b>
                <li>Associated with this release, a Windows GUI program to run
                    Comet searches and visualize results is available. The

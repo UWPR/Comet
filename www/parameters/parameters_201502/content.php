@@ -108,15 +108,15 @@
                         
          <h3>Variable modifications</h3>
          <ul>
-         <li><a href="variable_mod01.php">variable_mod01</a></li>
-         <li><a href="variable_mod02.php">variable_mod02</a></li>
-         <li><a href="variable_mod03.php">variable_mod03</a></li>
-         <li><a href="variable_mod04.php">variable_mod04</a></li>
-         <li><a href="variable_mod05.php">variable_mod05</a></li>
-         <li><a href="variable_mod06.php">variable_mod06</a></li>
-         <li><a href="variable_mod07.php">variable_mod07</a></li>
-         <li><a href="variable_mod08.php">variable_mod08</a></li>
-         <li><a href="variable_mod09.php">variable_mod09</a></li>
+         <li><a href="variable_mod01.php">variable_mod01</a> <font color="red">**</font></li>
+         <li><a href="variable_mod02.php">variable_mod02</a> <font color="red">**</font></li>
+         <li><a href="variable_mod03.php">variable_mod03</a> <font color="red">**</font></li>
+         <li><a href="variable_mod04.php">variable_mod04</a> <font color="red">**</font></li>
+         <li><a href="variable_mod05.php">variable_mod05</a> <font color="red">**</font></li>
+         <li><a href="variable_mod06.php">variable_mod06</a> <font color="red">**</font></li>
+         <li><a href="variable_mod07.php">variable_mod07</a> <font color="red">**</font></li>
+         <li><a href="variable_mod08.php">variable_mod08</a> <font color="red">**</font></li>
+         <li><a href="variable_mod09.php">variable_mod09</a> <font color="red">**</font></li>
          <li><a href="max_variable_mods_in_peptide.php">max_variable_mods_in_peptide</a></li>
          <li><a href="require_variable_mod.php">require_variable_mod</a></li>
          </ul>

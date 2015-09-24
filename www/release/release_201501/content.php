@@ -4,7 +4,7 @@
          <h1>Comet release 2015.01</h1>
                               
             <ul>
-               <b>release 2015.01 rev. 2 (2015.01.2), release date 2015/04/XX</b>
+               <b>release 2015.01 rev. 2 (2015.01.2), release date 2015/04/28</b>
                <li>Change decoy generation for E-value calculation when a small number of
                    candidate peptides are searched.  The E-value histogram now includes
                    3000 decoys, up from hundreds.  Decoys fragments are generated from

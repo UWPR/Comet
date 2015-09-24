@@ -4,7 +4,7 @@
          <h1>Comet releases</h1>
             <ul>
                <li><a href="/release/release_201502/">Release 2015.02, 2015/07/31</a></li>
-               <li><a href="/release/release_201501/">Release 2015.01, 2015/02/23</a></li>
+               <li><a href="/release/release_201501/">Release 2015.01, 2015/02/23, last revised 2015/04/28</a></li>
                <li><a href="/release/release_201402/">Release 2014.02, 2014/09/16, last revised 2014/09/25</a></li>
                <li><a href="/release/release_201401/">Release 2014.01, 2014/03/25, last revised 2014/06/03</a></li>
                <li><a href="/release/release_201302/">Release 2013.02, 2013/10/18, last revised 2014/01/23</a></li>
