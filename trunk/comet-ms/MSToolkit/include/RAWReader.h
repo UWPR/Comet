@@ -59,6 +59,7 @@ private:
 	bool rawLabel;
 	bool rawUserFilterExact;
 
+  char rawCurrentFile[256];
   char rawInstrument[256];
   char rawManufacturer[256];
   char rawUserFilter[256];

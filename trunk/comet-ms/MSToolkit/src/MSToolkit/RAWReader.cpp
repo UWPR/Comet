@@ -17,6 +17,7 @@ RAWReader::RAWReader(){
 	rawFileOpen=false;
   rawLabel=false;
   rawUserFilterExact=true;
+  strcpy(rawCurrentFile,".");
   strcpy(rawInstrument,"unknown");
   strcpy(rawManufacturer,"Thermo Scientific");
   strcpy(rawUserFilter,"");
@@ -275,6 +276,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
 	//General purpose function members
 	bool bCheckNext;
+  bool bNewFile;
 
 	char chFilter[256];
   char curFilter[256];
@@ -342,36 +344,53 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   s.clear();
 
   if(c==NULL){
-		//if file is closed and scan number requested, open file and grab scan number
+		//continue reading current file
+    if(!rawFileOpen) return false;
     if(scNum>0) rawCurSpec=scNum;
     else rawCurSpec++;
     if(rawCurSpec>rawTotSpec) return false;
-
+    bNewFile=false;
   } else {
-		//close an open file, open the requested file.
+	
+    //check if requested file is already open
     if(rawFileOpen) {
-      lRet = m_Raw->Close();
-      rawFileOpen=false;
+      if(strcmp(c,rawCurrentFile)==0){
+        if(scNum>0) rawCurSpec=scNum;
+        else rawCurSpec++;
+        if(rawCurSpec>rawTotSpec) return false;
+        bNewFile=false;
+      } else {
+        //new file requested, so close the existing one
+        lRet = m_Raw->Close();
+        rawFileOpen=false;
+        bNewFile=true;
+      }
+    } else {
+      bNewFile=true;
     }
-    MultiByteToWideChar(CP_ACP,0,c,-1,(LPWSTR)pth,MAX_PATH);
-    lRet = m_Raw->Open((LPWSTR)pth);
-		if(lRet != ERROR_SUCCESS) {
-			cerr << "Cannot open " << c << endl;
-			return false;
-		}
-	  else lRet = m_Raw->SetCurrentController(0,1);
-    rawFileOpen=true;
-    m_Raw->GetNumSpectra(&rawTotSpec);
-    testStr=NULL;
-    m_Raw->GetInstModel(&testStr);
-    sl = SysStringLen(testStr)+1;
-	  WideCharToMultiByte(CP_ACP,0,testStr,-1,rawInstrument,sl,NULL,NULL);
-    SysFreeString(testStr);
 
-		//if scan number is requested, grab it
-    if(scNum>0) rawCurSpec=scNum;
-    else rawCurSpec=1;
-    if(rawCurSpec>rawTotSpec) return false;
+    if(bNewFile){
+      MultiByteToWideChar(CP_ACP,0,c,-1,(LPWSTR)pth,MAX_PATH);
+      lRet = m_Raw->Open((LPWSTR)pth);
+		  if(lRet != ERROR_SUCCESS) {
+			  cerr << "Cannot open " << c << endl;
+			  return false;
+		  }
+	    else lRet = m_Raw->SetCurrentController(0,1);
+      rawFileOpen=true;
+      m_Raw->GetNumSpectra(&rawTotSpec);
+      testStr=NULL;
+      m_Raw->GetInstModel(&testStr);
+      sl = SysStringLen(testStr)+1;
+	    WideCharToMultiByte(CP_ACP,0,testStr,-1,rawInstrument,sl,NULL,NULL);
+      SysFreeString(testStr);
+      strcpy(rawCurrentFile,c);
+
+		  //if scan number is requested, grab it
+      if(scNum>0) rawCurSpec=scNum;
+      else rawCurSpec=1;
+      if(rawCurSpec>rawTotSpec) return false;
+    }
   }
 
 	//Initialize members
