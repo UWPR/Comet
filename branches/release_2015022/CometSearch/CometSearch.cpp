@@ -1912,7 +1912,6 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
    return false;
 }
 
-
 bool CometSearch::VarModSearch(char *szProteinSeq,
                                char *szProteinName,
                                int piVarModCounts[],
@@ -1934,12 +1933,18 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
        numVarModCounts[VMODS];
    double dTmpMass;
 
+   int piTmpTotVarModCt[VMODS];
+   int piTmpTotBinaryModCt[VMODS];
+
+
    strcpy(_proteinInfo.szProteinName, szProteinName);
 
    // consider possible n- and c-term mods; c-term position is not necessarily iEndPos
    // so need to add some buffer there
    for (i=0; i<VMODS; i++)
    {
+      piTmpTotVarModCt[i] = piTmpTotBinaryModCt[i] = 0; // useless but supresses gcc 'may be used uninitialized in this function' warnings
+
       piVarModCountsNC[i] = piVarModCounts[i];
 
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
@@ -2158,13 +2163,13 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
 
                                        if (g_staticParams.variableModParameters.bBinaryModSearch)
                                        {
-                                          bool bMatched=false;
-
                                           // make iTotBinaryModCt similar to iTotVarModCt but count the
                                           // number of mod sites in peptide for that particular binary
                                           // mod group and store in first group entry
                                           for (i=0; i<VMODS; i++)
                                           {
+                                             bool bMatched=false;
+
                                              if (g_staticParams.variableModParameters.varModList[i].iBinaryMod
                                                    && !isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
                                                    && !bMatched)
@@ -2255,7 +2260,6 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                                    }
                                                 }
 
-
                                                 // consider n-term mods only for start residue
                                                 if (iTmpEnd == iStartPos)
                                                 {
@@ -2291,8 +2295,6 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                        }
 
                                        bool bValid = true;
-                                       int piTmpTotVarModCt[VMODS];
-                                       int piTmpTotBinaryModCt[VMODS];
 
                                        // since we're varying iEndPos, check enzyme consistency first
                                        if (!CheckEnzymeTermini(szProteinSeq, iStartPos, iTmpEnd))
