@@ -1636,14 +1636,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (pQuery->_pDecoys[i].iSeqFilePosition > _proteinInfo.iSeqFilePosition)
                {
                   pQuery->_pDecoys[i].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
-#ifdef _WIN32
-                  _snprintf(pQuery->_pDecoys[i].szProtein, WIDTH_REFERENCE, "%s%s",
-                        g_staticParams.szDecoyPrefix, szProteinName);
-                  pQuery->_pDecoys[i].szProtein[WIDTH_REFERENCE-1]=0;    // _snprintf does not guarantee null termination
-#else
-                  snprintf(pQuery->_pDecoys[i].szProtein, WIDTH_REFERENCE, "%s%s",
-                        g_staticParams.szDecoyPrefix, szProteinName);
-#endif
+                  strcpy(pQuery->_pDecoys[i].szProtein, szProteinName);
 
                   if (iStartPos == 0)
                      pQuery->_pDecoys[i].szPrevNextAA[0] = '-';
