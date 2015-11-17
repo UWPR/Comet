@@ -180,9 +180,17 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
     if(!fgets(strMGF,1024,fileIn)) return false;
   }
 
+  // JKE: skip all whitespace lines
+  while (!feof(fileIn) && strspn(strMGF, " \r\n\t") == strlen(strMGF)) {
+     fgets(strMGF,1024,fileIn);
+  }
+  // JKE: take care of possibility of blank line at end of file
+  if(feof(fileIn)) return true;
+
   //Sanity check that we are at next spectrum
   if(strstr(strMGF,"BEGIN IONS")==NULL) {
     cout << "Malformed MGF spectrum entry. Exiting." << endl;
+    cout << "line :" << strMGF << endl;
     exit(-10);
   }
 
