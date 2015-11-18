@@ -1703,12 +1703,12 @@ bool CometSearchManager::DoSearch()
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
-            sprintf(szOutputPercolator, "%s%s.tsv",
+            sprintf(szOutputPercolator, "%s%s.pin",
                   g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
          }
          else
          {
-            sprintf(szOutputPercolator, "%s%s.%d-%d.tsv",
+            sprintf(szOutputPercolator, "%s%s.%d-%d.pin",
                   g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
          }
 
