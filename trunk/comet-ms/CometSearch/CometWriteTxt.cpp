@@ -291,9 +291,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
-         // prints modification encoding
-         PrintModifications(fpout, pOutput, iWhichResult);
-
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[0]);
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
