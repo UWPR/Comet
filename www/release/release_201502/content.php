@@ -4,7 +4,33 @@
          <h1>Comet release 2015.02</h1>
                               
             <ul>
-               <b>release 2015.02 rev. 1 (2015.02.1), release date 2015/09/XX</b>
+               <b>release 2015.02 rev. 3 (2015.02.3), release date 2015/11/24</b>
+               <li>Fix incorrect MGF parsing where blank lines in the MGF file would cause
+                   an error.
+               <li>Fix n-term distance constraint variable mod searches.  Thanks to U.
+                   Eckhard for reporting the above two issues.
+               <li>Change output file extension to ".pin" from ".tsv" for Percolator output
+                   files.
+               <li>Fix negative deltaCn values in text file output when no second hit is
+                   present.
+               <li>Fix case where double decoy string is appended to the protein accession
+                   for decoy matches.
+            </ul>
+            <ul>
+               <b>release 2015.02 rev. 2 (2015.02.2), release date 2015/10/15</b>
+               <li>Minor update to fix bug in binary modifications.  The bug manifested
+                   itself in the simplest case where say two lysine residues are labeled
+                   with different modification masses and set to different binary modification
+                   groups.  In this case, the second modification is not analyzed. Bug
+                   reported by Villen lab.
+               <li>Known bug: when decoy searches are applied, the decoy prefix could be
+                   added multiple times for certain cases where the same decoy peptide is
+                   present in multiple decoy proteins.  A fix has been implemented and will
+                   be included in the next release; let me know if you need a patched binary
+                   sooner than that.
+            </ul>
+            <ul>
+               <b>release 2015.02 rev. 1 (2015.02.1), release date 2015/09/30</b>
                <li>Modify behavior the binary modifications which is controlled by the
                    third parameter entry in the variable modifications 
                    (e.g. "<a href="http://comet-ms.sourceforge.net/parameters/parameters_201502/variable_mod01.php">variable_mod01</a>").
@@ -13,6 +39,8 @@
                    variable modifications effectively allowing an all-modified binary
                    behavior across multiple variable modifications.  See the examples at
                    the bottom of the variable modification help pages for further explanation.
+                   NOTE: a bug was just discovered with binary modifications; a fix is
+                   imminent.
                <li>Wide mass tolerance searches, such as those performed by the
                    <a href="http://www.ncbi.nlm.nih.gov/pubmed/26076430">Gygi lab's
                    mass-tolerant searches</a>, are now supported by Comet.  Previous versions

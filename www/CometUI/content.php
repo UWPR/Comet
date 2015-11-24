@@ -11,6 +11,12 @@
          through PeptideProphet of the TPP.  This software will be further
          developed if there is demand for it.
 
+         <p>Thermo's MS File Reader is required if you want to search RAW
+         files directly.  MSFileReader can be downloaded by creating an account
+         with <a href="https://thermo.flexnetoperations.com/control/thmo/login">ThermoFischer Scientific<a/>. Once registered you will find the software under "Utility Software".
+
+
+
          <p><b>NOTE: this first release should be viewed as beta software as
          features are incomplete and not well tested.
          <br>If you are running version 1.0.0.0, please download the setup.exe

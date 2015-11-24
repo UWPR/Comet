@@ -34,11 +34,12 @@
 
             </div>
             <div class="post hr">
-               <p>To run Comet, you need one or more input spectral files in mzXML, mzML, ms2/cms2 formats
-                  and a comet.params file.  Then issue a command such as:
+               <p>To run Comet, you need one or more input spectral files in mzXML, mzML, mgf, or
+                  ms2/cms2 formats and a comet.params file.  Then issue a command such as:
                <ul>
                   <li><tt>comet.exe input.mzXML</tt>
                   <li><tt>comet.exe input.mzML</tt>
+                  <li><tt>comet.exe input.mgf</tt>
                   <li><tt>comet.exe input.ms2</tt>
                </ul>
             </div>
@@ -49,31 +50,29 @@
                   <li><tt>comet.exe -p</tt>
                </ul>
 
-               Example version 2015.01 comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
+               Example version 2015.02 comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
                <ul>
-                  <li><a href="/parameters/parameters_201501/comet.params.low-low">comet.params.low-low</a> - low res MS1 and low res MS2 e.g. ion trap
-                  <li><a href="/parameters/parameters_201501/comet.params.high-low">comet.params.high-low</a> - high res MS1 and low res MS2 e.g. LTQ-Orbitrap
-                  <li><a href="/parameters/parameters_201501/comet.params.high-high">comet.params.high-high</a> - high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
+                  <li><a href="/parameters/parameters_201502/comet.params.low-low">comet.params.low-low</a> - low res MS1 and low res MS2 e.g. ion trap
+                  <li><a href="/parameters/parameters_201502/comet.params.high-low">comet.params.high-low</a> - high res MS1 and low res MS2 e.g. LTQ-Orbitrap
+                  <li><a href="/parameters/parameters_201502/comet.params.high-high">comet.params.high-high</a> - high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
                </ul>
             </div>
 
             <div class="post hr">
                <p>For low-res ms/ms spectra, try the following settings:
                <ul>
-                  <li><a href="/parameters/parameters_201501/fragment_bin_tol.php">fragment_bin_tol</a> = 1.0005
-                  <li><a href="/parameters/parameters_201501/fragment_bin_offset.php">fragment_bin_offset</a> = 0.4
-                  <li><a href="/parameters/parameters_201501/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 1
-                  <li><a href="/parameters/parameters_201501/use_sparse_matrix.php">use_sparse_matrix</a> = 1
-                  <li><a href="/parameters/parameters_201501/spectrum_batch_size.php">spectrum_batch_size</a> = 0
+                  <li><a href="/parameters/parameters_201502/fragment_bin_tol.php">fragment_bin_tol</a> = 1.0005
+                  <li><a href="/parameters/parameters_201502/fragment_bin_offset.php">fragment_bin_offset</a> = 0.4
+                  <li><a href="/parameters/parameters_201502/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 1
+                  <li><a href="/parameters/parameters_201502/spectrum_batch_size.php">spectrum_batch_size</a> = 0
                </ul>
 
                <p>For high-res ms/ms spectra, try the following settings:
                <ul>
-                  <li><a href="/parameters/parameters_201501/fragment_bin_tol.php">fragment_bin_tol</a> = 0.02
-                  <li><a href="/parameters/parameters_201501/fragment_bin_offset.php">fragment_bin_offset</a> = 0.0
-                  <li><a href="/parameters/parameters_201501/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 0
-                  <li><a href="/parameters/parameters_201501/use_sparse_matrix.php">use_sparse_matrix</a> = 1
-                  <li><a href="/parameters/parameters_201501/spectrum_batch_size.php">spectrum_batch_size</a> = 10000 (depending on free memory)
+                  <li><a href="/parameters/parameters_201502/fragment_bin_tol.php">fragment_bin_tol</a> = 0.02
+                  <li><a href="/parameters/parameters_201502/fragment_bin_offset.php">fragment_bin_offset</a> = 0.0
+                  <li><a href="/parameters/parameters_201502/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 0
+                  <li><a href="/parameters/parameters_201502/spectrum_batch_size.php">spectrum_batch_size</a> = 10000 (depending on free memory)
                </ul>
             </div>
 
