@@ -229,24 +229,70 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          num_matches = pQuery->_uliNumMatchedPeptides;
       }
       
-      size_t iNumPrintLines = min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches);
+      int iNumPrintLines = min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches);
 
-      for (size_t iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+      int iMinLength = 999;
+      for (int i=0; i<iNumPrintLines; i++)
       {
+         int iLen = (int)strlen(pOutput[i].szPeptide);
+         if (iLen == 0)
+            break;
+         if (iLen < iMinLength)
+            iMinLength = iLen;
+      }
+
+      for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+      {
+         int j;
+         bool bNoDeltaCnYet = true;
+         double dDeltaCn = 1.0;
+
          if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
             continue;
 
-         double dDeltaCn;
+         // go one past iNumPrintLines to calculate deltaCn value
+         for (j=iWhichResult+1; j<iNumPrintLines+1; j++)
+         {
+            if (j<g_staticParams.options.iNumStored)
+            {
+               // very poor way of calculating peptide similarity but it's what we have for now
+               int iDiffCt = 0;
 
-         if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr >= 0.0)
-            dDeltaCn = 1.0 - pOutput[iWhichResult+1].fXcorr/pOutput[0].fXcorr;
-         else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult+1].fXcorr < 0.0)
-            dDeltaCn = 1.0;
-         else
-            dDeltaCn = 0.0;
+               for (int k=0; k<iMinLength; k++)
+               {
+                  // I-L and Q-K are same for purposes here
+                  if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
+                  {
+
+                     if (!((pOutput[iWhichResult].szPeptide[k] == 'K' || pOutput[iWhichResult].szPeptide[k] == 'Q')
+                              && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                           && !((pOutput[iWhichResult].szPeptide[k] == 'I' || pOutput[iWhichResult].szPeptide[k] == 'L')
+                              && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                     {
+                        iDiffCt++;
+                     }
+                  }
+               }
+
+               // calculate deltaCn only if sequences are less than 0.75 similar
+               if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
+               {
+                  if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                     dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[iWhichResult].fXcorr;
+                  else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+                     dDeltaCn = 1.0;
+                  else
+                     dDeltaCn = 0.0;
+
+                  bNoDeltaCnYet = 0;
+
+                  break;
+               }
+            }
+         }
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
-         fprintf(fpout, "%lu\t", iWhichResult+1);
+         fprintf(fpout, "%d\t", iWhichResult+1);
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iChargeState);
          fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
          fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
@@ -290,9 +336,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          }
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
-
-         // prints modification encoding
-         PrintModifications(fpout, pOutput, iWhichResult);
 
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[0]);
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[1]);

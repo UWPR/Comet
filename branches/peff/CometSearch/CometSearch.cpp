@@ -172,9 +172,14 @@ bool CometSearch::RunSearch(int minNumThreads,
       // read in PSI or UniMod file and get a map of all mod codes and mod masses
       CometSearch pOBO;
       if (strlen(g_staticParams.peffInfo.szPeffOBO) > 0)
+      {
          pOBO.ReadOBO(g_staticParams.peffInfo.szPeffOBO, &vectorPeffOBO);
+         sort(vectorPeffOBO.begin(), vectorPeffOBO.end());  // sort by strMod for efficient binary search
+      }
 
       printf("size of peff OBO %d\n", (int)vectorPeffOBO.size());
+      for (int i=0; i< (int)vectorPeffOBO.size(); i++)
+         printf("%d.  %s  %f %f\n", i, vectorPeffOBO.at(i).strMod.c_str(), vectorPeffOBO.at(i).dMassDiffMono, vectorPeffOBO.at(i).dMassDiffAvg);
       exit(1);
 
    }
@@ -277,16 +282,18 @@ bool CometSearch::RunSearch(int minNumThreads,
                      while (tok != NULL)
                      {
                         int iPos;
-                        char szModCode[128];
+                        char szTmp[80];
+                        string strModCode;
 
-                        sscanf(tok, "(%d|%s", &iPos, szModCode);  //tok+1 to skip first '(' char
-//                      printf("token:  %d | %s\n", iPos, szModCode);  
+                        sscanf(tok, "(%d|%79s", &iPos, szTmp);  //tok+1 to skip first '(' char
+                        strModCode = szTmp;
+//                      printf("token:  %d | %s\n", iPos, strModCode);  
 
                         // sanity check: make sure position is positive
                         if (iPos < 0)
                         {
                            char szErrorMsg[512];
-                           sprintf(szErrorMsg,  "Warning:  %s, ModRes=(%d|%s) ignored\n", dbe.strName.c_str(), iPos, szModCode);
+                           sprintf(szErrorMsg,  "Warning:  %s, ModRes=(%d|%s) ignored\n", dbe.strName.c_str(), iPos, strModCode.c_str());
                            string strErrorMsg(szErrorMsg);
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                            logerr(szErrorMsg);
@@ -294,10 +301,12 @@ bool CometSearch::RunSearch(int minNumThreads,
                         else
                         {
                            struct PeffModStruct pData;
+                           CometSearch pOBO;
 
                            pData.iPosition = iPos;
 
-                           // map szModCode
+                           // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
+                           pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData);
 
                            dbe.vectorPeffMod.push_back(pData);
                         }
@@ -475,7 +484,8 @@ bool CometSearch::RunSearch(int minNumThreads,
 }
 
 
-void CometSearch::ReadOBO(char *szOBO, vector<OBOStruct> *vectorOBO)
+void CometSearch::ReadOBO(char *szOBO,
+                          vector<OBOStruct> *vectorPeffOBO)
 {
    FILE *fp;
 
@@ -513,13 +523,13 @@ void CometSearch::ReadOBO(char *szOBO, vector<OBOStruct> *vectorOBO)
           
             while (getline(&szLine, &len, fp) != -1)
             {
-               char szTmp[100];
+               char szTmp[80];
 
                if (!strncmp(szLine, "[Term]", 6))
                {
                   if (pEntry.dMassDiffMono != 0.0)
 //                {
-                     (*vectorOBO).push_back(pEntry);
+                     (*vectorPeffOBO).push_back(pEntry);
 //                   printf("mod %s, %f, %f\n\n",  pEntry.strMod.c_str(), pEntry.dMassDiffMono, pEntry.dMassDiffAvg);
 //                }
 
@@ -527,7 +537,7 @@ void CometSearch::ReadOBO(char *szOBO, vector<OBOStruct> *vectorOBO)
                }
                else if (!strncmp(szLine, "id: ", 4))
                {
-                  sscanf(szLine, "id: %99s", szTmp);
+                  sscanf(szLine, "id: %79s", szTmp);
                   pEntry.strMod = szTmp;
                }
                else if (!strncmp(szLine, "xref: delta_mono_mass ", 22))
@@ -556,6 +566,20 @@ void CometSearch::ReadOBO(char *szOBO, vector<OBOStruct> *vectorOBO)
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
    }
+
+}
+
+
+void CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct PeffModStruct *pData)
+{
+   int iPos;
+
+   pData->dMassDiffAvg = 0;
+   pData->dMassDiffMono = 0;
+
+   // find match of strMod in vectorPeffOBO and store diff masses in pData
+
+   iPos=BinarySearchStrMod(0, (*vectorPeffOBO).size(), strMod);
 
 }
 
@@ -1200,6 +1224,31 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
    }
 
    return true;
+}
+
+
+int CometSearch::BinarySearchStrMod(int start,
+                                    int end,
+                                    string strMod)
+{
+   // Termination condition: start index greater than end index.
+   if (start > end)
+      return -1;
+
+   // Find the middle element of the vector and use that for splitting
+   // the array into two pieces.
+   unsigned middle = start + ((end - start) / 2);
+
+   if (vectorPeffOBO.at(middle)->strMod <= strMod && strMod <= vectorPeffOBO.at(middle)->strMod)
+   {
+      return middle;
+   }
+   else if (vectorPeffOBO.at(middle)->strMod > strMod)
+   {
+      return BinarySearchStrMod(start, middle - 1, strMod);
+   }
+ 
+   return BinarySearchStrMod(middle + 1, end, strMod);
 }
 
 
@@ -1939,14 +1988,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (pQuery->_pDecoys[i].iSeqFilePosition > _proteinInfo.iSeqFilePosition)
                {
                   pQuery->_pDecoys[i].iSeqFilePosition = _proteinInfo.iSeqFilePosition;
-#ifdef _WIN32
-                  _snprintf(pQuery->_pDecoys[i].szProtein, WIDTH_REFERENCE, "%s%s",
-                        g_staticParams.szDecoyPrefix, szProteinName);
-                  pQuery->_pDecoys[i].szProtein[WIDTH_REFERENCE-1]=0;    // _snprintf does not guarantee null termination
-#else
-                  snprintf(pQuery->_pDecoys[i].szProtein, WIDTH_REFERENCE, "%s%s",
-                        g_staticParams.szDecoyPrefix, szProteinName);
-#endif
+                  strcpy(pQuery->_pDecoys[i].szProtein, szProteinName);  // szProteinName already has decoy prefix
 
                   if (iStartPos == 0)
                      pQuery->_pDecoys[i].szPrevNextAA[0] = '-';
@@ -2454,9 +2496,17 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                              // consider n-term mods only for start residue
                                              if (iTmpEnd == iStartPos)
                                              {
+
+// FIX:  without knowing iTmpEnd, how to consider 'n' mod with c-term peptide distance constraint??
+
                                                 if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
                                                       && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
-                                                         || (iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)))
+                                                         || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)
+                                                         || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
+                                                            && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                         || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
+                                                               &&  iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
+                                                               >= _proteinInfo.iProteinSeqLength-1)))
                                                 {
                                                    _varModInfo.varModStatList[i].iTotVarModCt++;
                                                 }
@@ -2569,7 +2619,12 @@ bool CometSearch::VarModSearch(char *szProteinSeq,
                                                    if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
                                                          && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
                                                          && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
-                                                            || (iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)))
+                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)
+                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
+                                                               && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
+                                                                  &&  iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
+                                                                  >= _proteinInfo.iProteinSeqLength-1)))
                                                    {
                                                       _varModInfo.varModStatList[i].iTotBinaryModCt++;
                                                       bMatched=true;

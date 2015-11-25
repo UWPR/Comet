@@ -211,6 +211,12 @@ struct OBOStruct           // stores info read from OBO file
    double dMassDiffAvg;    // this is looked up from strMod string from OBO
    double dMassDiffMono;
    string strMod;          // mod string, PSI-MOD, Unimod or custom
+
+   bool operator<(const OBOStruct& a) const
+   {
+      return (strMod < a.strMod);
+   }
+
 };
 
 struct PeffModStruct       // stores info read from PEFF header
