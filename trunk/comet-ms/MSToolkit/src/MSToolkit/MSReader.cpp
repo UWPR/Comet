@@ -195,7 +195,13 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
   }
 
   //Read [next] spectrum header
-  while(isalpha(strMGF[0])){
+  while(isalpha(strMGF[0]) || strspn(strMGF, " \r\n\t") == strlen(strMGF)){
+
+    // allow blank links to appear in spectrum header block
+    if (strspn(strMGF, " \r\n\t") == strlen(strMGF)) {
+      if(!fgets(strMGF,1024,fileIn)) return false;
+      continue;
+    }
 
     tok=strtok(strMGF,"=\n\r");
 

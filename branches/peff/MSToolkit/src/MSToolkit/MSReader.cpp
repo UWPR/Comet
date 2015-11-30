@@ -190,11 +190,18 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
   //Sanity check that we are at next spectrum
   if(strstr(strMGF,"BEGIN IONS")==NULL) {
     cout << "Malformed MGF spectrum entry. Exiting." << endl;
+    cout << "line :" << strMGF << endl;
     exit(-10);
   }
 
   //Read [next] spectrum header
-  while(isalpha(strMGF[0])){
+  while(isalpha(strMGF[0]) || strspn(strMGF, " \r\n\t") == strlen(strMGF)){
+
+    // allow blank links to appear in spectrum header block
+    if (strspn(strMGF, " \r\n\t") == strlen(strMGF)) {
+      if(!fgets(strMGF,1024,fileIn)) return false;
+      continue;
+    }
 
     tok=strtok(strMGF,"=\n\r");
 
