@@ -94,24 +94,24 @@ namespace CometUI.ViewResults
 
                     // a ions
                     double aIon = bIon - MassSpecUtils.CommonCompoundsMassTable["CO"];
-                    fragmentIonRow.ASinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, aIon, 1, IonType.A, i + 1));      // Singly charged
-                    AddFragmentIon(userOptions, aIon, 1, IonType.A, i + 1, MassSpecUtils.NeutralLoss.NH3);                                // Singly charged, NH3 neutral loss
-                    AddFragmentIon(userOptions, aIon, 1, IonType.A, i + 1, MassSpecUtils.NeutralLoss.H2O);                                // Singly charged, H2O neutral loss
-                    fragmentIonRow.ADoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, aIon, 2, IonType.A, i + 1));      // Doubly charged
-                    fragmentIonRow.ATriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, aIon, 3, IonType.A, i + 1));      // Triply charged
+                    fragmentIonRow.ASinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, aIon, 1, IonType.A, fragmentIonRow.BIonCounter));      // Singly charged
+                    AddFragmentIon(userOptions, aIon, 1, IonType.A, fragmentIonRow.BIonCounter, MassSpecUtils.NeutralLoss.NH3);                                // Singly charged, NH3 neutral loss
+                    AddFragmentIon(userOptions, aIon, 1, IonType.A, fragmentIonRow.BIonCounter, MassSpecUtils.NeutralLoss.H2O);                                // Singly charged, H2O neutral loss
+                    fragmentIonRow.ADoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, aIon, 2, IonType.A, fragmentIonRow.BIonCounter));      // Doubly charged
+                    fragmentIonRow.ATriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, aIon, 3, IonType.A, fragmentIonRow.BIonCounter));      // Triply charged
                     
                     // b ions
-                    fragmentIonRow.BSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, bIon, 1, IonType.B, i + 1));      // Singly charged
-                    AddFragmentIon(userOptions, bIon, 1, IonType.B, i + 1, MassSpecUtils.NeutralLoss.NH3);                                // Singly charged, NH3 neutral loss    
-                    AddFragmentIon(userOptions, bIon, 1, IonType.B, i + 1, MassSpecUtils.NeutralLoss.H2O);                                // Singly charged, H2O neutral loss    
-                    fragmentIonRow.BDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, bIon, 2, IonType.B, i + 1));      // Doubly charged
-                    fragmentIonRow.BTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, bIon, 3, IonType.B, i + 1));      // Triply charged
+                    fragmentIonRow.BSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, bIon, 1, IonType.B, fragmentIonRow.BIonCounter));      // Singly charged
+                    AddFragmentIon(userOptions, bIon, 1, IonType.B, fragmentIonRow.BIonCounter, MassSpecUtils.NeutralLoss.NH3);                                // Singly charged, NH3 neutral loss    
+                    AddFragmentIon(userOptions, bIon, 1, IonType.B, fragmentIonRow.BIonCounter, MassSpecUtils.NeutralLoss.H2O);                                // Singly charged, H2O neutral loss    
+                    fragmentIonRow.BDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, bIon, 2, IonType.B, fragmentIonRow.BIonCounter));      // Doubly charged
+                    fragmentIonRow.BTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, bIon, 3, IonType.B, fragmentIonRow.BIonCounter));      // Triply charged
 
                     // c ions
                     double cIon = bIon + MassSpecUtils.CommonCompoundsMassTable["NH3"];
-                    fragmentIonRow.CSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, cIon, 1, IonType.C, i + 1));      // Singly charged
-                    fragmentIonRow.CDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, cIon, 2, IonType.C, i + 1));      // Doubly charged
-                    fragmentIonRow.CTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, cIon, 3, IonType.C, i + 1));      // Triply charged
+                    fragmentIonRow.CSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, cIon, 1, IonType.C, fragmentIonRow.BIonCounter));      // Singly charged
+                    fragmentIonRow.CDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, cIon, 2, IonType.C, fragmentIonRow.BIonCounter));      // Doubly charged
+                    fragmentIonRow.CTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, cIon, 3, IonType.C, fragmentIonRow.BIonCounter));      // Triply charged
                 }
 
                 if (i > 0)
@@ -127,22 +127,22 @@ namespace CometUI.ViewResults
 
                     // x ions
                     double xIon = yIon + MassSpecUtils.CommonCompoundsMassTable["CO"] - (2 * MassSpecUtils.ElementMassTable['h']);
-                    fragmentIonRow.XSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, xIon, 1, IonType.X, i));          // Singly charged
-                    fragmentIonRow.XDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, xIon, 2, IonType.X, i));          // Doubly charged
-                    fragmentIonRow.XTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, xIon, 3, IonType.X, i));          // Triply charged
+                    fragmentIonRow.XSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, xIon, 1, IonType.X, fragmentIonRow.YIonCounter));          // Singly charged
+                    fragmentIonRow.XDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, xIon, 2, IonType.X, fragmentIonRow.YIonCounter));          // Doubly charged
+                    fragmentIonRow.XTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, xIon, 3, IonType.X, fragmentIonRow.YIonCounter));          // Triply charged
 
                     // y ions
-                    fragmentIonRow.YSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, yIon, 1, IonType.Y, i));          // Singly charged
-                    AddFragmentIon(userOptions, yIon, 1, IonType.Y, i, MassSpecUtils.NeutralLoss.NH3);                                    // Singly charged, NH3 neutral loss
-                    AddFragmentIon(userOptions, yIon, 1, IonType.Y, i, MassSpecUtils.NeutralLoss.H2O);                                    // Singly charged, H2O neutral loss
-                    fragmentIonRow.YDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, yIon, 2, IonType.Y, i));          // Doubly charged
-                    fragmentIonRow.YTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, yIon, 3, IonType.Y, i));          // Triply charged
+                    fragmentIonRow.YSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, yIon, 1, IonType.Y, fragmentIonRow.YIonCounter));          // Singly charged
+                    AddFragmentIon(userOptions, yIon, 1, IonType.Y, fragmentIonRow.YIonCounter, MassSpecUtils.NeutralLoss.NH3);                                    // Singly charged, NH3 neutral loss
+                    AddFragmentIon(userOptions, yIon, 1, IonType.Y, fragmentIonRow.YIonCounter, MassSpecUtils.NeutralLoss.H2O);                                    // Singly charged, H2O neutral loss
+                    fragmentIonRow.YDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, yIon, 2, IonType.Y, fragmentIonRow.YIonCounter));          // Doubly charged
+                    fragmentIonRow.YTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, yIon, 3, IonType.Y, fragmentIonRow.YIonCounter));          // Triply charged
                     
                     // z ions
                     double zIon = yIon - MassSpecUtils.CommonCompoundsMassTable["NH3"] + MassSpecUtils.ElementMassTable['h'];
-                    fragmentIonRow.ZSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, zIon, 1, IonType.Z, i));          // Singly charged
-                    fragmentIonRow.ZDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, zIon, 2, IonType.Z, i));          // Doubly charged
-                    fragmentIonRow.ZTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, zIon, 3, IonType.Z, i));          // Triply charged
+                    fragmentIonRow.ZSinglyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, zIon, 1, IonType.Z, fragmentIonRow.YIonCounter));          // Singly charged
+                    fragmentIonRow.ZDoublyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, zIon, 2, IonType.Z, fragmentIonRow.YIonCounter));          // Doubly charged
+                    fragmentIonRow.ZTriplyChargedIonMass = Convert.ToString(AddFragmentIon(userOptions, zIon, 3, IonType.Z, fragmentIonRow.YIonCounter));          // Triply charged
                 }
 
                 FragmentIonRows.Add(fragmentIonRow);
