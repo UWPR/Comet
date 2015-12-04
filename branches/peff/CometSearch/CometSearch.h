@@ -74,12 +74,13 @@ private:
    // Core search functions
    void ReadOBO(char *szOBO,
                 vector<OBOStruct> *vectorUniModOBO);
-   void MapOBO(string strMod,
+   bool MapOBO(string strMod,
                vector<OBOStruct> *vectorPeffOBO,
                struct PeffModStruct *pData);
    int BinarySearchStrMod(int start,
                           int end,
-                          string strMod);
+                          string strMod,
+                          vector<OBOStruct>& vectorPeffOBO);
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);

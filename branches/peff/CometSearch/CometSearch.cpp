@@ -177,10 +177,11 @@ bool CometSearch::RunSearch(int minNumThreads,
          sort(vectorPeffOBO.begin(), vectorPeffOBO.end());  // sort by strMod for efficient binary search
       }
 
-      printf("size of peff OBO %d\n", (int)vectorPeffOBO.size());
-      for (int i=0; i< (int)vectorPeffOBO.size(); i++)
-         printf("%d.  %s  %f %f\n", i, vectorPeffOBO.at(i).strMod.c_str(), vectorPeffOBO.at(i).dMassDiffMono, vectorPeffOBO.at(i).dMassDiffAvg);
-      exit(1);
+/*
+printf("OK size of peff OBO %d\n", (int)vectorPeffOBO.size());
+for (int i=0; i< (int)vectorPeffOBO.size(); i++)
+   printf("OK %d.  %s  %f %f\n", i, vectorPeffOBO.at(i).strMod.c_str(), vectorPeffOBO.at(i).dMassDiffMono, vectorPeffOBO.at(i).dMassDiffAvg);
+*/
 
    }
 
@@ -305,16 +306,17 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                            pData.iPosition = iPos;
 
-                           // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
-                           pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData);
+//printf("OK from header: MOD  %d, %s\n", iPos, strModCode.c_str());
 
-                           dbe.vectorPeffMod.push_back(pData);
+                           // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
+                           if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
+                              dbe.vectorPeffMod.push_back(pData);
                         }
 
                         tok = strtok(NULL, delims);
                      }
-
                   }
+
                   if ( (pStr = strstr(szLine, "\\VariantSimple=")) != NULL)
                   {
                      char *pStr2;
@@ -347,7 +349,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                      strncpy(szMods, pStr, iLen);
                      szMods[iLen]=0;
 
-//                   printf("VARIANT '%s'\n", szMods);
+//                   printf("OK VARIANT '%s'\n", szMods);
 
                      // parse ModRes entries
                      char *tok;
@@ -359,7 +361,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         char cVariant;
 
                         sscanf(tok+1, "%d|%c", &iPos, &cVariant);  //tok+1 to skip first '(' char
-//                      printf("token:  %d | %c\n", iPos, cVariant);  
+//                      printf("OK token:  %d | %c\n", iPos, cVariant);  
 
                         // sanity check: make sure position is positive and residue is A-Z
                         if (iPos <0 || cVariant<65 || cVariant>90)
@@ -373,6 +375,8 @@ bool CometSearch::RunSearch(int minNumThreads,
                         else
                         {
                            struct PeffVariantSimpleStruct pData;
+
+//printf("OK from header: VARIANT %d, %c\n", iPos, cVariant);
 
                            pData.iPosition = iPos;
                            pData.cResidue = cVariant;
@@ -389,17 +393,12 @@ bool CometSearch::RunSearch(int minNumThreads,
             } // done with PEFF
          }
 
-
-         for (int i=0; i<(int)dbe.vectorPeffMod.size(); i++)
-            printf("OK *** modification  %d\n", dbe.vectorPeffMod.at(i).iPosition); //, dbe.vectorPeffMod.at(i).strMod.c_str());
-         for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
-            printf("OK *** variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
-
-         if (g_staticParams.peffInfo.bPEFF)
-         {
-//FIX
-            // map modification code to actual modification mass
-         }
+/*
+for (int i=0; i<(int)dbe.vectorPeffMod.size(); i++)
+   printf("OK *** modification  %d\n", dbe.vectorPeffMod.at(i).iPosition); //, dbe.vectorPeffMod.at(i).strMod.c_str());
+for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
+   printf("OK *** variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
+*/
 
          dbe.iSeqFilePosition = ftell(fptr);  // grab sequence file position here
 
@@ -428,16 +427,12 @@ bool CometSearch::RunSearch(int minNumThreads,
             logout("\b\b\b\b");
          }
 
+//printf("\nOKaa >%s\n%s\n\n", dbe.strName.c_str(), dbe.strSeq.c_str());
 
-         printf(">%s\n%s\n\n", dbe.strName.c_str(), dbe.strSeq.c_str());
-
-/*
          // Now search sequence entry; add threading here so that
          // each protein sequence is passed to a separate thread.
          SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
          pSearchThreadPool->Launch(pSearchThreadData);
-*/
-
 
          bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
          if (!bSucceeded)
@@ -570,7 +565,7 @@ void CometSearch::ReadOBO(char *szOBO,
 }
 
 
-void CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct PeffModStruct *pData)
+bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct PeffModStruct *pData)
 {
    int iPos;
 
@@ -578,8 +573,27 @@ void CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
    pData->dMassDiffMono = 0;
 
    // find match of strMod in vectorPeffOBO and store diff masses in pData
+  
+   iPos=BinarySearchStrMod(0, (*vectorPeffOBO).size(), strMod, *vectorPeffOBO);
 
-   iPos=BinarySearchStrMod(0, (*vectorPeffOBO).size(), strMod);
+   if (iPos != -1 && iPos< (*vectorPeffOBO).size() )
+   {
+      pData->dMassDiffAvg = (*vectorPeffOBO).at(iPos).dMassDiffAvg;
+      pData->dMassDiffMono = (*vectorPeffOBO).at(iPos).dMassDiffMono;
+
+printf("OK  mapped query %s, from obo %s, %f\n", strMod.c_str(), (*vectorPeffOBO).at(iPos).strMod.c_str(), pData->dMassDiffMono);
+      return true;
+   }
+   else
+   {
+      char szErrorMsg[512];
+      sprintf(szErrorMsg,  " Warning: cannot find \"%s\" in OBO\n", strMod.c_str());
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+
+      return false;
+   }
 
 }
 
@@ -1229,26 +1243,28 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
 
 int CometSearch::BinarySearchStrMod(int start,
                                     int end,
-                                    string strMod)
+                                    string strMod,
+                                    vector<OBOStruct>& vectorPeffOBO)
 {
+
    // Termination condition: start index greater than end index.
-   if (start > end)
+   if (start > end || start == vectorPeffOBO.size())
       return -1;
 
    // Find the middle element of the vector and use that for splitting
    // the array into two pieces.
    unsigned middle = start + ((end - start) / 2);
 
-   if (vectorPeffOBO.at(middle)->strMod <= strMod && strMod <= vectorPeffOBO.at(middle)->strMod)
+   if (vectorPeffOBO.at(middle).strMod <= strMod && strMod <= vectorPeffOBO.at(middle).strMod)
    {
       return middle;
    }
-   else if (vectorPeffOBO.at(middle)->strMod > strMod)
+   else if (vectorPeffOBO.at(middle).strMod > strMod)
    {
-      return BinarySearchStrMod(start, middle - 1, strMod);
+      return BinarySearchStrMod(start, middle - 1, strMod, vectorPeffOBO);
    }
  
-   return BinarySearchStrMod(middle + 1, end, strMod);
+   return BinarySearchStrMod(middle + 1, end, strMod, vectorPeffOBO);
 }
 
 
