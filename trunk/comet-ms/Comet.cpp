@@ -1252,7 +1252,7 @@ isotope_error = 0                      # 0=off, 1=on -1/0/1/2/3 (standard C13 er
 # search enzyme\n\
 #\n\
 search_enzyme_number = 1               # choose from list at end of this params file\n\
-num_enzyme_termini = 2                 # valid values are 1 (semi-digested), 2 (fully digested, default), 8 N-term, 9 C-term\n\
+num_enzyme_termini = 2                 # 1 (semi-digested), 2 (fully digested, default), 8 C-term unspecific , 9 N-term unspecific\n\
 allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n\
 \n\
 #\n\
