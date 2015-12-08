@@ -29,7 +29,7 @@
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -37,7 +37,7 @@
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -54,7 +54,7 @@
          <br><tt>variable_mod01 = 79.966331 STY 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
          <br><tt>variable_mod01 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod01 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod01 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod01 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod01 = -17.026549 Q 0 1 0 2</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod01 = -18.010565 E 0 1 0 2</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 

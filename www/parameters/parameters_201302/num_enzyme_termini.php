@@ -20,8 +20,10 @@
          <li>Valid values are 1, 2, 8, 9.
          <li>Set this parameter to 1 for a semi-enzyme search.
          <li>Set this parameter to 2 for a full-enzyme search.
-         <li>Set this parameter to 8 for a semi-enzyme search, unspecific cleavage on peptide's N-terminus.
-         <li>Set this parameter to 9 for a semi-enzyme search, unspecific cleavage on peptide's C-terminus.
+         <li>Set this parameter to 8 for a semi-enzyme search, unspecific cleavage on peptide's C-terminus.
+         The N-terminus of each peptide will be enzyme specific and the C-terminus can be enzyme unspecific.
+         <li>Set this parameter to 9 for a semi-enzyme search, unspecific cleavage on peptide's N-terminus.
+         The C-terminus of each peptide will be enzyme specific and the N-terminus can be enzyme unspecific.
          <li>The default value is "2" if this parameter is missing.
          </ul>
 

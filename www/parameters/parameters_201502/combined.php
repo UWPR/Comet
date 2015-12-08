@@ -1036,8 +1036,10 @@
          <li>Valid values are 1, 2, 8, 9.
          <li>Set this parameter to 1 for a semi-enzyme search.
          <li>Set this parameter to 2 for a full-enzyme search.
-         <li>Set this parameter to 8 for a semi-enzyme search, unspecific cleavage on peptide's N-terminus.
-         <li>Set this parameter to 9 for a semi-enzyme search, unspecific cleavage on peptide's C-terminus.
+         <li>Set this parameter to 8 for a semi-enzyme search, unspecific cleavage on peptide's C-terminus.
+         The N-terminus of each peptide will be enzyme specific and the C-terminus can be enzyme unspecific.
+         <li>Set this parameter to 9 for a semi-enzyme search, unspecific cleavage on peptide's N-terminus.
+         The C-terminus of each peptide will be enzyme specific and the N-terminus can be enzyme unspecific.
          <li>The default value is "2" if this parameter is missing.
          </ul>
 
@@ -1888,7 +1890,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -1896,7 +1898,7 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -1942,10 +1944,9 @@ scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn
          <br><tt>variable_mod08 =&nbsp; 0.0 X 0 3 -1 0 0</tt>
          <br><tt>variable_mod09 =&nbsp; 0.0 X 0 3 -1 0 0</tt>
 
+
       </div>
    </div>
-   <div style="clear: both;">&nbsp;</div>
-</div>
 
 <?php include "footer.php" ; ?>
 </html>

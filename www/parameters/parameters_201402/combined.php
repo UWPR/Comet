@@ -918,8 +918,10 @@
          <li>Valid values are 1, 2, 8, 9.
          <li>Set this parameter to 1 for a semi-enzyme search.
          <li>Set this parameter to 2 for a full-enzyme search.
-         <li>Set this parameter to 8 for a semi-enzyme search, unspecific cleavage on peptide's N-terminus.
-         <li>Set this parameter to 9 for a semi-enzyme search, unspecific cleavage on peptide's C-terminus.
+         <li>Set this parameter to 8 for a semi-enzyme search, unspecific cleavage on peptide's C-terminus.
+         The N-terminus of each peptide will be enzyme specific and the C-terminus can be enzyme unspecific.
+         <li>Set this parameter to 9 for a semi-enzyme search, unspecific cleavage on peptide's N-terminus.
+         The C-terminus of each peptide will be enzyme specific and the N-terminus can be enzyme unspecific.
          <li>The default value is "2" if this parameter is missing.
          </ul>
 
@@ -1676,7 +1678,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -1684,7 +1686,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -1701,7 +1703,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod01 = 79.966331 STY 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>possible phosphorylation on any S, T, Y residue</i>
          <br><tt>variable_mod01 = 42.010565 nK 0 3 -1 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod01 = 15.994915 n 0 3 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod01 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod01 = 28.0 c 0 3 8 1</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod01 = -17.026549 Q 0 1 0 2</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod01 = -18.010565 E 0 1 0 2</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
@@ -1730,7 +1732,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -1738,7 +1740,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -1762,7 +1764,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod02 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
          <br><tt>variable_mod02 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod02 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod02 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod02 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod02 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod02 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
@@ -1791,7 +1793,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -1799,7 +1801,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -1823,7 +1825,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod03 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
          <br><tt>variable_mod03 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod03 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod03 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod03 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod03 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod03 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
@@ -1852,7 +1854,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -1860,7 +1862,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -1884,7 +1886,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod04 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
          <br><tt>variable_mod04 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod04 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod04 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod04 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod04 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod04 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
@@ -1913,7 +1915,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -1921,7 +1923,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -1945,7 +1947,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod05 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
          <br><tt>variable_mod05 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod05 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod05 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod05 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod05 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod05 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
@@ -1974,7 +1976,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -1982,7 +1984,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -2006,7 +2008,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod06 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
          <br><tt>variable_mod06 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod06 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod06 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod06 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod06 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod06 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
@@ -2035,7 +2037,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -2043,7 +2045,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -2067,7 +2069,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod07 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
          <br><tt>variable_mod07 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod07 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod07 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod07 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod07 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod07 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
@@ -2096,7 +2098,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -2104,7 +2106,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -2128,7 +2130,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod08 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
          <br><tt>variable_mod08 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod08 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod08 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod08 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod08 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod08 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
@@ -2157,7 +2159,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
             <li>The fourth entry is an integer specifying the maximum number of modified residues
                 possible in a peptide for this modification entry.
             <li>The fifth entry specifies the distance the modification is applied to from the
-                respective protein terminus:
+                respective terminus:
                 <ul>
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
@@ -2165,7 +2167,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
                 <li>2 = only applies to terminal residue through next 2 residues
                 <li><i>N</i> = only applies to terminal residue through next <i>N</i> residues where <i>N</i> is a positive integer
                 </ul>
-            <li>The sixth entry specifies whichprotein terminus the distance constraint is applied to:
+            <li>The sixth entry specifies which terminus the distance constraint is applied to:
                 <ul>
                 <li>0 = protein N-terminus
                 <li>1 = protein C-terminus
@@ -2189,7 +2191,7 @@ scan  charge  exp_neutral_mass  calc_neutral_mass  e-value  xcorr  delta_cn  sp_
          <br><tt>variable_mod09 = 79.966331 STY 0 3 -1 0 1</tt> &nbsp; &nbsp; ... <i>force peptide IDs to contain at least one phosphorylation mod</i>
          <br><tt>variable_mod09 = 42.010565 nK 0 3 -1 0 0</tt> &nbsp; &nbsp; ... <i>acetylation mod to lysine and N-terminus of all peptides</i>
          <br><tt>variable_mod09 = 15.994915 n 0 3 0 0 0</tt> &nbsp; &nbsp; ... <i>oxidation of protein's N-terminus</i>
-         <br><tt>variable_mod09 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as lon as the C-term residue is one of last 9 residues in protein</i>
+         <br><tt>variable_mod09 = 28.0 c 0 3 8 1 0</tt> &nbsp; &nbsp; ... <i>modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein</i>
          <br><tt>variable_mod09 = -17.026549 Q 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)</i>
          <br><tt>variable_mod09 = -18.010565 E 0 1 0 2 0</tt> &nbsp; &nbsp; ... <i>cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)</i>
 
