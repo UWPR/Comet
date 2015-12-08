@@ -66,7 +66,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
                                     int bMonoMasses,
                                     double *dOH2)
 {
-   double H, O, C, N, S;
+   double H, O, C, N, S, Se;
 
    if (bMonoMasses) // monoisotopic masses
    {
@@ -76,6 +76,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
       N = pdAAMass['n'] = 14.0030740;   // nitrogen
 //    P = pdAAMass['p'] = 30.973762;    // phosphorus
       S = pdAAMass['s'] = 31.9720707;   // sulphur
+      Se = pdAAMass['e'] = 79.9165196;  // selenium
    }
    else  // average masses
    {
@@ -85,6 +86,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
       N = pdAAMass['n'] = 14.0067;
 //    P = pdAAMass['p'] = 30.973761;
       S = pdAAMass['s'] = 32.065;
+      Se = pdAAMass['e'] = 78.96;
    }
 
    *dOH2 = H + H + O;
@@ -96,6 +98,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
    pdAAMass['V'] = C*5  + H*9  + N   + O ;
    pdAAMass['T'] = C*4  + H*7  + N   + O*2 ;
    pdAAMass['C'] = C*3  + H*5  + N   + O   + S ;
+   pdAAMass['U'] = C*3  + H*5  + N   + O   + Se ;
    pdAAMass['L'] = C*6  + H*11 + N   + O ;
    pdAAMass['I'] = C*6  + H*11 + N   + O ;
    pdAAMass['N'] = C*4  + H*6  + N*2 + O*2 ;
@@ -114,7 +117,6 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
 
    pdAAMass['B'] = 0.0;
    pdAAMass['J'] = 0.0;
-   pdAAMass['U'] = 0.0;
    pdAAMass['X'] = 0.0;
    pdAAMass['Z'] = 0.0;
 }

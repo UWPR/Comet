@@ -1120,7 +1120,7 @@ bool CometSearchManager::InitializeStaticParams()
                g_staticParams.massUtility.pdAAMassParent[i] += g_staticParams.staticModifications.pdStaticMods[i]);
          g_staticParams.massUtility.pdAAMassFragment[i] += g_staticParams.staticModifications.pdStaticMods[i];
       }
-      else if (i=='B' || i=='J' || i=='U' || i=='X' || i=='Z')
+      else if (i=='B' || i=='J' || i=='X' || i=='Z')
       {
          g_staticParams.massUtility.pdAAMassParent[i] = 999999.;
          g_staticParams.massUtility.pdAAMassFragment[i] = 999999.;
