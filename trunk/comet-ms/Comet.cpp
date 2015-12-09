@@ -685,6 +685,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_C_cysteine", szParamStringVal, dDoubleParam);
             }
+            else if (!strcmp(szParamName, "add_U_selenocysteine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("add_U_celenocysteinee", szParamStringVal, dDoubleParam);
+            }
             else if (!strcmp(szParamName, "add_L_leucine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
@@ -796,13 +803,6 @@ void LoadParameters(char *pszParamsFile,
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_J_user_amino_acid", szParamStringVal, dDoubleParam);
-            }
-            else if (!strcmp(szParamName, "add_U_user_amino_acid"))
-            {
-               sscanf(szParamVal, "%lf", &dDoubleParam);
-               szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("add_U_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_X_user_amino_acid"))
             {
@@ -1371,12 +1371,12 @@ add_M_methionine = 0.0000              # added to M - avg. 131.1961, mono. 131.0
 add_O_ornithine = 0.0000               # added to O - avg. 132.1610, mono  132.08988\n\
 add_H_histidine = 0.0000               # added to H - avg. 137.1393, mono. 137.05891\n\
 add_F_phenylalanine = 0.0000           # added to F - avg. 147.1739, mono. 147.06841\n\
+add_U_selenocysteine = 0.0000          # added to C - avg. 150.3079, mono. 150.95363\n\
 add_R_arginine = 0.0000                # added to R - avg. 156.1857, mono. 156.10111\n\
 add_Y_tyrosine = 0.0000                # added to Y - avg. 163.0633, mono. 163.06333\n\
 add_W_tryptophan = 0.0000              # added to W - avg. 186.0793, mono. 186.07931\n\
 add_B_user_amino_acid = 0.0000         # added to B - avg.   0.0000, mono.   0.00000\n\
 add_J_user_amino_acid = 0.0000         # added to J - avg.   0.0000, mono.   0.00000\n\
-add_U_user_amino_acid = 0.0000         # added to U - avg.   0.0000, mono.   0.00000\n\
 add_X_user_amino_acid = 0.0000         # added to X - avg.   0.0000, mono.   0.00000\n\
 add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.00000\n\
 \n\
