@@ -44,6 +44,8 @@ namespace CometUI.Search.SearchSettings
 
         private void InitializeWhichTermCombo()
         {
+            whichTermCombo.Items.Add("N-term protein");
+            whichTermCombo.Items.Add("C-term protein");
             whichTermCombo.Items.Add("N-term peptide");
             whichTermCombo.Items.Add("C-term peptide");
 
@@ -87,15 +89,14 @@ namespace CometUI.Search.SearchSettings
                 var varMod = VarModSettingsControl.NamedVarModsList[i];
                 if (VarModName.Equals(varMod.Name))
                 {
-                    // Save the index of the mod in the list so we can
-                    // edit it later
+                    // Save the index of the mod in the list so we can edit it later
                     NamedVarModsListIndex = i;
 
                     residueTextBox.Text = varMod.VarModInfo.VarModChar;
                     massDiffNumericTextBox.Text = varMod.VarModInfo.VarModMass.ToString(CultureInfo.InvariantCulture);
                     maxModsNumericTextBox.Text =
                         varMod.VarModInfo.MaxNumVarModAAPerMod.ToString(CultureInfo.InvariantCulture);
-                    isBinaryModCheckBox.Checked = varMod.VarModInfo.BinaryMod == 1;
+                    binaryModGroup.Value = varMod.VarModInfo.BinaryMod;
                     requireModCheckBox.Checked = varMod.VarModInfo.RequireThisMod == 1;
                     int varModTermDist = varMod.VarModInfo.VarModTermDistance;
                     if (varModTermDist > -1)
@@ -152,7 +153,6 @@ namespace CometUI.Search.SearchSettings
             String varModChar = residueTextBox.Text;
             var varModMassDiff = (double) massDiffNumericTextBox.DecimalValue;
             var maxVarMods = maxModsNumericTextBox.IntValue;
-            var isBinaryMod = isBinaryModCheckBox.Checked;
             int termDist = -1;
             if (!String.IsNullOrEmpty(termDistNumericTextBox.Text))
             {
@@ -167,7 +167,9 @@ namespace CometUI.Search.SearchSettings
 
             var requireThisMod = requireModCheckBox.Checked;
 
-            var newVarMod = new VarMod(varModMassDiff, varModChar, isBinaryMod ? 1 : 0, maxVarMods, termDist, whichTerm, requireThisMod ? 1: 0);
+            int iBinaryMod = (int)binaryModGroup.Value;
+
+            var newVarMod = new VarMod(varModMassDiff, varModChar, iBinaryMod, maxVarMods, termDist, whichTerm, requireThisMod ? 1: 0);
             VarModSettingsControl.NamedVarModsList[NamedVarModsListIndex].VarModInfo = newVarMod;
             VarModSettingsControl.NamedVarModsList[NamedVarModsListIndex].Name =
                 VarModSettingsControl.GetVarModName(newVarMod);
