@@ -176,13 +176,6 @@ bool CometSearch::RunSearch(int minNumThreads,
          pOBO.ReadOBO(g_staticParams.peffInfo.szPeffOBO, &vectorPeffOBO);
          sort(vectorPeffOBO.begin(), vectorPeffOBO.end());  // sort by strMod for efficient binary search
       }
-
-/*
-printf("OK size of peff OBO %d\n", (int)vectorPeffOBO.size());
-for (int i=0; i< (int)vectorPeffOBO.size(); i++)
-   printf("OK %d.  %s  %f %f\n", i, vectorPeffOBO.at(i).strMod.c_str(), vectorPeffOBO.at(i).dMassDiffMono, vectorPeffOBO.at(i).dMassDiffAvg);
-*/
-
    }
 
    if (!g_staticParams.options.bOutputSqtStream)
@@ -306,8 +299,6 @@ for (int i=0; i< (int)vectorPeffOBO.size(); i++)
 
                            pData.iPosition = iPos;
 
-//printf("OK from header: MOD  %d, %s\n", iPos, strModCode.c_str());
-
                            // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
                            if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
                               dbe.vectorPeffMod.push_back(pData);
@@ -349,8 +340,6 @@ for (int i=0; i< (int)vectorPeffOBO.size(); i++)
                      strncpy(szMods, pStr, iLen);
                      szMods[iLen]=0;
 
-//                   printf("OK VARIANT '%s'\n", szMods);
-
                      // parse ModRes entries
                      char *tok;
                      char delims[] = ")";  // tokenize by tab
@@ -361,7 +350,6 @@ for (int i=0; i< (int)vectorPeffOBO.size(); i++)
                         char cVariant;
 
                         sscanf(tok+1, "%d|%c", &iPos, &cVariant);  //tok+1 to skip first '(' char
-//                      printf("OK token:  %d | %c\n", iPos, cVariant);  
 
                         // sanity check: make sure position is positive and residue is A-Z
                         if (iPos <0 || cVariant<65 || cVariant>90)
@@ -376,8 +364,6 @@ for (int i=0; i< (int)vectorPeffOBO.size(); i++)
                         {
                            struct PeffVariantSimpleStruct pData;
 
-//printf("OK from header: VARIANT %d, %c\n", iPos, cVariant);
-
                            pData.iPosition = iPos;
                            pData.cResidue = cVariant;
                            dbe.vectorPeffVariantSimple.push_back(pData);
@@ -387,15 +373,15 @@ for (int i=0; i< (int)vectorPeffOBO.size(); i++)
                      }
                   }
 
-                  // get next char
-                  iTmpCh=getc(fptr);
+                  // exit out of this as end of line grabbed
+                  break;
                } 
             } // done with PEFF
          }
 
 /*
 for (int i=0; i<(int)dbe.vectorPeffMod.size(); i++)
-   printf("OK *** modification  %d\n", dbe.vectorPeffMod.at(i).iPosition); //, dbe.vectorPeffMod.at(i).strMod.c_str());
+   printf("OK *** modification  %d, %f\n", dbe.vectorPeffMod.at(i).iPosition, dbe.vectorPeffMod.at(i).dMassDiffMono); //, dbe.vectorPeffMod.at(i).strMod.c_str());
 for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
    printf("OK *** variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
 */
@@ -426,8 +412,6 @@ for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
             fflush(stdout);
             logout("\b\b\b\b");
          }
-
-//printf("\nOKaa >%s\n%s\n\n", dbe.strName.c_str(), dbe.strSeq.c_str());
 
          // Now search sequence entry; add threading here so that
          // each protein sequence is passed to a separate thread.
@@ -486,8 +470,6 @@ void CometSearch::ReadOBO(char *szOBO,
 
    if ( (fp=fopen(szOBO, "r")) != NULL)
    {
-      printf("OBO File:  %s\n", szOBO);
-
       char *szLine = NULL;
       size_t len = 0;
 
@@ -523,10 +505,10 @@ void CometSearch::ReadOBO(char *szOBO,
                if (!strncmp(szLine, "[Term]", 6))
                {
                   if (pEntry.dMassDiffMono != 0.0)
-//                {
+                  {
                      (*vectorPeffOBO).push_back(pEntry);
 //                   printf("mod %s, %f, %f\n\n",  pEntry.strMod.c_str(), pEntry.dMassDiffMono, pEntry.dMassDiffAvg);
-//                }
+                  }
 
                   break;
                }
@@ -558,8 +540,7 @@ void CometSearch::ReadOBO(char *szOBO,
       char szErrorMsg[512];
       sprintf(szErrorMsg,  " Warning: cannot read PEFF OBO file \"%s\"\n", g_staticParams.peffInfo.szPeffOBO);
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logout(szErrorMsg);
    }
 
 }
@@ -581,7 +562,6 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
       pData->dMassDiffAvg = (*vectorPeffOBO).at(iPos).dMassDiffAvg;
       pData->dMassDiffMono = (*vectorPeffOBO).at(iPos).dMassDiffMono;
 
-printf("OK  mapped query %s, from obo %s, %f\n", strMod.c_str(), (*vectorPeffOBO).at(iPos).strMod.c_str(), pData->dMassDiffMono);
       return true;
    }
    else
@@ -589,12 +569,10 @@ printf("OK  mapped query %s, from obo %s, %f\n", strMod.c_str(), (*vectorPeffOBO
       char szErrorMsg[512];
       sprintf(szErrorMsg,  " Warning: cannot find \"%s\" in OBO\n", strMod.c_str());
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logout(szErrorMsg);
 
       return false;
    }
-
 }
 
 
@@ -636,14 +614,22 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData)
 
 bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 {
+/*
+printf("\nOK ***\n");
+printf("OK  dbe.name  %s\n", dbe.strName.c_str());
+printf("OK  dbe.PeffMod.size %d\n", (int)dbe.vectorPeffMod.size() );
+printf("OK  dbe.PeffVariantSimple.size %d\n", (int)dbe.vectorPeffVariantSimple.size() );
+printf("OK  %s\n", dbe.strSeq.c_str());
+*/
+
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
       _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
       _proteinInfo.iSeqFilePosition = dbe.iSeqFilePosition;
 
-      if (!SearchForPeptides((char *)dbe.strSeq.c_str(),
-                             (char *)dbe.strName.c_str(),
+      if (!SearchForPeptides(dbe,
+                             (char *)dbe.strSeq.c_str(),  // have to pass sequence as it can be modified per below
                              0,
                              pbDuplFragment))
       {
@@ -654,8 +640,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
       {
          _proteinInfo.iProteinSeqLength -= 1;
 
-         if (!SearchForPeptides((char *)dbe.strSeq.c_str()+1,
-                                (char *)dbe.strName.c_str(),
+         if (!SearchForPeptides(dbe,
+                                (char *)dbe.strSeq.c_str()+1,
                                 1,
                                 pbDuplFragment))
          {
@@ -682,8 +668,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             return false;
          }
 
-         if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
-                                (char *)dbe.strName.c_str(),
+         if (!SearchForPeptides(dbe,
+                                _proteinInfo.pszProteinSeq,
                                 0,
                                 pbDuplFragment))
          {
@@ -701,8 +687,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
                return false;
             }
 
-            if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
-                                   (char *)dbe.strName.c_str(),
+            if (!SearchForPeptides(dbe,
+                                   _proteinInfo.pszProteinSeq,
                                    0,
                                    pbDuplFragment))
             {
@@ -772,8 +758,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
                   return false;
                }
 
-               if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
-                                      (char *)dbe.strName.c_str(),
+               if (!SearchForPeptides(dbe,
+                                      _proteinInfo.pszProteinSeq,
                                       0,
                                       pbDuplFragment))
                {
@@ -800,8 +786,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
                return false;
             }
 
-            if (!SearchForPeptides(_proteinInfo.pszProteinSeq,
-                                   (char *)dbe.strName.c_str(),
+            if (!SearchForPeptides(dbe,
+                                   _proteinInfo.pszProteinSeq,
                                    0,
                                    pbDuplFragment))
             {
@@ -819,8 +805,14 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 
 
 // Compare MSMS data to peptide with szProteinSeq from the input database.
+/*
 bool CometSearch::SearchForPeptides(char *szProteinSeq,
                                     char *szProteinName,
+                                    bool bNtermPeptideOnly,
+                                    bool *pbDuplFragment)
+*/
+bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
+                                    char *szProteinSeq,
                                     bool bNtermPeptideOnly,
                                     bool *pbDuplFragment)
 {
@@ -834,6 +826,16 @@ bool CometSearch::SearchForPeptides(char *szProteinSeq,
    int ctLen;
    int ctCharge;
    double dCalcPepMass = 0.0;
+
+   char* szProteinName = (char *)(dbe.strName.c_str());
+
+printf("\nOK in SearchForPeptides, modsize %d, variantsize %d\n", (int)dbe.vectorPeffMod.size(), (int)dbe.vectorPeffVariantSimple.size());
+/*
+for (int i=0; i<(int)dbe.vectorPeffMod.size(); i++)
+   printf("OK *** modification  %d, %f\n", dbe.vectorPeffMod.at(i).iPosition, dbe.vectorPeffMod.at(i).dMassDiffMono); //, dbe.vectorPeffMod.at(i).strMod.c_str());
+for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
+   printf("OK *** variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
+*/
 
    memset(piVarModCounts, 0, sizeof(piVarModCounts));
 
@@ -1248,7 +1250,7 @@ int CometSearch::BinarySearchStrMod(int start,
 {
 
    // Termination condition: start index greater than end index.
-   if (start > end || start == vectorPeffOBO.size())
+   if (start > end || start == (int)vectorPeffOBO.size())
       return -1;
 
    // Find the middle element of the vector and use that for splitting
@@ -1328,6 +1330,60 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          else if (g_staticParams.tolerances.iIsotopeError == 1)
          {
             double dC13diff  = C13_DIFF;
+
+            for (int i=0; i<iMassOffsetsSize; i++)
+            {
+               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
+
+               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+               {
+                  return true;
+               }
+            }
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 2)
+         {
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+
+            for (int i=0; i<iMassOffsetsSize; i++)
+            {
+               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
+
+               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
+               {
+                  return true;
+               }
+            }
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 3)
+         {
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
+
+            for (int i=0; i<iMassOffsetsSize; i++)
+            {
+               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
+
+               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
+               {
+                  return true;
+               }
+            }
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 4)
+         {
+            double dC13diff  = C13_DIFF;
             double d2C13diff = C13_DIFF + C13_DIFF;
             double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
 
@@ -1346,7 +1402,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             }
             return false;
          }
-         else if (g_staticParams.tolerances.iIsotopeError == 2)
+         else if (g_staticParams.tolerances.iIsotopeError == 5)
          {
             for (int i=0; i<iMassOffsetsSize; i++)
             {
@@ -1379,12 +1435,60 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          if (g_staticParams.tolerances.iIsotopeError == 1)
          {
             double dC13diff  = C13_DIFF;
+
+            // Using C13 isotope mass difference here but likely should
+            // be slightly bigger for other elemental contaminents.
+   
+            if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+            {
+               return true;
+            }            
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 2)
+         {
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+
+            // Using C13 isotope mass difference here but likely should
+            // be slightly bigger for other elemental contaminents.
+   
+            if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
+            {
+               return true;
+            }            
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 3)
+         {
+            double dC13diff  = C13_DIFF;
             double d2C13diff = C13_DIFF + C13_DIFF;
             double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
 
             // Using C13 isotope mass difference here but likely should
             // be slightly bigger for other elemental contaminents.
+   
+            if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
+            {
+               return true;
+            }            
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 4)
+         {
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
 
+            // Using C13 isotope mass difference here but likely should
+            // be slightly bigger for other elemental contaminents.
+   
             if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
                   || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
                   || (fabs(dMassDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
@@ -1395,7 +1499,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             }            
             return false;
          }
-         else if (g_staticParams.tolerances.iIsotopeError == 2)
+         else if (g_staticParams.tolerances.iIsotopeError == 5)
          {
             if (     (fabs(dMassDiff)             <= pQuery->_pepMassInfo.dPeptideMassTolerance)
                   || (fabs(dMassDiff - 4.0070995) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
@@ -1691,6 +1795,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       dXcorr = XCORR_CUTOFF;
    else
       dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E5.
+
 
    Threading::LockMutex(pQuery->accessMutex);
 

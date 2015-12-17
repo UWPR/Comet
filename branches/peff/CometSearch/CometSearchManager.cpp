@@ -395,11 +395,16 @@ static void PrintParameters()
    else
       szReadingFrame[0]=0;
 
-   szIsotope[0]='\0';
    if (g_staticParams.tolerances.iIsotopeError==1)
       strcpy(szIsotope, "ISOTOPE1");
    else if (g_staticParams.tolerances.iIsotopeError==2)
       strcpy(szIsotope, "ISOTOPE2");
+   else if (g_staticParams.tolerances.iIsotopeError==3)
+      strcpy(szIsotope, "ISOTOPE3");
+   else if (g_staticParams.tolerances.iIsotopeError==4)
+      strcpy(szIsotope, "ISOTOPE4");
+   else if (g_staticParams.tolerances.iIsotopeError==5)
+      strcpy(szIsotope, "ISOTOPE5");
 
    szPeak[0]='\0';
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
@@ -508,12 +513,14 @@ CometSearchManager::~CometSearchManager()
    Threading::DestroyMutex(g_searchMemoryPoolMutex);
 
    // Clean up the input files vector
-   for (int i=0; i<(int)g_pvInputFiles.size(); i++)
-      delete g_pvInputFiles.at(i);
+   //for (int i=0; i<(int)g_pvInputFiles.size(); i++)
+   //   delete g_pvInputFiles.at(i);
+ 
+   //std::vector calls destructor of every element it contains when clear() is called
    g_pvInputFiles.clear();
 
-   for (std::map<string, CometParam*>::iterator it = _mapStaticParams.begin(); it != _mapStaticParams.end(); ++it)
-      delete it->second;
+   //for (std::map<string, CometParam*>::iterator it = _mapStaticParams.begin(); it != _mapStaticParams.end(); ++it)
+   //   delete it->second;
    _mapStaticParams.clear();
 }
 
@@ -638,7 +645,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("isotope_error", g_staticParams.tolerances.iIsotopeError);
    if ((g_staticParams.tolerances.iIsotopeError < 0)
-         || (g_staticParams.tolerances.iIsotopeError > 2))
+         || (g_staticParams.tolerances.iIsotopeError > 5))
    {
       g_staticParams.tolerances.iIsotopeError = 0;
    }
@@ -1118,7 +1125,7 @@ bool CometSearchManager::InitializeStaticParams()
                g_staticParams.massUtility.pdAAMassParent[i] += g_staticParams.staticModifications.pdStaticMods[i]);
          g_staticParams.massUtility.pdAAMassFragment[i] += g_staticParams.staticModifications.pdStaticMods[i];
       }
-      else if (i=='B' || i=='J' || i=='U' || i=='X' || i=='Z')
+      else if (i=='B' || i=='J' || i=='X' || i=='Z')
       {
          g_staticParams.massUtility.pdAAMassParent[i] = 999999.;
          g_staticParams.massUtility.pdAAMassFragment[i] = 999999.;

@@ -35,6 +35,8 @@ struct SearchThreadData
       dbEntry.strName = dbEntry_in.strName;
       dbEntry.strSeq = dbEntry_in.strSeq;
       dbEntry.iSeqFilePosition = dbEntry_in.iSeqFilePosition;
+      dbEntry.vectorPeffMod = dbEntry_in.vectorPeffMod;
+      dbEntry.vectorPeffVariantSimple = dbEntry_in.vectorPeffVariantSimple;
    }
 
    ~SearchThreadData()
@@ -48,6 +50,9 @@ struct SearchThreadData
          *pbSearchMemoryPool=false;
          pbSearchMemoryPool=NULL;
       }
+
+      dbEntry.vectorPeffMod.clear();
+      dbEntry.vectorPeffVariantSimple.clear();
 
       Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
@@ -152,8 +157,8 @@ private:
    bool CalcVarModIons(char *szProteinSeq,
                        int iWhichQuery,
                        bool *pbDuplFragments);
-   bool SearchForPeptides(char *szProteinSeq,
-                          char *szProteinName,
+   bool SearchForPeptides(struct sDBEntry dbe,
+                          char *szProteinSeq,
                           bool bNtermPeptideOnly,
                           bool *pbDuplFragment);
    bool TranslateNA2AA(int *frame,

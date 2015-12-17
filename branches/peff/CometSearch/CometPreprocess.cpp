@@ -1081,7 +1081,31 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
          + pScoring->_pepMassInfo.dPeptideMassTolerance;
    }
-   else if (g_staticParams.tolerances.iIsotopeError == 1) // search -1 to +1, +2, +3 isotope windows
+   else if (g_staticParams.tolerances.iIsotopeError == 1) // search 0, +1 isotope windows
+   {
+      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
+         - pScoring->_pepMassInfo.dPeptideMassTolerance - C13_DIFF * PROTON_MASS;
+
+      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
+         + pScoring->_pepMassInfo.dPeptideMassTolerance;
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 2) // search 0, +1, +2 isotope windows
+   {
+      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
+         - pScoring->_pepMassInfo.dPeptideMassTolerance - 2.0 * C13_DIFF * PROTON_MASS;
+
+      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
+         + pScoring->_pepMassInfo.dPeptideMassTolerance;
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 3) // search 0, +1, +2, +3 isotope windows
+   {
+      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
+         - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
+
+      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
+         + pScoring->_pepMassInfo.dPeptideMassTolerance;
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 4) // search -1 to +1, +2, +3 isotope windows
    {
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
          - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
@@ -1089,7 +1113,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
          + pScoring->_pepMassInfo.dPeptideMassTolerance + 1.0 * C13_DIFF * PROTON_MASS;
    }
-   else if (g_staticParams.tolerances.iIsotopeError == 2) // search -8, -4, 0, 4, 8 windows
+   else if (g_staticParams.tolerances.iIsotopeError == 5) // search -8, -4, 0, 4, 8 windows
    {
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
          - pScoring->_pepMassInfo.dPeptideMassTolerance - 8.1;

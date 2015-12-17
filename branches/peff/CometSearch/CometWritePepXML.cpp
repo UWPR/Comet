@@ -671,7 +671,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
       {
          // static peptide c-term mod already accounted for here
-         double dMass = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
+         //double dMass = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
+         double dMass = g_staticParams.massUtility.pdAAMassFragment[(int)'o'] + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
          if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
             dMass += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
