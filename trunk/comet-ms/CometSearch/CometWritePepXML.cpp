@@ -427,7 +427,31 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iChargeState);
 
    if (pQuery->_spectrumInfoInternal.szNativeID[0]!='\0')
-      fprintf(fpout, " spectrumNativeID=\"%s\"", pQuery->_spectrumInfoInternal.szNativeID);
+   {
+      if (     strchr(pQuery->_spectrumInfoInternal.szNativeID, '&')
+            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '\"')
+            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '\'')
+            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '<')
+            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '>'))
+      {
+         fprintf(fpout, " spectrumNativeID=\"");
+         for (i=0; i<strlen(pQuery->_spectrumInfoInternal.szNativeID); i++)
+         {
+            switch(pQuery->_spectrumInfoInternal.szNativeID[i])
+            {
+               case '&':  fprintf(fpout, "&amp;");       break;
+               case '\"': fprintf(fpout, "&quot;");      break;
+               case '\'': fprintf(fpout, "&apos;");      break;
+               case '<':  fprintf(fpout, "&lt;");        break;
+               case '>':  fprintf(fpout, "&gt;");        break;
+               default:   fprintf(fpout, "%c", pQuery->_spectrumInfoInternal.szNativeID[i]); break;
+            }
+         }
+         fprintf(fpout, "\"");
+      }
+      else
+         fprintf(fpout, " spectrumNativeID=\"%s\"", pQuery->_spectrumInfoInternal.szNativeID);
+   }
 
    fprintf(fpout, " start_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
    fprintf(fpout, " end_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
