@@ -180,10 +180,10 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
     if(!fgets(strMGF,1024,fileIn)) return false;
   }
 
-  // JKE: skip all whitespace and comment lines
-  while (!feof(fileIn) && strspn(strMGF, " \r\n\t") == strlen(strMGF)
-        || strMGF[0]=='#' || strMGF[0]==';' || strMGF[0]=='!' || strMGF[0]=='/') {
-     fgets(strMGF,1024,fileIn);
+  // JKE: skip all whitespace and comment lines 
+  while(!feof(fileIn) && strspn(strMGF, " \r\n\t") == strlen(strMGF) 
+    || strMGF[0]=='#' || strMGF[0]==';' || strMGF[0]=='!' || strMGF[0]=='/') {
+    fgets(strMGF,1024,fileIn); 
   }
   // JKE: take care of possibility of blank line at end of file
   if(feof(fileIn)) return true;
@@ -191,45 +191,41 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
   //Sanity check that we are at next spectrum
   if(strstr(strMGF,"BEGIN IONS")==NULL) {
     cout << "Malformed MGF spectrum entry. Exiting." << endl;
-    cout << "line :" << strMGF << endl;
+    cout << "line: " << strMGF << endl;
     exit(-10);
   }
 
-  //Read [next] spectrum header
-  while(isalpha(strMGF[0]) || strspn(strMGF, " \r\n\t") == strlen(strMGF)){
+  //Read [next] spectrum header, modernization from JKE across entire while block
+  while(isalpha(strMGF[0]) || strspn(strMGF, " \r\n\t") == strlen(strMGF)){ 
 
-    // allow blank links to appear in spectrum header block
-    if (strspn(strMGF, " \r\n\t") == strlen(strMGF)) {
-      if(!fgets(strMGF,1024,fileIn)) return false;
-      continue;
-    }
+   //allow blank links to appear in spectrum header block 
+   if(strspn(strMGF, " \r\n\t") == strlen(strMGF)) { 
+     if(!fgets(strMGF,1024,fileIn)) return false; 
+     continue; 
+   } 
 
-    strMGF[strlen(strMGF)-1]='\0';
-    if (!strncmp(strMGF, "CHARGE=", 7)) {
-      char *pStr;
-      if ((pStr = strchr(strMGF, '+'))!=NULL) {
-         *pStr = '\0';
-         ch = atoi(strMGF+7);
-      }
-      if ((pStr = strchr(strMGF, '-'))!=NULL) {
-         *pStr = '\0';
-         ch = -atoi(strMGF+7);
-      }
-    }
-    else if (!strncmp(strMGF, "PEPMASS=", 8)) {
-      s.setMZ(atof(strMGF+8));
-    }
-    else if (!strncmp(strMGF, "SCANS=", 6)) {
-      s.setScanNumber(atof(strMGF+6));
-    }
-    else if (!strncmp(strMGF, "RTINSECONDS=", 12)) {
-      s.setRTime((float)(atof(strMGF+12)/60.0));
-    }
-    else if (!strncmp(strMGF, "TITLE=", 6)) {
-      s.setNativeID(strMGF+6);
-    }
+   strMGF[strlen(strMGF)-1]='\0'; 
+   if(!strncmp(strMGF, "CHARGE=", 7)) { 
+     char *pStr;
+     if((pStr = strchr(strMGF, '+'))!=NULL) { 
+       *pStr = '\0'; 
+       ch = atoi(strMGF+7);      
+     } 
+     if((pStr = strchr(strMGF, '-'))!=NULL) { 
+       *pStr = '\0';         
+       ch = -atoi(strMGF+7); 
+     } 
+   } else if(!strncmp(strMGF, "PEPMASS=", 8)) { 
+     s.setMZ(atof(strMGF+8)); 
+   } else if(!strncmp(strMGF, "SCANS=", 6)) { 
+     s.setScanNumber(atoi(strMGF+6)); 
+   } else if(!strncmp(strMGF, "RTINSECONDS=", 12)) { 
+     s.setRTime((float)(atof(strMGF+12)/60.0)); 
+   } else if(!strncmp(strMGF, "TITLE=", 6)) { 
+     s.setNativeID(strMGF+6); 
+   } 
 
-    if(!fgets(strMGF,1024,fileIn)) break;
+   if(!fgets(strMGF,1024,fileIn)) break; 
   }
 
   //Process header information

@@ -183,7 +183,7 @@ bool mzpSAXHandler::open(const char* fileName){
 	if(m_bGZCompression) fptr=fopen(fileName,"rb");
 	else fptr=fopen(fileName,"r");
 	if(fptr==NULL){
-		cerr << "Failed to open input file '" << fileName << "'.\n";
+		//cerr << "Failed to open input file '" << fileName << "'.\n";
 		return false;
 	}
 	setFileName(fileName);

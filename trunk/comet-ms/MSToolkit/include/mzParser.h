@@ -62,7 +62,7 @@ using namespace H5;
 
 //For Windows
 #ifdef _MSC_VER
-#define __inline__ _inline
+#define __inline__ __inline
 typedef _int64  __int64_t;
 typedef unsigned _int32 uint32_t;
 typedef unsigned _int64 uint64_t;
