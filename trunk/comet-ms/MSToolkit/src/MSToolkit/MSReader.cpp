@@ -180,8 +180,9 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
     if(!fgets(strMGF,1024,fileIn)) return false;
   }
 
-  // JKE: skip all whitespace lines
-  while (!feof(fileIn) && strspn(strMGF, " \r\n\t") == strlen(strMGF)) {
+  // JKE: skip all whitespace and comment lines
+  while (!feof(fileIn) && strspn(strMGF, " \r\n\t") == strlen(strMGF)
+        || strMGF[0]=='#' || strMGF[0]==';' || strMGF[0]=='!' || strMGF[0]=='/') {
      fgets(strMGF,1024,fileIn);
   }
   // JKE: take care of possibility of blank line at end of file
@@ -203,65 +204,29 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
       continue;
     }
 
-    tok=strtok(strMGF,"=\n\r");
-
-    if(strcmp(tok,"CHARGE")==0) {
-      tok=strtok(NULL,"= \t\n\r");
-      if(tok==NULL) {
-        cout << "Bad CHARGE line in MGF file." << endl;
-        exit(-11);
-      } else {
-        for(i=0;i<strlen(tok);i++){
-          if(isdigit(tok[i])) {
-            num[i]=tok[i];
-            continue;
-          }
-          if(tok[i]=='+') {
-            num[i]='\0';
-            ch=atoi(num);
-          }
-          if(tok[i]=='-') {
-            num[i]='\0';
-            ch=-atoi(num);
-          }
-          break;
-        }
+    strMGF[strlen(strMGF)-1]='\0';
+    if (!strncmp(strMGF, "CHARGE=", 7)) {
+      char *pStr;
+      if ((pStr = strchr(strMGF, '+'))!=NULL) {
+         *pStr = '\0';
+         ch = atoi(strMGF+7);
       }
-    } else if(strcmp(tok,"PEPMASS")==0){
-      tok=strtok(NULL,"= \t\n\r");
-      if(tok==NULL) {
-        cout << "Bad PEPMASS line in MGF file." << endl;
-        exit(-11);
-      } else {
-        s.setMZ(atof(tok));
+      if ((pStr = strchr(strMGF, '-'))!=NULL) {
+         *pStr = '\0';
+         ch = -atoi(strMGF+7);
       }
-    } else if(strcmp(tok,"SCANS")==0){
-      tok=strtok(NULL,"=- \t\n\r");
-      if(tok==NULL) {
-        cout << "Bad SCANS line in MGF file." << endl;
-        exit(-11);
-      } else {
-        s.setScanNumber(atoi(tok));
-        tok=strtok(NULL,"=- \t\n\r");
-        if(tok!=NULL) s.setScanNumber(atoi(tok),true);
-        else s.setScanNumber(s.getScanNumber(),true);
-      }
-    } else if(strcmp(tok,"RTINSECONDS")==0){
-      tok=strtok(NULL,"= \t\n\r");
-      if(tok==NULL) {
-        cout << "Bad RTINSECONDS line in MGF file." << endl;
-        exit(-11);
-      } else {
-        s.setRTime((float)(atof(tok)/60.0));
-      }
-    } else if(strcmp(tok,"TITLE")==0){
-      tok=strtok(NULL,"=\t\n\r");
-      if(tok==NULL) {
-        cout << "Bad TITLE line in MGF file." << endl;
-        exit(-11);
-      } else {
-        s.setNativeID(tok);
-      }
+    }
+    else if (!strncmp(strMGF, "PEPMASS=", 8)) {
+      s.setMZ(atof(strMGF+8));
+    }
+    else if (!strncmp(strMGF, "SCANS=", 6)) {
+      s.setScanNumber(atof(strMGF+6));
+    }
+    else if (!strncmp(strMGF, "RTINSECONDS=", 12)) {
+      s.setRTime((float)(atof(strMGF+12)/60.0));
+    }
+    else if (!strncmp(strMGF, "TITLE=", 6)) {
+      s.setNativeID(strMGF+6);
     }
 
     if(!fgets(strMGF,1024,fileIn)) break;
