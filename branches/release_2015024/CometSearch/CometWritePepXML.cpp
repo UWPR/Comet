@@ -435,7 +435,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
             || strchr(pQuery->_spectrumInfoInternal.szNativeID, '>'))
       {
          fprintf(fpout, " spectrumNativeID=\"");
-         for (i=0; i<strlen(pQuery->_spectrumInfoInternal.szNativeID); i++)
+         for (i=0; i<(int)strlen(pQuery->_spectrumInfoInternal.szNativeID); i++)
          {
             switch(pQuery->_spectrumInfoInternal.szNativeID[i])
             {
