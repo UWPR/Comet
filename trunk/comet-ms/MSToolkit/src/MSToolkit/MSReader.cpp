@@ -145,12 +145,9 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
     if(!fgets(strMGF,1024,fileIn)) return false;
     while(true){
 
-      tok=strtok(strMGF,"=\n\r");
-
-      if(strcmp(tok,"CHARGE")==0) {
+      if(!strncmp(strMGF, "CHARGE=",7)) {
         mgfGlobalCharge.clear();
-        tok=strtok(NULL,"=\n\r");
-        strcpy(str,tok);
+        strcpy(str, strMGF+7);
         tok=strtok(str," \t\n\r");
         while(tok!=NULL){
           for(i=0;i<strlen(tok);i++){
@@ -172,7 +169,7 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
         }
       } 
 
-      if(strstr(strMGF,"BEGIN IONS")!=NULL) break;
+      if(!strncmp(strMGF,"BEGIN IONS", 10)) break;
       if(!fgets(strMGF,1024,fileIn)) break;
 
     }
@@ -181,8 +178,8 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
   }
 
   // JKE: skip all whitespace and comment lines 
-  while(!feof(fileIn) && strspn(strMGF, " \r\n\t") == strlen(strMGF) 
-    || strMGF[0]=='#' || strMGF[0]==';' || strMGF[0]=='!' || strMGF[0]=='/') {
+  while(!feof(fileIn) && (strspn(strMGF, " \r\n\t") == strlen(strMGF) 
+    || strMGF[0]=='#' || strMGF[0]==';' || strMGF[0]=='!' || strMGF[0]=='/')) {
     fgets(strMGF,1024,fileIn); 
   }
   // JKE: take care of possibility of blank line at end of file
