@@ -501,12 +501,10 @@ namespace CometUI.ViewResults
             result.ExperimentalMass = precursorNeutralMass;
 
             double retentionTimeSec;
-            if (!pepXMLReader.ReadAttribute(spectrumQueryNavigator, "retention_time_sec", out retentionTimeSec))
+            if (pepXMLReader.ReadAttribute(spectrumQueryNavigator, "retention_time_sec", out retentionTimeSec))
             {
-                ErrorMessage = "Could not read the retention_time_sec attribute.";
-                return false;
+                result.RetentionTimeSec = retentionTimeSec;
             }
-            result.RetentionTimeSec = retentionTimeSec;
 
             // The "precursor_intensity" field may or may not be there, so just ignore the return value.
             double precursorIntensity;
@@ -636,6 +634,8 @@ namespace CometUI.ViewResults
                 switch (name)
                 {
                     case "xcorr":
+                    case "xcorr_score": //Tide
+                    case "refactored_xcorr": //Tide
                         double xcorrValue;
                         if (!pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out xcorrValue))
                         {
@@ -646,6 +646,7 @@ namespace CometUI.ViewResults
                         break;
 
                     case "deltacn":
+                    case "delta_cn": //Tide
                         double deltaCNValue;
                         if (!pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out deltaCNValue))
                         {
@@ -682,6 +683,7 @@ namespace CometUI.ViewResults
                         break;
 
                     case "expect":
+                    case "exact_pvalue": //Tide
                         double expect;
                         pepXMLReader.ReadAttribute(searchScoreNavigator, "value", out expect);
                         result.Expect = expect;
