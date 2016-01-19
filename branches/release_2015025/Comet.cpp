@@ -219,11 +219,15 @@ void LoadParameters(char *pszParamsFile,
       {
          if (!strncmp(szParamBuf, "# comet_version ", 16))
          {
-            sscanf(szParamBuf, "%*s %*s %128s", szVersion);
+            char szRev1[12],
+                 szRev2[12];
+
+            sscanf(szParamBuf, "%*s %*s %128s %12s %12s", szVersion, szRev1, szRev2);
 
             if (pSearchMgr->IsValidCometVersion(string(szVersion)))
             {
                bValidParamsFile = true;
+               sprintf(szVersion, "%s %s %s", szVersion, szRev1, szRev2);
                pSearchMgr->SetParam("# comet_version ", szVersion, szVersion);
                break;
             }
