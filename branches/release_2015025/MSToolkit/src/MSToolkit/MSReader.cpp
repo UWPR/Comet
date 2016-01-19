@@ -262,8 +262,8 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
       tok=strtok(NULL," \t\n\r");
       if(tok!=NULL) {
         ch=atoi(tok);
-        mz+=(ch-1)*1.007276466;
-        mz/=ch;
+        mz *= ch;                  // if fragment charge specified, convert m/z to 1+
+        mz -= (ch-1)*1.007276466;
       }
     }
     s.add(mz,intensity);
