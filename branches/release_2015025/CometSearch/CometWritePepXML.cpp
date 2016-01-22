@@ -302,9 +302,8 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
                   searchMgr.GetParamValue("add_Nterm_protein", dMass);
 
                   // print this if N-term protein variable mod or a generic N-term mod there's also N-term protein static mod
-                  if (!isEqual(dMass, 0.0) || (varModsParam.iVarModTermDistance == 0 && varModsParam.iWhichTerm == 0))
+                  if (!isEqual(dMass, 0.0) || (varModsParam.iWhichTerm == 0 || varModsParam.iWhichTerm == 2))
                   {
-printf("\n***OK  %d (%f)  %d\n", fabs(dMass)!=FLOAT_ZERO , dMass, (varModsParam.iVarModTermDistance == 0 && varModsParam.iWhichTerm == 0));
                      // massdiff = mod mass + h
                      fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\" symbol=\"%c\"/>\n",
                            varModsParam.dVarModMass,
@@ -338,9 +337,8 @@ printf("\n***OK  %d (%f)  %d\n", fabs(dMass)!=FLOAT_ZERO , dMass, (varModsParam.
                   searchMgr.GetParamValue("add_Cterm_protein", dMass);
 
                   // print this if C-term protein variable mod or a generic C-term mod there's also C-term protein static mod
-                  if (!isEqual(dMass, 0.0) || (varModsParam.iVarModTermDistance == 0 && varModsParam.iWhichTerm == 1))
+                  if (!isEqual(dMass, 0.0) || (varModsParam.iWhichTerm == 1 && varModsParam.iWhichTerm == 3))
                   {
-
                      // massdiff = mod mass + oh
                      fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\" symbol=\"%c\"/>\n",
                            varModsParam.dVarModMass,
