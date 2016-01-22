@@ -178,7 +178,9 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 			if(mst!=UZS) mst=ZS;
 		} else if(strcmp(tok,"+")==0){
 		} else if(strcmp(tok,"-")==0){
-		} else if(strchr(tok,'@')!=NULL){
+      } else if(strcmp(tok,"t")==0){ //turbo scan
+		} else if(strcmp(tok,"E")==0){ //enhanced
+      } else if(strchr(tok,'@')!=NULL){
 			tStr=tok;
 			stop=tStr.find("@");
 			mzVal=tStr.substr(0,stop);
@@ -198,7 +200,9 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 
 		} else if(strchr(tok,'[')!=NULL){
 		} else {
-			cout << "Unknown token: " << tok << endl;
+			cout << "Scan " << scan << "  Unknown token: " << tok << endl;
+         cout << "filter " << chFilter << endl;;
+          exit(1);
 		}
 
 		tok=strtok(NULL," \n");
