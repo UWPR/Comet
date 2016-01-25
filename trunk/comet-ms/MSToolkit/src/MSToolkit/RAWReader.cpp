@@ -180,7 +180,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 		} else if(strcmp(tok,"-")==0){
 		} else if(strcmp(tok,"t")==0){ //turbo scan
 		} else if(strcmp(tok,"E")==0){ //enhanced
-      } else if(strchr(tok,'@')!=NULL){
+		} else if(strcmp(tok,"@")!=NULL){
 			tStr=tok;
 			stop=tStr.find("@");
 			mzVal=tStr.substr(0,stop);
