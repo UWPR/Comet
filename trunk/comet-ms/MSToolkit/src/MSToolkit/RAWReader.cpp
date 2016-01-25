@@ -200,7 +200,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 
 		} else if(strchr(tok,'[')!=NULL){
 		} else {
-			cout << "  Unknown token: " << tok << endl;
+			cout << "Unknown token: " << tok << endl;
 		}
 
 		tok=strtok(NULL," \n");
