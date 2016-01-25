@@ -302,7 +302,7 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
                   searchMgr.GetParamValue("add_Nterm_protein", dMass);
 
                   // print this if N-term protein variable mod or a generic N-term mod there's also N-term protein static mod
-                  if (fabs(dMass)!=FLOAT_ZERO || (varModsParam.iVarModTermDistance == 0 && varModsParam.iWhichTerm == 0))
+                  if (!isEqual(dMass, 0.0) || (varModsParam.iWhichTerm == 0 || varModsParam.iWhichTerm == 2))
                   {
                      // massdiff = mod mass + h
                      fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\" symbol=\"%c\"/>\n",
@@ -337,9 +337,8 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
                   searchMgr.GetParamValue("add_Cterm_protein", dMass);
 
                   // print this if C-term protein variable mod or a generic C-term mod there's also C-term protein static mod
-                  if (fabs(dMass)!=FLOAT_ZERO || (varModsParam.iVarModTermDistance == 0 && varModsParam.iWhichTerm == 1))
+                  if (!isEqual(dMass, 0.0) || (varModsParam.iWhichTerm == 1 && varModsParam.iWhichTerm == 3))
                   {
-
                      // massdiff = mod mass + oh
                      fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\" symbol=\"%c\"/>\n",
                            varModsParam.dVarModMass,
@@ -644,68 +643,69 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       
       szModPep[0]='\0';
 
-      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] == 1)
+      bool bNterm = false;
+      bool bCterm = false;
+      double dNterm = 0.0;
+      double dCterm = 0.0;
+
+      // See if n-term mod (static and/or variable) needs to be reported
+      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0
+            || !isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
+            || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
+               && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
       {
-         sprintf(szModPep+strlen(szModPep), "n[%0.0f]",
-               g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass
-               + g_staticParams.precalcMasses.dNtermProton);
+         bNterm = true;
+         // static peptide n-term mod already accounted for in dNtermProton
+         dNterm = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+
+         if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+            dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
+
+         if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
+            dNterm += g_staticParams.staticModifications.dAddNterminusProtein;
       }
 
+      // See if c-term mod (static and/or variable) needs to be reported
+      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0
+            || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0)
+            || (pOutput[iWhichResult].szPrevNextAA[1]=='-'
+               && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
+      {
+         bCterm = true;
+
+         // static peptide c-term mod already accounted for in dCtermOH2Proton
+         dCterm = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+
+         if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
+            dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
+
+         if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
+            dCterm += g_staticParams.staticModifications.dAddCterminusProtein;
+      }
+
+      // generate modified_peptide string
+      if (bNterm)
+         sprintf(szModPep+strlen(szModPep), "n[%0.0f]", dNterm);
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
          sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
 
-         if (pOutput[iWhichResult].pcVarModSites[i] > 0)
+         if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
+               || pOutput[iWhichResult].pcVarModSites[i] > 0)
          {
             sprintf(szModPep+strlen(szModPep), "[%0.0f]",
                   g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass
                   + g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]);
          }
       }
-
-      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] == 1)
-      {
-         sprintf(szModPep+strlen(szModPep), "c[%0.0f]",
-               g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass
-               + g_staticParams.precalcMasses.dCtermOH2Proton);
-      }
+      if (bCterm)
+         sprintf(szModPep+strlen(szModPep), "c[%0.0f]", dCterm);
 
       fprintf(fpout, "    <modification_info modified_peptide=\"%s\"", szModPep);
-
-      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0
-            || !isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
-            || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
-               && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
-      {
-         // static peptide n-term mod already accounted for here
-         double dMass = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
-
-         if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
-            dMass += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
-
-         if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
-            dMass += g_staticParams.staticModifications.dAddNterminusProtein;
-
-         fprintf(fpout, " mod_nterm_mass=\"%0.6f\"", dMass);
-      }
-
-      if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0
-            || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0)
-            || (pOutput[iWhichResult].szPrevNextAA[1]=='-'
-               && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
-      {
-         // static peptide c-term mod already accounted for here
-         //double dMass = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
-         double dMass = g_staticParams.massUtility.pdAAMassFragment[(int)'o'] + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
-
-         if (pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
-            dMass += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
-
-         if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
-            dMass += g_staticParams.staticModifications.dAddCterminusProtein;
-
-         fprintf(fpout, " mod_cterm_mass=\"%0.6f\"", dMass);
-      }
+      if (bNterm)
+         fprintf(fpout, " mod_nterm_mass=\"%0.6f\"", dNterm);
+      if (bCterm)
+         fprintf(fpout, " mod_cterm_mass=\"%0.6f\"", dCterm);
       fprintf(fpout, ">\n");
 
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)

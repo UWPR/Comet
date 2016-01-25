@@ -1252,24 +1252,8 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
         iWindowSize,
         iNumWindows=10;
    double dMaxWindowInten,
-          dMaxOverallInten,
           dTmp1,
           dTmp2;
-
-   dMaxOverallInten = 0.0;
-
-   // Normalize maximum intensity to 100.
-   dTmp1 = 1.0;
-   if (pPre->dHighestIntensity > FLOAT_ZERO)
-      dTmp1 = 100.0 / pPre->dHighestIntensity;
-
-   for (i=0; i < pScoring->_spectrumInfoInternal.iArraySize; i++)
-   {
-      pdTmpRawData[i] = pdTmpRawData[i]*dTmp1;
-
-      if (dMaxOverallInten < pdTmpRawData[i])
-         dMaxOverallInten = pdTmpRawData[i];
-   }
 
    iWindowSize = (int)((pPre->iHighestIon)/iNumWindows) + 1;
 
@@ -1290,7 +1274,7 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
       if (dMaxWindowInten > 0.0)
       {
          dTmp1 = 50.0 / dMaxWindowInten;
-         dTmp2 = 0.05 * dMaxOverallInten;
+         dTmp2 = 0.05 * pPre->dHighestIntensity;
 
          for (ii=0; ii<iWindowSize; ii++)    // Normalize to max inten. in window.
          {
