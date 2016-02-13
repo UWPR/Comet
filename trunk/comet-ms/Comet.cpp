@@ -98,6 +98,7 @@ void Usage(char *pszCmd)
    exit(1);
 }
 
+
 void SetOptions(char *arg,
       char *szParamsFile,
       bool *bPrintParams,
@@ -176,6 +177,7 @@ void SetOptions(char *arg,
          break;
    }
 }
+
 
 // Reads comet.params parameter file.
 void LoadParameters(char *pszParamsFile,
