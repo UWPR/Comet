@@ -42,7 +42,7 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
    int i;
 
    // Must be equal to largest possible array
-   int iArraySize = (int)((g_staticParams.options.dHighPeptideMass + 100.0) * g_staticParams.dInverseBinWidth);
+   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + 100.0) * g_staticParams.dInverseBinWidth);
 
    // Initally mark all arrays as available (i.e. false == not in use)
    _pbSearchMemoryPool = new bool[maxNumThreads];

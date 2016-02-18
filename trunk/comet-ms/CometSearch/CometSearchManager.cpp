@@ -902,8 +902,8 @@ bool CometSearchManager::InitializeStaticParams()
    {
       if ((doubleRangeData.dEnd >= doubleRangeData.dStart) && (doubleRangeData.dStart >= 0.0))
       {
-         g_staticParams.options.dLowPeptideMass = doubleRangeData.dStart;
-         g_staticParams.options.dHighPeptideMass = doubleRangeData.dEnd;
+         g_staticParams.options.dPeptideMassLow = doubleRangeData.dStart;
+         g_staticParams.options.dPeptideMassHigh = doubleRangeData.dEnd;
       }
    }
 

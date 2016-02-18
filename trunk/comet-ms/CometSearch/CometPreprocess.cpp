@@ -299,11 +299,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    else // ppm
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dHighPeptideMass / 1000000.0;
+      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dPeptideMassHigh / 1000000.0;
    }
 
    // initialize these temporary arrays before re-using
-   size_t iTmp= (size_t)((g_staticParams.options.dHighPeptideMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth)*sizeof(double);
+   size_t iTmp= (size_t)((g_staticParams.options.dPeptideMassHigh + dCushion + 2.0) * g_staticParams.dInverseBinWidth)*sizeof(double);
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
    memset(pdTmpCorrelationData, 0, iTmp);
@@ -918,9 +918,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                      || (iPrecursorCharge == 1 && g_staticParams.options.bOverrideCharge == 3)))))
       {
          if (CheckExistOutFile(iPrecursorCharge, iScanNumber)
-               && (isEqual(g_staticParams.options.dLowPeptideMass, 0.0)
-                  || ((dMass >= g_staticParams.options.dLowPeptideMass)
-                     && (dMass <= g_staticParams.options.dHighPeptideMass)))
+               && (isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
+                  || ((dMass >= g_staticParams.options.dPeptideMassLow)
+                     && (dMass <= g_staticParams.options.dPeptideMassHigh)))
                && iPrecursorCharge <= g_staticParams.options.iMaxPrecursorCharge)
          {
             Query *pScoring = new Query();
@@ -1134,11 +1134,11 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    if (g_staticParams.vectorMassOffsets.size() > 0)
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus -= g_staticParams.vectorMassOffsets[g_staticParams.vectorMassOffsets.size()-1];
 
-   if (pScoring->_pepMassInfo.dPeptideMassTolerancePlus > g_staticParams.options.dHighPeptideMass)
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = g_staticParams.options.dHighPeptideMass;
+   if (pScoring->_pepMassInfo.dPeptideMassTolerancePlus > g_staticParams.options.dPeptideMassHigh)
+      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = g_staticParams.options.dPeptideMassHigh;
 
-   if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < g_staticParams.options.dLowPeptideMass)
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.options.dLowPeptideMass;
+   if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < g_staticParams.options.dPeptideMassLow)
+      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.options.dPeptideMassLow;
 
    if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 100.0;
@@ -1514,11 +1514,11 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    }
    else // ppm
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dHighPeptideMass / 1000000.0;
+      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dPeptideMassHigh / 1000000.0;
    }
 
    //MH: Must be equal to largest possible array
-   int iArraySize = (int)((g_staticParams.options.dHighPeptideMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
+   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
    //MH: Initally mark all arrays as available (i.e. false=not inuse).
    pbMemoryPool = new bool[maxNumThreads];
