@@ -185,8 +185,8 @@ void LoadParameters(char *pszParamsFile,
 {
    double dTempMass,
           dDoubleParam;
-   int   iSearchEnzymeNumber = 0,
-         iSampleEnzymeNumber = 0,
+   int   iSearchEnzymeNumber = 1,
+         iSampleEnzymeNumber = 1,
          iIntParam,
          iAllowedMissedCleavages = 2;
 
@@ -1293,7 +1293,7 @@ use_C_ions = 0\n\
 use_X_ions = 0\n\
 use_Y_ions = 1\n\
 use_Z_ions = 0\n\
-use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
+use_NL_ions = 0                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
 \n\
 #\n\
 # output\n\
