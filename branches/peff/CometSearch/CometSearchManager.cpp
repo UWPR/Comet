@@ -907,8 +907,8 @@ bool CometSearchManager::InitializeStaticParams()
    {
       if ((doubleRangeData.dEnd >= doubleRangeData.dStart) && (doubleRangeData.dStart >= 0.0))
       {
-         g_staticParams.options.dLowPeptideMass = doubleRangeData.dStart;
-         g_staticParams.options.dHighPeptideMass = doubleRangeData.dEnd;
+         g_staticParams.options.dPeptideMassLow = doubleRangeData.dStart;
+         g_staticParams.options.dPeptideMassHigh = doubleRangeData.dEnd;
       }
    }
 
@@ -975,14 +975,26 @@ bool CometSearchManager::InitializeStaticParams()
    GetHostName();
 
    // If # threads not specified, poll system to get # threads to launch.
-   if (g_staticParams.options.iNumThreads == 0)
+   if (g_staticParams.options.iNumThreads <= 0)
    {
+      int iNumCPUCores;
 #ifdef _WIN32
       SYSTEM_INFO sysinfo;
       GetSystemInfo( &sysinfo );
-      g_staticParams.options.iNumThreads = sysinfo.dwNumberOfProcessors;
+      iNumCPUCores = sysinfo.dwNumberOfProcessors;
+
+      // if user specifies a negative # threads, subtract this from # cores
+      if (g_staticParams.options.iNumThreads < 0)
+         g_staticParams.options.iNumThreads = iNumCPUCores + g_staticParams.options.iNumThreads;
+      else
+         g_staticParams.options.iNumThreads = iNumCPUCores;
 #else
-      g_staticParams.options.iNumThreads = sysconf( _SC_NPROCESSORS_ONLN );
+      iNumCPUCores= sysconf( _SC_NPROCESSORS_ONLN );
+
+      if (g_staticParams.options.iNumThreads < 0)
+         g_staticParams.options.iNumThreads = iNumCPUCores + g_staticParams.options.iNumThreads;
+      else
+         g_staticParams.options.iNumThreads = iNumCPUCores;
 
       // if set, use the environment variable NSLOTS which is defined in the qsub command
       const char * nSlots = ::getenv("NSLOTS");

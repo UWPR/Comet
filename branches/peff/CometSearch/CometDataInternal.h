@@ -25,7 +25,7 @@ class CometSearchManager;
 #define PROTON_MASS                 1.00727646688
 #define C13_DIFF                    1.00335483
 
-#define FLOAT_ZERO                  0.000001
+#define FLOAT_ZERO                  1e-6     // 0.000001
 #define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
 #define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
 #define SIZE_MASS                   128      // ascii value size
@@ -101,8 +101,8 @@ struct Options             // output parameters
    int bOverrideCharge; 
    double dMinIntensity;
    double dRemovePrecursorTol;
-   double dLowPeptideMass;       // MH+ mass
-   double dHighPeptideMass;      // MH+ mass
+   double dPeptideMassLow;       // MH+ mass
+   double dPeptideMassHigh;      // MH+ mass
 
    IntRange scanRange;
    DoubleRange clearMzRange;
@@ -139,8 +139,8 @@ struct Options             // output parameters
       bPrintExpectScore = a.bPrintExpectScore;
       dRemovePrecursorTol = a.dRemovePrecursorTol;
       clearMzRange = a.clearMzRange;
-      dLowPeptideMass = a.dLowPeptideMass;
-      dHighPeptideMass = a.dHighPeptideMass;
+      dPeptideMassLow = a.dPeptideMassLow;
+      dPeptideMassHigh = a.dPeptideMassHigh;
       strcpy(szActivationMethod, a.szActivationMethod);
 
       return *this;
@@ -494,21 +494,28 @@ struct StaticParams
          staticModifications.pdStaticMods[i] = 0.0;
       }
 
-#ifdef CRUX
       staticModifications.pdStaticMods[(int)'C'] = 57.021464;
-#endif
 
       enzymeInformation.iAllowedMissedCleavage = 2;
 
       for (i=0; i<VMODS; i++)
       {
-         variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 4;
+         variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 3;
          variableModParameters.varModList[i].iBinaryMod = 0;
          variableModParameters.varModList[i].bRequireThisMod = 0;
-         variableModParameters.varModList[i].dVarModMass = 0.0;
-         variableModParameters.varModList[i].szVarModChar[0] = '\0';
+         if (i==0)
+         {
+            variableModParameters.varModList[i].dVarModMass = 15.9949;
+            strcpy(variableModParameters.varModList[i].szVarModChar, "M");
+         }
+         else
+         {
+            variableModParameters.varModList[i].dVarModMass = 0.0;
+            strcpy(variableModParameters.varModList[i].szVarModChar, "X");
+         }
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
          variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
+
       }
 
       variableModParameters.cModCode[0] = '*';
@@ -521,7 +528,7 @@ struct StaticParams
       variableModParameters.cModCode[7] = '!';
       variableModParameters.cModCode[8] = '+';
 
-      variableModParameters.iMaxVarModPerPeptide = 10;
+      variableModParameters.iMaxVarModPerPeptide = 5;
 
       ionInformation.bUseNeutralLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
@@ -532,14 +539,14 @@ struct StaticParams
       ionInformation.iIonVal[ION_SERIES_Y] = 1;
       ionInformation.iIonVal[ION_SERIES_Z] = 0;
 
-      options.iNumPeptideOutputLines = 10;
+      options.iNumPeptideOutputLines = 5;
       options.iWhichReadingFrame = 0;
       options.iEnzymeTermini = 2;
       options.iNumStored = 100;                         // default # of search results to store for xcorr analysis.
 
       options.bNoEnzymeSelected = 1;
       options.bShowFragmentIons = 0;
-      options.bPrintExpectScore = 0;
+      options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;  
@@ -551,7 +558,7 @@ struct StaticParams
       options.bOutputPercolatorFile = 0;
       options.bOutputOutFiles = 0;
 
-      options.bSkipAlreadyDone = 0;
+      options.bSkipAlreadyDone = 1;
       options.iDecoySearch = 0;
       options.iNumThreads = 0;
       options.bClipNtermMet = 0;
@@ -562,13 +569,13 @@ struct StaticParams
       options.iSpectrumBatchSize = 0;
       options.iMinPeaks = 10;
       options.iStartCharge = 0;
+      options.iEndCharge = 0;
       options.iMaxFragmentCharge = 3;
       options.iMaxPrecursorCharge = 6;
-      options.iEndCharge = 0;
       options.iMSLevel = 2;
       options.dMinIntensity = 0.0;
-      options.dLowPeptideMass = 0.0;
-      options.dHighPeptideMass = 10000.0;
+      options.dPeptideMassLow = 600.0;
+      options.dPeptideMassHigh = 5000.0;
       strcpy(options.szActivationMethod, "ALL");
       // End of mzXML specific parameters.
 
@@ -583,7 +590,7 @@ struct StaticParams
       tolerances.iMassToleranceUnits = 0;
       tolerances.iMassToleranceType = 0;
       tolerances.iIsotopeError = 0;
-      tolerances.dInputTolerance = 1.0;                     // peptide_mass_tolerance
+      tolerances.dInputTolerance = 3.0;                     // peptide_mass_tolerance
       tolerances.dFragmentBinSize = 1.0005;
       tolerances.dFragmentBinStartOffset = 0.4;
       tolerances.dMatchPeakTolerance = 0.5;

@@ -98,6 +98,7 @@ void Usage(char *pszCmd)
    exit(1);
 }
 
+
 void SetOptions(char *arg,
       char *szParamsFile,
       bool *bPrintParams,
@@ -177,14 +178,15 @@ void SetOptions(char *arg,
    }
 }
 
+
 // Reads comet.params parameter file.
 void LoadParameters(char *pszParamsFile,
       ICometSearchManager *pSearchMgr)
 {
    double dTempMass,
           dDoubleParam;
-   int   iSearchEnzymeNumber = 0,
-         iSampleEnzymeNumber = 0,
+   int   iSearchEnzymeNumber = 1,
+         iSampleEnzymeNumber = 1,
          iIntParam,
          iAllowedMissedCleavages = 2;
 
@@ -219,11 +221,16 @@ void LoadParameters(char *pszParamsFile,
       {
          if (!strncmp(szParamBuf, "# comet_version ", 16))
          {
-            sscanf(szParamBuf, "%*s %*s %128s", szVersion);
+            char szRev1[12],
+                 szRev2[12];
+
+            sscanf(szParamBuf, "%*s %*s %128s %12s %12s", szVersion, szRev1, szRev2);
+
 
             if (pSearchMgr->IsValidCometVersion(string(szVersion)))
             {
                bValidParamsFile = true;
+               sprintf(szVersion, "%s %s %s", szVersion, szRev1, szRev2);
                pSearchMgr->SetParam("# comet_version ", szVersion, szVersion);
                break;
             }
@@ -1317,7 +1324,7 @@ use_C_ions = 0\n\
 use_X_ions = 0\n\
 use_Y_ions = 1\n\
 use_Z_ions = 0\n\
-use_NL_ions = 1                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
+use_NL_ions = 0                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
 \n\
 #\n\
 # output\n\

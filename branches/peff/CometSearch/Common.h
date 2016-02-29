@@ -40,6 +40,7 @@ using namespace std;
 #include "Spectrum.h"
 #include "MSObject.h"
 #include <vector>
+#include <cfloat>
 
 #ifdef CRUX
 #include <iostream>
@@ -52,7 +53,7 @@ using namespace std;
 // now between 0.0 and 1.0 and scales to the binWidth.
 #define BIN(dMass) (int)(dMass*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
 
-#define isEqual(x, y) (std::abs(x-y) <= 1e-6 * std::abs(x))
+#define isEqual(x, y) (std::abs(x-y) <= ( (std::abs(x) > std::abs(y) ? std::abs(y) : std::abs(x)) * FLT_EPSILON))
 
 using namespace MSToolkit;
 #ifdef CRUX

@@ -42,7 +42,7 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
    int i;
 
    // Must be equal to largest possible array
-   int iArraySize = (int)((g_staticParams.options.dHighPeptideMass + 100.0) * g_staticParams.dInverseBinWidth);
+   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + 100.0) * g_staticParams.dInverseBinWidth);
 
    // Initally mark all arrays as available (i.e. false == not in use)
    _pbSearchMemoryPool = new bool[maxNumThreads];
@@ -381,9 +381,9 @@ bool CometSearch::RunSearch(int minNumThreads,
 
 /*
 for (int i=0; i<(int)dbe.vectorPeffMod.size(); i++)
-   printf("OK *** modification  %d, %f\n", dbe.vectorPeffMod.at(i).iPosition, dbe.vectorPeffMod.at(i).dMassDiffMono); //, dbe.vectorPeffMod.at(i).strMod.c_str());
+   printf("OK modification  %d, %f\n", dbe.vectorPeffMod.at(i).iPosition, dbe.vectorPeffMod.at(i).dMassDiffMono);
 for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
-   printf("OK *** variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
+   printf("OK variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
 */
 
          dbe.iSeqFilePosition = ftell(fptr);  // grab sequence file position here
@@ -614,14 +614,6 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData)
 
 bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 {
-/*
-printf("\nOK ***\n");
-printf("OK  dbe.name  %s\n", dbe.strName.c_str());
-printf("OK  dbe.PeffMod.size %d\n", (int)dbe.vectorPeffMod.size() );
-printf("OK  dbe.PeffVariantSimple.size %d\n", (int)dbe.vectorPeffVariantSimple.size() );
-printf("OK  %s\n", dbe.strSeq.c_str());
-*/
-
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
@@ -805,12 +797,6 @@ printf("OK  %s\n", dbe.strSeq.c_str());
 
 
 // Compare MSMS data to peptide with szProteinSeq from the input database.
-/*
-bool CometSearch::SearchForPeptides(char *szProteinSeq,
-                                    char *szProteinName,
-                                    bool bNtermPeptideOnly,
-                                    bool *pbDuplFragment)
-*/
 bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                     char *szProteinSeq,
                                     bool bNtermPeptideOnly,
@@ -1106,13 +1092,15 @@ for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
             if (HasVariableMod(piVarModCounts, iStartPos, iEndPos))
             {
                if (!VarModSearch(szProteinSeq, szProteinName, piVarModCounts, iStartPos, iEndPos, pbDuplFragment))
-               {
                   return false;
-               }
+
+               // PEFF search goes here; analyzed petpide must include PEFF mod or variant
             }
 
             SubtractVarMods(piVarModCounts, szProteinSeq[iStartPos], iStartPos);
          }
+
+         // PEFF substitute variant in and repeat mod search here??
 
          if (bNtermPeptideOnly)
             return true;
@@ -1794,7 +1782,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    if (dXcorr < XCORR_CUTOFF)
       dXcorr = XCORR_CUTOFF;
    else
-      dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E5.
+      dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
 
    Threading::LockMutex(pQuery->accessMutex);
@@ -1805,7 +1793,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    else
       pQuery->_uliNumMatchedPeptides++;
 
-   if (g_staticParams.options.bPrintExpectScore)
+   if (g_staticParams.options.bPrintExpectScore
+         || g_staticParams.options.bOutputPepXMLFile
+         || g_staticParams.options.bOutputPercolatorFile
+         || g_staticParams.options.bOutputTxtFile)
    {
       int iTmp;
 
@@ -2078,7 +2069,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       {        
          // Quick check of peptide sequence length first.
          if (iLenMinus1 == pQuery->_pDecoys[i].iLenPeptide
-               && fabs(dCalcPepMass - pQuery->_pDecoys[i].dPepMass)<=FLOAT_ZERO )
+               && isEqual(dCalcPepMass - pQuery->_pDecoys[i].dPepMass, 0.0))
          {
             if (pQuery->_pDecoys[i].szPeptide[0] == szProteinSeq[iStartPos])
             {
@@ -2136,7 +2127,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       {
          // Quick check of peptide sequence length.
          if (iLenMinus1 == pQuery->_pResults[i].iLenPeptide
-               && fabs(dCalcPepMass - pQuery->_pResults[i].dPepMass)<=FLOAT_ZERO )
+               && isEqual(dCalcPepMass - pQuery->_pResults[i].dPepMass, 0.0))
          {
             if (pQuery->_pResults[i].szPeptide[0] == szProteinSeq[iStartPos])
             {
