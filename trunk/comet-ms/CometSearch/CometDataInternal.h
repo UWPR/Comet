@@ -475,7 +475,7 @@ struct StaticParams
          if (i==0)
          {
             variableModParameters.varModList[i].dVarModMass = 15.9949;
-            strcpy(variableModParameters.varModList[i].szVarModChar, "STY");
+            strcpy(variableModParameters.varModList[i].szVarModChar, "M");
          }
          else
          {
