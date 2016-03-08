@@ -40,6 +40,7 @@ private:
 
    static void PrintPepXMLSearchHit(int iWhichQuery,
                                     int iWhichResult,
+                                    int iRankXcorr,
                                     bool bDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,

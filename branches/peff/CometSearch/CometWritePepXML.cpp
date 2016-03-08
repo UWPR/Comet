@@ -434,7 +434,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
             || strchr(pQuery->_spectrumInfoInternal.szNativeID, '>'))
       {
          fprintf(fpout, " spectrumNativeID=\"");
-         for (i=0; i<strlen(pQuery->_spectrumInfoInternal.szNativeID); i++)
+         for (i=0; i<(int)strlen(pQuery->_spectrumInfoInternal.szNativeID); i++)
          {
             switch(pQuery->_spectrumInfoInternal.szNativeID[i])
             {
@@ -481,8 +481,6 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    else
       pOutput = pQuery->_pResults;
 
-   iRankXcorr = 1;
-
    iMinLength = 999;
    for (i=0; i<iNumPrintLines; i++)
    {
@@ -493,14 +491,16 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          iMinLength = iLen;
    }
 
+   iRankXcorr = 1;
+
    for (i=0; i<iNumPrintLines; i++)
    {
       int j;
       bool bNoDeltaCnYet = true;
       bool bDeltaCnStar = false;
-      double dDeltaCn;       // this is deltaCn between i and first dissimilar peptide
-      double dDeltaCnStar;   // this is explicit deltaCn between i and i+1 hits or 0.0 ...
-                             // I honestly don't understand the logic in the deltacnstar convention being used in TPP
+      double dDeltaCn = 0.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
+      double dDeltaCnStar = 0.0;   // if reported deltaCn is for dissimilar peptide, the value stored here is the
+                                   // explicit deltaCn between top hit and peptide in list
 
       // go one past iNumPrintLines to calculate deltaCn value
       for (j=i+1; j<iNumPrintLines+1; j++)
@@ -515,9 +515,9 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
                // I-L and Q-K are same for purposes here
                if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
                {
-                  if (!((pOutput[i].szPeptide[k] == 'K' || pOutput[i].szPeptide[k] == 'Q')
+                  if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
                           && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                        && !((pOutput[i].szPeptide[k] == 'I' || pOutput[i].szPeptide[k] == 'L')
+                        && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
                            && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
                   {
                      iDiffCt++;
@@ -528,9 +528,9 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
             // calculate deltaCn only if sequences are less than 0.75 similar
             if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
             {
-               if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
-               else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+               if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[0].fXcorr;
+               else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
                   dDeltaCn = 1.0;
                else
                   dDeltaCn = 0.0;
@@ -554,9 +554,13 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       {
          if (bDeltaCnStar && i+1<iNumPrintLines)
          {
-            if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr >= 0.0)
-               dDeltaCnStar = 1.0 - pOutput[i+1].fXcorr/pOutput[i].fXcorr;
-            else if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr < 0.0)
+            if (pOutput[0].fXcorr > 0.0 && pOutput[i+1].fXcorr >= 0.0)
+            {
+               dDeltaCnStar = 1.0 - pOutput[i+1].fXcorr/pOutput[0].fXcorr;
+               if (isEqual(dDeltaCnStar, 0.0)) // note top two xcorrs could be identical so this gives a
+                  dDeltaCnStar = 0.001;        // non-zero deltacnstar value to denote deltaCn is not explicit
+            }
+            else if (pOutput[0].fXcorr > 0.0 && pOutput[i+1].fXcorr < 0.0)
                dDeltaCnStar = 1.0;
             else
                dDeltaCnStar = 0.0;
@@ -564,9 +568,9 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          else
             dDeltaCnStar = 0.0;
 
-         PrintPepXMLSearchHit(iWhichQuery, i, bDecoy, pOutput, fpout, dDeltaCn, dDeltaCnStar);
+         PrintPepXMLSearchHit(iWhichQuery, i, iRankXcorr, bDecoy, pOutput, fpout, dDeltaCn, dDeltaCnStar);
       }
-   } 
+   }
 
    fprintf(fpout, "  </search_result>\n");
    fprintf(fpout, " </spectrum_query>\n");
@@ -575,6 +579,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
 void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                                             int iWhichResult,
+                                            int iRankXcorr,
                                             bool bDecoy,
                                             Results *pOutput,
                                             FILE *fpout,
@@ -587,7 +592,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   fprintf(fpout, "   <search_hit hit_rank=\"%d\"", iWhichResult+1);
+   fprintf(fpout, "   <search_hit hit_rank=\"%d\"", iRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
    fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[0]);
    fprintf(fpout, " peptide_next_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[1]);
@@ -655,7 +660,6 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
       {
          bNterm = true;
-
          // static peptide n-term mod already accounted for in dNtermProton
          dNterm = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
