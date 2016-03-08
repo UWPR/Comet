@@ -165,7 +165,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
          errno_t err;
          _get_errno(&err);
 
-         if (err != EEXIST) 
+         if (err != EEXIST)
          {
             char szErrorMsg[256];
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",
@@ -186,7 +186,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
             errno_t err;
             _get_errno(&err);
 
-            if (err != EEXIST) 
+            if (err != EEXIST)
             {
                char szErrorMsg[256];
                sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
@@ -242,7 +242,7 @@ static void SetMSLevelFilter(MSReader &mstReader)
    }
    mstReader.setFilter(msLevel);
 }
-   
+
 // Allocate memory for the _pResults struct for each g_pvQuery entry.
 static bool AllocateResultsMem()
 {
@@ -259,7 +259,7 @@ static bool AllocateResultsMem()
          char szErrorMsg[256];
          sprintf(szErrorMsg, " Error - new(_pResults[]). bad_alloc: %s.\n", ba.what());
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }
@@ -275,7 +275,7 @@ static bool AllocateResultsMem()
             char szErrorMsg[256];
             sprintf(szErrorMsg, " Error - new(_pDecoys[]). bad_alloc: %s.\n", ba.what());
             string strErrorMsg(szErrorMsg);
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(szErrorMsg);
             return false;
          }
@@ -433,7 +433,7 @@ static bool ValidateOutputFormat()
          && !g_staticParams.options.bOutputOutFiles)
    {
       string strError = " Please specify at least one output format.";
-      
+
       g_cometStatus.SetStatus(CometResult_Failed, strError);
       string strErrorFormat = strError + "\n";
       logerr(strErrorFormat.c_str());
@@ -446,7 +446,7 @@ static bool ValidateOutputFormat()
 static bool ValidateSequenceDatabaseFile()
 {
    FILE *fpcheck;
-   
+
    // Quick sanity check to make sure sequence db file is present before spending
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
@@ -469,7 +469,7 @@ static bool ValidateScanRange()
    if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.\n", 
+      sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.\n",
             g_staticParams.options.scanRange.iStart,
             g_staticParams.options.scanRange.iEnd);
       string strErrorMsg(szErrorMsg);
@@ -534,7 +534,7 @@ bool CometSearchManager::InitializeStaticParams()
    string strData;
    IntRange intRangeData;
    DoubleRange doubleRangeData;
-    
+
    if (GetParamValue("database_name", strData))
    {
       strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
@@ -555,9 +555,9 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("xcorr_processing_offset", g_staticParams.iXcorrProcessingOffset);
 
    GetParamValue("nucleotide_reading_frame", g_staticParams.options.iWhichReadingFrame);
-    
+
    GetParamValue("mass_type_parent", g_staticParams.massUtility.bMonoMassesParent);
-    
+
    GetParamValue("mass_type_fragment", g_staticParams.massUtility.bMonoMassesFragment);
 
    GetParamValue("show_fragment_ions", g_staticParams.options.bShowFragmentIons);
@@ -594,7 +594,7 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("variable_mod03", g_staticParams.variableModParameters.varModList[VMOD_3_INDEX]);
 
    GetParamValue("variable_mod04", g_staticParams.variableModParameters.varModList[VMOD_4_INDEX]);
-   
+
    GetParamValue("variable_mod05", g_staticParams.variableModParameters.varModList[VMOD_5_INDEX]);
 
    GetParamValue("variable_mod06", g_staticParams.variableModParameters.varModList[VMOD_6_INDEX]);
@@ -649,9 +649,9 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("num_output_lines", g_staticParams.options.iNumPeptideOutputLines);
 
    GetParamValue("num_results", g_staticParams.options.iNumStored);
-   
+
    GetParamValue("remove_precursor_peak", g_staticParams.options.iRemovePrecursor);
-   
+
    GetParamValue("remove_precursor_tolerance", g_staticParams.options.dRemovePrecursorTol);
 
    if (GetParamValue("clear_mz_range", doubleRangeData))
@@ -691,7 +691,7 @@ bool CometSearchManager::InitializeStaticParams()
    {
       g_staticParams.staticModifications.pdStaticMods[(int)'G'] = dDoubleData;
    }
-    
+
    if (GetParamValue("add_A_alanine", dDoubleData))
    {
       g_staticParams.staticModifications.pdStaticMods[(int)'A'] = dDoubleData;
@@ -761,12 +761,12 @@ bool CometSearchManager::InitializeStaticParams()
    {
       g_staticParams.staticModifications.pdStaticMods[(int)'E'] = dDoubleData;
    }
-   
+
    if (GetParamValue("add_M_methionine", dDoubleData))
    {
       g_staticParams.staticModifications.pdStaticMods[(int)'M'] = dDoubleData;
    }
-   
+
    if (GetParamValue("add_H_histidine", dDoubleData))
    {
       g_staticParams.staticModifications.pdStaticMods[(int)'H'] = dDoubleData;
@@ -824,7 +824,7 @@ bool CometSearchManager::InitializeStaticParams()
    {
       g_staticParams.options.iEnzymeTermini = 2;
    }
-    
+
    if (GetParamValue("scan_range", intRangeData))
    {
       if ((intRangeData.iEnd >= intRangeData.iStart) && (intRangeData.iStart > 0))
@@ -884,7 +884,7 @@ bool CometSearchManager::InitializeStaticParams()
    }
 
    iIntData = 0;
-   if (GetParamValue("max_precursor_charge", iIntData)) 
+   if (GetParamValue("max_precursor_charge", iIntData))
    {
       if (iIntData > MAX_PRECURSOR_CHARGE)
       {
@@ -937,30 +937,30 @@ bool CometSearchManager::InitializeStaticParams()
    // Safe to divide by dFragmentBinSize because of check earlier where minimum value is 0.01.
    g_staticParams.dInverseBinWidth = 1.0 /g_staticParams.tolerances.dFragmentBinSize;
    g_staticParams.dOneMinusBinOffset = 1.0 - g_staticParams.tolerances.dFragmentBinStartOffset;
- 
+
    // Set masses to either average or monoisotopic.
-   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent, 
-                                  g_staticParams.massUtility.bMonoMassesParent, 
+   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,
+                                  g_staticParams.massUtility.bMonoMassesParent,
                                   &g_staticParams.massUtility.dOH2parent);
 
-   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment, 
-                                  g_staticParams.massUtility.bMonoMassesFragment, 
-                                  &g_staticParams.massUtility.dOH2fragment); 
+   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
+                                  g_staticParams.massUtility.bMonoMassesFragment,
+                                  &g_staticParams.massUtility.dOH2fragment);
 
-   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment[(int)'c'] 
+   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment[(int)'c']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
 
-   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
 
-   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment[(int)'n'] 
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment[(int)'n']
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment[(int)'n'] 
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment[(int)'n']
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    g_staticParams.massUtility.dCOminusH2 = g_staticParams.massUtility.dCO
@@ -1007,28 +1007,28 @@ bool CometSearchManager::InitializeStaticParams()
    }
 
    // Set masses to either average or monoisotopic.
-   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent, 
-                                  g_staticParams.massUtility.bMonoMassesParent, 
+   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,
+                                  g_staticParams.massUtility.bMonoMassesParent,
                                   &g_staticParams.massUtility.dOH2parent);
 
-   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment, 
-                                  g_staticParams.massUtility.bMonoMassesFragment, 
-                                  &g_staticParams.massUtility.dOH2fragment); 
+   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
+                                  g_staticParams.massUtility.bMonoMassesFragment,
+                                  &g_staticParams.massUtility.dOH2fragment);
 
-   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment[(int)'c'] 
+   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment[(int)'c']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
 
-   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
 
-   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment[(int)'n'] 
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment[(int)'n']
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment[(int)'n'] 
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'] 
+   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment[(int)'n']
+            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    g_staticParams.massUtility.dCOminusH2 = g_staticParams.massUtility.dCO
@@ -1071,7 +1071,7 @@ bool CometSearchManager::InitializeStaticParams()
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
-         sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(%s%c %+0.6f) ", 
+         sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(%s%c %+0.6f) ",
                g_staticParams.variableModParameters.varModList[i].szVarModChar,
                g_staticParams.variableModParameters.cModCode[i],
                g_staticParams.variableModParameters.varModList[i].dVarModMass);
@@ -1102,25 +1102,25 @@ bool CometSearchManager::InitializeStaticParams()
    // FIX how to deal with term mod on both peptide and protein?
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ct=%0.6f ", 
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ct=%0.6f ",
             g_staticParams.staticModifications.dAddCterminusPeptide);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+nt=%0.6f ", 
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+nt=%0.6f ",
             g_staticParams.staticModifications.dAddNterminusPeptide);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ctprot=%0.6f ", 
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ctprot=%0.6f ",
             g_staticParams.staticModifications.dAddCterminusProtein);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ntprot=%0.6f ", 
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ntprot=%0.6f ",
             g_staticParams.staticModifications.dAddNterminusProtein);
    }
 
@@ -1148,7 +1148,7 @@ bool CometSearchManager::InitializeStaticParams()
       if (g_staticParams.options.iEnzymeTermini != 2)
          sprintf(szTmp, ":%d", g_staticParams.options.iEnzymeTermini);
 
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "Enzyme:%s (%d%s)", 
+      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "Enzyme:%s (%d%s)",
             g_staticParams.enzymeInformation.szSearchEnzymeName,
             g_staticParams.enzymeInformation.iAllowedMissedCleavage,
             szTmp);
@@ -1222,7 +1222,7 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
 }
 
 bool CometSearchManager::GetParamValue(const string &name, string& value)
-{   
+{
    std::map<string, CometParam*>::iterator it;
    it = _mapStaticParams.find(name);
    if (it == _mapStaticParams.end())
@@ -1254,7 +1254,7 @@ bool CometSearchManager::GetParamValue(const string &name, int& value)
    {
       return false;
    }
-    
+
    TypedCometParam<int> *pParam = static_cast<TypedCometParam<int>*>(it->second);
    value = pParam->GetValue();
    return true;
@@ -1279,7 +1279,7 @@ bool CometSearchManager::GetParamValue(const string &name, double& value)
    {
       return false;
    }
-    
+
    TypedCometParam<double> *pParam = static_cast<TypedCometParam<double>*>(it->second);
    value = pParam->GetValue();
    return true;
@@ -1304,7 +1304,7 @@ bool CometSearchManager::GetParamValue(const string &name, VarMods & value)
    {
       return false;
    }
-    
+
    TypedCometParam<VarMods> *pParam = static_cast<TypedCometParam<VarMods>*>(it->second);
    value = pParam->GetValue();
    return true;
@@ -1347,14 +1347,14 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
 }
 
 bool CometSearchManager::GetParamValue(const string &name, IntRange &value)
-{    
+{
    std::map<string, CometParam*>::iterator it;
    it = _mapStaticParams.find(name);
    if (it == _mapStaticParams.end())
    {
       return false;
-   }    
-    
+   }
+
    TypedCometParam<IntRange> *pParam = static_cast<TypedCometParam<IntRange>*>(it->second);
    value = pParam->GetValue();
    return true;
@@ -1370,7 +1370,7 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
       _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    }
 }
-   
+
 bool CometSearchManager::GetParamValue(const string &name, EnzymeInfo &value)
 {
    std::map<string, CometParam*>::iterator it;
@@ -1395,7 +1395,7 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
       _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    }
 }
-   
+
 bool CometSearchManager::GetParamValue(const string &name,  vector<double> &value)
 {
    std::map<string, CometParam*>::iterator it;
@@ -1407,7 +1407,7 @@ bool CometSearchManager::GetParamValue(const string &name,  vector<double> &valu
 
    TypedCometParam< vector<double> > *pParam = static_cast<TypedCometParam< vector<double> >*>(it->second);
    value = pParam->GetValue();
-   
+
    return true;
 }
 
@@ -1574,7 +1574,7 @@ bool CometSearchManager::DoSearch()
             }
 
             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
-            {   
+            {
                char szErrorMsg[256];
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoySQT);
                string strErrorMsg(szErrorMsg);
@@ -1773,7 +1773,7 @@ bool CometSearchManager::DoSearch()
 
          int iTotalSpectraSearched = 0;
 
-         // We need to reset some of the static variables in-between input files 
+         // We need to reset some of the static variables in-between input files
          CometPreprocess::Reset();
 
          int iBatchNum = 0;
@@ -1814,7 +1814,7 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Loading and processing input spectra"));
 
             // IMPORTANT: From this point onwards, because we've loaded some
-            // spectra, we MUST "goto cleanup_results" before exiting the loop, 
+            // spectra, we MUST "goto cleanup_results" before exiting the loop,
             // or we will create a memory leak!
             bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
@@ -1882,7 +1882,7 @@ bool CometSearchManager::DoSearch()
 
             }
 #endif
-     
+
             bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
             if (!bSucceeded)
             {
@@ -1996,7 +1996,7 @@ bool CometSearchManager::DoSearch()
                CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt);
 
    cleanup_results:
-            // Deleting each Query object in the vector calls its destructor, which 
+            // Deleting each Query object in the vector calls its destructor, which
             // frees the spectral memory (see definition for Query in CometData.h).
             for (int i=0; i<(int)g_pvQuery.size(); i++)
                delete g_pvQuery.at(i);
@@ -2079,7 +2079,7 @@ bool CometSearchManager::DoSearch()
       {
          fclose(fpoutd_sqt);
          fpoutd_sqt = NULL;
-      }     
+      }
 
       if (NULL != fpout_txt)
       {
@@ -2091,7 +2091,7 @@ bool CometSearchManager::DoSearch()
       {
          fclose(fpoutd_txt);
          fpoutd_txt = NULL;
-      }     
+      }
 
       if (!bSucceeded)
       {

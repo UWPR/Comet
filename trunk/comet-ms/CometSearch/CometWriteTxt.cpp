@@ -124,7 +124,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          pOutput = pQuery->_pResults;
          num_matches = pQuery->_uliNumMatchedPeptides;
       }
-      
+
       size_t iNumPrintLines = min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches);
 
       for (size_t iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
@@ -260,7 +260,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          pOutput = pQuery->_pResults;
          num_matches = pQuery->_uliNumMatchedPeptides;
       }
-      
+
       int iNumPrintLines = min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches);
 
       int iMinLength = 999;
@@ -412,7 +412,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          // Print protein reference/accession.
          fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
 
-         fprintf(fpout, "%d", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(fpout, "%d", pOutput[iWhichResult].iDuplicateCount);
 
          fprintf(fpout, "\n");
       }
@@ -468,7 +468,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          fprintf(fpout, "_n");
    }
-   
+
    for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
    {
       // static modification

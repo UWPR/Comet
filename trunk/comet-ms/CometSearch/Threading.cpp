@@ -22,7 +22,7 @@ ThreadId Threading::_threadId;
 #include <unistd.h>
 
 ///////////////////////////////////////////////////////////////
-// Implementations for Threading base class specific to POSIX 
+// Implementations for Threading base class specific to POSIX
 ///////////////////////////////////////////////////////////////
 
 Threading::Threading()
@@ -70,25 +70,25 @@ void Threading::ThreadSleep(unsigned long dwMilliseconds)
 {
    usleep(dwMilliseconds);
 }
-  
+
 void Threading::CreateSemaphore(Semaphore* pSem)
 {
    pthread_cond_init(&(pSem->condition), NULL);
    pthread_mutex_init(&(pSem->mutex), NULL);
    pSem->conditionSet = false;
 }
-  
+
 void Threading::WaitSemaphore(Semaphore& sem)
 {
    pthread_mutex_lock(&sem.mutex);
-   while (!(sem.conditionSet)) 
+   while (!(sem.conditionSet))
    {
       pthread_cond_wait(&sem.condition, &sem.mutex);
    }
    sem.conditionSet = false;
    pthread_mutex_unlock(&sem.mutex);
 }
-  
+
 void Threading::SignalSemaphore(Semaphore& sem)
 {
    pthread_mutex_lock(&sem.mutex);
@@ -96,7 +96,7 @@ void Threading::SignalSemaphore(Semaphore& sem)
    pthread_cond_signal(&sem.condition);
    pthread_mutex_unlock(&sem.mutex);
 }
- 
+
 void Threading::DestroySemaphore(Semaphore& sem)
 {
    pthread_cond_destroy(&sem.condition);
@@ -107,7 +107,7 @@ void Threading::DestroySemaphore(Semaphore& sem)
 #include <process.h>
 
 //////////////////////////////////////////////////////////////////////
-// Implementations for Threading base class specific to the WIN32 OS 
+// Implementations for Threading base class specific to the WIN32 OS
 //////////////////////////////////////////////////////////////////////
 
 Threading::Threading()
@@ -144,7 +144,7 @@ void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId
     _threadId = *pThreadId;
    _beginthreadex (NULL,
          0,
-         (unsigned int(__stdcall*) ( void*)) pFunction, 
+         (unsigned int(__stdcall*) ( void*)) pFunction,
          (void*) arg,
          0,
          pThreadId);
@@ -159,22 +159,22 @@ void Threading::ThreadSleep(unsigned long dwMilliseconds)
 {
    Sleep(dwMilliseconds);
 }
-  
+
 void Threading::CreateSemaphore(Semaphore* pSem)
 {
    *pSem = CreateEvent(NULL,0,0,NULL);
 }
-  
+
 void Threading::WaitSemaphore(Semaphore& sem)
 {
    WaitForSingleObject(sem, INFINITE);
 }
-  
+
 void Threading::SignalSemaphore(Semaphore& sem)
 {
    SetEvent(sem);
 }
- 
+
 void Threading::DestroySemaphore(Semaphore& sem)
 {
    CloseHandle(sem);

@@ -329,7 +329,7 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
             {
                if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 0 || varModsParam.iWhichTerm == 2))
                {
-                  // ignore if C-term mod on N-term 
+                  // ignore if C-term mod on N-term
                }
                else
                {
@@ -418,7 +418,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    else
       pStr++;  // skip separation character
 
-   // Print spectrum_query element. 
+   // Print spectrum_query element.
    fprintf(fpout, " <spectrum_query spectrum=\"%s.%05d.%05d.%d\"",
          pStr,
          pQuery->_spectrumInfoInternal.iScanNumber,
@@ -570,7 +570,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
          PrintPepXMLSearchHit(iWhichQuery, i, iRankXcorr, bDecoy, pOutput, fpout, dDeltaCn, dDeltaCnStar);
       }
-   } 
+   }
 
    fprintf(fpout, "  </search_result>\n");
    fprintf(fpout, " </spectrum_query>\n");
@@ -606,7 +606,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
 
    fprintf(fpout, " num_tol_term=\"%d\"", iNTT);
-   fprintf(fpout, " num_missed_cleavages=\"%d\"", iNMC); 
+   fprintf(fpout, " num_missed_cleavages=\"%d\"", iNMC);
    fprintf(fpout, " num_matched_peptides=\"%lu\"",
          bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides));
    fprintf(fpout, ">\n");
@@ -645,7 +645,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    {
       // construct modified peptide string
       char szModPep[512];
-      
+
       szModPep[0]='\0';
 
       bool bNterm = false;

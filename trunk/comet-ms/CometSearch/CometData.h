@@ -23,7 +23,7 @@
 #define MAX_THREADS                 64
 
 #define MAX_ENZYME_AA               20       // max # of AA for enzyme break point
-#define MAX_VARMOD_AA               20       // max # of modified AAs in a peptide per variable modification 
+#define MAX_VARMOD_AA               20       // max # of modified AAs in a peptide per variable modification
 
 #define ENZYME_NAME_LEN             48
 
@@ -36,7 +36,7 @@ struct DoubleRange
 {
    double dStart;
    double dEnd;
-   
+
    DoubleRange()
    {
       dStart = 0.0;
@@ -55,7 +55,7 @@ struct DoubleRange
       dEnd = dEnd_in;
    }
 
-   DoubleRange& operator=(DoubleRange& a) 
+   DoubleRange& operator=(DoubleRange& a)
    {
       dStart = a.dStart;
       dEnd = a.dEnd;
@@ -67,7 +67,7 @@ struct IntRange
 {
    int iStart;
    int iEnd;
-   
+
    IntRange()
    {
       iStart = 0;
@@ -86,7 +86,7 @@ struct IntRange
       iEnd = iEnd_in;
    }
 
-   IntRange& operator=(IntRange& a) 
+   IntRange& operator=(IntRange& a)
    {
       iStart = a.iStart;
       iEnd = a.iEnd;
@@ -94,7 +94,7 @@ struct IntRange
    }
 };
 
-struct VarMods 
+struct VarMods
 {
    double dVarModMass;
    int    iBinaryMod;
@@ -126,7 +126,7 @@ struct VarMods
       strcpy(szVarModChar, a.szVarModChar);
    }
 
-   VarMods& operator=(VarMods& a) 
+   VarMods& operator=(VarMods& a)
    {
       iBinaryMod = a.iBinaryMod;
       bRequireThisMod = a.bRequireThisMod;
@@ -192,7 +192,7 @@ struct EnzymeInfo
       }
    }
 
-   EnzymeInfo& operator=(EnzymeInfo& a) 
+   EnzymeInfo& operator=(EnzymeInfo& a)
    {
       iAllowedMissedCleavage = a.iAllowedMissedCleavage;
       iSearchEnzymeOffSet = a.iSearchEnzymeOffSet;
@@ -220,7 +220,7 @@ struct EnzymeInfo
 
 // *IMPORTANT* If you change this enum, please also change the corresponding
 // enum in CometDataWrapper.h in the CometWrapper namespace.
-enum AnalysisType 
+enum AnalysisType
 {
    AnalysisType_Unknown = 0,
    AnalysisType_DTA,
@@ -231,7 +231,7 @@ enum AnalysisType
 
 // *IMPORTANT* If you change this enum, please also change the corresponding
 // enum in CometDataWrapper.h in the CometWrapper namespace.
-enum InputType 
+enum InputType
 {
    InputType_UNKNOWN = -1,
    InputType_MS2 = 0,           // ms2, cms2, bms2, etc.
@@ -304,7 +304,7 @@ struct InputFileInfo
    }
 };
 
-enum CometParamType 
+enum CometParamType
 {
    CometParamType_Unknown = 0,
    CometParamType_Int,
@@ -319,10 +319,10 @@ enum CometParamType
 
 
 // A virtual class that provides a generic data structure to store any Comet
-// parameter so that we can store all parameters in one data container 
+// parameter so that we can store all parameters in one data container
 // (e.g. std::map). The specific type of parameter will use the TypedCometParam
 // class which inherits from this class and specifies _paramType and
-// _strValue, a string representation of the value of the param 
+// _strValue, a string representation of the value of the param
 
 class CometParam
 {
@@ -335,12 +335,12 @@ private:
    CometParamType _paramType;
    string _strValue;
 };
- 
- 
+
+
 // A templated class to store Comet parameters of any type, specifying the type
 // T upon creation. It inherits from CometParam so after creation, an object of
-// this class type can be stored as a CometParam and cast back to 
-// TypedCometParam to access the GetValue() method when needed. 
+// this class type can be stored as a CometParam and cast back to
+// TypedCometParam to access the GetValue() method when needed.
 
 template< typename T >
 class TypedCometParam : public CometParam

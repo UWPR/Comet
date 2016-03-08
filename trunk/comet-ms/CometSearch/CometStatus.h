@@ -20,7 +20,7 @@
 #include "Common.h"
 #include "Threading.h"
 
-enum CometResult 
+enum CometResult
 {
     CometResult_Succeeded = 0,
     CometResult_Failed,

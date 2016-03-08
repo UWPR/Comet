@@ -71,7 +71,7 @@ struct msdata                    // used in the preprocessing
    double dIntensity;
 };
 
-struct Options             // output parameters 
+struct Options             // output parameters
 {
    int iNumPeptideOutputLines;
    int iWhichReadingFrame;
@@ -98,7 +98,7 @@ struct Options             // output parameters
    int bNoEnzymeSelected;
    int bShowFragmentIons;
    int bPrintExpectScore;
-   int bOverrideCharge; 
+   int bOverrideCharge;
    double dMinIntensity;
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
@@ -108,7 +108,7 @@ struct Options             // output parameters
    DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
 
-   Options& operator=(Options& a) 
+   Options& operator=(Options& a)
    {
       iNumPeptideOutputLines = a.iNumPeptideOutputLines;
       iWhichReadingFrame = a.iWhichReadingFrame;
@@ -147,7 +147,7 @@ struct Options             // output parameters
    }
 };
 
-struct Results 
+struct Results
 {
    double dPepMass;
    double dExpect;
@@ -219,10 +219,10 @@ typedef struct sDBTable
    int  iStart;   // pointer to the start of this mass value
    int  iStop;    // pointer to the end of this mass value
    char cFile;    // which index file has the start of the data
-} sDBTable; 
+} sDBTable;
 
 struct DBInfo
-{  
+{
    char szDatabase[SIZE_FILE];
    char szFileName[SIZE_FILE];
    int  iTotalNumProteins;
@@ -247,7 +247,7 @@ struct StaticMod
    double dAddNterminusProtein;
    double pdStaticMods[SIZE_MASS];
 
-   StaticMod& operator=(StaticMod& a) 
+   StaticMod& operator=(StaticMod& a)
    {
       dAddCterminusPeptide = a.dAddCterminusPeptide;
       dAddNterminusPeptide = a.dAddNterminusPeptide;
@@ -271,7 +271,7 @@ struct PrecalcMasses
    int iMinus17;                 // BIN'd value of mass(NH3)
    int iMinus18;                 // BIN'd value of mass(H2O)
 
-   PrecalcMasses& operator=(PrecalcMasses& a) 
+   PrecalcMasses& operator=(PrecalcMasses& a)
    {
       dNtermProton = a.dNtermProton;
       dCtermOH2Proton = a.dCtermOH2Proton;
@@ -292,7 +292,7 @@ struct VarModParams
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
 
-   VarModParams& operator=(VarModParams& a) 
+   VarModParams& operator=(VarModParams& a)
    {
       bVarModSearch = a.bVarModSearch;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
@@ -321,7 +321,7 @@ struct MassUtil
    double pdAAMassParent[SIZE_MASS];
    double pdAAMassFragment[SIZE_MASS];
 
-   MassUtil& operator=(MassUtil& a) 
+   MassUtil& operator=(MassUtil& a)
    {
       bMonoMassesParent = a.bMonoMassesParent;
       bMonoMassesFragment = a.bMonoMassesFragment;
@@ -353,7 +353,7 @@ struct ToleranceParams
    double dFragmentBinStartOffset;
    double dMatchPeakTolerance;
 
-   ToleranceParams& operator=(ToleranceParams& a) 
+   ToleranceParams& operator=(ToleranceParams& a)
    {
       iMassToleranceUnits = a.iMassToleranceUnits;
       iMassToleranceType = a.iMassToleranceType;
@@ -392,7 +392,7 @@ struct IonInfo
    IonInfo& operator=(IonInfo& a)
    {
       iNumIonSeriesUsed = a.iNumIonSeriesUsed;
-      bUseNeutralLoss = a.bUseNeutralLoss; 
+      bUseNeutralLoss = a.bUseNeutralLoss;
       iTheoreticalFragmentIons = a.iTheoreticalFragmentIons;
 
       for (int i = 0; i < NUM_ION_SERIES; i++)
@@ -517,7 +517,7 @@ struct StaticParams
       options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;
       options.iRemovePrecursor = 0;
-      options.dRemovePrecursorTol = 1.5;  
+      options.dRemovePrecursorTol = 1.5;
 
       options.bOutputSqtStream = 0;
       options.bOutputSqtFile = 0;
@@ -564,8 +564,8 @@ struct StaticParams
       tolerances.dMatchPeakTolerance = 0.5;
    }
 
-   StaticParams& operator=(StaticParams& a) 
-   { 
+   StaticParams& operator=(StaticParams& a)
+   {
       strcpy(szHostName, a.szHostName);
       strcpy(szOutFileTimeString, a.szOutFileTimeString);
       strcpy(szIonSeries, a.szIonSeries);
@@ -591,7 +591,7 @@ struct StaticParams
       iXcorrProcessingOffset = a.iXcorrProcessingOffset;
       peaksInformation = a.peaksInformation;
       ionInformation = a.ionInformation;
-      return *this; 
+      return *this;
    }
 
 };
@@ -632,7 +632,7 @@ struct Query
    // Sparse matrix representation of data
    int iSpScoreData;    //size of sparse matrix
    int iFastXcorrData;  //MH: I believe these are all the same size now.
-   int iFastXcorrDataNL; 
+   int iFastXcorrDataNL;
    float **ppfSparseSpScoreData;
    float **ppfSparseFastXcorrData;
    float **ppfSparseFastXcorrDataNL;
@@ -689,7 +689,7 @@ struct Query
       _pepMassInfo.dPeptideMassTolerance = 0.0;
       _pepMassInfo.dPeptideMassToleranceMinus = 0.0;
       _pepMassInfo.dPeptideMassTolerancePlus = 0.0;
-   
+
       _spectrumInfoInternal.dTotalIntensity = 0.0;
       _spectrumInfoInternal.iArraySize = 0;
       _spectrumInfoInternal.iHighestIon = 0;
@@ -705,15 +705,15 @@ struct Query
    ~Query()
    {
       int i;
-      for (i=0;i<iSpScoreData;i++) 
+      for (i=0;i<iSpScoreData;i++)
       {
          if (ppfSparseSpScoreData[i] != NULL)
             delete[] ppfSparseSpScoreData[i];
       }
       delete[] ppfSparseSpScoreData;
       ppfSparseSpScoreData = NULL;
-      
-      for (i=0;i<iFastXcorrData;i++) 
+
+      for (i=0;i<iFastXcorrData;i++)
       {
          if (ppfSparseFastXcorrData[i] != NULL)
             delete[] ppfSparseFastXcorrData[i];
@@ -726,7 +726,7 @@ struct Query
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         for (i=0;i<iFastXcorrDataNL;i++) 
+         for (i=0;i<iFastXcorrDataNL;i++)
          {
             if (ppfSparseFastXcorrDataNL[i]!=NULL)
                delete[] ppfSparseFastXcorrDataNL[i];

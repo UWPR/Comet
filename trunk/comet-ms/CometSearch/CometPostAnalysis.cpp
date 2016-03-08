@@ -63,7 +63,7 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
    delete pPostAnalysisThreadPool;
    pPostAnalysisThreadPool = NULL;
 
-   // Check for errors one more time since there might have been an error 
+   // Check for errors one more time since there might have been an error
    // while we were waiting for the threads.
    if (bSucceeded)
    {
@@ -98,7 +98,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    }
 
    // FIX ... need to do something with bSucceeded otherwise no point in having it
- 
+
    delete pThreadData;
    pThreadData = NULL;
 }
@@ -326,7 +326,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   if (fSpScore > FLOAT_ZERO)
                   {
                      iMatchedFragmentIonCt++;
-                     
+
                      // Simple sum intensity.
                      dTmpIntenMatch += fSpScore;
 
@@ -345,7 +345,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          }
       }
 
-      pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) / 
+      pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) /
             ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
 
       pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
@@ -445,7 +445,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
 
    dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
 
-   int iLoopCount; 
+   int iLoopCount;
 
    iLoopCount = max(pQuery->iMatchPeptideCount, pQuery->iDecoyMatchPeptideCount);
 
@@ -556,7 +556,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       if (iMaxCorr>12)
          iNextCorr = iMaxCorr-2;
    }
- 
+
    // Create cummulative distribution function from iNextCorr down, skipping the outliers.
    dCummulative[iNextCorr] = piHistogram[iNextCorr];
    for (i=iNextCorr-1; i>=0; i--)
@@ -752,7 +752,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                            pQuery->_pepMassInfo.dExpPepMass,
                            pQuery->_spectrumInfoInternal.iScanNumber,
                            ctCharge);
-                  
+
                      string strErrorMsg(szErrorMsg);
                      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                      logerr(szErrorMsg);

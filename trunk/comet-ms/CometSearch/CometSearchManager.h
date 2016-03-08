@@ -60,7 +60,7 @@ public:
 
 private:
    bool InitializeStaticParams();
-   
+
    std::map<std::string, CometParam*> _mapStaticParams;
 };
 

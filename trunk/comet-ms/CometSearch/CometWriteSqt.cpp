@@ -130,7 +130,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    }
 
    fprintf(fpout, "H\n");
-   
+
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
    for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
    {
@@ -180,32 +180,32 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
    if (bDecoy)
    {
       sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
-            pQuery->_spectrumInfoInternal.iScanNumber, 
             pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState, 
-            g_staticParams.iElapseTime, 
-            g_staticParams.szHostName, 
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iChargeState,
+            g_staticParams.iElapseTime,
+            g_staticParams.szHostName,
             pQuery->_pepMassInfo.dExpPepMass,
-            pQuery->_spectrumInfoInternal.dTotalIntensity, 
-            pQuery->fLowestDecoySpScore, 
+            pQuery->_spectrumInfoInternal.dTotalIntensity,
+            pQuery->fLowestDecoySpScore,
             pQuery->_uliNumMatchedDecoyPeptides);
    }
    else
    {
       sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
-            pQuery->_spectrumInfoInternal.iScanNumber, 
             pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState, 
-            g_staticParams.iElapseTime, 
-            g_staticParams.szHostName, 
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iChargeState,
+            g_staticParams.iElapseTime,
+            g_staticParams.szHostName,
             pQuery->_pepMassInfo.dExpPepMass,
-            pQuery->_spectrumInfoInternal.dTotalIntensity, 
-            pQuery->fLowestSpScore, 
+            pQuery->_spectrumInfoInternal.dTotalIntensity,
+            pQuery->fLowestSpScore,
             pQuery->_uliNumMatchedPeptides);
    }
 
    if (g_staticParams.options.bOutputSqtStream)
-      fprintf(stdout, "%s", szBuf); 
+      fprintf(stdout, "%s", szBuf);
    else
       fprintf(fpout, "%s", szBuf);
 
@@ -234,7 +234,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
          PrintSqtLine(iRankXcorr, i, pOutput, fpout);
-   } 
+   }
 }
 
 
@@ -267,7 +267,7 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
       sprintf(szBuf+strlen(szBuf), "%0.1f", pOutput[iWhichResult].fScoreSp);
 
    sprintf(szBuf + strlen(szBuf), "\t%d\t%d\t",
-         pOutput[iWhichResult].iMatchedIons, 
+         pOutput[iWhichResult].iMatchedIons,
          pOutput[iWhichResult].iTotalIons);
 
    sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
@@ -309,7 +309,7 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
       fprintf(stdout, "L\t%s", pOutput[iWhichResult].szProtein);
 
       if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(stdout, "\t+%d", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(stdout, "\t+%d", pOutput[iWhichResult].iDuplicateCount);
 
       fprintf(stdout, "\n");
    }
@@ -321,7 +321,7 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
       fprintf(fpout, "L\t%s", pOutput[iWhichResult].szProtein);
 
       if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(fpout, "\t+%d", pOutput[iWhichResult].iDuplicateCount); 
+         fprintf(fpout, "\t+%d", pOutput[iWhichResult].iDuplicateCount);
 
       fprintf(fpout, "\n");
    }

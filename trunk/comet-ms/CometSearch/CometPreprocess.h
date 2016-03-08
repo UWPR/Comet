@@ -42,14 +42,14 @@ struct PreprocessThreadData
 
    ~PreprocessThreadData()
    {
-      //MH: Mark that the memory is no longer in use. 
+      //MH: Mark that the memory is no longer in use.
       //DO NOT FREE MEMORY HERE. Just release pointer.
       Threading::LockMutex(g_preprocessMemoryPoolMutex);
 
       if(pbMemoryPool!=NULL)
          *pbMemoryPool=false;
       pbMemoryPool=NULL;
-      
+
       Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
    }
 
@@ -68,8 +68,8 @@ public:
 
    static void Reset();
    static bool LoadAndPreprocessSpectra(MSReader &mstReader,
-                                        int iFirstScan, 
-                                        int iLastScan, 
+                                        int iFirstScan,
+                                        int iLastScan,
                                         int iAnalysisType,
                                         int minNumThreads,
                                         int maxNumThreads);
@@ -77,9 +77,9 @@ public:
    static bool DoneProcessingAllSpectra();
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
-   
+
 private:
-   
+
    // Private static methods
    static bool PreprocessSpectrum(Spectrum &spec,
                                   double *pdTmpRawData,
@@ -96,8 +96,8 @@ private:
                            int scNum=0);
    static bool CheckActivationMethodFilter(MSActivation act);
    static bool CheckExit(int iAnalysisType,
-                         int iScanNum, 
-                         int iTotalScans, 
+                         int iScanNum,
+                         int iTotalScans,
                          int iLastScan,
                          int iReaderLastScan,
                          int iNumSpectraLoaded);

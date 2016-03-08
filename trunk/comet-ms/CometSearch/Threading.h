@@ -44,7 +44,7 @@ public:
    static void BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId);
    static void ThreadSleep(unsigned long dwMilliseconds);
    static void EndThread();
-  
+
    // Semaphore methods
    static void CreateSemaphore(Semaphore* pSem);
    static void WaitSemaphore(Semaphore& sem);
