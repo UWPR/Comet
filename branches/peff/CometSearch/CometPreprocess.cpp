@@ -46,8 +46,8 @@ void CometPreprocess::Reset()
 }
 
 bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
-                                               int iFirstScan, 
-                                               int iLastScan, 
+                                               int iFirstScan,
+                                               int iLastScan,
                                                int iAnalysisType,
                                                int minNumThreads,
                                                int maxNumThreads)
@@ -68,9 +68,9 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    Threading::CreateMutex(&_maxChargeMutex);
 
    // Get the thread pool of threads that will preprocess the data.
-   // NOTE: We are specifying a "maxNumParamsToQueue" to indicate that, 
-   // at most, we will only read in and queue "maxNumParamsToQueue" 
-   // additional parameters (1 in this case) 
+   // NOTE: We are specifying a "maxNumParamsToQueue" to indicate that,
+   // at most, we will only read in and queue "maxNumParamsToQueue"
+   // additional parameters (1 in this case)
    ThreadPool<PreprocessThreadData *> *pPreprocessThreadPool = new ThreadPool<PreprocessThreadData *>(PreprocessThreadProc,
          minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
 
@@ -151,10 +151,10 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
                // When we created the thread pool above, we specified the max number of
                // additional params to queue. Here, we must call this method if we want
-               // to wait for the queued params to be processed by the threads before we 
+               // to wait for the queued params to be processed by the threads before we
                // load any more params.
                pPreprocessThreadPool->WaitForQueuedParams();
-              
+
                //-->MH
                //If there are no Z-lines, filter the spectrum for charge state
                //run filter here.
@@ -187,9 +187,9 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          }
       }
 
-      if (CheckExit(iAnalysisType, 
+      if (CheckExit(iAnalysisType,
                     iScanNumber,
-                    iTotalScans, 
+                    iTotalScans,
                     iLastScan,
                     mstReader.getLastScan(),
                     iNumSpectraLoaded))
@@ -220,7 +220,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    //MH: Grab available array from shared memory pool.
    int i;
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
-   for (i=0; i<g_staticParams.options.iNumThreads; i++) 
+   for (i=0; i<g_staticParams.options.iNumThreads; i++)
    {
       if (pbMemoryPool[i]==false)
       {
@@ -293,9 +293,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {  
+      {
          dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-      }  
+      }
    }
    else // ppm
    {
@@ -334,7 +334,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
       sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
       return false;
    }
@@ -355,7 +355,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }
@@ -447,7 +447,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr( szErrorMsg);
          return false;
       }
@@ -457,9 +457,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          if (pScoring->pfFastXcorrDataNL[i]>FLOAT_ZERO || pScoring->pfFastXcorrDataNL[i]<-FLOAT_ZERO)
          {
             x=i/SPARSE_MATRIX_SIZE;
-            if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL) 
+            if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
             {
-               try 
+               try
                {
                   pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
                }
@@ -470,7 +470,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                   sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
                   sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
                   string strErrorMsg(szErrorMsg);
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                   logerr(szErrorMsg);
                   return false;
                }
@@ -501,7 +501,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
       sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
       return false;
    }
@@ -511,9 +511,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       if (pScoring->pfFastXcorrData[i]>FLOAT_ZERO || pScoring->pfFastXcorrData[i]<-FLOAT_ZERO)
       {
          x=i/SPARSE_MATRIX_SIZE;
-         if (pScoring->ppfSparseFastXcorrData[x]==NULL) 
+         if (pScoring->ppfSparseFastXcorrData[x]==NULL)
          {
-            try 
+            try
             {
                pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
             }
@@ -524,7 +524,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
                sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
                string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(szErrorMsg);
                return false;
             }
@@ -578,7 +578,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
       sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
       return false;
    }
@@ -601,7 +601,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
       sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
       string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
       return false;
    }
@@ -611,9 +611,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       if (pScoring->pfSpScoreData[i] > FLOAT_ZERO)
       {
          x=i/SPARSE_MATRIX_SIZE;
-         if (pScoring->ppfSparseSpScoreData[x]==NULL) 
+         if (pScoring->ppfSparseSpScoreData[x]==NULL)
          {
-            try 
+            try
             {
                pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
             }
@@ -624,7 +624,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
                sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
                string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(szErrorMsg);
                return false;
             }
@@ -698,8 +698,8 @@ bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
 }
 
 bool CometPreprocess::CheckExit(int iAnalysisType,
-                                int iScanNum, 
-                                int iTotalScans, 
+                                int iScanNum,
+                                int iTotalScans,
                                 int iLastScan,
                                 int iReaderLastScan,
                                 int iNumSpectraLoaded)
@@ -743,7 +743,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
    // Horrible way to exit as this typically requires a quick cycle through
    // while loop but not sure what else to do when getScanNumber() returns 0
    // for non MS/MS scans.
-   if (IsValidInputType(g_staticParams.inputFile.iInputType) 
+   if (IsValidInputType(g_staticParams.inputFile.iInputType)
          && iTotalScans > iReaderLastScan)
    {
       _bDoneProcessingAllSpectra = true;
@@ -777,7 +777,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                          // 0 = use charge in file, else use range
                          // 1 = use precursor_charge range
                          // 2 = search only charge state in file within precursor_charge
-                         // 3 = use charge in file else use 1+ or precursor_charge range 
+                         // 3 = use charge in file else use 1+ or precursor_charge range
    int bFileHasCharge = 0;
    if (spec.sizeZ() > 0)
       bFileHasCharge = 1;
@@ -958,9 +958,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
 
                if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-               {  
+               {
                   dCushion *= pScoring->_spectrumInfoInternal.iChargeState;
-               }  
+               }
             }
             else // ppm
             {
@@ -1063,9 +1063,9 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance * 0.001;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {  
+      {
          pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
-      }  
+      }
    }
    else // ppm
    {
@@ -1164,7 +1164,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
          break;
 
       dIon = mstSpectrum.at(i).mz;
-      dIntensity = mstSpectrum.at(i).intensity;   
+      dIntensity = mstSpectrum.at(i).intensity;
       i++;
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
@@ -1479,7 +1479,7 @@ void CometPreprocess::StairStep(struct msdata *pTmpSpData)
 
       // Sets the adjacent points to the dMaxInten.
       for (iii=i; iii<ii; iii++)
-         (pTmpSpData+iii)->dIntensity = dMaxInten; 
+         (pTmpSpData+iii)->dIntensity = dMaxInten;
 
       i = ii;
    }
@@ -1508,9 +1508,9 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {  
+      {
          dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-      }  
+      }
    }
    else // ppm
    {
@@ -1542,7 +1542,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }
@@ -1563,7 +1563,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }
@@ -1584,7 +1584,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }
@@ -1605,7 +1605,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }
@@ -1626,7 +1626,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);      
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }

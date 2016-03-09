@@ -89,7 +89,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          pQuery->_pepMassInfo.dPeptideMassTolerance,
          pQuery->_spectrumInfoInternal.iChargeState,
          g_staticParams.tolerances.dFragmentBinSize,
-         g_staticParams.tolerances.dFragmentBinStartOffset); 
+         g_staticParams.tolerances.dFragmentBinStartOffset);
 
    if (g_staticParams.massUtility.bMonoMassesParent)
       sprintf(szMassLine + strlen(szMassLine), ", MONO");
@@ -132,16 +132,16 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    if (g_staticParams.options.iWhichReadingFrame)
    {
       sprintf(szDbLine, "# bases = %lu (frame=%d), # proteins = %d, %s",
-            g_staticParams.databaseInfo.uliTotAACount, 
-            g_staticParams.options.iWhichReadingFrame, 
-            g_staticParams.databaseInfo.iTotalNumProteins, 
+            g_staticParams.databaseInfo.uliTotAACount,
+            g_staticParams.options.iWhichReadingFrame,
+            g_staticParams.databaseInfo.iTotalNumProteins,
             g_staticParams.databaseInfo.szDatabase);
    }
    else
    {
       sprintf(szDbLine, "# amino acids = %lu, # proteins = %d, %s",
-            g_staticParams.databaseInfo.uliTotAACount, 
-            g_staticParams.databaseInfo.iTotalNumProteins, 
+            g_staticParams.databaseInfo.uliTotAACount,
+            g_staticParams.databaseInfo.iTotalNumProteins,
             g_staticParams.databaseInfo.szDatabase);
    }
 
@@ -158,15 +158,15 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    if (bDecoySearch)
    {
       sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %lu",
-            pQuery->_spectrumInfoInternal.dTotalIntensity, 
-            pQuery->fLowestDecoySpScore, 
+            pQuery->_spectrumInfoInternal.dTotalIntensity,
+            pQuery->fLowestDecoySpScore,
             pQuery->_uliNumMatchedDecoyPeptides);
    }
    else
    {
       sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %lu",
-            pQuery->_spectrumInfoInternal.dTotalIntensity, 
-            pQuery->fLowestSpScore, 
+            pQuery->_spectrumInfoInternal.dTotalIntensity,
+            pQuery->fLowestSpScore,
             pQuery->_uliNumMatchedPeptides);
    }
 
@@ -183,7 +183,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    sprintf(szBuf+strlen(szBuf), " %s\n", szStatsBuf);
    sprintf(szBuf+strlen(szBuf), " %s\n", szDbLine);
    sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szIonSeries);
-   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szDisplayLine); 
+   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szDisplayLine);
 
    fprintf(fpout, "%s", szBuf);
 
@@ -284,7 +284,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
          PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, pOutput, fpout);
-   } 
+   }
 
    fprintf(fpout, "\n");
 
@@ -460,10 +460,10 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
       iEnd = iLenMaxDuplicates - strlen(szTemp) - 1;
 
       for (i=0; i<iEnd; i++)
-         sprintf(szBuf+strlen(szBuf), " "); 
+         sprintf(szBuf+strlen(szBuf), " ");
    }
    else if (iLenMaxDuplicates > 0)
-   { 
+   {
       for (i=0; i<iLenMaxDuplicates; i++)
          sprintf(szBuf+strlen(szBuf), " ");
    }
@@ -614,7 +614,7 @@ void CometWriteOut::PrintIons(int iWhichQuery,
                   sprintf(szBuf+strlen(szBuf), "  ");
             }
          }
-         fprintf(fpout, "%s %2d", szBuf, pQuery->_pResults[0].iLenPeptide-i); 
+         fprintf(fpout, "%s %2d", szBuf, pQuery->_pResults[0].iLenPeptide-i);
 
       }
       fprintf(fpout, "\n");

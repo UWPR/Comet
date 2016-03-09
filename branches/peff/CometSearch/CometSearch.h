@@ -41,7 +41,7 @@ struct SearchThreadData
 
    ~SearchThreadData()
    {
-      // Mark that the memory is no longer in use. 
+      // Mark that the memory is no longer in use.
       // DO NOT FREE MEMORY HERE. Just release pointer.
       Threading::LockMutex(g_searchMemoryPoolMutex);
 
@@ -73,16 +73,16 @@ public:
                          int iPercentEnd);
    static void SearchThreadProc(SearchThreadData *pSearchThreadData);
    bool DoSearch(sDBEntry dbe, bool *pbDuplFragment);
-    
+
 private:
-    
+
    // Core search functions
    void ReadOBO(char *szOBO,
                 vector<OBOStruct> *vectorUniModOBO);
    bool MapOBO(string strMod,
                vector<OBOStruct> *vectorPeffOBO,
                struct PeffModStruct *pData);
-   int BinarySearchStrMod(int start,
+   int BinarySearchPeffStrMod(int start,
                           int end,
                           string strMod,
                           vector<OBOStruct>& vectorPeffOBO);
@@ -148,7 +148,7 @@ private:
                      int iEndPos,
                      bool *pbDuplFragment);
    double TotalVarModMass(int *pVarModCounts);
-   bool PermuteMods(char *szProteinSeq, 
+   bool PermuteMods(char *szProteinSeq,
                     int iWhichQuery,
                     int iWhichMod,
                     bool *pbDuplFragments);
@@ -197,7 +197,7 @@ private:
        int iMatchVarModCt;
        int iVarModSites[MAX_PEPTIDE_LEN+2];  // last 2 positions are for n- and c-term
    };
-    
+
    struct VarModInfo
    {
        VarModStat varModStatList[VMODS];
@@ -237,12 +237,12 @@ private:
    struct SpectrumInfoInternal
    {
       Spectrum *pSpectrum;
-      int      iChargeState;  
+      int      iChargeState;
       int      iArraySize;     // m/z versus intensity array
       int      iHighestIon;
-      double   dExperimentalPeptideMass; 
+      double   dExperimentalPeptideMass;
       double   dHighestIntensity;
-      double   dTotalIntensity;         
+      double   dTotalIntensity;
    };
 
    double             _pdAAforward[MAX_PEPTIDE_LEN];      // Stores fragment ion fragment ladder calc.; sum AA masses including mods
@@ -251,7 +251,7 @@ private:
    double             _pdAAreverseDecoy[MAX_PEPTIDE_LEN]; // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
    int                _iSizepcVarModSites;
    VarModInfo         _varModInfo;
-   ProteinInfo        _proteinInfo;       
+   ProteinInfo        _proteinInfo;
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];

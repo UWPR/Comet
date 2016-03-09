@@ -24,8 +24,8 @@
 using namespace CometInterfaces;
 
 void Usage(char *pszCmd);
-void ProcessCmdLine(int argc, 
-                    char *argv[], 
+void ProcessCmdLine(int argc,
+                    char *argv[],
                     char *szParamsFile,
                     vector<InputFileInfo*> &pvInputFiles,
                     ICometSearchManager *pSearchMgr);
@@ -40,7 +40,7 @@ bool ValidateInputMsMsFile(char *pszInputFileName);
 
 int main(int argc, char *argv[])
 {
-   if (argc < 2) 
+   if (argc < 2)
       Usage(argv[0]);
 
    vector<InputFileInfo*> pvInputFiles;
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 
    if (!bSearchSucceeded)
    {
-      // We already log errors when search fails, so no need to log the 
+      // We already log errors when search fails, so no need to log the
       // error message again via g_cometStatus
       exit(1);
    }
@@ -593,7 +593,7 @@ void LoadParameters(char *pszParamsFile,
                pSearchMgr->SetParam("output_sqtstream", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "output_sqtfile"))
-            {  
+            {
                sscanf(szParamVal, "%d", &iIntParam);
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%d", iIntParam);
@@ -669,7 +669,7 @@ void LoadParameters(char *pszParamsFile,
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("add_G_glycine", szParamStringVal, dDoubleParam);            
+               pSearchMgr->SetParam("add_G_glycine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_A_alanine"))
             {
@@ -1016,20 +1016,20 @@ void LoadParameters(char *pszParamsFile,
       if (iCurrentEnzymeNumber == iSearchEnzymeNumber)
       {
          sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
-               &dTempMass, 
-               enzymeInformation.szSearchEnzymeName, 
-               &enzymeInformation.iSearchEnzymeOffSet, 
-               enzymeInformation.szSearchEnzymeBreakAA, 
+               &dTempMass,
+               enzymeInformation.szSearchEnzymeName,
+               &enzymeInformation.iSearchEnzymeOffSet,
+               enzymeInformation.szSearchEnzymeBreakAA,
                enzymeInformation.szSearchEnzymeNoBreakAA);
       }
 
       if (iCurrentEnzymeNumber == iSampleEnzymeNumber)
       {
          sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
-               &dTempMass, 
-               enzymeInformation.szSampleEnzymeName, 
-               &enzymeInformation.iSampleEnzymeOffSet, 
-               enzymeInformation.szSampleEnzymeBreakAA, 
+               &dTempMass,
+               enzymeInformation.szSampleEnzymeName,
+               &enzymeInformation.iSampleEnzymeOffSet,
+               enzymeInformation.szSampleEnzymeBreakAA,
                enzymeInformation.szSampleEnzymeNoBreakAA);
       }
 
@@ -1131,7 +1131,7 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
          if (pInputFile->iFirstScan == 0)  // this means iEndScan is specified only
             pInputFile->iFirstScan = 1;    // so start with 1st scan in file
 
-         // but if iEndScan == 0 then only iStartScan is specified; in this 
+         // but if iEndScan == 0 then only iStartScan is specified; in this
          // case search iStartScan through end of file (handled in CometPreprocess)
 
          return true;
@@ -1170,9 +1170,9 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
 } // ParseCmdLine
 
 
-void ProcessCmdLine(int argc, 
-                    char *argv[], 
-                    char *szParamsFile, 
+void ProcessCmdLine(int argc,
+                    char *argv[],
+                    char *szParamsFile,
                     vector<InputFileInfo*> &pvInputFiles,
                     ICometSearchManager *pSearchMgr)
 {
@@ -1214,7 +1214,7 @@ void ProcessCmdLine(int argc,
    LoadParameters(szParamsFile, pSearchMgr);
 
    // Now go through input arguments again.  Command line options will
-   // override options specified in params file. 
+   // override options specified in params file.
    iStartInputFile = 1;
    arg = argv[iStartInputFile];
    while ((iStartInputFile < argc) && (NULL != arg))
