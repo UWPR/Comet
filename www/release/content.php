@@ -3,7 +3,7 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
-               <li><a href="/release/release_201502/">Release 2015.02, 2015/07/31, last revised 2015/11/24</a></li>
+               <li><a href="/release/release_201502/">Release 2015.02, 2015/07/31, last revised 2016/01/22</a></li>
                <li><a href="/release/release_201501/">Release 2015.01, 2015/02/23, last revised 2015/04/28</a></li>
                <li><a href="/release/release_201402/">Release 2014.02, 2014/09/16, last revised 2014/09/25</a></li>
                <li><a href="/release/release_201401/">Release 2014.01, 2014/03/25, last revised 2014/06/03</a></li>
@@ -23,9 +23,9 @@
             <li><a target="new" href="https://registry.hub.docker.com/u/hexabio/comet/">Bio Docker</a>
             <li><a target="new" href="http://www.labkey.org">LabKey</a>
             <li><a target="new" href="http://www.bioprocess.org/massypup/">MASSyPup</a>
-            <li><a target="new" href="http://pcarvalho.com/patternlab/">PatternLab</a>
+            <li><a target="new" href="http://www.patternlabforproteomics.org/">PatternLab</a>
             <li><a target="new" href="http://prohitsms.com/">ProHits</a>
-            <li><a target="new" href="http://code.google.com/p/searchgui/">SearchGUI</a> and <a target="new" href="http://code.google.com/p/peptide-shaker/">PeptideShaker</a> 
+            <li><a target="new" href="http://compomics.github.io/projects/searchgui.html">SearchGUI</a> and <a target="new" href="http://compomics.github.io/projects/peptide-shaker.html">PeptideShaker</a> 
             <li><a target="new" href="http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP">Trans-Proteomic Pipeline (TPP)</a>
          </ul>
 

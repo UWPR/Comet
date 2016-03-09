@@ -2,9 +2,8 @@
       <div id="updates" class="orangebox">
          <h2><a href="/updates">Recent Updates</a></h2>
             <ul>
-               <li><b>2015/11/24</b>: <a href="/release/release_201502">Release 2015.02 rev. 3</a>
-               is available; this maintenance release fixes a number of minor
-               bugs.
+               <li><b>2016/01/22</b>: <a href="/release/release_201502">Release 2015.02 rev. 5</a>
+               is available; minor maintenance release.
                <li><b>2015/07/31</b>: <a href="/release/release_201502">Release 2015.02 rev. 0</a>
                is available; this is a full release.  The initial release of
                <a href="/CometUI">Comet UI</a> is also available.
@@ -21,7 +20,7 @@
       <div id="updates" class="orangebox">
          <h2>Links</h2>
             <ul>
-               <li><a target="new" href="http://pcarvalho.com/patternlab/">PatternLab</a> for proteomics</li>
+               <li><a target="new" href="http://www.patternlabforproteomics.org/">PatternLab</a> for proteomics</li>
                <li><a target="new" href="http://www.matrixscience.com/cgi/search_form.pl?FORMVER=2&SEARCH=MIS">Mascot</a> search engine</li>
                <li><a target="new" href="http://h.thegpm.org/tandem/thegpm_tandem.html">X!Tandem</a> search engine</li>
                <li><a target="new" href="http://www.maxquant.org">MaxQuant</a> software suite</li>
@@ -32,7 +31,6 @@
                <li><a target="new" href="http://cruxtoolkit.sourceforge.net/">Crux</a> project</li>
                <li><a target="new" href="http://www.labkey.org">LabKey</a> project</li>
                <li><a target="new" href="https://github.com/mhoopmann/mstoolkit">MSToolkit</a> data parsing library</li>
-               <li><a target="new" href="http://www.sharedproteomics.com/">SharedProteomics</a> forum/site</li>
                <li><a target="new" href="http://brucelab.gs.washington.edu/xlinkdb/">XLink-DB</a> cross link database</li>
                <li><a target="new" href="http://proteomicsresource.washington.edu/">UW Proteomics Resource</a></li>
                <li><a target="new" href="https://github.com/PedrioliLab/ReAdW">ReAdW</a> Thermo mzXML converter</li>

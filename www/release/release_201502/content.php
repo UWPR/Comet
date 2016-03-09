@@ -4,6 +4,21 @@
          <h1>Comet release 2015.02</h1>
                               
             <ul>
+               <b>release 2015.02 rev. 5 (2015.02.5), release date 2016/01/22</b>
+               <li>pepXML output: correctly report modified_peptide string; previously missing
+                   static modifications and at times terminal modifications.
+               <li>MGF file parsing: fix how fragment masses are adjusted when their fragment
+                   ion charge states are present.
+               <li>RAW file parsing: update MSToolkit to not report warning of unknown tokens
+                   't' and 'E'.
+            </ul>
+            <ul>
+               <b>release 2015.02 rev. 4 (2015.02.4), release date 2016/01/07</b>
+               <li>Additional parsing changes for better MGF support.
+               <li>pepXML output: correct "mod_cterm_mass" value and escape special characters
+                   in "spectrumNativeID" values.
+            </ul>
+            <ul>
                <b>release 2015.02 rev. 3 (2015.02.3), release date 2015/11/24</b>
                <li>Fix incorrect MGF parsing where blank lines in the MGF file would cause
                    an error.

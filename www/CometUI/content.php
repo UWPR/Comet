@@ -26,6 +26,7 @@
 
          <p>A work-in-progress user guide can be found <a href="CometUI-User-Guide.pdf" onClick="_gaq.push(['_trackEvent', 'CometUI', 'Download', 'user guide]);" >here</a>.
 
+         <p>01/07/2016:  CometUI updated to support reading Tide pep.xml files.
          <p><img src="cometui.png">
       </div>
 

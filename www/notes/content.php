@@ -76,6 +76,15 @@
                </ul>
             </div>
 
+            <div class="post hr">
+               <p>Here's a Thermo Q Exactive datafile, human target + decoy database search (HeLa cells),
+                  searched with both the high-high and high-low parameter settings.  This plot
+                  compares the high res versus low res fragment ion settings above.  FDR/q-values
+                  are calculated based on Comet's E-value scores.  This plot demonstrates the
+                  advantages of high res search settings for high res MS/MS data.
+               <p><img src="params.png">
+
+            </div>
                   <!--
             <div class="post hr">
                <p>Here's an example of how Comet scales with increasing core count using an 16-core 
