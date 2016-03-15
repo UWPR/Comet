@@ -960,60 +960,6 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          else if (g_staticParams.tolerances.iIsotopeError == 1)
          {
             double dC13diff  = C13_DIFF;
-
-            for (int i=0; i<iMassOffsetsSize; i++)
-            {
-               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
-
-               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
-               {
-                  return true;
-               }
-            }
-            return false;
-         }
-         else if (g_staticParams.tolerances.iIsotopeError == 2)
-         {
-            double dC13diff  = C13_DIFF;
-            double d2C13diff = C13_DIFF + C13_DIFF;
-
-            for (int i=0; i<iMassOffsetsSize; i++)
-            {
-               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
-
-               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                     || (fabs(dTmpDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
-               {
-                  return true;
-               }
-            }
-            return false;
-         }
-         else if (g_staticParams.tolerances.iIsotopeError == 3)
-         {
-            double dC13diff  = C13_DIFF;
-            double d2C13diff = C13_DIFF + C13_DIFF;
-            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
-
-            for (int i=0; i<iMassOffsetsSize; i++)
-            {
-               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
-
-               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                     || (fabs(dTmpDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                     || (fabs(dTmpDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
-               {
-                  return true;
-               }
-            }
-            return false;
-         }
-         else if (g_staticParams.tolerances.iIsotopeError == 4)
-         {
-            double dC13diff  = C13_DIFF;
             double d2C13diff = C13_DIFF + C13_DIFF;
             double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
 
@@ -1032,7 +978,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             }
             return false;
          }
-         else if (g_staticParams.tolerances.iIsotopeError == 5)
+         else if (g_staticParams.tolerances.iIsotopeError == 2)
          {
             for (int i=0; i<iMassOffsetsSize; i++)
             {
@@ -1065,54 +1011,6 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          if (g_staticParams.tolerances.iIsotopeError == 1)
          {
             double dC13diff  = C13_DIFF;
-
-            // Using C13 isotope mass difference here but likely should
-            // be slightly bigger for other elemental contaminents.
-
-            if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                  || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
-            {
-               return true;
-            }
-            return false;
-         }
-         else if (g_staticParams.tolerances.iIsotopeError == 2)
-         {
-            double dC13diff  = C13_DIFF;
-            double d2C13diff = C13_DIFF + C13_DIFF;
-
-            // Using C13 isotope mass difference here but likely should
-            // be slightly bigger for other elemental contaminents.
-
-            if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                  || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                  || (fabs(dMassDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
-            {
-               return true;
-            }
-            return false;
-         }
-         else if (g_staticParams.tolerances.iIsotopeError == 3)
-         {
-            double dC13diff  = C13_DIFF;
-            double d2C13diff = C13_DIFF + C13_DIFF;
-            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
-
-            // Using C13 isotope mass difference here but likely should
-            // be slightly bigger for other elemental contaminents.
-
-            if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                  || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                  || (fabs(dMassDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                  || (fabs(dMassDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
-            {
-               return true;
-            }
-            return false;
-         }
-         else if (g_staticParams.tolerances.iIsotopeError == 4)
-         {
-            double dC13diff  = C13_DIFF;
             double d2C13diff = C13_DIFF + C13_DIFF;
             double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
 
@@ -1129,7 +1027,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             }
             return false;
          }
-         else if (g_staticParams.tolerances.iIsotopeError == 5)
+         else if (g_staticParams.tolerances.iIsotopeError == 2)
          {
             if (     (fabs(dMassDiff)             <= pQuery->_pepMassInfo.dPeptideMassTolerance)
                   || (fabs(dMassDiff - 4.0070995) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
