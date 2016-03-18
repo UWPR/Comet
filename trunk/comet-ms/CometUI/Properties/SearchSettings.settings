@@ -149,12 +149,12 @@
   &lt;string&gt;Ornithine,O,0.0000&lt;/string&gt;
   &lt;string&gt;Histidine,H,0.0000&lt;/string&gt;
   &lt;string&gt;Phenylalanine,F,0.0000&lt;/string&gt;
+  &lt;string&gt;Selenocysteine,U,0.0000&lt;/string&gt;
   &lt;string&gt;Arginine,R,0.0000&lt;/string&gt;
   &lt;string&gt;Tyrosine,Y,0.0000&lt;/string&gt;
   &lt;string&gt;Tryptophan,W,0.0000&lt;/string&gt;
   &lt;string&gt;User Amino Acid,B,0.0000&lt;/string&gt;
   &lt;string&gt;User Amino Acid,J,0.0000&lt;/string&gt;
-  &lt;string&gt;User Amino Acid,U,0.0000&lt;/string&gt;
   &lt;string&gt;User Amino Acid,X,0.0000&lt;/string&gt;
   &lt;string&gt;User Amino Acid,Z,0.0000&lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>

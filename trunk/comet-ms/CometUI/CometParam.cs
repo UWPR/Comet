@@ -1489,6 +1489,10 @@ namespace CometUI
                     paramName = "add_F_phenylalanine";
                     aaName = "Phenylalanine";
                     break;
+                case "U":
+                    paramName = "add_U_selenocysteine";
+                    aaName = "Selenocysteine";
+                    break;
                 case "R":
                     paramName = "add_R_arginine";
                     aaName = "Arginine";
@@ -1507,10 +1511,6 @@ namespace CometUI
                     break;
                 case "J":
                     paramName = "add_J_user_amino_acid";
-                    aaName = "User Amino Acid";
-                    break;
-                case "U":
-                    paramName = "add_U_user_amino_acid";
                     aaName = "User Amino Acid";
                     break;
                 case "X":
