@@ -2,11 +2,10 @@
       <div id="updates" class="orangebox">
          <h2><a href="/updates">Recent Updates</a></h2>
             <ul>
+               <li><b>2016/03/15</b>: <a href="/release/release_201601">Release 2016.01 rev. 0</a>
+               is now available.
                <li><b>2016/01/22</b>: <a href="/release/release_201502">Release 2015.02 rev. 5</a>
                is available; minor maintenance release.
-               <li><b>2015/07/31</b>: <a href="/release/release_201502">Release 2015.02 rev. 0</a>
-               is available; this is a full release.  The initial release of
-               <a href="/CometUI">Comet UI</a> is also available.
                <p/>
             </ul>
       </div>

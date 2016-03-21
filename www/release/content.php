@@ -3,6 +3,7 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
+               <li><a href="/release/release_201601/">Release 2016.01, 2016/03/15</a></li>
                <li><a href="/release/release_201502/">Release 2015.02, 2015/07/31, last revised 2016/01/22</a></li>
                <li><a href="/release/release_201501/">Release 2015.01, 2015/02/23, last revised 2015/04/28</a></li>
                <li><a href="/release/release_201402/">Release 2014.02, 2014/09/16, last revised 2014/09/25</a></li>
