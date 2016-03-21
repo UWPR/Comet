@@ -1419,6 +1419,11 @@ bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
     const char *pszCometVersion = version.c_str();
+
+    // allow running with 2015.02 parameter files
+    if (strstr(pszCometVersion, "2015.02"))
+       return true;
+
     return strstr(comet_version, pszCometVersion);
 }
 
