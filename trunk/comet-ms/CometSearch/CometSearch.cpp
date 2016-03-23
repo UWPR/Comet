@@ -1380,6 +1380,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    dXcorr = 0.0;
 
+   int iMax = pQuery->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
    for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
    {
       for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -1411,7 +1412,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             //MH: newer sparse matrix converts bin to sparse matrix bin
             bin = *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen);
             x = bin / SPARSE_MATRIX_SIZE;
-            if (ppSparseFastXcorrData[x]==NULL || x>pQuery->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1)
+            if (ppSparseFastXcorrData[x]==NULL || x>iMax) // x should never be > iMax so this is just a safety check
                continue;
             y = bin - (x*SPARSE_MATRIX_SIZE);
             dXcorr += ppSparseFastXcorrData[x][y];
@@ -3260,61 +3261,25 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                double dBion = g_staticParams.precalcMasses.dNtermProton;
                double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
+               // use same protein terminal static mods as target peptide
                if (_varModInfo.iStartPos == 0)
                   dBion += g_staticParams.staticModifications.dAddNterminusProtein;
                if (_varModInfo.iEndPos == _proteinInfo.iProteinSeqLength-1)
                   dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
-               int iDecoyStartPos;  // This is start/end for newly created decoy peptide
-               int iDecoyEndPos;
+               // variable N-term
+               if (pcVarModSitesDecoy[iLenPeptide] > 0)
+                  dBion += g_staticParams.variableModParameters.varModList[pcVarModSitesDecoy[iLenPeptide]-1].dVarModMass;
 
-               iDecoyStartPos = 1;
-               iDecoyEndPos = strlen(szDecoyPeptide)-2;
+               // variable C-term
+               if (pcVarModSitesDecoy[iLenPeptide + 1] > 0)
+                  dYion += g_staticParams.variableModParameters.varModList[pcVarModSitesDecoy[iLenPeptide+1]-1].dVarModMass;
+
+               int iDecoyStartPos = 1;  // This is start/end for newly created decoy peptide
+               int iDecoyEndPos = strlen(szDecoyPeptide)-2;
 
                int iTmp1;
                int iTmp2;
-
-//FIX  check to make sure if logic is used right for terminal mod
-
-               // deal with n-term mod
-               for (j=0; j<VMODS; j++)
-               {
-                  if ( strchr(g_staticParams.variableModParameters.varModList[j].szVarModChar, 'n')
-                        && !isEqual(g_staticParams.variableModParameters.varModList[j].dVarModMass, 0.0)
-                        && (_varModInfo.varModStatList[j].iMatchVarModCt > 0) )
-                  {
-                     if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
-                     {
-                        if (pcVarModSitesDecoy[iLenPeptide] != 0)  // conflict in two variable mods on n-term
-                           return true;
-
-                        // store the modification number at modification position
-                        pcVarModSitesDecoy[iLenPeptide] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
-                        dBion += g_staticParams.variableModParameters.varModList[j].dVarModMass;
-                     }
-                     piVarModCharIdx[j]++;
-                  }
-               }
-
-               // deal with c-term mod
-               for (j=0; j<VMODS; j++)
-               {
-                  if ( strchr(g_staticParams.variableModParameters.varModList[j].szVarModChar, 'c')
-                        && !isEqual(g_staticParams.variableModParameters.varModList[j].dVarModMass, 0.0)
-                        && (_varModInfo.varModStatList[j].iMatchVarModCt > 0) )
-                  {
-                     if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
-                     {
-                        if (pcVarModSitesDecoy[iLenPeptide+1] != 0)  // conflict in two variable mods on c-term
-                           return true;
-
-                        // store the modification number at modification position
-                        pcVarModSitesDecoy[iLenPeptide+1] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
-                        dYion += g_staticParams.variableModParameters.varModList[j].dVarModMass;
-                     }
-                     piVarModCharIdx[j]++;
-                  }
-               }
 
                // Generate pdAAforward for szDecoyPeptide
                for (i=iDecoyStartPos; i<iDecoyEndPos; i++)
