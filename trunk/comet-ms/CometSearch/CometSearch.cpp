@@ -1711,7 +1711,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       {
          // Quick check of peptide sequence length first.
          if (iLenMinus1 == pQuery->_pDecoys[i].iLenPeptide
-               && isEqual(dCalcPepMass - pQuery->_pDecoys[i].dPepMass, 0.0))
+               && isEqual(dCalcPepMass, pQuery->_pDecoys[i].dPepMass))
          {
             if (pQuery->_pDecoys[i].szPeptide[0] == szProteinSeq[iStartPos])
             {
@@ -1769,7 +1769,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       {
          // Quick check of peptide sequence length.
          if (iLenMinus1 == pQuery->_pResults[i].iLenPeptide
-               && isEqual(dCalcPepMass - pQuery->_pResults[i].dPepMass, 0.0))
+               && isEqual(dCalcPepMass, pQuery->_pResults[i].dPepMass))
          {
             if (pQuery->_pResults[i].szPeptide[0] == szProteinSeq[iStartPos])
             {
