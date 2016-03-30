@@ -2019,18 +2019,28 @@ bool CometSearchManager::DoSearch()
             if (!g_staticParams.options.bOutputSqtStream)
             {
                char szOut[128];
-#ifdef PERF_DEBUG
-               time_t tStartTimeSave = tStartTime;
-#endif
-               time(&tStartTime);
-               strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
-               sprintf(szOut, " Search end:    %s\n\n", g_staticParams.szDate);
+               time_t tEndTime;
+
+               time(&tEndTime);
+               int iElapsedTime = (int)difftime(tEndTime, tStartTime);
+
+               strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tEndTime));
+               sprintf(szOut, " Search end:    %s, runtime", g_staticParams.szDate);
+
+               int hours, mins, secs;
+
+               hours = (int)(iElapsedTime/3600);
+               mins = (int)(iElapsedTime/60) - (hours*60);
+               secs = (int)(iElapsedTime%60);
+
+               if (hours)
+                  sprintf(szOut+strlen(szOut), " %d hours", hours);
+               if (mins)
+                  sprintf(szOut+strlen(szOut), " %d mins", mins);
+               if (secs || (!hours && !mins)) // print out 0 sec
+                  sprintf(szOut+strlen(szOut), " %d secs", secs);
+
                logout(szOut);
-#ifdef PERF_DEBUG
-               int iElapsedTime=(int)difftime(tStartTime, tStartTimeSave);
-               sprintf(szOut, " - Total search time:  %d seconds\n", iElapsedTime);
-               logout(szOut);
-#endif
             }
 
             if (NULL != fpout_pepxml)
