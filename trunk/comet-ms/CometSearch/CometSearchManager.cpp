@@ -2025,7 +2025,7 @@ bool CometSearchManager::DoSearch()
                int iElapsedTime = (int)difftime(tEndTime, tStartTime);
 
                strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tEndTime));
-               sprintf(szOut, " Search end:    %s, runtime", g_staticParams.szDate);
+               sprintf(szOut, " Search end:    %s", g_staticParams.szDate);
 
                int hours, mins, secs;
 
@@ -2034,11 +2034,10 @@ bool CometSearchManager::DoSearch()
                secs = (int)(iElapsedTime%60);
 
                if (hours)
-                  sprintf(szOut+strlen(szOut), " %d hours", hours);
-               if (mins)
-                  sprintf(szOut+strlen(szOut), " %d mins", mins);
-               if (secs || (!hours && !mins)) // print out 0 sec
-                  sprintf(szOut+strlen(szOut), " %d secs", secs);
+                  sprintf(szOut+strlen(szOut), ", %dh:%dm:%ds", hours, mins, secs);
+               else
+                  sprintf(szOut+strlen(szOut), ", %dm:%ds", mins, secs);
+               sprintf(szOut+strlen(szOut), "\n\n");
 
                logout(szOut);
             }
