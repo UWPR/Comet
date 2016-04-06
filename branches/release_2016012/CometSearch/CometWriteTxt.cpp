@@ -366,20 +366,19 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // generate modified_peptide string
          if (bNterm)
-            fprintf(fpout, "n[%0.0f]", dNterm);
+            fprintf(fpout, "n[%0.1f]", dNterm);
          for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
-            if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
-                  || pOutput[iWhichResult].pcVarModSites[i] > 0)
+            if (pOutput[iWhichResult].pcVarModSites[i] > 0)
             {
-               fprintf(fpout, "[%0.0f]",
+               fprintf(fpout, "[%0.1f]",
                      g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
             }
          }
          if (bCterm)
-            fprintf(fpout, "c[%0.0f]", dCterm);
+            fprintf(fpout, "c[%0.1f]", dCterm);
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
