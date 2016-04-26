@@ -119,15 +119,15 @@ class Spectrum {
 
  //Data Members
   vector<Peak_T>   *vPeaks;
-  vector<EZState>  *vEZ;
-  vector<ZState>   *vZ;
+  vector<EZState>  *vEZ;        //extended z-lines with charge state, M+H, and peak information.
+  vector<ZState>   *vZ;         //presumed charge states and M+H; M can be monoisotopic or selected.
   int		           charge;
   float		         rTime;
   int		           scanNumber;
   int              scanNumber2;
   int              msLevel;
-  vector<double>   *monoMZ;
-  vector<double>   *mz;
+  vector<double>   *monoMZ;     //the monoisotopic m/z of the selected ion(s)
+  vector<double>   *mz;         //the selected ion(s) in m/z
   MSSpectrumType   fileType;
   MSActivation     actMethod;
   int              scanID;       //index for sqlite

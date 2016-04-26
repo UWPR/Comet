@@ -368,6 +368,9 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 		m_bInintenArrayBinary = true;
 		m_bInmzArrayBinary = false;
 
+  } else if(!strcmp(name,"isolation window target m/z") || !strcmp(accession,"MS:1000827")) {
+    m_precursorIon.mz=atof(value);
+
 	} else if(!strcmp(name,"LTQ Velos") || !strcmp(accession,"MS:1000855")) {
 		m_instrument.model=name;
 
@@ -430,7 +433,8 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
 	    spec->setHighMZ(atof(value));
 		
 	} else if(!strcmp(name, "selected ion m/z") || !strcmp(accession,"MS:1000744"))	{
-		m_precursorIon.mz=atof(value);
+		if(m_precursorIon.monoMZ==0) m_precursorIon.mz=atof(value); //if precursor mono m/z hasn't been determined (by Thermo) then this is the selected m/z. Also supports legacy where isolationWindow was not specified.
+    else m_precursorIon.monoMZ=atof(value); //otherwise, it should be the true mono m/z
 
 	} else if(!strcmp(name, "time array") || !strcmp(accession,"MS:1000595"))	{
 		m_bInmzArrayBinary = true; //note that this uses the m/z designation, although it is a time series

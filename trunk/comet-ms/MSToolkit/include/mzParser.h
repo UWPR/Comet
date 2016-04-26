@@ -262,10 +262,6 @@ public:
 	void setPositiveScan(bool b);
   void setPrecursorIon(sPrecursorIon& pi);
   void setPrecursorIon(double mz, double monoMZ, double intensity, int charge, int possibleChargeCount, int* possibleCharges);
-	//void setPrecursorCharge(int z, bool bAlt=false);
-	//void setPrecursorIntensity(double d);
-  //void setPrecursorMonoMZ(double mz);
-	//void setPrecursorMZ(double mz);
 	void setPrecursorScanNum(int i);
 	void setRTime(float t);
 	void setScanIndex(int num);
@@ -316,11 +312,6 @@ protected:
 	int							msLevel;
 	int							peaksCount;
 	bool						positiveScan;
-	//int							precursorCharge[5];		//Precursor ion charge; 0 if no precursor or unknown
-  //int             precursorChargeCount; //Ion may have multiple possible precursor charges
-	//double					precursorIntensity;		//Precursor ion intensity; 0 if no precursor or unknown
-  //double          precursorMonoMZ;      //Might be reported in Thermo data
-	//double					precursorMZ;					//Precursor ion m/z value; 0 if no precursor or unknown
 	int							precursorScanNum;			//Precursor scan number; 0 if no precursor or unknown
 	float						rTime;								//always stored in minutes
 	int							scanIndex;						//when scan numbers aren't enough, there are indexes (start at 1)
