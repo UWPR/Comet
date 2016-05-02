@@ -119,6 +119,9 @@ bool MSFileReaderWrapper::ReadPrecursorPeaks(String^ msFileName, int fragmentSca
     while ((!_pMSReader->readFile(szMSFileName, spec, scanNum)) && (scanNum > 0))
     {
         scanNum--;
+
+        if (fragmentScanNum - scanNum > 50)
+            return false;
     }
 
     if (0 == spec.size())
