@@ -321,6 +321,11 @@ namespace CometUI.ViewResults
                 return false;
             }
 
+            if (!ReadFragmentBinSize(pepXMLReader))
+            {
+               return false;
+            }
+
             if (!ReadUseIons(pepXMLReader))
             {
                 return false;
@@ -373,6 +378,25 @@ namespace CometUI.ViewResults
             }
 
             return true;
+        }
+
+        private bool ReadFragmentBinSize(PepXMLReader pepXMLReader)
+        {
+           double fragmentBinSize;
+           if (
+               pepXMLReader.ReadAttributeFromFirstMatchingNode(
+                   "/msms_pipeline_analysis/msms_run_summary/search_summary/parameter[@name='fragment_bin_tol']", "value",
+                   out fragmentBinSize))
+           {
+              SearchParams.FragmentBinSize = fragmentBinSize;
+           }
+           else
+           {
+              ErrorMessage = "Could not read the fragment_bin_tol attribute.";
+              return false;
+           }
+
+           return true;
         }
 
         private bool ReadUseIons(PepXMLReader pepXMLReader)
@@ -1095,6 +1119,7 @@ namespace CometUI.ViewResults
     {
         public MSSpectrumTypeWrapper MSLevel { get; set; }
         public MassSpecUtils.MassType MassTypeFragment { get; set; }
+        public double FragmentBinSize { get; set; }
         public bool UseAIons { get; set; }
         public bool UseBIons { get; set; }
         public bool UseCIons { get; set; }
