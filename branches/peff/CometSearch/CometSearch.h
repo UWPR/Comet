@@ -97,11 +97,14 @@ private:
                      int iResiduePosition);
    bool HasVariableMod(int varModCounts[],
                        int iCVarModCount,
-                       int iNVarModCount);
+                       int iNVarModCount,
+                       struct sDBEntry *dbe);
    int WithinMassTolerance(double dCalcPepMass,
                            char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
+   int WithinMassTolerancePeff(double dCalcPepMass,
+                               vector <PeffPositionStruct>* vPeffArray);
    void XcorrScore(char *szProteinSeq,
                    char *szProteinName,
                    int iStartPos,
@@ -146,18 +149,25 @@ private:
                      int varModCounts[],
                      int iStartPos,
                      int iEndPos,
-                     bool *pbDuplFragment);
+                     bool *pbDuplFragment,
+                     struct sDBEntry *dbe);
    double TotalVarModMass(int *pVarModCounts);
    bool PermuteMods(char *szProteinSeq,
                     int iWhichQuery,
                     int iWhichMod,
-                    bool *pbDuplFragments);
+                    bool *pbDuplFragments,
+                    vector <PeffPositionStruct>* vPeffArray);
+   void PermutePeff(void);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool CalcVarModIons(char *szProteinSeq,
                        int iWhichQuery,
                        bool *pbDuplFragments);
    bool SearchForPeptides(struct sDBEntry dbe,
+                          char *szProteinSeq,
+                          bool bNtermPeptideOnly,
+                          bool *pbDuplFragment);
+   bool SearchForVariants(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool bNtermPeptideOnly,
                           bool *pbDuplFragment);

@@ -884,7 +884,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    else if (iAddCharge == -1)  // should never get here
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - iAddCharge=%d\n",  iAddCharge);
+      sprintf(szErrorMsg,  " Error - iAddCharge=%d\n", iAddCharge);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);

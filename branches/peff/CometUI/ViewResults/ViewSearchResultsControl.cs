@@ -252,9 +252,34 @@ namespace CometUI.ViewResults
             resultsFastObjectListView.Clear();
             UpdateColumnHeaders();
             resultsFastObjectListView.SetObjects(SearchResults);
+            
             resultsFastObjectListView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+          
+            SortByExpectColumn(); //JKE
+            
             resultsFastObjectListView.EndUpdate();
             UpdateResultsListSummaryText();
+        }
+
+        public void SortByExpectColumn()
+        {
+           foreach (OLVColumn item in resultsFastObjectListView.Columns)
+           {
+              //MessageBox.Show("item.Text");
+              if (item.Text.ToUpper().Equals("SSCAN"))
+              {
+                 item.Width = 60;
+              }
+              else if (item.Text.ToUpper().Equals("EXPECT"))
+              {
+                 resultsFastObjectListView.Sort(item, SortOrder.Ascending);
+                 item.Width = 70;
+              }
+              else if (item.Text.ToUpper().Equals("IONS"))
+              {
+                 item.Width = 60;
+              }
+           }
         }
 
         private void UpdateResultsListSummaryText()
@@ -605,29 +630,66 @@ namespace CometUI.ViewResults
 
         private void InitializeSpectrumGraphOptions()
         {
-            aIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseAIons;
-            aIonDoublyChargedCheckBox.Checked = false;
-            aIonTriplyChargedCheckBox.Checked = false;
-
-            bIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseBIons;
-            bIonDoublyChargedCheckBox.Checked = false;
-            bIonTriplyChargedCheckBox.Checked = false;
-
-            cIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseCIons;
-            cIonDoublyChargedCheckBox.Checked = false;
-            cIonTriplyChargedCheckBox.Checked = false;
-
-            xIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseXIons;
-            xIonDoublyChargedCheckBox.Checked = false;
-            xIonTriplyChargedCheckBox.Checked = false;
-
-            yIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseYIons;
-            yIonDoublyChargedCheckBox.Checked = false;
-            yIonTriplyChargedCheckBox.Checked = false;
-
-            zIonSinglyChargedCheckBox.Checked = SearchResultsMgr.SearchParams.UseZIons;
-            zIonDoublyChargedCheckBox.Checked = false;
-            zIonTriplyChargedCheckBox.Checked = false;
+           if (SearchResultsMgr.SearchParams.UseAIons)
+           {
+              aIonSinglyChargedCheckBox.Checked = true;
+              aIonDoublyChargedCheckBox.Checked = false;
+              aIonTriplyChargedCheckBox.Checked = false;
+              if (ViewSpectraSearchResult.AssumedCharge > 2)
+              {
+                 aIonDoublyChargedCheckBox.Checked = true;
+              }
+           }
+           if (SearchResultsMgr.SearchParams.UseBIons)
+           {
+              bIonSinglyChargedCheckBox.Checked = true;
+              bIonDoublyChargedCheckBox.Checked = false;
+              bIonTriplyChargedCheckBox.Checked = false;
+              if (ViewSpectraSearchResult.AssumedCharge > 2)
+              {
+                 bIonDoublyChargedCheckBox.Checked = true;
+              }
+           }
+           if (SearchResultsMgr.SearchParams.UseCIons)
+           {
+              cIonSinglyChargedCheckBox.Checked = true;
+              cIonDoublyChargedCheckBox.Checked = false;
+              cIonTriplyChargedCheckBox.Checked = false;
+              if (ViewSpectraSearchResult.AssumedCharge > 2)
+              {
+                 cIonDoublyChargedCheckBox.Checked = true;
+              }
+           }
+           if (SearchResultsMgr.SearchParams.UseXIons)
+           {
+              xIonSinglyChargedCheckBox.Checked = true;
+              xIonDoublyChargedCheckBox.Checked = false;
+              xIonTriplyChargedCheckBox.Checked = false;
+              if (ViewSpectraSearchResult.AssumedCharge > 2)
+              {
+                 xIonDoublyChargedCheckBox.Checked = true;
+              }
+           }
+           if (SearchResultsMgr.SearchParams.UseYIons)
+           {
+              yIonSinglyChargedCheckBox.Checked = true;
+              yIonDoublyChargedCheckBox.Checked = false;
+              yIonTriplyChargedCheckBox.Checked = false;
+              if (ViewSpectraSearchResult.AssumedCharge > 2)
+              {
+                 yIonDoublyChargedCheckBox.Checked = true;
+              }
+           }
+           if (SearchResultsMgr.SearchParams.UseZIons)
+           {
+              zIonSinglyChargedCheckBox.Checked = true;
+              zIonDoublyChargedCheckBox.Checked = false;
+              zIonTriplyChargedCheckBox.Checked = false;
+              if (ViewSpectraSearchResult.AssumedCharge > 2)
+              {
+                 zIonDoublyChargedCheckBox.Checked = true;
+              }
+           }
 
             if (MassSpecUtils.MassType.Average == SearchResultsMgr.SearchParams.MassTypeFragment)
             {
@@ -678,7 +740,7 @@ namespace CometUI.ViewResults
             }
 
             spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "BIonCounter") { TextAlign = HorizontalAlignment.Center });
-            spectrumGraphIonsTable.Columns.Add(new OLVColumn("AA", "AA") { TextAlign = HorizontalAlignment.Center });
+            spectrumGraphIonsTable.Columns.Add(new OLVColumn(".", "AA") { TextAlign = HorizontalAlignment.Center });  //JKE
             spectrumGraphIonsTable.Columns.Add(new OLVColumn("#", "YIonCounter") { TextAlign = HorizontalAlignment.Center });
 
             for (var i = (int)IonType.X; i <= (int)IonType.Z; i++)
@@ -704,7 +766,10 @@ namespace CometUI.ViewResults
                     var ionTypeStr = IonCalculator.IonTypeTable[ionType];
                     var header = String.Format("{0}{1}+", ionTypeStr, charge);
                     var aspect = ionTypeStr.ToUpper() + IonCalculator.IonChargeTable[charge] + "ChargedIonMass";
-                    spectrumGraphIonsTable.Columns.Add(new OLVColumn(header, aspect) { TextAlign = HorizontalAlignment.Center });
+                    spectrumGraphIonsTable.Columns.Add(new OLVColumn(header, aspect) { TextAlign = HorizontalAlignment.Right, HeaderTextAlign = HorizontalAlignment.Center });
+                    spectrumGraphIonsTable.OwnerDraw = true;
+                    spectrumGraphIonsTable.HeaderUsesThemes = false;
+                    //spectrumGraphIonsTable.HeaderFormatStyle.SetBackColor(Color.Aqua); 
                 }
             }
         }
@@ -936,8 +1001,8 @@ namespace CometUI.ViewResults
 
             // Draw the acquired precursor peak and get the label for it
             var acquiredFontSpec = new FontSpec { Border = border, Fill = fill, FontColor = Color.Red, IsDropShadow = false };
-            var acquiredPeakLabel = DrawPrecursorPeak(acquiredPrecursorMz, acquiredPrecursorPeak, "A: ",
-                                             acquiredFontSpec, "A = acquired m/z");
+            var acquiredPeakLabel = DrawPrecursorPeak(acquiredPrecursorMz, acquiredPrecursorPeak, "E: ",
+                                             acquiredFontSpec, "E = experimental m/z");
             PrecursorGraphPeakLabels.Add(acquiredPeakLabel);
 
             // Draw the peak labels for the precursor graph

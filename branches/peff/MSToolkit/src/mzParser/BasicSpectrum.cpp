@@ -164,20 +164,6 @@ void BasicSpectrum::setLowMZ(double d){ lowMZ=d;}
 void BasicSpectrum::setMSLevel(int level){ msLevel=level;}
 void BasicSpectrum::setPeaksCount(int i){ peaksCount=i;}
 void BasicSpectrum::setPositiveScan(bool b){ positiveScan=b;}
-//void BasicSpectrum::setPrecursorCharge(int z, bool bAlt){ 
-//  if (bAlt && precursorChargeCount<5) precursorCharge[precursorChargeCount++]=z;
-//  else if (bAlt) cout << "Warning: Scan " << scanNum << " has too many potential precursor charges. " << z << " not added." << endl;
-//  else if(z==0){
-//    precursorCharge[0]=0;
-//    precursorChargeCount=0;
-//  } else {
-//    precursorCharge[0]=z;
-//    precursorChargeCount=1;
-//  }
-//}
-//void BasicSpectrum::setPrecursorIntensity(double d){ precursorIntensity=d;}
-//void BasicSpectrum::setPrecursorMonoMZ(double mz){ precursorMonoMZ=mz;}
-//void BasicSpectrum::setPrecursorMZ(double mz){ precursorMZ=mz;}
 void BasicSpectrum::setPrecursorIon(sPrecursorIon& p){ vPrecursor->push_back(p);}
 void BasicSpectrum::setPrecursorScanNum(int i){ precursorScanNum=i;}
 void BasicSpectrum::setRTime(float f){ rTime=f;}

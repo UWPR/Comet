@@ -224,12 +224,29 @@ struct PeffModStruct       // stores info read from PEFF header
    double dMassDiffAvg;    // this is looked up from strMod string from OBO
    double dMassDiffMono;
    int    iPosition;       // position of modification
+
+   bool operator<(const PeffModStruct& a) const
+   {
+      return (iPosition < a.iPosition);
+   }
 };
 
 struct PeffVariantSimpleStruct  // stores info read from PEFF header
 {
    int    iPosition;       // position of variant
    char   cResidue;        // new variant
+
+   bool operator<(const PeffVariantSimpleStruct& a) const
+   {
+      return (iPosition < a.iPosition);
+   }
+};
+
+struct PeffPositionStruct
+{
+   int iPosition;
+   vector <double>vectorMassDiffAvg;
+   vector <double>vectorMassDiffMono;
 };
 
 //-->MH
