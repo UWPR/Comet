@@ -690,7 +690,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
       // generate modified_peptide string
       if (bNterm)
-         sprintf(szModPep+strlen(szModPep), "n[%0.0f]", dNterm);
+         sprintf(szModPep+strlen(szModPep), "n[%0.1f]", dNterm);
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
          sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
@@ -698,13 +698,13 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
                || pOutput[iWhichResult].pcVarModSites[i] > 0)
          {
-            sprintf(szModPep+strlen(szModPep), "[%0.0f]",
+            sprintf(szModPep+strlen(szModPep), "[%0.1f]",
                   g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass
                   + g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]);
          }
       }
       if (bCterm)
-         sprintf(szModPep+strlen(szModPep), "c[%0.0f]", dCterm);
+         sprintf(szModPep+strlen(szModPep), "c[%0.1f]", dCterm);
 
       fprintf(fpout, "    <modification_info modified_peptide=\"%s\"", szModPep);
       if (bNterm)
