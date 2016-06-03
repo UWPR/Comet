@@ -76,8 +76,13 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // This might not be the case with -N command line option.
    // So get base name from g_staticParams.inputFile.szFileName here to be sure
    char *pStr;
+#ifdef _WIN32
    char szRunSummaryBaseName[SIZE_FILE];         // base name of szInputFile
    char szRunSummaryResolvedPath[SIZE_FILE];     // resolved path of szInputFile
+#else
+   char szRunSummaryBaseName[PATH_MAX];          // base name of szInputFile
+   char szRunSummaryResolvedPath[PATH_MAX];      // resolved path of szInputFile
+#endif
    int  iLen = strlen(g_staticParams.inputFile.szFileName);
    strcpy(szRunSummaryBaseName, g_staticParams.inputFile.szFileName);
    if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
