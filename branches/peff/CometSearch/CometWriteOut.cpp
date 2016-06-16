@@ -483,11 +483,18 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    {
       sprintf(szBuf+strlen(szBuf), "%c", (int)pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].pcVarModSites[i] != 0)
       {
-         sprintf(szBuf+strlen(szBuf), "%c",
-               (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         if (pOutput[iWhichResult].pcVarModSites[i] > 0
+               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+         {
+            sprintf(szBuf+strlen(szBuf), "%c",
+                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         }
+         else
+         {
+            sprintf(szBuf+strlen(szBuf), "?");  // PEFF:  no clue how to specify mod encoding
+         }
       }
    }
 
@@ -547,10 +554,16 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[iPos]];
 
       if (g_staticParams.variableModParameters.bVarModSearch)
-         dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[i]-1].dVarModMass;
+      {
+         if (pQuery->_pResults[0].pcVarModSites[i] != 0)
+            dBion += pQuery->_pResults[0].dVarModSites[i];   // PEFF need to validate this change
+//          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[i]-1].dVarModMass;
 
-      if (g_staticParams.variableModParameters.bVarModSearch)
-         dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[iPos]-1].dVarModMass;
+
+         if (pQuery->_pResults[0].pcVarModSites[iPos] != 0)
+            dYion += pQuery->_pResults[0].dVarModSites[iPos];
+//          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[iPos]-1].dVarModMass;
+      }
 
       _pdAAforward[i] = dBion;
       _pdAAreverse[iPos] = dYion;

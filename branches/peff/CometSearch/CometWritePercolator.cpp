@@ -280,11 +280,18 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    {
       sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].pcVarModSites[i] != 0)
       {
-         sprintf(szModPep+strlen(szModPep), "%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         if (pOutput[iWhichResult].pcVarModSites[i] > 0
+               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+         {
+            sprintf(szModPep+strlen(szModPep), "%c",
+                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         }
+         else
+         {
+            sprintf(szModPep+strlen(szModPep), "?"); // PEFF:  no way to specify mod encoding w/o breaking some compatibility
+         }
       }
    }
 

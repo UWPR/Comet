@@ -159,6 +159,7 @@ struct Results
    int    iMatchedIons;
    int    iTotalIons;
    int    iSeqFilePosition;
+   double dVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];    // store variable mods encoding, +2 to accomodate N/C-term
    char szProtein[WIDTH_REFERENCE];
    char szPeptide[MAX_PEPTIDE_LEN];
@@ -242,9 +243,10 @@ struct PeffVariantSimpleStruct  // stores info read from PEFF header
    }
 };
 
-struct PeffPositionStruct
+struct PeffPositionStruct  // collate PEFF mods by position in sequence
 {
-   int iPosition;
+   int iPosition;  // position within the sequence
+   vector <int>vectorWhichPeff;  // which specific peff entry from PeffModStruct
    vector <double>vectorMassDiffAvg;
    vector <double>vectorMassDiffMono;
 };

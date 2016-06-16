@@ -284,11 +284,17 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
    {
       sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].pcVarModSites[i] != 0)
       {
-         sprintf(szBuf+strlen(szBuf), "%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         if (pOutput[iWhichResult].pcVarModSites[i] > 0)
+         {
+            sprintf(szBuf+strlen(szBuf), "%c",
+                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         }
+         else
+         {
+            sprintf(szBuf+strlen(szBuf), "?");  // PEFF:  no way to specify mod encoding without breaking some compatibility
+         }
       }
    }
 

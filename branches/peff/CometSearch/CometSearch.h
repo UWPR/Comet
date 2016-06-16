@@ -103,8 +103,8 @@ private:
                            char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
-   int WithinMassTolerancePeff(double dCalcPepMass,
-                               vector <PeffPositionStruct>* vPeffArray);
+   bool WithinMassTolerancePeff(double dCalcPepMass,
+                                vector<PeffPositionStruct>* vPeffArray);
    void XcorrScore(char *szProteinSeq,
                    char *szProteinName,
                    int iStartPos,
@@ -114,7 +114,8 @@ private:
                    bool bDecoyPep,
                    int iWhichQuery,
                    int iLenPeptide,
-                   char *pcVarModSites);
+                   char *pcVarModSites,
+                   struct sDBEntry *dbe);
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
@@ -143,7 +144,8 @@ private:
                      double dScoreSp,
                      char *szProteinName,
                      bool bStoreSeparateDecoy,
-                     char *pcVarModSites);
+                     char *pcVarModSites,
+                     struct sDBEntry *dbe);
    bool VarModSearch(char *szProteinSeq,
                      char *szProteinName,
                      int varModCounts[],
@@ -156,13 +158,24 @@ private:
                     int iWhichQuery,
                     int iWhichMod,
                     bool *pbDuplFragments,
-                    vector <PeffPositionStruct>* vPeffArray);
-   void PermutePeff(void);
+                    bool *bDoPeffAnalysis,
+                    vector <PeffPositionStruct>* vPeffArray,
+                    struct sDBEntry *dbe);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
+   bool MergeVarMods(char *szProteinSeq,
+                     int iWhichQuery,
+                     bool *pbDuplFragments,
+                     bool *bDoPeffAnalysis,
+                     vector <PeffPositionStruct>* vPeffArray,
+                     struct sDBEntry *dbe);
    bool CalcVarModIons(char *szProteinSeq,
                        int iWhichQuery,
-                       bool *pbDuplFragments);
+                       bool *pbDuplFragment,
+                       char *pcVarModSites,
+                       double dCalcPepMass,
+                       int iLenPeptide,
+                       struct sDBEntry *dbe);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool bNtermPeptideOnly,

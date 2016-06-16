@@ -210,12 +210,10 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
-            if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
-                  || pOutput[iWhichResult].pcVarModSites[i] > 0)
+            if (pOutput[iWhichResult].pcVarModSites[i] != 0)
             {
-               fprintf(fpout, "[%0.0f]",
-                     g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass
-                     + g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]);
+               fprintf(fpout, "[%0.0f]", pOutput[iWhichResult].dVarModSites[i]
+                     - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
             }
          }
          if (bCterm)
@@ -393,16 +391,15 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
-            if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
-                  || pOutput[iWhichResult].pcVarModSites[i] > 0)
+            if (pOutput[iWhichResult].pcVarModSites[i] != 0)
             {
                fprintf(fpout, "[%0.0f]",
-                     g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass
-                     + g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]);
+                     pOutput[iWhichResult].dVarModSites[i]
+                     - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
             }
          }
          if (bCterm)
-            fprintf(fpout, "c[%0.0f]", dCterm);
+            fprintf(fpout, "c[%0.0f]", dCterm);  // FIX: should be changed to c-term mass diff?
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
@@ -485,8 +482,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       }
 
       // variable modification
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].pcVarModSites[i] != 0)
       {
          if (!bFirst)
             fprintf(fpout, ", ");
@@ -495,7 +491,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
 
          fprintf(fpout, "%d_V_%0.6f",
                i+1,
-               g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass);
+               pOutput[iWhichResult].dVarModSites[i] - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
       }
    }
 
