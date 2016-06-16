@@ -293,11 +293,14 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
          dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
 
-         if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[ii]>0)
-            dBion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[ii]-1].dVarModMass;
+         if (g_staticParams.variableModParameters.bVarModSearch)
+         {
+            if (pOutput[i].pcVarModSites[ii] != 0)
+               dBion += pOutput[i].dVarModSites[ii];
 
-         if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[iPos]>0)
-            dYion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[iPos]-1].dVarModMass;
+            if (pOutput[i].pcVarModSites[iPos] != 0)
+               dYion += pOutput[i].dVarModSites[iPos];
+         }
 
          pdAAforward[ii] = dBion;
          pdAAreverse[ii] = dYion;

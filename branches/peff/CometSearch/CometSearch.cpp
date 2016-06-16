@@ -3803,10 +3803,6 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
                if  (bValidPeffPosition)
                {
-                  for (i=_varModInfo.iStartPos; i<=_varModInfo.iEndPos; i++)
-                     printf("%d", pcVarModSites[i - _varModInfo.iStartPos]);
-                  printf("\n");
-
                   // Need to check if mass is OK
          
                   // Do a binary search on list of input queries to find matching mass.
@@ -3845,8 +3841,6 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    }
    else
    {
-printf("OK  should be CalcVarModIons now but no PEFF\n");
-
       // FIX: add test here as pcVarModSites should not contain any negative PEFF values
       CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, pcVarModSites, dCalcPepMass, iLenPeptide,dbe);
    }
