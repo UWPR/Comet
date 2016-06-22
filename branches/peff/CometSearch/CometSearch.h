@@ -146,13 +146,13 @@ private:
                      bool bStoreSeparateDecoy,
                      char *pcVarModSites,
                      struct sDBEntry *dbe);
-   bool VarModSearch(char *szProteinSeq,
-                     char *szProteinName,
-                     int varModCounts[],
-                     int iStartPos,
-                     int iEndPos,
-                     bool *pbDuplFragment,
-                     struct sDBEntry *dbe);
+   bool VariableModSearch(char *szProteinSeq,
+                          char *szProteinName,
+                          int varModCounts[],
+                          int iStartPos,
+                          int iEndPos,
+                          bool *pbDuplFragment,
+                          struct sDBEntry *dbe);
    double TotalVarModMass(int *pVarModCounts);
    bool PermuteMods(char *szProteinSeq,
                     int iWhichQuery,

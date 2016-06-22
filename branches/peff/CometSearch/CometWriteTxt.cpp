@@ -212,7 +212,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
             if (pOutput[iWhichResult].pcVarModSites[i] != 0)
             {
-               fprintf(fpout, "[%0.0f]", pOutput[iWhichResult].dVarModSites[i]
+               fprintf(fpout, "[%0.0f]", pOutput[iWhichResult].pdVarModSites[i]
                      - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
             }
          }
@@ -394,7 +394,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             if (pOutput[iWhichResult].pcVarModSites[i] != 0)
             {
                fprintf(fpout, "[%0.0f]",
-                     pOutput[iWhichResult].dVarModSites[i]
+                     pOutput[iWhichResult].pdVarModSites[i]
                      - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
             }
          }
@@ -491,7 +491,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
 
          fprintf(fpout, "%d_V_%0.6f",
                i+1,
-               pOutput[iWhichResult].dVarModSites[i] - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
+               pOutput[iWhichResult].pdVarModSites[i] - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
       }
    }
 

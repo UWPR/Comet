@@ -556,12 +556,12 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (pQuery->_pResults[0].pcVarModSites[i] != 0)
-            dBion += pQuery->_pResults[0].dVarModSites[i];   // PEFF need to validate this change
+            dBion += pQuery->_pResults[0].pdVarModSites[i];   // PEFF need to validate this change
 //          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[i]-1].dVarModMass;
 
 
          if (pQuery->_pResults[0].pcVarModSites[iPos] != 0)
-            dYion += pQuery->_pResults[0].dVarModSites[iPos];
+            dYion += pQuery->_pResults[0].pdVarModSites[iPos];
 //          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[iPos]-1].dVarModMass;
       }
 

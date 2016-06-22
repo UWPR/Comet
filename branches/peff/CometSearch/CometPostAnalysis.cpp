@@ -296,10 +296,10 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          if (g_staticParams.variableModParameters.bVarModSearch)
          {
             if (pOutput[i].pcVarModSites[ii] != 0)
-               dBion += pOutput[i].dVarModSites[ii];
+               dBion += pOutput[i].pdVarModSites[ii];
 
             if (pOutput[i].pcVarModSites[iPos] != 0)
-               dYion += pOutput[i].dVarModSites[iPos];
+               dYion += pOutput[i].pdVarModSites[iPos];
          }
 
          pdAAforward[ii] = dBion;
