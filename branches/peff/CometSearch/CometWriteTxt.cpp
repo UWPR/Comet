@@ -205,16 +205,16 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // generate modified_peptide string
          if (bNterm)
-            fprintf(fpout, "n[%0.0f]", dNterm);
+            fprintf(fpout, "n[%0.1f]", dNterm);
          for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
             if (pOutput[iWhichResult].pcVarModSites[i] != 0)
-               fprintf(fpout, "[%0.0f]", pOutput[iWhichResult].pdVarModSites[i]);
+               fprintf(fpout, "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
          if (bCterm)
-            fprintf(fpout, "c[%0.0f]", dCterm);
+            fprintf(fpout, "c[%0.1f]", dCterm);
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
@@ -383,16 +383,16 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // generate modified_peptide string
          if (bNterm)
-            fprintf(fpout, "n[%0.0f]", dNterm);
+            fprintf(fpout, "n[%0.1f]", dNterm);
          for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
             if (pOutput[iWhichResult].pcVarModSites[i] != 0)
-               fprintf(fpout, "[%0.0f]", pOutput[iWhichResult].pdVarModSites[i]);
+               fprintf(fpout, "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
          if (bCterm)
-            fprintf(fpout, "c[%0.0f]", dCterm);  // FIX: should be changed to c-term mass diff?
+            fprintf(fpout, "c[%0.1f]", dCterm);  // FIX: should be changed to c-term mass diff?
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
