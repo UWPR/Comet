@@ -211,10 +211,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
             if (pOutput[iWhichResult].pcVarModSites[i] != 0)
-            {
-               fprintf(fpout, "[%0.0f]", pOutput[iWhichResult].pdVarModSites[i]
-                     - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
-            }
+               fprintf(fpout, "[%0.0f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
          if (bCterm)
             fprintf(fpout, "c[%0.0f]", dCterm);
@@ -392,11 +389,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
             if (pOutput[iWhichResult].pcVarModSites[i] != 0)
-            {
-               fprintf(fpout, "[%0.0f]",
-                     pOutput[iWhichResult].pdVarModSites[i]
-                     - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
-            }
+               fprintf(fpout, "[%0.0f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
          if (bCterm)
             fprintf(fpout, "c[%0.0f]", dCterm);  // FIX: should be changed to c-term mass diff?
