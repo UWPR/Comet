@@ -251,6 +251,14 @@ struct PeffPositionStruct  // collate PEFF mods by position in sequence
    vector <double>vectorMassDiffMono;
 };
 
+struct PeffSearchStruct  // variant info passed to SearchForPeptides
+{
+   int iPosition;
+   bool bBeginCleavage;
+   bool bEndCleavage;
+   char cOrigResidue;
+};
+
 //-->MH
 typedef struct sDBEntry
 {

@@ -278,13 +278,12 @@ bool CometSearch::RunSearch(int minNumThreads,
                      // parse ModRes entries
                      char *tok;
                      char delims[] = ")";  // tokenize by tab
+                     int iPos;
+                     char szTmp[80];
+                     string strModCode;
                      tok = strtok(szMods, delims);
                      while (tok != NULL)
                      {
-                        int iPos;
-                        char szTmp[80];
-                        string strModCode;
-
                         szTmp[0]='\0';
                         iPos = 0;
 
@@ -351,11 +350,13 @@ bool CometSearch::RunSearch(int minNumThreads,
                      // parse ModRes entries
                      char *tok;
                      char delims[] = ")";  // tokenize by tab
+                     int iPos;
+                     char cVariant;
                      tok = strtok(szMods, delims);
-                     while (tok != NULL)
+                     while (tok != NULL && strlen(tok)>=3)
                      {
-                        int iPos;
-                        char cVariant;
+                        iPos = -1;
+                        cVariant = 0;
 
                         sscanf(tok+1, "%d|%c", &iPos, &cVariant);  //tok+1 to skip first '(' char
 
@@ -631,7 +632,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
       if (!SearchForPeptides(dbe,
                              (char *)dbe.strSeq.c_str(),  // have to pass sequence as it can be modified per below
                              0,
-                             pbDuplFragment))
+                             pbDuplFragment,
+                             -1))
       {
          return false;
       }
@@ -643,11 +645,20 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          if (!SearchForPeptides(dbe,
                                 (char *)dbe.strSeq.c_str()+1,
                                 1,
-                                pbDuplFragment))
+                                pbDuplFragment,
+                                -1))
          {
             return false;
          }
       }
+
+      // Plug in an AA substitution and do a search, requiring that AA be present
+      // in peptide or a flanking residue that causes a enzyme cut site
+      if (dbe.vectorPeffVariantSimple.size() > 0)
+      {
+//       SearchForVariants(dbe, (char *)dbe.strSeq.c_str(), pbDuplFragment);
+      }
+
    }
    else
    {
@@ -671,7 +682,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          if (!SearchForPeptides(dbe,
                                 _proteinInfo.pszProteinSeq,
                                 0,
-                                pbDuplFragment))
+                                pbDuplFragment,
+                                -1))
          {
             return false;
          }
@@ -690,7 +702,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             if (!SearchForPeptides(dbe,
                                    _proteinInfo.pszProteinSeq,
                                    0,
-                                   pbDuplFragment))
+                                   pbDuplFragment,
+                                   -1))
             {
                return false;
             }
@@ -761,7 +774,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
                if (!SearchForPeptides(dbe,
                                       _proteinInfo.pszProteinSeq,
                                       0,
-                                      pbDuplFragment))
+                                      pbDuplFragment,
+                                      -1))
                {
                   return false;
                }
@@ -789,7 +803,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             if (!SearchForPeptides(dbe,
                                    _proteinInfo.pszProteinSeq,
                                    0,
-                                   pbDuplFragment))
+                                   pbDuplFragment,
+                                   -1))
             {
                return false;
             }
@@ -808,7 +823,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                     char *szProteinSeq,
                                     bool bNtermPeptideOnly,
-                                    bool *pbDuplFragment)
+                                    bool *pbDuplFragment,
+                                    bool bRequiredVariantPosition)
 {
    int iLenPeptide = 0;
    int iStartPos = 0;
@@ -823,8 +839,10 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    char* szProteinName = (char *)(dbe.strName.c_str());
 
+
 /*
 printf("\n\n");
+printf("OK protein %s, length %d\n", szProteinName, (int)strlen(szProteinSeq));
 for (int i=0; i<(int)dbe.vectorPeffMod.size(); i++)
    printf("OK *** modification  %d, %f\n", dbe.vectorPeffMod.at(i).iPosition, dbe.vectorPeffMod.at(i).dMassDiffMono); //, dbe.vectorPeffMod.at(i).strMod.c_str());
 for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
@@ -1098,7 +1116,7 @@ for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
       // Increment start, reset end.
       else if (dCalcPepMass > g_massRange.dMaxMass || iEndPos==iProteinSeqLengthMinus1 || iLenPeptide == MAX_PEPTIDE_LEN)
       {
-         // Run variable mod search with each new iStartPos.
+         // Run variable mod search before incrementing iStartPos.
          if (g_staticParams.variableModParameters.bVarModSearch)
          {
             // If any variable mod mass is negative, consider adding to iEndPos as long
@@ -1112,18 +1130,9 @@ for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
                if (!VariableModSearch(szProteinSeq, szProteinName, piVarModCounts, iStartPos, iEndPos, pbDuplFragment, &dbe))
                   return false;
             }
-
+         
             SubtractVarMods(piVarModCounts, szProteinSeq[iStartPos], iStartPos);
          }
-
-         // PEFF substitute variant in and repeat mod search here??
-         if (dbe.vectorPeffVariantSimple.size() > 0)
-         {
-            // Is there a variant within iStartPos-1 and iEndPos?
-            // Need to consider variant at iStartPos-1 in case that generates a new, valid cleavage site
-            SearchForVariants(dbe, szProteinSeq, bNtermPeptideOnly, pbDuplFragment);
-         }
-         
 
          if (bNtermPeptideOnly)
             return true;
@@ -1155,18 +1164,161 @@ for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
 // Analyze regions of the sequence that are affected by the variant
 // Each analyzed peptide must either contain the variant or be flanked
 // by the variant enabling new enzyme-digested peptide
-bool CometSearch::SearchForVariants(struct sDBEntry dbe,
+void CometSearch::SearchForVariants(struct sDBEntry dbe,
                                     char *szProteinSeq,
-                                    bool bNtermPeptideOnly,
                                     bool *pbDuplFragment)
 
 {
-return false;
+   int iStartPos;
+   int iEndPos;
 
+   int iOneMinusEnzymeOffSet = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
+   int iTwoMinusEnzymeOffSet = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
+
+   // Walk through each variant
    for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
-      printf("OK *** variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
+   {
+      if (dbe.vectorPeffVariantSimple.at(i).cResidue == szProteinSeq[dbe.vectorPeffVariantSimple.at(i).iPosition])
+      {
+         // Log a warning message here that the variant change didn't change the residue?
+         char szErrorMsg[256];
+         sprintf(szErrorMsg, " Warning: protein %s has variant '%c' at position %d with the same original AA residue.\n", 
+               dbe.strName.c_str(),
+               dbe.vectorPeffVariantSimple.at(i).cResidue,
+               dbe.vectorPeffVariantSimple.at(i).iPosition);
+         logout(szErrorMsg);
+      }
+      else
+      {
+         int iBeginRange;  // first position in sequence to find peptide that still contains variant
+         int iEndRange;    // last position in sequence to find peptide that still contains variant
+         int iVariantPos;
+         bool bBeginCleavage = false;
+         bool bEndCleavage = false;
+         double dMass;
 
-   return false;
+         iVariantPos = dbe.vectorPeffVariantSimple.at(i).iPosition;
+
+         // Look at the new variant residue and see if it triggers an enzymatic cleavage
+         // either at n-term or c-term of position
+         bBeginCleavage = (iVariantPos==0
+               || szProteinSeq[iVariantPos-1]=='*'
+               || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iVariantPos -1 + iOneMinusEnzymeOffSet])
+                  && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iVariantPos -1 + iTwoMinusEnzymeOffSet])));
+
+         bEndCleavage = (iVariantPos==(int)(_proteinInfo.iProteinSeqLength-1)
+               || szProteinSeq[iVariantPos+1]=='*'
+               || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iVariantPos + iOneMinusEnzymeOffSet])
+                  && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iVariantPos + iTwoMinusEnzymeOffSet])));
+
+         if (bBeginCleavage) // N-terminal cleavage such as Asp-N:   xxxxx [LtoD xxxxxx 
+         {
+            // iVariantPos-1 should be end of a peptide
+            // iVariantPos should be start of a peptide
+            // could also be internal missed cleavage
+ 
+            iBeginRange = iVariantPos;
+
+            // Analyze all peptides that end in iVariantPos-1 or includes it as a missed cleavage
+            dMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm
+               + g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iBeginRange]];
+
+            while (dMass < g_massRange.dMaxMass)
+            {
+               iBeginRange--;
+               dMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iBeginRange]];
+            }
+
+            iEndRange = iVariantPos;
+
+            dMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm
+               + g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iEndRange]];
+
+            while (dMass < g_massRange.dMaxMass)
+            {
+               iEndRange++;
+               dMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iEndRange]];
+            }
+
+            // Now analyze all peptides that start at iVariantPos
+         }
+         else if (bEndCleavage) // C-terminal cleavage:   xxxx LtoK] xxxx
+         {
+
+            // Analyze all peptides that end in iVariantPos or includes it as a missed cleavage
+
+            // Now analyze all peptides that begin at iVariantPos+1
+
+         }
+         else  // simple AA substitution or no-enzyme selected
+         {
+            double dMass;
+
+            // Analyze all peptides that include iVariantPos.
+
+            // Find furthest away iStartPos: start at iVariantPos and start adding mass in reverse position until > largest mass
+            // Stop if # of missed cleavages exceeded.
+
+            iBeginRange = iVariantPos;
+      
+            dMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm
+               + g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iBeginRange]];
+
+            while (dMass < g_massRange.dMaxMass && iBeginRange>0)
+            {
+               iBeginRange--;
+               dMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iBeginRange]];
+            }
+
+            // Find first away iEndPos: start at iVariantPos and start adding mass forward until > largest mass
+            // Stop at # of missed cleavages exceeded.
+
+            iEndRange = iVariantPos;
+
+            dMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm
+               + g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iEndRange]];
+
+            while (dMass < g_massRange.dMaxMass && iEndRange < (int)strlen(szProteinSeq))
+            {
+               iEndRange++;
+               dMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iEndRange]];
+            }
+
+            // Now search from iStartPos to iEndPos with requirement that peptide contain new iVariantPos
+
+            iStartPos = iBeginRange;
+            iEndPos = iEndRange;
+            
+            // Create new protein string and run SearchForPeptides again but with variant position marked
+ 
+            char pNewProteinSeq[128];
+
+            if (iEndPos - iStartPos + 1 >= 128)
+            {
+               char szErrorMsg[256];
+               sprintf(szErrorMsg, " Warning: in SearchForVariants, range too big.  iStartPos=%d, iEndPos=%d\n", iStartPos, iEndPos);
+               logout(szErrorMsg);
+            }
+            strncpy(pNewProteinSeq, szProteinSeq + iStartPos, iEndPos - iStartPos + 1);
+            pNewProteinSeq[iEndPos - iStartPos + 1] = '\0';
+
+            int iVariantPosition = (dbe.vectorPeffVariantSimple.at(i).iPosition - 1) - iStartPos;
+
+            pNewProteinSeq[iVariantPosition] = dbe.vectorPeffVariantSimple.at(i).cResidue;
+
+            SearchForPeptides(dbe, pNewProteinSeq, 1, pbDuplFragment, iVariantPosition);
+         }
+      }
+
+      if (g_staticParams.options.bClipNtermMet
+            && dbe.vectorPeffVariantSimple.at(i).iPosition==0
+            && dbe.vectorPeffVariantSimple.at(i).cResidue=='M'
+            && szProteinSeq[0]!='M')
+      {
+//FIX
+//       SearchForPeptides(dbe, szProteinSeq+1, 1, pbDuplFragment, 0);
+      }
+   }
 }
 
 
@@ -1210,10 +1362,10 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
                                           vector<PeffPositionStruct>* vPeffArray)
 {
    int i;
-   int ii;
 
-   // Print out list of PEFF mods
 /* 
+   // Print out list of PEFF mods
+   int ii;
    for (i=0; i<(int) (*vPeffArray).size(); i++)
    {
       printf("*** OK  %d.  position %d\n", i, (*vPeffArray).at(i).iPosition);
@@ -1409,7 +1561,7 @@ int CometSearch::BinarySearchMass(int start,
       return BinarySearchMass(start, middle - 1, dCalcPepMass);
    }
 
-   if (middle+1 < end)
+   if ((int)middle+1 < end)
       return BinarySearchMass(middle + 1, end, dCalcPepMass);
    else
       return -1;
@@ -2653,16 +2805,6 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
       }
    }
 
-/*
-//OK
- for (i=0; i<(int)vPeffArray.size(); i++)
- {
-   printf("%d.  position %d\n", i, vPeffArray.at(i).iPosition);
-   for (ii=0; ii<(int)vPeffArray.at(i).vectorMassDiffAvg.size(); ii++)
-      printf(" ... %f %f\n", vPeffArray.at(i).vectorMassDiffAvg.at(ii), vPeffArray.at(i).vectorMassDiffMono.at(ii));
- }
-*/
-
    strcpy(_proteinInfo.szProteinName, szProteinName);
 
    // consider possible n- and c-term mods; c-term position is not necessarily iEndPos
@@ -3765,6 +3907,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          if (!bFirst) // skip first iteration of this where there are no mods
          {
             dMassAddition = 0.0;
+            memset(pcVarModSites, 0, _iSizepcVarModSites);
 
             // Now have permutations of PEFF. First, add PEFF masses and see if within mass tolerance
             for (i=0; i<n; i++)
@@ -3777,6 +3920,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
             // Validate that total mass is within tolerance of some query entry
             double dTmpCalcPepMass = dCalcPepMass + dMassAddition;
+
             // With PEFF mods added in, find if new mass is within any query tolerance
             iWhichQuery = WithinMassTolerance(dTmpCalcPepMass, szProteinSeq, _varModInfo.iStartPos, _varModInfo.iEndPos);
 
@@ -3788,7 +3932,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                   // See if there's a PEFF mod at this 'i' sequence location based on current permutation of PEFFs
                   for (i=0; i<n; i++)
                   {
-                     // if sequence position matches PEFF position
+                     // Check if sequence position matches PEFF position inside this if statement
                      if (a[i]>0)
                      {
                         if ((*vPeffArray).at(i).iPosition > _varModInfo.iEndPos)
@@ -3942,7 +4086,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   dYion += (dbe->vectorPeffMod.at(-pcVarModSites[iPos]-1)).dMassDiffMono;
 
                _pdAAreverse[i - _varModInfo.iStartPos] = dYion;
-
             }
 
             // now get the set of binned fragment ions once for all matching peptides

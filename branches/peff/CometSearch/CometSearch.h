@@ -179,10 +179,10 @@ private:
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool bNtermPeptideOnly,
-                          bool *pbDuplFragment);
-   bool SearchForVariants(struct sDBEntry dbe,
+                          bool *pbDuplFragment,
+                          bool bRequiredVariantPosition);
+   void SearchForVariants(struct sDBEntry dbe,
                           char *szProteinSeq,
-                          bool bNtermPeptideOnly,
                           bool *pbDuplFragment);
    bool TranslateNA2AA(int *frame,
                        int iDirection,
