@@ -575,10 +575,12 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
    }
    else
    {
+/*
       char szErrorMsg[512];
       sprintf(szErrorMsg,  " Warning: cannot find \"%s\" in OBO\n", strMod.c_str());
       string strErrorMsg(szErrorMsg);
-      logout(szErrorMsg);
+      logerr(szErrorMsg);
+*/
 
       return false;
    }
@@ -3881,6 +3883,14 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       }
    }
 
+   // At this point, pcVarModSites[] values should only range of 0 to 9.  Now possibly
+   // add PEFF mods which are encoded as negative values.  Must copy current state of
+   // pcVarModSites as the loop below will permute through PEFF mods and we need to
+   // add each permutation to these existing variablemods.
+
+   char pcTmpVarModSites[MAX_PEPTIDE_LEN_P2];
+   memcpy(pcTmpVarModSites, pcVarModSites, _iSizepcVarModSites);
+
    // Now that normal variable mods are taken care of, add in PEFF mods if pertinent
    if (*bDoPeffAnalysis)
    {
@@ -3907,7 +3917,9 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          if (!bFirst) // skip first iteration of this where there are no mods
          {
             dMassAddition = 0.0;
-            memset(pcVarModSites, 0, _iSizepcVarModSites);
+            
+            // For each iteration of PEFF mods, start with fresh state of variable mods
+            memcpy(pcVarModSites, pcTmpVarModSites, _iSizepcVarModSites);
 
             // Now have permutations of PEFF. First, add PEFF masses and see if within mass tolerance
             for (i=0; i<n; i++)
@@ -3948,6 +3960,13 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                               // PEFF mods are encoded as negative values to reference appropriate PeffModStruct entry
                               // Sadly needs to be offset by -1 because first PEFF index is 0
                               pcVarModSites[ii - _varModInfo.iStartPos] = -1 -(*vPeffArray).at(i).vectorWhichPeff.at(a[i]-1); // use negative values for PEFF mods
+
+
+if (-1 -(*vPeffArray).at(i).vectorWhichPeff.at(a[i]-1) > 0)
+{
+   printf("OK ERR2 *** %d\n", -1 -(*vPeffArray).at(i).vectorWhichPeff.at(a[i]-1));
+   getchar();
+}
                            }
                            else
                            {
@@ -3958,6 +3977,18 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                      }
                   }
                }
+
+printf("OK1\n");
+for (int x=0 ; x<iLenPeptide; x++)
+{
+   if (pcVarModSites[x]>0)
+   {
+      printf("OK1 +++ ERROR - pcVarModSites[%d] = %d\n", x, pcVarModSites[x]);
+      printf("position: %d %d, sequence %s, length %d\n", _varModInfo.iStartPos, _varModInfo.iEndPos, dbe->strName.c_str(), strlen(szProteinSeq));
+      getchar();
+   }
+}
+                     // FIX: add test here as pcVarModSites must contain a negative PEFF value
 
                if  (bValidPeffPosition)
                {
@@ -3974,10 +4005,37 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                   // Only if this PEFF mod (plus possible variable mods) is within mass tolerance, continue
                   if (iWhichQuery != -1)
                   {
+printf("OK2\n");
+for (int x=0 ; x<iLenPeptide; x++)
+{
+   if (pcVarModSites[x]>0)
+   {
+      printf("OK2 *** ERROR - pcVarModSites[%d] = %d\n", x, pcVarModSites[x]);
+      getchar();
+   }
+}
                      // FIX: add test here as pcVarModSites must contain a negative PEFF value
                      CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, pcVarModSites, dTmpCalcPepMass, iLenPeptide, dbe);
+printf("OK3\n");
+for (int x=0 ; x<iLenPeptide; x++)
+{
+   if (pcVarModSites[x]>0)
+   {
+      printf("OK3 *** ERROR - pcVarModSites[%d] = %d\n", x, pcVarModSites[x]);
+      getchar();
+   }
+}
                   }
                }
+printf("OK4\n");
+for (int x=0 ; x<iLenPeptide; x++)
+{
+   if (pcVarModSites[x]>0)
+   {
+      printf("OK4 *** ERROR - pcVarModSites[%d] = %d\n", x, pcVarModSites[x]);
+      getchar();
+   }
+}
             }
             //else move onto next permutation of PEFF mods
    
@@ -4041,7 +4099,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
       // check mass of peptide again; required for terminal mods that may or may not get applied??
       if (CheckMassMatch(iWhichQuery, dCalcPepMass))
       {
-
          // Calculate ion series just once to compare against all relevant query spectra
          if (bFirstTimeThroughLoopForPeptide)
          {
