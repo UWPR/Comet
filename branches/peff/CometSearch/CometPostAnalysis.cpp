@@ -254,9 +254,9 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
       int iMatchedFragmentIonCt = 0;
       int iMaxFragCharge;
 
-      // if no variable mods are used in search, clear pcVarModSites here
+      // if no variable mods are used in search, clear piVarModSites here
       if (!g_staticParams.variableModParameters.bVarModSearch)
-         memset(pOutput[i].pcVarModSites, 0, sizeof(char)*MAX_PEPTIDE_LEN_P2);
+         memset(pOutput[i].piVarModSites, 0, sizeof(char)*MAX_PEPTIDE_LEN_P2);
 
       iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
 
@@ -266,15 +266,15 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
       if (g_staticParams.variableModParameters.bVarModSearch
-            && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide] > 0))
+            && (pOutput[i].piVarModSites[pOutput[i].iLenPeptide] > 0))
       {
-         dBion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[pOutput[i].iLenPeptide]-1].dVarModMass;
+         dBion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].iLenPeptide]-1].dVarModMass;
       }
 
       if (g_staticParams.variableModParameters.bVarModSearch
-            && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide + 1] > 0))
+            && (pOutput[i].piVarModSites[pOutput[i].iLenPeptide + 1] > 0))
       {
-         dYion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[pOutput[i].iLenPeptide+1]-1].dVarModMass;
+         dYion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].iLenPeptide+1]-1].dVarModMass;
       }
 
       for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
@@ -295,10 +295,10 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          if (g_staticParams.variableModParameters.bVarModSearch)
          {
-            if (pOutput[i].pcVarModSites[ii] != 0)
+            if (pOutput[i].piVarModSites[ii] != 0)
                dBion += pOutput[i].pdVarModSites[ii];
 
-            if (pOutput[i].pcVarModSites[iPos] != 0)
+            if (pOutput[i].piVarModSites[iPos] != 0)
                dYion += pOutput[i].pdVarModSites[iPos];
          }
 
@@ -404,12 +404,12 @@ int CometPostAnalysis::QSortFnMod(const void *a,
 
    // must compare character at a time
    // actually not sure why strcmp doesn't work
-   // as pcVarModSites is a char array
+   // as piVarModSites is a char array
    for (int i=0; i<MAX_PEPTIDE_LEN_P2; i++)
    {
-      if (ia->pcVarModSites[i] < ib->pcVarModSites[i])
+      if (ia->piVarModSites[i] < ib->piVarModSites[i])
          return -1;
-      else if (ia->pcVarModSites[i] > ib->pcVarModSites[i])
+      else if (ia->piVarModSites[i] > ib->piVarModSites[i])
          return 1;
    }
    return 0;

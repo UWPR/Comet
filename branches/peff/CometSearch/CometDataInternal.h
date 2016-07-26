@@ -159,8 +159,8 @@ struct Results
    int    iMatchedIons;
    int    iTotalIons;
    int    iSeqFilePosition;
+   int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
-   char pcVarModSites[MAX_PEPTIDE_LEN_P2];    // store variable mods encoding, +2 to accomodate N/C-term
    char szProtein[WIDTH_REFERENCE];
    char szPeptide[MAX_PEPTIDE_LEN];
    char szPrevNextAA[2];                      // [0] stores prev AA, [1] stores next AA

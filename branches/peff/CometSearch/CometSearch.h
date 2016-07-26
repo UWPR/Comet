@@ -114,7 +114,7 @@ private:
                    bool bDecoyPep,
                    int iWhichQuery,
                    int iLenPeptide,
-                   char *pcVarModSites,
+                   int *piVarModSites,
                    struct sDBEntry *dbe);
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,
@@ -134,7 +134,7 @@ private:
                       char *szProteinSeq,
                       char *szProteinName,
                       bool bDecoyResults,
-                      char *pcVarModSites);
+                      int *piVarModSites);
    void StorePeptide(int iWhichQuery,
                      int iStartPos,
                      int iEndPos,
@@ -144,7 +144,7 @@ private:
                      double dScoreSp,
                      char *szProteinName,
                      bool bStoreSeparateDecoy,
-                     char *pcVarModSites,
+                     int *piVarModSites,
                      struct sDBEntry *dbe);
    bool VariableModSearch(char *szProteinSeq,
                           char *szProteinName,
@@ -172,7 +172,7 @@ private:
    bool CalcVarModIons(char *szProteinSeq,
                        int iWhichQuery,
                        bool *pbDuplFragment,
-                       char *pcVarModSites,
+                       int *piVarModSites,
                        double dCalcPepMass,
                        int iLenPeptide,
                        struct sDBEntry *dbe);
@@ -275,7 +275,7 @@ private:
    double             _pdAAreverse[MAX_PEPTIDE_LEN];      // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAforwardDecoy[MAX_PEPTIDE_LEN]; // Stores fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAreverseDecoy[MAX_PEPTIDE_LEN]; // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
-   int                _iSizepcVarModSites;
+   int                _iSizepiVarModSites;
    VarModInfo         _varModInfo;
    ProteinInfo        _proteinInfo;
 

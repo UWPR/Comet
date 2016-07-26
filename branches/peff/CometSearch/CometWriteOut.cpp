@@ -472,10 +472,10 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
    {
       sprintf(szBuf+strlen(szBuf),
-            "n%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
+            "n%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
    }
 
    // Print peptide sequence.
@@ -483,13 +483,13 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    {
       sprintf(szBuf+strlen(szBuf), "%c", (int)pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].pcVarModSites[i] != 0)
+      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
       {
-         if (pOutput[iWhichResult].pcVarModSites[i] > 0
-               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+         if (pOutput[iWhichResult].piVarModSites[i] > 0
+               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
          {
             sprintf(szBuf+strlen(szBuf), "%c",
-                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
          }
          else
          {
@@ -499,10 +499,10 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
+         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
    {
       sprintf(szBuf+strlen(szBuf),
-            "c%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
+            "c%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
    }
 
    sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
@@ -534,15 +534,15 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
+         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
    {
-      dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide]-1].dVarModMass;
+      dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide]-1].dVarModMass;
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
+         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
    {
-      dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide+1]-1].dVarModMass;
+      dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide+1]-1].dVarModMass;
    }
 
    // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
@@ -555,14 +555,14 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
-         if (pQuery->_pResults[0].pcVarModSites[i] != 0)
+         if (pQuery->_pResults[0].piVarModSites[i] != 0)
             dBion += pQuery->_pResults[0].pdVarModSites[i];   // PEFF need to validate this change
-//          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[i]-1].dVarModMass;
+//          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[i]-1].dVarModMass;
 
 
-         if (pQuery->_pResults[0].pcVarModSites[iPos] != 0)
+         if (pQuery->_pResults[0].piVarModSites[iPos] != 0)
             dYion += pQuery->_pResults[0].pdVarModSites[iPos];
-//          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[iPos]-1].dVarModMass;
+//          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[iPos]-1].dVarModMass;
       }
 
       _pdAAforward[i] = dBion;
