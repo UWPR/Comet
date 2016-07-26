@@ -184,6 +184,9 @@ private:
    void SearchForVariants(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool *pbDuplFragment);
+   static size_t GetLine(char **lineptr,
+                  size_t *n,
+                  FILE *stream);
    bool TranslateNA2AA(int *frame,
                        int iDirection,
                        char *sDNASequence);

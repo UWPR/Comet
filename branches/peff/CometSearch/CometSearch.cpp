@@ -19,6 +19,8 @@
 #include "ThreadPool.h"
 #include "CometStatus.h"
 
+#include <stdio.h>
+
 bool *CometSearch::_pbSearchMemoryPool;
 bool **CometSearch::_ppbDuplFragmentArr;
 
@@ -235,7 +237,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                   size_t len = 0;
 
                   ungetc(iTmpCh, fptr);
-                  getline(&szLine, &len, fptr);
+                  GetLine(&szLine, &len, fptr);
 
                   // grab from \ModRes and \Variant to end of line
 
@@ -479,11 +481,10 @@ void CometSearch::ReadOBO(char *szOBO,
 
    if ( (fp=fopen(szOBO, "r")) != NULL)
    {
-      char *szLine = NULL;
-      size_t len = 0;
+      char szLine[SIZE_BUF];
 
       // store UniMod mod string "UNIMOD:1" and mass diffs 'delta_mono_mass "42.010565"' 'delta_avge_mass "42.0367"'
-      getline(&szLine, &len, fp);
+      fgets(szLine, SIZE_BUF, fp);
       while (!feof(fp))
       {
          if (!strncmp(szLine, "[Term]", 6))
@@ -507,7 +508,7 @@ void CometSearch::ReadOBO(char *szOBO,
             // xref: DiffAvg: "79.98"
             // xref: DiffMono: "79.966331"
 
-            while (getline(&szLine, &len, fp) != -1)
+            while (fgets(szLine, SIZE_BUF, fp))
             {
                char szTmp[80];
 
@@ -538,7 +539,7 @@ void CometSearch::ReadOBO(char *szOBO,
          }
          else
          {
-            getline(&szLine, &len, fp);
+            fgets(szLine, SIZE_BUF, fp);
          }
       }
 
@@ -1383,9 +1384,15 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
    // number of residues with a PEFF mod
    int n = (int)(*vPeffArray).size();
 
+   vector<int> a(n);
+   vector<int> len(n);
+   int j;
+
+/*
    int a[n],
        len[n],
        j;
+*/
 
    for (i = 0 ; i < n ; i++)
    {
@@ -3897,10 +3904,15 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       // permute through PEFF
 
       int n = (int)(*vPeffArray).size();  // number of residues with a PEFF mod
-   
+
+      vector<int> a(n);
+      vector<int> len(n);
+      int j;
+/*
       int a[n],
           len[n],
           j;
+*/
    
       for (i = 0 ; i < n ; i++)
       {
@@ -4344,4 +4356,74 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
    }
 
    return true;
+}
+
+// GNU getline implementation from http://stackoverflow.com/questions/735126/are-there-alternate-implementations-of-gnu-getline-interface/735472
+// This code is public domain -- Will Hartung 4/9/09
+size_t CometSearch::GetLine(char **lineptr,
+                            size_t *n,
+                            FILE *stream)
+{
+   char *bufptr = NULL;
+   char *p = bufptr;
+   size_t size;
+   int c;
+   int offset;
+
+   if (lineptr == NULL)
+   {
+    	return 1;
+   }
+   if (stream == NULL)
+   {
+      return 1;
+   }
+   if (n == NULL)
+   {
+      return 1;
+   }
+   bufptr = *lineptr;
+   size = *n;
+
+   c = fgetc(stream);
+   if (c == EOF)
+   {
+    	return 1;
+   }
+   if (bufptr == NULL)
+   {
+      bufptr = (char *)malloc(128);
+      if (bufptr == NULL)
+      {
+         return 1;
+      }
+      size = 128;
+   }
+   p = bufptr;
+   while (c != EOF)
+   {
+      offset = p - bufptr;
+      if ((p - bufptr + 1) > size)
+      {
+         size = size + 128;
+         bufptr = (char *)realloc(bufptr, size);
+         if (bufptr == NULL)
+         {
+            return 1;
+         }
+         p = bufptr + offset;
+      }
+      *p++ = c;
+      if (c == '\n')  // FIX need more robust line ending check?
+      {
+         break;
+      }
+      c = fgetc(stream);
+   }
+
+   *p++ = '\0';
+   *lineptr = bufptr;
+   *n = size;
+
+   return p - bufptr - 1;
 }
