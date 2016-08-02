@@ -187,6 +187,11 @@ bool CometSearch::RunSearch(int minNumThreads,
    }
 
    char szBuf[8192];
+// char szAttributeMod[] = "\\ModResPsi=";
+   char szAttributeMod[] = "\\ModRes=";
+   int  iLenAttributeMod = strlen(szAttributeMod);
+   char szAttributeVariant[] = "\\VariantSimple=";
+   int  iLenAttributeVariant = strlen(szAttributeVariant);
 
    // Loop through entire database.
    while(!feof(fptr))
@@ -243,10 +248,10 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                   char *pStr;
 
-                  if ( (pStr = strstr(szLine, "\\ModRes=")) != NULL)
+                  if ( (pStr = strstr(szLine, szAttributeMod)) != NULL)
                   {
                      char *pStr2;
-                     pStr += 8;
+                     pStr += iLenAttributeMod;
 
                      if ( (pStr2 = strchr(pStr, ' '))!=NULL)
                         iLen = (int)(strlen(pStr)-strlen(pStr2));
@@ -317,10 +322,10 @@ bool CometSearch::RunSearch(int minNumThreads,
                      }
                   }
 
-                  if ( (pStr = strstr(szLine, "\\VariantSimple=")) != NULL)
+                  if ( (pStr = strstr(szLine, szAttributeVariant)) != NULL)
                   {
                      char *pStr2;
-                     pStr += 15;
+                     pStr += iLenAttributeVariant;
 
                      if ( (pStr2 = strchr(pStr, ' '))!=NULL)
                         iLen = (int)(strlen(pStr)-strlen(pStr2));
@@ -394,7 +399,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
 /*
 for (int i=0; i<(int)dbe.vectorPeffMod.size(); i++)
-   printf("OK modification  %d, %f\n", dbe.vectorPeffMod.at(i).iPosition, dbe.vectorPeffMod.at(i).dMassDiffMono);
+   print("OK modification  %d, %f\n", dbe.vectorPeffMod.at(i).iPosition, dbe.vectorPeffMod.at(i).dMassDiffMono);
 for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
    printf("OK variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
 */
@@ -584,7 +589,6 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
       string strErrorMsg(szErrorMsg);
       logerr(szErrorMsg);
 */
-
       return false;
    }
 }
@@ -2274,9 +2278,9 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->fLowestDecoyCorrScore = pQuery->_pDecoys[0].fXcorr;
       siLowestDecoySpScoreIndex=0;
 
-      for (i=1; i<g_staticParams.options.iNumStored; i++)
+      for (i=g_staticParams.options.iNumStored-1; i>0; i--)
       {
-         if (pQuery->_pDecoys[i].fXcorr < pQuery->fLowestDecoyCorrScore)
+         if (pQuery->_pDecoys[i].fXcorr < pQuery->fLowestDecoyCorrScore || pQuery->_pDecoys[i].iLenPeptide == 0)
          {
             pQuery->fLowestDecoyCorrScore = pQuery->_pDecoys[i].fXcorr;
             siLowestDecoySpScoreIndex = i;
@@ -2366,9 +2370,9 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->fLowestCorrScore = pQuery->_pResults[0].fXcorr;
       siLowestSpScoreIndex=0;
 
-      for (i=1; i<g_staticParams.options.iNumStored; i++)
+      for (i=g_staticParams.options.iNumStored-1; i>0; i--)
       {
-         if (pQuery->_pResults[i].fXcorr < pQuery->fLowestCorrScore)
+         if (pQuery->_pResults[i].fXcorr < pQuery->fLowestCorrScore || pQuery->_pResults[i].iLenPeptide == 0)
          {
             pQuery->fLowestCorrScore = pQuery->_pResults[i].fXcorr;
             siLowestSpScoreIndex = i;
@@ -2997,7 +3001,6 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
                                        {
                                           if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
                                           {
-
                                              // look at residues first
                                              if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
                                              {
@@ -3402,7 +3405,6 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
                                              _varModInfo.iEndPos = iTmpEnd;
 
                                              _varModInfo.dCalcPepMass = dCalcPepMass;
-
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
                                              if (!PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe))
                                              {
@@ -3924,10 +3926,12 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          a[i]=0;
       }
    
+      int iPermuteCount=0;
       double dMassAddition;
       bool bFirst=true;
       while(1)
       {
+         iPermuteCount++;
          if (!bFirst) // skip first iteration of this where there are no mods
          {
             dMassAddition = 0.0;
@@ -4023,6 +4027,10 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    
          if(j<0)
             break;
+
+
+         if (iPermuteCount>1000000) //FIX.  Is this reasonable?
+            break;
       }    
    }
    else
@@ -4096,21 +4104,12 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             {
                int iPos = i - _varModInfo.iStartPos;
 
-int iPos1 = i - _varModInfo.iStartPos;
-double dModMass = 0.0;;
-
                dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
 
                if (piVarModSites[iPos] > 0)
-               {
-dModMass = g_staticParams.variableModParameters.varModList[piVarModSites[iPos]-1].dVarModMass;
                   dBion += g_staticParams.variableModParameters.varModList[piVarModSites[iPos]-1].dVarModMass;
-               }
                else if (piVarModSites[iPos] < 0)
-               {
-dModMass = (dbe->vectorPeffMod.at(-piVarModSites[iPos]-1)).dMassDiffMono;
                   dBion += (dbe->vectorPeffMod.at(-piVarModSites[iPos]-1)).dMassDiffMono;
-               }
 
                _pdAAforward[iPos] = dBion;
 
@@ -4360,12 +4359,12 @@ size_t CometSearch::GetLine(char **lineptr,
    }
    if (bufptr == NULL)
    {
-      bufptr = (char *)malloc(128);
+      bufptr = (char *)malloc(512);
       if (bufptr == NULL)
       {
          return 1;
       }
-      size = 128;
+      size = 512;
    }
    p = bufptr;
    while (c != EOF)
@@ -4373,7 +4372,7 @@ size_t CometSearch::GetLine(char **lineptr,
       offset = p - bufptr;
       if ((p - bufptr + 1) > size)
       {
-         size = size + 128;
+         size = size + 512;
          bufptr = (char *)realloc(bufptr, size);
          if (bufptr == NULL)
          {
