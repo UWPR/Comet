@@ -311,7 +311,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            struct PeffModStruct pData;
                            CometSearch pOBO;
 
-                           pData.iPosition = iPos;
+                           pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
 
                            // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
                            if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
@@ -380,7 +380,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         {
                            struct PeffVariantSimpleStruct pData;
 
-                           pData.iPosition = iPos;
+                           pData.iPosition = iPos - 1;   // represent PEFF variant position in 0 array index coordinates
                            pData.cResidue = cVariant;
                            dbe.vectorPeffVariantSimple.push_back(pData);
                         }
@@ -746,7 +746,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             return false;
          }
 
-         memcpy(pszTemp, (char *)dbe.strSeq.c_str(), seqSize);
+         memcpy(pszTemp, (char *)dbe.strSeq.c_str(), seqSize*sizeof(char));
          for (ii=0; ii<seqSize; ii++)
          {
             switch (dbe.strSeq[ii])
@@ -2085,7 +2085,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    else
       dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
-
    Threading::LockMutex(pQuery->accessMutex);
 
    // Increment matched peptide counts.
@@ -2206,7 +2205,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->iDecoyMatchPeptideCount++;
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].iLenPeptide = iLenPeptide;
 
-      memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
+      memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide[iLenPeptide]='\0';
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].dPepMass = dCalcPepMass;
@@ -2298,7 +2297,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->iMatchPeptideCount++;
       pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide = iLenPeptide;
 
-      memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide);
+      memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
       pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
 
       pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
@@ -2409,10 +2408,10 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
          if (iLenMinus1 == pQuery->_pDecoys[i].iLenPeptide
                && isEqual(dCalcPepMass, pQuery->_pDecoys[i].dPepMass))
          {
+
             if (pQuery->_pDecoys[i].szPeptide[0] == szProteinSeq[iStartPos])
             {
-               if (!memcmp(pQuery->_pDecoys[i].szPeptide, szProteinSeq + iStartPos,
-                        pQuery->_pDecoys[i].iLenPeptide))
+               if (!memcmp(pQuery->_pDecoys[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*(pQuery->_pDecoys[i].iLenPeptide)))
                {
                   bIsDuplicate=1;
                }
@@ -2421,7 +2420,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (!memcmp(piVarModSites, pQuery->_pDecoys[i].piVarModSites, pQuery->_pDecoys[i].iLenPeptide + 2))
+               if (!memcmp(piVarModSites, pQuery->_pDecoys[i].piVarModSites, sizeof(int)*(pQuery->_pDecoys[i].iLenPeptide + 2)))
                {
                   bIsDuplicate=1;
                }
@@ -2469,8 +2468,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
          {
             if (pQuery->_pResults[i].szPeptide[0] == szProteinSeq[iStartPos])
             {
-               if (!memcmp(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos,
-                        pQuery->_pResults[i].iLenPeptide))
+               if (!memcmp(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*pQuery->_pResults[i].iLenPeptide))
                {
                   bIsDuplicate=1;
                }
@@ -2479,7 +2477,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (!memcmp(piVarModSites, pQuery->_pResults[i].piVarModSites, pQuery->_pResults[i].iLenPeptide + 2))
+               if (!memcmp(piVarModSites, pQuery->_pResults[i].piVarModSites, sizeof(int)*(pQuery->_pResults[i].iLenPeptide + 2)))
                {
                   bIsDuplicate=1;
                }
@@ -3406,7 +3404,8 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
 
                                              _varModInfo.dCalcPepMass = dCalcPepMass;
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-                                             if (!PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe))
+                                             int iPermuteCount = 0;
+                                             if (!PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe, iPermuteCount))
                                              {
                                                 return false;
                                              }
@@ -3460,9 +3459,13 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
                               bool *pbDuplFragment,
                               bool *bDoPeffAnalysis,
                               vector <PeffPositionStruct>* vPeffArray,
-                              struct sDBEntry *dbe)
+                              struct sDBEntry *dbe,
+                              int iPermuteCount)
 {
    int iModIndex;
+
+   if (iPermuteCount>5000)
+      return false;
 
    switch (iWhichMod)
    {
@@ -3534,7 +3537,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, iPermuteCount+1))
             return false;
       }
 
@@ -3553,7 +3556,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          }
          else
          {
-            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, iPermuteCount+1))
                return false;
          }
       }
@@ -3567,7 +3570,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, iPermuteCount+1))
             return false;
       }
    }
@@ -3897,7 +3900,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    // At this point, piVarModSites[] values should only range of 0 to 9.  Now possibly
    // add PEFF mods which are encoded as negative values.  Must copy current state of
    // piVarModSites as the loop below will permute through PEFF mods and we need to
-   // add each permutation to these existing variablemods.
+   // add each permutation to these existing variable mods.
 
    int pcTmpVarModSites[MAX_PEPTIDE_LEN_P2];
    memcpy(pcTmpVarModSites, piVarModSites, _iSizepiVarModSites);
@@ -4220,7 +4223,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                pcTmpVarModSearchSites[iLenPeptide]   = piVarModSites[iLenPeptide];    // N-term
                pcTmpVarModSearchSites[iLenPeptide+1] = piVarModSites[iLenPeptide+1];  // C-term
-               memcpy(piVarModSitesDecoy, pcTmpVarModSearchSites, sizeof(char)*iLenPeptide+2);
+               memcpy(piVarModSitesDecoy, pcTmpVarModSearchSites, (iLenPeptide+2)*sizeof(char));
 
                // Now need to recalculate _pdAAforward and _pdAAreverse for decoy entry
                double dBion = g_staticParams.precalcMasses.dNtermProton;

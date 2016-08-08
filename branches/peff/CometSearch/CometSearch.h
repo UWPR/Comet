@@ -160,7 +160,8 @@ private:
                     bool *pbDuplFragments,
                     bool *bDoPeffAnalysis,
                     vector <PeffPositionStruct>* vPeffArray,
-                    struct sDBEntry *dbe);
+                    struct sDBEntry *dbe,
+                    int iPermuteCount);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool MergeVarMods(char *szProteinSeq,
