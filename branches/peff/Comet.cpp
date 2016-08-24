@@ -636,6 +636,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("skip_researching", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "verbose_output"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("verbose_output", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "add_Cterm_peptide"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);

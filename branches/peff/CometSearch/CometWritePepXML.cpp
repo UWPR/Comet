@@ -106,7 +106,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, " <msms_pipeline_analysis date=\"%s\" ", szDate);
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
-   fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v117.xsd\" ");
+   fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v120.xsd\" ");
    fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", resolvedPathBaseName);
 
    fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", szRunSummaryResolvedPath);
@@ -653,15 +653,6 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       double dNterm = 0.0;
       double dCterm = 0.0;
 
-/*
-// FIX:  add sanity check to make sure PEFF mods don't end up at terminal positions?
-      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] < 0
-            || pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] < 0)
-      {
-         // Sanity check error ... should never get here
-      }
-*/
-
       // See if n-term mod (static and/or variable) needs to be reported
       if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0
             || !isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
@@ -725,11 +716,22 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
                || pOutput[iWhichResult].piVarModSites[i] != 0)
          {
+            int iResidue;
+
+            iResidue = (int)pOutput[iWhichResult].szPeptide[i];
+
             fprintf(fpout, "     <mod_aminoacid_mass position=\"%d\" mass=\"%0.6f\"",
                   i+1,
-                  g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]
-                     + pOutput[iWhichResult].pdVarModSites[i]);
+                  g_staticParams.massUtility.pdAAMassFragment[iResidue] + pOutput[iWhichResult].pdVarModSites[i]);
             
+            if (!isEqual(g_staticParams.staticModifications.pdStaticMods[iResidue], 0.0))
+            {
+               fprintf(fpout, " static=\"%0.6f\"", g_staticParams.staticModifications.pdStaticMods[iResidue]);
+            }
+
+            if (pOutput[iWhichResult].piVarModSites[i] != 0)
+               fprintf(fpout, " variable=\"%0.6f\"", pOutput[iWhichResult].pdVarModSites[i]);
+
             if (pOutput[iWhichResult].piVarModSites[i] < 0)
                fprintf(fpout, " source=\"peff\"/>\n");
             else if (pOutput[iWhichResult].piVarModSites[i] > 0)
@@ -738,6 +740,19 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                fprintf(fpout, "/>\n");
          }
       }
+
+      // Report PEFF
+      if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+      {
+         if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1)
+            fprintf(fpout, "     <aminoacid_substitution orig_prev_aa=\"%c\" tol_term=\"%s\" />", pOutput[iWhichResult].cPeffOrigResidue, "FIX");
+         else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
+            fprintf(fpout, "     <aminoacid_substitution orig_next_aa=\"%c\" tol_term=\"%s\" />", pOutput[iWhichResult].cPeffOrigResidue, "FIX");
+         else
+            fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\" />", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+         fprintf(fpout, "\n");
+      }
+
 
       fprintf(fpout, "    </modification_info>\n");
    }

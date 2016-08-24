@@ -95,6 +95,7 @@ struct Options             // output parameters
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
+   int bVerboseOutput;
    int bNoEnzymeSelected;
    int bShowFragmentIons;
    int bPrintExpectScore;
@@ -134,6 +135,7 @@ struct Options             // output parameters
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
+      bVerboseOutput = a.bVerboseOutput;
       bNoEnzymeSelected = a.bNoEnzymeSelected;
       bShowFragmentIons = a.bShowFragmentIons;
       bPrintExpectScore = a.bPrintExpectScore;
@@ -164,6 +166,8 @@ struct Results
    char szProtein[WIDTH_REFERENCE];
    char szPeptide[MAX_PEPTIDE_LEN];
    char szPrevNextAA[2];                      // [0] stores prev AA, [1] stores next AA
+   char cPeffOrigResidue;                     // original residue of a PEFF variant
+   int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
 };
 
 struct PepMassInfo
@@ -267,6 +271,10 @@ typedef struct sDBEntry
    int iSeqFilePosition;
    vector<PeffModStruct>  vectorPeffMod;
    vector<PeffVariantSimpleStruct>  vectorPeffVariantSimple;
+
+   // Probably not kosher but I'm putting PEFF entries here for convenience
+   char cPeffOrigResidue;                     // original residue of a PEFF variant
+   int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; iLenPeptide = n-term, iLenPeptide+1 = c-term; -1=unused
 } sDBEntry;
 
 struct DBInfo
@@ -586,6 +594,7 @@ struct StaticParams
       options.bOutputOutFiles = 0;
 
       options.bSkipAlreadyDone = 1;
+      options.bVerboseOutput = 0;
       options.iDecoySearch = 0;
       options.iNumThreads = 0;
       options.bClipNtermMet = 0;

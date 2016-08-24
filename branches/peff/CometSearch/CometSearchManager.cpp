@@ -294,6 +294,8 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].iTotalIons = 0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
          pQuery->_pResults[j].szProtein[0] = '\0';
+         pQuery->_pResults[j].cPeffOrigResidue = NULL;
+         pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
 
          if (g_staticParams.options.iDecoySearch==2)
          {
@@ -308,6 +310,8 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].iTotalIons = 0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
             pQuery->_pDecoys[j].szProtein[0] = '\0';
+            pQuery->_pDecoys[j].cPeffOrigResidue = NULL;
+            pQuery->_pDecoys[j].iPeffOrigResiduePosition = -9;
          }
       }
    }
@@ -683,6 +687,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
 
    GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
+
+   GetParamValue("verbose_output", g_staticParams.options.bVerboseOutput);
 
    GetParamValue("add_Cterm_peptide", g_staticParams.staticModifications.dAddCterminusPeptide);
 

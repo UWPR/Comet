@@ -37,6 +37,8 @@ struct SearchThreadData
       dbEntry.iSeqFilePosition = dbEntry_in.iSeqFilePosition;
       dbEntry.vectorPeffMod = dbEntry_in.vectorPeffMod;
       dbEntry.vectorPeffVariantSimple = dbEntry_in.vectorPeffVariantSimple;
+      dbEntry.cPeffOrigResidue = dbEntry_in.cPeffOrigResidue;
+      dbEntry.iPeffOrigResiduePosition = dbEntry_in.iPeffOrigResiduePosition;
    }
 
    ~SearchThreadData()
@@ -119,6 +121,10 @@ private:
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
+   bool CheckEnzymeStartTermini(char *szProteinSeq,
+                                int iStartPos);
+   bool CheckEnzymeEndTermini(char *szProteinSeq,
+                              int iStartPos);
    bool CheckMassMatch(int iWhichQuery,
                        double dCalcPepMass);
    double GetFragmentIonMass(int iWhichIonSeries,
@@ -180,8 +186,7 @@ private:
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool bNtermPeptideOnly,
-                          bool *pbDuplFragment,
-                          bool bRequiredVariantPosition);
+                          bool *pbDuplFragment);
    void SearchForVariants(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool *pbDuplFragment);
