@@ -623,6 +623,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
       bModified = 1;
 
+   if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+      bModified = 1;
+
    if (!bModified)
    {
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
@@ -745,11 +748,11 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
       {
          if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1)
-            fprintf(fpout, "     <aminoacid_substitution orig_prev_aa=\"%c\" tol_term=\"%s\" />", pOutput[iWhichResult].cPeffOrigResidue, "FIX");
+            fprintf(fpout, "     <aminoacid_substitution orig_prev_aa=\"%c\" tol_term=\"%s\"/>", pOutput[iWhichResult].cPeffOrigResidue, "FIX");
          else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
-            fprintf(fpout, "     <aminoacid_substitution orig_next_aa=\"%c\" tol_term=\"%s\" />", pOutput[iWhichResult].cPeffOrigResidue, "FIX");
+            fprintf(fpout, "     <aminoacid_substitution orig_next_aa=\"%c\" tol_term=\"%s\"/>", pOutput[iWhichResult].cPeffOrigResidue, "FIX");
          else
-            fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\" />", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+            fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"/>", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
          fprintf(fpout, "\n");
       }
 

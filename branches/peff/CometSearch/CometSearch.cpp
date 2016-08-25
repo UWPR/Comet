@@ -829,13 +829,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    int iPeffRequiredVariantPosition = dbe.iPeffOrigResiduePosition;
 
-/*
-   if (iPeffRequiredVariantPosition>=0)
-      iLenProtein = strlen(szProteinSeq);
-   else
-      iLenProtein = _proteinInfo.iProteinSeqLength;
-*/
-   iLenProtein = _proteinInfo.iProteinSeqLength;
+   iLenProtein = _proteinInfo.iProteinSeqLength;  // FIX: need to confirm this is always same as strlen(szProteinSeq)
 
    int iFirstResiduePosition = 0;
    if (bNtermPeptideOnly)  // we're skipping the leading M
@@ -910,7 +904,6 @@ for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
       dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
    if (iEndPos == iProteinSeqLengthMinus1)
       dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
-
 
    // Search through entire protein.
    while (iStartPos < iLenProtein)
@@ -1215,7 +1208,6 @@ for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
             // as peptide minus all possible negative mods is less than the dMaxMass????
             //
             // Otherwise, at this point, peptide mass is too big which means should be ok for varmod search.
-
             if (HasVariableMod(piVarModCounts, iStartPos, iEndPos, &dbe))
             {
                // VariableModSearch also includes looking at PEFF mods
@@ -1340,9 +1332,7 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
          return -1;
    }
    else
-   {
       return -1;
-   }
 }
 
 
@@ -1374,12 +1364,6 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
    vector<int> a(n);
    vector<int> len(n);
    int j;
-
-/*
-   int a[n],
-       len[n],
-       j;
-*/
 
    for (i = 0 ; i < n ; i++)
    {
@@ -1581,7 +1565,6 @@ int CometSearch::BinarySearchMass(int start,
                                   int end,
                                   double dCalcPepMass)
 {
-
    // Termination condition: start index greater than end index.
    if (start > end)
       return -1;
@@ -1601,9 +1584,21 @@ int CometSearch::BinarySearchMass(int start,
    }
 
    if ((int)middle+1 < end)
+   {
       return BinarySearchMass(middle + 1, end, dCalcPepMass);
+   }
    else
-      return -1;
+   {
+      if (middle+1 == end
+            && end <g_pvQuery.size()
+            && g_pvQuery.at(end)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
+            && dCalcPepMass <= g_pvQuery.at(end)->_pepMassInfo.dPeptideMassTolerancePlus)
+      {
+         return end;
+      }
+      else
+         return -1;
+   }
 }
 
 
@@ -2800,7 +2795,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
    {
       bool bMatch;
 
-      // vPeffArray will reduce peff mods by position on peptide
+      // vPeffArray will reduce representing peff mods by position on peptide
 
       // Check if there's a PEFF modification within iStartPos and iEndPos
       // Theoretically should check for modifications beyond iEndPos if
@@ -3445,8 +3440,8 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
 
                                              _varModInfo.iStartPos = iStartPos;
                                              _varModInfo.iEndPos = iTmpEnd;
-
                                              _varModInfo.dCalcPepMass = dCalcPepMass;
+
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
                                              int iPermuteCount = 0;
                                              if (!PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis,
