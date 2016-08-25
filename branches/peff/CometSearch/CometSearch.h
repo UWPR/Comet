@@ -37,8 +37,6 @@ struct SearchThreadData
       dbEntry.iSeqFilePosition = dbEntry_in.iSeqFilePosition;
       dbEntry.vectorPeffMod = dbEntry_in.vectorPeffMod;
       dbEntry.vectorPeffVariantSimple = dbEntry_in.vectorPeffVariantSimple;
-      dbEntry.cPeffOrigResidue = dbEntry_in.cPeffOrigResidue;
-      dbEntry.iPeffOrigResiduePosition = dbEntry_in.iPeffOrigResiduePosition;
    }
 
    ~SearchThreadData()
@@ -264,6 +262,8 @@ private:
        int  iProteinSeqLength;
        int  iAllocatedProtSeqLength;
        int  iSeqFilePosition;
+       char cPeffOrigResidue;                     // original residue of a PEFF variant
+       int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
    };
 
    struct SpectrumInfoInternal

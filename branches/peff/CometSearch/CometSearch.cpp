@@ -206,8 +206,6 @@ bool CometSearch::RunSearch(int minNumThreads,
       dbe.strSeq = "";
       dbe.vectorPeffMod.clear();
       dbe.vectorPeffVariantSimple.clear();
-      dbe.cPeffOrigResidue = '\0';
-      dbe.iPeffOrigResiduePosition = -1;  // note -1 here means unused which is different from -1 for iPeffOrigResiduePosition stored in results
 
       // skip through whitespace at head of line
       while (isspace(iTmpCh))
@@ -638,6 +636,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    {
       _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
       _proteinInfo.iSeqFilePosition = dbe.iSeqFilePosition;
+      _proteinInfo.cPeffOrigResidue = '\0';
+      _proteinInfo.iPeffOrigResiduePosition = -1;
 
       // have to pass sequence as it can be modified per below
       if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str(), false, pbDuplFragment))
@@ -645,11 +645,8 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          return false;
       }
 
-//FIX:  bClipNtermMet won't work with PEFF variants because we change the offsets!
       if (g_staticParams.options.bClipNtermMet && dbe.strSeq[0]=='M')
       {
-         _proteinInfo.iProteinSeqLength -= 1;
-
          if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str(), true, pbDuplFragment))
          {
             return false;
@@ -827,7 +824,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    char* szProteinName = (char *)(dbe.strName.c_str());
 
-   int iPeffRequiredVariantPosition = dbe.iPeffOrigResiduePosition;
+   int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
 
    iLenProtein = _proteinInfo.iProteinSeqLength;  // FIX: need to confirm this is always same as strlen(szProteinSeq)
 
@@ -1285,8 +1282,8 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
          // Place variant in protein
          szProteinSeq[iVariantPos] = dbe.vectorPeffVariantSimple.at(i).cResidue;
 
-         dbe.iPeffOrigResiduePosition = iVariantPos;
-         dbe.cPeffOrigResidue = cOrigResidue;
+         _proteinInfo.iPeffOrigResiduePosition = iVariantPos;
+         _proteinInfo.cPeffOrigResidue = cOrigResidue;
 
          SearchForPeptides(dbe, szProteinSeq, false, pbDuplFragment);
 
@@ -1589,8 +1586,8 @@ int CometSearch::BinarySearchMass(int start,
    }
    else
    {
-      if (middle+1 == end
-            && end <g_pvQuery.size()
+      if ((int)(middle+1) == end
+            && end < (int)g_pvQuery.size()
             && g_pvQuery.at(end)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
             && dCalcPepMass <= g_pvQuery.at(end)->_pepMassInfo.dPeptideMassTolerancePlus)
       {
@@ -1912,6 +1909,8 @@ bool CometSearch::TranslateNA2AA(int *frame,
       _proteinInfo.pszProteinSeq[ii]='\0';
    }
 
+   _proteinInfo.cPeffOrigResidue = '\0';
+   _proteinInfo.iPeffOrigResiduePosition = -1;
    return true;
 }
 
@@ -2256,10 +2255,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if ((iStartPos <= (dbe->iPeffOrigResiduePosition)+1) && ((dbe->iPeffOrigResiduePosition)-1 <=iEndPos))
+      if ((iStartPos <= (_proteinInfo.iPeffOrigResiduePosition)+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = dbe->iPeffOrigResiduePosition - iStartPos;
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].cPeffOrigResidue = dbe->cPeffOrigResidue;
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
       }
 
 // FIX:  store szProteinName to set and add protein idx here
@@ -2355,10 +2354,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if ((iStartPos <= (dbe->iPeffOrigResiduePosition)+1) && ((dbe->iPeffOrigResiduePosition)-1 <=iEndPos))
+      if ((iStartPos <= _proteinInfo.iPeffOrigResiduePosition+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
       {
-         pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = dbe->iPeffOrigResiduePosition - iStartPos;
-         pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = dbe->cPeffOrigResidue;
+         pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
+         pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
       }
 
 // FIX:  store szProteinName to set and add number here
@@ -2786,7 +2785,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
 
    vector<PeffPositionStruct> vPeffArray;
 
-   if (dbe->iPeffOrigResiduePosition >=0)
+   if (_proteinInfo.iPeffOrigResiduePosition >=0)
       iLenProteinMinus1 = strlen(szProteinSeq) - 1;
    else
       iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
@@ -3767,7 +3766,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    int iLenPeptide = iLenMinus1+1;
    int iLenProteinMinus1;
 
-   if (dbe->iPeffOrigResiduePosition>=0)
+   if (_proteinInfo.iPeffOrigResiduePosition>=0)
       iLenProteinMinus1 = strlen(szProteinSeq) - 1;
    else
       iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;

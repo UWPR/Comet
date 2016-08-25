@@ -271,10 +271,6 @@ typedef struct sDBEntry
    int iSeqFilePosition;
    vector<PeffModStruct>  vectorPeffMod;
    vector<PeffVariantSimpleStruct>  vectorPeffVariantSimple;
-
-   // Probably not kosher but I'm putting PEFF entries here for convenience
-   char cPeffOrigResidue;                     // original residue of a PEFF variant
-   int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; iLenPeptide = n-term, iLenPeptide+1 = c-term; -1=unused
 } sDBEntry;
 
 struct DBInfo
