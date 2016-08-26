@@ -187,10 +187,10 @@ bool CometSearch::RunSearch(int minNumThreads,
    }
 
    char szBuf[8192];
-// char szAttributeMod[] = "\\ModResPsi=";
-   char szAttributeMod[] = "\\ModRes=";
+// char szAttributeMod[] = "\\ModRes=";
+   char szAttributeMod[] = "\\ModResPsi=";
+   char szAttributeVariant[] = "\\Variant=";
    int  iLenAttributeMod = strlen(szAttributeMod);
-   char szAttributeVariant[] = "\\VariantSimple=";
    int  iLenAttributeVariant = strlen(szAttributeVariant);
 
    // Loop through entire database.
@@ -300,11 +300,14 @@ bool CometSearch::RunSearch(int minNumThreads,
                         // sanity check: make sure position is positive
                         if (iPos < 0)
                         {
-                           char szErrorMsg[512];
-                           sprintf(szErrorMsg,  "Warning:  %s, ModRes=(%d|%s) ignored\n", dbe.strName.c_str(), iPos, strModCode.c_str());
-                           string strErrorMsg(szErrorMsg);
-                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(szErrorMsg);
+                           if (g_staticParams.options.bVerboseOutput)
+                           {
+                              char szErrorMsg[512];
+                              sprintf(szErrorMsg,  "Warning:  %s, ModRes=(%d|%s) ignored\n", dbe.strName.c_str(), iPos, strModCode.c_str());
+                              string strErrorMsg(szErrorMsg);
+                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                              logerr(szErrorMsg);
+                           }
                         }
                         else if (iPos > 0)
                         {
@@ -354,7 +357,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                      strncpy(szMods, pStr, iLen);
                      szMods[iLen]=0;
 
-                     // parse ModRes entries
+                     // parse VariantSimple entries
                      char *tok;
                      char delims[] = ")";  // tokenize by tab
                      int iPos;
@@ -365,16 +368,19 @@ bool CometSearch::RunSearch(int minNumThreads,
                         iPos = -1;
                         cVariant = 0;
 
-                        sscanf(tok+1, "%d|%c", &iPos, &cVariant);  //tok+1 to skip first '(' char
+                        sscanf(tok+1, "%d|%*d|%c", &iPos, &cVariant);  //tok+1 to skip first '(' char
 
                         // sanity check: make sure position is positive and residue is A-Z
                         if (iPos <0 || cVariant<65 || cVariant>90)
                         {
-                           char szErrorMsg[512];
-                           sprintf(szErrorMsg,  "Warning:  %s, VariantSimple=(%d|%c) ignored\n", dbe.strName.c_str(), iPos, cVariant);
-                           string strErrorMsg(szErrorMsg);
-                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(szErrorMsg);
+                           if (g_staticParams.options.bVerboseOutput)
+                           {
+                              char szErrorMsg[512];
+                              sprintf(szErrorMsg,  "Warning:  %s, VariantSimple=(%d|%c) ignored\n", dbe.strName.c_str(), iPos, cVariant);
+                              string strErrorMsg(szErrorMsg);
+                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                              logerr(szErrorMsg);
+                           }
                         }
                         else
                         {

@@ -748,9 +748,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
       {
          if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1)
-            fprintf(fpout, "     <aminoacid_substitution orig_prev_aa=\"%c\" tol_term=\"%s\"/>", pOutput[iWhichResult].cPeffOrigResidue, "FIX");
+            fprintf(fpout, "     <aminoacid_substitution orig_prev_aa=\"%c\" />", pOutput[iWhichResult].cPeffOrigResidue);
          else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
-            fprintf(fpout, "     <aminoacid_substitution orig_next_aa=\"%c\" tol_term=\"%s\"/>", pOutput[iWhichResult].cPeffOrigResidue, "FIX");
+            fprintf(fpout, "     <aminoacid_substitution orig_next_aa=\"%c\" />", pOutput[iWhichResult].cPeffOrigResidue);
          else
             fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"/>", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
          fprintf(fpout, "\n");
