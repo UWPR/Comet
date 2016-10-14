@@ -1,3 +1,18 @@
+/*
+Copyright 2005-2016, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 #include "MSReader.h"
 #include <iostream>
 using namespace std;
@@ -18,6 +33,7 @@ MSReader::MSReader(){
   iVersion=0;
   for(int i=0;i<16;i++)	strcpy(header.header[i],"\0");
   headerIndex=0;
+  sCurrentFile.clear();
   sInstrument="unknown";
   sManufacturer="unknown";
   lastReadScanNum=0;
@@ -104,6 +120,10 @@ int MSReader::openFile(const char *c,bool text){
 
 	  return 0;
   }
+}
+
+string MSReader::getCurrentFile(){
+  return sCurrentFile;
 }
 
 MSSpectrumType MSReader::getFileType(){
@@ -645,7 +665,9 @@ int MSReader::getLastScan(){
       break;
     case raw:
       #ifdef _MSC_VER
+      #ifndef _NO_THERMORAW
       if(cRAW.getStatus()) return cRAW.getScanCount();
+      #endif
       #endif
       break;
     default:
@@ -683,10 +705,12 @@ int MSReader::getPercent(){
 			break;
 		case raw:
 			#ifdef _MSC_VER
+      #ifndef _NO_THERMORAW
 			if(cRAW.getStatus()){
 				return (int)((double)cRAW.getLastScanNumber()/cRAW.getScanCount()*100);
 			}
 			#endif
+      #endif
 			break;
 		default:
 			break;
@@ -1188,7 +1212,7 @@ vector<int> MSReader::estimateCharge(Spectrum& s)
 void MSReader::createIndex()
 {
   //create index for msScan table
-  char* stmt1 = "create index idxScanNumber on msScan(startScanNumber)";
+  const char* stmt1 = "create index idxScanNumber on msScan(startScanNumber)";
   sql_stmt(stmt1);
 
 }
@@ -1298,6 +1322,9 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 
   if(c!=NULL) {
     lastFileFormat = checkFileFormat(c);
+    sCurrentFile = c;
+    sInstrument.clear();
+    sManufacturer.clear();
     sInstrument="unknown";
     sManufacturer="unknown";
   }
@@ -1331,6 +1358,7 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
       break;
 		case raw:
 			#ifdef _MSC_VER
+      #ifndef _NO_THERMORAW
 			//only read the raw file if the dll was present and loaded.
 			if(cRAW.getStatus()) {
 				cRAW.setMSLevelFilter(&filter);
@@ -1348,6 +1376,10 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 				cerr << "Thermo RAW file format not supported." << endl;
 				return false;
 			#endif
+      #else
+        cerr << "Thermo RAW file format not supported." << endl;
+        return false;
+      #endif
 			break;
 		case sqlite:
 		case psm:
@@ -1689,6 +1721,8 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		  s.setScanNumber(scanHeader.acquisitionNum,true);
 		  s.setRTime((float)scanHeader.retentionTime/60.0f);
       s.setCompensationVoltage(scanHeader.compensationVoltage);
+      s.setIonInjectionTime(scanHeader.ionInjectionTime);
+      s.setTIC(scanHeader.totIonCurrent);
 		  if(strlen(scanHeader.activationMethod)>1){
 		    if(strcmp(scanHeader.activationMethod,"CID")==0) s.setActivationMethod(mstCID);
           else if(strcmp(scanHeader.activationMethod,"ECD")==0) s.setActivationMethod(mstECD);
@@ -1701,8 +1735,10 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 			if(scanHeader.msLevel>1) {
 				s.setMZ(scanHeader.precursorMZ,scanHeader.precursorMonoMZ);
 				s.setCharge(scanHeader.precursorCharge);
+        s.setSelWindow(scanHeader.selectionWindowLower,scanHeader.selectionWindowUpper);
 			} else {
 				s.setMZ(0);
+        s.setSelWindow(0,0);
 			}
 		  if(scanHeader.precursorCharge>0) {
         if(scanHeader.precursorMonoMZ>0.0001) s.addZState(scanHeader.precursorCharge,scanHeader.precursorMonoMZ*scanHeader.precursorCharge-(scanHeader.precursorCharge-1)*1.007276466);
@@ -1770,6 +1806,8 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		s.setScanNumber(scanHeader.acquisitionNum,true);
 		s.setRTime((float)scanHeader.retentionTime/60.0f);
     s.setCompensationVoltage(scanHeader.compensationVoltage);
+    s.setIonInjectionTime(scanHeader.ionInjectionTime);
+    s.setTIC(scanHeader.totIonCurrent);
 		if(strlen(scanHeader.activationMethod)>1){
 		  if(strcmp(scanHeader.activationMethod,"CID")==0) s.setActivationMethod(mstCID);
         else if(strcmp(scanHeader.activationMethod,"ECD")==0) s.setActivationMethod(mstECD);
@@ -1781,6 +1819,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		if(scanHeader.msLevel>1) {
 			s.setMZ(scanHeader.precursorMZ,scanHeader.precursorMonoMZ);
 			s.setCharge(scanHeader.precursorCharge);
+      s.setSelWindow(scanHeader.selectionWindowLower, scanHeader.selectionWindowUpper);
 		} else {
 			s.setMZ(0);
 		}
@@ -1838,8 +1877,10 @@ void MSReader::setCompression(bool b){
 
 void MSReader::setRawFilter(char *c){
 	#ifdef _MSC_VER
+  #ifndef _NO_THERMORAW
 	cRAW.setRawFilter(c);
 	#endif
+  #endif
 }
 
 void MSReader::setHighResMGF(bool b){

@@ -1,3 +1,18 @@
+/*
+Copyright 2005-2016, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 #include "pepXMLWriter.h"
 
 PepXMLWriter::PepXMLWriter(){
@@ -25,21 +40,35 @@ void PepXMLWriter::closePepXML(){
   fclose(fptr);
 }
 
-bool PepXMLWriter::createPepXML(char* fn, pxwMSMSRunSummary& run, PXWSearchSummary* search){
+bool PepXMLWriter::createPepXML(char* fn, pxwMSMSRunSummary& run, pxwSampleEnzyme* enzyme, PXWSearchSummary* search){
 
+  size_t i;
+  time_t timeNow;
   string st;
+  char str[32];
   spQueryIndex=1;
 
   if(fptr!=NULL) fclose(fptr);
   fptr=fopen(fn,"wt");
   if(fptr==NULL) return false;
 
+  char timebuf[80];
+  time(&timeNow);
+  strftime(timebuf, 80, "%Y-%m-%dT%H:%M:%S", localtime(&timeNow));
+
   resetTabs();
   writeLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 
-  writeLine("<msms_pipeline_analysis>\n");
+  st = "<msms_pipeline_analysis ";
+  st += "date= \"";
+  st += timebuf;
+  st += "\" summary_xml=\"";
+  st += run.base_name;
+  st += ".pep.xml";
+  st += "\" xmlns=\"http://regis-web.systemsbiology.net/pepXML\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://regis-web.systemsbiology.net/pepXML http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v120.xsd\">\n";
+  writeLine(&st[0]);
   addTab();
-  st="</msms_pipeline_analysis>\n";
+  st = "</msms_pipeline_analysis>\n";
   vTagState.push_back(st);
 
   st="<msms_run_summary base_name=\"";
@@ -54,14 +83,70 @@ bool PepXMLWriter::createPepXML(char* fn, pxwMSMSRunSummary& run, PXWSearchSumma
   st="</msms_run_summary>\n";
   vTagState.push_back(st);
 
+  if (enzyme != NULL){
+    st = "<sample_enzyme name=\"";
+    st+=enzyme->name;
+    st += "\">\n";
+    writeLine(&st[0]);
+    addTab();
+    st = "<specificity cut=\"";
+    st+=enzyme->cut;
+    st += "\" no_cut=\"";
+    st+=enzyme->no_cut;
+    st += "\" sense=\"";
+    st+=enzyme->sense;
+    st += "\"/>\n";
+    writeLine(&st[0]);
+    deleteTab();
+    st = "</sample_enzyme>\n";
+    writeLine(&st[0]);
+  }
+
   if(search!=NULL){
     //pass to searchSummary eventually
     st="<search_summary base_name=\"";
     st+=search->base_name;
     st+="\" search_engine=\"";
     st+=search->search_engine;
-    st+="\">\n";
+    if(search->search_engine_version.size()>0){
+      st += "\" search_engine_version=\"";
+      st += search->search_engine_version;
+    }
+    st+="\" precursor_mass_type=\"";
+    if (search->precursor_mass_type>0) st += "average\"";
+    else st += "monoisotopic\"";
+    st += " fragment_mass_type=\"";
+    if (search->fragment_mass_type>0) st += "average\"";
+    else st += "monoisotopic\"";
+    st += " search_id=\"1\"";
+    st+=">\n";
     writeLine(&st[0]);
+    if(search->search_database.size()>1){
+      st = " <search_database local_path=\"";
+      st += search->search_database;
+      st += "\" type=\"AA\"/>\n";
+      writeLine(&st[0]);
+    }
+    if (enzyme != NULL){
+      st = " <enzymatic_search_contstraint enzyme=\"";
+      st+=enzyme->name;
+      st += "\" max_num_internal_cleavages=\"";
+      sprintf(str,"%d",enzyme->maxNumInternalCleavages);
+      st+=str;
+      st += "\" min_number_termini=\"";
+      sprintf(str, "%d",enzyme->minNumTermini);
+      st+=str;
+      st += "\"/>\n";
+      writeLine(&st[0]);
+    }
+    for(i=0;i<search->parameters->size();i++){
+      st=" <parameter name=\"";
+      st+=search->parameters->at(i).name;
+      st+="\" value=\"";
+      st+=search->parameters->at(i).value;
+      st+="\"/>\n";
+      writeLine(&st[0]);
+    }
     st="</search_summary>\n";
     writeLine(&st[0]);
   }
@@ -140,7 +225,7 @@ void PepXMLWriter::writeModInfo(PXWModInfo& s){
   writeLine(&st[0]);
 }
 
-void PepXMLWriter::writeLine(char* str){
+void PepXMLWriter::writeLine(const char* str){
   if(bTabs) fprintf(fptr,"%s",strTabs);
   fprintf(fptr,"%s",str);
 }

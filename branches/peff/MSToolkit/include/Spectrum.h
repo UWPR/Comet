@@ -1,3 +1,18 @@
+/*
+Copyright 2005-2016, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 #ifndef _SPECTRUM_H
 #define _SPECTRUM_H
 
@@ -68,6 +83,8 @@ class Spectrum {
   float		    		getRTime();
   float           getRTimeApex();
   int	      			getScanNumber(bool second=false);
+  double          getSelWindowLower();
+  double          getSelWindowUpper();
   double          getTIC();
   int             getMsLevel();
   void            setActivationMethod(MSActivation);
@@ -91,6 +108,7 @@ class Spectrum {
   void				    setRTime(float);
   void            setRTimeApex(float);
   void    				setScanNumber(int, bool second=false);
+  void            setSelWindow(double lower, double upper); //the mass range of the selected/acquired ions
   void            setTIC(double);
   void            setMsLevel(int level);
   int			      	size();
@@ -140,6 +158,8 @@ class Spectrum {
 	double           convD;
 	double           convE;
 	double           convI;
+  double           selectionWinLower;
+  double           selectionWinUpper;
   double           TIC;
   double           BPM;             //Base Peak Mass
   float            rTimeApex;       //retention time of precursor apex (MS2)

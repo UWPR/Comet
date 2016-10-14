@@ -18,6 +18,7 @@ BasicSpectrum::BasicSpectrum() {
 	centroid=false;
 	filterLine[0]='\0';
 	highMZ=0.0;
+  ionInjectionTime=0.0;
 	lowMZ=0.0;
 	msLevel=1;
 	peaksCount=0;
@@ -53,6 +54,7 @@ BasicSpectrum::BasicSpectrum(const BasicSpectrum& s){
 	basePeakMZ=s.basePeakMZ;
 	centroid=s.centroid;
 	highMZ=s.highMZ;
+  ionInjectionTime=s.ionInjectionTime;
 	lowMZ=s.lowMZ;
 	msLevel=s.msLevel;
 	peaksCount=s.peaksCount;
@@ -93,6 +95,7 @@ BasicSpectrum& BasicSpectrum::operator=(const BasicSpectrum& s){
 		basePeakMZ=s.basePeakMZ;
 		centroid=s.centroid;
 		highMZ=s.highMZ;
+    ionInjectionTime=s.ionInjectionTime;
 		lowMZ=s.lowMZ;
 		msLevel=s.msLevel;
 		peaksCount=s.peaksCount;
@@ -128,6 +131,7 @@ void BasicSpectrum::clear(){
 	filterLine[0]='\0';
 	highMZ=0.0;
 	idString[0]='\0';
+  ionInjectionTime=0.0;
 	lowMZ=0.0;
 	msLevel=1;
 	peaksCount=0;
@@ -160,6 +164,7 @@ void BasicSpectrum::setIDString(char* str) {
 	strncpy(idString,str,127); 
 	idString[127]='\0';
 }
+void BasicSpectrum::setIonInjectionTime(double d){ ionInjectionTime=d;}
 void BasicSpectrum::setLowMZ(double d){ lowMZ=d;}
 void BasicSpectrum::setMSLevel(int level){ msLevel=level;}
 void BasicSpectrum::setPeaksCount(int i){ peaksCount=i;}
@@ -189,6 +194,7 @@ int BasicSpectrum::getIDString(char* str) {
 	strcpy(str,idString);
 	return (int)strlen(str);
 }
+double BasicSpectrum::getIonInjectionTime(){return ionInjectionTime;}
 double BasicSpectrum::getLowMZ(){ return lowMZ;}
 int BasicSpectrum::getMSLevel(){ return msLevel;}
 int BasicSpectrum::getPeaksCount(){ return peaksCount;}

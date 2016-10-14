@@ -1,8 +1,24 @@
+/*
+Copyright 2005-2016, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 #ifndef _PEPXMLWRITER_H
 #define _PEPXMLWRITER_H
 
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <string>
 #include <iostream>
 #include <vector>
@@ -101,14 +117,16 @@ private:
 class PXWSearchSummary {
 public:
   string base_name;
+  string search_database;
   string search_engine;
   string search_engine_version;
-  int precursor_mass_type;
-  int fragment_mass_type;
+  int precursor_mass_type; //0=monoisotopic, 1=average
+  int fragment_mass_type; //0=monoisotopic, 1=average
   vector<pxwBasicXMLTag>* parameters;
 
   PXWSearchSummary(){
     base_name.clear();
+    search_database.clear();
     search_engine.clear();
     search_engine_version.clear();
     precursor_mass_type=0;
@@ -117,6 +135,7 @@ public:
   }
   PXWSearchSummary(const PXWSearchSummary& s){
     base_name=s.base_name;
+    search_database=s.search_database;
     search_engine=s.search_engine;
     search_engine_version=s.search_engine_version;
     precursor_mass_type=s.precursor_mass_type;
@@ -130,6 +149,7 @@ public:
   PXWSearchSummary& operator=(const PXWSearchSummary& s){
     if(this!=&s){
       base_name=s.base_name;
+      search_database = s.search_database;
       search_engine=s.search_engine;
       search_engine_version=s.search_engine_version;
       precursor_mass_type=s.precursor_mass_type;
@@ -236,7 +256,7 @@ public:
   void addScore(pxwBasicXMLTag& s){
     searchScores->push_back(s);
   }
-  void addScore(char* name, char* value){
+  void addScore(const char* name, const char* value){
     pxwBasicXMLTag x;
     x.name=name;
     x.value=value;
@@ -251,7 +271,7 @@ public:
   void addXLScore(pxwBasicXMLTag& s){
     xlScores->push_back(s);
   }
-  void addXLScore(char* name, char* value){
+  void addXLScore(const char* name, const char* value){
     pxwBasicXMLTag x;
     x.name=name;
     x.value=value;
@@ -361,6 +381,15 @@ typedef struct pxwSearchHitPair{
   }
 } pxwSearchHitPair;
 
+typedef struct pxwSampleEnzyme{
+  string name;
+  string cut;
+  string no_cut;
+  string sense;
+  int maxNumInternalCleavages;
+  int minNumTermini;
+} pxwSampleEnzyme;
+
 class PXWSpectrumQuery {
 public:
   string spectrum;
@@ -445,7 +474,7 @@ public:
   ~PepXMLWriter();
 
   void  closePepXML         ();
-  bool  createPepXML        (char* fn, pxwMSMSRunSummary& run, PXWSearchSummary* search=NULL);
+  bool  createPepXML        (char* fn, pxwMSMSRunSummary& run, pxwSampleEnzyme* enzyme=NULL, PXWSearchSummary* search=NULL);
   void  writeSpectrumQuery  (PXWSpectrumQuery& s);
 
 private:
@@ -456,7 +485,7 @@ private:
   void writeAltProtein      (pxwProtein& s);
   void writeModAAMass       (pxwModAA& s);
   void writeModInfo         (PXWModInfo& s);
-  void writeLine            (char* str);
+  void writeLine            (const char* str);
   void writeLinkedPeptide   (PXWSearchHit& s, bool alpha=true);
   void writeSearchHit       (pxwSearchHitPair& s);
 
