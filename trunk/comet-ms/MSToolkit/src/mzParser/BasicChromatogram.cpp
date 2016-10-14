@@ -4,6 +4,13 @@ BasicChromatogram::BasicChromatogram(){}
 
 BasicChromatogram::BasicChromatogram(const BasicChromatogram& c){
 	vData.clear();
+  charge=c.charge;
+  precursorMZ=c.precursorMZ;
+  precursorOffsetLower=c.precursorOffsetLower;
+  precursorOffsetUpper=c.precursorOffsetUpper;
+  productMZ=c.productMZ;
+  productOffsetLower=c.productOffsetLower;
+  productOffsetUpper=c.productOffsetUpper;
 	for(unsigned int i=0;i<c.vData.size();i++) vData.push_back(c.vData[i]);
 	strcpy(idString,c.idString);
 }
@@ -13,6 +20,13 @@ BasicChromatogram::~BasicChromatogram(){}
 BasicChromatogram& BasicChromatogram::operator=(const BasicChromatogram& c){
 	if(this != &c){
 		vData.clear();
+    charge = c.charge;
+    precursorMZ = c.precursorMZ;
+    precursorOffsetLower = c.precursorOffsetLower;
+    precursorOffsetUpper = c.precursorOffsetUpper;
+    productMZ = c.productMZ;
+    productOffsetLower = c.productOffsetLower;
+    productOffsetUpper = c.productOffsetUpper;
 		for(unsigned int i=0;i<c.vData.size();i++) vData.push_back(c.vData[i]);
 		strcpy(idString,c.idString);
 	}
@@ -25,13 +39,37 @@ void BasicChromatogram::addTIP(TimeIntensityPair tip){ vData.push_back(tip); }
 void BasicChromatogram::clear(){
 	vData.clear();
 	strcpy(idString,"");
+  charge=0;
+  precursorMZ=0;
+  precursorOffsetLower=0;
+  precursorOffsetUpper=0;
+  productMZ=0;
+  productOffsetLower=0;
+  productOffsetUpper=0;
 }
-void BasicChromatogram::setIDString(char* str) { strcpy(idString,str); }
-
+int BasicChromatogram::getCharge(){return charge;}
 vector<TimeIntensityPair>&  BasicChromatogram::getData() { return vData; }
 int BasicChromatogram::getIDString(char* str){
 	strcpy(str,idString);
-	return strlen(str);
+	return (int)strlen(str);
 }
-unsigned int BasicChromatogram::size(){	return vData.size(); }
+double BasicChromatogram::getPreMZ(){ return precursorMZ;}
+double BasicChromatogram::getPreOffsetLower(){ return precursorOffsetLower; }
+double BasicChromatogram::getPreOffsetUpper(){ return precursorOffsetUpper; }
+double BasicChromatogram::getProdMZ(){ return productMZ; }
+double BasicChromatogram::getProdOffsetLower(){return productOffsetLower;}
+double BasicChromatogram::getProdOffsetUpper(){ return productOffsetUpper; }
+void BasicChromatogram::setIDString(char* str) { strcpy(idString,str); }
+void BasicChromatogram::setPrecursor(double mz, int z, double offLow, double offHigh){
+  precursorMZ=mz;
+  charge=z;
+  precursorOffsetLower=offLow;
+  precursorOffsetUpper=offHigh;
+}
+void BasicChromatogram::setProduct(double mz, double offLow, double offHigh){
+  productMZ = mz;
+  productOffsetLower = offLow;
+  productOffsetUpper = offHigh;
+}
+size_t BasicChromatogram::size(){	return vData.size(); }
 

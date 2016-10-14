@@ -223,6 +223,7 @@ void mzpSAXMzxmlHandler::endElement(const XML_Char *el) {
 
 	}	else if(isElement("precursorMz", el)) {
 		m_precursorIon.mz=atof(&m_strData[0]);
+    m_precursorIon.isoMZ = m_precursorIon.mz;
     spec->setPrecursorIon(m_precursorIon);
 		m_bInPrecursorMz=false;
 		

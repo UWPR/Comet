@@ -66,68 +66,8 @@
     <ClCompile Include="src\mzParser\saxmzxmlhandler.cpp">
       <Filter>Source Files\mzParser</Filter>
     </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\adler32.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\compress.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\crc32.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\deflate.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\gzclose.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\gzlib.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\gzread.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\gzwrite.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\infback.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\inffast.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\inflate.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\inftrees.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\trees.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\uncompr.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
-    <ClCompile Include="src\zLib-1.2.5\zutil.c">
-      <Filter>Source Files\zLib</Filter>
-    </ClCompile>
     <ClCompile Include="src\MSToolkit\RAWReader.cpp">
       <Filter>Source Files\MSToolkit</Filter>
-    </ClCompile>
-    <ClCompile Include="src\expat-2.0.1\xmltok_ns.cpp">
-      <Filter>Source Files\expat</Filter>
-    </ClCompile>
-    <ClCompile Include="src\expat-2.0.1\xmlparse.cpp">
-      <Filter>Source Files\expat</Filter>
-    </ClCompile>
-    <ClCompile Include="src\expat-2.0.1\xmlrole.cpp">
-      <Filter>Source Files\expat</Filter>
-    </ClCompile>
-    <ClCompile Include="src\expat-2.0.1\xmltok.cpp">
-      <Filter>Source Files\expat</Filter>
-    </ClCompile>
-    <ClCompile Include="src\expat-2.0.1\xmltok_impl.cpp">
-      <Filter>Source Files\expat</Filter>
     </ClCompile>
     <ClCompile Include="src\mzParser\MSNumpress.cpp">
       <Filter>Source Files\mzParser</Filter>
@@ -135,11 +75,83 @@
     <ClCompile Include="src\MSToolkit\mzMLWriter.cpp">
       <Filter>Source Files\MSToolkit</Filter>
     </ClCompile>
+    <ClCompile Include="src\expat-2.2.0\xmlrole.c">
+      <Filter>Source Files\expat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\expat-2.2.0\xmltok.c">
+      <Filter>Source Files\expat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\expat-2.2.0\xmltok_impl.c">
+      <Filter>Source Files\expat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\expat-2.2.0\xmltok_ns.c">
+      <Filter>Source Files\expat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\expat-2.2.0\xmlparse.c">
+      <Filter>Source Files\expat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\inflate.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\inftrees.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\trees.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\uncompr.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\zutil.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\adler32.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\compress.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\crc32.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\deflate.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\gzclose.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\gzlib.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\gzread.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\gzwrite.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\infback.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\zlib-1.2.8\inffast.c">
+      <Filter>Source Files\zLib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\crc32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\deflate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\expat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\expat_config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\expat_external.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -167,6 +179,12 @@
     <ClInclude Include="include\latin1tab.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\macconfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\MSNumpress.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\MSObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -176,16 +194,25 @@
     <ClInclude Include="include\MSToolkitTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\mzMLWriter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\mzParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\nametab.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\pepXMLWriter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\RAWReader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Spectrum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\sqlite3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\trees.h">
@@ -215,28 +242,13 @@
     <ClInclude Include="include\zutil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\amigaconfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\ascii.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\asciitab.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\crc32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\deflate.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\expat.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\expat_config.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\szlib.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\mzMLWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

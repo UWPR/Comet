@@ -35,9 +35,12 @@ int checkFileType(const char* fname){
 
 void getPrecursor(const struct ScanHeaderStruct *scanHeader,int index,double &mz,double &monoMZ,double &intensity,int &charge,int &possibleCharges,int *&possibleChargeArray){
   int i,j,k;
+  double d;
   
   if(index==0){
     mz=scanHeader->precursorMZ;
+    d=scanHeader->selectionWindowLower; //these are place holders until the values are actually returned;
+    d=scanHeader->selectionWindowUpper;
     monoMZ=scanHeader->precursorMonoMZ;
     intensity=scanHeader->precursorIntensity;
     charge=scanHeader->precursorCharge;
@@ -53,6 +56,8 @@ void getPrecursor(const struct ScanHeaderStruct *scanHeader,int index,double &mz
     j=0;
     for(i=1;i<scanHeader->precursorCount;i++){
       memcpy(&mz,&scanHeader->additionalPrecursors[j+=8],sizeof(double));
+      memcpy(&d, &scanHeader->additionalPrecursors[j += 8], sizeof(double)); //selectionWindowLower
+      memcpy(&d, &scanHeader->additionalPrecursors[j += 8], sizeof(double)); //selectionWindowUpper
       memcpy(&monoMZ,&scanHeader->additionalPrecursors[j+=8],sizeof(double));
       memcpy(&intensity,&scanHeader->additionalPrecursors[j+=8],sizeof(double));
       memcpy(&charge,&scanHeader->additionalPrecursors[j+=4],sizeof(int));
@@ -336,6 +341,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	scanHeader->filterLine[0]='\0';
 	scanHeader->highMZ=0.0;
 	scanHeader->idString[0]='\0';
+  scanHeader->ionisationEnergy=0.0;
 	scanHeader->ionisationEnergy=0.0;
 	scanHeader->lowMZ=0.0;
 	scanHeader->mergedScan=0;
@@ -350,6 +356,8 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	scanHeader->precursorMZ=0.0;
 	scanHeader->precursorScanNum=-1;
 	scanHeader->retentionTime=0.0;
+  scanHeader->selectionWindowLower=0;
+  scanHeader->selectionWindowUpper=0;
 	scanHeader->totIonCurrent=0.0;
 	scanHeader->scanIndex=0;
 	scanHeader->seqNum=-1;
@@ -417,6 +425,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	scanHeader->collisionEnergy=pFI->bs->getCollisionEnergy();
   scanHeader->compensationVoltage=pFI->bs->getCompensationVoltage();
 	scanHeader->highMZ=pFI->bs->getHighMZ();
+  scanHeader->ionInjectionTime = pFI->bs->getIonInjectionTime();
 	scanHeader->lowMZ=pFI->bs->getLowMZ();
 	scanHeader->msLevel=pFI->bs->getMSLevel();
 	scanHeader->peaksCount=pFI->bs->getPeaksCount();
@@ -428,6 +437,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 
   int j=0;
   int k;
+  double d;
   scanHeader->precursorCount=pFI->bs->getPrecursorIonCount();
   for(i=0;i<(unsigned int)scanHeader->precursorCount;i++){
     p=pFI->bs->getPrecursorIon(i);
@@ -435,7 +445,9 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	    scanHeader->precursorCharge=p.charge;
 	    scanHeader->precursorIntensity=p.intensity;
       scanHeader->precursorMonoMZ=p.monoMZ;
-	    scanHeader->precursorMZ=p.mz;
+	    scanHeader->precursorMZ=p.isoMZ;
+      scanHeader->selectionWindowLower=p.isoMZ-p.isoLowerMZ;
+      scanHeader->selectionWindowUpper=p.isoMZ+p.isoUpperMZ;
       scanHeader->numPossibleCharges=(int)p.possibleCharges->size();
       for(k=0;k<scanHeader->numPossibleCharges;k++){
         memcpy(&scanHeader->possibleCharges[k*4],&p.possibleCharges->at(k),sizeof(int));
@@ -445,11 +457,15 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
         }
       }
     } else {
-      if( (j+32+p.possibleCharges->size()*4) > 255) {
+      if( (j+32+p.possibleCharges->size()*4) > PRECURSORARRAY_LENGTH-1) {
         cout << "Warning: too many precursors. Must improve RAMP interface." << endl;
         break;
       }
-      memcpy(&scanHeader->additionalPrecursors[j+=8],&p.mz,sizeof(double));
+      memcpy(&scanHeader->additionalPrecursors[j+=8],&p.isoMZ,sizeof(double));
+      d = p.isoMZ - p.isoLowerMZ;
+      memcpy(&scanHeader->additionalPrecursors[j+=8],&d, sizeof(double));
+      d = p.isoMZ + p.isoUpperMZ;
+      memcpy(&scanHeader->additionalPrecursors[j+=8],&d, sizeof(double));
       memcpy(&scanHeader->additionalPrecursors[j+=8],&p.monoMZ,sizeof(double));
       memcpy(&scanHeader->additionalPrecursors[j+=8],&p.intensity,sizeof(double));
       memcpy(&scanHeader->additionalPrecursors[j+=4],&p.charge,sizeof(int));

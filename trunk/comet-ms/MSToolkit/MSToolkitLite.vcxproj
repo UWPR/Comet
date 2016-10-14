@@ -150,7 +150,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>./include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;COMPILED_FROM_DSP;_NOSQLITE;XML_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;WIN64;_WIN64;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;COMPILED_FROM_DSP;_NOSQLITE;XML_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -172,11 +172,11 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\expat-2.0.1\xmlparse.cpp" />
-    <ClCompile Include="src\expat-2.0.1\xmlrole.cpp" />
-    <ClCompile Include="src\expat-2.0.1\xmltok.cpp" />
-    <ClCompile Include="src\expat-2.0.1\xmltok_impl.cpp" />
-    <ClCompile Include="src\expat-2.0.1\xmltok_ns.cpp" />
+    <ClCompile Include="src\expat-2.2.0\xmlparse.c" />
+    <ClCompile Include="src\expat-2.2.0\xmlrole.c" />
+    <ClCompile Include="src\expat-2.2.0\xmltok.c" />
+    <ClCompile Include="src\expat-2.2.0\xmltok_impl.c" />
+    <ClCompile Include="src\expat-2.2.0\xmltok_ns.c" />
     <ClCompile Include="src\MSToolkit\MSObject.cpp" />
     <ClCompile Include="src\MSToolkit\MSReader.cpp" />
     <ClCompile Include="src\MSToolkit\mzMLWriter.cpp" />
@@ -193,26 +193,27 @@
     <ClCompile Include="src\mzParser\saxhandler.cpp" />
     <ClCompile Include="src\mzParser\saxmzmlhandler.cpp" />
     <ClCompile Include="src\mzParser\saxmzxmlhandler.cpp" />
-    <ClCompile Include="src\zLib-1.2.5\adler32.c" />
-    <ClCompile Include="src\zLib-1.2.5\compress.c" />
-    <ClCompile Include="src\zLib-1.2.5\crc32.c" />
-    <ClCompile Include="src\zLib-1.2.5\deflate.c" />
-    <ClCompile Include="src\zLib-1.2.5\gzclose.c" />
-    <ClCompile Include="src\zLib-1.2.5\gzlib.c" />
-    <ClCompile Include="src\zLib-1.2.5\gzread.c" />
-    <ClCompile Include="src\zLib-1.2.5\gzwrite.c" />
-    <ClCompile Include="src\zLib-1.2.5\infback.c" />
-    <ClCompile Include="src\zLib-1.2.5\inffast.c" />
-    <ClCompile Include="src\zLib-1.2.5\inflate.c" />
-    <ClCompile Include="src\zLib-1.2.5\inftrees.c" />
-    <ClCompile Include="src\zLib-1.2.5\trees.c" />
-    <ClCompile Include="src\zLib-1.2.5\uncompr.c" />
-    <ClCompile Include="src\zLib-1.2.5\zutil.c" />
+    <ClCompile Include="src\zlib-1.2.8\adler32.c" />
+    <ClCompile Include="src\zlib-1.2.8\compress.c" />
+    <ClCompile Include="src\zlib-1.2.8\crc32.c" />
+    <ClCompile Include="src\zlib-1.2.8\deflate.c" />
+    <ClCompile Include="src\zlib-1.2.8\gzclose.c" />
+    <ClCompile Include="src\zlib-1.2.8\gzlib.c" />
+    <ClCompile Include="src\zlib-1.2.8\gzread.c" />
+    <ClCompile Include="src\zlib-1.2.8\gzwrite.c" />
+    <ClCompile Include="src\zlib-1.2.8\infback.c" />
+    <ClCompile Include="src\zlib-1.2.8\inffast.c" />
+    <ClCompile Include="src\zlib-1.2.8\inflate.c" />
+    <ClCompile Include="src\zlib-1.2.8\inftrees.c" />
+    <ClCompile Include="src\zlib-1.2.8\trees.c" />
+    <ClCompile Include="src\zlib-1.2.8\uncompr.c" />
+    <ClCompile Include="src\zlib-1.2.8\zutil.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\amigaconfig.h" />
     <ClInclude Include="include\ascii.h" />
     <ClInclude Include="include\asciitab.h" />
     <ClInclude Include="include\crc32.h" />
@@ -228,15 +229,18 @@
     <ClInclude Include="include\inftrees.h" />
     <ClInclude Include="include\internal.h" />
     <ClInclude Include="include\latin1tab.h" />
+    <ClInclude Include="include\macconfig.h" />
+    <ClInclude Include="include\MSNumpress.hpp" />
     <ClInclude Include="include\MSObject.h" />
     <ClInclude Include="include\MSReader.h" />
     <ClInclude Include="include\MSToolkitTypes.h" />
     <ClInclude Include="include\mzMLWriter.h" />
     <ClInclude Include="include\mzParser.h" />
     <ClInclude Include="include\nametab.h" />
+    <ClInclude Include="include\pepXMLWriter.h" />
     <ClInclude Include="include\RAWReader.h" />
     <ClInclude Include="include\Spectrum.h" />
-    <ClInclude Include="include\szlib.h" />
+    <ClInclude Include="include\sqlite3.h" />
     <ClInclude Include="include\trees.h" />
     <ClInclude Include="include\utf8tab.h" />
     <ClInclude Include="include\winconfig.h" />

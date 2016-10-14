@@ -61,7 +61,7 @@ bool ChromatogramList::get() {
 	return true;
 }
 
-unsigned int ChromatogramList::size() {
+size_t ChromatogramList::size() {
 	if(vChromatIndex==NULL) {
 		cerr << "Get chromatogram list first." << endl;
 		return 0;
