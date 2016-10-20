@@ -1,7 +1,7 @@
 #Set your paths here.
-ZLIB_PATH = ./src/zLib-1.2.5
+ZLIB_PATH = ./src/zlib-1.2.8
 MZPARSER_PATH = ./src/mzParser
-EXPAT_PATH = ./src/expat-2.0.1
+EXPAT_PATH = ./src/expat-2.2.0
 SQLITE_PATH = ./src/sqlite-3.7.7.1
 MST_PATH = ./src/MSToolkit
 
