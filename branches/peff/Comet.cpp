@@ -1290,7 +1290,7 @@ peptide_mass_units = 0                 # 0=amu, 1=mmu, 2=ppm\n\
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\
 precursor_tolerance_type = 0           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances\n\
-isotope_error = 0                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-8/-4/0/4/8 (for +4/+8 labeling)\n\
+isotope_error = 0                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)\n\
 \n\
 #\n\
 # search enzyme\n\
