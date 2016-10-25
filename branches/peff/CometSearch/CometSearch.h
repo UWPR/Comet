@@ -34,7 +34,7 @@ struct SearchThreadData
    {
       dbEntry.strName = dbEntry_in.strName;
       dbEntry.strSeq = dbEntry_in.strSeq;
-      dbEntry.iSeqFilePosition = dbEntry_in.iSeqFilePosition;
+      dbEntry.lProteinFilePosition = dbEntry_in.lProteinFilePosition;
       dbEntry.vectorPeffMod = dbEntry_in.vectorPeffMod;
       dbEntry.vectorPeffVariantSimple = dbEntry_in.vectorPeffVariantSimple;
    }
@@ -106,7 +106,6 @@ private:
    bool WithinMassTolerancePeff(double dCalcPepMass,
                                 vector<PeffPositionStruct>* vPeffArray);
    void XcorrScore(char *szProteinSeq,
-                   char *szProteinName,
                    int iStartPos,
                    int iEndPos,
                    bool bFoundVariableMod,
@@ -136,9 +135,9 @@ private:
                       bool bFoundVariableMod,
                       double dCalcPepMass,
                       char *szProteinSeq,
-                      char *szProteinName,
                       bool bDecoyResults,
-                      int *piVarModSites);
+                      int *piVarModSites,
+                      struct sDBEntry *dbe);
    void StorePeptide(int iWhichQuery,
                      int iStartPos,
                      int iEndPos,
@@ -146,12 +145,10 @@ private:
                      char *szProteinSeq,
                      double dCalcPepMass,
                      double dScoreSp,
-                     char *szProteinName,
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
    bool VariableModSearch(char *szProteinSeq,
-                          char *szProteinName,
                           int varModCounts[],
                           int iStartPos,
                           int iEndPos,
@@ -199,7 +196,7 @@ private:
               char *sDNASequence);
 
    // Processing results
-   void CalculateEvalue(struct Results *_pResults);
+// void CalculateEvalue(struct Results *_pResults);
    void GenerateXcorrDecoys(struct Results *_pResults,
                             bool bDecoy);
 
@@ -257,13 +254,13 @@ private:
 
    struct ProteinInfo
    {
-       char szProteinName[WIDTH_REFERENCE];
-       char *pszProteinSeq;
        int  iProteinSeqLength;
        int  iAllocatedProtSeqLength;
-       int  iSeqFilePosition;
-       char cPeffOrigResidue;                     // original residue of a PEFF variant
        int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
+       long lProteinFilePosition;
+       char szProteinName[WIDTH_REFERENCE];
+       char *pszProteinSeq;
+       char cPeffOrigResidue;                     // original residue of a PEFF variant
    };
 
    struct SpectrumInfoInternal

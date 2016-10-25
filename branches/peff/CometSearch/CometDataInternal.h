@@ -160,14 +160,14 @@ struct Results
    int    iRankSp;
    int    iMatchedIons;
    int    iTotalIons;
-   int    iSeqFilePosition;
    int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
-   char szProtein[WIDTH_REFERENCE];
-   char szPeptide[MAX_PEPTIDE_LEN];
-   char szPrevNextAA[2];                      // [0] stores prev AA, [1] stores next AA
-   char cPeffOrigResidue;                     // original residue of a PEFF variant
-   int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
+   char   szPeptide[MAX_PEPTIDE_LEN];
+   char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
+   char   cPeffOrigResidue;                   // original residue of a PEFF variant
+   int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
+   vector<long> pvlWhichProtein;              // file positions of matched protein entries
+   vector<long> pvlWhichDecoyProtein;         // keep separate decoy list (used for separate decoy matches and combined results)
 };
 
 struct PepMassInfo
@@ -250,9 +250,9 @@ struct PeffVariantSimpleStruct  // stores info read from PEFF header
 struct PeffPositionStruct  // collate PEFF mods by position in sequence
 {
    int iPosition;  // position within the sequence
-   vector <int>vectorWhichPeff;  // which specific peff entry from PeffModStruct
-   vector <double>vectorMassDiffAvg;
-   vector <double>vectorMassDiffMono;
+   vector<int>    vectorWhichPeff;  // which specific peff entry from PeffModStruct
+   vector<double> vectorMassDiffAvg;
+   vector<double> vectorMassDiffMono;
 };
 
 struct PeffSearchStruct  // variant info passed to SearchForPeptides
@@ -266,11 +266,11 @@ struct PeffSearchStruct  // variant info passed to SearchForPeptides
 //-->MH
 typedef struct sDBEntry
 {
-   string strName;
+   string strName;           // might be able to delete this here
    string strSeq;
-   int iSeqFilePosition;
-   vector<PeffModStruct>  vectorPeffMod;
-   vector<PeffVariantSimpleStruct>  vectorPeffVariantSimple;
+   long lProteinFilePosition;
+   vector<PeffModStruct> vectorPeffMod;
+   vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
 } sDBEntry;
 
 struct DBInfo
@@ -662,6 +662,8 @@ struct StaticParams
 
 extern StaticParams g_staticParams;
 
+extern vector<string> g_pvProteinNames;
+
 struct SparseMatrix
 {
    int bin;
@@ -799,21 +801,23 @@ struct Query
          ppfSparseFastXcorrDataNL = NULL;
       }
 
+      _pResults->pvlWhichProtein.clear();
       delete[] _pResults;
       _pResults = NULL;
 
-      if (g_staticParams.options.iDecoySearch==2)
+      if (g_staticParams.options.iDecoySearch > 0)
       {
-          delete[] _pDecoys;
-          _pDecoys = NULL;
+         _pDecoys->pvlWhichProtein.clear();
+         delete[] _pDecoys;
+         _pDecoys = NULL;
       }
 
       Threading::DestroyMutex(accessMutex);
    }
 };
 
-extern vector <Query*>         g_pvQuery;
-extern vector <InputFileInfo*> g_pvInputFiles;
+extern vector<Query*>          g_pvQuery;
+extern vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
 extern Mutex                   g_searchMemoryPoolMutex;

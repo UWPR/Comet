@@ -32,7 +32,8 @@ CometWritePercolator::~CometWritePercolator()
 }
 
 
-bool CometWritePercolator::WritePercolator(FILE *fpout)
+bool CometWritePercolator::WritePercolator(FILE *fpout,
+                                           FILE *fpdb)
 {
    int i;
 
@@ -45,7 +46,7 @@ bool CometWritePercolator::WritePercolator(FILE *fpout)
       {
          if (g_pvQuery.at(i)->_pResults[0].fXcorr > XCORR_CUTOFF)
          {
-            if (!PrintResults(i, fpout, 0))  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+            if (!PrintResults(i, fpout, fpdb, 0))  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
             {
                return false;
             }
@@ -53,7 +54,7 @@ bool CometWritePercolator::WritePercolator(FILE *fpout)
 
          if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > XCORR_CUTOFF)
          {
-            if (!PrintResults(i, fpout, 1))  // print decoy hit
+            if (!PrintResults(i, fpout, fpdb, 1))  // print decoy hit
             {
                return false;
             }
@@ -99,6 +100,7 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
 
 bool CometWritePercolator::PrintResults(int iWhichQuery,
                                         FILE *fpout,
+                                        FILE *fpdb,
                                         bool bDecoy)
 {
    int  i,
@@ -125,7 +127,8 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iChargeState );
 
-   if (bDecoy || !strncmp(pOutput[0].szProtein, g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)))
+   // print -1 if bDecoy or if decoy entries only
+   if (bDecoy || (pOutput->pvlWhichDecoyProtein.size()>0 && pOutput->pvlWhichProtein.size()==0))
       fprintf(fpout, "-1\t");  // label
    else
       fprintf(fpout, "1\t");
@@ -200,7 +203,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
    if (bNoDeltaCnYet)
       dDeltaCn = 1.0;
 
-   PrintPercolatorSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn);
+   PrintPercolatorSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, fpdb, dDeltaCn, dLastDeltaCn);
 
    return true;
 }
@@ -211,6 +214,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
                                                     bool bDecoy,
                                                     Results *pOutput,
                                                     FILE *fpout,
+                                                    FILE *fpdb,
                                                     double dDeltaCn,
                                                     double dLastDeltaCn)
 {
@@ -306,7 +310,10 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
 
    fprintf(fpout, "%s\t", szModPep);
 
-   fprintf(fpout, "%s\n", pOutput[iWhichResult].szProtein);
+   char szProteinName[100];
+   std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin(); 
+   CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+   fprintf(fpout, "%s\n", szProteinName);
 }
 
 

@@ -36,14 +36,15 @@ CometWritePepXML::~CometWritePepXML()
 
 
 void CometWritePepXML::WritePepXML(FILE *fpout,
-                                   FILE *fpoutd)
+                                   FILE *fpoutd,
+                                   FILE *fpdb)
 {
    int i;
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      PrintResults(i, 0, fpout);
+      PrintResults(i, 0, fpout, fpdb);
    }
 
    // Print out the separate decoy hits.
@@ -51,7 +52,7 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
-         PrintResults(i, 1, fpoutd);
+         PrintResults(i, 1, fpoutd, fpdb);
       }
    }
 
@@ -401,7 +402,8 @@ void CometWritePepXML::WritePepXMLEndTags(FILE *fpout)
 
 void CometWritePepXML::PrintResults(int iWhichQuery,
                                     bool bDecoy,
-                                    FILE *fpout)
+                                    FILE *fpout,
+                                    FILE *fpdb)
 {
    int  i,
         iNumPrintLines,
@@ -568,7 +570,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          else
             dDeltaCnStar = 0.0;
 
-         PrintPepXMLSearchHit(iWhichQuery, i, iRankXcorr, bDecoy, pOutput, fpout, dDeltaCn, dDeltaCnStar);
+         PrintPepXMLSearchHit(iWhichQuery, i, iRankXcorr, bDecoy, pOutput, fpout, fpdb, dDeltaCn, dDeltaCnStar);
       }
    }
 
@@ -583,6 +585,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                                             bool bDecoy,
                                             Results *pOutput,
                                             FILE *fpout,
+                                            FILE *fpdb,
                                             double dDeltaCn,
                                             double dDeltaCnStar)
 {
@@ -592,24 +595,34 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
+   CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
+
+   char szProteinName[100];
+   std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin();
+   CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+   ++it;
+
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", iRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
    fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[0]);
    fprintf(fpout, " peptide_next_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[1]);
-   fprintf(fpout, " protein=\"%s\"", pOutput[iWhichResult].szProtein);
+   fprintf(fpout, " protein=\"%s\"", szProteinName);
    fprintf(fpout, " num_tot_proteins=\"%d\"", pOutput[iWhichResult].iDuplicateCount+1);
    fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
    fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
    fprintf(fpout, " calc_neutral_pep_mass=\"%0.6f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);
    fprintf(fpout, " massdiff=\"%0.6f\"", pQuery->_pepMassInfo.dExpPepMass - pOutput[iWhichResult].dPepMass);
-
-   CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
-
    fprintf(fpout, " num_tol_term=\"%d\"", iNTT);
    fprintf(fpout, " num_missed_cleavages=\"%d\"", iNMC);
-   fprintf(fpout, " num_matched_peptides=\"%lu\"",
-         bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides));
+   fprintf(fpout, " num_matched_peptides=\"%lu\"", bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides));
    fprintf(fpout, ">\n");
+
+   // Print protein reference/accession.
+   for (; it!=pOutput[iWhichResult].pvlWhichProtein.end(); ++it)
+   {
+      CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+      fprintf(fpout, "   <alternative_protein protein=\"%s\"/>\n", szProteinName);
+   }
 
    // check if peptide is modified
    bool bModified = 0;

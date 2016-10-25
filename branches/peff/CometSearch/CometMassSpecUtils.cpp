@@ -120,3 +120,12 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
    pdAAMass['X'] = 0.0;
    pdAAMass['Z'] = 0.0;
 }
+
+
+void CometMassSpecUtils::GetProteinName(FILE *fpdb,
+                                        long lFilePosition,
+                                        char *szProteinName)
+{
+   fseek(fpdb, lFilePosition, SEEK_SET);
+   fscanf(fpdb, "%99s", szProteinName);
+}

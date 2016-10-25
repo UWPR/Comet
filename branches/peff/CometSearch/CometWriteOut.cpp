@@ -31,14 +31,14 @@ CometWriteOut::~CometWriteOut()
 }
 
 
-bool CometWriteOut::WriteOut(void)
+bool CometWriteOut::WriteOut(FILE *fpdb)
 {
    int i;
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      if (!PrintResults(i, false))
+      if (!PrintResults(i, false, fpdb))
       {
          return false;
       }
@@ -49,7 +49,7 @@ bool CometWriteOut::WriteOut(void)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
-         if (!PrintResults(i, true))
+         if (!PrintResults(i, true, fpdb))
          {
             return false;
          }
@@ -61,7 +61,8 @@ bool CometWriteOut::WriteOut(void)
 
 
 bool CometWriteOut::PrintResults(int iWhichQuery,
-                                 bool bDecoySearch)
+                                 bool bDecoySearch,
+                                 FILE *fpdb)
 {
    int  i,
         ii,
@@ -215,25 +216,35 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    iMaxWidthReference = 9;
    iLenMaxDuplicates = 0;
+
    for (i=0; i<iNumPrintLines; i++)
    {
-      if (pOutput[i].iDuplicateCount > iLenMaxDuplicates)
-         iLenMaxDuplicates = pOutput[i].iDuplicateCount;
-
-      for (ii=0; ii<WIDTH_REFERENCE; ii++)
+      if ( (bDecoySearch && i<(int)pOutput[i].pvlWhichDecoyProtein.size())
+            || (!bDecoySearch && i<(int)pOutput[i].pvlWhichProtein.size()))
       {
-         if (   (pOutput[i].szProtein[ii] == ' ')
-             || (pOutput[i].szProtein[ii] == '\n')
-             || (pOutput[i].szProtein[ii] == '\r')
-             || (pOutput[i].szProtein[ii] == '\t')
-             || (pOutput[i].szProtein[ii] == '\0'))
-         {
-            break;
-         }
-      }
+         char *szProteinName;
+         vector<long>::iterator it;
+         advance(it, 0);
 
-      if (ii > iMaxWidthReference)
-         iMaxWidthReference = ii;
+         if (bDecoySearch)
+         {
+            it = pOutput[i].pvlWhichDecoyProtein.begin();
+            CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         }
+         else
+         {
+            it = pOutput[i].pvlWhichProtein.begin();
+            CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         }
+
+         if (pOutput[i].iDuplicateCount > iLenMaxDuplicates)
+            iLenMaxDuplicates = pOutput[i].iDuplicateCount;
+
+        if ((int)strlen(szProteinName) > iMaxWidthReference)
+            iMaxWidthReference = ii;
+
+         free(szProteinName);
+      }
    }
 
    if (iLenMaxDuplicates > 0)
@@ -419,16 +430,20 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    // Print protein reference/accession.
    iWidthSize=0;
    iWidthPrintRef=0;
-   while (    (pOutput[iWhichResult].szProtein[iWidthSize] != ' ')
-           && (pOutput[iWhichResult].szProtein[iWidthSize] != '\n')
-           && (pOutput[iWhichResult].szProtein[iWidthSize] != '\r')
-           && (pOutput[iWhichResult].szProtein[iWidthSize] != '\t')
-           && (pOutput[iWhichResult].szProtein[iWidthSize] != '\0'))
+
+   char szProteinName[100];
+/*
+   set<long>::iterator it;
+   advance(it, 0);
+   it = pOutput[iWhichResult].pvlWhichProtein.begin();  // pvlWhichDecoyProtein???
+   CometMassSpecUtils::GetProteinName(*it, szProteinName);
+*/
+
+   while (iWidthSize < (int)strlen(szProteinName))
    {
-      if (33<=(pOutput[iWhichResult].szProtein[iWidthSize]) // Ascii physical character range.
-            && (pOutput[iWhichResult].szProtein[iWidthSize])<=126)
+      if (33<=(szProteinName[iWidthSize]) && (szProteinName[iWidthSize])<=126) // Ascii physical character range.
       {
-         sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szProtein[iWidthPrintRef]);
+         sprintf(szBuf+strlen(szBuf), "%c", szProteinName[iWidthPrintRef]);
 
          iWidthPrintRef++;
 
@@ -437,6 +452,7 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
       }
       else
          break;
+
       iWidthSize++;
    }
 

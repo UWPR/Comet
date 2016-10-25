@@ -40,6 +40,7 @@ using namespace std;
 #include "Spectrum.h"
 #include "MSObject.h"
 #include <vector>
+#include <set>
 #include <cfloat>
 
 #ifdef CRUX

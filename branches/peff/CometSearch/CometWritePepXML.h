@@ -28,7 +28,8 @@ public:
                                  CometSearchManager &searchMgr);
 
    static void WritePepXML(FILE *fpout,
-                           FILE *fpoutd);
+                           FILE *fpoutd,
+                           FILE *fpdb);
 
    static void WritePepXMLEndTags(FILE *fpout);
 
@@ -36,7 +37,8 @@ public:
 private:
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
-                            FILE *fpOut);
+                            FILE *fpOut,
+                            FILE *fpdb);
 
    static void PrintPepXMLSearchHit(int iWhichQuery,
                                     int iWhichResult,
@@ -44,6 +46,7 @@ private:
                                     bool bDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
+                                    FILE *fpdb,
                                     double dDeltaCn,
                                     double dDeltaCnStar);
 

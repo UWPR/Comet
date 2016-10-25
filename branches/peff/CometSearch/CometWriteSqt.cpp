@@ -31,14 +31,15 @@ CometWriteSqt::~CometWriteSqt()
 
 
 void CometWriteSqt::WriteSqt(FILE *fpout,
-                             FILE *fpoutd)
+                             FILE *fpoutd,
+                             FILE *fpdb)
 {
    int i;
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      PrintResults(i, 0, fpout);
+      PrintResults(i, 0, fpout, fpdb);
    }
 
    // Print out the separate decoy hits.
@@ -46,7 +47,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
-         PrintResults(i, 1, fpoutd);
+         PrintResults(i, 1, fpoutd, fpdb);
       }
    }
 }
@@ -163,7 +164,8 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
 void CometWriteSqt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
-                                 FILE *fpout)
+                                 FILE *fpout,
+                                 FILE *fpdb)
 {
    int  i,
         iNumPrintLines,
@@ -233,7 +235,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
-         PrintSqtLine(iRankXcorr, i, pOutput, fpout);
+         PrintSqtLine(iRankXcorr, i, pOutput, fpout, fpdb);
    }
 }
 
@@ -241,7 +243,8 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 void CometWriteSqt::PrintSqtLine(int iRankXcorr,
                                  int iWhichResult,
                                  Results *pOutput,
-                                 FILE *fpout)
+                                 FILE *fpout,
+                                 FILE *fpdb)
 {
    int  i;
    char szBuf[SIZE_BUF];
@@ -312,23 +315,23 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
       fprintf(stdout, "%s\tU\n", szBuf);
 
       // Print protein reference/accession.
-      fprintf(stdout, "L\t%s", pOutput[iWhichResult].szProtein);
-
-      if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(stdout, "\t+%d", pOutput[iWhichResult].iDuplicateCount);
-
-      fprintf(stdout, "\n");
+      char szProteinName[100];
+      for (std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin(); it!=pOutput[iWhichResult].pvlWhichProtein.end(); ++it)
+      {
+         CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         fprintf(stdout, "L\t%s\n", szProteinName);
+      }
    }
    else // OutputSqtFile
    {
       fprintf(fpout, "%s\tU\n", szBuf);
 
       // Print protein reference/accession.
-      fprintf(fpout, "L\t%s", pOutput[iWhichResult].szProtein);
-
-      if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(fpout, "\t+%d", pOutput[iWhichResult].iDuplicateCount);
-
-      fprintf(fpout, "\n");
+      char szProteinName[100];
+      for (std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin(); it!=pOutput[iWhichResult].pvlWhichProtein.end(); ++it)
+      {
+         CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         fprintf(fpout, "L\t%s\n", szProteinName);
+      }
    }
 }

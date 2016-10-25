@@ -31,19 +31,23 @@ CometWriteTxt::~CometWriteTxt()
 
 
 void CometWriteTxt::WriteTxt(FILE *fpout,
-                             FILE *fpoutd)
+                             FILE *fpoutd,
+                             FILE *fpdb)
 {
    int i;
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
-      PrintResults(i, 0, fpout);
+   {
+      PrintResults(i, 0, fpout, fpdb);
+      fflush(fpout);
+   }
 
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
-         PrintResults(i, 1, fpoutd);
+         PrintResults(i, 1, fpoutd, fpdb);
    }
 }
 
@@ -101,7 +105,8 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
 #ifdef CRUX
 void CometWriteTxt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
-                                 FILE *fpout)
+                                 FILE *fpout,
+                                 FILE *fpdb)
 {
    if ((!bDecoy && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
          || (bDecoy && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
@@ -222,7 +227,13 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          PrintModifications(fpout, pOutput, iWhichResult);
 
          // Print protein reference/accession.
-         fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
+         char szProteinName[100];
+         for (std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin(); it!=pOutput[iWhichResult].pvlWhichProtein.end(); ++it)
+         {
+            CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+            fprintf(fpout, "%s,", szProteinName);
+         }
+         fprintf(fpout, "\b\t");
 
          // Cleavage type
          fprintf(fpout, "%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
@@ -236,7 +247,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 #else
 void CometWriteTxt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
-                                 FILE *fpout)
+                                 FILE *fpout,
+                                 FILE *fpdb)
 {
    if ((!bDecoy && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
          || (bDecoy && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
@@ -400,9 +412,14 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
          // Print protein reference/accession.
-         fprintf(fpout, "%s\t", pOutput[iWhichResult].szProtein);
+         char szProteinName[100];
+         for (std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin(); it!=pOutput[iWhichResult].pvlWhichProtein.end(); ++it)
+         {
+            CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+            fprintf(fpout, "%s,", szProteinName);
+         }
 
-         fprintf(fpout, "%d", pOutput[iWhichResult].iDuplicateCount);
+         fprintf(fpout, "\b\t%d", pOutput[iWhichResult].iDuplicateCount);
 
          fprintf(fpout, "\n");
       }

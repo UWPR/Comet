@@ -243,6 +243,15 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    for (i=0; i<iSize; i++)
    {
+
+      // hijack here to make protein vector unique
+      if (pOutput[i].pvlWhichProtein.size() > 1)
+      {
+         sort( pOutput[i].pvlWhichProtein.begin(), pOutput[i].pvlWhichProtein.end());
+         pOutput[i].pvlWhichProtein.erase(unique(pOutput[i].pvlWhichProtein.begin(), pOutput[i].pvlWhichProtein.end()),
+               pOutput[i].pvlWhichProtein.end() );
+      }
+
       if (pOutput[i].iLenPeptide>0) // take care of possible edge case
       {
          int  ii;
