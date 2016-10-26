@@ -742,18 +742,15 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
                || pOutput[iWhichResult].piVarModSites[i] != 0)
          {
-            int iResidue;
-
-            iResidue = (int)pOutput[iWhichResult].szPeptide[i];
+            int iResidue = (int)pOutput[iWhichResult].szPeptide[i];
+            double dStaticMass = g_staticParams.staticModifications.pdStaticMods[iResidue];
 
             fprintf(fpout, "     <mod_aminoacid_mass position=\"%d\" mass=\"%0.6f\"",
                   i+1,
                   g_staticParams.massUtility.pdAAMassFragment[iResidue] + pOutput[iWhichResult].pdVarModSites[i]);
             
-            if (!isEqual(g_staticParams.staticModifications.pdStaticMods[iResidue], 0.0))
-            {
-               fprintf(fpout, " static=\"%0.6f\"", g_staticParams.staticModifications.pdStaticMods[iResidue]);
-            }
+            if (!isEqual(dStaticMass, 0.0))
+               fprintf(fpout, " static=\"%0.6f\"", dStaticMass);
 
             if (pOutput[iWhichResult].piVarModSites[i] != 0)
                fprintf(fpout, " variable=\"%0.6f\"", pOutput[iWhichResult].pdVarModSites[i]);

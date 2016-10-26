@@ -100,6 +100,7 @@ struct Options             // output parameters
    int bShowFragmentIons;
    int bPrintExpectScore;
    int bOverrideCharge;
+   int bTreatSameIL;
    double dMinIntensity;
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
@@ -160,6 +161,7 @@ struct Results
    int    iRankSp;
    int    iMatchedIons;
    int    iTotalIons;
+   long   lProteinFilePosition;
    int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
    char   szPeptide[MAX_PEPTIDE_LEN];
@@ -579,6 +581,7 @@ struct StaticParams
       options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;
+      options.bTreatSameIL= 1;
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;
 

@@ -1963,7 +1963,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    float **ppSparseFastXcorrData;              // use this if bSparseMatrix
-   float *pFastXcorrData;                      // use this if not using SparseMatrix
 
    dXcorr = 0.0;
 
@@ -1985,12 +1984,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          if (ctCharge == 1 && bUseNLPeaks)
          {
             ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrDataNL;
-            pFastXcorrData = pQuery->pfFastXcorrDataNL;
          }
          else
          {
             ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
-            pFastXcorrData = pQuery->pfFastXcorrData;
          }
 
          int bin,x,y;
@@ -2174,6 +2171,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       // store protein
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].pvlWhichDecoyProtein.clear();
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].pvlWhichDecoyProtein.push_back(dbe->lProteinFilePosition);
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
@@ -2268,11 +2266,13 @@ void CometSearch::StorePeptide(int iWhichQuery,
       {
          pQuery->_pResults[siLowestSpScoreIndex].pvlWhichDecoyProtein.clear();
          pQuery->_pResults[siLowestSpScoreIndex].pvlWhichDecoyProtein.push_back(dbe->lProteinFilePosition);
+         pQuery->_pResults[siLowestSpScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
       }
       else
       {
          pQuery->_pResults[siLowestSpScoreIndex].pvlWhichProtein.clear();
          pQuery->_pResults[siLowestSpScoreIndex].pvlWhichProtein.push_back(dbe->lProteinFilePosition);
+         pQuery->_pResults[siLowestSpScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
       }
 
       if (g_staticParams.variableModParameters.bVarModSearch)
@@ -2341,15 +2341,13 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       for (i=0; i<g_staticParams.options.iNumStored; i++)
       {
          // Quick check of peptide sequence length first.
-         if (iLenMinus1 == pQuery->_pDecoys[i].iLenPeptide
-               && isEqual(dCalcPepMass, pQuery->_pDecoys[i].dPepMass))
+         if (iLenMinus1 == pQuery->_pDecoys[i].iLenPeptide && isEqual(dCalcPepMass, pQuery->_pDecoys[i].dPepMass))
          {
-
             if (!memcmp(pQuery->_pDecoys[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*(pQuery->_pDecoys[i].iLenPeptide)))
             {
-               bIsDuplicate=1;
+               bIsDuplicate = 1;
             }
-            else if (1)  // FIX: equivalence of I/L can be turned off here
+            else if (g_staticParams.options.bTreatSameIL)  // FIX: equivalence of I/L can be turned off here
             {
                bIsDuplicate = 1;
 
@@ -2357,12 +2355,10 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                {
                   if (pQuery->_pDecoys[i].szPeptide[ii-iStartPos] != szProteinSeq[ii])
                   {
-                     if (pQuery->_pDecoys[i].szPeptide[ii-iStartPos]!='I'
-                           || pQuery->_pDecoys[i].szPeptide[ii-iStartPos]!='L'
-                           || szProteinSeq[ii] != 'I'
-                           || szProteinSeq[ii] != 'L')
+                     if ((pQuery->_pDecoys[i].szPeptide[ii-iStartPos]!='I' && pQuery->_pDecoys[i].szPeptide[ii-iStartPos]!='L')
+                           || (szProteinSeq[ii] != 'I' && szProteinSeq[ii] != 'L'))
                      {
-                        bIsDuplicate=0;
+                        bIsDuplicate = 0;
                         break;
                      }
                   }
@@ -2373,15 +2369,36 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
                if (!memcmp(piVarModSites, pQuery->_pDecoys[i].piVarModSites, sizeof(int)*(pQuery->_pDecoys[i].iLenPeptide + 2)))
-                  bIsDuplicate=1;
+                  bIsDuplicate = 1;
                else
-                  bIsDuplicate=0;
+                  bIsDuplicate = 0;
             }
 
             if (bIsDuplicate)
             {
                pQuery->_pDecoys[i].pvlWhichDecoyProtein.push_back(dbe->lProteinFilePosition);  //_proteinInfo.lProteinFilePosition instead??
                pQuery->_pDecoys[i].iDuplicateCount++;
+
+               // if duplicate, check to see if need to replace stored protein info 
+               // with protein that's earlier in database
+               if (pQuery->_pDecoys[i].lProteinFilePosition > _proteinInfo.lProteinFilePosition)
+               {     
+                  pQuery->_pDecoys[i].lProteinFilePosition = _proteinInfo.lProteinFilePosition;
+                  if (iStartPos == 0)
+                     pQuery->_pDecoys[i].szPrevNextAA[0] = '-';
+                  else
+                     pQuery->_pDecoys[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+               
+                  if (iEndPos == _proteinInfo.iProteinSeqLength-1)
+                     pQuery->_pDecoys[i].szPrevNextAA[1] = '-';
+                  else
+                     pQuery->_pDecoys[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+
+                  // also if IL equivalence set, go ahead and copy peptide from first sequence
+                  memcpy(pQuery->_pDecoys[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pDecoys[i].iLenPeptide*sizeof(char));
+                  pQuery->_pDecoys[i].szPeptide[pQuery->_pDecoys[i].iLenPeptide]='\0';
+               }
+
                break;
             }
          }
@@ -2392,22 +2409,37 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       for (i=0; i<g_staticParams.options.iNumStored; i++)
       {
          // Quick check of peptide sequence length.
-         if (iLenMinus1 == pQuery->_pResults[i].iLenPeptide
-               && isEqual(dCalcPepMass, pQuery->_pResults[i].dPepMass))
+         if (iLenMinus1 == pQuery->_pResults[i].iLenPeptide && isEqual(dCalcPepMass, pQuery->_pResults[i].dPepMass))
          {
-            if (pQuery->_pResults[i].szPeptide[0] == szProteinSeq[iStartPos])
+            if (!memcmp(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*pQuery->_pResults[i].iLenPeptide))
             {
-               if (!memcmp(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*pQuery->_pResults[i].iLenPeptide))
-                  bIsDuplicate=1;
+               bIsDuplicate = 1;
+            }
+            else if (g_staticParams.options.bTreatSameIL)  // FIX: equivalence of I/L can be turned off here
+            {
+               bIsDuplicate = 1;
+
+               for (int ii=iStartPos; ii<=iEndPos; ii++ )
+               {
+                  if (pQuery->_pResults[i].szPeptide[ii-iStartPos] != szProteinSeq[ii])
+                  {
+                     if ((pQuery->_pResults[i].szPeptide[ii-iStartPos]!='I' && pQuery->_pResults[i].szPeptide[ii-iStartPos]!='L')
+                           || (szProteinSeq[ii] != 'I' && szProteinSeq[ii] != 'L'))
+                     {
+                        bIsDuplicate = 0;
+                        break;
+                     }
+                  }
+               }
             }
 
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
                if (!memcmp(piVarModSites, pQuery->_pResults[i].piVarModSites, sizeof(int)*(pQuery->_pResults[i].iLenPeptide + 2)))
-                  bIsDuplicate=1;
+                  bIsDuplicate = 1;
                else
-                  bIsDuplicate=0;
+                  bIsDuplicate = 0;
             }
 
             if (bIsDuplicate)
@@ -2417,6 +2449,28 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                else
                   pQuery->_pResults[i].pvlWhichProtein.push_back(dbe->lProteinFilePosition);
                pQuery->_pResults[i].iDuplicateCount++;
+
+               // if duplicate, check to see if need to replace stored protein info
+               // with protein that's earlier in database
+               if (pQuery->_pResults[i].lProteinFilePosition > _proteinInfo.lProteinFilePosition)
+               {
+                  pQuery->_pResults[i].lProteinFilePosition = _proteinInfo.lProteinFilePosition;
+
+                  if (iStartPos == 0)
+                     pQuery->_pResults[i].szPrevNextAA[0] = '-';
+                  else
+                     pQuery->_pResults[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+
+                  if (iEndPos == _proteinInfo.iProteinSeqLength-1)
+                     pQuery->_pResults[i].szPrevNextAA[1] = '-';
+                  else
+                     pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+
+                  // also if IL equivalence set, go ahead and copy peptide from first sequence
+                  memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pResults[i].iLenPeptide*sizeof(char));
+                  pQuery->_pResults[i].szPeptide[pQuery->_pResults[i].iLenPeptide]='\0';
+               }
+
                break;
             }
          }

@@ -782,7 +782,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("spectrum_batch_size", iIntData))
    {
-      if (iIntData > 0)
+      if (iIntData >= 0)
          g_staticParams.options.iSpectrumBatchSize = iIntData;
    }
 
@@ -797,6 +797,11 @@ bool CometSearchManager::InitializeStaticParams()
    {
       if (iIntData > 0)
          g_staticParams.options.bOverrideCharge = iIntData;
+   }
+
+   if (GetParamValue("equal_I_and_L", iIntData))
+   {
+      g_staticParams.options.bTreatSameIL = iIntData;
    }
 
    if (GetParamValue("precursor_charge", intRangeData))

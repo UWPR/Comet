@@ -922,6 +922,14 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("override_charge", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "equal_I_and_L"))
+            {
+               iIntParam = 0;
+               sscanf(szParamVal, "%d",  &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("assume_IL_equal", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "max_fragment_charge"))
             {
                iIntParam = 0;
