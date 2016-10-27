@@ -576,6 +576,7 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
    {
       pData->dMassDiffAvg = (*vectorPeffOBO).at(iPos).dMassDiffAvg;
       pData->dMassDiffMono = (*vectorPeffOBO).at(iPos).dMassDiffMono;
+      strcpy(pData->szMod, strMod.c_str()+4);  // MOD:XXXXX
 
       return true;
    }
@@ -2192,7 +2193,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
                      = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
                }
                else if (iVal < 0)
+               {
                   pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(-iVal-1).dMassDiffMono;
+                  strcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pszMod[i], dbe->vectorPeffMod.at(-iVal-1).szMod);
+               }
                else
                   pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites[i] = 0.0;
             }
@@ -2294,7 +2298,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
                      = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
                }
                else if (iVal < 0)
+               {
                   pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(-iVal-1).dMassDiffMono;
+                  strcpy(pQuery->_pResults[siLowestSpScoreIndex].pszMod[i], dbe->vectorPeffMod.at(-iVal-1).szMod);
+               }
                else
                   pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = 0.0;
             }

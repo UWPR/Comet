@@ -164,6 +164,7 @@ struct Results
    long   lProteinFilePosition;
    int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
+   char   pszMod[MAX_PEPTIDE_LEN][8];          // store PEFF mod string
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
    char   cPeffOrigResidue;                   // original residue of a PEFF variant
@@ -231,6 +232,7 @@ struct PeffModStruct       // stores info read from PEFF header
    double dMassDiffAvg;    // this is looked up from strMod string from OBO
    double dMassDiffMono;
    int    iPosition;       // position of modification
+   char   szMod[8];        // currently PSI-MOD has 5 chars:  MOD:XXXXX   
 
    bool operator<(const PeffModStruct& a) const
    {
