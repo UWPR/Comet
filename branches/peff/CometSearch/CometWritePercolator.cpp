@@ -286,15 +286,18 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
 
       if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
       {
-         if (pOutput[iWhichResult].piVarModSites[i] > 0
-               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+         if (pOutput[iWhichResult].piVarModSites[i] > 0)
          {
-            sprintf(szModPep+strlen(szModPep), "%c",
-                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+            if (!isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+            {
+               sprintf(szModPep+strlen(szModPep), "%c",
+                     (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+            }
          }
          else
          {
-            sprintf(szModPep+strlen(szModPep), "?"); // PEFF:  no way to specify mod encoding w/o breaking some compatibility
+            // PEFF:  no way to specify mod encoding w/o breaking some compatibility
+            sprintf(szModPep+strlen(szModPep), "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
       }
    }

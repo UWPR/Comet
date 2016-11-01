@@ -291,12 +291,16 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
       {
          if (pOutput[iWhichResult].piVarModSites[i] > 0)
          {
-            sprintf(szBuf+strlen(szBuf), "%c",
-                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+            if (!isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+            {
+               sprintf(szBuf+strlen(szBuf), "%c",
+                     (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+            }
          }
          else
          {
-            sprintf(szBuf+strlen(szBuf), "?");  // PEFF:  no way to specify mod encoding without breaking some compatibility
+            // PEFF:  no way to specify mod encoding without breaking some compatibility
+            sprintf(szBuf+strlen(szBuf), "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
       }
    }

@@ -757,7 +757,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
             if (pOutput[iWhichResult].piVarModSites[i] < 0)
             {
-               fprintf(fpout, " source=\"peff\" id=\"MOD:%s\"/>\n", pOutput[iWhichResult].pszMod[i]);
+               fprintf(fpout, " source=\"peff\" id=\"%s\"/>\n", pOutput[iWhichResult].pszMod[i]);
             }
             else if (pOutput[iWhichResult].piVarModSites[i] > 0)
                fprintf(fpout, " source=\"param\"/>\n");
