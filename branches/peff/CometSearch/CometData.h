@@ -30,7 +30,7 @@
 #define MAX_FRAGMENT_CHARGE         5
 #define MAX_PRECURSOR_CHARGE        9
 
-#define MAX_PERMUTATIONS            100000
+#define MAX_PERMUTATIONS            10000
 
 #define SPARSE_MATRIX_SIZE          100
 

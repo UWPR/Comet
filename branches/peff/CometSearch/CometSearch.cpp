@@ -256,11 +256,12 @@ bool CometSearch::RunSearch(int minNumThreads,
                   ungetc(iTmpCh, fptr);
                   
                   // grab rest of description line here
+                  szPeffLine[0]='\0';
                   fgets(szPeffLine, iLenSzLine, fptr);
                   while (!feof(fptr) && szPeffLine[strlen(szPeffLine)-1]!='\n')
                   {
                      char *pTmp;
-                     iLenSzLine += 1024;
+                     iLenSzLine += 512;
                      pTmp = (char *)realloc(szPeffLine, iLenSzLine);
                      if (pTmp == NULL)
                      {
@@ -279,7 +280,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                   char *pStr;
 
-                  if (0 && (pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
+                  if ((pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
                   {
                      char *pStr2;
                      pStr += iLenAttributeMod;
@@ -310,8 +311,6 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                      strncpy(szMods, pStr, iLen);
                      szMods[iLen]=0;
-
-//printf("MODRES '%s'\n", szMods);
 
                      // parse ModRes entries
                      char *tok;
@@ -356,7 +355,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                      }
                   }
 
-                  if (0 && (pStr = strstr(szPeffLine, szAttributeVariant)) != NULL)
+                  if ((pStr = strstr(szPeffLine, szAttributeVariant)) != NULL)
                   {
                      char *pStr2;
                      pStr += iLenAttributeVariant;
