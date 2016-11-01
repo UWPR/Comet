@@ -481,7 +481,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    }
 
-   pScoring->iFastXcorrData=pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE+1;
+   pScoring->iFastXcorrData = pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
 
    //MH: Fill sparse matrix
    try

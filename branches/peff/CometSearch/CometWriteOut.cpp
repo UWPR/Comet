@@ -65,7 +65,6 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
                                  FILE *fpdb)
 {
    int  i,
-        ii,
         iNumPrintLines,
         iLenMaxDuplicates,
         iMaxWidthReference,
@@ -222,7 +221,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
       if ( (bDecoySearch && i<(int)pOutput[i].pvlWhichDecoyProtein.size())
             || (!bDecoySearch && i<(int)pOutput[i].pvlWhichProtein.size()))
       {
-         char *szProteinName;
+         char *szProteinName = NULL;
          vector<long>::iterator it;
          advance(it, 0);
 
@@ -241,7 +240,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
             iLenMaxDuplicates = pOutput[i].iDuplicateCount;
 
         if ((int)strlen(szProteinName) > iMaxWidthReference)
-            iMaxWidthReference = ii;
+            iMaxWidthReference = (int)strlen(szProteinName);
 
          free(szProteinName);
       }
@@ -294,7 +293,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
-         PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, pOutput, fpout);
+         PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, bDecoySearch, pOutput, fpout, fpdb);
    }
 
    fprintf(fpout, "\n");
@@ -377,8 +376,10 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
                                     int iLenMaxDuplicates,
                                     int iMaxWidthReference,
                                     int iWhichResult,
+                                    bool bDecoySearch,
                                     Results *pOutput,
-                                    FILE *fpout)
+                                    FILE *fpout,
+                                    FILE *fpdb)
 {
    int  i,
         iWidthSize,
@@ -432,12 +433,13 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    iWidthPrintRef=0;
 
    char szProteinName[100];
-/*
-   set<long>::iterator it;
-   advance(it, 0);
-   it = pOutput[iWhichResult].pvlWhichProtein.begin();  // pvlWhichDecoyProtein???
-   CometMassSpecUtils::GetProteinName(*it, szProteinName);
-*/
+
+   vector<long>::iterator it;
+   if (bDecoySearch)
+      it = pOutput[iWhichResult].pvlWhichDecoyProtein.begin();
+   else
+      it = pOutput[iWhichResult].pvlWhichProtein.begin();
+   CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
 
    while (iWidthSize < (int)strlen(szProteinName))
    {

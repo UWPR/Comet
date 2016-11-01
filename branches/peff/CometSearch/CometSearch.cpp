@@ -109,11 +109,12 @@ bool CometSearch::RunSearch(int minNumThreads,
    bool bTrimDescr;
    string strPeffHeader;
    char *szMods = 0;             // will store ModRes and VariantSimple text for parsing for all entries; resize as needed
+   char *szPeffLine = 0;         // store description line starting with first \ to parse above
    int iLenAllocMods = 0;
+   int iLenSzLine = 0;
    int iLen;
 
    vector<OBOStruct> vectorPeffOBO;
-
 
    // Create the thread pool containing g_staticParams.options.iNumThreads,
    // each hanging around and sleeping until asked to so a search.
@@ -147,6 +148,18 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    if (g_staticParams.peffInfo.bPEFF)
    {
+      iLenSzLine = 2048;
+      szPeffLine = (char*)malloc( iLenSzLine* sizeof(char));
+      if (szPeffLine == NULL)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg, " Error - malloc szPeffLine\n");
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(szErrorMsg);
+         return false;
+      }
+
       // allocate initial storage for mod strings that will be parsed from each def line
       iLenAllocMods = 100;
       szMods = (char*)malloc( iLenAllocMods * sizeof(char));
@@ -215,9 +228,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       {
          // skip to description line
          while ((iTmpCh != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
-         {
             iTmpCh = getc(fptr);
-         }
       }
 
       if (iTmpCh == '>') // Expect a '>' for sequence header line.
@@ -242,17 +253,33 @@ bool CometSearch::RunSearch(int minNumThreads,
             {
                if (iTmpCh == '\\')
                {
-                  char *szLine = NULL;
-                  size_t len = 0;
-
                   ungetc(iTmpCh, fptr);
-                  GetLine(&szLine, &len, fptr);
-
+                  
+                  // grab rest of description line here
+                  fgets(szPeffLine, iLenSzLine, fptr);
+                  while (!feof(fptr) && szPeffLine[strlen(szPeffLine)-1]!='\n')
+                  {
+                     char *pTmp;
+                     iLenSzLine += 1024;
+                     pTmp = (char *)realloc(szPeffLine, iLenSzLine);
+                     if (pTmp == NULL)
+                     {
+                        char szErrorMsg[512];
+                        sprintf(szErrorMsg,  " Error realloc(szPeffLine[%d])\n", iLenSzLine);
+                        string strErrorMsg(szErrorMsg);
+                        g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                        logerr(szErrorMsg);
+                        return false;
+                     }
+                     szPeffLine = pTmp;
+                     fgets(szPeffLine+strlen(szPeffLine)-1, iLenSzLine - strlen(szPeffLine), fptr);
+                  }
+                 
                   // grab from \ModRes and \Variant to end of line
 
                   char *pStr;
 
-                  if ( (pStr = strstr(szLine, szAttributeMod)) != NULL)
+                  if (0 && (pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
                   {
                      char *pStr2;
                      pStr += iLenAttributeMod;
@@ -262,7 +289,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                      else
                         iLen = (int)(strlen(pStr));
 
-                     if ( iLen > iLenAllocMods-1)
+                     if ( iLen >= iLenAllocMods-1)
                      {
                         char *pTmp;
 
@@ -329,7 +356,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                      }
                   }
 
-                  if ( (pStr = strstr(szLine, szAttributeVariant)) != NULL)
+                  if (0 && (pStr = strstr(szPeffLine, szAttributeVariant)) != NULL)
                   {
                      char *pStr2;
                      pStr += iLenAttributeVariant;
@@ -398,8 +425,6 @@ bool CometSearch::RunSearch(int minNumThreads,
                         tok = strtok(NULL, delims);
                      }
                   }
-
-                  free(szLine);
 
                   // exit out of this as end of line grabbed
                   break;
@@ -476,6 +501,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    if (g_staticParams.peffInfo.bPEFF)
    {
       free(szMods);
+      free(szPeffLine);
    }
 
    return bSucceeded;
@@ -489,13 +515,13 @@ void CometSearch::ReadOBO(char *szOBO,
 
    if ( (fp=fopen(szOBO, "r")) != NULL)
    {
-      char szLine[SIZE_BUF];
+      char szPeffLine[SIZE_BUF];
 
       // store UniMod mod string "UNIMOD:1" and mass diffs 'delta_mono_mass "42.010565"' 'delta_avge_mass "42.0367"'
-      fgets(szLine, SIZE_BUF, fp);
+      fgets(szPeffLine, SIZE_BUF, fp);
       while (!feof(fp))
       {
-         if (!strncmp(szLine, "[Term]", 6))
+         if (!strncmp(szPeffLine, "[Term]", 6))
          {
             OBOStruct pEntry;
 
@@ -516,35 +542,35 @@ void CometSearch::ReadOBO(char *szOBO,
             // xref: DiffAvg: "79.98"
             // xref: DiffMono: "79.966331"
 
-            while (fgets(szLine, SIZE_BUF, fp))
+            while (fgets(szPeffLine, SIZE_BUF, fp))
             {
                char szTmp[80];
 
-               if (!strncmp(szLine, "[Term]", 6))
+               if (!strncmp(szPeffLine, "[Term]", 6))
                {
                   if (pEntry.dMassDiffMono != 0.0)
                      (*vectorPeffOBO).push_back(pEntry);
 
                   break;
                }
-               else if (!strncmp(szLine, "id: ", 4))
+               else if (!strncmp(szPeffLine, "id: ", 4))
                {
-                  sscanf(szLine, "id: %79s", szTmp);
+                  sscanf(szPeffLine, "id: %79s", szTmp);
                   pEntry.strMod = szTmp;
                }
-               else if (!strncmp(szLine, "xref: delta_mono_mass ", 22))
-                  sscanf(szLine + 22, "\"%lf\"", &pEntry.dMassDiffMono);
-               else if (!strncmp(szLine, "xref: delta_avge_mass ", 22))
-                  sscanf(szLine + 22, "\"%lf\"", &pEntry.dMassDiffAvg);
-               else if (!strncmp(szLine, "xref: DiffAvg: ", 15))
-                  sscanf(szLine + 15, "\"%lf\"", &pEntry.dMassDiffAvg);
-               else if (!strncmp(szLine, "xref: DiffMono: ", 16))
-                  sscanf(szLine + 16, "\"%lf\"", &pEntry.dMassDiffMono);
+               else if (!strncmp(szPeffLine, "xref: delta_mono_mass ", 22))
+                  sscanf(szPeffLine + 22, "\"%lf\"", &pEntry.dMassDiffMono);
+               else if (!strncmp(szPeffLine, "xref: delta_avge_mass ", 22))
+                  sscanf(szPeffLine + 22, "\"%lf\"", &pEntry.dMassDiffAvg);
+               else if (!strncmp(szPeffLine, "xref: DiffAvg: ", 15))
+                  sscanf(szPeffLine + 15, "\"%lf\"", &pEntry.dMassDiffAvg);
+               else if (!strncmp(szPeffLine, "xref: DiffMono: ", 16))
+                  sscanf(szPeffLine + 16, "\"%lf\"", &pEntry.dMassDiffMono);
             }
          }
          else
          {
-            fgets(szLine, SIZE_BUF, fp);
+            fgets(szPeffLine, SIZE_BUF, fp);
          }
       }
 
@@ -803,8 +829,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    int ctCharge;
    double dCalcPepMass = 0.0;
 
-// char* szProteinName = (char *)(dbe.strName.c_str());
-
    int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
 
    iLenProtein = _proteinInfo.iProteinSeqLength;  // FIX: need to confirm this is always same as strlen(szProteinSeq)
@@ -816,15 +840,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       iStartPos = 1;
       iFirstResiduePosition = 1;
    }
-
-/*
-printf("\n\n");
-printf("OK protein %s, length %d\n", szProteinName, (int)strlen(szProteinSeq));
-for (int i=0; i<(int)dbe.vectorPeffMod.size(); i++)
-   printf("OK *** modification  %d, %f\n", dbe.vectorPeffMod.at(i).iPosition, dbe.vectorPeffMod.at(i).dMassDiffMono); //, dbe.vectorPeffMod.at(i).strMod.c_str());
-for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
-   printf("OK *** variant %d, %c\n", dbe.vectorPeffVariantSimple.at(i).iPosition, dbe.vectorPeffVariantSimple.at(i).cResidue);
-*/
 
    if (dbe.vectorPeffMod.size() > 0)
       g_staticParams.variableModParameters.bVarModSearch = true;
@@ -994,7 +1009,9 @@ for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
                            iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
 
                            for (ctLen=0; ctLen<iLenMinus1; ctLen++)
+                           {
                               pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
+                           }
                         }
                      }
 
@@ -2003,7 +2020,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             //MH: newer sparse matrix converts bin to sparse matrix bin
             bin = *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen);
             x = bin / SPARSE_MATRIX_SIZE;
-            if (ppSparseFastXcorrData[x]==NULL || x>iMax) // x should never be > iMax so this is just a safety check
+            if (x>iMax || ppSparseFastXcorrData[x]==NULL) // x should never be > iMax so this is just a safety check
                continue;
             y = bin - (x*SPARSE_MATRIX_SIZE);
             dXcorr += ppSparseFastXcorrData[x][y];
@@ -3880,11 +3897,6 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       vector<int> a(n);
       vector<int> len(n);
       int j;
-/*
-      int a[n],
-          len[n],
-          j;
-*/
    
       for (i = 0 ; i < n ; i++)
       {
@@ -4140,14 +4152,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             {
                char pcTmpVarModSearchSites[MAX_PEPTIDE_LEN_P2];  // placeholder to reverse variable mods
 
-/*
-#ifdef _WIN32
-               _snprintf(szDecoyProteinName, WIDTH_REFERENCE, "%s%s", g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
-               szDecoyProteinName[WIDTH_REFERENCE-1]=0;    // _snprintf does not guarantee null termination
-#else
-               snprintf(szDecoyProteinName, WIDTH_REFERENCE, "%s%s", g_staticParams.szDecoyPrefix, _proteinInfo.szProteinName);
-#endif
-*/
                // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.
                // So actual reverse peptide starts at position 1 and ends at len-2 (as len-1
                // is next AA).
@@ -4296,63 +4300,4 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
    }
 
    return true;
-}
-
-// GNU getline implementation from http://stackoverflow.com/questions/735126/are-there-alternate-implementations-of-gnu-getline-interface/735472
-// This code is public domain -- Will Hartung 4/9/09
-size_t CometSearch::GetLine(char **lineptr,
-                            size_t *n,
-                            FILE *stream)
-{
-   char *bufptr = NULL;
-   char *p = bufptr;
-   size_t size;
-   int c;
-   int offset;
-
-   if (lineptr == NULL)
-      return 1;
-   if (stream == NULL)
-      return 1;
-   if (n == NULL)
-      return 1;
-
-   bufptr = *lineptr;
-   size = *n;
-
-   c = fgetc(stream);
-
-   if (c == EOF)
-      return 1;
-
-   if (bufptr == NULL)
-   {
-      bufptr = (char *)malloc(512);
-      if (bufptr == NULL)
-         return 1;
-      size = 512;
-   }
-   p = bufptr;
-   while (c != EOF)
-   {
-      offset = p - bufptr;
-      if ((size_t)(p - bufptr + 1) > size)
-      {
-         size = size + 512;
-         bufptr = (char *)realloc(bufptr, size);
-         if (bufptr == NULL)
-            return 1;
-         p = bufptr + offset;
-      }
-      *p++ = c;
-      if (c == '\n')  // FIX need more robust line ending check?
-         break;
-      c = fgetc(stream);
-   }
-
-   *p++ = '\0';
-   *lineptr = bufptr;
-   *n = size;
-
-   return p - bufptr - 1;
 }

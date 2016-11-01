@@ -35,8 +35,10 @@ private:
                                int iLenMaxDuplicates,
                                int iMaxWidthReference,
                                int iWhichResult,
+                               bool bDecoySearch,
                                Results *pOutput,
-                               FILE *fpout);
+                               FILE *fpout,
+                               FILE *fpdb);
    static void PrintIons(int iWhichQuery,
                          FILE *fpout);
 };
