@@ -28,6 +28,7 @@ class CometSearchManager;
 #define FLOAT_ZERO                  1e-6     // 0.000001
 #define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
 #define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
+#define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
@@ -164,7 +165,7 @@ struct Results
    long   lProteinFilePosition;
    int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
-   char   pszMod[MAX_PEPTIDE_LEN][8];          // store PEFF mod string
+   char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
    char   cPeffOrigResidue;                   // original residue of a PEFF variant
@@ -232,7 +233,7 @@ struct PeffModStruct       // stores info read from PEFF header
    double dMassDiffAvg;    // this is looked up from strMod string from OBO
    double dMassDiffMono;
    int    iPosition;       // position of modification
-   char   szMod[8];        // currently PSI-MOD has 5 chars:  MOD:XXXXX   
+   char   szMod[MAX_PEFFMOD_LEN];
 
    bool operator<(const PeffModStruct& a) const
    {

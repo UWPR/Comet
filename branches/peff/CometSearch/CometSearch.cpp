@@ -603,12 +603,13 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
       pData->dMassDiffMono = (*vectorPeffOBO).at(iPos).dMassDiffMono;
 
       if (!strMod.compare(0,7, "UNIMOD:"))
-         strcpy(pData->szMod, strMod.c_str()+7);  // UNIMOD:XXXXX
+         strncpy(pData->szMod, strMod.c_str(), MAX_PEFFMOD_LEN);  // UNIMOD:XXXXX
       else if (!strMod.compare(0, 4, "MOD:"))
-         strcpy(pData->szMod, strMod.c_str()+4);  // MOD:XXXXX
+         strncpy(pData->szMod, strMod.c_str(), MAX_PEFFMOD_LEN);  // MOD:XXXXX
       else
          strcpy(pData->szMod, "ERROR");
 
+      pData->szMod[MAX_PEFFMOD_LEN-1]='\0';
       return true;
    }
    else
