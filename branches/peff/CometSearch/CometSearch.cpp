@@ -103,16 +103,16 @@ bool CometSearch::RunSearch(int minNumThreads,
    bool bSucceeded = true;
    sDBEntry dbe;
    FILE *fptr;
-   int iTmpCh;
-   long lEndPos;
-   long lCurrPos;
-   bool bTrimDescr;
+   int iTmpCh = 0;
+   long lEndPos = 0;
+   long lCurrPos = 0;
+   bool bTrimDescr = 0;
    string strPeffHeader;
    char *szMods = 0;             // will store ModRes and VariantSimple text for parsing for all entries; resize as needed
    char *szPeffLine = 0;         // store description line starting with first \ to parse above
    int iLenAllocMods = 0;
    int iLenSzLine = 0;
-   int iLen;
+   int iLen = 0;
 
    vector<OBOStruct> vectorPeffOBO;
 
@@ -161,7 +161,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       }
 
       // allocate initial storage for mod strings that will be parsed from each def line
-      iLenAllocMods = 100;
+      iLenAllocMods = 5000;
       szMods = (char*)malloc( iLenAllocMods * sizeof(char));
       if (szMods == NULL)
       {
@@ -254,7 +254,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                if (iTmpCh == '\\')
                {
                   ungetc(iTmpCh, fptr);
-                  
+
                   // grab rest of description line here
                   szPeffLine[0]='\0';
                   fgets(szPeffLine, iLenSzLine, fptr);
@@ -275,27 +275,25 @@ bool CometSearch::RunSearch(int minNumThreads,
                      szPeffLine = pTmp;
                      fgets(szPeffLine+strlen(szPeffLine)-1, iLenSzLine - strlen(szPeffLine), fptr);
                   }
-                 
+
                   // grab from \ModRes and \Variant to end of line
 
                   char *pStr;
-
                   if ((pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
                   {
                      char *pStr2;
                      pStr += iLenAttributeMod;
 
                      if ( (pStr2 = strchr(pStr, ' '))!=NULL)
-                        iLen = (int)(strlen(pStr)-strlen(pStr2));
+                        iLen = pStr2 - pStr;
                      else
-                        iLen = (int)(strlen(pStr));
+                        iLen = strlen(szPeffLine) - (pStr - szPeffLine);
 
-                     if ( iLen >= iLenAllocMods-1)
+                     if ( iLen > iLenAllocMods)
                      {
                         char *pTmp;
 
-                        iLenAllocMods = iLen + 100;
-
+                        iLenAllocMods = iLen + 1000;
                         pTmp=(char *)realloc(szMods, iLenAllocMods);
                         if (pTmp == NULL)
                         {
@@ -361,16 +359,14 @@ bool CometSearch::RunSearch(int minNumThreads,
                      pStr += iLenAttributeVariant;
 
                      if ( (pStr2 = strchr(pStr, ' '))!=NULL)
-                        iLen = (int)(strlen(pStr)-strlen(pStr2));
+                        iLen = pStr2 - pStr;
                      else
-                        iLen = (int)(strlen(pStr));
+                        iLen = strlen(szPeffLine) - (pStr - szPeffLine);
 
-                     if ( iLen > iLenAllocMods-1)
+                     if ( iLen > iLenAllocMods)
                      {
                         char *pTmp;
-
-                        iLenAllocMods = iLen + 100;
-
+                        iLenAllocMods = iLen + 1000;
                         pTmp=(char *)realloc(szMods, iLenAllocMods);
                         if (pTmp == NULL)
                         {
@@ -393,11 +389,11 @@ bool CometSearch::RunSearch(int minNumThreads,
                      int iPos;
                      char cVariant;
                      tok = strtok(szMods, delims);
+
                      while (tok != NULL && strlen(tok)>=3)
                      {
                         iPos = -1;
                         cVariant = 0;
-
                         sscanf(tok+1, "%d|%*d|%c", &iPos, &cVariant);  //tok+1 to skip first '(' char
 
                         // sanity check: make sure position is positive and residue is A-Z
@@ -463,9 +459,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
          bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
          if (!bSucceeded)
-         {
             break;
-         }
       }
       else
       {
@@ -473,6 +467,7 @@ bool CometSearch::RunSearch(int minNumThreads,
          iTmpCh = getc(fptr);
       }
    }
+
 
    // Wait for active search threads to complete processing.
    pSearchThreadPool->WaitForThreads();
@@ -514,13 +509,13 @@ void CometSearch::ReadOBO(char *szOBO,
 
    if ( (fp=fopen(szOBO, "r")) != NULL)
    {
-      char szPeffLine[SIZE_BUF];
+      char szLineOBO[SIZE_BUF];
 
       // store UniMod mod string "UNIMOD:1" and mass diffs 'delta_mono_mass "42.010565"' 'delta_avge_mass "42.0367"'
-      fgets(szPeffLine, SIZE_BUF, fp);
+      fgets(szLineOBO, SIZE_BUF, fp);
       while (!feof(fp))
       {
-         if (!strncmp(szPeffLine, "[Term]", 6))
+         if (!strncmp(szLineOBO, "[Term]", 6))
          {
             OBOStruct pEntry;
 
@@ -541,35 +536,35 @@ void CometSearch::ReadOBO(char *szOBO,
             // xref: DiffAvg: "79.98"
             // xref: DiffMono: "79.966331"
 
-            while (fgets(szPeffLine, SIZE_BUF, fp))
+            while (fgets(szLineOBO, SIZE_BUF, fp))
             {
-               char szTmp[80];
+               char szTmp[MAX_PEFFMOD_LEN];
 
-               if (!strncmp(szPeffLine, "[Term]", 6))
+               if (!strncmp(szLineOBO, "[Term]", 6))
                {
                   if (pEntry.dMassDiffMono != 0.0)
                      (*vectorPeffOBO).push_back(pEntry);
 
                   break;
                }
-               else if (!strncmp(szPeffLine, "id: ", 4))
+               else if (!strncmp(szLineOBO, "id: ", 4))
                {
-                  sscanf(szPeffLine, "id: %79s", szTmp);
-                  pEntry.strMod = szTmp;
+                  sscanf(szLineOBO, "id: %16s", szTmp);
+                  pEntry.strMod = string(szTmp);
                }
-               else if (!strncmp(szPeffLine, "xref: delta_mono_mass ", 22))
-                  sscanf(szPeffLine + 22, "\"%lf\"", &pEntry.dMassDiffMono);
-               else if (!strncmp(szPeffLine, "xref: delta_avge_mass ", 22))
-                  sscanf(szPeffLine + 22, "\"%lf\"", &pEntry.dMassDiffAvg);
-               else if (!strncmp(szPeffLine, "xref: DiffAvg: ", 15))
-                  sscanf(szPeffLine + 15, "\"%lf\"", &pEntry.dMassDiffAvg);
-               else if (!strncmp(szPeffLine, "xref: DiffMono: ", 16))
-                  sscanf(szPeffLine + 16, "\"%lf\"", &pEntry.dMassDiffMono);
+               else if (!strncmp(szLineOBO, "xref: delta_mono_mass ", 22))
+                  sscanf(szLineOBO + 22, "\"%lf\"", &pEntry.dMassDiffMono);
+               else if (!strncmp(szLineOBO, "xref: delta_avge_mass ", 22))
+                  sscanf(szLineOBO + 22, "\"%lf\"", &pEntry.dMassDiffAvg);
+               else if (!strncmp(szLineOBO, "xref: DiffAvg: ", 15))
+                  sscanf(szLineOBO + 15, "\"%lf\"", &pEntry.dMassDiffAvg);
+               else if (!strncmp(szLineOBO, "xref: DiffMono: ", 16))
+                  sscanf(szLineOBO + 16, "\"%lf\"", &pEntry.dMassDiffMono);
             }
          }
          else
          {
-            fgets(szPeffLine, SIZE_BUF, fp);
+            fgets(szLineOBO, SIZE_BUF, fp);
          }
       }
 
@@ -603,9 +598,9 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
       pData->dMassDiffMono = (*vectorPeffOBO).at(iPos).dMassDiffMono;
 
       if (!strMod.compare(0,7, "UNIMOD:"))
-         strncpy(pData->szMod, strMod.c_str(), MAX_PEFFMOD_LEN);  // UNIMOD:XXXXX
+         strncpy(pData->szMod, strMod.c_str(), MAX_PEFFMOD_LEN-1);  // UNIMOD:XXXXX
       else if (!strMod.compare(0, 4, "MOD:"))
-         strncpy(pData->szMod, strMod.c_str(), MAX_PEFFMOD_LEN);  // MOD:XXXXX
+         strncpy(pData->szMod, strMod.c_str(), MAX_PEFFMOD_LEN-1);  // MOD:XXXXX
       else
          strcpy(pData->szMod, "ERROR");
 
@@ -671,7 +666,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
       _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       _proteinInfo.cPeffOrigResidue = '\0';
-      _proteinInfo.iPeffOrigResiduePosition = -1;
+      _proteinInfo.iPeffOrigResiduePosition = -9;
 
       // have to pass sequence as it can be modified per below
       if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str(), false, pbDuplFragment))
@@ -863,11 +858,11 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
       while (dMass < g_massRange.dMaxMass)
       {
-         iStartPos--;
-         dMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iStartPos]];
-
          if ((iStartPos == iFirstResiduePosition) || (iPeffRequiredVariantPosition - iStartPos >= MAX_PEPTIDE_LEN))
             break;
+
+         iStartPos--;
+         dMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iStartPos]];
       }
 
       if (bNtermPeptideOnly && iStartPos != 1)  // Variant outside of first peptide caused my clipping Met
@@ -970,7 +965,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                // Mass tolerance check for particular query against this candidate peptide mass.
                if (CheckMassMatch(iWhichQuery, dCalcPepMass))
                {
-//                char szDecoyProteinName[WIDTH_REFERENCE];
                   char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];  // Allow for prev/next AA in string.
 
                   // Calculate ion series just once to compare against all relevant query spectra.
@@ -1182,7 +1176,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
          }
       }
-
       // Increment start, reset end.
       else if (dCalcPepMass > g_massRange.dMaxMass || iEndPos==iProteinSeqLengthMinus1 || iLenPeptide == MAX_PEPTIDE_LEN)
       {
@@ -1846,7 +1839,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
    }
 
    _proteinInfo.cPeffOrigResidue = '\0';
-   _proteinInfo.iPeffOrigResiduePosition = -1;
+   _proteinInfo.iPeffOrigResiduePosition = -9;
    return true;
 }
 
