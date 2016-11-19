@@ -170,8 +170,8 @@ struct Results
    char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
    char   cPeffOrigResidue;                   // original residue of a PEFF variant
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
-   vector<long> pvlWhichProtein;              // file positions of matched protein entries
-   vector<long> pvlWhichDecoyProtein;         // keep separate decoy list (used for separate decoy matches and combined results)
+   vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
+   vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
 };
 
 struct PepMassInfo
@@ -226,6 +226,19 @@ struct OBOStruct           // stores info read from OBO file
       return (strMod < a.strMod);
    }
 
+};
+
+struct ProteinEntryStruct
+{
+   long lWhichProtein;     // file pointer to protein
+   int iStartResidue;      // start residue position in protein (1-based)
+   char cPrevAA;
+   char cNextAA;
+
+   bool operator<(const ProteinEntryStruct& a) const
+   {
+      return (lWhichProtein < a.lWhichProtein);
+   }
 };
 
 struct PeffModStruct       // stores info read from PEFF header
@@ -807,13 +820,16 @@ struct Query
          ppfSparseFastXcorrDataNL = NULL;
       }
 
-      _pResults->pvlWhichProtein.clear();
+      _pResults->pWhichProtein.clear();
+      if (g_staticParams.options.iDecoySearch == 1)
+         _pResults->pWhichDecoyProtein.clear();
       delete[] _pResults;
       _pResults = NULL;
 
-      if (g_staticParams.options.iDecoySearch > 0)
+
+      if (g_staticParams.options.iDecoySearch == 2)
       {
-         _pDecoys->pvlWhichProtein.clear();
+         _pDecoys->pWhichDecoyProtein.clear();
          delete[] _pDecoys;
          _pDecoys = NULL;
       }

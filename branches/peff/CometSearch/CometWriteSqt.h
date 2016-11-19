@@ -40,7 +40,8 @@ private:
                             int iWhichResult,
                             Results *pOutput,
                             FILE *fpOut,
-                            FILE *fpdb);
+                            FILE *fpdb,
+                            bool bDecoy);
 };
 
 #endif

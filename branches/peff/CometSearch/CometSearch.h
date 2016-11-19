@@ -106,6 +106,7 @@ private:
    bool WithinMassTolerancePeff(double dCalcPepMass,
                                 vector<PeffPositionStruct>* vPeffArray);
    void XcorrScore(char *szProteinSeq,
+                   int iStartResidue,
                    int iStartPos,
                    int iEndPos,
                    bool bFoundVariableMod,
@@ -130,6 +131,7 @@ private:
                              double *pdAAforward,
                              double *pdAAreverse);
    int CheckDuplicate(int iWhichQuery,
+                      int iStartResidue,
                       int iStartPos,
                       int iEndPos,
                       bool bFoundVariableMod,
@@ -139,6 +141,7 @@ private:
                       int *piVarModSites,
                       struct sDBEntry *dbe);
    void StorePeptide(int iWhichQuery,
+                     int iStartResidue,
                      int iStartPos,
                      int iEndPos,
                      bool bFoundVariableMod,

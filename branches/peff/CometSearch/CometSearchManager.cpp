@@ -292,12 +292,12 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].iMatchedIons = 0;
          pQuery->_pResults[j].iTotalIons = 0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
-         pQuery->_pResults[j].pvlWhichProtein.clear();
+         pQuery->_pResults[j].pWhichProtein.clear();
          pQuery->_pResults[j].cPeffOrigResidue = NULL;
          pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
 
          if (g_staticParams.options.iDecoySearch)
-            pQuery->_pResults[j].pvlWhichDecoyProtein.clear();
+            pQuery->_pResults[j].pWhichDecoyProtein.clear();
 
          if (g_staticParams.options.iDecoySearch==2)
          {

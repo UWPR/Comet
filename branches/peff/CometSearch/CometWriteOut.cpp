@@ -216,35 +216,50 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    iMaxWidthReference = 9;
    iLenMaxDuplicates = 0;
 
+   bool bPrintDecoyPrefix = false;
+
    for (i=0; i<iNumPrintLines; i++)
    {
-      if ( (bDecoySearch && i<(int)pOutput[i].pvlWhichDecoyProtein.size())
-            || (!bDecoySearch && i<(int)pOutput[i].pvlWhichProtein.size()))
+      // Use iLenMaxDuplicates here to store largest iDuplicateCount;
+      // This is then used after for loop.
+ 
+      if (pOutput[i].iDuplicateCount > iLenMaxDuplicates)
+         iLenMaxDuplicates = pOutput[i].iDuplicateCount;
+
+      char szProteinName[100];
+      vector<ProteinEntryStruct>::iterator it;
+
+      // Now get max protein length of first protein; take target entry if available
+      // otherwise take decoy entry
+      if (bDecoySearch)
       {
-         char *szProteinName = NULL;
-         vector<long>::iterator it;
-         advance(it, 0);
-
-         if (bDecoySearch)
+         if ((int)pOutput[i].pWhichDecoyProtein.size() > 0)
          {
-            it = pOutput[i].pvlWhichDecoyProtein.begin();
-            CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+            it = pOutput[i].pWhichDecoyProtein.begin();
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            bPrintDecoyPrefix = true;
          }
-         else
-         {
-            it = pOutput[i].pvlWhichProtein.begin();
-            CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
-         }
-
-         if (pOutput[i].iDuplicateCount > iLenMaxDuplicates)
-            iLenMaxDuplicates = pOutput[i].iDuplicateCount;
-
-        if ((int)strlen(szProteinName) > iMaxWidthReference)
-            iMaxWidthReference = (int)strlen(szProteinName);
-
-         free(szProteinName);
       }
+      else
+      {
+         if ((int)pOutput[i].pWhichProtein.size() > 0)
+         {
+            it = pOutput[i].pWhichProtein.begin();
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+         }
+         else //if ( (int)pOutput[i].pWhichDecoyProtein.size() > 0)
+         {
+            it = pOutput[i].pWhichDecoyProtein.begin();
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            bPrintDecoyPrefix = true;
+         }
+      }
+
+      if ((int)strlen(szProteinName) > iMaxWidthReference)
+         iMaxWidthReference = (int)strlen(szProteinName);
    }
+   if (bPrintDecoyPrefix)
+      iMaxWidthReference += strlen(g_staticParams.szDecoyPrefix);
 
    if (iLenMaxDuplicates > 0)
    {
@@ -311,60 +326,32 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
       double dVal;
       double dExpect;
 
-      if (bDecoySearch)
+      fprintf(fpout, "a=%f b=%f %d-%d\n",
+            pQuery->fPar[1],
+            pQuery->fPar[0],
+            (int)pQuery->fPar[2],
+            (int)pQuery->fPar[3]);
+
+      // iXcorrHistogram is already cummulative here.
+      for (i=0; i<=pQuery->siMaxXcorr; i++)
       {
-         fprintf(fpout, "a=%f b=%f\n", pQuery->fPar[1], pQuery->fPar[0]);
-
-         // iXcorrHistogram is already cummulative here.
-         for (i=0; i<=pQuery->siMaxXcorr; i++)
+         if (pQuery->iXcorrHistogram[i]> 0)
          {
-            if (pQuery->iXcorrHistogram[i]> 0)
-            {
-               dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
-               dExpect = pow(10.0, dVal);
+            dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
+            dExpect = pow(10.0, dVal);
 
-               if (dExpect > 999.0)
-                  dExpect = 999.0;
+            if (dExpect > 999.0)
+               dExpect = 999.0;
 
-               fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
-                     i*0.1,
-                     pQuery->iXcorrHistogram[i],
-                     log10((float)pQuery->iXcorrHistogram[i]),
-                     dVal,
-                     dExpect);
-            }
+            fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
+                  i*0.1,
+                  pQuery->iXcorrHistogram[i],
+                  log10((float)pQuery->iXcorrHistogram[i]),
+                  dVal,
+                  dExpect);
          }
-         fprintf(fpout, "\n");
       }
-      else
-      {
-         fprintf(fpout, "a=%f b=%f %d-%d\n",
-               pQuery->fPar[1],
-               pQuery->fPar[0],
-               (int)pQuery->fPar[2],
-               (int)pQuery->fPar[3]);
-
-         // iXcorrHistogram is already cummulative here.
-         for (i=0; i<=pQuery->siMaxXcorr; i++)
-         {
-            if (pQuery->iXcorrHistogram[i]> 0)
-            {
-               dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
-               dExpect = pow(10.0, dVal);
-
-               if (dExpect > 999.0)
-                  dExpect = 999.0;
-
-               fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
-                     i*0.1,
-                     pQuery->iXcorrHistogram[i],
-                     log10((float)pQuery->iXcorrHistogram[i]),
-                     dVal,
-                     dExpect);
-            }
-         }
-         fprintf(fpout, "\n");
-      }
+      fprintf(fpout, "\n");
    }
    fclose(fpout);
 
@@ -433,14 +420,29 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    iWidthPrintRef=0;
 
    char szProteinName[100];
+   vector<ProteinEntryStruct>::iterator it;
+   bool bPrintDecoyPrefix = false;
 
-   vector<long>::iterator it;
    if (bDecoySearch)
-      it = pOutput[iWhichResult].pvlWhichDecoyProtein.begin();
+   {
+      it = pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      bPrintDecoyPrefix = true;
+   }
    else
-      it = pOutput[iWhichResult].pvlWhichProtein.begin();
-   CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+   {
+      if ((int)pOutput[i].pWhichProtein.size() > 0)
+         it = pOutput[iWhichResult].pWhichProtein.begin();
+      else
+      {
+         it = pOutput[iWhichResult].pWhichDecoyProtein.begin();
+         bPrintDecoyPrefix = true;
+      }
+   }
 
+   CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+
+   if (bPrintDecoyPrefix)
+      strcat(szBuf, g_staticParams.szDecoyPrefix);
    while (iWidthSize < (int)strlen(szProteinName))
    {
       if (33<=(szProteinName[iWidthSize]) && (szProteinName[iWidthSize])<=126) // Ascii physical character range.

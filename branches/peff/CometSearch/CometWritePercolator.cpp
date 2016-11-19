@@ -128,7 +128,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iChargeState );
 
    // print -1 if bDecoy or if decoy entries only
-   if (bDecoy || (pOutput->pvlWhichDecoyProtein.size()>0 && pOutput->pvlWhichProtein.size()==0))
+   if (bDecoy || (pOutput->pWhichDecoyProtein.size()>0 && pOutput->pWhichProtein.size()==0))
       fprintf(fpout, "-1\t");  // label
    else
       fprintf(fpout, "1\t");
@@ -314,8 +314,31 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    fprintf(fpout, "%s\t", szModPep);
 
    char szProteinName[100];
-   std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin(); 
-   CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+   bool bPrintDecoyPrefix = false;
+   std::vector<ProteinEntryStruct>::iterator it;
+
+   if (bDecoy)
+   {  
+      it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      bPrintDecoyPrefix = true;
+   }
+   else
+   {  
+      // if not reporting separate decoys, it's possible only matches
+      // in combined search are decoy the entries
+      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+         it=pOutput[iWhichResult].pWhichProtein.begin();
+      else
+      {  
+         it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+         bPrintDecoyPrefix = true;
+      }
+   }
+
+   CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+   
+   if (bPrintDecoyPrefix)
+      fprintf(fpout, "%s", g_staticParams.szDecoyPrefix);
    fprintf(fpout, "%s\n", szProteinName);
 }
 

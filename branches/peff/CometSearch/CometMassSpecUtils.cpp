@@ -128,4 +128,5 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
 {
    fseek(fpdb, lFilePosition, SEEK_SET);
    fscanf(fpdb, "%99s", szProteinName);
+   szProteinName[99]='\0';
 }

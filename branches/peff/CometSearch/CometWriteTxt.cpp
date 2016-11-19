@@ -228,11 +228,44 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // Print protein reference/accession.
          char szProteinName[100];
-         for (std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin(); it!=pOutput[iWhichResult].pvlWhichProtein.end(); ++it)
+         bool bPrintDecoyPrefix = false;
+         std::vector<ProteinEntryStruct>::iterator it;
+
+         if (bDecoy)
+         {  
+            it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+            bPrintDecoyPrefix = true;
+         }  
+         else
          {
-            CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
-            fprintf(fpout, "%s,", szProteinName);
+            if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+               it=pOutput[iWhichResult].pWhichProtein.begin();
+            else
+            {
+               it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+               bPrintDecoyPrefix = true;
+            }
          }
+
+         for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
+         {
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            if (bPrintDecoyPrefix)
+               fprintf(fpout, "%s%s,", g_staticParams.szDecoyPrefix, szProteinName);
+            else
+               fprintf(fpout, "%s,", szProteinName);
+         }
+
+         // If combined search printed out target proteins above, now print out decoy proteins if necessary
+         if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+         {
+            for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+            {
+               CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+               fprintf(fpout, "%s%s,", g_staticParams.szDecoyPrefix, szProteinName);
+            }
+         }
+
          fprintf(fpout, "\b\t");
 
          // Cleavage type
@@ -413,10 +446,42 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // Print protein reference/accession.
          char szProteinName[100];
-         for (std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin(); it!=pOutput[iWhichResult].pvlWhichProtein.end(); ++it)
+         bool bPrintDecoyPrefix = false;
+         std::vector<ProteinEntryStruct>::iterator it;
+
+         if (bDecoy)
+         {  
+            it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+            bPrintDecoyPrefix = true;
+         }  
+         else
          {
-            CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
-            fprintf(fpout, "%s,", szProteinName);
+            if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+               it=pOutput[iWhichResult].pWhichProtein.begin();
+            else
+            {
+               it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+               bPrintDecoyPrefix = true;
+            }
+         }
+
+         for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
+         {
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            if (bPrintDecoyPrefix)
+               fprintf(fpout, "%s%s,", g_staticParams.szDecoyPrefix, szProteinName);
+            else
+               fprintf(fpout, "%s,", szProteinName);
+         }
+
+         // If combined search printed out target proteins above, now print out decoy proteins if necessary
+         if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+         {
+            for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+            {
+               CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+               fprintf(fpout, "%s%s,", g_staticParams.szDecoyPrefix, szProteinName);
+            }
          }
 
          fprintf(fpout, "\b\t%d", pOutput[iWhichResult].iDuplicateCount);

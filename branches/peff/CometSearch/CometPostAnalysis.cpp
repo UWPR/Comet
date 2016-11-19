@@ -245,11 +245,17 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
    {
 
       // hijack here to make protein vector unique
-      if (pOutput[i].pvlWhichProtein.size() > 1)
+      if (pOutput[i].pWhichProtein.size() > 1)
       {
-         sort( pOutput[i].pvlWhichProtein.begin(), pOutput[i].pvlWhichProtein.end());
-         pOutput[i].pvlWhichProtein.erase(unique(pOutput[i].pvlWhichProtein.begin(), pOutput[i].pvlWhichProtein.end()),
-               pOutput[i].pvlWhichProtein.end() );
+         sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end());
+         pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(),
+                  pOutput[i].pWhichProtein.end(), ProteinEntryCmp), pOutput[i].pWhichProtein.end() );
+      }
+      if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
+      {
+         sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end());
+         pOutput[i].pWhichDecoyProtein.erase(unique(pOutput[i].pWhichDecoyProtein.begin(),
+                  pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp), pOutput[i].pWhichDecoyProtein.end() );
       }
 
       if (pOutput[i].iLenPeptide>0) // take care of possible edge case
@@ -366,6 +372,13 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
       }
    }
+}
+
+
+int CometPostAnalysis::ProteinEntryCmp(struct ProteinEntryStruct &a,
+                                       struct ProteinEntryStruct &b)
+{
+   return (a.lWhichProtein < b.lWhichProtein);
 }
 
 

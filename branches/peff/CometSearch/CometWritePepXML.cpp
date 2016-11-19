@@ -602,21 +602,44 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    int  i;
    int iNTT;
    int iNMC;
+   bool bPrintDecoyPrefix = false;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
 
    char szProteinName[100];
-   std::vector<long>::iterator it=pOutput[iWhichResult].pvlWhichProtein.begin();
-   CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+   std::vector<ProteinEntryStruct>::iterator it;
+   
+   if (bDecoy)
+   {
+      it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      bPrintDecoyPrefix = true;
+   }
+   else
+   {
+      // if not reporting separate decoys, it's possible only matches
+      // in combined search are decoy the entries
+      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+         it=pOutput[iWhichResult].pWhichProtein.begin();
+      else
+      {
+         it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+         bPrintDecoyPrefix = true;
+      }
+   }
+
+   CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
    ++it;
 
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", iRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
    fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[0]);
    fprintf(fpout, " peptide_next_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[1]);
-   fprintf(fpout, " protein=\"%s\"", szProteinName);
+   if (bPrintDecoyPrefix)
+      fprintf(fpout, " protein=\"%s%s\"", g_staticParams.szDecoyPrefix, szProteinName);
+   else
+      fprintf(fpout, " protein=\"%s\"", szProteinName);
    fprintf(fpout, " num_tot_proteins=\"%d\"", pOutput[iWhichResult].iDuplicateCount+1);
    fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
    fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
@@ -628,10 +651,23 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    fprintf(fpout, ">\n");
 
    // Print protein reference/accession.
-   for (; it!=pOutput[iWhichResult].pvlWhichProtein.end(); ++it)
+   for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
    {
-      CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
-      fprintf(fpout, "   <alternative_protein protein=\"%s\"/>\n", szProteinName);
+      CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+      if (bPrintDecoyPrefix)
+         fprintf(fpout, "   <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
+      else
+         fprintf(fpout, "   <alternative_protein protein=\"%s\"/>\n", szProteinName);
+   }
+
+   // If combined search printed out target proteins above, now print out decoy proteins if necessary
+   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+   {
+      for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+      {
+         CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+         fprintf(fpout, "   <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
+      }
    }
 
    // check if peptide is modified
@@ -774,7 +810,10 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
             fprintf(fpout, "     <aminoacid_substitution orig_next_aa=\"%c\" />", pOutput[iWhichResult].cPeffOrigResidue);
          else
-            fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"/>", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+         {
+            fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"/>",
+                  pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+         }
          fprintf(fpout, "\n");
       }
 
