@@ -3,7 +3,8 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
-               <li><a href="/release/release_201601/">Release 2016.01, 2016/03/15</a></li>
+               <li><a href="/release/release_201602/">Release 2016.02, 2016/??/??</a></li>
+               <li><a href="/release/release_201601/">Release 2016.01, 2016/03/15, last revised 2016/04/06</a></li>
                <li><a href="/release/release_201502/">Release 2015.02, 2015/07/31, last revised 2016/01/22</a></li>
                <li><a href="/release/release_201501/">Release 2015.01, 2015/02/23, last revised 2015/04/28</a></li>
                <li><a href="/release/release_201402/">Release 2014.02, 2014/09/16, last revised 2014/09/25</a></li>
@@ -21,7 +22,7 @@
          <ul>
             <li><a target="new" href="http://chorusproject.org">Chorus</a>
             <li><a target="new" href="http://cruxtoolkit.sourceforge.net/">Crux</a>
-            <li><a target="new" href="https://registry.hub.docker.com/u/hexabio/comet/">Bio Docker</a>
+            <li><a target="new" href="https://hub.docker.com/r/biodckr/comet/">Bio Docker</a>
             <li><a target="new" href="http://www.labkey.org">LabKey</a>
             <li><a target="new" href="http://www.bioprocess.org/massypup/">MASSyPup</a>
             <li><a target="new" href="http://www.patternlabforproteomics.org/">PatternLab</a>

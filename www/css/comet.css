@@ -1,9 +1,10 @@
-
 /*
 Design by Free CSS Templates
 http://www.freecsstemplates.org
 Released for free under a Creative Commons Attribution 2.5 License
 */
+
+@import url('https://fonts.googleapis.com/css?family=Marcellus');
 
 * {
    margin: 0;
@@ -13,9 +14,9 @@ Released for free under a Creative Commons Attribution 2.5 License
 body {
    background: #FFFFFF url(/images/img01.gif) repeat-x;
    text-align: justify;
-   font-family: Georgia, "Times New Roman", Times, serif;
+   font-family: 'Marcellus', sans-serif;
    font-size: 12px;
-   color: #666666;
+   color: #555555;
 }
 
 h1, h2, h3 {
@@ -165,6 +166,7 @@ img.left {
    font-style: italic;
    font-weight: normal;
    color: #F7F6F6;
+   text-shadow: 2px 2px 2px #D0D0D0;
 }
 
 #header h2 {
@@ -177,6 +179,7 @@ img.left {
    text-align: right;
    color: #B0ACA8;
    font-size: 24px;
+   text-shadow: 2px 2px 2px #0F0F0F;
 }
 
 /* Page */

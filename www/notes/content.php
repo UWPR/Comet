@@ -13,27 +13,6 @@
                   </ul>
             </div>
             <div class="post hr">
-               <p>If you notice performance issues specifying lots of input files on the command line
-                  with Windows, i.e. a creep in memory use with corresponding CPU usage degredation,
-                  avoid the problem. You can do this by creating a wrapper script batch program which
-                  is just a text file with a ".bat" file extension.  Name it something like
-                  "runcomet.bat" with the contents as below and execute it instead of executing Comet
-                  directly i.e. "<tt>runcomet.bat *.mzXML</tt>".  By running such a batch script, it
-                  will invoke individual, sequential instances of Comet to search all input files. 
-
-               <p>Contents of runcomet.bat (you can save-link to file): &nbsp; <a href="runcomet.bat"><tt>for %%A in (%*) do ( comet.exe %%A )</tt></a>
-
-               <p>Specify the full path to the comet.exe binary in the batch file if it does not
-                  reside in the same directory as the command is being executed.
-
-               <p>For linux, try: &nbsp; <tt>find . -name '*.mzXML' -print | xargs comet</tt>.
-               <br>Or try this simple <a href="runcomet.sh"><tt>runcomet.sh</tt></a> bash script.
-                  Download it, make it executable with "chmod +x runcomet.sh" and place it
-                  somewhere in your PATH.  Then run searches using "<tt>runcomet.sh *.mzXML</tt>".
-
-
-            </div>
-            <div class="post hr">
                <p>To run Comet, you need one or more input spectral files in mzXML, mzML, mgf, or
                   ms2/cms2 formats and a comet.params file.  Then issue a command such as:
                <ul>
@@ -44,45 +23,12 @@
                </ul>
             </div>
             <div class="post hr">
-               <p>To create a comet.params file, run the following command and rename the create
-                  file from "comet.params.new" to "comet.params".
                <ul>
-                  <li><tt>comet.exe -p</tt>
+               <li>2016/06/13:  <a href="20160613_reporting_issues.php">Information I will need when you report a problem/bug</a>
+               <li>2016/03/09:  <a href="20160309_highres.php">high res vs. low res fragmention comparison on Q Exactive data</a>
+               <li>2016/01/01:  <a href="20160101_parameters.php">Comet parameters info and suggested high-res/low-res settings</a>
+               <li>2015/01/01:  <a href="20150101_batch.php">Comet batch processing scripts and avoiding memory creep</a>
                </ul>
-
-               Example version 2015.02 comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
-               <ul>
-                  <li><a href="/parameters/parameters_201502/comet.params.low-low">comet.params.low-low</a> - low res MS1 and low res MS2 e.g. ion trap
-                  <li><a href="/parameters/parameters_201502/comet.params.high-low">comet.params.high-low</a> - high res MS1 and low res MS2 e.g. LTQ-Orbitrap
-                  <li><a href="/parameters/parameters_201502/comet.params.high-high">comet.params.high-high</a> - high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
-               </ul>
-            </div>
-
-            <div class="post hr">
-               <p>For low-res ms/ms spectra, try the following settings:
-               <ul>
-                  <li><a href="/parameters/parameters_201502/fragment_bin_tol.php">fragment_bin_tol</a> = 1.0005
-                  <li><a href="/parameters/parameters_201502/fragment_bin_offset.php">fragment_bin_offset</a> = 0.4
-                  <li><a href="/parameters/parameters_201502/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 1
-                  <li><a href="/parameters/parameters_201502/spectrum_batch_size.php">spectrum_batch_size</a> = 0
-               </ul>
-
-               <p>For high-res ms/ms spectra, try the following settings:
-               <ul>
-                  <li><a href="/parameters/parameters_201502/fragment_bin_tol.php">fragment_bin_tol</a> = 0.02
-                  <li><a href="/parameters/parameters_201502/fragment_bin_offset.php">fragment_bin_offset</a> = 0.0
-                  <li><a href="/parameters/parameters_201502/theoretical_fragment_ions.php">theoretical_fragment_ions</a> = 0
-                  <li><a href="/parameters/parameters_201502/spectrum_batch_size.php">spectrum_batch_size</a> = 10000 (depending on free memory)
-               </ul>
-            </div>
-
-            <div class="post hr">
-               <p>Here's a Thermo Q Exactive datafile, human target + decoy database search (HeLa cells),
-                  searched with both the high-high and high-low parameter settings.  This plot
-                  compares the high res versus low res fragment ion settings above.  FDR/q-values
-                  are calculated based on Comet's E-value scores.  This plot demonstrates the
-                  advantages of high res search settings for high res MS/MS data.
-               <p><img src="params.png">
 
             </div>
                   <!--

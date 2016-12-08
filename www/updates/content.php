@@ -2,8 +2,60 @@
    <div id="content_full">
       <div class="post hr">
          <h1>Updates</h1>
+
+               <p/>
+
+               <li><b>2016/04/06</b>: <a href="/release/release_201402">Release 2016.01 rev. 2</a>
+                   is now available.
+               <p/>
+               <li><b>2016/03/29</b>: <a href="/release/release_201402">Release 2016.01 rev. 1</a>
+                   is now available.
+               <p/>
+               <li><b>2016/03/15</b>: <a href="/release/release_201402">Release 2016.01 rev. 0</a>
+                   is now available.
+               <p/>
+               <li><b>2016/01/22</b>: <a href="/release/release_201402">Release 2015.02 rev. 5</a>
+                   is now available.
+               <p/>
+               <li><b>2016/01/19</b>: <a href="/release/release_201402">Release 2015.02 rev. 4</a>
+                   is now available.
+               <p/>
+               <li><b>2015/11/24</b>: <a href="/release/release_201402">Release 2015.02 rev. 3</a>
+                   is now available.
+               <p/>
+               <li><b>2015/10/10</b>: <a href="/release/release_201402">Release 2015.02 rev. 2</a>
+                   is now available.
+               <p/>
+               <li><b>2015/09/30</b>: <a href="/release/release_201402">Release 2015.02 rev. 1</a>
+                   is now available.
+               <p/>
+               <li><b>2015/07/31</b>: <a href="/release/release_201402">Release 2015.02 rev. 0</a>
+                   is now available.
+               <p/>
+               <li><b>2015/04/28</b>: <a href="/release/release_201402">Release 2015.01 rev. 2</a>
+                   is now available.
+               <p/>
+               <li><b>2015/03/09</b>: <a href="/release/release_201402">Release 2015.01 rev. 1</a>
+                   is now available.
+               <p/>
+               <li><b>2015/02/23</b>: <a href="/release/release_201402">Release 2015.01 rev. 0</a>
+                   is now available.
+               <p/>
+               <li><b>2014/09/25</b>: <a href="/release/release_201402">Release 2014.02 rev. 2</a>
+                   is now available.
+               <p/>
+               <li><b>2014/09/18</b>: <a href="/release/release_201402">Release 2014.02 rev. 1</a>
+                   is now available.
+               <p/>
+               <li><b>2014/09/16</b>: <a href="/release/release_201402">Release 2014.02 rev. 0</a>
+                   is now available.
+               <p/>
+               <li><b>2014/06/03</b>: <a href="/release/release_201401">Release 2014.01 rev. 1</a>
+                   is now available.
+               <p/>
                <li><b>2014/03/25</b>: <a href="/release/release_201401">Release 2014.01 rev. 0</a>
-                   is available; this is a full release.
+                   is now available.
+               <p/>
                <li><b>2014/01/23</b>: <a href="/release/release_201302">Release 2013.02 rev. 2</a>
                    is available.  This maintenance release primarily addresses Windows search
                    performance under certain circumstances.

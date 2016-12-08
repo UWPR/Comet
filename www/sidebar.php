@@ -2,15 +2,13 @@
       <div id="updates" class="orangebox">
          <h2><a href="/updates">Recent Updates</a></h2>
             <ul>
-               <li><b>2016/03/15</b>: <a href="/release/release_201601">Release 2016.01 rev. 0</a>
+               <li><b>2016/04/06</b>: <a href="/release/release_201601">Release 2016.01 rev. 2</a>
                is now available.
-               <li><b>2016/01/22</b>: <a href="/release/release_201502">Release 2015.02 rev. 5</a>
-               is available; minor maintenance release.
                <p/>
             </ul>
       </div>
       <div id="updates" class="orangebox">
-         <h2><a href="/updates">Keep Up to Date</a></h2>
+         <h2>Keep Up to Date</h2>
             <ul>
                <li>Subscribe to <a target="new" href="http://groups.google.com/group/comet-ms">Comet's Google group</a>
                for announcements, issues, questions.
@@ -33,6 +31,7 @@
                <li><a target="new" href="http://brucelab.gs.washington.edu/xlinkdb/">XLink-DB</a> cross link database</li>
                <li><a target="new" href="http://proteomicsresource.washington.edu/">UW Proteomics Resource</a></li>
                <li><a target="new" href="https://github.com/PedrioliLab/ReAdW">ReAdW</a> Thermo mzXML converter</li>
+               <li><a target="new" href="http://proteomicsnews.blogspot.com/">Proteomics blog</a></li>
             </ul>
       </div>
 
