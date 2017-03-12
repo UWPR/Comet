@@ -210,16 +210,16 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // generate modified_peptide string
          if (bNterm)
-            fprintf(fpout, "n[%0.1f]", dNterm);
+            fprintf(fpout, "n[%0.4f]", dNterm);
          for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
             if (pOutput[iWhichResult].piVarModSites[i] != 0)
-               fprintf(fpout, "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
+               fprintf(fpout, "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
          if (bCterm)
-            fprintf(fpout, "c[%0.1f]", dCterm);
+            fprintf(fpout, "c[%0.4f]", dCterm);
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
@@ -247,26 +247,36 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             }
          }
 
+         CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+         if (bPrintDecoyPrefix)
+            fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+         else
+            fprintf(fpout, "%s", szProteinName);
+
+         ++it;
+
          for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
          {
             CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
             if (bPrintDecoyPrefix)
-               fprintf(fpout, "%s%s,", g_staticParams.szDecoyPrefix, szProteinName);
+               fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
             else
-               fprintf(fpout, "%s,", szProteinName);
+               fprintf(fpout, ",%s", szProteinName);
          }
 
          // If combined search printed out target proteins above, now print out decoy proteins if necessary
          if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
          {
-            for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+            it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+            fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+            ++it;
+
+            for (; it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
             {
                CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-               fprintf(fpout, "%s%s,", g_staticParams.szDecoyPrefix, szProteinName);
+               fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
             }
          }
-
-         fprintf(fpout, "\b\t");
 
          // Cleavage type
          fprintf(fpout, "%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
@@ -428,16 +438,16 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // generate modified_peptide string
          if (bNterm)
-            fprintf(fpout, "n[%0.1f]", dNterm);
+            fprintf(fpout, "n[%0.4f]", dNterm);
          for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
             if (pOutput[iWhichResult].piVarModSites[i] != 0)
-               fprintf(fpout, "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
+               fprintf(fpout, "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
          if (bCterm)
-            fprintf(fpout, "c[%0.1f]", dCterm);  // FIX: should be changed to c-term mass diff?
+            fprintf(fpout, "c[%0.4f]", dCterm);  // FIX: should be changed to c-term mass diff?
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
@@ -465,26 +475,38 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             }
          }
 
+         CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+         if (bPrintDecoyPrefix)
+            fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+         else
+            fprintf(fpout, "%s", szProteinName);
+
+         ++it;
+
          for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
          {
             CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
             if (bPrintDecoyPrefix)
-               fprintf(fpout, "%s%s,", g_staticParams.szDecoyPrefix, szProteinName);
+               fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
             else
-               fprintf(fpout, "%s,", szProteinName);
+               fprintf(fpout, ",%s", szProteinName);
          }
 
          // If combined search printed out target proteins above, now print out decoy proteins if necessary
          if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
          {
-            for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+            it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+            fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+            ++it;
+
+            for (; it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
             {
                CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-               fprintf(fpout, "%s%s,", g_staticParams.szDecoyPrefix, szProteinName);
+               fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
             }
          }
 
-         fprintf(fpout, "\b\t%d", pOutput[iWhichResult].iDuplicateCount);
+         fprintf(fpout, "\t%d", pOutput[iWhichResult].iDuplicateCount);
 
          fprintf(fpout, "\n");
       }

@@ -243,17 +243,30 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    for (i=0; i<iSize; i++)
    {
-
       // hijack here to make protein vector unique
       if (pOutput[i].pWhichProtein.size() > 1)
       {
-         sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end());
-         pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(),
-                  pOutput[i].pWhichProtein.end(), ProteinEntryCmp), pOutput[i].pWhichProtein.end() );
+         sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
+
+//       Sadly this erase(unique()) code doesn't work; it leaves only first entry in vector
+//       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
+//             pOutput[i].pWhichProtein.end());
+
+         long lPrev=0;
+         for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
+         {
+            if ( (*it).lWhichProtein == lPrev)
+               it = pOutput[i].pWhichProtein.erase(it);
+            else
+            {
+               lPrev = (*it).lWhichProtein;
+               ++it;
+            }
+         }
       }
       if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
       {
-         sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end());
+         sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
          pOutput[i].pWhichDecoyProtein.erase(unique(pOutput[i].pWhichDecoyProtein.begin(),
                   pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp), pOutput[i].pWhichDecoyProtein.end() );
       }
@@ -375,10 +388,10 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 }
 
 
-int CometPostAnalysis::ProteinEntryCmp(struct ProteinEntryStruct &a,
-                                       struct ProteinEntryStruct &b)
+bool CometPostAnalysis::ProteinEntryCmp(const struct ProteinEntryStruct &a,
+                                        const struct ProteinEntryStruct &b)
 {
-   return (a.lWhichProtein < b.lWhichProtein);
+   return a.lWhichProtein < b.lWhichProtein;
 }
 
 

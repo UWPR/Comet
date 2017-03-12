@@ -291,6 +291,8 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
 
       if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
       {
+         sprintf(szBuf+strlen(szBuf), "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+/*
          if (pOutput[iWhichResult].piVarModSites[i] > 0)
          {
             if (!isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
@@ -304,6 +306,7 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
             // PEFF:  no way to specify mod encoding without breaking some compatibility
             sprintf(szBuf+strlen(szBuf), "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
+*/
       }
    }
 

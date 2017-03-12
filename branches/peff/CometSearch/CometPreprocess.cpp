@@ -311,8 +311,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
 
    // get mzML nativeID
-   char szNativeID[128];
-   if (mstSpectrum.getNativeID(szNativeID, 128))
+   char szNativeID[256];
+   if (mstSpectrum.getNativeID(szNativeID, 256))
       strcpy(pScoring->_spectrumInfoInternal.szNativeID, szNativeID);
    else
       pScoring->_spectrumInfoInternal.szNativeID[0]='\0';

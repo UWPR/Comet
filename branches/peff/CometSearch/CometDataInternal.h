@@ -192,7 +192,7 @@ struct SpectrumInfoInternal
    int iMaxFragCharge;
    double dTotalIntensity;
    double dRTime;
-   char szNativeID[128];   // nativeID string from mzML
+   char szNativeID[256];   // nativeID string from mzML
 };
 
 // The minimum and maximum mass range of all peptides to consider

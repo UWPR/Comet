@@ -2131,6 +2131,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
    if (iLenPeptide >= MAX_PEPTIDE_LEN)
       return;
 
+
    if (g_staticParams.options.iDecoySearch==2 && bDecoyPep)  // store separate decoys
    {
       short siLowestDecoySpScoreIndex;
@@ -4056,9 +4057,34 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    }
    else
    {
+      bool bHasVarMod = false;
 
-      // FIX: add test here as piVarModSites should not contain any negative PEFF values
-      CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dCalcPepMass, iLenPeptide, dbe);
+      // first make sure no negative piVarModsites entries as no PEFF here
+      for (int x=0; x<iLenPeptide+2; x++)
+      {
+         if  (piVarModSites[x] < 0)
+         {
+            char szErrorMsg[256];
+            sprintf(szErrorMsg, " Error, piVarModSites[%d]=%d; should not be less than zeros since no PEFF.\n", x, piVarModSites[x]);
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            return false;
+         }
+      }
+
+      // now check to make sure there is a variable mod
+      for (int x=0; x<iLenPeptide+2; x++)
+      {
+         if  (piVarModSites[x] > 0)
+         {
+            bHasVarMod = true;
+            break;
+         }
+      }
+
+      if (bHasVarMod)
+         CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dCalcPepMass, iLenPeptide, dbe);
    }
 
    return true;

@@ -77,8 +77,8 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // This might not be the case with -N command line option.
    // So get base name from g_staticParams.inputFile.szFileName here to be sure
    char *pStr;
-   char szRunSummaryBaseName[SIZE_FILE];         // base name of szInputFile
-   char szRunSummaryResolvedPath[SIZE_FILE];     // resolved path of szInputFile
+   char szRunSummaryBaseName[PATH_MAX];         // base name of szInputFile
+   char szRunSummaryResolvedPath[PATH_MAX];      // resolved path of szInputFile
    int  iLen = strlen(g_staticParams.inputFile.szFileName);
    strcpy(szRunSummaryBaseName, g_staticParams.inputFile.szFileName);
    if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
@@ -611,9 +611,12 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    char szProteinName[100];
    std::vector<ProteinEntryStruct>::iterator it;
    
+   int iNumTotProteins = 0;
+
    if (bDecoy)
    {
       it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
       bPrintDecoyPrefix = true;
    }
    else
@@ -621,10 +624,14 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       // if not reporting separate decoys, it's possible only matches
       // in combined search are decoy the entries
       if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+      {
          it=pOutput[iWhichResult].pWhichProtein.begin();
+         iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
+      }
       else
       {
          it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+         iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
          bPrintDecoyPrefix = true;
       }
    }
@@ -640,7 +647,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       fprintf(fpout, " protein=\"%s%s\"", g_staticParams.szDecoyPrefix, szProteinName);
    else
       fprintf(fpout, " protein=\"%s\"", szProteinName);
-   fprintf(fpout, " num_tot_proteins=\"%d\"", pOutput[iWhichResult].iDuplicateCount+1);
+   fprintf(fpout, " num_tot_proteins=\"%d\"", iNumTotProteins);   //pOutput[iWhichResult].iDuplicateCount+1);
    fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
    fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
    fprintf(fpout, " calc_neutral_pep_mass=\"%0.6f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);
@@ -653,11 +660,12 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    // Print protein reference/accession.
    for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
    {
+      szProteinName[0]='\0';
       CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
       if (bPrintDecoyPrefix)
-         fprintf(fpout, "   <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
+         fprintf(fpout, "    <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
       else
-         fprintf(fpout, "   <alternative_protein protein=\"%s\"/>\n", szProteinName);
+         fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", szProteinName);
    }
 
    // If combined search printed out target proteins above, now print out decoy proteins if necessary
@@ -666,7 +674,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
       {
          CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-         fprintf(fpout, "   <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
+         fprintf(fpout, "    <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
       }
    }
 
@@ -805,16 +813,16 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       // Report PEFF
       if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
       {
+         char szTmp[8];
          if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1)
-            fprintf(fpout, "     <aminoacid_substitution orig_prev_aa=\"%c\" />", pOutput[iWhichResult].cPeffOrigResidue);
+            strcpy(szTmp, " prevAA");
          else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
-            fprintf(fpout, "     <aminoacid_substitution orig_next_aa=\"%c\" />", pOutput[iWhichResult].cPeffOrigResidue);
+            strcpy(szTmp, " nextAA");
          else
-         {
-            fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"/>",
-                  pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
-         }
-         fprintf(fpout, "\n");
+            szTmp[0]='\0';
+
+         fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"%s/>\n",
+               pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue, szTmp);
       }
 
 
