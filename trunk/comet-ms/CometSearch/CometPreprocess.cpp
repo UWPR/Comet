@@ -664,7 +664,9 @@ void CometPreprocess::PreloadIons(MSReader &mstReader,
 bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
 {
    bool bSearchSpectrum = true;
-
+   cout << "DEBUG: "
+	<< g_staticParams.options.szActivationMethod << '\t'
+	<< act << "-" << mstETDSA << "-" << mstETD << endl;
    // Check possible activation method filter.
    if (strcmp(g_staticParams.options.szActivationMethod, "ALL")!=0 && (act != mstNA))
    {
@@ -673,6 +675,10 @@ bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
          bSearchSpectrum = 0;
       }
       else if (!strcmp(g_staticParams.options.szActivationMethod, "HCD") && (act != mstHCD))
+      {
+         bSearchSpectrum = 0;
+      }
+      else if (!strcmp(g_staticParams.options.szActivationMethod, "ETD+SA") && (act != mstETDSA))
       {
          bSearchSpectrum = 0;
       }

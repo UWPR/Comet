@@ -204,11 +204,11 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
       mzVal=tStr.substr(stop+1,3);
       if(mzVal.compare("cid")==0){
         act=mstCID;
-      } else if(mzVal.compare("hcd")==0){
-        act=mstHCD;
       } else if(mzVal.compare("etd")==0){
         if(bSA) act=mstETDSA;
         else act=mstETD;
+      } else if(mzVal.compare("hcd")==0){
+        act=mstHCD;
       } else {
         cout << "Unknown activation method: " << &mzVal[0] << endl;
         act=mstNA;
