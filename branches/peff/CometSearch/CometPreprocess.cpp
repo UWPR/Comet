@@ -670,6 +670,10 @@ bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
       {
          bSearchSpectrum = 0;
       }
+      else if (!strcmp(g_staticParams.options.szActivationMethod, "ETD+SA") && (act != mstETDSA))
+      {
+         bSearchSpectrum = 0;
+      }
       else if (!strcmp(g_staticParams.options.szActivationMethod, "ETD") && (act != mstETD))
       {
          bSearchSpectrum = 0;

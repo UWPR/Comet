@@ -815,9 +815,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       {
          char szTmp[8];
          if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1)
-            strcpy(szTmp, " prevAA");
+            strcpy(szTmp, " prevAA=\"1\"");
          else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
-            strcpy(szTmp, " nextAA");
+            strcpy(szTmp, " nextAA=\"1\"");
          else
             szTmp[0]='\0';
 
@@ -844,8 +844,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 void CometWritePepXML::ReadInstrument(char *szManufacturer,
                                       char *szModel)
 {
-   strcpy(szManufacturer, "unknown");
-   strcpy(szModel, "unknown");
+   strcpy(szManufacturer, "UNKNOWN");
+   strcpy(szModel, "UNKNOWN");
 
    if (g_staticParams.inputFile.iInputType == InputType_MZXML)
    {

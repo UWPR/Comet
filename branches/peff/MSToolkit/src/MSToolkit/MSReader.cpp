@@ -1728,6 +1728,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
           else if(strcmp(scanHeader.activationMethod,"ECD")==0) s.setActivationMethod(mstECD);
           else if(strcmp(scanHeader.activationMethod,"ETD")==0) s.setActivationMethod(mstETD);
           else if(strcmp(scanHeader.activationMethod,"ETDSA")==0) s.setActivationMethod(mstETDSA);
+          else if(strcmp(scanHeader.activationMethod,"ETD+SA")==0) s.setActivationMethod(mstETDSA);
           else if(strcmp(scanHeader.activationMethod,"PQD")==0) s.setActivationMethod(mstPQD);
           else if(strcmp(scanHeader.activationMethod,"HCD")==0) s.setActivationMethod(mstHCD);
 		    else s.setActivationMethod(mstNA);
