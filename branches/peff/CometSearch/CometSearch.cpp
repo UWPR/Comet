@@ -687,6 +687,11 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    {
       int ii;
 
+      _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
+      _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
+      _proteinInfo.cPeffOrigResidue = '\0';
+      _proteinInfo.iPeffOrigResiduePosition = -9;
+
       // Nucleotide search; translate NA to AA.
 
       if ((g_staticParams.options.iWhichReadingFrame == 1) ||
@@ -2173,10 +2178,15 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if ((iStartPos <= (_proteinInfo.iPeffOrigResiduePosition)+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
+      if (_proteinInfo.iPeffOrigResiduePosition-1 != -9 && (iStartPos <= _proteinInfo.iPeffOrigResiduePosition+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
       {
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
+      }
+      else
+      {
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = -9;
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].cPeffOrigResidue = '\0';
       }
 
       // store protein
@@ -2276,10 +2286,15 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if ((iStartPos <= _proteinInfo.iPeffOrigResiduePosition+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
+      if (_proteinInfo.iPeffOrigResiduePosition-1 != -9 && (iStartPos <= _proteinInfo.iPeffOrigResiduePosition+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
       {
          pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
          pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
+      }
+      else
+      {
+         pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = -9;
+         pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = '\0';
       }
 
       // store protein
