@@ -26,8 +26,8 @@ namespace CometUI.ViewResults
         {
             using (var file = new StreamWriter(exportFile))
             {
-                WriteHeader(file, resultsList);
-                WriteResults(file, resultsList);
+                  WriteHeader(file, resultsList);
+                  WriteResults(file, resultsList);
             }
         }
 
@@ -45,10 +45,12 @@ namespace CometUI.ViewResults
 
         private void WriteResults(StreamWriter file, ObjectListView resultsList)
         {
-            foreach (OLVListItem item in resultsList.Items)
-            {
+           //foreach (OLVListItem item in resultsList.Items)
+           for (int i=0; i<resultsList.Items.Count; i++)
+           {
                 var result = String.Empty;
-                foreach (OLVListSubItem subItem in item.SubItems)
+                //foreach (OLVListSubItem subItem in item.SubItems)
+                foreach (OLVListSubItem subItem in resultsList.Items[i].SubItems)
                 {
                     result += subItem.Text + '\t';
                 }
@@ -56,7 +58,6 @@ namespace CometUI.ViewResults
                 file.WriteLine(result);
                 file.Flush();
             }
-
         }
     }
 }
