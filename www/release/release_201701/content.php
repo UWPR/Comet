@@ -50,6 +50,11 @@
                    instead of actual modified masses (e.g. M[147.0]) in the modified peptide string.
                    This brings it in line with the standard text output.  Additionally, both standard
                    and Crux versions will now report the mass differences to one decimal point.
+               <li>I'm considering phasing out support for writing ".out" files.  The parameter entry
+                   "output_outfiles" is no longer documented online nor written in the example params
+                   files.  However, it is still functional if you add "output_outfiles = 1" manually
+                   into your comet.params files.  If you still use ".out" files and would like support
+                   for that format continued, email me directly.
                 
             </ul>
 
