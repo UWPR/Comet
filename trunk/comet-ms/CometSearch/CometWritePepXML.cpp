@@ -24,6 +24,11 @@
 #include "limits.h"
 #include "stdlib.h"
 
+#ifdef _WIN32
+#define MAXIMUMPATH _MAX_PATH
+#else
+#define MAXIMUMPATH PATH_MAX
+#endif
 
 CometWritePepXML::CometWritePepXML()
 {
@@ -77,8 +82,8 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // This might not be the case with -N command line option.
    // So get base name from g_staticParams.inputFile.szFileName here to be sure
    char *pStr;
-   char szRunSummaryBaseName[PATH_MAX];          // base name of szInputFile
-   char szRunSummaryResolvedPath[PATH_MAX];      // resolved path of szInputFile
+   char szRunSummaryBaseName[MAXIMUMPATH];          // base name of szInputFile
+   char szRunSummaryResolvedPath[MAXIMUMPATH];      // resolved path of szInputFile
    int  iLen = strlen(g_staticParams.inputFile.szFileName);
    strcpy(szRunSummaryBaseName, g_staticParams.inputFile.szFileName);
    if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
@@ -91,12 +96,11 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
          *pStr = '\0';
    }
 
+   char resolvedPathBaseName[MAXIMUMPATH];
 #ifdef _WIN32
-   char resolvedPathBaseName[SIZE_FILE];
-   _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, SIZE_FILE);
-   _fullpath(szRunSummaryResolvedPath, szRunSummaryBaseName, SIZE_FILE);
+   _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, MAXIMUMPATH);
+   _fullpath(szRunSummaryResolvedPath, szRunSummaryBaseName, MAXIMUMPATH);
 #else
-   char resolvedPathBaseName[PATH_MAX];
    realpath(g_staticParams.inputFile.szBaseName, resolvedPathBaseName);
    realpath(szRunSummaryBaseName, szRunSummaryResolvedPath);
 #endif

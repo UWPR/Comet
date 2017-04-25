@@ -430,7 +430,7 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    }
    else
    {
-      if ((int)pOutput[i].pWhichProtein.size() > 0)
+      if ((int)pOutput[iWhichResult].pWhichProtein.size() > 0)
          it = pOutput[iWhichResult].pWhichProtein.begin();
       else
       {
