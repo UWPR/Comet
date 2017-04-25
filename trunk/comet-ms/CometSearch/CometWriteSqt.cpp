@@ -31,14 +31,15 @@ CometWriteSqt::~CometWriteSqt()
 
 
 void CometWriteSqt::WriteSqt(FILE *fpout,
-                             FILE *fpoutd)
+                             FILE *fpoutd,
+                             FILE *fpdb)
 {
    int i;
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      PrintResults(i, 0, fpout);
+      PrintResults(i, 0, fpout, fpdb);
    }
 
    // Print out the separate decoy hits.
@@ -46,7 +47,7 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
-         PrintResults(i, 1, fpoutd);
+         PrintResults(i, 1, fpoutd, fpdb);
       }
    }
 }
@@ -132,7 +133,9 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    fprintf(fpout, "H\n");
 
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
-   for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
+   std::map<string, CometParam*>::iterator it;
+
+   for (it=mapParams.begin(); it!=mapParams.end(); ++it)
    {
       if (it->first != "[COMET_ENZYME_INFO]")
       {
@@ -140,7 +143,6 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
       }
    }
 
-   std::map<string, CometParam*>::iterator it;
    it = mapParams.find("[COMET_ENZYME_INFO]");
    if (it != mapParams.end())
    {
@@ -163,7 +165,8 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
 void CometWriteSqt::PrintResults(int iWhichQuery,
                                  bool bDecoy,
-                                 FILE *fpout)
+                                 FILE *fpout,
+                                 FILE *fpdb)
 {
    int  i,
         iNumPrintLines,
@@ -206,7 +209,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 
    if (g_staticParams.options.bOutputSqtStream)
       fprintf(stdout, "%s", szBuf);
-   else
+   if (g_staticParams.options.bOutputSqtFile)
       fprintf(fpout, "%s", szBuf);
 
    if (bDecoy)
@@ -233,7 +236,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
-         PrintSqtLine(iRankXcorr, i, pOutput, fpout);
+         PrintSqtLine(iRankXcorr, i, pOutput, fpout, fpdb, bDecoy);
    }
 }
 
@@ -241,7 +244,9 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 void CometWriteSqt::PrintSqtLine(int iRankXcorr,
                                  int iWhichResult,
                                  Results *pOutput,
-                                 FILE *fpout)
+                                 FILE *fpout,
+                                 FILE *fpdb,
+                                 bool bDecoy)
 {
    int  i;
    char szBuf[SIZE_BUF];
@@ -273,10 +278,10 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
    sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
    {
       sprintf(szBuf+strlen(szBuf), "n%c",
-            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
+            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
    }
 
    // Print peptide sequence.
@@ -284,45 +289,93 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
    {
       sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
       {
-         sprintf(szBuf+strlen(szBuf), "%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         sprintf(szBuf+strlen(szBuf), "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+/*
+         if (pOutput[iWhichResult].piVarModSites[i] > 0)
+         {
+            if (!isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+            {
+               sprintf(szBuf+strlen(szBuf), "%c",
+                     (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+            }
+         }
+         else
+         {
+            // PEFF:  no way to specify mod encoding without breaking some compatibility
+            sprintf(szBuf+strlen(szBuf), "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
+         }
+*/
       }
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
+         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
    {
       sprintf(szBuf+strlen(szBuf), "c%c",
-            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
+            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
    }
 
    sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
 
-   if (g_staticParams.options.bOutputSqtStream)
+   bool bPrintDecoyPrefix = false;
+   std::vector<ProteinEntryStruct>::iterator it;
+
+   if (bDecoy)
    {
-      fprintf(stdout, "%s\tU\n", szBuf);
-
-      // Print protein reference/accession.
-      fprintf(stdout, "L\t%s", pOutput[iWhichResult].szProtein);
-
-      if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(stdout, "\t+%d", pOutput[iWhichResult].iDuplicateCount);
-
-      fprintf(stdout, "\n");
+      it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      bPrintDecoyPrefix = true;
    }
-   else // OutputSqtFile
+   else
    {
-      fprintf(fpout, "%s\tU\n", szBuf);
+      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+         it=pOutput[iWhichResult].pWhichProtein.begin();
+      else
+      {
+         it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+         bPrintDecoyPrefix = true;
+      }
+   }
 
-      // Print protein reference/accession.
-      fprintf(fpout, "L\t%s", pOutput[iWhichResult].szProtein);
+   if (g_staticParams.options.bOutputSqtStream)
+      fprintf(stdout, "%s\tU\n", szBuf);
+   if (g_staticParams.options.bOutputSqtFile)
+      fprintf(fpout,  "%s\tU\n", szBuf);
 
-      if (pOutput[iWhichResult].iDuplicateCount > 0)
-         fprintf(fpout, "\t+%d", pOutput[iWhichResult].iDuplicateCount);
+   // Print protein reference/accession.
+   char szProteinName[100];
+   for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
+   {
+      CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+      if (bPrintDecoyPrefix)
+      {
+         if (g_staticParams.options.bOutputSqtStream)
+            fprintf(stdout, "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
+         if (g_staticParams.options.bOutputSqtFile)
+            fprintf(fpout,  "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
+      }
+      else
+      {
+         if (g_staticParams.options.bOutputSqtStream)
+            fprintf(stdout, "L\t%s\t%d\n", szProteinName, (*it).iStartResidue);
+         if (g_staticParams.options.bOutputSqtFile)
+            fprintf(fpout,  "L\t%s\t%d\n", szProteinName, (*it).iStartResidue);
+      }
+   }
 
-      fprintf(fpout, "\n");
+   // If combined search printed out target proteins above, now print out decoy proteins if necessary
+   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+   {
+      for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+      {
+         CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+         {
+            if (g_staticParams.options.bOutputSqtStream)
+               fprintf(stdout, "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
+            if (g_staticParams.options.bOutputSqtFile)
+               fprintf(fpout,  "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
+         }
+      }
    }
 }

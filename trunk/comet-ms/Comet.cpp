@@ -76,7 +76,8 @@ void Usage(char *pszCmd)
    sprintf(szErrorMsg, " Comet usage:  %s [options] <input_files>\n", pszCmd);
    logout(szErrorMsg);
    logout("\n");
-   logout(" Supported input formats include mzXML, mzXML, mgf, and ms2 variants (cms2, bms2, ms2)\n");
+   logout(" Supported input formats include mzXML, mzML, Thermo raw, mgf, and ms2 variants (cms2, bms2, ms2)\n");
+
    logout("\n");
    logout("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
    logout("                 -P<params> to specify an alternate parameters file (default comet.params)\n");
@@ -226,6 +227,7 @@ void LoadParameters(char *pszParamsFile,
 
             sscanf(szParamBuf, "%*s %*s %128s %12s %12s", szVersion, szRev1, szRev2);
 
+
             if (pSearchMgr->IsValidCometVersion(string(szVersion)))
             {
                bValidParamsFile = true;
@@ -269,7 +271,7 @@ void LoadParameters(char *pszParamsFile,
 
             if (!strcmp(szParamName, "database_name"))
             {
-               char szDatabase[512];
+               char szFile[512];
 
                // Support parsing a database string from params file that
                // includes spaces in the path.
@@ -288,8 +290,29 @@ void LoadParameters(char *pszParamsFile,
 
                memmove(szParamVal, szTrimmed, iLen+1);
 
-               strcpy(szDatabase, szParamVal);
-               pSearchMgr->SetParam("database_name", szDatabase, szDatabase);
+               strcpy(szFile, szParamVal);
+               pSearchMgr->SetParam("database_name", szFile, szFile);
+            }
+            else if (!strcmp(szParamName, "peff_obo"))
+            {
+               char szFile[512];
+
+               // Remove white spaces at beginning/end of szParamVal
+               int iLen = strlen(szParamVal);
+               char *szTrimmed = szParamVal;
+
+               while (isspace(szTrimmed[iLen -1]))  // trim end
+                  szTrimmed[--iLen] = 0;
+               while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
+               {
+                  ++szTrimmed;
+                  --iLen;
+               }
+
+               memmove(szParamVal, szTrimmed, iLen+1);
+
+               strcpy(szFile, szParamVal);
+               pSearchMgr->SetParam("peff_obo", szFile, szFile);
             }
             else if (!strcmp(szParamName, "decoy_prefix"))
             {
@@ -614,6 +637,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("skip_researching", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "verbose_output"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("verbose_output", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "add_Cterm_peptide"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
@@ -696,7 +726,7 @@ void LoadParameters(char *pszParamsFile,
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("add_U_celenocysteinee", szParamStringVal, dDoubleParam);
+               pSearchMgr->SetParam("add_U_selenocysteine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_L_leucine"))
             {
@@ -893,6 +923,14 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("override_charge", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "equal_I_and_L"))
+            {
+               iIntParam = 0;
+               sscanf(szParamVal, "%d",  &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("assume_IL_equal", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "max_fragment_charge"))
             {
                iIntParam = 0;
@@ -947,6 +985,13 @@ void LoadParameters(char *pszParamsFile,
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("decoy_search", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "peff_format"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("peff_format", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "xcorr_processing_offset"))
             {
@@ -1239,6 +1284,8 @@ void PrintParams(void)
 "\n\
 database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=concatenated search, 2=separate search\n\
+peff_format = 0                        # 0=no, 1=yes for PSI Extended Fasta Format (PEFF)\n\
+peff_obo =                             # path to UniMod XML for PEFF database\n\
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\
 \n", MAX_THREADS);
@@ -1252,7 +1299,7 @@ peptide_mass_units = 0                 # 0=amu, 1=mmu, 2=ppm\n\
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\
 precursor_tolerance_type = 0           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances\n\
-isotope_error = 0                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-8/-4/0/4/8 (for +4/+8 labeling)\n\
+isotope_error = 0                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)\n\
 \n\
 #\n\
 # search enzyme\n\
@@ -1303,7 +1350,6 @@ output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
 output_txtfile = 0                     # 0=no, 1=yes  write tab-delimited txt file\n\
 output_pepxmlfile = 1                  # 0=no, 1=yes  write pep.xml file\n\
 output_percolatorfile = 0              # 0=no, 1=yes  write Percolator tab-delimited input file\n\
-output_outfiles = 0                    # 0=no, 1=yes  write .out files\n\
 print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
 num_output_lines = 5                   # num peptide results to show\n\
 show_fragment_ions = 0                 # 0=no, 1=yes for out files only\n\
@@ -1377,7 +1423,7 @@ add_M_methionine = 0.0000              # added to M - avg. 131.1961, mono. 131.0
 add_O_ornithine = 0.0000               # added to O - avg. 132.1610, mono  132.08988\n\
 add_H_histidine = 0.0000               # added to H - avg. 137.1393, mono. 137.05891\n\
 add_F_phenylalanine = 0.0000           # added to F - avg. 147.1739, mono. 147.06841\n\
-add_U_selenocysteine = 0.0000          # added to U - avg. 150.3079, mono. 150.95363\n\
+add_U_selenocysteine = 0.0000          # added to U - avg. 150.0379, mono. 150.95363\n\
 add_R_arginine = 0.0000                # added to R - avg. 156.1857, mono. 156.10111\n\
 add_Y_tyrosine = 0.0000                # added to Y - avg. 163.0633, mono. 163.06333\n\
 add_W_tryptophan = 0.0000              # added to W - avg. 186.0793, mono. 186.07931\n\

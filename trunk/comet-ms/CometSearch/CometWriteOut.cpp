@@ -31,14 +31,14 @@ CometWriteOut::~CometWriteOut()
 }
 
 
-bool CometWriteOut::WriteOut(void)
+bool CometWriteOut::WriteOut(FILE *fpdb)
 {
    int i;
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      if (!PrintResults(i, false))
+      if (!PrintResults(i, false, fpdb))
       {
          return false;
       }
@@ -49,7 +49,7 @@ bool CometWriteOut::WriteOut(void)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
       {
-         if (!PrintResults(i, true))
+         if (!PrintResults(i, true, fpdb))
          {
             return false;
          }
@@ -61,10 +61,10 @@ bool CometWriteOut::WriteOut(void)
 
 
 bool CometWriteOut::PrintResults(int iWhichQuery,
-                                 bool bDecoySearch)
+                                 bool bDecoySearch,
+                                 FILE *fpdb)
 {
    int  i,
-        ii,
         iNumPrintLines,
         iLenMaxDuplicates,
         iMaxWidthReference,
@@ -215,26 +215,51 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    iMaxWidthReference = 9;
    iLenMaxDuplicates = 0;
+
+   bool bPrintDecoyPrefix = false;
+
    for (i=0; i<iNumPrintLines; i++)
    {
+      // Use iLenMaxDuplicates here to store largest iDuplicateCount;
+      // This is then used after for loop.
+ 
       if (pOutput[i].iDuplicateCount > iLenMaxDuplicates)
          iLenMaxDuplicates = pOutput[i].iDuplicateCount;
 
-      for (ii=0; ii<WIDTH_REFERENCE; ii++)
+      char szProteinName[100];
+      vector<ProteinEntryStruct>::iterator it;
+
+      // Now get max protein length of first protein; take target entry if available
+      // otherwise take decoy entry
+      if (bDecoySearch)
       {
-         if (   (pOutput[i].szProtein[ii] == ' ')
-             || (pOutput[i].szProtein[ii] == '\n')
-             || (pOutput[i].szProtein[ii] == '\r')
-             || (pOutput[i].szProtein[ii] == '\t')
-             || (pOutput[i].szProtein[ii] == '\0'))
+         if ((int)pOutput[i].pWhichDecoyProtein.size() > 0)
          {
-            break;
+            it = pOutput[i].pWhichDecoyProtein.begin();
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            bPrintDecoyPrefix = true;
+         }
+      }
+      else
+      {
+         if ((int)pOutput[i].pWhichProtein.size() > 0)
+         {
+            it = pOutput[i].pWhichProtein.begin();
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+         }
+         else //if ( (int)pOutput[i].pWhichDecoyProtein.size() > 0)
+         {
+            it = pOutput[i].pWhichDecoyProtein.begin();
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            bPrintDecoyPrefix = true;
          }
       }
 
-      if (ii > iMaxWidthReference)
-         iMaxWidthReference = ii;
+      if ((int)strlen(szProteinName) > iMaxWidthReference)
+         iMaxWidthReference = (int)strlen(szProteinName);
    }
+   if (bPrintDecoyPrefix)
+      iMaxWidthReference += strlen(g_staticParams.szDecoyPrefix);
 
    if (iLenMaxDuplicates > 0)
    {
@@ -283,7 +308,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
-         PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, pOutput, fpout);
+         PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, bDecoySearch, pOutput, fpout, fpdb);
    }
 
    fprintf(fpout, "\n");
@@ -301,60 +326,32 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
       double dVal;
       double dExpect;
 
-      if (bDecoySearch)
+      fprintf(fpout, "a=%f b=%f %d-%d\n",
+            pQuery->fPar[1],
+            pQuery->fPar[0],
+            (int)pQuery->fPar[2],
+            (int)pQuery->fPar[3]);
+
+      // iXcorrHistogram is already cummulative here.
+      for (i=0; i<=pQuery->siMaxXcorr; i++)
       {
-         fprintf(fpout, "a=%f b=%f\n", pQuery->fPar[1], pQuery->fPar[0]);
-
-         // iXcorrHistogram is already cummulative here.
-         for (i=0; i<=pQuery->siMaxXcorr; i++)
+         if (pQuery->iXcorrHistogram[i]> 0)
          {
-            if (pQuery->iXcorrHistogram[i]> 0)
-            {
-               dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
-               dExpect = pow(10.0, dVal);
+            dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
+            dExpect = pow(10.0, dVal);
 
-               if (dExpect > 999.0)
-                  dExpect = 999.0;
+            if (dExpect > 999.0)
+               dExpect = 999.0;
 
-               fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
-                     i*0.1,
-                     pQuery->iXcorrHistogram[i],
-                     log10((float)pQuery->iXcorrHistogram[i]),
-                     dVal,
-                     dExpect);
-            }
+            fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
+                  i*0.1,
+                  pQuery->iXcorrHistogram[i],
+                  log10((float)pQuery->iXcorrHistogram[i]),
+                  dVal,
+                  dExpect);
          }
-         fprintf(fpout, "\n");
       }
-      else
-      {
-         fprintf(fpout, "a=%f b=%f %d-%d\n",
-               pQuery->fPar[1],
-               pQuery->fPar[0],
-               (int)pQuery->fPar[2],
-               (int)pQuery->fPar[3]);
-
-         // iXcorrHistogram is already cummulative here.
-         for (i=0; i<=pQuery->siMaxXcorr; i++)
-         {
-            if (pQuery->iXcorrHistogram[i]> 0)
-            {
-               dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
-               dExpect = pow(10.0, dVal);
-
-               if (dExpect > 999.0)
-                  dExpect = 999.0;
-
-               fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
-                     i*0.1,
-                     pQuery->iXcorrHistogram[i],
-                     log10((float)pQuery->iXcorrHistogram[i]),
-                     dVal,
-                     dExpect);
-            }
-         }
-         fprintf(fpout, "\n");
-      }
+      fprintf(fpout, "\n");
    }
    fclose(fpout);
 
@@ -366,8 +363,10 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
                                     int iLenMaxDuplicates,
                                     int iMaxWidthReference,
                                     int iWhichResult,
+                                    bool bDecoySearch,
                                     Results *pOutput,
-                                    FILE *fpout)
+                                    FILE *fpout,
+                                    FILE *fpdb)
 {
    int  i,
         iWidthSize,
@@ -419,16 +418,36 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    // Print protein reference/accession.
    iWidthSize=0;
    iWidthPrintRef=0;
-   while (    (pOutput[iWhichResult].szProtein[iWidthSize] != ' ')
-           && (pOutput[iWhichResult].szProtein[iWidthSize] != '\n')
-           && (pOutput[iWhichResult].szProtein[iWidthSize] != '\r')
-           && (pOutput[iWhichResult].szProtein[iWidthSize] != '\t')
-           && (pOutput[iWhichResult].szProtein[iWidthSize] != '\0'))
+
+   char szProteinName[100];
+   vector<ProteinEntryStruct>::iterator it;
+   bool bPrintDecoyPrefix = false;
+
+   if (bDecoySearch)
    {
-      if (33<=(pOutput[iWhichResult].szProtein[iWidthSize]) // Ascii physical character range.
-            && (pOutput[iWhichResult].szProtein[iWidthSize])<=126)
+      it = pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      bPrintDecoyPrefix = true;
+   }
+   else
+   {
+      if ((int)pOutput[i].pWhichProtein.size() > 0)
+         it = pOutput[iWhichResult].pWhichProtein.begin();
+      else
       {
-         sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szProtein[iWidthPrintRef]);
+         it = pOutput[iWhichResult].pWhichDecoyProtein.begin();
+         bPrintDecoyPrefix = true;
+      }
+   }
+
+   CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+
+   if (bPrintDecoyPrefix)
+      strcat(szBuf, g_staticParams.szDecoyPrefix);
+   while (iWidthSize < (int)strlen(szProteinName))
+   {
+      if (33<=(szProteinName[iWidthSize]) && (szProteinName[iWidthSize])<=126) // Ascii physical character range.
+      {
+         sprintf(szBuf+strlen(szBuf), "%c", szProteinName[iWidthPrintRef]);
 
          iWidthPrintRef++;
 
@@ -437,6 +456,7 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
       }
       else
          break;
+
       iWidthSize++;
    }
 
@@ -472,10 +492,10 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
    {
       sprintf(szBuf+strlen(szBuf),
-            "n%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
+            "n%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
    }
 
    // Print peptide sequence.
@@ -483,19 +503,26 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    {
       sprintf(szBuf+strlen(szBuf), "%c", (int)pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
       {
-         sprintf(szBuf+strlen(szBuf), "%c",
-               (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         if (pOutput[iWhichResult].piVarModSites[i] > 0
+               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+         {
+            sprintf(szBuf+strlen(szBuf), "%c",
+                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+         }
+         else
+         {
+            sprintf(szBuf+strlen(szBuf), "?");  // PEFF:  no clue how to specify mod encoding
+         }
       }
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
+         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
    {
       sprintf(szBuf+strlen(szBuf),
-            "c%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
+            "c%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
    }
 
    sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
@@ -527,15 +554,15 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
+         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
    {
-      dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide]-1].dVarModMass;
+      dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide]-1].dVarModMass;
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
+         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
    {
-      dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[pQuery->_pResults[0].iLenPeptide+1]-1].dVarModMass;
+      dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide+1]-1].dVarModMass;
    }
 
    // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
@@ -547,10 +574,16 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[iPos]];
 
       if (g_staticParams.variableModParameters.bVarModSearch)
-         dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[i]-1].dVarModMass;
+      {
+         if (pQuery->_pResults[0].piVarModSites[i] != 0)
+            dBion += pQuery->_pResults[0].pdVarModSites[i];   // PEFF need to validate this change
+//          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[i]-1].dVarModMass;
 
-      if (g_staticParams.variableModParameters.bVarModSearch)
-         dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].pcVarModSites[iPos]-1].dVarModMass;
+
+         if (pQuery->_pResults[0].piVarModSites[iPos] != 0)
+            dYion += pQuery->_pResults[0].pdVarModSites[iPos];
+//          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[iPos]-1].dVarModMass;
+      }
 
       _pdAAforward[i] = dBion;
       _pdAAreverse[iPos] = dYion;

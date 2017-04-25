@@ -24,7 +24,8 @@ public:
    CometWriteTxt();
    ~CometWriteTxt();
    static void WriteTxt(FILE *fpout,
-                        FILE *fpoutd);
+                        FILE *fpoutd,
+                        FILE *fpdb);
 
    static void PrintTxtHeader(FILE *fpout);
    static void PrintModifications(FILE *fpout,
@@ -34,7 +35,8 @@ public:
 private:
    static void PrintResults(int iWhichQuery,
                             bool bDecoy,
-                            FILE *fpOut);
+                            FILE *fpOut,
+                            FILE *fpdb);
 };
 
 #endif

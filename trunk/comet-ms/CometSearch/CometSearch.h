@@ -34,7 +34,9 @@ struct SearchThreadData
    {
       dbEntry.strName = dbEntry_in.strName;
       dbEntry.strSeq = dbEntry_in.strSeq;
-      dbEntry.iSeqFilePosition = dbEntry_in.iSeqFilePosition;
+      dbEntry.lProteinFilePosition = dbEntry_in.lProteinFilePosition;
+      dbEntry.vectorPeffMod = dbEntry_in.vectorPeffMod;
+      dbEntry.vectorPeffVariantSimple = dbEntry_in.vectorPeffVariantSimple;
    }
 
    ~SearchThreadData()
@@ -48,6 +50,9 @@ struct SearchThreadData
          *pbSearchMemoryPool=false;
          pbSearchMemoryPool=NULL;
       }
+
+      dbEntry.vectorPeffMod.clear();
+      dbEntry.vectorPeffVariantSimple.clear();
 
       Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
@@ -72,6 +77,15 @@ public:
 private:
 
    // Core search functions
+   void ReadOBO(char *szOBO,
+                vector<OBOStruct> *vectorUniModOBO);
+   bool MapOBO(string strMod,
+               vector<OBOStruct> *vectorPeffOBO,
+               struct PeffModStruct *pData);
+   int BinarySearchPeffStrMod(int start,
+                          int end,
+                          string strMod,
+                          vector<OBOStruct>& vectorPeffOBO);
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
@@ -83,13 +97,16 @@ private:
                      int iResiduePosition);
    bool HasVariableMod(int varModCounts[],
                        int iCVarModCount,
-                       int iNVarModCount);
+                       int iNVarModCount,
+                       struct sDBEntry *dbe);
    int WithinMassTolerance(double dCalcPepMass,
                            char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
+   bool WithinMassTolerancePeff(double dCalcPepMass,
+                                vector<PeffPositionStruct>* vPeffArray);
    void XcorrScore(char *szProteinSeq,
-                   char *szProteinName,
+                   int iStartResidue,
                    int iStartPos,
                    int iEndPos,
                    bool bFoundVariableMod,
@@ -97,10 +114,15 @@ private:
                    bool bDecoyPep,
                    int iWhichQuery,
                    int iLenPeptide,
-                   char *pcVarModSites);
+                   int *piVarModSites,
+                   struct sDBEntry *dbe);
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
+   bool CheckEnzymeStartTermini(char *szProteinSeq,
+                                int iStartPos);
+   bool CheckEnzymeEndTermini(char *szProteinSeq,
+                              int iStartPos);
    bool CheckMassMatch(int iWhichQuery,
                        double dCalcPepMass);
    double GetFragmentIonMass(int iWhichIonSeries,
@@ -109,43 +131,62 @@ private:
                              double *pdAAforward,
                              double *pdAAreverse);
    int CheckDuplicate(int iWhichQuery,
+                      int iStartResidue,
                       int iStartPos,
                       int iEndPos,
                       bool bFoundVariableMod,
                       double dCalcPepMass,
                       char *szProteinSeq,
-                      char *szProteinName,
                       bool bDecoyResults,
-                      char *pcVarModSites);
+                      int *piVarModSites,
+                      struct sDBEntry *dbe);
    void StorePeptide(int iWhichQuery,
+                     int iStartResidue,
                      int iStartPos,
                      int iEndPos,
                      bool bFoundVariableMod,
                      char *szProteinSeq,
                      double dCalcPepMass,
                      double dScoreSp,
-                     char *szProteinName,
                      bool bStoreSeparateDecoy,
-                     char *pcVarModSites);
-   bool VarModSearch(char *szProteinSeq,
-                     char *szProteinName,
-                     int varModCounts[],
-                     int iStartPos,
-                     int iEndPos,
-                     bool *pbDuplFragment);
+                     int *piVarModSites,
+                     struct sDBEntry *dbe);
+   bool VariableModSearch(char *szProteinSeq,
+                          int varModCounts[],
+                          int iStartPos,
+                          int iEndPos,
+                          bool *pbDuplFragment,
+                          struct sDBEntry *dbe);
    double TotalVarModMass(int *pVarModCounts);
    bool PermuteMods(char *szProteinSeq,
                     int iWhichQuery,
                     int iWhichMod,
-                    bool *pbDuplFragments);
+                    bool *pbDuplFragments,
+                    bool *bDoPeffAnalysis,
+                    vector <PeffPositionStruct>* vPeffArray,
+                    struct sDBEntry *dbe,
+                    int iPermuteCount);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
+   bool MergeVarMods(char *szProteinSeq,
+                     int iWhichQuery,
+                     bool *pbDuplFragments,
+                     bool *bDoPeffAnalysis,
+                     vector <PeffPositionStruct>* vPeffArray,
+                     struct sDBEntry *dbe);
    bool CalcVarModIons(char *szProteinSeq,
                        int iWhichQuery,
-                       bool *pbDuplFragments);
-   bool SearchForPeptides(char *szProteinSeq,
-                          char *szProteinName,
+                       bool *pbDuplFragment,
+                       int *piVarModSites,
+                       double dCalcPepMass,
+                       int iLenPeptide,
+                       struct sDBEntry *dbe);
+   bool SearchForPeptides(struct sDBEntry dbe,
+                          char *szProteinSeq,
                           bool bNtermPeptideOnly,
+                          bool *pbDuplFragment);
+   void SearchForVariants(struct sDBEntry dbe,
+                          char *szProteinSeq,
                           bool *pbDuplFragment);
    bool TranslateNA2AA(int *frame,
                        int iDirection,
@@ -155,7 +196,7 @@ private:
               char *sDNASequence);
 
    // Processing results
-   void CalculateEvalue(struct Results *_pResults);
+// void CalculateEvalue(struct Results *_pResults);
    void GenerateXcorrDecoys(struct Results *_pResults,
                             bool bDecoy);
 
@@ -213,11 +254,13 @@ private:
 
    struct ProteinInfo
    {
-       char szProteinName[WIDTH_REFERENCE];
-       char *pszProteinSeq;
        int  iProteinSeqLength;
        int  iAllocatedProtSeqLength;
-       int  iSeqFilePosition;
+       int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
+       long lProteinFilePosition;
+       char szProteinName[WIDTH_REFERENCE];
+       char *pszProteinSeq;
+       char cPeffOrigResidue;                     // original residue of a PEFF variant
    };
 
    struct SpectrumInfoInternal
@@ -235,7 +278,7 @@ private:
    double             _pdAAreverse[MAX_PEPTIDE_LEN];      // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAforwardDecoy[MAX_PEPTIDE_LEN]; // Stores fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAreverseDecoy[MAX_PEPTIDE_LEN]; // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
-   int                _iSizepcVarModSites;
+   int                _iSizepiVarModSites;
    VarModInfo         _varModInfo;
    ProteinInfo        _proteinInfo;
 

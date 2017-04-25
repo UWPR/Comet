@@ -28,6 +28,7 @@ class CometSearchManager;
 #define FLOAT_ZERO                  1e-6     // 0.000001
 #define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
 #define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
+#define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
 #define SIZE_NATIVEID               256      // max length of nativeID string
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
@@ -96,10 +97,12 @@ struct Options             // output parameters
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
+   int bVerboseOutput;
    int bNoEnzymeSelected;
    int bShowFragmentIons;
    int bPrintExpectScore;
    int bOverrideCharge;
+   int bTreatSameIL;
    double dMinIntensity;
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
@@ -135,6 +138,7 @@ struct Options             // output parameters
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
+      bVerboseOutput = a.bVerboseOutput;
       bNoEnzymeSelected = a.bNoEnzymeSelected;
       bShowFragmentIons = a.bShowFragmentIons;
       bPrintExpectScore = a.bPrintExpectScore;
@@ -159,11 +163,16 @@ struct Results
    int    iRankSp;
    int    iMatchedIons;
    int    iTotalIons;
-   int    iSeqFilePosition;
-   char pcVarModSites[MAX_PEPTIDE_LEN_P2];    // store variable mods encoding, +2 to accomodate N/C-term
-   char szProtein[WIDTH_REFERENCE];
-   char szPeptide[MAX_PEPTIDE_LEN];
-   char szPrevNextAA[2];                      // [0] stores prev AA, [1] stores next AA
+   long   lProteinFilePosition;
+   int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
+   double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
+   char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
+   char   szPeptide[MAX_PEPTIDE_LEN];
+   char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
+   char   cPeffOrigResidue;                   // original residue of a PEFF variant
+   int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
+   vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
+   vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
 };
 
 struct PepMassInfo
@@ -177,7 +186,7 @@ struct PepMassInfo
 
 struct SpectrumInfoInternal
 {
-   int iArraySize;     // m/z versus intensity array
+   int iArraySize;         // m/z versus intensity array
    int iHighestIon;
    int iScanNumber;
    int iChargeState;
@@ -202,25 +211,86 @@ extern MassRange g_massRange;
 // each spectrum.  Information not kept around otherwise
 struct PreprocessStruct
 {
-   int iHighestIon;
+   int    iHighestIon;
    double dHighestIntensity;
    struct msdata pTmpSpData[NUM_SP_IONS];
+};
+
+struct OBOStruct           // stores info read from OBO file
+{
+   double dMassDiffAvg;    // this is looked up from strMod string from OBO
+   double dMassDiffMono;
+   string strMod;          // mod string, PSI-MOD, Unimod or custom
+
+   bool operator<(const OBOStruct& a) const
+   {
+      return (strMod < a.strMod);
+   }
+
+};
+
+struct ProteinEntryStruct
+{
+   long lWhichProtein;     // file pointer to protein
+   int iStartResidue;      // start residue position in protein (1-based)
+   char cPrevAA;
+   char cNextAA;
+
+   bool operator<(const ProteinEntryStruct& a) const
+   {
+      return (lWhichProtein < a.lWhichProtein);
+   }
+};
+
+struct PeffModStruct       // stores info read from PEFF header
+{
+   double dMassDiffAvg;    // this is looked up from strMod string from OBO
+   double dMassDiffMono;
+   int    iPosition;       // position of modification
+   char   szMod[MAX_PEFFMOD_LEN];
+
+   bool operator<(const PeffModStruct& a) const
+   {
+      return (iPosition < a.iPosition);
+   }
+};
+
+struct PeffVariantSimpleStruct  // stores info read from PEFF header
+{
+   int    iPosition;       // position of variant
+   char   cResidue;        // new variant
+
+   bool operator<(const PeffVariantSimpleStruct& a) const
+   {
+      return (iPosition < a.iPosition);
+   }
+};
+
+struct PeffPositionStruct  // collate PEFF mods by position in sequence
+{
+   int iPosition;  // position within the sequence
+   vector<int>    vectorWhichPeff;  // which specific peff entry from PeffModStruct
+   vector<double> vectorMassDiffAvg;
+   vector<double> vectorMassDiffMono;
+};
+
+struct PeffSearchStruct  // variant info passed to SearchForPeptides
+{
+   int iPosition;
+   bool bBeginCleavage;
+   bool bEndCleavage;
+   char cOrigResidue;
 };
 
 //-->MH
 typedef struct sDBEntry
 {
-   string strName;
+   string strName;           // might be able to delete this here
    string strSeq;
-   int iSeqFilePosition;
+   long lProteinFilePosition;
+   vector<PeffModStruct> vectorPeffMod;
+   vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
 } sDBEntry;
-
-typedef struct sDBTable
-{
-   int  iStart;   // pointer to the start of this mass value
-   int  iStop;    // pointer to the end of this mass value
-   char cFile;    // which index file has the start of the data
-} sDBTable;
 
 struct DBInfo
 {
@@ -238,6 +308,12 @@ struct DBInfo
 
       return *this;
    }
+};
+
+struct PEFFInfo
+{
+   char szPeffOBO[SIZE_FILE];
+   int  bPEFF;                   // 0=no, 1=yes for PEFF database
 };
 
 struct StaticMod
@@ -420,6 +496,7 @@ struct StaticParams
    char            szDate[32];
    Options         options;
    DBInfo          databaseInfo;
+   PEFFInfo        peffInfo;
    InputFileInfo   inputFile;
    int             bPrintDuplReferences;
    VarModParams    variableModParameters;
@@ -449,6 +526,9 @@ struct StaticParams
 
       strcpy(szDecoyPrefix, "DECOY_");
       szOutputSuffix[0] = '\0';
+
+      peffInfo.szPeffOBO[0] = '\0';
+      peffInfo.bPEFF = 0;
 
       for (i=0; i<SIZE_MASS; i++)
       {
@@ -485,6 +565,7 @@ struct StaticParams
          }
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
          variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
+
       }
 
       variableModParameters.cModCode[0] = '*';
@@ -517,6 +598,7 @@ struct StaticParams
       options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;
+      options.bTreatSameIL= 1;
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;
 
@@ -528,6 +610,7 @@ struct StaticParams
       options.bOutputOutFiles = 0;
 
       options.bSkipAlreadyDone = 1;
+      options.bVerboseOutput = 0;
       options.iDecoySearch = 0;
       options.iNumThreads = 0;
       options.bClipNtermMet = 0;
@@ -598,6 +681,8 @@ struct StaticParams
 };
 
 extern StaticParams g_staticParams;
+
+extern vector<string> g_pvProteinNames;
 
 struct SparseMatrix
 {
@@ -736,21 +821,26 @@ struct Query
          ppfSparseFastXcorrDataNL = NULL;
       }
 
+      _pResults->pWhichProtein.clear();
+      if (g_staticParams.options.iDecoySearch == 1)
+         _pResults->pWhichDecoyProtein.clear();
       delete[] _pResults;
       _pResults = NULL;
 
-      if (g_staticParams.options.iDecoySearch==2)
+
+      if (g_staticParams.options.iDecoySearch == 2)
       {
-          delete[] _pDecoys;
-          _pDecoys = NULL;
+         _pDecoys->pWhichDecoyProtein.clear();
+         delete[] _pDecoys;
+         _pDecoys = NULL;
       }
 
       Threading::DestroyMutex(accessMutex);
    }
 };
 
-extern vector <Query*>         g_pvQuery;
-extern vector <InputFileInfo*> g_pvInputFiles;
+extern vector<Query*>          g_pvQuery;
+extern vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
 extern Mutex                   g_searchMemoryPoolMutex;

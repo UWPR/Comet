@@ -198,7 +198,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 		} else if(strcmp(tok,"-")==0){
 		} else if(strchr(tok,'@')!=NULL){
 			tStr=tok;
-			stop=tStr.find("@");
+			stop=(int)tStr.find("@");
 			mzVal=tStr.substr(0,stop);
 			MZs.push_back(atof(&mzVal[0]));
       mzVal=tStr.substr(stop+1,3);
@@ -507,6 +507,13 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     ret = raw4->GetPrecursorMassForScanNum(rawCurSpec,tl,&td);
     if (ret == 0) preInfo.dIsoMZ = td;
     raw4=NULL;
+
+    //Correct precursor mono mass if it is more than 5 13C atoms away from isolation mass
+    if (preInfo.dMonoMZ > 0 && preInfo.charge>0){
+      td = preInfo.dIsoMZ-preInfo.dMonoMZ;
+      if (td>5.01675/preInfo.charge) preInfo.dMonoMZ=preInfo.dIsoMZ;
+    }
+
   }
 
   //Get the peaks

@@ -89,7 +89,6 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
          || g_staticParams.options.bOutputPercolatorFile
          || g_staticParams.options.bOutputTxtFile)
    {
-
       if (g_pvQuery.at(iQueryIndex)->iMatchPeptideCount > 0
             || g_pvQuery.at(iQueryIndex)->iDecoyMatchPeptideCount > 0)
       {
@@ -240,116 +239,159 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
    double pdAAreverse[MAX_PEPTIDE_LEN];
    IonSeriesStruct ionSeries[9];
 
+   int  _iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
+
    for (i=0; i<iSize; i++)
    {
-      int  ii;
-      int  ctCharge;
-      double dFragmentIonMass = 0.0;
-      double dConsec = 0.0;
-      double dBion = g_staticParams.precalcMasses.dNtermProton;
-      double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
-
-      double dTmpIntenMatch = 0.0;
-
-      int iMatchedFragmentIonCt = 0;
-      int iMaxFragCharge;
-
-      // if no variable mods are used in search, clear pcVarModSites here
-      if (!g_staticParams.variableModParameters.bVarModSearch)
-         memset(pOutput[i].pcVarModSites, 0, sizeof(char)*MAX_PEPTIDE_LEN_P2);
-
-      iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
-
-      if (pOutput[i].szPrevNextAA[0] == '-')
-         dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-      if (pOutput[i].szPrevNextAA[1] == '-')
-         dYion += g_staticParams.staticModifications.dAddCterminusProtein;
-
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide] > 0))
+      // hijack here to make protein vector unique
+      if (pOutput[i].pWhichProtein.size() > 1)
       {
-         dBion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[pOutput[i].iLenPeptide]-1].dVarModMass;
+         sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
+
+//       Sadly this erase(unique()) code doesn't work; it leaves only first entry in vector
+//       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
+//             pOutput[i].pWhichProtein.end());
+
+         long lPrev=0;
+         for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
+         {
+            if ( (*it).lWhichProtein == lPrev)
+               it = pOutput[i].pWhichProtein.erase(it);
+            else
+            {
+               lPrev = (*it).lWhichProtein;
+               ++it;
+            }
+         }
+      }
+      if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
+      {
+         sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
+         pOutput[i].pWhichDecoyProtein.erase(unique(pOutput[i].pWhichDecoyProtein.begin(),
+                  pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp), pOutput[i].pWhichDecoyProtein.end() );
       }
 
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && (pOutput[i].pcVarModSites[pOutput[i].iLenPeptide + 1] > 0))
+      if (pOutput[i].iLenPeptide>0) // take care of possible edge case
       {
-         dYion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[pOutput[i].iLenPeptide+1]-1].dVarModMass;
-      }
+         int  ii;
+         int  ctCharge;
+         double dFragmentIonMass = 0.0;
+         double dConsec = 0.0;
+         double dBion = g_staticParams.precalcMasses.dNtermProton;
+         double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
-      for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
-      {
-         int iii;
+         double dTmpIntenMatch = 0.0;
 
-         for (iii=1; iii<=iMaxFragCharge; iii++)
-            ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
-      }
+         int iMatchedFragmentIonCt = 0;
+         int iMaxFragCharge;
 
-      // Generate pdAAforward for _pResults[0].szPeptide.
-      for (ii=0; ii<pOutput[i].iLenPeptide; ii++)
-      {
-         int iPos = pOutput[i].iLenPeptide - ii - 1;
+         // if no variable mods are used in search, clear piVarModSites here
+         if (!g_staticParams.variableModParameters.bVarModSearch)
+            memset(pOutput[i].piVarModSites, 0, _iSizepiVarModSites);
 
-         dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
-         dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
+         iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
 
-         if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[ii]>0)
-            dBion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[ii]-1].dVarModMass;
+         if (pOutput[i].szPrevNextAA[0] == '-')
+            dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+         if (pOutput[i].szPrevNextAA[1] == '-')
+            dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
-         if (g_staticParams.variableModParameters.bVarModSearch && pOutput[i].pcVarModSites[iPos]>0)
-            dYion += g_staticParams.variableModParameters.varModList[pOutput[i].pcVarModSites[iPos]-1].dVarModMass;
+         if (g_staticParams.variableModParameters.bVarModSearch
+               && (pOutput[i].piVarModSites[pOutput[i].iLenPeptide] > 0))
+         {
+            dBion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].iLenPeptide]-1].dVarModMass;
+         }
 
-         pdAAforward[ii] = dBion;
-         pdAAreverse[ii] = dYion;
-      }
+         if (g_staticParams.variableModParameters.bVarModSearch
+               && (pOutput[i].piVarModSites[pOutput[i].iLenPeptide + 1] > 0))
+         {
+            dYion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].iLenPeptide+1]-1].dVarModMass;
+         }
 
-      for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
-      {
          for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
          {
-            int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
+            int iii;
 
-            // As both _pdAAforward and _pdAAreverse are increasing, loop through
-            // iLenPeptide-1 to complete set of internal fragment ions.
-            for (int iii=0; iii<pOutput[i].iLenPeptide-1; iii++)
+            for (iii=1; iii<=iMaxFragCharge; iii++)
+               ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
+         }
+
+         // Generate pdAAforward for _pResults[0].szPeptide.
+         for (ii=0; ii<pOutput[i].iLenPeptide; ii++)
+         {
+            int iPos = pOutput[i].iLenPeptide - ii - 1;
+
+            dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
+            dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
+
+            if (g_staticParams.variableModParameters.bVarModSearch)
             {
-               // Gets fragment ion mass.
-               dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
+               if (pOutput[i].piVarModSites[ii] != 0)
+                  dBion += pOutput[i].pdVarModSites[ii];
 
-               if ( !(dFragmentIonMass <= FLOAT_ZERO))
+               if (pOutput[i].piVarModSites[iPos] != 0)
+                  dYion += pOutput[i].pdVarModSites[iPos];
+            }
+
+            pdAAforward[ii] = dBion;
+            pdAAreverse[ii] = dYion;
+         }
+
+         for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
+         {
+            for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+            {
+               int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
+
+               // As both _pdAAforward and _pdAAreverse are increasing, loop through
+               // iLenPeptide-1 to complete set of internal fragment ions.
+               for (int iii=0; iii<pOutput[i].iLenPeptide-1; iii++)
                {
-                  int iFragmentIonMass = BIN(dFragmentIonMass);
-                  float fSpScore;
+                  // Gets fragment ion mass.
+                  dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
 
-                  fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
-
-                  if (fSpScore > FLOAT_ZERO)
+                  if ( !(dFragmentIonMass <= FLOAT_ZERO))
                   {
-                     iMatchedFragmentIonCt++;
+                     int iFragmentIonMass = BIN(dFragmentIonMass);
+                     float fSpScore;
 
-                     // Simple sum intensity.
-                     dTmpIntenMatch += fSpScore;
+                     fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
 
-                     // Increase score for consecutive fragment ion series matches.
-                     if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
-                        dConsec += 0.075;
+                     if (fSpScore > FLOAT_ZERO)
+                     {
+                        iMatchedFragmentIonCt++;
 
-                     ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
-                  }
-                  else
-                  {
-                     ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                        // Simple sum intensity.
+                        dTmpIntenMatch += fSpScore;
+
+                        // Increase score for consecutive fragment ion series matches.
+                        if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
+                           dConsec += 0.075;
+
+                        ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                     }
+                     else
+                     {
+                        ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                     }
                   }
                }
             }
          }
+
+         pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) /
+               ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
+
+         pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
       }
-
-      pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) /
-            ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
-
-      pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
    }
+}
+
+
+bool CometPostAnalysis::ProteinEntryCmp(const struct ProteinEntryStruct &a,
+                                        const struct ProteinEntryStruct &b)
+{
+   return a.lWhichProtein < b.lWhichProtein;
 }
 
 
@@ -401,12 +443,12 @@ int CometPostAnalysis::QSortFnMod(const void *a,
 
    // must compare character at a time
    // actually not sure why strcmp doesn't work
-   // as pcVarModSites is a char array
+   // as piVarModSites is a char array
    for (int i=0; i<MAX_PEPTIDE_LEN_P2; i++)
    {
-      if (ia->pcVarModSites[i] < ib->pcVarModSites[i])
+      if (ia->piVarModSites[i] < ib->piVarModSites[i])
          return -1;
-      else if (ia->pcVarModSites[i] > ib->pcVarModSites[i])
+      else if (ia->piVarModSites[i] > ib->piVarModSites[i])
          return 1;
    }
    return 0;
@@ -470,17 +512,6 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
             dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
             if (dExpect > 999.0)
                dExpect = 999.0;
-
-/*
-            // Sanity constraints - no low e-values allowed for xcorr < 1.0.
-            // I'll admit xcorr < 1.0 is an arbitrary cutoff but something is needed.
-            if (dExpect < 1.0)
-            {
-               if (pQuery->_pResults[i].fXcorr < 1.0)
-                  dExpect = 10.0;
-            }
-*/
-
             pQuery->_pResults[i].dExpect = dExpect;
          }
 
@@ -489,15 +520,6 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
             dExpect = pow(10.0, dSlope * pQuery->_pDecoys[i].fXcorr + dIntercept);
             if (dExpect > 999.0)
                dExpect = 999.0;
-
-/*
-            if (dExpect < 1.0)
-            {
-               if (pQuery->_pDecoys[i].fXcorr < 1.0)
-                  dExpect = 10.0;
-            }
-*/
-
             pQuery->_pDecoys[i].dExpect = dExpect;
          }
       }

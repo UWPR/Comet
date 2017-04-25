@@ -33,6 +33,10 @@ public:
    static void AssignMass(double *pdAAMass,
                           int bMonoMasses,
                           double *dOH2);
+
+   static void GetProteinName(FILE *fpdb,
+                              long lFilePosition,
+                              char *szProteinName);
 };
 
 #endif // _COMETMASSSPECUTILS_H_

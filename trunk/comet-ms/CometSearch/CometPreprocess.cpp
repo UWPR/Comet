@@ -56,7 +56,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    int iScanNumber = 0;
    int iTotalScans = 0;
    int iNumSpectraLoaded = 0;
-   int iFirstScanInRange = 0;
    int iTmpCount = 0;
    Spectrum mstSpectrum;           // For holding spectrum.
 
@@ -82,8 +81,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
       {
          PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
          _bFirstScan = false;
-
-         iFirstScanInRange = mstSpectrum.getScanNumber();
       }
       else
       {
@@ -106,9 +103,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          int iNumClearedPeaks = 0;
 
          iTmpCount = iScanNumber;
-
-         if (iFirstScanInRange == 0)
-            iFirstScanInRange = iScanNumber;
 
          // Clear out m/z range if clear_mz_range parameter is specified
          // Accomplish this by setting corresponding intensity to 0
@@ -487,7 +481,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    }
 
-   pScoring->iFastXcorrData=pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE+1;
+   pScoring->iFastXcorrData = pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
 
    //MH: Fill sparse matrix
    try
@@ -888,7 +882,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    else if (iAddCharge == -1)  // should never get here
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - iAddCharge=%d\n",  iAddCharge);
+      sprintf(szErrorMsg,  " Error - iAddCharge=%d\n", iAddCharge);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
@@ -1109,15 +1103,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
          + pScoring->_pepMassInfo.dPeptideMassTolerance;
    }
-   else if (g_staticParams.tolerances.iIsotopeError == 4) // search -1 to +1, +2, +3 isotope windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance + 1.0 * C13_DIFF * PROTON_MASS;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 5) // search -8, -4, 0, 4, 8 windows
+   else if (g_staticParams.tolerances.iIsotopeError == 4) // search -8, -4, 0, 4, 8 windows
    {
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
          - pScoring->_pepMassInfo.dPeptideMassTolerance - 8.1;

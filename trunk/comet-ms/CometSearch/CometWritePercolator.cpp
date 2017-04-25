@@ -32,7 +32,8 @@ CometWritePercolator::~CometWritePercolator()
 }
 
 
-bool CometWritePercolator::WritePercolator(FILE *fpout)
+bool CometWritePercolator::WritePercolator(FILE *fpout,
+                                           FILE *fpdb)
 {
    int i;
 
@@ -45,7 +46,7 @@ bool CometWritePercolator::WritePercolator(FILE *fpout)
       {
          if (g_pvQuery.at(i)->_pResults[0].fXcorr > XCORR_CUTOFF)
          {
-            if (!PrintResults(i, fpout, 0))  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+            if (!PrintResults(i, fpout, fpdb, 0))  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
             {
                return false;
             }
@@ -53,7 +54,7 @@ bool CometWritePercolator::WritePercolator(FILE *fpout)
 
          if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > XCORR_CUTOFF)
          {
-            if (!PrintResults(i, fpout, 1))  // print decoy hit
+            if (!PrintResults(i, fpout, fpdb, 1))  // print decoy hit
             {
                return false;
             }
@@ -99,6 +100,7 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
 
 bool CometWritePercolator::PrintResults(int iWhichQuery,
                                         FILE *fpout,
+                                        FILE *fpdb,
                                         bool bDecoy)
 {
    int  i,
@@ -125,7 +127,8 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iChargeState );
 
-   if (bDecoy || !strncmp(pOutput[0].szProtein, g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)))
+   // print -1 if bDecoy or if decoy entries only
+   if (bDecoy || (pOutput->pWhichDecoyProtein.size()>0 && pOutput->pWhichProtein.size()==0))
       fprintf(fpout, "-1\t");  // label
    else
       fprintf(fpout, "1\t");
@@ -200,7 +203,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
    if (bNoDeltaCnYet)
       dDeltaCn = 1.0;
 
-   PrintPercolatorSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn);
+   PrintPercolatorSearchHit(iWhichQuery, 0, bDecoy, pOutput, fpout, fpdb, dDeltaCn, dLastDeltaCn);
 
    return true;
 }
@@ -211,6 +214,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
                                                     bool bDecoy,
                                                     Results *pOutput,
                                                     FILE *fpout,
+                                                    FILE *fpdb,
                                                     double dDeltaCn,
                                                     double dLastDeltaCn)
 {
@@ -270,36 +274,75 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    sprintf(szModPep+strlen(szModPep), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
    {
       sprintf(szModPep+strlen(szModPep), "n%c",
-            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
+            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
    }
 
    for (int i = 0; i<pOutput[iWhichResult].iLenPeptide; i++)
    {
       sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
 
-      if (g_staticParams.variableModParameters.bVarModSearch
-            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].pcVarModSites[i]-1].dVarModMass, 0.0))
+      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
       {
-         sprintf(szModPep+strlen(szModPep), "%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[i]-1]);
+         sprintf(szModPep+strlen(szModPep), "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+/*
+         if (pOutput[iWhichResult].piVarModSites[i] > 0)
+         {
+            if (!isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+            {
+               sprintf(szModPep+strlen(szModPep), "%c",
+                     (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+            }
+         }
+         else
+         {
+            // PEFF:  no way to specify mod encoding w/o breaking some compatibility
+            sprintf(szModPep+strlen(szModPep), "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
+         }
+*/
       }
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
+         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
    {
       sprintf(szModPep+strlen(szModPep), "c%c",
-            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].pcVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
+            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
    }
 
    sprintf(szModPep+strlen(szModPep), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
 
    fprintf(fpout, "%s\t", szModPep);
 
-   fprintf(fpout, "%s\n", pOutput[iWhichResult].szProtein);
+   char szProteinName[100];
+   bool bPrintDecoyPrefix = false;
+   std::vector<ProteinEntryStruct>::iterator it;
+
+   if (bDecoy)
+   {  
+      it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      bPrintDecoyPrefix = true;
+   }
+   else
+   {  
+      // if not reporting separate decoys, it's possible only matches
+      // in combined search are decoy the entries
+      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+         it=pOutput[iWhichResult].pWhichProtein.begin();
+      else
+      {  
+         it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+         bPrintDecoyPrefix = true;
+      }
+   }
+
+   CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+   
+   if (bPrintDecoyPrefix)
+      fprintf(fpout, "%s", g_staticParams.szDecoyPrefix);
+   fprintf(fpout, "%s\n", szProteinName);
 }
 
 

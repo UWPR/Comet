@@ -24,18 +24,21 @@ public:
    CometWritePercolator();
    ~CometWritePercolator();
    static void WritePercolatorHeader(FILE *fpout);
-   static bool WritePercolator(FILE *fpout);
+   static bool WritePercolator(FILE *fpout,
+                               FILE *fpdb);
 
 
 private:
    static bool PrintResults(int iWhichQuery,
                             FILE *fpOut,
+                            FILE *fpdb,
                             bool bDecoy);
    static void PrintPercolatorSearchHit(int iWhichQuery,
                                     int iWhichResult,
                                     bool bDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
+                                    FILE *fpdb,
                                     double dDeltaCn,
                                     double dLastDeltaCn);
    static void CalcNTTNMC(Results *pOutput,
