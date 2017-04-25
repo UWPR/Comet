@@ -19,6 +19,8 @@
          <ul>
          <li><a href="database_name.php">database_name</a></li>
          <li><a href="decoy_search.php">decoy_search</a></li>
+         <li><a href="peff_format.php">peff_format</a></li>
+         <li><a href="peff_obo.php">peff_obo</a></li>
          </ul>
 
          <h3>CPU threads</h3>
@@ -64,7 +66,6 @@
          <li><a href="output_txtfile.php">output_txtfile</a></li>
          <li><a href="output_pepxmlfile.php">output_pepxmlfile</a></li>
          <li><a href="output_percolatorfile.php">output_percolatorfile</a></li>
-         <li><a href="output_outfiles.php">output_outfiles</a></li>
          <li><a href="print_expect_score.php">print_expect_score</a></li>
          <li><a href="num_output_lines.php">num_output_lines</a></li>
          <li><a href="show_fragment_ions.php">show_fragment_ions</a></li>

@@ -1,9 +1,12 @@
-# comet_version 2016.01 rev. 0
+# comet_version 2017.01 rev. 0
 # Comet MS/MS search engine parameters file.
 # Everything following the '#' symbol is treated as a comment.
 
 database_name = /some/path/db.fasta
 decoy_search = 0                       # 0=no (default), 1=concatenated search, 2=separate search
+peff_format = 0                        # 0=no, 1=yes for PSI Extended Fasta Format (PEFF)
+peff_obo =                             # path to UniMod XML for PEFF database
+
 
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max 64)
 
@@ -15,7 +18,7 @@ peptide_mass_units = 0                 # 0=amu, 1=mmu, 2=ppm
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses
 precursor_tolerance_type = 0           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances
-isotope_error = 0                      # 0=off, 1=on -1/0/1/2/3 (standard C13 error), 2= -8/-4/0/4/8 (for +4/+8 labeling)
+isotope_error = 0                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
 
 #
 # search enzyme
@@ -81,7 +84,7 @@ scan_range = 0 0                       # start and scan scan range to search; 0 
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override any existing charge; 0 as 1st entry ignores parameter
 override_charge = 0                    # 0=no, 1=override precursor charge states, 2=ignore precursor charges outside precursor_charge range, 3=see online
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3
-activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, PQD, HCD, IRMPD
+activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, ETD+SA, PQD, HCD, IRMPD
 
 #
 # misc parameters
@@ -134,7 +137,7 @@ add_M_methionine = 0.0000              # added to M - avg. 131.1961, mono. 131.0
 add_O_ornithine = 0.0000               # added to O - avg. 132.1610, mono  132.08988
 add_H_histidine = 0.0000               # added to H - avg. 137.1393, mono. 137.05891
 add_F_phenylalanine = 0.0000           # added to F - avg. 147.1739, mono. 147.06841
-add_U_selenocysteine = 0.0000          # added to U - avg. 150.3079, mono. 150.95363
+add_U_selenocysteine = 0.0000          # added to U - avg. 150.0379, mono. 150.95363
 add_R_arginine = 0.0000                # added to R - avg. 156.1857, mono. 156.10111
 add_Y_tyrosine = 0.0000                # added to Y - avg. 163.0633, mono. 163.06333
 add_W_tryptophan = 0.0000              # added to W - avg. 186.0793, mono. 186.07931
