@@ -3847,7 +3847,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    {
       int iPos = i - _varModInfo.iStartPos;
 
-      dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
+      dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[i]];
 
       // This loop is where all individual variable mods are combined
       for (j=0; j<VMODS; j++)
