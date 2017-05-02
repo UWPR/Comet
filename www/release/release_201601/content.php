@@ -3,6 +3,17 @@
       <div class="post hr">
          <h1>Comet release 2016.01</h1>
             <ul>
+               <b>release 2016.01 rev. 3 (2016.01.3), release date 2017/05/02</b>
+               <li>Bug fix: peptides with variable modifications would have their precursor
+                   mass calculated using fragment ion masses. This is an issue when the
+                   precursor mass type and fragment mass types are different e.g. average
+                   masses for the precursor calculation and monoisotopic masses for the
+                   fragment ion calculations.  Thanks to D. Zhao for identifying the bug.
+               <li>Update MSToolkit to latest version.  This encapsulates the bug fix
+                   mentioned below as well as better support for ETD+SA scans.  Thanks to
+                   P. Pedrioli for originally implementing the ETD+SA fixes.
+            </ul>
+            <ul>
                <b>release 2016.01 rev. 2 (2016.01.2), release date 2016/04/06</b>
                <li>Reverts the modification encoding in the "output_txtfile" output back
                    to reporting variable modification mass differences (e.g. DLSTM[16.0]HK)

@@ -50,6 +50,13 @@
                    instead of actual modified masses (e.g. M[147.0]) in the modified peptide string.
                    This brings it in line with the standard text output.  Additionally, both standard
                    and Crux versions will now report the mass differences to one decimal point.
+               <li>Fixes recently discovered bug.  In releases 2015.01.0 through 2016.01.2, any peptide
+                   with a variable modification had its precursor mass calculated with the mass types
+                   assigned to the fragment ions.  So if one specified average masses for the precursor
+                   and monoisotopic masses for the fragments, all modified peptides would have incorrect
+                   peptide masses (calculated with monoisotopic mass values).  This but would not be
+                   relevant if both mass types were assigned to the same value i.e. monoisotopic masses
+                   used for both precursor and fragment ions.  Thanks to D. Zhao for identifying the bug.
                <li>I'm considering phasing out support for writing ".out" files.  The parameter entry
                    "output_outfiles" is no longer documented online nor written in the example params
                    files.  However, it is still functional if you add "output_outfiles = 1" manually
