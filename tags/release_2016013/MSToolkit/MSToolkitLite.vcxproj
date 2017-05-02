@@ -1,0 +1,261 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8093FAFA-4AA1-4E88-A83E-1B433A96AAE5}</ProjectGuid>
+    <RootNamespace>MSToolkitLite</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <UseOfMfc>false</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories>./include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);COMPILED_FROM_DSP;_NOSQLITE;XML_STATIC</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Full</Optimization>
+      <AdditionalIncludeDirectories>./include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;WIN32;_LIB;COMPILED_FROM_DSP;_NOSQLITE;XML_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>./include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;COMPILED_FROM_DSP;_NOSQLITE;XML_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <ObjectFileName>$(IntDir)MSToolkitLite\</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)MSToolkitLite\vc90.pdb</ProgramDataBaseFileName>
+      <XMLDocumentationFileName>$(IntDir)MSToolkitLite\</XMLDocumentationFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>./include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;COMPILED_FROM_DSP;_NOSQLITE;XML_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <ObjectFileName>$(IntDir)MSToolkitLite\</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)MSToolkitLite\vc90.pdb</ProgramDataBaseFileName>
+      <XMLDocumentationFileName>$(IntDir)MSToolkitLite\</XMLDocumentationFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <OmitFramePointers>true</OmitFramePointers>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\expat-2.2.0\xmlparse.c" />
+    <ClCompile Include="src\expat-2.2.0\xmlrole.c" />
+    <ClCompile Include="src\expat-2.2.0\xmltok.c" />
+    <ClCompile Include="src\expat-2.2.0\xmltok_impl.c" />
+    <ClCompile Include="src\expat-2.2.0\xmltok_ns.c" />
+    <ClCompile Include="src\MSToolkit\MSObject.cpp" />
+    <ClCompile Include="src\MSToolkit\MSReader.cpp" />
+    <ClCompile Include="src\MSToolkit\mzMLWriter.cpp" />
+    <ClCompile Include="src\MSToolkit\RAWReader.cpp" />
+    <ClCompile Include="src\MSToolkit\Spectrum.cpp" />
+    <ClCompile Include="src\mzParser\BasicChromatogram.cpp" />
+    <ClCompile Include="src\mzParser\BasicSpectrum.cpp" />
+    <ClCompile Include="src\mzParser\Czran.cpp" />
+    <ClCompile Include="src\mzParser\MSNumpress.cpp" />
+    <ClCompile Include="src\mzParser\mz5handler.cpp" />
+    <ClCompile Include="src\mzParser\mzMLReader.cpp" />
+    <ClCompile Include="src\mzParser\mzParser.cpp" />
+    <ClCompile Include="src\mzParser\mzpMz5Config.cpp" />
+    <ClCompile Include="src\mzParser\mzpMz5Structs.cpp" />
+    <ClCompile Include="src\mzParser\mzp_base64.cpp" />
+    <ClCompile Include="src\mzParser\PWIZface.cpp" />
+    <ClCompile Include="src\mzParser\RAMPface.cpp" />
+    <ClCompile Include="src\mzParser\saxhandler.cpp" />
+    <ClCompile Include="src\mzParser\saxmzmlhandler.cpp" />
+    <ClCompile Include="src\mzParser\saxmzxmlhandler.cpp" />
+    <ClCompile Include="src\zlib-1.2.8\adler32.c" />
+    <ClCompile Include="src\zlib-1.2.8\compress.c" />
+    <ClCompile Include="src\zlib-1.2.8\crc32.c" />
+    <ClCompile Include="src\zlib-1.2.8\deflate.c" />
+    <ClCompile Include="src\zlib-1.2.8\gzclose.c" />
+    <ClCompile Include="src\zlib-1.2.8\gzlib.c" />
+    <ClCompile Include="src\zlib-1.2.8\gzread.c" />
+    <ClCompile Include="src\zlib-1.2.8\gzwrite.c" />
+    <ClCompile Include="src\zlib-1.2.8\infback.c" />
+    <ClCompile Include="src\zlib-1.2.8\inffast.c" />
+    <ClCompile Include="src\zlib-1.2.8\inflate.c" />
+    <ClCompile Include="src\zlib-1.2.8\inftrees.c" />
+    <ClCompile Include="src\zlib-1.2.8\trees.c" />
+    <ClCompile Include="src\zlib-1.2.8\uncompr.c" />
+    <ClCompile Include="src\zlib-1.2.8\zutil.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\amigaconfig.h" />
+    <ClInclude Include="include\ascii.h" />
+    <ClInclude Include="include\asciitab.h" />
+    <ClInclude Include="include\crc32.h" />
+    <ClInclude Include="include\deflate.h" />
+    <ClInclude Include="include\expat.h" />
+    <ClInclude Include="include\expat_config.h" />
+    <ClInclude Include="include\expat_external.h" />
+    <ClInclude Include="include\gzguts.h" />
+    <ClInclude Include="include\iasciitab.h" />
+    <ClInclude Include="include\inffast.h" />
+    <ClInclude Include="include\inffixed.h" />
+    <ClInclude Include="include\inflate.h" />
+    <ClInclude Include="include\inftrees.h" />
+    <ClInclude Include="include\internal.h" />
+    <ClInclude Include="include\latin1tab.h" />
+    <ClInclude Include="include\macconfig.h" />
+    <ClInclude Include="include\MSNumpress.hpp" />
+    <ClInclude Include="include\MSObject.h" />
+    <ClInclude Include="include\MSReader.h" />
+    <ClInclude Include="include\MSToolkitTypes.h" />
+    <ClInclude Include="include\mzMLWriter.h" />
+    <ClInclude Include="include\mzParser.h" />
+    <ClInclude Include="include\nametab.h" />
+    <ClInclude Include="include\pepXMLWriter.h" />
+    <ClInclude Include="include\RAWReader.h" />
+    <ClInclude Include="include\Spectrum.h" />
+    <ClInclude Include="include\sqlite3.h" />
+    <ClInclude Include="include\trees.h" />
+    <ClInclude Include="include\utf8tab.h" />
+    <ClInclude Include="include\winconfig.h" />
+    <ClInclude Include="include\xmlrole.h" />
+    <ClInclude Include="include\xmltok.h" />
+    <ClInclude Include="include\xmltok_impl.h" />
+    <ClInclude Include="include\zconf.h" />
+    <ClInclude Include="include\zlib.h" />
+    <ClInclude Include="include\zutil.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
