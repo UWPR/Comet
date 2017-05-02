@@ -1,0 +1,6 @@
+These source files differ from MSToolkit:
+1.  include/mzParser.h has added #defines
+2.  modify Makefile
+3.  delete src/sqlite-3.7.7.1/
+4.  delete MSSingleScan/
+4.  delete MSToolkitCLR.vcproj, MSToolkitLiteCLR.vcproj, MSToolkit.sln, MSToolkit.vcproj
