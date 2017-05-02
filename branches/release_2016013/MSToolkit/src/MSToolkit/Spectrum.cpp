@@ -1,3 +1,18 @@
+/*
+Copyright 2005-2016, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 #include "Spectrum.h"
 #include <iostream>
 #include <iomanip>
@@ -26,6 +41,8 @@ Spectrum::Spectrum(){
 	convI=0;
   BPI=0;
   BPM=0;
+  selectionWinLower = 0;
+  selectionWinUpper = 0;
   centroidStatus=2;
 
   fileType=Unspecified;
@@ -77,6 +94,8 @@ Spectrum::Spectrum(const Spectrum& s){
   convI = s.convI;
   BPI = s.BPI;
   BPM = s.BPM;
+  selectionWinLower=s.selectionWinLower;
+  selectionWinUpper=s.selectionWinUpper;
   centroidStatus = s.centroidStatus;
   vPeaks = new vector<Peak_T>;
   for(i=0;i<s.vPeaks->size();i++){
@@ -141,6 +160,8 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
     IIT = s.IIT;
     fileType = s.fileType;
     centroidStatus = s.centroidStatus;
+    selectionWinLower = s.selectionWinLower;
+    selectionWinUpper = s.selectionWinUpper;
     strcpy(rawFilter,s.rawFilter);
     strcpy(nativeID,s.nativeID);
   }
@@ -231,17 +252,21 @@ void Spectrum::clear(){
 	vZ = new vector<ZState>;
 	delete mz;
 	mz = new vector<double>;
+  delete monoMZ;
+  monoMZ = new vector<double>;
 	scanNumber = 0;
   scanNumber2 = 0;
 	rTime = 0;
 	charge = 0;
-	msLevel = 2;
+	msLevel = 0;
   convA = 0;
   convB = 0;
   TIC = 0;
   IIT = 0;
   BPI = 0;
   BPM = 0;
+  selectionWinLower=0;
+  selectionWinUpper=0;
 	fileType = Unspecified;
   actMethod=mstNA;
 }
@@ -361,12 +386,12 @@ float Spectrum::getIonInjectionTime(){
 }
 
 double Spectrum::getMonoMZ(int index){
-	if(index>(int)monoMZ->size()) return -1.0;
+	if(index>=(int)monoMZ->size()) return -1.0;
   return monoMZ->at(index);
 }
 
 double Spectrum::getMZ(int index){
-	if(index>(int)mz->size()) return -1.0;
+	if(index>=(int)mz->size()) return -1.0;
   return mz->at(index);
 }
 
@@ -399,6 +424,22 @@ float Spectrum::getRTime(){
 int Spectrum::getScanNumber(bool second){
   if(second) return scanNumber2;
   else return scanNumber;
+}
+
+double Spectrum::getScanWindowLower(){
+  return scanWinLower;
+}
+
+double Spectrum::getScanWindowUpper(){
+  return scanWinUpper;
+}
+
+double Spectrum::getSelWindowLower(){
+  return selectionWinLower;
+}
+
+double Spectrum::getSelWindowUpper(){
+  return selectionWinUpper;
 }
 
 double Spectrum::getTIC(){
@@ -483,6 +524,16 @@ void Spectrum::setScanNumber(int i, bool second){
   else scanNumber=i;
 }
 
+void Spectrum::setScanWindow(double lower, double upper){
+  scanWinLower = lower;
+  scanWinUpper = upper;
+}
+
+void Spectrum::setSelWindow(double lower, double upper){
+  selectionWinLower=lower;
+  selectionWinUpper=upper;
+}
+
 void Spectrum::setTIC(double d){
   TIC=d;
 }
@@ -505,19 +556,19 @@ void Spectrum::setScanID(int scanid){
 
 /* Returns the number of elements in the spectrum. */
 int Spectrum::size(){
-  return vPeaks->size();
+  return (int)vPeaks->size();
 }
 
 int Spectrum::sizeEZ(){
-	return vEZ->size();
+	return (int)vEZ->size();
 }
 
 int Spectrum::sizeMZ(){
-	return mz->size();
+	return (int)mz->size();
 }
 
 int Spectrum::sizeZ(){
-	return vZ->size();
+	return (int)vZ->size();
 }
 
 float Spectrum::getTotalIntensity(){

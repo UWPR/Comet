@@ -918,11 +918,22 @@ int CometSearch::BinarySearchMass(int start,
       return middle;
    }
    else if (g_pvQuery.at(middle)->_pepMassInfo.dPeptideMassToleranceMinus > dCalcPepMass)
-   {
       return BinarySearchMass(start, middle - 1, dCalcPepMass);
-   }
 
-   return BinarySearchMass(middle + 1, end, dCalcPepMass);
+   if ((int)middle+1 < end)
+      return BinarySearchMass(middle + 1, end, dCalcPepMass);
+   else
+   {
+      if ((int)(middle+1) == end
+            && end < (int)g_pvQuery.size()
+            && g_pvQuery.at(end)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
+            && dCalcPepMass <= g_pvQuery.at(end)->_pepMassInfo.dPeptideMassTolerancePlus)
+      {
+         return end;
+      }
+      else
+         return -1;
+   }
 }
 
 

@@ -29,6 +29,7 @@ class CometSearchManager;
 #define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
 #define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
 #define SIZE_MASS                   128      // ascii value size
+#define SIZE_NATIVEID               256      // max length of nativeID string
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
 
@@ -183,7 +184,7 @@ struct SpectrumInfoInternal
    int iMaxFragCharge;
    double dTotalIntensity;
    double dRTime;
-   char szNativeID[128];  // nativeID string from mzML
+   char szNativeID[SIZE_NATIVEID];  // nativeID string from mzML
 };
 
 // The minimum and maximum mass range of all peptides to consider

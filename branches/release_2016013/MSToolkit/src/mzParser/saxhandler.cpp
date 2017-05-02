@@ -312,7 +312,7 @@ bool mzpSAXHandler::parseOffset(f_off offset){
 
 		cerr << m_strFileName
 			<< "(" << XML_GetCurrentLineNumber(m_parser) << ")"
-			<< " : error " << (int) error << ": ";
+			<< " : parseOffset() " << (int) error << ": ";
 
 		switch (error)
 		{

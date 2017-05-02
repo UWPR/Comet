@@ -1,3 +1,19 @@
+/*
+Copyright 2005-2016, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+#ifndef _NO_THERMORAW
 #include "RAWReader.h"
 
 using namespace MSToolkit;
@@ -149,6 +165,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 		} else if(strlen(tok)>2 && tok[0]=='c' && tok[1]=='v'){
       cv=atof(tok+3);
 		} else if(strcmp(tok,"d")==0){
+    } else if(strcmp(tok,"E")==0){ //enhanced 
 		} else if(strcmp(tok,"ESI")==0){
 		} else if(strcmp(tok,"FTMS")==0){
 		} else if(strcmp(tok,"Full")==0){
@@ -171,6 +188,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 		} else if(strncmp(tok,"sid",3)==0){
 		} else if(strcmp(tok,"SRM")==0){
 			mst=SRM;
+    } else if(strcmp(tok,"t")==0){ //turbo scan 
 		} else if(strcmp(tok,"u")==0){
 			mst=UZS;
 		} else if(strcmp(tok,"w")==0){ //wideband activation?
@@ -178,21 +196,19 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 			if(mst!=UZS) mst=ZS;
 		} else if(strcmp(tok,"+")==0){
 		} else if(strcmp(tok,"-")==0){
-		} else if(strcmp(tok,"t")==0){ //turbo scan
-		} else if(strcmp(tok,"E")==0){ //enhanced
-		} else if(strcmp(tok,"@")!=NULL){
+		} else if(strchr(tok,'@')!=NULL){
 			tStr=tok;
-			stop=tStr.find("@");
+			stop=(int)tStr.find("@");
 			mzVal=tStr.substr(0,stop);
 			MZs.push_back(atof(&mzVal[0]));
       mzVal=tStr.substr(stop+1,3);
       if(mzVal.compare("cid")==0){
         act=mstCID;
-      } else if(mzVal.compare("hcd")==0){
-        act=mstHCD;
       } else if(mzVal.compare("etd")==0){
         if(bSA) act=mstETDSA;
         else act=mstETD;
+      } else if(mzVal.compare("hcd")==0){
+        act=mstHCD;
       } else {
         cout << "Unknown activation method: " << &mzVal[0] << endl;
         act=mstNA;
@@ -208,6 +224,52 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 
 	return mst;
 
+}
+
+double RAWReader::evaluateTrailerDouble(const char* str){
+  VARIANT v;
+  BSTR bs;
+  int sl;
+  double ret;
+
+  VariantInit(&v);
+  sl = lstrlenA(str);
+  bs = SysAllocStringLen(NULL, sl);
+  MultiByteToWideChar(CP_ACP, 0, str, sl, bs, sl);
+  m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, bs, &v);
+  SysFreeString(bs);
+  if (v.vt == VT_R4) ret = (double)v.fltVal;
+  else if (v.vt == VT_R8) ret = (double)v.dblVal;
+  else ret=0;
+
+  VariantClear(&v);
+  return ret;
+}
+
+int RAWReader::evaluateTrailerInt(const char* str){
+  VARIANT v;
+  BSTR bs;
+  int sl;
+  int ret;
+
+  VariantInit(&v);
+  sl = lstrlenA(str);
+  bs = SysAllocStringLen(NULL, sl);
+  MultiByteToWideChar(CP_ACP, 0, str, sl, bs, sl);
+  m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, bs, &v);
+  SysFreeString(bs);
+  if (v.vt == VT_I2) ret = (int)v.iVal;
+  else if (v.vt == VT_I4) ret = (int)v.lVal;
+  else if (v.vt == VT_I1) ret = (int)v.cVal;
+  else if (v.vt == VT_UI4) ret = (int)v.ulVal;
+  else if (v.vt == VT_UI2) ret = (int)v.uiVal;
+  else if (v.vt == VT_UI1) ret = (int)v.bVal;
+  else if (v.vt == VT_INT) ret = (int)v.intVal;
+  else if (v.vt == VT_UINT) ret = (int)v.uintVal;
+  else ret = 0;
+
+  VariantClear(&v);
+  return ret;
 }
 
 void RAWReader::getInstrument(char* str){
@@ -291,6 +353,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	long i;
   long j;
 	long lArraySize=0;
+  long ret;
 
 	vector<double> MZs;
 
@@ -325,20 +388,11 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	double BPM;   //Base peak mass
 	double td;    //temp double value
 	double TIC;
+  float IIT;    //ion injection time
 
 	long tl;      //temp long value
   MSActivation act;
 
-	VARIANT Charge;
-	VARIANT ConversionA;
-  VARIANT ConversionB;
-	VARIANT ConversionC;
-  VARIANT ConversionD;
-	VARIANT ConversionE;
-  VARIANT ConversionI;
-  VARIANT IIT;  //ion injection time
-	VARIANT MonoMZ;
-  VARIANT PrecursorInfo;
 
   if(!bRaw) return false;
 
@@ -400,16 +454,6 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   strcpy(curFilter,"");
 	VariantInit(&varMassList);
 	VariantInit(&varPeakFlags);
-	VariantInit(&IIT);
-  VariantInit(&ConversionA);
-  VariantInit(&ConversionB);
-	VariantInit(&ConversionC);
-  VariantInit(&ConversionD);
-	VariantInit(&ConversionE);
-  VariantInit(&ConversionI);
-	VariantInit(&Charge);
-	VariantInit(&MonoMZ);
-  VariantInit(&PrecursorInfo);
 
   rawPrecursorInfo preInfo;
 
@@ -447,79 +491,30 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     }
   }
 
-	//Get spectrum meta data
-  //Get lump precursor info first. Note that MSX data likely has multiple precursor infos
-#ifdef _WIN64
-  BYTE* pData;
-  m_Raw->GetPrecursorInfoFromScanNum(rawCurSpec, &PrecursorInfo, &tl);
-  SafeArrayAccessData(PrecursorInfo.parray, (void**)&pData);
-  if (tl > 0){
-    //getting only first value!!! Note this does not support MSX here!!!
-    //TODO ? : rewrite MSX support to use this function? If so, how would 32-bit systems do this? This function
-    //doesn't seem to work on 32-bit MSFileReader...
-    memcpy(&preInfo, pData, sizeof(rawPrecursorInfo));
-  } else {
-    preInfo.charge=0;
-    preInfo.dIsoMZ=0;
-    preInfo.dMonoMZ=0;
-    preInfo.parScanNum=0;
-  }
-  SafeArrayUnaccessData(PrecursorInfo.parray);
-#else 
-  sl=lstrlenA("Monoisotopic M/Z:");
-	testStr = SysAllocStringLen(NULL,sl);
-	MultiByteToWideChar(CP_ACP,0,"Monoisotopic M/Z:",sl,testStr,sl);
-	m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &MonoMZ);
-	SysFreeString(testStr);
-  preInfo.dMonoMZ=MonoMZ.dblVal;
-
-	sl=lstrlenA("Charge State:");
-	testStr = SysAllocStringLen(NULL,sl);
-	MultiByteToWideChar(CP_ACP,0,"Charge State:",sl,testStr,sl);
-	m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &Charge);
-	SysFreeString(testStr);
-  preInfo.charge=Charge.iVal;
-#endif
-
-	sl=lstrlenA("Ion Injection Time (ms):");
-  testStr = SysAllocStringLen(NULL,sl);
-  MultiByteToWideChar(CP_ACP,0,"Ion Injection Time (ms):",sl,testStr,sl);
-  m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &IIT);
-  SysFreeString(testStr);
-
-	sl=lstrlenA("Conversion Parameter A:");
-	testStr = SysAllocStringLen(NULL,sl);
-	MultiByteToWideChar(CP_ACP,0,"Conversion Parameter A:",sl,testStr,sl);
-	m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &ConversionA);
-	SysFreeString(testStr);
-
-	testStr = SysAllocStringLen(NULL,sl);
-	MultiByteToWideChar(CP_ACP,0,"Conversion Parameter B:",sl,testStr,sl);
-	m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &ConversionB);
-	SysFreeString(testStr);
-
-	testStr = SysAllocStringLen(NULL,sl);
-	MultiByteToWideChar(CP_ACP,0,"Conversion Parameter C:",sl,testStr,sl);
-	m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &ConversionC);
-	SysFreeString(testStr);
-
-	testStr = SysAllocStringLen(NULL,sl);
-	MultiByteToWideChar(CP_ACP,0,"Conversion Parameter D:",sl,testStr,sl);
-	m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &ConversionD);
-	SysFreeString(testStr);
-
-	testStr = SysAllocStringLen(NULL,sl);
-	MultiByteToWideChar(CP_ACP,0,"Conversion Parameter E:",sl,testStr,sl);
-	m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &ConversionE);
-	SysFreeString(testStr);
-
-	testStr = SysAllocStringLen(NULL,sl);
-	MultiByteToWideChar(CP_ACP,0,"Conversion Parameter I:",sl,testStr,sl);
-	m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, testStr, &ConversionI);
-	SysFreeString(testStr);
-
+  //Get basic spectrum metadata. It will be replaced/supplemented later, if available
+  preInfo.clear();
   m_Raw->GetScanHeaderInfoForScanNum(rawCurSpec, &tl, &td, &td, &td, &TIC, &BPM, &BPI, &tl, &tl, &td);
-  m_Raw->RTFromScanNum(rawCurSpec,&dRTime);
+  m_Raw->RTFromScanNum(rawCurSpec, &dRTime);
+  preInfo.charge = evaluateTrailerInt("Charge State:");
+  preInfo.dMonoMZ = evaluateTrailerDouble("Monoisotopic M/Z:");
+  IIT = (float)evaluateTrailerDouble("Ion Injection Time (ms):");
+
+  //Get more sig digits for isolation mass
+  if (raw > 3 && (MSn==MS2 || MSn==MS3)){
+    IXRawfile4Ptr raw4 = (IXRawfile4Ptr)m_Raw;
+    if (MSn==MS2) tl=2;
+    else tl=3;
+    ret = raw4->GetPrecursorMassForScanNum(rawCurSpec,tl,&td);
+    if (ret == 0) preInfo.dIsoMZ = td;
+    raw4=NULL;
+
+    //Correct precursor mono mass if it is more than 5 13C atoms away from isolation mass
+    if (preInfo.dMonoMZ > 0 && preInfo.charge>0){
+      td = preInfo.dIsoMZ-preInfo.dMonoMZ;
+      if (td>5.01675/preInfo.charge) preInfo.dMonoMZ=preInfo.dIsoMZ;
+    }
+
+  }
 
   //Get the peaks
 	//Average raw files if requested by user
@@ -572,6 +567,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	if(MSn==MS2 || MSn==MS3){
 
 		//if charge state is assigned to spectrum, add Z-lines.
+    if (preInfo.dIsoMZ>0.01) MZs[0]=preInfo.dIsoMZ;  //overwrite isolation mass if we have more sig figs.
 		if(preInfo.charge>0){ //if(Charge.iVal>0){
 			if(preInfo.dMonoMZ>0.01) { //if(MonoMZ.dblVal>0.01) {
 				//pm1 = MonoMZ.dblVal * Charge.iVal - ((Charge.iVal-1)*1.007276466);
@@ -579,12 +575,12 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
         s.setMZ(MZs[0], preInfo.dMonoMZ);
 			}	else {
         pm1 = MZs[0] * preInfo.charge - ((preInfo.charge - 1)*1.007276466);
-				s.setMZ(MZs[0]);
+        s.setMZ(MZs[0]);
 			}
       s.addZState(preInfo.charge, pm1);
       s.setCharge(preInfo.charge);
     } else {
-			s.setMZ(MZs[0]);
+      s.setMZ(preInfo.dIsoMZ); s.setMZ(MZs[0]);
       charge = calcChargeState(MZs[0], highmass, &varMassList, lArraySize);
 
       //Charge greater than 0 means the charge state is known
@@ -624,14 +620,14 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   s.setBPI((float)BPI);
   s.setBPM(BPM);
   s.setCompensationVoltage(cv);
-  s.setConversionA(ConversionA.dblVal);
-  s.setConversionB(ConversionB.dblVal);
-	s.setConversionC(ConversionC.dblVal);
-  s.setConversionD(ConversionD.dblVal);
-	s.setConversionE(ConversionE.dblVal);
-  s.setConversionI(ConversionI.dblVal);
+//  s.setConversionA(ConversionA.dblVal);  //Deprecating Conversion values
+//  s.setConversionB(ConversionB.dblVal);
+//	s.setConversionC(ConversionC.dblVal);
+//  s.setConversionD(ConversionD.dblVal);
+//	s.setConversionE(ConversionE.dblVal);
+//  s.setConversionI(ConversionI.dblVal);
   s.setTIC(TIC);
-  s.setIonInjectionTime(IIT.fltVal);
+  s.setIonInjectionTime(IIT);
 	if(MSn==SRM) s.setMZ(MZs[0]);
   switch(MSn){
     case MS1: s.setMsLevel(1); break;
@@ -646,18 +642,8 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   SafeArrayUnaccessData( psa );
 
   //Clean up memory
-	VariantClear(&Charge);
-	VariantClear(&MonoMZ);
-  VariantClear(&IIT);
-  VariantClear(&ConversionA);
-  VariantClear(&ConversionB);
-	VariantClear(&ConversionC);
-  VariantClear(&ConversionD);
-	VariantClear(&ConversionE);
-  VariantClear(&ConversionI);
 	VariantClear(&varMassList);
 	VariantClear(&varPeakFlags);
-  VariantClear(&PrecursorInfo);
 
   return true;
 
@@ -670,3 +656,5 @@ void RAWReader::setMSLevelFilter(vector<MSSpectrumType>* v){
 void RAWReader::setRawFilter(char *c){
   strcpy(rawUserFilter,c);
 }
+
+#endif

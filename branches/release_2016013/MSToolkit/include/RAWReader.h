@@ -1,13 +1,32 @@
+/*
+Copyright 2005-2016, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 #ifndef _RAWREADER_H
 #define _RAWREADER_H
 
 #ifdef _MSC_VER
+#ifndef _NO_THERMORAW
 
 #include "MSToolkitTypes.h"
 #include "Spectrum.h"
 #include <algorithm>
 #include <iostream>
 #include <vector>
+
+#include <objbase.h>
+
 #import "libid:F0C5F3E3-4F2A-443E-A74D-0AABE3237494" rename_namespace("XRawfile")
 //#import "libid:5FE970A2-29C3-11D3-811D-00104B304896" rename_namespace("XRawfile")
 using namespace XRawfile;
@@ -25,6 +44,12 @@ typedef struct rawPrecursorInfo{
     dMonoMZ=0;
     charge=0;
     parScanNum=0;
+  }
+  void clear(){
+    dIsoMZ = 0;
+    dMonoMZ = 0;
+    charge = 0;
+    parScanNum = 0;
   }
 } rawPrecursorInfo;
 
@@ -70,11 +95,7 @@ private:
 	long rawCurSpec;
 	long rawTotSpec;
   
-#ifdef _WIN64
-  IXRawfile3Ptr m_Raw;  //Note: minimum support is now IXRawfile3 interface on 64-bit installations.
-#else
   IXRawfilePtr m_Raw;
-#endif
 
 	vector<MSSpectrumType>* msLevelFilter;
 
@@ -82,6 +103,8 @@ private:
   int							calcChargeState(double precursormz, double highmass, VARIANT* varMassList, long nArraySize);
   double					calcPepMass(int chargestate, double precursormz);
   MSSpectrumType	evaluateFilter(long scan, char* chFilter, vector<double>& MZs, bool& bCentroid, double& cv, MSActivation& act);
+  double          evaluateTrailerDouble(const char* id);
+  int             evaluateTrailerInt(const char* id);
 	bool						initRaw();
   
 
@@ -90,3 +113,5 @@ private:
 }
 #endif
 #endif
+#endif
+

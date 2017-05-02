@@ -317,8 +317,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
 
    // get mzML nativeID
-   char szNativeID[128];
-   if (mstSpectrum.getNativeID(szNativeID, 128))
+   char szNativeID[SIZE_NATIVEID];
+   if (mstSpectrum.getNativeID(szNativeID, SIZE_NATIVEID))
       strcpy(pScoring->_spectrumInfoInternal.szNativeID, szNativeID);
    else
       pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
@@ -673,6 +673,10 @@ bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
          bSearchSpectrum = 0;
       }
       else if (!strcmp(g_staticParams.options.szActivationMethod, "HCD") && (act != mstHCD))
+      {
+         bSearchSpectrum = 0;
+      }
+      else if (!strcmp(g_staticParams.options.szActivationMethod, "ETD+SA") && (act != mstETDSA))
       {
          bSearchSpectrum = 0;
       }

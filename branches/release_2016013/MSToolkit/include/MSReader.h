@@ -1,10 +1,25 @@
+/*
+Copyright 2005-2016, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 #ifndef _MSREADER_H
 #define _MSREADER_H
 
 #include "Spectrum.h"
 #include "MSObject.h"
 #include "mzParser.h"
-#include <cstring>
+#include <string>
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -14,9 +29,11 @@
 //#include "MSToolkitInterface.h"
 
 #ifdef _MSC_VER
+#ifndef _NO_THERMORAW
 #import "libid:F0C5F3E3-4F2A-443E-A74D-0AABE3237494" rename_namespace("XRawfile")
 //#import "libid:5FE970A2-29C3-11D3-811D-00104B304896" rename_namespace("XRawfile")
 using namespace XRawfile;
+#endif
 #endif
 
 #ifndef _NOSQLITE
@@ -25,9 +42,9 @@ using namespace XRawfile;
 
 //Macros for 64-bit file support
 #ifdef _MSC_VER
+#ifndef _NO_THERMORAW
 #include "RAWReader.h"
-//extern "C" int __cdecl _fseeki64(FILE *, __int64, int);
-//extern "C" __int64 __cdecl _ftelli64(FILE *);
+#endif
 typedef __int64 f_off;
 #define fseek(h,p,o) _fseeki64(h,p,o)
 #define ftell(h) _ftelli64(h)
@@ -62,6 +79,7 @@ class MSReader {
   
   MSFileFormat checkFileFormat(const char *fn);
 
+  string          getCurrentFile();
   MSSpectrumType  getFileType();
   MSHeader&       getHeader();
   void            getInstrument(char* str);
@@ -119,6 +137,7 @@ class MSReader {
   int iFType;
   int lastReadScanNum;
   MSFileFormat lastFileFormat;
+  string sCurrentFile;
   string sInstrument;
   string sManufacturer;
 
@@ -158,7 +177,9 @@ class MSReader {
   
   //support for rawfiles
   #ifdef _MSC_VER
+  #ifndef _NO_THERMORAW
 	RAWReader cRAW;
+  #endif
   #endif
 
   //support for sqlite

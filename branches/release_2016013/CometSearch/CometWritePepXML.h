@@ -61,7 +61,8 @@ private:
 
    static void WriteVariableMod(FILE *fpout,
                                 CometSearchManager &searchMgr,
-                                string varModName);
+                                string varModName,
+                                bool bWriteTerminalMods);
 
    static void WriteStaticMod(FILE *fpout,
                               CometSearchManager &searchMgr,
