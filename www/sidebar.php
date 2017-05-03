@@ -2,7 +2,7 @@
       <div id="updates" class="orangebox">
          <h2><a href="/updates">Recent Updates</a></h2>
             <ul>
-               <li><b>2016/04/06</b>: <a href="/release/release_201601">Release 2016.01 rev. 2</a>
+               <li><b>2017/05/02</b>: <a href="/release/release_201601">Release 2016.01 rev. 3</a>
                is now available.
                <p/>
             </ul>

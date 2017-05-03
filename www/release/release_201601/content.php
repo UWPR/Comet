@@ -12,6 +12,10 @@
                <li>Update MSToolkit to latest version.  This encapsulates the bug fix
                    mentioned below as well as better support for ETD+SA scans.  Thanks to
                    P. Pedrioli for originally implementing the ETD+SA fixes.
+               <li>Incorporate r981 which was missing edge cases in internal binary mass search.
+               <li>pepXML output fix: declare aminoacid_modification before any instance
+                   of terminal_modification per schema.  Thank to L. Mendoza for
+                   reporting this issue.
             </ul>
             <ul>
                <b>release 2016.01 rev. 2 (2016.01.2), release date 2016/04/06</b>
