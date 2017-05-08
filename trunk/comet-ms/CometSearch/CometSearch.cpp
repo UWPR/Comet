@@ -108,7 +108,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    long lCurrPos = 0;
    bool bTrimDescr = 0;
    string strPeffHeader;
-   char *szMods = 0;             // will store ModRes and VariantSimple text for parsing for all entries; resize as needed
+   char *szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
    char *szPeffLine = 0;         // store description line starting with first \ to parse above
    int iLenAllocMods = 0;
    int iLenSzLine = 0;
@@ -146,7 +146,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    lCurrPos = ftell(fptr);
    iTmpCh = getc(fptr);
 
-   if (g_staticParams.peffInfo.bPEFF)
+   if (g_staticParams.peffInfo.iPEFF)
    {
       iLenSzLine = 2048;
       szPeffLine = (char*)malloc( iLenSzLine* sizeof(char));
@@ -177,7 +177,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       if (strlen(g_staticParams.peffInfo.szPeffOBO)==0)
       {
          char szErrorMsg[512];
-         sprintf(szErrorMsg,  " Error: \"peff_format = 1\" but \"peff_obo\" is not set\n");
+         sprintf(szErrorMsg,  " Error: \"peff_format\" is specified but \"peff_obo\" is not set\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
@@ -200,10 +200,16 @@ bool CometSearch::RunSearch(int minNumThreads,
    }
 
    char szBuf[8192];
-   char szAttributeMod[] = "\\ModResPsi=";           // from ModRes
-   char szAttributeVariant[] = "\\Variant=";         // from VariantSimple
-   int  iLenAttributeMod = strlen(szAttributeMod);
+   char szAttributeMod[16];                                // from ModRes
+   char szAttributeVariant[] = "\\VariantSimple=";         // from VariantSimple
+
+   if (g_staticParams.peffInfo.iPEFF == 1)
+      strcpy(szAttributeMod, "\\ModResPsi=");
+   else if (g_staticParams.peffInfo.iPEFF == 2)
+      strcpy(szAttributeMod, "\\ModResUnimod=");
+
    int  iLenAttributeVariant = strlen(szAttributeVariant);
+   int  iLenAttributeMod = strlen(szAttributeMod);
 
    // Loop through entire database.
    while(!feof(fptr))
@@ -249,7 +255,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                dbe.strName += iTmpCh;
 
             // load and parse PEFF header
-            if (g_staticParams.peffInfo.bPEFF)
+            if (g_staticParams.peffInfo.iPEFF)
             {
                if (iTmpCh == '\\')
                {
@@ -276,7 +282,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                      fgets(szPeffLine+strlen(szPeffLine)-1, iLenSzLine - strlen(szPeffLine), fptr);
                   }
 
-                  // grab from \ModRes and \Variant to end of line
+                  // grab from \ModResPsi or \ModResUnimod and \VariantSimple to end of line
 
                   char *pStr;
                   if ((pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
@@ -331,7 +337,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            if (g_staticParams.options.bVerboseOutput)
                            {
                               char szErrorMsg[512];
-                              sprintf(szErrorMsg,  "Warning:  %s, ModRes=(%d|%s) ignored\n", dbe.strName.c_str(), iPos, strModCode.c_str());
+                              sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModCode.c_str());
                               string strErrorMsg(szErrorMsg);
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(szErrorMsg);
@@ -493,7 +499,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       fflush(stdout);
    }
 
-   if (g_staticParams.peffInfo.bPEFF)
+   if (g_staticParams.peffInfo.iPEFF)
    {
       free(szMods);
       free(szPeffLine);

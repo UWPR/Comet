@@ -330,7 +330,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
       {
          int j;
-         bool bNoDeltaCnYet = true;
          double dDeltaCn = 1.0;
 
          if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
@@ -369,8 +368,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                      dDeltaCn = 1.0;
                   else
                      dDeltaCn = 0.0;
-
-                  bNoDeltaCnYet = 0;
 
                   break;
                }

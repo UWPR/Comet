@@ -77,7 +77,6 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
 void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData)
 {
    int iQueryIndex = pThreadData->iQueryIndex;
-   bool bSucceeded = true;
 
    AnalyzeSP(iQueryIndex);
 
@@ -92,11 +91,9 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
       if (g_pvQuery.at(iQueryIndex)->iMatchPeptideCount > 0
             || g_pvQuery.at(iQueryIndex)->iDecoyMatchPeptideCount > 0)
       {
-         bSucceeded = CalculateEValue(iQueryIndex);
+         CalculateEValue(iQueryIndex);
       }
    }
-
-   // FIX ... need to do something with bSucceeded otherwise no point in having it
 
    delete pThreadData;
    pThreadData = NULL;
@@ -692,20 +689,13 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
    // DECOY_SIZE is the minimum # of decoys required or else this function is
    // called.  So need generate iLoopMax more xcorr scores for the histogram.
    int iLoopMax = DECOY_SIZE - pQuery->iHistogramCount;
-   bool bDecoy;
    int iLastEntry;
 
    // Determine if using target or decoy peptides to rotate to fill out histogram.
    if (pQuery->iMatchPeptideCount >= pQuery->iDecoyMatchPeptideCount)
-   {
       iLastEntry = pQuery->iMatchPeptideCount;
-      bDecoy = false;
-   }
    else
-   {
       iLastEntry = pQuery->iDecoyMatchPeptideCount;
-      bDecoy = true;
-   }
 
    if (iLastEntry > g_staticParams.options.iNumStored)
       iLastEntry = g_staticParams.options.iNumStored;
@@ -758,7 +748,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
                      int x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
-                     if (pQuery->ppfSparseFastXcorrData[x]!=NULL)
+                     if (pQuery->ppfSparseFastXcorrData[x] != NULL)
                      {
                         int y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
                         dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];

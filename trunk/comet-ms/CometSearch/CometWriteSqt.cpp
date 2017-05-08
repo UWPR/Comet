@@ -118,7 +118,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
       char szTmp[48];
 
       while (*pStr != ' ' && pStr!=szMod)
-         *pStr--;
+         (*pStr)--;
 
       if (pStr==szMod)
          sscanf(pStr, "%47s", szTmp);

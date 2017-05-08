@@ -313,7 +313,7 @@ struct DBInfo
 struct PEFFInfo
 {
    char szPeffOBO[SIZE_FILE];
-   int  bPEFF;                   // 0=no, 1=yes for PEFF database
+   int  iPEFF;                   // 0=no, 1=PEFF Unimod, 2=PEFF PSI-MOD
 };
 
 struct StaticMod
@@ -528,7 +528,7 @@ struct StaticParams
       szOutputSuffix[0] = '\0';
 
       peffInfo.szPeffOBO[0] = '\0';
-      peffInfo.bPEFF = 0;
+      peffInfo.iPEFF = 0;
 
       for (i=0; i<SIZE_MASS; i++)
       {
