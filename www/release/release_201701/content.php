@@ -54,14 +54,21 @@
                    with a variable modification had its precursor mass calculated with the mass types
                    assigned to the fragment ions.  So if one specified average masses for the precursor
                    and monoisotopic masses for the fragments, all modified peptides would have incorrect
-                   peptide masses (calculated with monoisotopic mass values).  This but would not be
-                   relevant if both mass types were assigned to the same value i.e. monoisotopic masses
+                   peptide masses (calculated with monoisotopic mass values).  This bug would not be
+                   relevant if both mass types were assigned to the same type i.e. monoisotopic masses
                    used for both precursor and fragment ions.  Thanks to D. Zhao for identifying the bug.
+               <li>Change how the "<a href="/parameters/parameters_201701/scan_range.php">scan_range</a>" parameter is applied. One can set either the start scan
+                   or end scan independently now.  For example, "scan_range = 5000 0" will search all scans starting
+                   at 5000.  Similarly "scan_range = 0 250" will search all scans from the first scan
+                   to scan 250.  Previously, a start scan of 0 would ignore this parameter and a scan range
+                   setting of "5000 0" would not search as the end scan is less than the start scan.  This
+                   also fixes the issue with scan range command line options -F and -L as reported by
+                   A. Sharma.
                <li>I'm considering phasing out support for writing ".out" files.  The parameter entry
                    "output_outfiles" is no longer documented online nor written in the example params
                    files.  However, it is still functional if you add "output_outfiles = 1" manually
                    into your comet.params files.  If you still use ".out" files and would like support
-                   for that format continued, email me directly.
+                   for that format continued, let me know.
                 
             </ul>
 
