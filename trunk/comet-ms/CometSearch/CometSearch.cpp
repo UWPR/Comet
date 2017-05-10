@@ -328,8 +328,11 @@ bool CometSearch::RunSearch(int minNumThreads,
                         szTmp[0]='\0';
                         iPos = 0;
 
-                        sscanf(tok, "(%d|%79s", &iPos, szTmp);  //tok+1 to skip first '(' char
-                        strModCode = szTmp;
+                        if (isdigit(tok[1]))  //handle possible '?' in the position field
+                        {
+                           sscanf(tok, "(%d|%79s", &iPos, szTmp);  //tok+1 to skip first '(' char
+                           strModCode = szTmp;
+                        }
 
                         // sanity check: make sure position is positive
                         if (iPos < 0)
