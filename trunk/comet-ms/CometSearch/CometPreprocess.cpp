@@ -74,13 +74,13 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
 
    // Load all input spectra.
-   while(true)
+   while (true)
    {
       // Loads in MSMS spectrum data.
       if (_bFirstScan)
       {
-         PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
-         _bFirstScan = false;
+         PreloadIons(mstReader, mstSpectrum, false, 0);  // use 0 as scan num here in last argument instead of iFirstScan; must
+         _bFirstScan = false;                            // be MS/MS scan else data not read by MSToolkit so safer to start at 0
       }
       else
       {
@@ -103,6 +103,20 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          int iNumClearedPeaks = 0;
 
          iTmpCount = iScanNumber;
+
+         // iFirstScan and iLastScan are both 0 unless scan range is specified.
+         // If -L last scan specified, iFirstScan is set to 1
+         // However, if -F is specified, iLastscan is still 0
+         // If scan range is specified, need to enforce here.
+         if (iLastScan != 0 && iScanNumber > iLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            break;
+         }
+         if (iFirstScan != 0 && iLastScan != 0 && !(iFirstScan <= iScanNumber && iScanNumber <= iLastScan))
+            continue;
+         if (iFirstScan != 0 && iLastScan == 0 && iScanNumber < iFirstScan)
+            continue;
 
          // Clear out m/z range if clear_mz_range parameter is specified
          // Accomplish this by setting corresponding intensity to 0

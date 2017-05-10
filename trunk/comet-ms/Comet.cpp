@@ -1144,12 +1144,6 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
          pInputFile->iFirstScan = scanRange.iStart;
          pInputFile->iLastScan = scanRange.iEnd;
 
-         if (pInputFile->iFirstScan == 0)  // this means iEndScan is specified only
-            pInputFile->iFirstScan = 1;    // so start with 1st scan in file
-
-         // but if iEndScan == 0 then only iStartScan is specified; in this
-         // case search iStartScan through end of file (handled in CometPreprocess)
-
          return true;
       }
    }
@@ -1360,7 +1354,7 @@ sample_enzyme_number = 1               # Sample enzyme which is possibly differe
 #\n\
 # mzXML parameters\n\
 #\n\
-scan_range = 0 0                       # start and scan scan range to search; 0 as 1st entry ignores parameter\n\
+scan_range = 0 0                       # start and end scan range to search; either entry can be set independently\n\
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override any existing charge; 0 as 1st entry ignores parameter\n\
 override_charge = 0                    # 0=no, 1=override precursor charge states, 2=ignore precursor charges outside precursor_charge range, 3=see online\n\
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3\n\

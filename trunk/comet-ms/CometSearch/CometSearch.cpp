@@ -3205,18 +3205,6 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
                                                 // consider n-term mods only for start residue
                                                 if (iTmpEnd == iStartPos)
                                                 {
-
-/*
-                                                   if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
-                                                         && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
-                                                         && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
-                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)
-                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
-                                                               && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
-                                                                  &&  iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
-                                                                  >= iLenProteinMinus1)))
-*/
                                                    if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
                                                          && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
                                                          && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)

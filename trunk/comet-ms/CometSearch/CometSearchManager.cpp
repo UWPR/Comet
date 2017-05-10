@@ -1520,7 +1520,7 @@ bool CometSearchManager::DoSearch()
          }
 
          CometWriteTxt::PrintTxtHeader(fpout_txt);
-fflush(fpout_txt);
+         fflush(fpout_txt);
 
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
@@ -1708,6 +1708,7 @@ fflush(fpout_txt);
             // IMPORTANT: From this point onwards, because we've loaded some
             // spectra, we MUST "goto cleanup_results" before exiting the loop,
             // or we will create a memory leak!
+
             bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
                 g_staticParams.options.iNumThreads,  // min # threads
