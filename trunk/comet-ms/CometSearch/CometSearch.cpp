@@ -201,7 +201,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    char szBuf[8192];
    char szAttributeMod[16];                                // from ModRes
-   char szAttributeVariant[] = "\\VariantSimple=";         // from VariantSimple
+   char szAttributeVariant[] = "\\Variant=";         // from VariantSimple  FIX
 
    if (g_staticParams.peffInfo.iPEFF == 1)
       strcpy(szAttributeMod, "\\ModResPsi=");

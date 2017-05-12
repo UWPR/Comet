@@ -1278,7 +1278,7 @@ void PrintParams(void)
 "\n\
 database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=concatenated search, 2=separate search\n\
-peff_format = 0                        # 0=no (normal fasta, default), 1=PEFF Unimod, 2=PEFF PSI-MOD\n\
+peff_format = 0                        # 0=no (normal fasta, default), 1=PEFF PSI-MOD, 2=PEFF Unimod\n\
 peff_obo =                             # path to UniMod XML for PEFF database\n\
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\

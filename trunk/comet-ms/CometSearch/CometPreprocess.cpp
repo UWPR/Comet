@@ -79,9 +79,9 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
       // Loads in MSMS spectrum data.
       if (_bFirstScan)
       {
-         PreloadIons(mstReader, mstSpectrum, false, 0);  // use 0 as scan num here in last argument instead of iFirstScan; must
-         _bFirstScan = false;                            // be MS/MS scan else data not read by MSToolkit so safer to start at 0
-      }
+         PreloadIons(mstReader, mstSpectrum, false, 0);  // Use 0 as scan num here in last argument instead of iFirstScan; must
+         _bFirstScan = false;                            // be MS/MS scan else data not read by MSToolkit so safer to start at 0.
+      }                                                  // Not ideal as could be reading non-relevant scans but it's fast enough.
       else
       {
          PreloadIons(mstReader, mstSpectrum, true);
