@@ -107,6 +107,7 @@ private:
                                 vector<PeffPositionStruct>* vPeffArray);
    void XcorrScore(char *szProteinSeq,
                    int iStartResidue,
+				   int iEndResidue,
                    int iStartPos,
                    int iEndPos,
                    bool bFoundVariableMod,
@@ -132,6 +133,7 @@ private:
                              double *pdAAreverse);
    int CheckDuplicate(int iWhichQuery,
                       int iStartResidue,
+					  int iEndResidue,
                       int iStartPos,
                       int iEndPos,
                       bool bFoundVariableMod,

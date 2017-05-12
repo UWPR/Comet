@@ -1151,12 +1151,12 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                   if (!g_staticParams.variableModParameters.bRequireVarMod)
                   {
-                     XcorrScore(szProteinSeq, iStartPos, iStartPos, iEndPos, false,
+                     XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, false,
                            dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
 
                      if (g_staticParams.options.iDecoySearch)
                      {
-                        XcorrScore(szDecoyPeptide, iStartPos, 1, iLenPeptide, false,
+                        XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, false,
                               dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
                      }
                   }
@@ -1973,7 +1973,8 @@ char CometSearch::GetAA(int i,
 // Compares sequence to MSMS spectrum by matching ion intensities.
 void CometSearch::XcorrScore(char *szProteinSeq,
                              int iStartResidue,        // needed for decoy peptide; otherwise just duplicate of iStartPos
-                             int iStartPos,
+                             int iEndResidue,
+							 int iStartPos,
                              int iEndPos,
                              bool bFoundVariableMod,
                              double dCalcPepMass,
@@ -2082,7 +2083,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    {
       if (dXcorr > pQuery->fLowestDecoyCorrScore)
       {
-         if (!CheckDuplicate(iWhichQuery, iStartResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
+         if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
                   szProteinSeq, bDecoyPep, piVarModSites, dbe))
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq,
@@ -2094,7 +2095,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    {
       if (dXcorr > pQuery->fLowestCorrScore)
       {
-         if (!CheckDuplicate(iWhichQuery, iStartResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
+         if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
                   szProteinSeq, bDecoyPep, piVarModSites, dbe))
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq,
@@ -2402,6 +2403,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
 int CometSearch::CheckDuplicate(int iWhichQuery,
                                 int iStartResidue,
+								int iEndResidue,
                                 int iStartPos,
                                 int iEndPos,
                                 bool bFoundVariableMod,
@@ -2462,15 +2464,16 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
                pTmp.lWhichProtein = dbe->lProteinFilePosition;
                pTmp.iStartResidue = iStartResidue;
-               if (iStartPos == 0)
+
+               if (iStartResidue == 0)
                   pTmp.cPrevAA = '-';
                else
-                  pTmp.cPrevAA = szProteinSeq[iStartPos - 1];
+                  pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
 
-               if (iEndPos == (int)strlen(szProteinSeq) - 1)
+               if (iEndResidue == (int)(dbe->strSeq.length() -1))
                   pTmp.cNextAA = '-';
                else
-                  pTmp.cNextAA = szProteinSeq[iEndPos + 1];
+                  pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
 
                pQuery->_pDecoys[i].pWhichDecoyProtein.push_back(pTmp);
                pQuery->_pDecoys[i].iDuplicateCount++;
@@ -2548,12 +2551,12 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (iStartResidue == 0)
                   pTmp.cPrevAA = '-';
                else
-                  pTmp.cPrevAA = szProteinSeq[iStartResidue];
+                  pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
 
-               if (iEndPos == (int)strlen(szProteinSeq)-1)
+               if (iEndResidue == (int)(dbe->strSeq.length() -1))
                   pTmp.cNextAA = '-';
                else
-                  pTmp.cNextAA = szProteinSeq[iEndPos + 1];
+                  pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
 
                if (bDecoyPep)
                   pQuery->_pResults[i].pWhichDecoyProtein.push_back(pTmp);
@@ -4398,13 +4401,13 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
          }
 
-         XcorrScore(szProteinSeq, _varModInfo.iStartPos, _varModInfo.iStartPos, _varModInfo.iEndPos,
+         XcorrScore(szProteinSeq, _varModInfo.iStartPos, _varModInfo.iEndPos, _varModInfo.iStartPos, _varModInfo.iEndPos,
                true, dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
 
          if (g_staticParams.options.iDecoySearch)
          {
-            XcorrScore(szDecoyPeptide, _varModInfo.iStartPos, 1, iLenPeptide, true, dCalcPepMass,
-                  true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
+            XcorrScore(szDecoyPeptide, _varModInfo.iStartPos, _varModInfo.iEndPos, 1, iLenPeptide, true, 
+				  dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
          }
       }
 
