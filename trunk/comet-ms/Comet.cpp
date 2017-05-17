@@ -1000,6 +1000,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("xcorr_processing_offset", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "mango_search"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("mango_search", szParamStringVal, iIntParam);
+            }
             else
             {
                sprintf(szErrorMsg, " Warning - invalid parameter found: %s.  Parameter will be ignored.\n", szParamName);

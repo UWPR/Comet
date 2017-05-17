@@ -325,6 +325,11 @@ static bool compareByPeptideMass(Query const* a, Query const* b)
    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
 }
 
+static bool compareByMangoIndex(Query const* a, Query const* b)
+{
+      return (a->dMangoIndex < b->dMangoIndex);
+}
+
 static bool compareByScanNumber(Query const* a, Query const* b)
 {
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
@@ -674,6 +679,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
 
    GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
+
+   GetParamValue("mango_search", g_staticParams.options.bMango);
 
    GetParamValue("verbose_output", g_staticParams.options.bVerboseOutput);
 
@@ -1754,6 +1761,31 @@ bool CometSearchManager::DoSearch()
                logout(szOut);
             }
             g_cometStatus.SetStatusMsg(string(szStatusMsg));
+
+            if (g_staticParams.options.bMango)
+            {
+               int iCurrentScanNumber = 0;       // used to track multiple Mango precursors from same scan number
+               int iMangoIndex=0;
+               std::vector<Query*>::iterator it;
+
+               // sort back to original spectrum order in MS2 scan in order to associate pairs
+               // based on sequential order of precursors for each scan
+               std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByMangoIndex);
+
+               for (it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+               {
+                  if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
+                  {
+                     iCurrentScanNumber = (*it)->_spectrumInfoInternal.iScanNumber;
+                     iMangoIndex = 0;
+                  }
+                  else
+                     iMangoIndex++;
+
+                  sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c", (int)iMangoIndex/2, (iMangoIndex % 2)?'B':'A');
+               }
+            }
+
 
             // Sort g_pvQuery vector by dExpPepMass.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);

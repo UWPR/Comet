@@ -97,6 +97,7 @@ struct Options             // output parameters
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
+   int bMango;                   // 0=normal; 1=Mango x-link ms2 input
    int bVerboseOutput;
    int bNoEnzymeSelected;
    int bShowFragmentIons;
@@ -138,6 +139,7 @@ struct Options             // output parameters
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
+      bMango = a.bMango;
       bVerboseOutput = a.bVerboseOutput;
       bNoEnzymeSelected = a.bNoEnzymeSelected;
       bShowFragmentIons = a.bShowFragmentIons;
@@ -186,14 +188,15 @@ struct PepMassInfo
 
 struct SpectrumInfoInternal
 {
-   int iArraySize;         // m/z versus intensity array
-   int iHighestIon;
-   int iScanNumber;
-   int iChargeState;
-   int iMaxFragCharge;
+   int    iArraySize;         // m/z versus intensity array
+   int    iHighestIon;
+   int    iScanNumber;
+   int    iChargeState;
+   int    iMaxFragCharge;
    double dTotalIntensity;
    double dRTime;
-   char szNativeID[SIZE_NATIVEID];  // nativeID string from mzML
+   char   szMango[8];                 // Mango encoding
+   char   szNativeID[SIZE_NATIVEID];  // nativeID string from mzML
 };
 
 // The minimum and maximum mass range of all peptides to consider
@@ -231,10 +234,10 @@ struct OBOStruct           // stores info read from OBO file
 
 struct ProteinEntryStruct
 {
-   long lWhichProtein;     // file pointer to protein
-   int iStartResidue;      // start residue position in protein (1-based)
-   char cPrevAA;
-   char cNextAA;
+   long   lWhichProtein;     // file pointer to protein
+   int    iStartResidue;      // start residue position in protein (1-based)
+   char   cPrevAA;
+   char   cNextAA;
 
    bool operator<(const ProteinEntryStruct& a) const
    {
@@ -276,10 +279,10 @@ struct PeffPositionStruct  // collate PEFF mods by position in sequence
 
 struct PeffSearchStruct  // variant info passed to SearchForPeptides
 {
-   int iPosition;
-   bool bBeginCleavage;
-   bool bEndCleavage;
-   char cOrigResidue;
+   int    iPosition;
+   bool   bBeginCleavage;
+   bool   bEndCleavage;
+   char   cOrigResidue;
 };
 
 //-->MH
@@ -294,9 +297,9 @@ typedef struct sDBEntry
 
 struct DBInfo
 {
-   char szDatabase[SIZE_FILE];
-   char szFileName[SIZE_FILE];
-   int  iTotalNumProteins;
+   char   szDatabase[SIZE_FILE];
+   char   szFileName[SIZE_FILE];
+   int    iTotalNumProteins;
    unsigned long int uliTotAACount;
 
    DBInfo& operator=(DBInfo& a)
@@ -312,8 +315,8 @@ struct DBInfo
 
 struct PEFFInfo
 {
-   char szPeffOBO[SIZE_FILE];
-   int  iPEFF;                   // 0=no, 1=PEFF Unimod, 2=PEFF PSI-MOD
+   char   szPeffOBO[SIZE_FILE];
+   int    iPEFF;                   // 0=no, 1=PEFF Unimod, 2=PEFF PSI-MOD
 };
 
 struct StaticMod
@@ -345,8 +348,8 @@ struct PrecalcMasses
    double dNtermProton;          // dAddNterminusPeptide + PROTON_MASS
    double dCtermOH2Proton;       // dAddCterminusPeptide + dOH2fragment + PROTON_MASS
    double dOH2ProtonCtermNterm;  // dOH2parent + PROTON_MASS + dAddCterminusPeptide + dAddNterminusPeptide
-   int iMinus17;                 // BIN'd value of mass(NH3)
-   int iMinus18;                 // BIN'd value of mass(H2O)
+   int    iMinus17;              // BIN'd value of mass(NH3)
+   int    iMinus18;              // BIN'd value of mass(H2O)
 
    PrecalcMasses& operator=(PrecalcMasses& a)
    {
@@ -610,6 +613,7 @@ struct StaticParams
       options.bOutputOutFiles = 0;
 
       options.bSkipAlreadyDone = 1;
+      options.bMango = 0;
       options.bVerboseOutput = 0;
       options.iDecoySearch = 0;
       options.iNumThreads = 0;
@@ -709,8 +713,10 @@ struct Query
    float fLowestSpScore;
    float fLowestDecoySpScore;
 
-   float fLowestCorrScore;
-   float fLowestDecoyCorrScore;
+   float fLowestXcorrScore;
+   float fLowestDecoyXcorrScore;
+
+   double dMangoIndex;      // scan number decimal precursor value i.e. 2401.001 for scan 2401, first precursor/z pair
 
    unsigned long int  _uliNumMatchedPeptides;
    unsigned long int  _uliNumMatchedDecoyPeptides;
@@ -756,8 +762,10 @@ struct Query
       fLowestSpScore = 0.0;
       fLowestDecoySpScore = 0.0;
 
-      fLowestCorrScore = XCORR_CUTOFF;
-      fLowestDecoyCorrScore = XCORR_CUTOFF;
+      fLowestXcorrScore = XCORR_CUTOFF;
+      fLowestDecoyXcorrScore = XCORR_CUTOFF;
+
+      dMangoIndex = 0.0;
 
       _uliNumMatchedPeptides = 0;
       _uliNumMatchedDecoyPeptides = 0;

@@ -937,6 +937,8 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          {
             Query *pScoring = new Query();
 
+            pScoring->dMangoIndex = iScanNumber + 0.001 * z;  // for Mango; used to sort by this value to get original file order
+
             pScoring->_pepMassInfo.dExpPepMass = dMass;
             pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
             pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;

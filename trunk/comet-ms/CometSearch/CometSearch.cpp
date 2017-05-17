@@ -2081,7 +2081,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    if (bDecoyPep && g_staticParams.options.iDecoySearch==2)
    {
-      if (dXcorr > pQuery->fLowestDecoyCorrScore)
+      if (dXcorr > pQuery->fLowestDecoyXcorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
                   szProteinSeq, bDecoyPep, piVarModSites, dbe))
@@ -2093,7 +2093,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    }
    else
    {
-      if (dXcorr > pQuery->fLowestCorrScore)
+      if (dXcorr > pQuery->fLowestXcorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
                   szProteinSeq, bDecoyPep, piVarModSites, dbe))
@@ -2258,14 +2258,14 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       // Get new lowest score.
-      pQuery->fLowestDecoyCorrScore = pQuery->_pDecoys[0].fXcorr;
+      pQuery->fLowestDecoyXcorrScore = pQuery->_pDecoys[0].fXcorr;
       siLowestDecoySpScoreIndex=0;
 
       for (i=g_staticParams.options.iNumStored-1; i>0; i--)
       {
-         if (pQuery->_pDecoys[i].fXcorr < pQuery->fLowestDecoyCorrScore || pQuery->_pDecoys[i].iLenPeptide == 0)
+         if (pQuery->_pDecoys[i].fXcorr < pQuery->fLowestDecoyXcorrScore || pQuery->_pDecoys[i].iLenPeptide == 0)
          {
-            pQuery->fLowestDecoyCorrScore = pQuery->_pDecoys[i].fXcorr;
+            pQuery->fLowestDecoyXcorrScore = pQuery->_pDecoys[i].fXcorr;
             siLowestDecoySpScoreIndex = i;
          }
       }
@@ -2384,14 +2384,14 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       // Get new lowest score.
-      pQuery->fLowestCorrScore = pQuery->_pResults[0].fXcorr;
+      pQuery->fLowestXcorrScore = pQuery->_pResults[0].fXcorr;
       siLowestSpScoreIndex=0;
 
       for (i=g_staticParams.options.iNumStored-1; i>0; i--)
       {
-         if (pQuery->_pResults[i].fXcorr < pQuery->fLowestCorrScore || pQuery->_pResults[i].iLenPeptide == 0)
+         if (pQuery->_pResults[i].fXcorr < pQuery->fLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
          {
-            pQuery->fLowestCorrScore = pQuery->_pResults[i].fXcorr;
+            pQuery->fLowestXcorrScore = pQuery->_pResults[i].fXcorr;
             siLowestSpScoreIndex = i;
          }
       }

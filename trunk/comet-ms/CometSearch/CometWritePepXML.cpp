@@ -46,9 +46,7 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
-   {
       PrintResults(i, 0, fpout, fpdb);
-   }
 
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
@@ -148,7 +146,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, " </sample_enzyme>\n");
 
    fprintf(fpout, " <search_summary base_name=\"%s\"", resolvedPathBaseName);
-   fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s\"", comet_version);
+   fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s%s\"", (g_staticParams.options.bMango?"Mango ":""), comet_version);
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");
    fprintf(fpout, " search_id=\"1\">\n");
@@ -433,11 +431,23 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       pStr++;  // skip separation character
 
    // Print spectrum_query element.
-   fprintf(fpout, " <spectrum_query spectrum=\"%s.%05d.%05d.%d\"",
-         pStr,
-         pQuery->_spectrumInfoInternal.iScanNumber,
-         pQuery->_spectrumInfoInternal.iScanNumber,
-         pQuery->_spectrumInfoInternal.iChargeState);
+   if (g_staticParams.options.bMango)   // Mango specific
+   {
+      fprintf(fpout, " <spectrum_query spectrum=\"%s_%s.%05d.%05d.%d\"",
+            pStr,
+            pQuery->_spectrumInfoInternal.szMango,
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iChargeState);
+   }
+   else
+   {
+      fprintf(fpout, " <spectrum_query spectrum=\"%s.%05d.%05d.%d\"",
+            pStr,
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iScanNumber,
+            pQuery->_spectrumInfoInternal.iChargeState);
+   }
 
    if (pQuery->_spectrumInfoInternal.szNativeID[0]!='\0')
    {
