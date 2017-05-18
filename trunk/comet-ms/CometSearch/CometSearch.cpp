@@ -3969,6 +3969,18 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       }
    }
 
+   // Check to see if variable mod cannot occur on c-term residue
+   for (j=0; j<VMODS; j++)
+   {
+      if (g_staticParams.variableModParameters.varModList[j].iVarModTermDistance == -2
+            && !isEqual(g_staticParams.variableModParameters.varModList[j].dVarModMass, 0.0))
+      {
+         // not allowed for terminal residue to have this mod
+         if (piVarModSites[_varModInfo.iEndPos - _varModInfo.iStartPos] == _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
+            return false;
+      }
+   }
+
    // At this point, piVarModSites[] values should only range of 0 to 9.  Now possibly
    // add PEFF mods which are encoded as negative values.  Must copy current state of
    // piVarModSites as the loop below will permute through PEFF mods and we need to
