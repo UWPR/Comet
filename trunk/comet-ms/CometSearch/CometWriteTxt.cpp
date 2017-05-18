@@ -180,8 +180,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                   && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
          {
             bNterm = true;
-            // static peptide n-term mod already accounted for in dNtermProton
-            dNterm = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+
+            dNterm = g_staticParams.staticModifications.dAddNterminusPeptide;
 
             if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
                dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
@@ -198,8 +198,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          {
             bCterm = true;
 
-            // static peptide c-term mod already accounted for in dCtermOH2Proton
-            dCterm = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+            dCterm = g_staticParams.staticModifications.dAddCterminusPeptide;
 
             if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
                dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
@@ -207,8 +206,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
                dCterm += g_staticParams.staticModifications.dAddCterminusProtein;
          }
-         if (bCterm)
-            fprintf(fpout, "c[%0.1f]", dCterm);
 
          // generate modified_peptide string
          if (bNterm)
@@ -393,7 +390,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
 
          // modified peptide
-         fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
 
          bool bNterm = false;
          bool bCterm = false;
@@ -407,8 +403,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                   && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
          {
             bNterm = true;
-            // static peptide n-term mod already accounted for in dNtermProton
-            dNterm = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+
+            dNterm = g_staticParams.staticModifications.dAddNterminusPeptide;
 
             if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
                dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
@@ -425,8 +421,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          {
             bCterm = true;
 
-            // static peptide c-term mod already accounted for in dCtermOH2Proton
-            dCterm = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+            dCterm = g_staticParams.staticModifications.dAddCterminusPeptide;
 
             if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
                dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
@@ -434,10 +429,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
                dCterm += g_staticParams.staticModifications.dAddCterminusProtein;
          }
-         if (bCterm)
-            fprintf(fpout, "c[%0.1f]", dCterm);
 
          // generate modified_peptide string
+         fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
          if (bNterm)
             fprintf(fpout, "n[%0.4f]", dNterm);
          for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
@@ -570,7 +564,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0))
       {
          if (!bFirst)
-            fprintf(fpout, ", ");
+            fprintf(fpout, ",");
          else
             bFirst=false;
 
@@ -583,7 +577,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
       {
          if (!bFirst)
-            fprintf(fpout, ", ");
+            fprintf(fpout, ",");
          else
             bFirst=false;
 
@@ -598,7 +592,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          && pOutput[iWhichResult].szPrevNextAA[1] == '-')
    {
       if (!bFirst)
-         fprintf(fpout, ", ");
+         fprintf(fpout, ",");
       else
          bFirst=false;
 
@@ -609,7 +603,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
    {
       if (!bFirst)
-         fprintf(fpout, ", ");
+         fprintf(fpout, ",");
       else
          bFirst=false;
 
@@ -621,7 +615,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
    {
       if (!bFirst)
-         fprintf(fpout, ", ");
+         fprintf(fpout, ",");
       else
          bFirst=false;
 

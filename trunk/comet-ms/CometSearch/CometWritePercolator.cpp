@@ -266,55 +266,60 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    fprintf(fpout, "%0.6f\t", dMassDiff); // dM is normalized mass diff
    fprintf(fpout, "%0.6f\t", abs(dMassDiff)); // absdM
 
-   // construct modified peptide string
-   char szModPep[512];
-   szModPep[0]='\0';
+   bool bNterm = false;
+   bool bCterm = false;
+   double dNterm = 0.0;
+   double dCterm = 0.0;
 
-   // Write the peptide sequence in the same format as an sqt file.
-   sprintf(szModPep+strlen(szModPep), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
-
-   if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+   // See if n-term mod (static and/or variable) needs to be reported
+   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0
+         || !isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
+         || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
+            && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
    {
-      sprintf(szModPep+strlen(szModPep), "n%c",
-            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
+      bNterm = true;
+
+      dNterm = g_staticParams.staticModifications.dAddNterminusPeptide;
+      
+      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
+      
+      if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
+         dNterm += g_staticParams.staticModifications.dAddNterminusProtein;
    }
 
-   for (int i = 0; i<pOutput[iWhichResult].iLenPeptide; i++)
+   // See if c-term mod (static and/or variable) needs to be reported
+   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0
+         || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0)
+         || (pOutput[iWhichResult].szPrevNextAA[1]=='-'
+            && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
    {
-      sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
+      bCterm = true;
 
-      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
-      {
-         sprintf(szModPep+strlen(szModPep), "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
-/*
-         if (pOutput[iWhichResult].piVarModSites[i] > 0)
-         {
-            if (!isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
-            {
-               sprintf(szModPep+strlen(szModPep), "%c",
-                     (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
-            }
-         }
-         else
-         {
-            // PEFF:  no way to specify mod encoding w/o breaking some compatibility
-            sprintf(szModPep+strlen(szModPep), "[%0.1f]", pOutput[iWhichResult].pdVarModSites[i]);
-         }
-*/
-      }
+      dCterm = g_staticParams.staticModifications.dAddCterminusPeptide;
+
+      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
+         dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
+
+      if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
+         dCterm += g_staticParams.staticModifications.dAddCterminusProtein;
    }
 
-   if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 1)
+   fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
+   // generate modified_peptide string
+   if (bNterm)
+      fprintf(fpout, "n[%0.4f]", dNterm);
+   // Print peptide sequence.
+   for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
    {
-      sprintf(szModPep+strlen(szModPep), "c%c",
-            g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
+      fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
+
+      if (pOutput[iWhichResult].piVarModSites[i] != 0)
+         fprintf(fpout, "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
    }
-
-   sprintf(szModPep+strlen(szModPep), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
-
-   fprintf(fpout, "%s\t", szModPep);
+   if (bCterm)
+      fprintf(fpout, "c[%0.4f]", dCterm);
+   fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
    char szProteinName[100];
    bool bPrintDecoyPrefix = false;

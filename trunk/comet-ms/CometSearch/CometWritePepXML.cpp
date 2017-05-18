@@ -742,11 +742,12 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
       {
          bNterm = true;
-         // static peptide n-term mod already accounted for in dNtermProton
+
+         // pepXML format reports modified c-term mass (vs. mass diff)
          dNterm = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
          if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
-            dNterm += pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].iLenPeptide];
+            dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
 
          if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
             dNterm += g_staticParams.staticModifications.dAddNterminusProtein;
@@ -760,11 +761,10 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       {
          bCterm = true;
 
-         // static peptide c-term mod already accounted for in dCtermOH2Proton
          dCterm = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
          if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
-            dCterm += pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].iLenPeptide+1];
+            dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
 
          if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
             dCterm += g_staticParams.staticModifications.dAddCterminusProtein;
