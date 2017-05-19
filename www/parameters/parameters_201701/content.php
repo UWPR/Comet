@@ -19,13 +19,13 @@
          <ul>
          <li><a href="database_name.php">database_name</a></li>
          <li><a href="decoy_search.php">decoy_search</a></li>
-         <li><a href="peff_format.php">peff_format</a></li>
-         <li><a href="peff_obo.php">peff_obo</a></li>
+         <li><a href="peff_format.php">peff_format</a> <font color="red">*</font></li>
+         <li><a href="peff_obo.php">peff_obo</a> <font color="red">*</font></li>
          </ul>
 
          <h3>CPU threads</h3>
          <ul>
-         <li><a href="num_threads.php">num_threads</a> <font color="red">**</font></li>
+         <li><a href="num_threads.php">num_threads</a></li>
          </ul>
 
          <h3>Masses</h3>
@@ -35,7 +35,7 @@
          <li><a href="mass_type_parent.php">mass_type_parent</a></li>
          <li><a href="mass_type_fragment.php">mass_type_fragment</a></li>
          <li><a href="precursor_tolerance_type.php">precursor_tolerance_type</a></li>
-         <li><a href="isotope_error.php">isotope_error</a></li>
+         <li><a href="isotope_error.php">isotope_error</a> <font color="red">**</font></li>
          </ul>
 
          <h3>Search enzyme</h3>
@@ -107,15 +107,15 @@
                         
          <h3>Variable modifications</h3>
          <ul>
-         <li><a href="variable_mod01.php">variable_mod01</a></li>
-         <li><a href="variable_mod02.php">variable_mod02</a></li>
-         <li><a href="variable_mod03.php">variable_mod03</a></li>
-         <li><a href="variable_mod04.php">variable_mod04</a></li>
-         <li><a href="variable_mod05.php">variable_mod05</a></li>
-         <li><a href="variable_mod06.php">variable_mod06</a></li>
-         <li><a href="variable_mod07.php">variable_mod07</a></li>
-         <li><a href="variable_mod08.php">variable_mod08</a></li>
-         <li><a href="variable_mod09.php">variable_mod09</a></li>
+         <li><a href="variable_mod01.php">variable_mod01</a> <font color="red">**</font></li>
+         <li><a href="variable_mod02.php">variable_mod02</a> <font color="red">**</font></li>
+         <li><a href="variable_mod03.php">variable_mod03</a> <font color="red">**</font></li>
+         <li><a href="variable_mod04.php">variable_mod04</a> <font color="red">**</font></li>
+         <li><a href="variable_mod05.php">variable_mod05</a> <font color="red">**</font></li>
+         <li><a href="variable_mod06.php">variable_mod06</a> <font color="red">**</font></li>
+         <li><a href="variable_mod07.php">variable_mod07</a> <font color="red">**</font></li>
+         <li><a href="variable_mod08.php">variable_mod08</a> <font color="red">**</font></li>
+         <li><a href="variable_mod09.php">variable_mod09</a> <font color="red">**</font></li>
          <li><a href="max_variable_mods_in_peptide.php">max_variable_mods_in_peptide</a></li>
          <li><a href="require_variable_mod.php">require_variable_mod</a></li>
          </ul>
@@ -144,7 +144,7 @@
          <li><a href="add_O_ornithine.php">add_O_ornithine</a></li>
          <li><a href="add_H_histidine.php">add_H_histidine</a></li>
          <li><a href="add_F_phenylalanine.php">add_F_phenylalanine</a></li>
-         <li><a href="add_U_selenocysteine.php">add_U_selenocysteine</a> <font color="red">*</font></li>
+         <li><a href="add_U_selenocysteine.php">add_U_selenocysteine</a></li>
          <li><a href="add_R_arginine.php">add_R_arginine</a></li>
          <li><a href="add_Y_tyrosine.php">add_Y_tyrosine</a></li>
          <li><a href="add_W_tryptophan.php">add_W_tryptophan</a></li>

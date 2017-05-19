@@ -19,9 +19,9 @@
          </ul>
 
          <p>Example:
-         <br><tt>peff_obo = /usr/local/obo/PSI-MOD.obo</tt>
-         <br><tt>peff_obo = c:\local\obo\PSI-MOD.obo</tt>
          <br><tt>peff_obo = PSI-MOD.obo</tt>
+         <br><tt>peff_obo = c:\local\obo\PSI-MOD.obo</tt> (Windows)
+         <br><tt>peff_obo = /usr/local/obo/PSI-MOD.obo</tt> (Linux)
 
       </div>
    </div>

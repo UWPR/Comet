@@ -36,6 +36,7 @@
             <li>The fifth entry specifies the distance the modification is applied to from the
                 respective terminus:
                 <ul>
+                <li>-2 = apply anywhere except c-terminal residue of peptide
                 <li>-1 = no distance contraint
                 <li>0 = only applies to terminal residue
                 <li>1 = only applies to terminal residue and next residue
