@@ -31,7 +31,9 @@
                    character (e.g. * or #) to appear in the sequence for each variable modification.
                    This does not extend well to PEFF modifications so for these output formats, the
                    peptide string will replace these modification characters with the bracketed
-                   modification mass e.g. "[79.9663]".
+                   modification mass difference e.g. "[79.9663]". <b>This will break many downstream
+                   tools that expect modification characters</b> but unfortunately there's no other
+                   solution.
                <li>In pepXML modification output, 'static="<i>mass</i>"' and 'variable="<i>mass</i>'
                    are added to each "mod_aminoacid_mass" element.
                <li>Added a "verbose_output" hidden parameter.  This parameter controls whether or
@@ -44,12 +46,19 @@
                <li>Comet now tracks and reports all duplicate protein entries.  The residues I and L
                    treated as being the same/equivalent.  You can turn off I/L equivalence by adding
                    an undocumented/hidden parameter "equal_I_and_L = 0".
+               <li>Allow the specification that a variable modification cannot occur on the C-terminal residue.
+                   This is accomplished by setting the 5th parameter entry in the
+                   <a href="/parameters/parameters_201701/variable_mod01.php">variable_mods</a>" parameter
+                   to "-2".
                <li>Limit the number of permutations of modifications within a single peptide to 10,000.
                    This limit is separately applied to both variable modifications and PEFF modifications.
                <li>Change Crux compiled text output to also represent mass differences (e.g. M[15.9949])
                    instead of actual modified masses (e.g. M[147.0]) in the modified peptide string.
                    This brings it in line with the standard text output.  Additionally, both standard
                    and Crux versions will now report the mass differences to one decimal point.
+               <li>Modified the options for the
+                   "<a href="/parameters/parameters_201701/isotope_error.php">isotope_error</a>" parameter.
+                   Please see the parameters page for the changes.
                <li>Fixes recently discovered bug.  In releases 2015.01.0 through 2016.01.2, any peptide
                    with a variable modification had its precursor mass calculated with the mass types
                    assigned to the fragment ions.  So if one specified average masses for the precursor
@@ -57,12 +66,15 @@
                    peptide masses (calculated with monoisotopic mass values).  This bug would not be
                    relevant if both mass types were assigned to the same type i.e. monoisotopic masses
                    used for both precursor and fragment ions.  Thanks to D. Zhao for identifying the bug.
-               <li>Change how the "<a href="/parameters/parameters_201701/scan_range.php">scan_range</a>" parameter is applied. One can set either the start scan
+               <li>Change how the
+                   "<a href="/parameters/parameters_201701/scan_range.php">scan_range</a>"
+                   parameter is applied. One can set either the start scan
                    or end scan independently now.  For example, "scan_range = 5000 0" will search all scans starting
                    at 5000.  Similarly "scan_range = 0 250" will search all scans from the first scan
                    to scan 250.  Previously, a start scan of 0 would ignore this parameter and a scan range
                    setting of "5000 0" would not search as the end scan is less than the start scan.  This
-                   also fixes the issue with scan range command line options -F and -L as reported by
+                   also fixes the issue where no spectra would be searched if the specified first scan
+                   was not the appropriate scan type (i.e. MS/MS scan for "scan_level = 2").  Reported by
                    A. Sharma.
                <li>I'm considering phasing out support for writing ".out" files.  The parameter entry
                    "output_outfiles" is no longer documented online nor written in the example params

@@ -24,24 +24,48 @@
          header line which contains the Comet version, search start time/date, and search
          database.  The second line contains the column headers.
 
-<pre>CometVersion 2015.01 rev. 0     BASE_NAME_OF_FILE       02/23/2015, 12:15:44 PM /net/database/path/YEAST.fasta.20141030
-scan  num   charge   exp_neutral_mass  calc_neutral_mass e-value  xcorr delta_cn sp_score ions_matched   ions_total  plain_peptide  peptide  prev_aa  next_aa  protein  duplicate_protein_count
-716     1       3       1312.605337     1311.614541     5.24E+00        0.7965  0.0126  163.4   9       44      PVSVMSLASPTK    R.PVSVM[16.0]SLAS[80.0]PTK.F    R       F       DECOY_sp|Q06108|RGC1_YEAST      0
-716     2       3       1312.605337     1311.614541     5.66E+00        0.7864  0.0239  163.4   9       44      PVSVMSLASPTK    R.PVSVM[16.0]S[80.0]LASPTK.F    R       F       DECOY_sp|Q06108|RGC1_YEAST      0
-716     3       3       1312.605337     1309.610124     6.07E+00        0.7774  0.0402  62.0    6       40      HASSTIMLVQK     K.HASST[80.0]IM[16.0]LVQK.K     K       K       DECOY_sp|Q99321|DDP1_YEAST      0
-716     4       3       1312.605337     1312.613644     6.71E+00        0.7645  0.0583  79.1    7       40      HKTTTSSTKSR     K.HKTTTSSTKS[80.0]R.T   K       T       sp|Q08931|PRM3_YEAST    0
-716     5       3       1312.605337     1312.613644     7.49E+00        0.7501  0.0589  111.3   8       40      HKTTTSSTKSR     K.HKTT[80.0]TSSTKSR.T   K       T       sp|Q08931|PRM3_YEAST    0
-720     1       3       1313.602896     1310.606404     2.40E+00        1.0726  0.0053  149.1   8       40      DPLDEFMTSLK     K.DPLDEFM[16.0]TSLK.E   K       E       sp|P21372|PRP5_YEAST    0
-720     2       3       1313.602896     1314.609819     2.50E+00        1.0669  0.1870  180.8   8       40      VNARPSLSAIK     K.VNARPS[80.0]LS[80.0]AIK.Y     K       Y       sp|Q12078|SMF3_YEAST    0
-720     3       3       1313.602896     1310.567285     1.04E+01        0.8720  0.1919  127.7   7       36      LVDIGSYRTK      K.LVDIGSY[80.0]RT[80.0]K.H      K       H       DECOY_sp|P37254|PABS_YEAST      0
-720     4       3       1313.602896     1310.567285     1.08E+01        0.8667  0.2093  127.7   7       36      LVDIGSYRTK      K.LVDIGS[80.0]YRT[80.0]K.H      K       H       DECOY_sp|P37254|PABS_YEAST      0
-720     5       3       1313.602896     1312.591177     1.23E+01        0.8481  0.2135  52.8    5       44      EDSSGIEGKALK    K.EDS[80.0]SGIEGKALK.T  K       T       DECOY_sp|Q06263|VTA1_YEAST      0
-724     1       2       1246.454929     1245.426708     1.32E+00        0.6254  0.0316  38.4    3       16      ALTCVSSLR       R.ALT[80.0]CVS[80.0]S[80.0]LR.T R       T       DECOY_sp|P38752|YHA5_YEAST      0
-724     2       2       1246.454929     1244.472716     1.64E+00        0.6056  0.2458  59.2    4       18      ASDKLSSSYK      R.ASDKLS[80.0]S[80.0]SYK.I      R       I       DECOY_sp|Q07351|STP4_YEAST      0
-724     3       2       1246.454929     1243.463548     7.18E+00        0.4717  0.3011  33.4    3       18      DDALAHSSIR      K.DDALAHS[80.0]S[80.0]IR.F      K       F       sp|P25374|NFS1_YEAST    0
-724     4       2       1246.454929     1244.460451     1.05E+01        0.4370  0.3113  37.6    3       16      SKQSISSLR       K.S[80.0]KQSIS[80.0]S[80.0]LR.S K       S       DECOY_sp|P38308|CS111_YEAST     0
-724     5       2       1246.454929     1244.460451     1.13E+01        0.4307  0.3268  37.6    3       16      SKQSISSLR       K.SKQS[80.0]IS[80.0]S[80.0]LR.S K       S       DECOY_sp|P38308|CS111_YEAST     0
+<pre>CometVersion 2016.01 rev. 3     JE102306_102306_18Mix4_Tube1_01 05/18/2017, 08:57:57 AM /net/pr/vol1/ProteomicsResource/dbase/UniProt/20160308/HUMAN.fasta.20160308
+scan    num     charge  exp_neutral_mass        calc_neutral_mass       e-value xcorr   delta_cn        sp_score        ions_matched    ions_total      plain_peptide   peptide modifications   prev_aa next_aa protein duplicate_protein_count
+2       1       2       2313.605447     2313.113325     1.29E+00        0.7409  0.2166  33.8    4       42      MPTFSTPGAKGEGPDVHMTLPK  K.M[16.0]PTFSTPGAKGEGPDVHMTLPK.G        K       G       sp|Q09666|AHNK_HUMAN    0
+2       2       2       2313.605447     2313.140994     8.34E+00        0.5804  0.2412  16.8    3       40      IEDDVVVTQDSPLILSADCPK   R.IEDDVVVTQDSPLILSADCPK.E       R       E       sp|Q9NQH7|XPP3_HUMAN    2
+2       3       2       2313.605447     2314.222236     1.03E+01        0.5622  0.2572  20.1    3       40      GAGWLFGAKVTNEFVHINNLK   R.GAGWLFGAKVTNEFVHINNLK.L       R       L       sp|O00743|PPP6_HUMAN    2
+2       4       2       2313.605447     2313.236232     1.18E+01        0.5504  0.3103  18.3    3       44      RKGAILSEEELAAMSPTAAAVAK K.RKGAILSEEELAAMSPTAAAVAK.I     K       I       sp|P12270|TPR_HUMAN     1
+2       5       2       2313.605447     2314.242028     1.87E+01        0.5111  0.3478  13.9    3       42      TGGYLEGSILIPDAILGLEEVR  R.TGGYLEGSILIPDAILGLEEVR.L      R       L       tr|H3BSC9|H3BSC9_HUMAN  0
+3       1       2       2249.725447     2248.910007     6.30E+00        0.4870  0.1460  17.6    3       40      ESDASMDSDASMDSEPTPHLK   R.ESDASMDSDASMDSEPTPHLK.T       R       T       sp|Q99973|TEP1_HUMAN    3
+3       2       2       2249.725447     2249.128790     1.84E+01        0.4159  0.1492  15.7    3       40      ENGLFSHSSLSNTSQKSLSVK   K.ENGLFSHSSLSNTSQKSLSVK.E       K       E       sp|Q5THJ4|VP13D_HUMAN   2
+3       3       2       2249.725447     2250.212066     1.88E+01        0.4143  0.1932  16.6    3       36      QLLKFIPGLHRAVEEEESR     K.QLLKFIPGLHRAVEEEESR.F K       F       sp|O60759|CYTIP_HUMAN   1
+3       4       2       2249.725447     2249.020487     2.60E+01        0.3929  0.1959  12.2    3       36      KKNITYYDSMGGINNEACR     R.KKNITYYDSM[16.0]GGINNEACR.I   R       I       sp|Q9P0U3|SENP1_HUMAN   1
+3       5       2       2249.725447     2249.108528     2.65E+01        0.3916  0.2192  21.8    3       36      GTGEFDFLTMNQKMLKPHR     R.GTGEFDFLTMNQKMLKPHR.T R       T       sp|Q8NA69|CS045_HUMAN   0
+4       1       2       2493.985447     2494.188555     5.11E+00        0.6132  0.0784  29.0    4       36      YRGQYQKYALLWMESVQCR     K.YRGQYQKYALLWM[16.0]ESVQCR.L   K       L       sp|Q8WXD0|RXFP2_HUMAN   1
+4       2       2       2493.985447     2494.226120     9.12E+00        0.5651  0.2236  67.6    6       46      GSSLDILSSLNSPALFGDQDTVMK        R.GSSLDILSSLNSPALFGDQDTVMK.A    R       A       sp|P35712|SOX6_HUMAN    1
+4       3       2       2493.985447     2493.431895     2.66E+01        0.4761  0.2641  13.2    3       46      IKLGGQVLGTKSVPTFTVIPEGPR        K.IKLGGQVLGTKSVPTFTVIPEGPR.S    K       S       tr|J3KQ70|J3KQ70_HUMAN  6
+4       4       2       2493.985447     2493.228171     3.59E+01        0.4513  0.2745  26.5    4       44      ISGASEKDIVHSGLAYTMERSAR R.ISGASEKDIVHSGLAYTM[16.0]ERSAR.Q       R       Q       sp|P00367|DHE3_HUMAN    3
+4       5       2       2493.985447     2494.376840     3.88E+01        0.4449  0.3140  34.4    4       44      RLQGTGVTTYAVHPGVVRSELVR K.RLQGTGVTTYAVHPGVVRSELVR.H     K       H       sp|Q96NR8|RDH12_HUMAN   0
 </pre></p>
+
+         <p>Note that there is a different text output if Comet is compiled with the
+         Crux flag (i.e. add -DCRUX to the CXXFLAGS in the Makefiles under Linux or #define CRUX
+         in Common.h).  Here's the Crux-specific text output where the files have a
+         ".target.txt" or ".decoy.txt" extensions.
+
+<pre>scan    charge  spectrum precursor m/z  spectrum neutral mass   peptide mass    delta_cn        sp score        sp rank xcorr score     xcorr rank      b/y ions matched        b/y ions total  total matches/spectrum  sequence        modified sequence       modifications   protein id      flanking aa     e-value
+2       2       1157.810000     2313.605447     2313.113325     0.1250  33.7558 4       0.7409  1       4       42      80614   MPTFSTPGAKGEGPDVHMTLPK  K.M[147]PTFSTPGAKGEGPDVHMTLPK.G 1_V_15.994900   sp|Q09666|AHNK_HUMAN    KG      9.26E+00
+2       2       1157.810000     2313.605447     2313.975870     0.1309  21.1120 12      0.6483  2       3       34      80614   SSAMKKIESETTFSLIFR      R.S[167]S[167]AMKKIES[167]ETTFSLIFR.L   1_V_79.966331, 2_V_79.966331, 9_V_79.966331     sp|Q8WXI7|MUC16_HUMAN   RL      2.89E+01
+2       2       1157.810000     2313.605447     2314.096792     0.1309  25.9061 7       0.6440  3       3       34      80614   RLLPGSSDWEQQRHQLER      K.RLLPGSS[167]DWEQQRHQLER.R     7_V_79.966331   sp|Q6ZT98|TTLL7_HUMAN   KR      3.06E+01
+2       2       1157.810000     2313.605447     2314.096792     0.1950  25.9061 7       0.6440  4       3       34      80614   RLLPGSSDWEQQRHQLER      K.RLLPGS[167]SDWEQQRHQLER.R     6_V_79.966331   sp|Q6ZT98|TTLL7_HUMAN   KR      3.06E+01
+2       2       1157.810000     2313.605447     2312.896434     0.1972  22.5144 10      0.5965  5       3       36      80614   IDESSLTGESDHVRKSADK     K.IDES[167]S[167]LTGESDHVRKS[167]ADK.D  4_V_79.966331, 5_V_79.966331, 16_V_79.966331    sp|Q16720|AT2B3_HUMAN   KD      5.48E+01
+3       2       1125.870000     2249.725447     2249.032520     0.0051  29.4360 4       0.5709  1       4       40      80457   TLQEPVARPSGASSSQTPNDK   R.TLQEPVARPS[167]GASSSQTPNDK.E  10_V_79.966331  sp|Q8NBA8|DTWD2_HUMAN   RE      4.50E+01
+3       2       1125.870000     2249.725447     2248.771604     0.0051  35.4842 1       0.5680  2       4       30      80457   VVKETSYEMMMQCVSR        K.VVKETS[167]Y[243]EMM[147]M[147]QC[160]VS[167]R.M      6_V_79.966331, 7_V_79.966331, 10_V_15.994900, 11_V_15.994900, 13_S_57.021464, 15_V_79.966331    sp|Q9NZJ7|MTCH1_HUMAN   KM      4.68E+01
+3       2       1125.870000     2249.725447     2248.771604     0.0080  35.4842 1       0.5680  3       4       30      80457   VVKETSYEMMMQCVSR        K.VVKET[181]SY[243]EMM[147]M[147]QC[160]VS[167]R.M      5_V_79.966331, 7_V_79.966331, 10_V_15.994900, 11_V_15.994900, 13_S_57.021464, 15_V_79.966331    sp|Q9NZJ7|MTCH1_HUMAN   KM      4.68E+01
+3       2       1125.870000     2249.725447     2248.771604     0.0114  35.4842 1       0.5664  4       4       30      80457   VVKETSYEMMMQCVSR        K.VVKET[181]S[167]YEMM[147]M[147]QC[160]VS[167]R.M      5_V_79.966331, 6_V_79.966331, 10_V_15.994900, 11_V_15.994900, 13_S_57.021464, 15_V_79.966331    sp|Q9NZJ7|MTCH1_HUMAN   KM      4.79E+01
+3       2       1125.870000     2249.725447     2249.986133     0.0114  21.0194 12      0.5644  5       3       34      80457   GARASPRTLNLSQLSFHR      R.GARASPRT[181]LNLS[167]QLS[167]FHR.V   8_V_79.966331, 12_V_79.966331, 15_V_79.966331   sp|P29597|TYK2_HUMAN    RV      4.91E+01
+4       2       1248.000000     2493.985447     2494.319641     0.0776  35.6025 12      0.9110  1       4       40      100697  KFSRPLLPATTTKLSQEEQLK   K.KFSRPLLPATT[181]TKLSQEEQLK.S  11_V_79.966331  sp|Q9NYI0|PSD3_HUMAN    KS      4.80E+00
+4       2       1248.000000     2493.985447     2494.138504     0.0776  50.6368 8       0.8403  2       5       38      100697  LVSDVSATKIPHIWLMLSTK    R.LVSDVS[167]AT[181]KIPHIWLM[147]LST[181]K.M    6_V_79.966331, 8_V_79.966331, 16_V_15.994900, 19_V_79.966331    sp|Q9BVV2|CT195_HUMAN   RM      1.07E+01
+4       2       1248.000000     2493.985447     2494.138504     0.0776  50.6368 8       0.8403  3       5       38      100697  LVSDVSATKIPHIWLMLSTK    R.LVSDVS[167]AT[181]KIPHIWLM[147]LS[167]TK.M    6_V_79.966331, 8_V_79.966331, 16_V_15.994900, 18_V_79.966331    sp|Q9BVV2|CT195_HUMAN   RM      1.07E+01
+4       2       1248.000000     2493.985447     2494.138504     0.0776  50.6368 8       0.8403  4       5       38      100697  LVSDVSATKIPHIWLMLSTK    R.LVS[167]DVSAT[181]KIPHIWLM[147]LST[181]K.M    3_V_79.966331, 8_V_79.966331, 16_V_15.994900, 19_V_79.966331    sp|Q9BVV2|CT195_HUMAN   RM      1.07E+01
+4       2       1248.000000     2493.985447     2494.138504     0.0776  50.6368 8       0.8403  5       5       38      100697  LVSDVSATKIPHIWLMLSTK    R.LVS[167]DVSAT[181]KIPHIWLM[147]LS[167]TK.M    3_V_79.966331, 8_V_79.966331, 16_V_15.994900, 18_V_79.966331    sp|Q9BVV2|CT195_HUMAN   RM      1.07E+01
+</pre></p>
+
 
       </div>
    </div>
