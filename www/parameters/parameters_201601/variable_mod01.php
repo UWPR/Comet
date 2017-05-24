@@ -49,7 +49,8 @@
                 <li>2 = peptide N-terminus
                 <li>3 = peptide C-terminus
                 </ul>
-            <li>The seventh entry specifies whether peptides are must contain this modification.
+            <li>The seventh entry specifies whether peptides are must contain this modification.  If set to 1,
+                only peptides that contain this modification will be analyzed.
                 <ul>
                 <li>0 = not forced to be present
                 <li>1 = modification is required 
