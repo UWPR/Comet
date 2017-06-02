@@ -851,9 +851,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       iFirstResiduePosition = 1;
    }
 
-   if (dbe.vectorPeffMod.size() > 0)
-      g_staticParams.variableModParameters.bVarModSearch = true;
-
    if (dbe.vectorPeffMod.size() > 0) // sort vectorPeffMod by iPosition
       sort(dbe.vectorPeffMod.begin(), dbe.vectorPeffMod.end());
 
