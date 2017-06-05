@@ -822,7 +822,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          }
       }
 
-      // Report PEFF
+      // Report PEFF substitution
       if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
       {
          char szTmp[8];

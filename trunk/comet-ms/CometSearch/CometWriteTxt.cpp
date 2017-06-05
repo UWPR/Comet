@@ -93,11 +93,15 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "ions_total\t");
    fprintf(fpout, "plain_peptide\t");
    fprintf(fpout, "peptide\t");
-   fprintf(fpout, "modifications\t");
+   fprintf(fpout, "modified_peptide\t");
+   if (g_staticParams.peffInfo.iPEFF)
+      fprintf(fpout, "peff_modified_peptide\t");
    fprintf(fpout, "prev_aa\t");
    fprintf(fpout, "next_aa\t");
    fprintf(fpout, "protein\t");
-   fprintf(fpout, "duplicate_protein_count\n");
+   fprintf(fpout, "duplicate_protein_count\t");
+   fprintf(fpout, "modifications\n");
+
 #endif
 }
 
@@ -446,6 +450,27 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
+         // mod string with PEFF
+         if (g_staticParams.peffInfo.iPEFF)
+         {
+            fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
+            if (bNterm)
+               fprintf(fpout, "n[%0.4f]", dNterm);
+            for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+            {  
+               fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
+            
+               if (pOutput[iWhichResult].piVarModSites[i] < 0)
+                  fprintf(fpout, "[%s]", pOutput[iWhichResult].pszMod[i]);
+               else if (pOutput[iWhichResult].piVarModSites[i] > 0)
+                  fprintf(fpout, "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+            }
+            if (bCterm)
+               fprintf(fpout, "c[%0.4f]", dCterm);  // FIX: should be changed to c-term mass diff?
+
+            fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
+         }
+
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[0]);
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
@@ -503,6 +528,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          fprintf(fpout, "\t%d", pOutput[iWhichResult].iDuplicateCount);
 
+         // encoded modifications
+         PrintModifications(fpout, pOutput, iWhichResult);
+
          fprintf(fpout, "\n");
       }
    }
@@ -511,6 +539,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
 
 // <offset> [S|V] <value> [N|C|n|c|]
+// <offset> P <value>   for PEFF modificaiton
+// <offset> p <residue> for PEFF substitution
 void CometWriteTxt::PrintModifications(FILE *fpout,
                                        Results *pOutput,
                                        int iWhichResult)
@@ -581,9 +611,10 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          else
             bFirst=false;
 
-         fprintf(fpout, "%d_V_%0.6f",
-               i+1,
-               pOutput[iWhichResult].pdVarModSites[i] - g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]); // only report mass diff
+         if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] > 0)
+            fprintf(fpout, "%d_V_%0.6f", i+1, pOutput[iWhichResult].pdVarModSites[i]);  // variable mod
+         else
+            fprintf(fpout, "%d_P_%0.6f", i+1, pOutput[iWhichResult].pdVarModSites[i]);  // PEFF mod
       }
    }
 
@@ -628,6 +659,18 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          fprintf(fpout, "_c");
    }
+
+   // PEFF amino acid substitution
+   if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+   {
+      if (!bFirst)
+         fprintf(fpout, ",");
+      else
+         bFirst=false;
+
+      fprintf(fpout, "%d_p_%c", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+   }
+
 
    fprintf(fpout, "\t");
 
