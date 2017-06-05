@@ -92,14 +92,13 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "ions_matched\t");
    fprintf(fpout, "ions_total\t");
    fprintf(fpout, "plain_peptide\t");
-   fprintf(fpout, "peptide\t");
    fprintf(fpout, "modified_peptide\t");
    if (g_staticParams.peffInfo.iPEFF)
       fprintf(fpout, "peff_modified_peptide\t");
    fprintf(fpout, "prev_aa\t");
    fprintf(fpout, "next_aa\t");
    fprintf(fpout, "protein\t");
-   fprintf(fpout, "duplicate_protein_count\t");
+   fprintf(fpout, "protein_count\t");
    fprintf(fpout, "modifications\n");
 
 #endif
@@ -526,7 +525,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             }
          }
 
-         fprintf(fpout, "\t%d", pOutput[iWhichResult].iDuplicateCount);
+         fprintf(fpout, "\t%d\t", pOutput[iWhichResult].iDuplicateCount+1);
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
