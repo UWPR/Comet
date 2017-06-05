@@ -1971,7 +1971,7 @@ char CometSearch::GetAA(int i,
 void CometSearch::XcorrScore(char *szProteinSeq,
                              int iStartResidue,        // needed for decoy peptide; otherwise just duplicate of iStartPos
                              int iEndResidue,
-							 int iStartPos,
+                             int iStartPos,
                              int iEndPos,
                              bool bFoundVariableMod,
                              double dCalcPepMass,
@@ -2400,7 +2400,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
 int CometSearch::CheckDuplicate(int iWhichQuery,
                                 int iStartResidue,
-								int iEndResidue,
+                                int iEndResidue,
                                 int iStartPos,
                                 int iEndPos,
                                 bool bFoundVariableMod,
@@ -2449,10 +2449,47 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (!memcmp(piVarModSites, pQuery->_pDecoys[i].piVarModSites, sizeof(int)*(pQuery->_pDecoys[i].iLenPeptide + 2)))
-                  bIsDuplicate = 1;
+               if (g_staticParams.peffInfo.iPEFF)
+               {
+
+                  int iVal;
+                  for (int ii=0; ii<=pQuery->_pDecoys[i].iLenPeptide; ii++)
+                  {
+                     iVal = pQuery->_pDecoys[i].piVarModSites[ii];
+      
+                     if (iVal > 0 && piVarModSites[ii]< 0)
+                     {
+                        bIsDuplicate = 0;
+                        break;
+                     }
+                     else if (iVal > 0)
+                     {
+                        if (piVarModSites[ii] != pQuery->_pDecoys[i].piVarModSites[ii])
+                        {
+                           bIsDuplicate = 0;
+                           break;
+                        }
+                     }
+                     else if (iVal < 0)
+                     {
+                        // must loop through each modsite and see if OBO string is same
+                        if (strcmp(dbe->vectorPeffMod.at(-(piVarModSites[ii])-1).szMod, pQuery->_pDecoys[i].pszMod[ii]))
+                        {
+                           bIsDuplicate = 0;
+                           break;
+                        }
+                     }
+                     else
+                        pQuery->_pDecoys[i].pdVarModSites[i] = 0.0;
+                  }
+               }
                else
-                  bIsDuplicate = 0;
+               {
+                  if (!memcmp(piVarModSites, pQuery->_pDecoys[i].piVarModSites, sizeof(int)*(pQuery->_pDecoys[i].iLenPeptide + 2)))
+                     bIsDuplicate = 1;
+                  else
+                    bIsDuplicate = 0;
+               }
             }
 
             if (bIsDuplicate)
@@ -2532,10 +2569,47 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (!memcmp(piVarModSites, pQuery->_pResults[i].piVarModSites, sizeof(int)*(pQuery->_pResults[i].iLenPeptide + 2)))
-                  bIsDuplicate = 1;
+               if (g_staticParams.peffInfo.iPEFF)
+               {
+
+                  int iVal;
+                  for (int ii=0; ii<=pQuery->_pResults[i].iLenPeptide; ii++)
+                  {
+                     iVal = pQuery->_pResults[i].piVarModSites[ii];
+      
+                     if (iVal > 0 && piVarModSites[ii]< 0)
+                     {
+                        bIsDuplicate = 0;
+                        break;
+                     }
+                     else if (iVal > 0)
+                     {
+                        if (piVarModSites[ii] != pQuery->_pResults[i].piVarModSites[ii])
+                        {
+                           bIsDuplicate = 0;
+                           break;
+                        }
+                     }
+                     else if (iVal < 0)
+                     {
+                        // must loop through each modsite and see if OBO string is same
+                        if (strcmp(dbe->vectorPeffMod.at(-(piVarModSites[ii])-1).szMod, pQuery->_pResults[i].pszMod[ii]))
+                        {
+                           bIsDuplicate = 0;
+                           break;
+                        }
+                     }
+                     else
+                        pQuery->_pResults[i].pdVarModSites[i] = 0.0;
+                  }
+               }
                else
-                  bIsDuplicate = 0;
+               {
+                  if (!memcmp(piVarModSites, pQuery->_pResults[i].piVarModSites, sizeof(int)*(pQuery->_pResults[i].iLenPeptide + 2)))
+                     bIsDuplicate = 1;
+                  else
+                    bIsDuplicate = 0;
+               }
             }
 
             if (bIsDuplicate)
@@ -4416,7 +4490,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
          if (g_staticParams.options.iDecoySearch)
          {
             XcorrScore(szDecoyPeptide, _varModInfo.iStartPos, _varModInfo.iEndPos, 1, iLenPeptide, true, 
-				  dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
+                  dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
          }
       }
 
