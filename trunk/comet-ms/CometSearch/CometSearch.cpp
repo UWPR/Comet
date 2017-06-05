@@ -283,7 +283,6 @@ bool CometSearch::RunSearch(int minNumThreads,
                   }
 
                   // grab from \ModResPsi or \ModResUnimod and \VariantSimple to end of line
-
                   char *pStr;
                   if ((pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
                   {
@@ -446,7 +445,6 @@ bool CometSearch::RunSearch(int minNumThreads,
                g_staticParams.databaseInfo.uliTotAACount++;
             }
          }
-
 
          g_staticParams.databaseInfo.iTotalNumProteins++;
 
@@ -2280,7 +2278,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
       pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
-
       pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
 
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
@@ -2457,7 +2454,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   {
                      iVal = pQuery->_pDecoys[i].piVarModSites[ii];
       
-                     if (iVal > 0 && piVarModSites[ii]< 0)
+                     if (iVal > 0 && piVarModSites[ii] < 0)
                      {
                         bIsDuplicate = 0;
                         break;
@@ -2571,13 +2568,12 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             {
                if (g_staticParams.peffInfo.iPEFF)
                {
-
                   int iVal;
                   for (int ii=0; ii<=pQuery->_pResults[i].iLenPeptide; ii++)
                   {
                      iVal = pQuery->_pResults[i].piVarModSites[ii];
       
-                     if (iVal > 0 && piVarModSites[ii]< 0)
+                     if ((iVal > 0 && piVarModSites[ii] <= 0) || (iVal < 0 && piVarModSites[ii] >= 0))
                      {
                         bIsDuplicate = 0;
                         break;
@@ -4071,7 +4067,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       vector<int> len(n);
       int j;
    
-      for (i = 0 ; i < n ; i++)
+      for (i=0; i<n; i++)
       {
          // number of mods at each residue position
          len[i] = (int)(*vPeffArray).at(i).vectorWhichPeff.size();
