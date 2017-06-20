@@ -201,7 +201,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    char szBuf[8192];
    char szAttributeMod[16];                                // from ModRes
-   char szAttributeVariant[] = "\\Variant=";         // from VariantSimple  FIX
+   char szAttributeVariant[] = "\\VariantSimple=";         // from VariantSimple  FIX
 
    if (g_staticParams.peffInfo.iPEFF == 1)
       strcpy(szAttributeMod, "\\ModResPsi=");
@@ -279,7 +279,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         return false;
                      }
                      szPeffLine = pTmp;
-                     fgets(szPeffLine+strlen(szPeffLine)-1, iLenSzLine - strlen(szPeffLine), fptr);
+                     fgets(szPeffLine+strlen(szPeffLine), iLenSzLine - strlen(szPeffLine), fptr);
                   }
 
                   // grab from \ModResPsi or \ModResUnimod and \VariantSimple to end of line
@@ -320,6 +320,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                      char delims[] = ")";  // tokenize by tab
                      int iPos;
                      char szTmp[80];
+                     char *pStr;
                      string strModCode;
                      tok = strtok(szMods, delims);
                      while (tok != NULL)
@@ -329,12 +330,15 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                         if (isdigit(tok[1]))  //handle possible '?' in the position field
                         {
-                           sscanf(tok, "(%d|%79s", &iPos, szTmp);  //tok+1 to skip first '(' char
+                           while (pStr=strchr(tok, '|')) // turn | to space
+                              *pStr = ' ';
+
+                           sscanf(tok+1, "%d %79s", &iPos, szTmp);  //tok+1 to skip first '(' char
                            strModCode = szTmp;
                         }
 
                         // sanity check: make sure position is positive
-                        if (iPos < 0)
+                        if (iPos <= 0)
                         {
                            if (g_staticParams.options.bVerboseOutput)
                            {
@@ -345,7 +349,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                               logerr(szErrorMsg);
                            }
                         }
-                        else if (iPos > 0)
+                        else
                         {
                            struct PeffModStruct pData;
                            CometSearch pOBO;
@@ -402,10 +406,14 @@ bool CometSearch::RunSearch(int minNumThreads,
                      {
                         iPos = -1;
                         cVariant = 0;
-                        sscanf(tok+1, "%d|%*d|%c", &iPos, &cVariant);  //tok+1 to skip first '(' char
+
+                        while (pStr=strchr(tok, '|')) // turn | to space
+                           *pStr = ' ';
+
+                        sscanf(tok+1, "%d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char
 
                         // sanity check: make sure position is positive and residue is A-Z
-                        if (iPos<0 || iPos>=MAX_PEPTIDE_LEN || cVariant<65 || cVariant>90)
+                        if (iPos<0 || iPos>=MAX_PEPTIDE_LEN || ( (cVariant<65 || cVariant>90) && cVariant!=42))  // char can be AA or *
                         {
                            if (g_staticParams.options.bVerboseOutput)
                            {
