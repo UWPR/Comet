@@ -3605,7 +3605,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 {
    int iModIndex;
 
-   if (iPermuteCount>MAX_PERMUTATIONS)
+   if (iPermuteCount>g_staticParams.variableModParameters.iMaxPermutations)
       return false;
 
    switch (iWhichMod)
@@ -4186,7 +4186,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          if(j<0)
             break;
 
-         if (iPermuteCount>MAX_PERMUTATIONS) //FIX.  Is this reasonable?
+         if (iPermuteCount>g_staticParams.variableModParameters.iMaxPermutations) //FIX.  Is this reasonable?
             break;
       }    
    }

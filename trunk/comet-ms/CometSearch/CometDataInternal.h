@@ -369,6 +369,7 @@ struct VarModParams
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    int     bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
    int     iMaxVarModPerPeptide;
+   int     iMaxPermutations;
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
 
@@ -376,6 +377,7 @@ struct VarModParams
    {
       bVarModSearch = a.bVarModSearch;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
+      iMaxPermutations = a.iMaxPermutations;
 
       for (int i = 0; i < VMODS; i++)
       {
@@ -582,6 +584,7 @@ struct StaticParams
       variableModParameters.cModCode[8] = '+';
 
       variableModParameters.iMaxVarModPerPeptide = 5;
+      variableModParameters.iMaxPermutations = MAX_PERMUTATIONS;
 
       ionInformation.bUseNeutralLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
