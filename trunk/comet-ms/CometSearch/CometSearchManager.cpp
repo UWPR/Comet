@@ -688,7 +688,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("mango_search", g_staticParams.options.bMango);
 
-   GetParamValue("verbose_output", g_staticParams.options.bVerboseOutput);
+   GetParamValue("peff_verbose_output", g_staticParams.options.bVerboseOutput);
 
    GetParamValue("add_Cterm_peptide", g_staticParams.staticModifications.dAddCterminusPeptide);
 

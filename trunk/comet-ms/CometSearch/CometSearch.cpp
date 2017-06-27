@@ -201,7 +201,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    char szBuf[8192];
    char szAttributeMod[16];                                // from ModRes
-   char szAttributeVariant[] = "\\VariantSimple=";         // from VariantSimple  FIX
+   char szAttributeVariant[] = "\\VariantSimple=";         // from VariantSimple  FIX PEFF
 
    if (g_staticParams.peffInfo.iPEFF == 1)
       strcpy(szAttributeMod, "\\ModResPsi=");
@@ -333,7 +333,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            while ((pStr=strchr(tok, '|'))) // turn | to space
                               *pStr = ' ';
 
-                           sscanf(tok+1, "%d %79s", &iPos, szTmp);  //tok+1 to skip first '(' char
+                           sscanf(tok+1, "%d %79s", &iPos, szTmp);  //tok+1 to skip first '(' char     FIX PEFF
                            strModCode = szTmp;
                         }
 
@@ -410,7 +410,8 @@ bool CometSearch::RunSearch(int minNumThreads,
                         while ((pStr=strchr(tok, '|'))) // turn | to space
                            *pStr = ' ';
 
-                        sscanf(tok+1, "%d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char
+                        sscanf(tok+1, "%d %*d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char   FIX PEFF 
+//                      sscanf(tok+1, "%d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char 
 
                         // sanity check: make sure position is positive and residue is A-Z
                         if (iPos<0 || iPos>=MAX_PEPTIDE_LEN || ( (cVariant<65 || cVariant>90) && cVariant!=42))  // char can be AA or *

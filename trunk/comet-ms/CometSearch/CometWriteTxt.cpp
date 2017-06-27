@@ -445,7 +445,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                fprintf(fpout, "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
          }
          if (bCterm)
-            fprintf(fpout, "c[%0.4f]", dCterm);  // FIX: should be changed to c-term mass diff?
+            fprintf(fpout, "c[%0.4f]", dCterm);
 
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
@@ -465,7 +465,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                   fprintf(fpout, "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
             }
             if (bCterm)
-               fprintf(fpout, "c[%0.4f]", dCterm);  // FIX: should be changed to c-term mass diff?
+               fprintf(fpout, "c[%0.4f]", dCterm);
 
             fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
          }
