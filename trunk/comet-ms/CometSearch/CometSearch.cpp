@@ -201,7 +201,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    char szBuf[8192];
    char szAttributeMod[16];                                // from ModRes
-   char szAttributeVariant[] = "\\VariantSimple=";         // from VariantSimple  FIX PEFF
+   char szAttributeVariant[] = "\\VariantSimple=";
 
    if (g_staticParams.peffInfo.iPEFF == 1)
       strcpy(szAttributeMod, "\\ModResPsi=");
@@ -335,10 +335,32 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                            sscanf(tok+1, "%d %79s", &iPos, szTmp);  //tok+1 to skip first '(' char     FIX PEFF
                            strModCode = szTmp;
-                        }
 
-                        // sanity check: make sure position is positive
-                        if (iPos <= 0)
+                           // sanity check: make sure position is positive
+                           if (iPos <= 0 || iPos>=MAX_PEPTIDE_LEN)
+                           {
+                              if (g_staticParams.options.bVerboseOutput)
+                              {
+                                 char szErrorMsg[512];
+                                 sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModCode.c_str());
+                                 string strErrorMsg(szErrorMsg);
+                                 g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                                 logerr(szErrorMsg);
+                              }
+                           }
+                           else
+                           {
+                              struct PeffModStruct pData;
+                              CometSearch pOBO;
+
+                              pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
+
+                              // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
+                              if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
+                                 dbe.vectorPeffMod.push_back(pData);
+                           }
+                        }
+                        else
                         {
                            if (g_staticParams.options.bVerboseOutput)
                            {
@@ -348,17 +370,6 @@ bool CometSearch::RunSearch(int minNumThreads,
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(szErrorMsg);
                            }
-                        }
-                        else
-                        {
-                           struct PeffModStruct pData;
-                           CometSearch pOBO;
-
-                           pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
-
-                           // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
-                           if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
-                              dbe.vectorPeffMod.push_back(pData);
                         }
 
                         tok = strtok(NULL, delims);
@@ -410,8 +421,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         while ((pStr=strchr(tok, '|'))) // turn | to space
                            *pStr = ' ';
 
-                        sscanf(tok+1, "%d %*d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char   FIX PEFF 
-//                      sscanf(tok+1, "%d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char 
+                        sscanf(tok+1, "%d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char 
 
                         // sanity check: make sure position is positive and residue is A-Z
                         if (iPos<0 || iPos>=MAX_PEPTIDE_LEN || ( (cVariant<65 || cVariant>90) && cVariant!=42))  // char can be AA or *
@@ -4187,7 +4197,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          if(j<0)
             break;
 
-         if (iPermuteCount>g_staticParams.variableModParameters.iMaxPermutations) //FIX.  Is this reasonable?
+         if (iPermuteCount>g_staticParams.variableModParameters.iMaxPermutations)
             break;
       }    
    }
