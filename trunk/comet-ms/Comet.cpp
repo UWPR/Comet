@@ -493,6 +493,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("max_variable_mods_in_peptide", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "max_permutations"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("max_permutations", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "require_variable_mod"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1324,6 +1331,7 @@ variable_mod07 = 0.0 X 0 3 -1 0 0\n\
 variable_mod08 = 0.0 X 0 3 -1 0 0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0\n\
 max_variable_mods_in_peptide = 5\n\
+max_permutations = %d\n\
 require_variable_mod = 0\n\
 \n\
 #\n\
@@ -1375,6 +1383,7 @@ num_results = 100                      # number of search hits to store internal
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
+      MAX_PERMUTATIONS,
       MAX_FRAGMENT_CHARGE,
       MAX_PRECURSOR_CHARGE);
 

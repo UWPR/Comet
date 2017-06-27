@@ -330,7 +330,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                         if (isdigit(tok[1]))  //handle possible '?' in the position field
                         {
-                           while (pStr=strchr(tok, '|')) // turn | to space
+                           while ((pStr=strchr(tok, '|'))) // turn | to space
                               *pStr = ' ';
 
                            sscanf(tok+1, "%d %79s", &iPos, szTmp);  //tok+1 to skip first '(' char
@@ -407,7 +407,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         iPos = -1;
                         cVariant = 0;
 
-                        while (pStr=strchr(tok, '|')) // turn | to space
+                        while ((pStr=strchr(tok, '|'))) // turn | to space
                            *pStr = ' ';
 
                         sscanf(tok+1, "%d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char
@@ -2682,7 +2682,7 @@ void CometSearch::SubtractVarMods(int *piVarModCounts,
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
       {
-         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
             piVarModCounts[i]--;
          else
          {
@@ -2719,7 +2719,7 @@ void CometSearch::CountVarMods(int *piVarModCounts,
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
       {
-         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
             piVarModCounts[i]++;
          else
          {
@@ -2766,7 +2766,7 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
       {
          // if there's no distance contraint and an n- or c-term mod is specified
          // then return true because every peptide will have an n- or c-term
-         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
          {
             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
                   || strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
@@ -2967,7 +2967,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
 
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
       {
-         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
          {
             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n'))
                piVarModCountsNC[i] += 1;
@@ -3137,7 +3137,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
                                              // look at residues first
                                              if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
                                              {
-                                                if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+                                                if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
                                                    _varModInfo.varModStatList[i].iTotVarModCt++;
 
                                                 else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
@@ -3170,7 +3170,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
 // FIX:  without knowing iTmpEnd, how to consider 'n' mod with c-term peptide distance constraint??
 
                                                 if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
-                                                      && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+                                                      && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
                                                          || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)
                                                          || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
                                                             && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
@@ -3201,7 +3201,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
 
                                                 if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
                                                 {
-                                                   if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+                                                   if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
                                                    {
                                                       _varModInfo.varModStatList[i].iTotBinaryModCt++;
                                                       bMatched = true;
@@ -3246,7 +3246,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
                                                                == g_staticParams.variableModParameters.varModList[i].iBinaryMod)
                                                             && strchr(g_staticParams.variableModParameters.varModList[ii].szVarModChar, cResidue))
                                                       {
-                                                         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+                                                         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
                                                          {
                                                             _varModInfo.varModStatList[i].iTotBinaryModCt++;
                                                             bMatched=true;
@@ -3288,7 +3288,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
                                                 {
                                                    if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
                                                          && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
-                                                         && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+                                                         && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
                                                             || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)
                                                             || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
                                                                && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
@@ -3349,7 +3349,7 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
                                                 if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
                                                 {
                                                    // valid if no distance contraint or if defined constraint is on peptide c-terminus
-                                                   if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1
+                                                   if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0
                                                          || g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)
                                                    {
                                                       _varModInfo.varModStatList[i].iTotVarModCt++;
@@ -3890,10 +3890,10 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                return false;
 
             // store the modification number at modification position
-            piVarModSites[iLenPeptide] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
+            piVarModSites[iLenPeptide] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];   //FIX: check this logic
             dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;;
          }
-         piVarModCharIdx[j]++;
+         piVarModCharIdx[j] += 1;     //FIX: check this logic
       }
    }
 
@@ -3910,10 +3910,10 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                return false;
 
             // store the modification number at modification position
-            piVarModSites[iLenPeptide+1] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
+            piVarModSites[iLenPeptide+1] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];   //FIX: check this logic
             dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;
          }
-         piVarModCharIdx[j]++;
+         piVarModCharIdx[j] += 1;     //FIX: check this logic
       }
    }
 
@@ -3931,7 +3931,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                && (_varModInfo.varModStatList[j].iMatchVarModCt > 0)
                && strchr(g_staticParams.variableModParameters.varModList[j].szVarModChar, szProteinSeq[i]))
          {
-            if (g_staticParams.variableModParameters.varModList[j].iVarModTermDistance == -1)
+            if (g_staticParams.variableModParameters.varModList[j].iVarModTermDistance < 0)
             {
                if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
                {
@@ -3942,7 +3942,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                   piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
                   dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;
                }
-               piVarModCharIdx[j]++;
+               piVarModCharIdx[j] += 1;
             }
             else  // terminal distance constraint specified
             {
@@ -3959,7 +3959,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                         piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
                         dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;
                      }
-                     piVarModCharIdx[j]++;
+                     piVarModCharIdx[j] += 1;
                   }
                }
                else if (g_staticParams.variableModParameters.varModList[j].iWhichTerm == 1) // protein C
@@ -3975,7 +3975,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                         piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
                         dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;
                      }
-                     piVarModCharIdx[j]++;
+                     piVarModCharIdx[j] += 1;
                   }
                }
                else if (g_staticParams.variableModParameters.varModList[j].iWhichTerm == 2) // peptide N
@@ -3991,7 +3991,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                         piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
                         dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;
                      }
-                     piVarModCharIdx[j]++;
+                     piVarModCharIdx[j] += 1;
                   }
                }
                else if (g_staticParams.variableModParameters.varModList[j].iWhichTerm == 3) // peptide C
@@ -4007,7 +4007,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                         piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
                         dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;
                      }
-                     piVarModCharIdx[j]++;
+                     piVarModCharIdx[j] += 1;
                   }
                }
             }
@@ -4025,13 +4025,13 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          {
             bool bPresent = false;
 
-            // if mod is required, see if it is present in the peptide
-            for (i=_varModInfo.iStartPos; i<=_varModInfo.iEndPos; i++)
+            // if mod is required, see if it is present in the peptide; also consider n- and c-term positions
+            for (i=_varModInfo.iStartPos; i<=_varModInfo.iEndPos+2; i++)
             {
                int iPos = i - _varModInfo.iStartPos;
 
-//FIX:  add in logic to check distance constraints
-               if (piVarModSites[iPos] == _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
+               // variable mode code is j+1. Check if that required j mod is present in peptide
+               if (piVarModSites[iPos] == j+1)
                {
                   bPresent = true;
                   break;
@@ -4039,7 +4039,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             }
 
             if (!bPresent)
-               return false;
+               return true;
          }
       }
    }
@@ -4051,8 +4051,8 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             && !isEqual(g_staticParams.variableModParameters.varModList[j].dVarModMass, 0.0))
       {
          // not allowed for terminal residue to have this mod
-         if (piVarModSites[_varModInfo.iEndPos - _varModInfo.iStartPos] == _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
-            return false;
+         if (piVarModSites[_varModInfo.iEndPos - _varModInfo.iStartPos] == j+1)
+            return true;
       }
    }
 
