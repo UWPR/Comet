@@ -445,7 +445,12 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
 	    scanHeader->precursorCharge=p.charge;
 	    scanHeader->precursorIntensity=p.intensity;
       scanHeader->precursorMonoMZ=p.monoMZ;
-	    scanHeader->precursorMZ=p.isoMZ;
+
+      if (p.isoMZ == 0)
+         scanHeader->precursorMZ=p.MZ;
+      else
+         scanHeader->precursorMZ=p.isoMZ;
+
       scanHeader->selectionWindowLower=p.isoMZ-p.isoLowerMZ;
       scanHeader->selectionWindowUpper=p.isoMZ+p.isoUpperMZ;
       scanHeader->numPossibleCharges=(int)p.possibleCharges->size();
@@ -461,7 +466,12 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
         cout << "Warning: too many precursors. Must improve RAMP interface." << endl;
         break;
       }
-      memcpy(&scanHeader->additionalPrecursors[j+=8],&p.isoMZ,sizeof(double));
+
+      if (p.isoMZ == 0)
+         memcpy(&scanHeader->additionalPrecursors[j+=8],&p.pMZ,sizeof(double));
+      else
+         memcpy(&scanHeader->additionalPrecursors[j+=8],&p.isoMZ,sizeof(double));
+
       d = p.isoMZ - p.isoLowerMZ;
       memcpy(&scanHeader->additionalPrecursors[j+=8],&d, sizeof(double));
       d = p.isoMZ + p.isoUpperMZ;
