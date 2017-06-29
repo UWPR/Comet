@@ -447,7 +447,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
       scanHeader->precursorMonoMZ=p.monoMZ;
 
       if (p.isoMZ == 0)
-         scanHeader->precursorMZ=p.MZ;
+         scanHeader->precursorMZ=p.mz;
       else
          scanHeader->precursorMZ=p.isoMZ;
 
@@ -468,7 +468,7 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
       }
 
       if (p.isoMZ == 0)
-         memcpy(&scanHeader->additionalPrecursors[j+=8],&p.pMZ,sizeof(double));
+         memcpy(&scanHeader->additionalPrecursors[j+=8],&p.mz,sizeof(double));
       else
          memcpy(&scanHeader->additionalPrecursors[j+=8],&p.isoMZ,sizeof(double));
 
