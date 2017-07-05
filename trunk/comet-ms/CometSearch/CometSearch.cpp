@@ -2467,13 +2467,12 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             {
                if (g_staticParams.peffInfo.iPEFF)
                {
-
                   int iVal;
                   for (int ii=0; ii<=pQuery->_pDecoys[i].iLenPeptide; ii++)
                   {
                      iVal = pQuery->_pDecoys[i].piVarModSites[ii];
       
-                     if (iVal > 0 && piVarModSites[ii] < 0)
+                     if ( (iVal>0 && piVarModSites[ii]<=0) || (iVal<0 && piVarModSites[ii]>=0) )
                      {
                         bIsDuplicate = 0;
                         break;
