@@ -337,7 +337,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            strModCode = szTmp;
 
                            // sanity check: make sure position is positive
-                           if (iPos <= 0 || iPos>=MAX_PEPTIDE_LEN)
+                           if (iPos <= 0)
                            {
                               if (g_staticParams.options.bVerboseOutput)
                               {
@@ -955,7 +955,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                // At this point, only case need to check for is if variant is position before iStartPos
                // and causes enzyme digest.  Or if variant is position after iEndPos and causes enzyme
-               // digest. All other cases are OK as variant is in peptide.
+               // digest. All other cases are ok as variant is in peptide.
                if (iPeffRequiredVariantPosition == iStartPos - 1)
                {
                   if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet==1 && CheckEnzymeStartTermini(szProteinSeq, iStartPos))
@@ -970,7 +970,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                      bPass = true;
                   else
                      bPass = false;
-
                }
             }
 
