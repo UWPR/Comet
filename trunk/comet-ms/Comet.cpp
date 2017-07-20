@@ -493,13 +493,6 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("max_variable_mods_in_peptide", szParamStringVal, iIntParam);
             }
-            else if (!strcmp(szParamName, "max_permutations"))
-            {
-               sscanf(szParamVal, "%d", &iIntParam);
-               szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%d", iIntParam);
-               pSearchMgr->SetParam("max_permutations", szParamStringVal, iIntParam);
-            }
             else if (!strcmp(szParamName, "require_variable_mod"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1293,7 +1286,7 @@ void PrintParams(void)
 database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=concatenated search, 2=separate search\n\
 peff_format = 0                        # 0=no (normal fasta, default), 1=PEFF PSI-MOD, 2=PEFF Unimod\n\
-peff_obo =                             # path to UniMod XML for PEFF database\n\
+peff_obo =                             # path to PSI Mod or Unimod OBO file\n\
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\
 \n", MAX_THREADS);
@@ -1331,7 +1324,6 @@ variable_mod07 = 0.0 X 0 3 -1 0 0\n\
 variable_mod08 = 0.0 X 0 3 -1 0 0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0\n\
 max_variable_mods_in_peptide = 5\n\
-max_permutations = %d\n\
 require_variable_mod = 0\n\
 \n\
 #\n\

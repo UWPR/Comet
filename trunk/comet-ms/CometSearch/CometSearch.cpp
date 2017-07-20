@@ -1208,8 +1208,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             if (HasVariableMod(piVarModCounts, iStartPos, iEndPos, &dbe))
             {
                // VariableModSearch also includes looking at PEFF mods
-               if (!VariableModSearch(szProteinSeq, piVarModCounts, iStartPos, iEndPos, pbDuplFragment, &dbe))
-                  return false;
+               VariableModSearch(szProteinSeq, piVarModCounts, iStartPos, iEndPos, pbDuplFragment, &dbe);
             }
          
             SubtractVarMods(piVarModCounts, szProteinSeq[iStartPos], iStartPos);
@@ -2865,7 +2864,8 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
    return false;
 }
 
-bool CometSearch::VariableModSearch(char *szProteinSeq,
+
+void CometSearch::VariableModSearch(char *szProteinSeq,
                                     int piVarModCounts[],
                                     int iStartPos,
                                     int iEndPos,
@@ -3340,9 +3340,6 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
 
                                        if (bValid)
                                        {
-
-
-
                                           // at this point, consider variable c-term mod at iTmpEnd position
                                           for (i=0; i<VMODS; i++)
                                           {
@@ -3553,15 +3550,11 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
                                              _varModInfo.dCalcPepMass = dCalcPepMass;
 
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-                                             int iPermuteCount = 0;
-                                             if (!PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis,
-                                                      &vPeffArray, dbe, iPermuteCount))
-                                             {
-                                                return false;
-                                             }
+
+                                             PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe);
                                           }
                                        }
-
+   
                                        if (bValid)
                                        {
                                           for (i=0; i<VMODS; i++)
@@ -3586,8 +3579,6 @@ bool CometSearch::VariableModSearch(char *szProteinSeq,
 
    if ((int)dbe->vectorPeffMod.size() > 0)
       vPeffArray.clear();
-
-   return true;
 }
 
 
@@ -3602,20 +3593,16 @@ double CometSearch::TotalVarModMass(int *pVarModCounts)
    return dTotVarModMass;
 }
 
-
+// false=exit; true=continue
 bool CometSearch::PermuteMods(char *szProteinSeq,
                               int iWhichQuery,
                               int iWhichMod,
                               bool *pbDuplFragment,
                               bool *bDoPeffAnalysis,
                               vector <PeffPositionStruct>* vPeffArray,
-                              struct sDBEntry *dbe,
-                              int iPermuteCount)
+                              struct sDBEntry *dbe)
 {
    int iModIndex;
-
-   if (iPermuteCount>g_staticParams.variableModParameters.iMaxPermutations)
-      return false;
 
    switch (iWhichMod)
    {
@@ -3687,7 +3674,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, iPermuteCount+1))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
 
@@ -3706,7 +3693,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          }
          else
          {
-            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, iPermuteCount+1))
+            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
                return false;
          }
       }
@@ -3720,12 +3707,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, iPermuteCount+1))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
    }
 
-   return true;
+   return false;
 }
 
 
@@ -4092,12 +4079,10 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          a[i]=0;
       }
    
-      int iPermuteCount=0;
       double dMassAddition;
       bool bFirst=true;
       while(1)
       {
-         iPermuteCount++;
          if (!bFirst) // skip first iteration of this where there are no mods
          {
             dMassAddition = 0.0;
@@ -4193,9 +4178,6 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          }
    
          if(j<0)
-            break;
-
-         if (iPermuteCount>g_staticParams.variableModParameters.iMaxPermutations)
             break;
       }    
    }

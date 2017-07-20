@@ -153,7 +153,7 @@ private:
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
-   bool VariableModSearch(char *szProteinSeq,
+   void VariableModSearch(char *szProteinSeq,
                           int varModCounts[],
                           int iStartPos,
                           int iEndPos,
@@ -166,8 +166,7 @@ private:
                     bool *pbDuplFragments,
                     bool *bDoPeffAnalysis,
                     vector <PeffPositionStruct>* vPeffArray,
-                    struct sDBEntry *dbe,
-                    int iPermuteCount);
+                    struct sDBEntry *dbe);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool MergeVarMods(char *szProteinSeq,

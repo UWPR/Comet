@@ -615,12 +615,6 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.variableModParameters.iMaxVarModPerPeptide = iIntData;
    }
 
-   if (GetParamValue("max_permutations", iIntData))
-   {
-      if (iIntData > 0)
-         g_staticParams.variableModParameters.iMaxPermutations = iIntData;
-   }
-
    GetParamValue("require_variable_mod", g_staticParams.variableModParameters.bRequireVarMod);
 
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
