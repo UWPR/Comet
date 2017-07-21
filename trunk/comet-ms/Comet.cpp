@@ -1375,7 +1375,6 @@ num_results = 100                      # number of search hits to store internal
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
-      MAX_PERMUTATIONS,
       MAX_FRAGMENT_CHARGE,
       MAX_PRECURSOR_CHARGE);
 

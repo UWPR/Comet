@@ -2408,6 +2408,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
+
    }
 }
 
@@ -2594,7 +2595,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                         bIsDuplicate = 0;
                         break;
                      }
-                     else if (iVal > 0)
+                     else if (iVal >= 0)
                      {
                         if (piVarModSites[ii] != pQuery->_pResults[i].piVarModSites[ii])
                         {
@@ -2602,7 +2603,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                            break;
                         }
                      }
-                     else if (iVal < 0)
+                     else // iVal < 0
                      {
                         // must loop through each modsite and see if OBO string is same
                         if (strcmp(dbe->vectorPeffMod.at(-(piVarModSites[ii])-1).szMod, pQuery->_pResults[i].pszMod[ii]))
@@ -2611,8 +2612,6 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                            break;
                         }
                      }
-                     else
-                        pQuery->_pResults[i].pdVarModSites[i] = 0.0;
                   }
                }
                else
@@ -4158,8 +4157,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                   if (iWhichQuery != -1)
                   {
                      // FIX: add test here as piVarModSites must contain a negative PEFF value
-                     CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites,
-                           dTmpCalcPepMass, iLenPeptide, dbe);
+                     CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dTmpCalcPepMass, iLenPeptide, dbe);
                   }
                }
             }
