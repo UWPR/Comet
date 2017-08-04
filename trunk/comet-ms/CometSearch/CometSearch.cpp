@@ -368,9 +368,9 @@ bool CometSearch::RunSearch(int minNumThreads,
                               {
                                  struct PeffModStruct pData;
                                  CometSearch pOBO;
-   
+
                                  pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
-   
+
                                  // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
                                  if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
                                  {
@@ -470,7 +470,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            else
                            {
                               struct PeffVariantSimpleStruct pData;
-   
+
                               pData.iPosition = iPos - 1;   // represent PEFF variant position in 0 array index coordinates
                               pData.cResidue = cVariant;
                               dbe.vectorPeffVariantSimple.push_back(pData);
@@ -1284,48 +1284,48 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
                                     bool *pbDuplFragment)
 
 {
+   int iLen = strlen(szProteinSeq);
+
    // Walk through each variant
    for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
    {
-      // make sure there's an actual AA change
-      if (dbe.vectorPeffVariantSimple.at(i).cResidue == szProteinSeq[dbe.vectorPeffVariantSimple.at(i).iPosition])
+      if (dbe.vectorPeffVariantSimple.at(i).iPosition < iLen)
       {
-         if (g_staticParams.options.bVerboseOutput)
+         int iPosition = dbe.vectorPeffVariantSimple.at(i).iPosition;
+         char cResidue = dbe.vectorPeffVariantSimple.at(i).cResidue;
+
+         // make sure there's an actual AA change
+         if (cResidue == szProteinSeq[iPosition])
          {
-            // Log a warning message here that the variant change didn't change the residue?
-            char szErrorMsg[256];
-            sprintf(szErrorMsg, " Warning: protein %s has variant '%c' at position %d with the same original AA residue.\n", 
-                  dbe.strName.c_str(),
-                  dbe.vectorPeffVariantSimple.at(i).cResidue,
-                  dbe.vectorPeffVariantSimple.at(i).iPosition);
-            logout(szErrorMsg);
+            if (g_staticParams.options.bVerboseOutput)
+            {
+               // Log a warning message here that the variant change didn't change the residue?
+               char szErrorMsg[256];
+               sprintf(szErrorMsg, " Warning: protein %s has variant '%c' at position %d with the same original AA residue.\n", 
+                     dbe.strName.c_str(), cResidue, iPosition);
+               logout(szErrorMsg);
+            }
          }
-      }
-      else
-      {
-         int iVariantPos;
-         char cOrigResidue;
-
-         iVariantPos = dbe.vectorPeffVariantSimple.at(i).iPosition;
-         cOrigResidue  = szProteinSeq[iVariantPos];
-
-         // Place variant in protein
-         szProteinSeq[iVariantPos] = dbe.vectorPeffVariantSimple.at(i).cResidue;
-
-         _proteinInfo.iPeffOrigResiduePosition = iVariantPos;
-         _proteinInfo.cPeffOrigResidue = cOrigResidue;
-
-         SearchForPeptides(dbe, szProteinSeq, false, pbDuplFragment);
-
-         if (g_staticParams.options.bClipNtermMet
-               && dbe.vectorPeffVariantSimple.at(i).iPosition == 0
-               && dbe.vectorPeffVariantSimple.at(i).cResidue == 'M')
+         else
          {
-            SearchForPeptides(dbe, szProteinSeq, true, pbDuplFragment);
-         }
+            char cOrigResidue;
 
-         // Return protein sequence to back to normal
-         szProteinSeq[iVariantPos] = cOrigResidue;
+            cOrigResidue  = szProteinSeq[iPosition];
+
+            // Place variant in protein
+            szProteinSeq[iPosition] = cResidue;
+
+            _proteinInfo.iPeffOrigResiduePosition = iPosition;
+            _proteinInfo.cPeffOrigResidue = cOrigResidue;
+
+            SearchForPeptides(dbe, szProteinSeq, false, pbDuplFragment);
+
+            if (g_staticParams.options.bClipNtermMet && iPosition == 0 && cResidue == 'M')
+               SearchForPeptides(dbe, szProteinSeq, true, pbDuplFragment);
+
+            // Return protein sequence to back to normal
+            szProteinSeq[iPosition] = cOrigResidue;
+         }
       }
    }
 }
@@ -3584,7 +3584,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                              PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe);
                                           }
                                        }
-   
+
                                        if (bValid)
                                        {
                                           for (i=0; i<VMODS; i++)
@@ -4100,15 +4100,15 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       vector<int> a(n);
       vector<int> len(n);
       int j;
-   
+
       for (i=0; i<n; i++)
       {
          // number of mods at each residue position
          len[i] = (int)(*vPeffArray).at(i).vectorWhichPeff.size();
-   
+
          a[i]=0;
       }
-   
+
       double dMassAddition;
       bool bFirst=true;
       while(1)
@@ -4126,7 +4126,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                if (a[i]>0)
                   dMassAddition += (*vPeffArray).at(i).vectorMassDiffMono.at(a[i]-1);
             }
-   
+
             // if dCalcPepMass + dMassAddition is within mass tol, add these mods
 
             // Validate that total mass is within tolerance of some query entry
@@ -4193,11 +4193,11 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                }
             }
             //else move onto next permutation of PEFF mods
-   
+
          }
          else
             bFirst=false;
-   
+
          for (j=n-1; j>=0; j--)
          {
             if (++a[j]<=len[j])
@@ -4205,7 +4205,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             else
                a[j]=0;
          }
-   
+
          if (j<0)
             break;
       }    
