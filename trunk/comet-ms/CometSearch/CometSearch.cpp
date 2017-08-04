@@ -20,6 +20,7 @@
 #include "CometStatus.h"
 
 #include <stdio.h>
+#include <sstream>
 
 bool *CometSearch::_pbSearchMemoryPool;
 bool **CometSearch::_ppbDuplFragmentArr;
@@ -315,49 +316,67 @@ bool CometSearch::RunSearch(int minNumThreads,
                      strncpy(szMods, pStr, iLen);
                      szMods[iLen]=0;
 
-                     // parse ModRes entries
-                     char *tok;
-                     char delims[] = ")";  // tokenize by tab
                      int iPos;
-                     char szTmp[80];
-                     char *pStr;
                      string strModCode;
-                     tok = strtok(szMods, delims);
-                     while (tok != NULL)
+
+                     // now tokenize szMods on ')' character
+                     string strMods(szMods);
+                     istringstream ssMods(strMods);
+                     while (!ssMods.eof())
                      {
-                        szTmp[0]='\0';
+                        string strPos;
+                        getline(ssMods, strPos, ')');
+
                         iPos = 0;
 
-                        if (isdigit(tok[1]))  //handle possible '?' in the position field
+                        // at this point, strPos should look like (118,121|MOD:00000 
+                        if (strPos[0]=='(' && isdigit(strPos[1]))  //handle possible '?' in the position field  ; need to check that strPos looks like "(number"
                         {
-                           while ((pStr=strchr(tok, '|'))) // turn | to space
-                              *pStr = ' ';
-
-                           sscanf(tok+1, "%d %79s", &iPos, szTmp);  //tok+1 to skip first '(' char     FIX PEFF
-                           strModCode = szTmp;
-
-                           // sanity check: make sure position is positive
-                           if (iPos <= 0)
+                           // turn '|' to space
+                           std::string::iterator it;
+                           for (it = strPos.begin(); it != strPos.end(); ++it)
                            {
-                              if (g_staticParams.options.bVerboseOutput)
-                              {
-                                 char szErrorMsg[512];
-                                 sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModCode.c_str());
-                                 string strErrorMsg(szErrorMsg);
-                                 g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                                 logerr(szErrorMsg);
-                              }
+                              if (*it == '|' || *it == '(')
+                                 *it = ' ';
                            }
-                           else
+
+                           // split "118,121 MOD:00000" into "118,121" and "MOD:00000"
+                           std::stringstream converter(strPos);
+                           string strPos;
+                           string strModCode;
+                           converter >> strPos >> strModCode;
+
+                           // now tokenize on comma separated szPos
+                           istringstream ss(strPos);
+                           while (!ss.eof())
                            {
-                              struct PeffModStruct pData;
-                              CometSearch pOBO;
-
-                              pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
-
-                              // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
-                              if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
-                                 dbe.vectorPeffMod.push_back(pData);
+                              string x;               // here's a nice, empty string
+                              getline( ss, x, ',' );  // try to read the next field into it
+                              iPos = atoi(x.c_str());
+                              if (iPos <= 0)
+                              {
+                                 if (g_staticParams.options.bVerboseOutput)
+                                 {
+                                    char szErrorMsg[512];
+                                    sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModCode.c_str());
+                                    string strErrorMsg(szErrorMsg);
+                                    g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                                    logerr(szErrorMsg);
+                                 }
+                              }
+                              else
+                              {
+                                 struct PeffModStruct pData;
+                                 CometSearch pOBO;
+   
+                                 pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
+   
+                                 // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
+                                 if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
+                                 {
+                                    dbe.vectorPeffMod.push_back(pData);
+                                 }
+                              }
                            }
                         }
                         else
@@ -371,8 +390,6 @@ bool CometSearch::RunSearch(int minNumThreads,
                               logerr(szErrorMsg);
                            }
                         }
-
-                        tok = strtok(NULL, delims);
                      }
                   }
 
@@ -407,44 +424,58 @@ bool CometSearch::RunSearch(int minNumThreads,
                      szMods[iLen]=0;
 
                      // parse VariantSimple entries
-                     char *tok;
-                     char delims[] = ")";  // tokenize by tab
-                     int iPos;
+                     string strMods(szMods);
+                     istringstream ssMods(strMods);
+                     string strVariant;
                      char cVariant;
-                     tok = strtok(szMods, delims);
+                     int iPos;
 
-                     while (tok != NULL && strlen(tok)>=3)
+                     while (!ssMods.eof())
                      {
-                        iPos = -1;
-                        cVariant = 0;
+                        string strPos;
+                        getline(ssMods, strPos, ')');
 
-                        while ((pStr=strchr(tok, '|'))) // turn | to space
-                           *pStr = ' ';
-
-                        sscanf(tok+1, "%d %c", &iPos, &cVariant);  //tok+1 to skip first '(' char 
-
-                        // sanity check: make sure position is positive and residue is A-Z
-                        if (iPos<0 || iPos>=MAX_PEPTIDE_LEN || ( (cVariant<65 || cVariant>90) && cVariant!=42))  // char can be AA or *
+                        if (strPos[0]=='(' && isdigit(strPos[1]))  //handle possible '?' in the position field  ; need to check that strPos looks like "(number"
                         {
-                           if (g_staticParams.options.bVerboseOutput)
+                           // turn '|' to space
+                           std::string::iterator it;
+                           for (it = strPos.begin(); it != strPos.end(); ++it)
                            {
-                              char szErrorMsg[512];
-                              sprintf(szErrorMsg,  "Warning:  %s, VariantSimple=(%d|%c) ignored\n", dbe.strName.c_str(), iPos, cVariant);
-                              string strErrorMsg(szErrorMsg);
-                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                              logerr(szErrorMsg);
+                              if (*it == '|' || *it == '(')
+                                 *it = ' ';
+                           }
+
+                           // split "8 C" into "8" and "C"
+                           iPos = -1;
+                           std::stringstream converter(strPos);
+                           converter >> iPos >> strVariant;
+
+                           // make sure variant residue is just a single residue in VariantSimple entry
+                           cVariant = '\0';
+                           if (strVariant.length() == 1)
+                              cVariant = strVariant[0];
+
+                           // sanity check: make sure position is positive and residue is A-Z or *
+                           if (iPos<0 || ((cVariant<65 || cVariant>90) && cVariant!=42))  // char can be AA or *
+                           {
+                              if (g_staticParams.options.bVerboseOutput)
+                              {
+                                 char szErrorMsg[512];
+                                 sprintf(szErrorMsg,  "Warning:  %s, VariantSimple=(%d|%c) ignored\n", dbe.strName.c_str(), iPos, cVariant);
+                                 string strErrorMsg(szErrorMsg);
+                                 g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                                 logerr(szErrorMsg);
+                              }
+                           }
+                           else
+                           {
+                              struct PeffVariantSimpleStruct pData;
+   
+                              pData.iPosition = iPos - 1;   // represent PEFF variant position in 0 array index coordinates
+                              pData.cResidue = cVariant;
+                              dbe.vectorPeffVariantSimple.push_back(pData);
                            }
                         }
-                        else
-                        {
-                           struct PeffVariantSimpleStruct pData;
-
-                           pData.iPosition = iPos - 1;   // represent PEFF variant position in 0 array index coordinates
-                           pData.cResidue = cVariant;
-                           dbe.vectorPeffVariantSimple.push_back(pData);
-                        }
-
-                        tok = strtok(NULL, delims);
                      }
                   }
 
@@ -1405,7 +1436,7 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
 
       for (j=n-1; j>=0; j--)
       {
-         if(++a[j]<=len[j])
+         if (++a[j]<=len[j])
             break;
          else
             a[j]=0;
@@ -4169,13 +4200,13 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    
          for (j=n-1; j>=0; j--)
          {
-            if(++a[j]<=len[j])
+            if (++a[j]<=len[j])
                break;
             else
                a[j]=0;
          }
    
-         if(j<0)
+         if (j<0)
             break;
       }    
    }

@@ -827,14 +827,20 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       {
          char szTmp[8];
          if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1)
-            strcpy(szTmp, " prevAA=\"1\"");
+         {
+            fprintf(fpout, "     <aminoacid_substitution peptide_prev_aa=\"%c\" orig_aa=\"%c\"/>\n",
+                  pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].cPeffOrigResidue);
+         }
          else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
-            strcpy(szTmp, " nextAA=\"1\"");
+         {
+            fprintf(fpout, "     <aminoacid_substitution peptide_next_aa=\"%c\" orig_aa=\"%c\"/>\n",
+                  pOutput[iWhichResult].szPrevNextAA[1], pOutput[iWhichResult].cPeffOrigResidue);
+         }
          else
-            szTmp[0]='\0';
-
-         fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"%s/>\n",
-               pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue, szTmp);
+         {
+            fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"/>\n",
+                  pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+         }
       }
 
 
