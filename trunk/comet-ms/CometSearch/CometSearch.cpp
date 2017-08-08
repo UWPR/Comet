@@ -147,7 +147,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    lCurrPos = ftell(fptr);
    iTmpCh = getc(fptr);
 
-   if (g_staticParams.peffInfo.iPEFF)
+   if (g_staticParams.peffInfo.iPeffSearch)
    {
       iLenSzLine = 2048;
       szPeffLine = (char*)malloc( iLenSzLine* sizeof(char));
@@ -202,12 +202,20 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    char szBuf[8192];
    char szAttributeMod[16];                                // from ModRes
-   char szAttributeVariant[] = "\\VariantSimple=";
+   char szAttributeVariant[16];
 
-   if (g_staticParams.peffInfo.iPEFF == 1)
+   if (g_staticParams.peffInfo.iPeffSearch == 1 || g_staticParams.peffInfo.iPeffSearch == 3)
       strcpy(szAttributeMod, "\\ModResPsi=");
-   else if (g_staticParams.peffInfo.iPEFF == 2)
+   else if (g_staticParams.peffInfo.iPeffSearch == 2 || g_staticParams.peffInfo.iPeffSearch == 4)
       strcpy(szAttributeMod, "\\ModResUnimod=");
+   else
+      strcpy(szAttributeMod, "");
+
+   if (g_staticParams.peffInfo.iPeffSearch == 1 || g_staticParams.peffInfo.iPeffSearch == 2
+         || g_staticParams.peffInfo.iPeffSearch == 5)
+      strcpy(szAttributeVariant, "\\VariantSimple=");
+   else
+      strcpy(szAttributeVariant, "");
 
    int  iLenAttributeVariant = strlen(szAttributeVariant);
    int  iLenAttributeMod = strlen(szAttributeMod);
@@ -256,7 +264,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                dbe.strName += iTmpCh;
 
             // load and parse PEFF header
-            if (g_staticParams.peffInfo.iPEFF)
+            if (g_staticParams.peffInfo.iPeffSearch)
             {
                if (iTmpCh == '\\')
                {
@@ -285,7 +293,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                   // grab from \ModResPsi or \ModResUnimod and \VariantSimple to end of line
                   char *pStr;
-                  if ((pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
+                  if (iLenAttributeMod>0 && (pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
                   {
                      char *pStr2;
                      pStr += iLenAttributeMod;
@@ -317,34 +325,34 @@ bool CometSearch::RunSearch(int minNumThreads,
                      szMods[iLen]=0;
 
                      int iPos;
-                     string strModCode;
+                     string strModID;
 
-                     // now tokenize szMods on ')' character
-                     string strMods(szMods);
-                     istringstream ssMods(strMods);
+                     // now tokenize/split szMods on ')' character
+                     string strModRes(szMods);
+                     istringstream ssMods(strModRes);
                      while (!ssMods.eof())
                      {
-                        string strPos;
-                        getline(ssMods, strPos, ')');
+                        string strModEntry;
+                        getline(ssMods, strModEntry, ')');
 
                         iPos = 0;
 
-                        // at this point, strPos should look like (118,121|MOD:00000 
-                        if (strPos[0]=='(' && isdigit(strPos[1]))  //handle possible '?' in the position field  ; need to check that strPos looks like "(number"
+                        // at this point, strModEntry should look like (118,121|MOD:00000 
+                        if (strModEntry[0]=='(' && isdigit(strModEntry[1]))  //handle possible '?' in the position field ; need to check that strModEntry looks like "(number"
                         {
                            // turn '|' to space
                            std::string::iterator it;
-                           for (it = strPos.begin(); it != strPos.end(); ++it)
+                           for (it = strModEntry.begin(); it != strModEntry.end(); ++it)
                            {
                               if (*it == '|' || *it == '(')
                                  *it = ' ';
                            }
 
                            // split "118,121 MOD:00000" into "118,121" and "MOD:00000"
-                           std::stringstream converter(strPos);
+                           std::stringstream converter(strModEntry);
                            string strPos;
-                           string strModCode;
-                           converter >> strPos >> strModCode;
+                           string strModID;
+                           converter >> strPos >> strModID;
 
                            // now tokenize on comma separated szPos
                            istringstream ss(strPos);
@@ -358,7 +366,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                                  if (g_staticParams.options.bVerboseOutput)
                                  {
                                     char szErrorMsg[512];
-                                    sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModCode.c_str());
+                                    sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str());
                                     string strErrorMsg(szErrorMsg);
                                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                                     logerr(szErrorMsg);
@@ -371,8 +379,8 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                                  pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
 
-                                 // find strModCode in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
-                                 if (pOBO.MapOBO(strModCode, &vectorPeffOBO, &pData))
+                                 // find strModID in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
+                                 if (pOBO.MapOBO(strModID, &vectorPeffOBO, &pData))
                                  {
                                     dbe.vectorPeffMod.push_back(pData);
                                  }
@@ -384,7 +392,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            if (g_staticParams.options.bVerboseOutput)
                            {
                               char szErrorMsg[512];
-                              sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModCode.c_str());
+                              sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str());
                               string strErrorMsg(szErrorMsg);
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(szErrorMsg);
@@ -393,7 +401,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                      }
                   }
 
-                  if ((pStr = strstr(szPeffLine, szAttributeVariant)) != NULL)
+                  if (iLenAttributeVariant>0 && (pStr = strstr(szPeffLine, szAttributeVariant)) != NULL)
                   {
                      char *pStr2;
                      pStr += iLenAttributeVariant;
@@ -425,21 +433,22 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                      // parse VariantSimple entries
                      string strMods(szMods);
-                     istringstream ssMods(strMods);
+                     istringstream ssVariants(strMods);
                      string strVariant;
                      char cVariant;
                      int iPos;
 
-                     while (!ssMods.eof())
+                     while (!ssVariants.eof())
                      {
-                        string strPos;
-                        getline(ssMods, strPos, ')');
+                        string strVariantEntry;
+                        getline(ssVariants, strVariantEntry, ')');
 
-                        if (strPos[0]=='(' && isdigit(strPos[1]))  //handle possible '?' in the position field  ; need to check that strPos looks like "(number"
+                        //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
+                        if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
                         {
                            // turn '|' to space
                            std::string::iterator it;
-                           for (it = strPos.begin(); it != strPos.end(); ++it)
+                           for (it = strVariantEntry.begin(); it != strVariantEntry.end(); ++it)
                            {
                               if (*it == '|' || *it == '(')
                                  *it = ' ';
@@ -447,7 +456,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                            // split "8 C" into "8" and "C"
                            iPos = -1;
-                           std::stringstream converter(strPos);
+                           std::stringstream converter(strVariantEntry);
                            converter >> iPos >> strVariant;
 
                            // make sure variant residue is just a single residue in VariantSimple entry
@@ -550,7 +559,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       fflush(stdout);
    }
 
-   if (g_staticParams.peffInfo.iPEFF)
+   if (g_staticParams.peffInfo.iPeffSearch)
    {
       free(szMods);
       free(szPeffLine);
@@ -2495,7 +2504,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (g_staticParams.peffInfo.iPEFF)
+               if (g_staticParams.peffInfo.iPeffSearch)
                {
                   int iVal;
                   for (int ii=0; ii<=pQuery->_pDecoys[i].iLenPeptide; ii++)
@@ -2614,7 +2623,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             // If bIsDuplicate & variable mod search, check modification sites to see if peptide already stored.
             if (bIsDuplicate && g_staticParams.variableModParameters.bVarModSearch && bFoundVariableMod)
             {
-               if (g_staticParams.peffInfo.iPEFF)
+               if (g_staticParams.peffInfo.iPeffSearch)
                {
                   int iVal;
                   for (int ii=0; ii<=pQuery->_pResults[i].iLenPeptide; ii++)

@@ -93,7 +93,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "ions_total\t");
    fprintf(fpout, "plain_peptide\t");
    fprintf(fpout, "modified_peptide\t");
-   if (g_staticParams.peffInfo.iPEFF)
+   if (g_staticParams.peffInfo.iPeffSearch)
       fprintf(fpout, "peff_modified_peptide\t");
    fprintf(fpout, "prev_aa\t");
    fprintf(fpout, "next_aa\t");
@@ -450,7 +450,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
          // mod string with PEFF
-         if (g_staticParams.peffInfo.iPEFF)
+         if (g_staticParams.peffInfo.iPeffSearch)
          {
             fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
             if (bNterm)

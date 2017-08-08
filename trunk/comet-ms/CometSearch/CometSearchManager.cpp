@@ -552,7 +552,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("peff_obo", strData))
       strcpy(g_staticParams.peffInfo.szPeffOBO, strData.c_str());
 
-   GetParamValue("peff_format", g_staticParams.peffInfo.iPEFF);
+   GetParamValue("peff_format", g_staticParams.peffInfo.iPeffSearch);
 
    GetParamValue("mass_offsets", g_staticParams.vectorMassOffsets);
 
@@ -1001,7 +1001,7 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.variableModParameters.bBinaryModSearch = false;
    g_staticParams.variableModParameters.bRequireVarMod = false;
    
-   if (g_staticParams.peffInfo.iPEFF)
+   if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
 
    for (int i=0; i<VMODS; i++)
