@@ -13,10 +13,7 @@
          <ul>
          <li>Specify a static modification to the residue C.
          <li>The specified mass is added to the unmodified mass of C.
-         <li>The default value is "0.0" if this parameter is missing.
-         If Comet was compiled for
-         <a href="noble.gs.washington.edu/proj/crux/">Crux</a> compatibility,
-         the default value is "57.021464".
+         <li>The default value is "57.021464" if this parameter is missing.
          Note that in the example parameter file produced by Comet using the "-p"
          command line option, this parameter entry has a value of 57.021464 for
          cysteine carbamidomethylation.

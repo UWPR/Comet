@@ -12,15 +12,17 @@
 
          <ul>
          <li>Specifies whether the database is a PEFF file or normal FASTA.
-         <li>Valid values are 0 and 1.
-         <li>To search a normal FASTA file, set the value to 0.
-         <li>To search a PEFF file, set the value to 1.
+         <li>Valid values are 0, 1 and 2.
+         <li>Set this parameter to 0 to search a normal FASTA file, ignoring any PEFF headers
+         <li>Set this parameter to 1 to search PEFF amino acid variants and PSI-MOD modifications.
+         <li>Set this parameter to 2 to search PEFF amino acid variants and Unimod modifications.
          <li>The default value is "0" if this parameter is missing.
          </ul>
 
          <p>Example:
          <br><tt>peff_format = 0</tt>
          <br><tt>peff_format = 1</tt>
+         <br><tt>peff_format = 2</tt>
 
       </div>
    </div>

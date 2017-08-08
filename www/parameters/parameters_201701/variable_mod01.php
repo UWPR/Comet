@@ -59,10 +59,10 @@
 
             </ul>
          <li>Modification codes for variable_mod01 through variable_mod09 (for some outputs):  *, #, @, ^, ~, $, %, !, +
-         <li>The default value is "15.9959 M 0 3 -1 0 0" if this parameter is missing for
-             variable_mod01.
-         <li>The default value is "0.0 X 0 3 -1 0 0" if this parameter is missing for
-             variable_mod02 through variable_mod09.
+         <li>The default value is "0.0 X 0 3 -1 0 0" if this parameter is missing *except* if Comet is
+             compiled with the <a href="noble.gs.washington.edu/proj/crux/">Crux</a> flag on.
+             For Crux compilation, the default value for variable_mod01 is "15.9949 M 0 3 -1 0 0" if this
+             parameter is missing.
          </ul>
 
          <p>Example:

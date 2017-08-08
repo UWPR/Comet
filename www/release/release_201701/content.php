@@ -64,15 +64,15 @@
                    This is accomplished by setting the 5th parameter entry in the
                    <a href="/parameters/parameters_201701/variable_mod01.php">variable_mods</a>" parameter
                    to "-2".
-               <li>Limit the number of permutations of modifications within a single peptide to 10,000.
-                   This limit is separately applied to both variable modifications and PEFF modifications.
                <li>Change Crux compiled text output to also represent mass differences (e.g. M[15.9949])
                    instead of actual modified masses (e.g. M[147.0]) in the modified peptide string.
                    This brings it in line with the standard text output.  Additionally, both standard
                    and Crux versions will now report the mass differences to one decimal point.
                <li>Modified the options for the
-                   "<a href="/parameters/parameters_201701/isotope_error.php">isotope_error</a>" parameter.
-                   Please see the parameters page for the changes.
+                   "<a href="/parameters/parameters_201701/isotope_error.php">isotope_error</a>" parameter
+                   to add more options.  Please see the parameters page for the changes. <b>**Note that if
+                   you have been using "isotope_error = 1" in previous releases, the closest setting
+                   is now "isotope_error = 3"</b>.
                <li>Bug fix:  In releases 2015.01.0 through 2016.01.2, any peptide
                    with a variable modification had its precursor mass calculated with the mass types
                    assigned to the fragment ions.  So if one specified average masses for the precursor
