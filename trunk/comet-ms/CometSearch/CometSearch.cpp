@@ -3589,8 +3589,8 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                              _varModInfo.dCalcPepMass = dCalcPepMass;
 
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-
                                              PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe);
+
                                           }
                                        }
 
@@ -3631,6 +3631,7 @@ double CometSearch::TotalVarModMass(int *pVarModCounts)
 
    return dTotVarModMass;
 }
+
 
 // false=exit; true=continue
 bool CometSearch::PermuteMods(char *szProteinSeq,
@@ -3751,7 +3752,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
       }
    }
 
-   return false;
+   return true;
 }
 
 

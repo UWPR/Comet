@@ -561,25 +561,18 @@ struct StaticParams
          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 3;
          variableModParameters.varModList[i].iBinaryMod = 0;
          variableModParameters.varModList[i].bRequireThisMod = 0;
+         variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
+         variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
+         variableModParameters.varModList[i].dVarModMass = 0.0;
+         strcpy(variableModParameters.varModList[i].szVarModChar, "X");
+
 #ifdef CRUX
          if (i==0)
          {
             variableModParameters.varModList[i].dVarModMass = 15.9949;
             strcpy(variableModParameters.varModList[i].szVarModChar, "M");
          }
-         else
-         {
-            variableModParameters.varModList[i].dVarModMass = 0.0;
-            strcpy(variableModParameters.varModList[i].szVarModChar, "X");
-         }
-#else
-         variableModParameters.varModList[i].dVarModMass = 0.0;
-         strcpy(variableModParameters.varModList[i].szVarModChar, "X");
 #endif
-
-         variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
-         variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
-
       }
 
       variableModParameters.cModCode[0] = '*';
