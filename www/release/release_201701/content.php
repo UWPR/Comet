@@ -5,9 +5,9 @@
             <ul>
                <b>release 2017.01 rev. 0 (2017.01.0), release date 2017/??/??</b>
                <li>Major update to code to add PSI's enhanced fasta format (PEFF) support.
-                   Comet currently supports the ModRes and VariantSimple keywords only.  This
-                   enables one to search annotated variable modifications and amino acid substitutions.
-                   The ModRes modifications can be analyzed in conjunction with the
+                   Comet currently supports the ModResPsi and VariantSimple keywords only.  This
+                   enables one to search annotated variable modifications and amino acid substitutions
+                   (aka variants).  The ModResPsi modifications can be analyzed in conjunction with the
                    standard Comet variable modifications.
                    <br>&bullet; Note that the controls for Comet's standard
                    variable modifications (such as binary mods, force modification, etc.) only apply
@@ -36,6 +36,10 @@
                    solution.
                <li>In pepXML modification output, 'static="<i>mass</i>"' and 'variable="<i>mass</i>'
                    are added to each "mod_aminoacid_mass" element.
+               <li>Add a "<a href="/parameters/parameters_201701/peff_format.php">peff_format</a>"
+                   to control whether or not a PEFF search is performed.  For a PEFF search, his parameter
+                   additionally controls whether to search both PEFF modifications and variants, modifications
+                   alone, or variants alone.
                <li>Add a "<a href="/parameters/parameters_201701/peff_verbose_output.php">peff_verbose_output</a>"
                    hidden parameter.  This parameter controls whether or not (default) extra
                    diagnostic information is reported.  If set to "1", it currently warns if

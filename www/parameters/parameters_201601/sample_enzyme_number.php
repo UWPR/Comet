@@ -11,6 +11,9 @@
          <h2>Comet parameter: sample_enzyme_number</h2>
 
          <ul>
+         <li>Note that this parameter has no effect on the search and search
+         results at all. It is used solely to annotate additional information
+         in the output.
          <li>This parameter is relevant only for pepXML output i.e. when
          <a href="output_pepxmlfile.php">output_pepxmlfile</a> is set to 1.
          <li>The pepXML format encodes the enzyme that is applied to the sample
