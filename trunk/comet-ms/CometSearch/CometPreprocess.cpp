@@ -1229,6 +1229,25 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                         pPre->dHighestIntensity = pdTmpRawData[iBinIon];
                   }
                }
+               if (g_staticParams.options.iRemovePrecursor == 3)  //phosphate neutral loss
+               {
+                  double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 79.9799
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+                  double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 97.9952
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+
+                  if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
+                        || fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
+                  {
+                     if (dIntensity > pdTmpRawData[iBinIon])
+                        pdTmpRawData[iBinIon] = dIntensity;
+
+                     if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
+                        pPre->dHighestIntensity = pdTmpRawData[iBinIon];
+                  }
+               }
                else // iRemovePrecursor==0
                {
                   if (dIntensity > pdTmpRawData[iBinIon])

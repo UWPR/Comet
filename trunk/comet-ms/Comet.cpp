@@ -1393,7 +1393,7 @@ minimum_peaks = 10                     # required minimum number of peaks in spe
 
 fprintf(fp,
 "minimum_intensity = 0                  # minimum intensity value to read in\n\
-remove_precursor_peak = 0              # 0=no, 1=yes, 2=all charge reduced precursor peaks (for ETD)\n\
+remove_precursor_peak = 0              # 0=no, 1=yes, 2=all charge reduced precursor peaks (for ETD), 3=phosphate neutral loss peaks\n\
 remove_precursor_tolerance = 1.5       # +- Da tolerance for precursor removal\n\
 clear_mz_range = 0.0 0.0               # for iTRAQ/TMT type data; will clear out all peaks in the specified m/z range\n\
 \n\

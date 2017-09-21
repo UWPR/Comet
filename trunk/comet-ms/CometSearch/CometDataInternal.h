@@ -86,7 +86,7 @@ struct Options             // output parameters
    int iMaxPrecursorCharge;
    int iMSLevel;                 // mzXML only
    int iMinPeaks;
-   int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors
+   int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors, 3=phosphate neutral loss
    int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search
    int iNumThreads;              // 0=poll CPU else set # threads to spawn
    int bOutputSqtStream;
