@@ -1229,7 +1229,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                         pPre->dHighestIntensity = pdTmpRawData[iBinIon];
                   }
                }
-               if (g_staticParams.options.iRemovePrecursor == 3)  //phosphate neutral loss
+               else if (g_staticParams.options.iRemovePrecursor == 3)  //phosphate neutral loss
                {
                   double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 79.9799
                         + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
@@ -1240,6 +1240,21 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
                         || fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
+                  {
+                     if (dIntensity > pdTmpRawData[iBinIon])
+                        pdTmpRawData[iBinIon] = dIntensity;
+
+                     if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
+                        pPre->dHighestIntensity = pdTmpRawData[iBinIon];
+                  }
+               }
+               else if (g_staticParams.options.iRemovePrecursor == 4)  //undocumented ammonia neutral loass
+               {
+                  double dMZ = (pScoring->_pepMassInfo.dExpPepMass - 17.026549
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+
+                  if (fabs(dIon - dMZ) > g_staticParams.options.dRemovePrecursorTol)
                   {
                      if (dIntensity > pdTmpRawData[iBinIon])
                         pdTmpRawData[iBinIon] = dIntensity;
