@@ -1239,7 +1239,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                      / (double)(pScoring->_spectrumInfoInternal.iChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
-                        || fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
+                        && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
                   {
                      if (dIntensity > pdTmpRawData[iBinIon])
                         pdTmpRawData[iBinIon] = dIntensity;
