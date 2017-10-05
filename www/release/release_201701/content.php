@@ -3,7 +3,7 @@
       <div class="post hr">
          <h1>Comet release 2017.01</h1>
             <ul>
-               <b>release 2017.01 rev. 0 (2017.01.0), release date 2017/??/??</b>
+               <b>release 2017.01 rev. 0 (2017.01.0), release date 2017/10/02</b>
                <li>Major update to code to add <a href="http://www.psidev.info/node/363" target="new">PSI's enhanced fasta format (PEFF)</a> support.
                    Comet currently supports the ModResPsi and VariantSimple keywords only.  This
                    enables one to search annotated variable modifications and amino acid substitutions
