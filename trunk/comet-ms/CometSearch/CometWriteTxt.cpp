@@ -270,7 +270,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
          {
             it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-            fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+            fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
             ++it;
 
             for (; it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)

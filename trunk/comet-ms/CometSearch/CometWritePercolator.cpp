@@ -346,8 +346,35 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
    
    if (bPrintDecoyPrefix)
-      fprintf(fpout, "%s", g_staticParams.szDecoyPrefix);
-   fprintf(fpout, "%s\n", szProteinName);
+      fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+   else
+      fprintf(fpout, "%s", szProteinName);
+         ++it;
+
+   for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
+   {
+      CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+      if (bPrintDecoyPrefix)
+         fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+      else
+         fprintf(fpout, ",%s", szProteinName);
+   }
+
+   // If combined search printed out target proteins above, now print out decoy proteins if necessary
+   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+   {
+      it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+      ++it;
+
+      for (; it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+      {
+         CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+         fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+      }
+   }
+
+   fprintf(fpout,"\n");
 }
 
 

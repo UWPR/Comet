@@ -4121,7 +4121,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
       double dMassAddition;
       bool bFirst=true;
-      while(1)
+      while (1)
       {
          if (!bFirst) // skip first iteration of this where there are no mods
          {
