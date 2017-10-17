@@ -264,8 +264,18 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
       if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
       {
          sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
-         pOutput[i].pWhichDecoyProtein.erase(unique(pOutput[i].pWhichDecoyProtein.begin(),
-                  pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp), pOutput[i].pWhichDecoyProtein.end() );
+
+         long lPrev=0;
+         for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichDecoyProtein.begin(); it != pOutput[i].pWhichDecoyProtein.end(); )
+         {
+            if ( (*it).lWhichProtein == lPrev)
+               it = pOutput[i].pWhichDecoyProtein.erase(it);
+            else
+            {
+               lPrev = (*it).lWhichProtein;
+               ++it;
+            }
+         }
       }
 
       if (pOutput[i].iLenPeptide>0) // take care of possible edge case

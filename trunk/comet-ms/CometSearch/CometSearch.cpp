@@ -2244,8 +2244,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
 
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iDuplicateCount = 0;
-
       if (iStartPos == 0)
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = '-';
       else
@@ -2350,8 +2348,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
-
-      pQuery->_pResults[siLowestSpScoreIndex].iDuplicateCount = 0;
 
       if (iStartPos == 0)
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
@@ -2564,7 +2560,6 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
 
                pQuery->_pDecoys[i].pWhichDecoyProtein.push_back(pTmp);
-               pQuery->_pDecoys[i].iDuplicateCount++;
 
                // if duplicate, check to see if need to replace stored protein info 
                // with protein that's earlier in database
@@ -2684,7 +2679,6 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   pQuery->_pResults[i].pWhichDecoyProtein.push_back(pTmp);
                else
                   pQuery->_pResults[i].pWhichProtein.push_back(pTmp);
-               pQuery->_pResults[i].iDuplicateCount++;
 
                // FIX:  figure out what to do with lProteinFilePosition and bDecoyPep
  

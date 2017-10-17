@@ -363,11 +363,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    // If combined search printed out target proteins above, now print out decoy proteins if necessary
    if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
    {
-      it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-      fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
-      ++it;
-
-      for (; it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+      for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
       {
          CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
          fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);

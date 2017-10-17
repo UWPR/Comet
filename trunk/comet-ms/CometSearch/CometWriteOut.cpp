@@ -220,14 +220,10 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    for (i=0; i<iNumPrintLines; i++)
    {
-      // Use iLenMaxDuplicates here to store largest iDuplicateCount;
-      // This is then used after for loop.
- 
-      if (pOutput[i].iDuplicateCount > iLenMaxDuplicates)
-         iLenMaxDuplicates = pOutput[i].iDuplicateCount;
-
       char szProteinName[100];
       vector<ProteinEntryStruct>::iterator it;
+
+      int iNumTotProteins = 0;
 
       // Now get max protein length of first protein; take target entry if available
       // otherwise take decoy entry
@@ -239,6 +235,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
             CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
             bPrintDecoyPrefix = true;
          }
+         iNumTotProteins = pOutput[i].pWhichDecoyProtein.size();
       }
       else
       {
@@ -246,14 +243,22 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          {
             it = pOutput[i].pWhichProtein.begin();
             CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            iNumTotProteins = pOutput[i].pWhichProtein.size() + pOutput[i].pWhichDecoyProtein.size();
          }
          else //if ( (int)pOutput[i].pWhichDecoyProtein.size() > 0)
          {
             it = pOutput[i].pWhichDecoyProtein.begin();
             CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            iNumTotProteins = pOutput[i].pWhichDecoyProtein.size();
             bPrintDecoyPrefix = true;
+
          }
       }
+
+      // Use iLenMaxDuplicates here to store largest duplicate count;
+      // This is then used after for loop.
+      if (iNumTotProteins > iLenMaxDuplicates)
+         iLenMaxDuplicates = iNumTotProteins;
 
       if ((int)strlen(szProteinName) > iMaxWidthReference)
          iMaxWidthReference = (int)strlen(szProteinName);
@@ -423,18 +428,25 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    vector<ProteinEntryStruct>::iterator it;
    bool bPrintDecoyPrefix = false;
 
+   int iNumTotProteins = 0;
+
    if (bDecoySearch)
    {
       it = pOutput[iWhichResult].pWhichDecoyProtein.begin();
+      iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
       bPrintDecoyPrefix = true;
    }
    else
    {
       if ((int)pOutput[iWhichResult].pWhichProtein.size() > 0)
+      {
          it = pOutput[iWhichResult].pWhichProtein.begin();
+         iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
+      }
       else
       {
          it = pOutput[iWhichResult].pWhichDecoyProtein.begin();
+         iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
          bPrintDecoyPrefix = true;
       }
    }
@@ -469,13 +481,13 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    }
 
    // Print out the number of duplicate proteins.
-   if (pOutput[iWhichResult].iDuplicateCount)
+   if (iNumTotProteins)
    {
       char szTemp[10];
       int iEnd;
 
-      sprintf(szTemp, "+%d", pOutput[iWhichResult].iDuplicateCount);
-      sprintf(szBuf+strlen(szBuf), " +%d", pOutput[iWhichResult].iDuplicateCount);
+      sprintf(szTemp, "+%d", iNumTotProteins);
+      sprintf(szBuf+strlen(szBuf), " +%d", iNumTotProteins);
 
       iEnd = iLenMaxDuplicates - strlen(szTemp) - 1;
 

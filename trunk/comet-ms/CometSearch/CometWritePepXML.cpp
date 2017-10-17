@@ -634,7 +634,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    else
    {
       // if not reporting separate decoys, it's possible only matches
-      // in combined search are decoy the entries
+      // in combined search are decoy entries
       if (pOutput[iWhichResult].pWhichProtein.size() > 0)
       {
          it=pOutput[iWhichResult].pWhichProtein.begin();
@@ -659,7 +659,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       fprintf(fpout, " protein=\"%s%s\"", g_staticParams.szDecoyPrefix, szProteinName);
    else
       fprintf(fpout, " protein=\"%s\"", szProteinName);
-   fprintf(fpout, " num_tot_proteins=\"%d\"", iNumTotProteins);   //pOutput[iWhichResult].iDuplicateCount+1);
+   fprintf(fpout, " num_tot_proteins=\"%d\"", iNumTotProteins);
    fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
    fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
    fprintf(fpout, " calc_neutral_pep_mass=\"%0.6f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);

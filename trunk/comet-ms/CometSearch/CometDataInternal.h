@@ -160,7 +160,6 @@ struct Results
    double dExpect;
    float  fScoreSp;
    float  fXcorr;
-   int    iDuplicateCount;
    int    iLenPeptide;
    int    iRankSp;
    int    iMatchedIons;

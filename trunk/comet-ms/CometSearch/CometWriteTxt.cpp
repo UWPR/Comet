@@ -478,18 +478,25 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          bool bPrintDecoyPrefix = false;
          std::vector<ProteinEntryStruct>::iterator it;
 
+         int iNumTotProteins = 0;
+
          if (bDecoy)
          {  
             it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+            iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
             bPrintDecoyPrefix = true;
          }  
          else
          {
             if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+            {
                it=pOutput[iWhichResult].pWhichProtein.begin();
+               iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
+            }
             else
             {
                it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
+               iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
                bPrintDecoyPrefix = true;
             }
          }
@@ -525,7 +532,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             }
          }
 
-         fprintf(fpout, "\t%d\t", pOutput[iWhichResult].iDuplicateCount+1);
+         fprintf(fpout, "\t%d\t", iNumTotProteins);
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
