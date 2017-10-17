@@ -4,6 +4,9 @@
          <h1>Updates</h1>
 
                <p/>
+               <li><b>2017/10/17</b>: <a href="/release/release_201701">Release 2017.01 rev. 1</a>
+                   is now available.
+               <p/>
                <li><b>2017/10/02</b>: <a href="/release/release_201701">Release 2017.01 rev. 0</a>
                    is now available.
                <p/>

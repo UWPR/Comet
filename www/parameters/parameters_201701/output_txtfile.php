@@ -39,7 +39,7 @@
          header line which contains the Comet version, search start time/date, and search
          database.  The second line contains the column headers.
 
-<pre>CometVersion 2017.01 rev. 0 beta4       20141219_Hela_01        06/05/2017, 04:34:13 PM 18mix_reverseSGD.fasta
+<pre>CometVersion 2017.01 rev. 0       20141219_Hela_01        06/05/2017, 04:34:13 PM 18mix_reverseSGD.fasta
 scan   num  charge  exp_neutral_mass  calc_neutral_mass  e-value   xcorr   delta_cn  sp_score  ions_matched  ions_total  plain_peptide    modified_peptide              prev_aa  next_aa  protein                                                               protein_count   modifications
 10685  1    2       1308.585447       1308.586732        3.16E-06  2.1508  0.6785    238.7     9             22          MDSTANEVEAVK     K.M[15.9949]DSTANEVEAVK.V     K        V        sp|P07237|PDIA1_HUMAN,tr|H0Y3Z3|H0Y3Z3_HUMAN,tr|H7BZ94|H7BZ94_HUMAN   3               1_V_15.994900
 10685  2    2       1308.585447       1308.587600        6.85E+00  0.6914  0.7245    29.8      3             20          DMMDPVAVCKK      K.DM[15.9949]MDPVAVCKK.V      K        V        sp|Q6NUJ1|SAPL1_HUMAN                                                 1               2_V_15.994900,9_S_57.021464

@@ -3,7 +3,24 @@
       <div class="post hr">
          <h1>Comet release 2017.01</h1>
             <ul>
+               <b>release 2017.01 rev. 1 (2017.01.1), release date 2017/10/17</b>
+               <li>Report all duplicate proteins as a comma separated list under the "proteinId1" column
+                   in Percolator output 
+                   (<a href="/parameters/parameters_201701/output_percolatorfile.php">output_percolatorfile</a>);
+                   rev. 0 release reported just a single protein identifier.
+               <li>Bug fix: a decoy peptide that appears multiple times within a decoy protein
+                   would previously cause that decoy protein to be reported multiple times.
+               <li>Bug fix: add a missing comma separating protein list in text output
+                   (<a href="/parameters/parameters_201701/output_txtfile.php">output_txtfile</a>)
+                   when performing a combined target-decoy search
+                   ("<a href="/parameters/parameters_201701/decoy_search.php">decoy_search = 2</a>").
+                   The missing comma was between the target protein list and the decoy protein list.
+            </ul>
+            <ul>
                <b>release 2017.01 rev. 0 (2017.01.0), release date 2017/10/02</b>
+               <li>Comet now tracks and reports all duplicate protein entries.  The residues I and L
+                   treated as being the same/equivalent.  You can turn off I/L equivalence by adding
+                   an undocumented/hidden parameter "equal_I_and_L = 0".
                <li>Major update to code to add <a href="http://www.psidev.info/node/363" target="new">PSI's enhanced fasta format (PEFF)</a> support.
                    Comet currently supports the ModResPsi and VariantSimple keywords only.  This
                    enables one to search annotated variable modifications and amino acid substitutions
@@ -55,9 +72,6 @@
                    has been extended to handle phosphate neutral loss peaks.  When this parameter is
                    set to "3", the HPO3 and H2PO4 neutral loss peaks are removed from the spectrum
                    prior to analysis.
-               <li>Comet now tracks and reports all duplicate protein entries.  The residues I and L
-                   treated as being the same/equivalent.  You can turn off I/L equivalence by adding
-                   an undocumented/hidden parameter "equal_I_and_L = 0".
                <li>Modified the text output, controlled by the
                    <a href="/parameters/parameters_201701/output_txtfile.php">output_txtfile</a>" parameter.
                    The "protein" column prints out a comma separated list of all protein accessions.
