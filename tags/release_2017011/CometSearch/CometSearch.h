@@ -280,6 +280,7 @@ private:
    double             _pdAAforwardDecoy[MAX_PEPTIDE_LEN]; // Stores fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAreverseDecoy[MAX_PEPTIDE_LEN]; // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
    int                _iSizepiVarModSites;
+   int                _iSizepdVarModSites;
    VarModInfo         _varModInfo;
    ProteinInfo        _proteinInfo;
 

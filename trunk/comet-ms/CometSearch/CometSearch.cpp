@@ -32,6 +32,7 @@ CometSearch::CometSearch()
    // Allocate memory for protein sequence if necessary.
 
    _iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
+   _iSizepdVarModSites = sizeof(double)*MAX_PEPTIDE_LEN_P2;
 }
 
 
@@ -2281,7 +2282,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (!bFoundVariableMod)   // Normal peptide in variable mod search.
+         {
             memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+            memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+         }
          else
          {
             memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
@@ -2404,7 +2408,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (!bFoundVariableMod)  // Normal peptide in variable mod search.
+         {
             memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+            memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+         }
          else
          {
             memcpy(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
