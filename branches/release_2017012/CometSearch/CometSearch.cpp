@@ -2554,7 +2554,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                struct ProteinEntryStruct pTmp;
 
                pTmp.lWhichProtein = dbe->lProteinFilePosition;
-               pTmp.iStartResidue = iStartResidue;
+               pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
 
                if (iStartResidue == 0)
                   pTmp.cPrevAA = '-';
@@ -2670,7 +2670,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                struct ProteinEntryStruct pTmp;
 
                pTmp.lWhichProtein = dbe->lProteinFilePosition;
-               pTmp.iStartResidue = iStartResidue;
+               pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
 
                if (iStartResidue == 0)
                   pTmp.cPrevAA = '-';
