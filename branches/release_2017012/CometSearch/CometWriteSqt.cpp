@@ -280,38 +280,18 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
    double dNterm = 0.0;
    double dCterm = 0.0;
 
-   // See if n-term mod (static and/or variable) needs to be reported
-   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0
-         || !isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
-         || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
-            && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
+   // See if n-term variable mod needs to be reported
+   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
    {
       bNterm = true;
-
-      dNterm = g_staticParams.staticModifications.dAddNterminusPeptide;
-
-      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
-         dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
-
-      if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
-         dNterm += g_staticParams.staticModifications.dAddNterminusProtein;
+      dNterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
    }
 
    // See if c-term mod (static and/or variable) needs to be reported
-   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0
-         || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0)
-         || (pOutput[iWhichResult].szPrevNextAA[1]=='-'
-            && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
+   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
    {
       bCterm = true;
-
-      dCterm = g_staticParams.staticModifications.dAddCterminusPeptide;
-
-      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
-         dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
-
-      if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
-         dCterm += g_staticParams.staticModifications.dAddCterminusProtein;
+      dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
    }
 
    // generate modified_peptide string

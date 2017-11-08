@@ -825,7 +825,6 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       // Report PEFF substitution
       if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
       {
-         char szTmp[8];
          if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1)
          {
             fprintf(fpout, "     <aminoacid_substitution peptide_prev_aa=\"%c\" orig_aa=\"%c\"/>\n",
