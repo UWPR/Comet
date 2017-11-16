@@ -104,6 +104,7 @@ struct Options             // output parameters
    int bPrintExpectScore;
    int bOverrideCharge;
    int bTreatSameIL;
+   long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
@@ -117,6 +118,7 @@ struct Options             // output parameters
    {
       iNumPeptideOutputLines = a.iNumPeptideOutputLines;
       iWhichReadingFrame = a.iWhichReadingFrame;
+      lMaxIterations = a.lMaxIterations;
       iEnzymeTermini = a.iEnzymeTermini;
       iNumStored = a.iNumStored;
       scanRange = a.scanRange;
@@ -623,6 +625,8 @@ struct StaticParams
       options.iNumThreads = 0;
       options.bClipNtermMet = 0;
 
+      options.lMaxIterations = 0;
+
       // These parameters affect mzXML/RAMP spectra only.
       options.scanRange.iStart = 0;
       options.scanRange.iEnd = 0;
@@ -691,12 +695,13 @@ struct StaticParams
 extern StaticParams g_staticParams;
 
 extern vector<string> g_pvProteinNames;
-
+/*
 struct SparseMatrix
 {
    int bin;
    float fIntensity;
 };
+*/
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

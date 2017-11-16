@@ -680,6 +680,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("mango_search", g_staticParams.options.bMango);
 
+   GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
+
    GetParamValue("peff_verbose_output", g_staticParams.options.bVerboseOutput);
 
    GetParamValue("add_Cterm_peptide", g_staticParams.staticModifications.dAddCterminusPeptide);
@@ -1185,6 +1187,29 @@ bool CometSearchManager::GetParamValue(const string &name, int& value)
       return false;
 
    TypedCometParam<int> *pParam = static_cast<TypedCometParam<int>*>(it->second);
+   value = pParam->GetValue();
+   return true;
+}
+
+void CometSearchManager::SetParam(const std::string &name, const string &strValue, const long &value)
+{
+   CometParam *pParam = new TypedCometParam<long>(CometParamType_Long, strValue, value);
+   pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+   if (false == ret.second)
+   {
+      _mapStaticParams.erase(name);
+      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+   }
+}
+
+bool CometSearchManager::GetParamValue(const string &name, long& value)
+{
+   std::map<string, CometParam*>::iterator it;
+   it = _mapStaticParams.find(name);
+   if (it == _mapStaticParams.end())
+      return false;
+
+   TypedCometParam<long> *pParam = static_cast<TypedCometParam<long>*>(it->second);
    value = pParam->GetValue();
    return true;
 }

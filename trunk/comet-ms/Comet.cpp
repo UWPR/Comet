@@ -191,6 +191,8 @@ void LoadParameters(char *pszParamsFile,
          iIntParam,
          iAllowedMissedCleavages = 2;
 
+   long  lLongParam;
+
    char  szParamBuf[SIZE_BUF],
          szParamName[128],
          szParamVal[512],
@@ -1006,6 +1008,13 @@ void LoadParameters(char *pszParamsFile,
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("mango_search", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "max_iterations"))
+            {
+               sscanf(szParamVal, "%ld", &lLongParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%ld", lLongParam);
+               pSearchMgr->SetParam("max_iterations", szParamStringVal, lLongParam);
             }
             else
             {

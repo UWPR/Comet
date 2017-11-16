@@ -310,6 +310,7 @@ enum CometParamType
 {
    CometParamType_Unknown = 0,
    CometParamType_Int,
+   CometParamType_Long,
    CometParamType_Double,
    CometParamType_String,
    CometParamType_VarMods,

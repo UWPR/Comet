@@ -38,6 +38,8 @@ public:
    virtual bool GetParamValue(const string &name, string &value);
    virtual void SetParam(const string &name, const string &strValue, const int &value);
    virtual bool GetParamValue(const string &name, int &value);
+   virtual void SetParam(const string &name, const string &strValue, const long &value);
+   virtual bool GetParamValue(const string &name, long &value);
    virtual void SetParam(const string &name, const string &strValue, const double &value);
    virtual bool GetParamValue(const string &name, double &value);
    virtual void SetParam(const string &name, const string &strValue, const VarMods &value);
