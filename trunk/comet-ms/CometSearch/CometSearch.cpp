@@ -3156,7 +3156,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                               int piTmpVarModCounts[] = {i1, i2, i3, i4, i5, i6, i7, i8, i9};
 
 
-                              if (lNumIterations >= g_staticParams.options.lMaxIterations)
+                              if (g_staticParams.options.lMaxIterations > 0 && lNumIterations >= g_staticParams.options.lMaxIterations)
                               {
                                  break;
                               }
@@ -3654,7 +3654,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 {
    int iModIndex;
 
-   if (*lNumIterations >= g_staticParams.options.lMaxIterations)
+   if (g_staticParams.options.lMaxIterations > 0 && *lNumIterations >= g_staticParams.options.lMaxIterations)
       return false;
 
    switch (iWhichMod)
@@ -3907,7 +3907,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    int i;
    int j;
 
-   if (*lNumIterations >= g_staticParams.options.lMaxIterations)
+   if (g_staticParams.options.lMaxIterations > 0 && *lNumIterations >= g_staticParams.options.lMaxIterations)
       return false;
 
    // at this point, need to compare current modified peptide
