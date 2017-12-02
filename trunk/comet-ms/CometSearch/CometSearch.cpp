@@ -498,12 +498,11 @@ bool CometSearch::RunSearch(int minNumThreads,
          // Load sequence
          while (((iTmpCh=getc(fptr)) != '>') && (iTmpCh != EOF))
          {
-            if (33<=iTmpCh && iTmpCh<=126) // ASCII physical character range.
-            {
-               // Convert all sequences to upper case.
-               dbe.strSeq += toupper(iTmpCh);
-               g_staticParams.databaseInfo.uliTotAACount++;
-            }
+            if ('a'<=iTmpCh && iTmpCh<='z')
+               dbe.strSeq += toupper(iTmpCh);  // convert upper case
+            else
+               dbe.strSeq += iTmpCh;
+            g_staticParams.databaseInfo.uliTotAACount++;
          }
 
          g_staticParams.databaseInfo.iTotalNumProteins++;
