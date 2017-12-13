@@ -261,7 +261,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          }
 
          // Cleavage type
-         fprintf(fpout, "%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
+         fprintf(fpout, "\t%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
 
          // e-value
          fprintf(fpout, "%0.2E\n", pOutput[iWhichResult].dExpect);
