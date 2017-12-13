@@ -906,6 +906,10 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    // Set our boundaries for multiple z lines.
    zStop = spec.sizeZ();
 
+   double dSelectionLower = spec.getSelWindowLower();
+   double dSelectedMZ = spec.getMZ();
+   double dMonoMZ = spec.getMonoMZ();
+
    for (z=0; z<zStop; z++)
    {
       if (g_staticParams.options.bOverrideCharge == 2 && g_staticParams.options.iStartCharge > 0)
@@ -919,6 +923,13 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
       int iPrecursorCharge = spec.atZ(z).z;  // I need this before iChargeState gets assigned.
       double dMass = spec.atZ(z).mh;
+
+      // Thermo's monoisotopic m/z determine can fail sometimes. Assume that when
+      // the mono m/z value is less than selection window, it is wrong and use the
+      // selection m/z as the precursor m/z. This also assumes zStop=1.  This should
+      // be invoked when searching Thermo raw files and mzML converted from those.
+      if (dMonoMZ > 0.1 && dSelectionLower > 0.1 && zStop==1 && dMonoMZ < dSelectionLower)
+         dMass = dSelectedMZ*iPrecursorCharge - (iPrecursorCharge-1)*PROTON_MASS;
 
       if (!g_staticParams.options.bOverrideCharge
             || g_staticParams.options.iStartCharge == 0
