@@ -499,10 +499,15 @@ bool CometSearch::RunSearch(int minNumThreads,
          while (((iTmpCh=getc(fptr)) != '>') && (iTmpCh != EOF))
          {
             if ('a'<=iTmpCh && iTmpCh<='z')
-               dbe.strSeq += toupper(iTmpCh);  // convert upper case
-            else
+            {
+               dbe.strSeq += iTmpCh - 27;  // convert upper case so subtract 27 (i.e. 'A'-'a')
+               g_staticParams.databaseInfo.uliTotAACount++;
+            }
+            else if (33<=iTmpCh && iTmpCh<=126)
+            {
                dbe.strSeq += iTmpCh;
-            g_staticParams.databaseInfo.uliTotAACount++;
+               g_staticParams.databaseInfo.uliTotAACount++;
+            }
          }
 
          g_staticParams.databaseInfo.iTotalNumProteins++;
@@ -1483,21 +1488,26 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
 
-      // Check full enzyme search.
-      if ((g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI) && !(bBeginCleavage && bEndCleavage))
-         return false;
-
-      // Check semi enzyme search.
-      if ((g_staticParams.options.iEnzymeTermini == ENZYME_SINGLE_TERMINI) && !(bBeginCleavage || bEndCleavage))
-         return false;
-
-      // Check single n-termini enzyme.
-      if ((g_staticParams.options.iEnzymeTermini == ENZYME_N_TERMINI) && !bBeginCleavage)
-         return false;
-
-      // Check single c-termini enzyme.
-      if ((g_staticParams.options.iEnzymeTermini == ENZYME_C_TERMINI) && !bEndCleavage)
-         return false;
+      if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)      // Check full enzyme search.
+      { 
+        if (!(bBeginCleavage && bEndCleavage))
+           return false;
+      }
+      else if (g_staticParams.options.iEnzymeTermini == ENZYME_SINGLE_TERMINI) // Check semi enzyme search.
+      {  
+         if (!(bBeginCleavage || bEndCleavage))
+            return false;
+      }
+      else if (g_staticParams.options.iEnzymeTermini == ENZYME_N_TERMINI)      // Check single n-termini enzyme.
+      {  
+         if (!bBeginCleavage)
+            return false;
+      }
+      else if (g_staticParams.options.iEnzymeTermini == ENZYME_C_TERMINI)      // Check single c-termini enzyme.
+      {
+         if (!bEndCleavage)
+            return false;
+      }
 
       // Check number of missed cleavages count.
       int i;
