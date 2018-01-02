@@ -489,21 +489,21 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    fprintf(fpout, "  <search_result>\n");
 
-   if (bDecoy)
-      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
-   else
-      iNumPrintLines = pQuery->iMatchPeptideCount;
-
-   // Print out each sequence line.
-   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
-      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
-
    Results *pOutput;
 
    if (bDecoy)
+   {
       pOutput = pQuery->_pDecoys;
+      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
+   }
    else
+   {
       pOutput = pQuery->_pResults;
+      iNumPrintLines = pQuery->iMatchPeptideCount;
+   }
+
+   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
+      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
    iMinLength = 999;
    for (i=0; i<iNumPrintLines; i++)

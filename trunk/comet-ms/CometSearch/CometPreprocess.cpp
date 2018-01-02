@@ -839,7 +839,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       // if charge is already specified, don't re-add it here when overriding charge range
       int iChargeFromFile = 0;
       if (bFileHasCharge)                  // FIX: no reason that file only has one charge so iChargeFromFile should be an array
-         iChargeFromFile= spec.atZ(0).z;   // should read all charge states up to spec.sizeZ();
+         iChargeFromFile = spec.atZ(0).z;  // should read all charge states up to spec.sizeZ();
 
       for (z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
       {

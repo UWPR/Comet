@@ -695,13 +695,6 @@ struct StaticParams
 extern StaticParams g_staticParams;
 
 extern vector<string> g_pvProteinNames;
-/*
-struct SparseMatrix
-{
-   int bin;
-   float fIntensity;
-};
-*/
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
@@ -711,8 +704,8 @@ struct Query
    int   iHistogramCount;   // # of entries in histogram
    float fPar[4];           // parameters of LMA regression
 
-   int iMatchPeptideCount;        // # of peptide matches
-   int iDecoyMatchPeptideCount;   // # of decoy peptide matches
+   int iMatchPeptideCount;        // # of peptides that get stored (i.e. are greater than lowest score)
+   int iDecoyMatchPeptideCount;   // # of decoy peptides that get stored (i.e. are greater than lowest score)
 
    short siMaxXcorr;        // index of maximum correlation score in iXcorrHistogram
 
@@ -727,7 +720,7 @@ struct Query
 
    double dMangoIndex;      // scan number decimal precursor value i.e. 2401.001 for scan 2401, first precursor/z pair
 
-   unsigned long int  _uliNumMatchedPeptides;
+   unsigned long int  _uliNumMatchedPeptides;  // # of peptides that get scored
    unsigned long int  _uliNumMatchedDecoyPeptides;
 
    // Sparse matrix representation of data

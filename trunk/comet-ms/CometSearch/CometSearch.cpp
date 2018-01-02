@@ -108,7 +108,7 @@ bool CometSearch::RunSearch(int minNumThreads,
    int iTmpCh = 0;
    long lEndPos = 0;
    long lCurrPos = 0;
-   bool bTrimDescr = 0;
+   bool bTrimDescr = false;
    string strPeffHeader;
    char *szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
    char *szPeffLine = 0;         // store description line starting with first \ to parse above
@@ -254,12 +254,12 @@ bool CometSearch::RunSearch(int minNumThreads,
          // will be used to retrieve actual protein references when printing output
          dbe.lProteinFilePosition = ftell(fptr);
 
-         bTrimDescr = 0;
+         bTrimDescr = false;
          while (((iTmpCh = getc(fptr)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
          {
             // Don't bother storing description text past first blank.
-            if (isspace(iTmpCh) || iscntrl(iTmpCh))
-               bTrimDescr = 1;
+            if (!bTrimDescr && (isspace(iTmpCh) || iscntrl(iTmpCh)))
+               bTrimDescr = true;
 
             if (!bTrimDescr && dbe.strName.size() < (WIDTH_REFERENCE-1))
                dbe.strName += iTmpCh;
@@ -1466,8 +1466,8 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
 
 // Check enzyme termini.
 bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
-                                  int iStartPos,
-                                  int iEndPos)
+                                     int iStartPos,
+                                     int iEndPos)
 {
    if (!g_staticParams.options.bNoEnzymeSelected)
    {
@@ -1481,25 +1481,25 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
       bBeginCleavage = (iStartPos==0
             || szProteinSeq[iStartPos-1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + iOneMinusEnzymeOffSet])
-          && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
 
       bEndCleavage = (iEndPos==(int)(_proteinInfo.iProteinSeqLength-1)
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
-          && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
 
       if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)      // Check full enzyme search.
-      { 
+      {
         if (!(bBeginCleavage && bEndCleavage))
            return false;
       }
       else if (g_staticParams.options.iEnzymeTermini == ENZYME_SINGLE_TERMINI) // Check semi enzyme search.
-      {  
+      {
          if (!(bBeginCleavage || bEndCleavage))
             return false;
       }
       else if (g_staticParams.options.iEnzymeTermini == ENZYME_N_TERMINI)      // Check single n-termini enzyme.
-      {  
+      {
          if (!bBeginCleavage)
             return false;
       }
@@ -3166,9 +3166,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
 
 
                               if (g_staticParams.options.lMaxIterations > 0 && lNumIterations >= g_staticParams.options.lMaxIterations)
-                              {
                                  break;
-                              }
 
                               if (i1>0 || i2>0 || i3>0 || i4>0 || i5>0 || i6>0 || i7>0 || i8>0 || i9>0 || bPeffMod)
                               {

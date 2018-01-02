@@ -121,21 +121,23 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       double spectrum_mz = (spectrum_neutral_mass + charge*PROTON_MASS) / (double)charge;
 
       Results *pOutput;
-      unsigned long num_matches;
+      int iNumPrintLines;
+
       if (bDecoy)
       {
          pOutput = pQuery->_pDecoys;
-         num_matches = pQuery->_uliNumMatchedDecoyPeptides;
+         iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
       }
       else
       {
          pOutput = pQuery->_pResults;
-         num_matches = pQuery->_uliNumMatchedPeptides;
+         iNumPrintLines = pQuery->iMatchPeptideCount;
       }
 
-      size_t iNumPrintLines = min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches);
+      if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
+         iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
 
-      for (size_t iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+      for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
       {
          if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
             continue;
@@ -281,19 +283,21 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       Query* pQuery = g_pvQuery.at(iWhichQuery);
 
       Results *pOutput;
-      unsigned long num_matches;
+      int iNumPrintLines;
+
       if (bDecoy)
       {
          pOutput = pQuery->_pDecoys;
-         num_matches = pQuery->_uliNumMatchedDecoyPeptides;
+         iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
       }
       else
       {
          pOutput = pQuery->_pResults;
-         num_matches = pQuery->_uliNumMatchedPeptides;
+         iNumPrintLines = pQuery->iMatchPeptideCount;
       }
 
-      int iNumPrintLines = min((unsigned long)g_staticParams.options.iNumPeptideOutputLines, num_matches);
+      if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
+         iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
 
       int iMinLength = 999;
       for (int i=0; i<iNumPrintLines; i++)
