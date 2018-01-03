@@ -101,7 +101,7 @@
          <ul>
          <li><a href="minimum_peaks.php">minimum_peaks</a></li>
          <li><a href="minimum_intensity.php">minimum_intensity</a></li>
-         <li><a href="remove_precursor_peak.php">remove_precursor_peak</a></li> <font color="red">**</font></li>
+         <li><a href="remove_precursor_peak.php">remove_precursor_peak</a><font color="red">**</font></li>
          <li><a href="remove_precursor_tolerance.php">remove_precursor_tolerance</a></li>
          <li><a href="clear_mz_range.php">clear_mz_range</a></li>
          </ul>

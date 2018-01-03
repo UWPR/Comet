@@ -3,6 +3,18 @@
       <div class="post hr">
          <h1>Comet release 2017.01</h1>
             <ul>
+               <b>release 2017.01 rev. 2 (2017.01.2), release date 2017/11/08</b>
+               <li>Buf fix: in SQT, text and Percolator outputs, static n-term and c-term modification were
+                   being reported in the peptide string.  These are no longer being reported and
+                   the peptide string now correctly only includes variable modification mass
+                   differences if present.
+               <li>Bug fix: in SQT output, a third entry in the L protein lines is an integer number
+                   representing the start position of the peptide in the protein sequence.  The first
+                   L entry reported the correct start position but the position was off by one in
+                   subsequent duplicate proteins.  This is corrected.  Thanks P. Wilmarth for
+                   reporting both of these issues.
+            </ul>
+            <ul>
                <b>release 2017.01 rev. 1 (2017.01.1), release date 2017/10/17</b>
                <li>Report all duplicate proteins as a comma separated list under the "proteinId1" column
                    in Percolator output 
