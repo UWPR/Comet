@@ -122,16 +122,19 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
       Results *pOutput;
       int iNumPrintLines;
+      unsigned long iNumMatches;
 
       if (bDecoy)
       {
          pOutput = pQuery->_pDecoys;
          iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
+         iNumMatches =  pQuery->_uliNumMatchedDecoyPeptides;
       }
       else
       {
          pOutput = pQuery->_pResults;
          iNumPrintLines = pQuery->iMatchPeptideCount;
+         iNumMatches =  pQuery->_uliNumMatchedPeptides;
       }
 
       if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
@@ -165,7 +168,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%lu\t", iWhichResult + 1);                 // assuming want index starting at 1
          fprintf(fpout, "%d\t", pOutput[iWhichResult].iMatchedIons);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].iTotalIons);
-         fprintf(fpout, "%lu\t", num_matches);
+         fprintf(fpout, "%lu\t", iNumMatches);
 
          // plain peptide
          fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
