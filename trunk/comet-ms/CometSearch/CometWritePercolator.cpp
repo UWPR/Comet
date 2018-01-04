@@ -125,6 +125,10 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
    if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
       iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
 
+   bool bLabelDecoy;
+   char szProteinName[WIDTH_REFERENCE];
+   std::vector<ProteinEntryStruct>::iterator it;
+
    for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
    {
       if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
@@ -136,11 +140,31 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
             pQuery->_spectrumInfoInternal.iChargeState,
             iWhichResult+1);
 
-      // print -1 if bDecoy or if decoy entries only
-      if (bDecoy || (pOutput->pWhichDecoyProtein.size()>0 && pOutput->pWhichProtein.size()==0))
-         fprintf(fpout, "-1\t");  // label
+      if (bDecoy)
+         bLabelDecoy = true;
       else
-         fprintf(fpout, "1\t");
+      {
+         bLabelDecoy = true;
+
+         it=pOutput[iWhichResult].pWhichProtein.begin();
+
+         // If any protein in target protein list does not match decoy prefix then set target label
+         for (; it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
+         {
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+
+            if (strncmp(szProteinName, g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)))
+            {
+               bLabelDecoy = false;
+               break;
+            }
+         }
+      }
+
+      if (bLabelDecoy)
+         fprintf(fpout, "-1\t");  // decoy label
+      else
+         fprintf(fpout, "1\t");   // target label
 
       fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
 
@@ -308,7 +332,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       fprintf(fpout, "c[%0.4f]", dCterm);
    fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
-   char szProteinName[100];
+   char szProteinName[WIDTH_REFERENCE];
    bool bPrintDecoyPrefix = false;
    std::vector<ProteinEntryStruct>::iterator it;
 
