@@ -616,22 +616,22 @@ namespace CometUI.ViewResults
                     return false;
                 }
 
-                String altPeptidePrevAAA = pepXMLReader.ReadAttribute(altProteinNavigator,
-                                                                        "peptide_prev_aa");
+                String altPeptidePrevAAA = pepXMLReader.ReadAttribute(altProteinNavigator, "peptide_prev_aa");
+/*
                 if (altPeptidePrevAAA.Equals(String.Empty))
                 {
                     ErrorMessage = "Could not read the peptide_prev_aa attribute.";
                     return false;
                 }
-
-                String altPeptideNextAAA = pepXMLReader.ReadAttribute(altProteinNavigator,
-                                                                        "peptide_next_aa");
+*/
+                String altPeptideNextAAA = pepXMLReader.ReadAttribute(altProteinNavigator, "peptide_next_aa");
+/*
                 if (altPeptideNextAAA.Equals(String.Empty))
                 {
                     ErrorMessage = "Could not read the peptide_next_aa attribute.";
                     return false;
                 }
-
+*/
                 String altProteinDescr = pepXMLReader.ReadAttribute(altProteinNavigator, "protein_descr");
 
                 var altProteinInfo = new ProteinInfo(altProteinName, altProteinDescr, altPeptidePrevAAA,
