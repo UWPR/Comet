@@ -103,6 +103,7 @@ struct Options             // output parameters
    int bShowFragmentIons;
    int bPrintExpectScore;
    int bOverrideCharge;
+   int bCorrectMass;
    int bTreatSameIL;
    double dMinIntensity;
    double dRemovePrecursorTol;
@@ -605,6 +606,7 @@ struct StaticParams
       options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;
+      options.bCorrectMass = 0;
       options.bTreatSameIL= 1;
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;

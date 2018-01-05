@@ -804,6 +804,12 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.bOverrideCharge = iIntData;
    }
 
+   if (GetParamValue("correct_mass", iIntData))
+   {
+      if (iIntData > 0)
+         g_staticParams.options.bCorrectMass = iIntData;
+   }
+
    if (GetParamValue("equal_I_and_L", iIntData))
    {
       g_staticParams.options.bTreatSameIL = iIntData;
