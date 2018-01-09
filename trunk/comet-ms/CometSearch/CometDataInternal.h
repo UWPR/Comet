@@ -103,6 +103,7 @@ struct Options             // output parameters
    int bShowFragmentIons;
    int bPrintExpectScore;
    int bOverrideCharge;
+   int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;
@@ -607,6 +608,7 @@ struct StaticParams
       options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;
+      options.bCorrectMass = 0;
       options.bTreatSameIL= 1;
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;

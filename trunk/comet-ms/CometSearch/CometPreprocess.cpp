@@ -910,6 +910,13 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    double dSelectedMZ = spec.getMZ();
    double dMonoMZ = spec.getMonoMZ();
 
+   if (g_staticParams.options.bCorrectMass)
+   {
+      dSelectionLower = spec.getSelWindowLower();
+      dSelectedMZ = spec.getMZ();
+      dMonoMZ = spec.getMonoMZ();
+   }
+
    for (z=0; z<zStop; z++)
    {
       if (g_staticParams.options.bOverrideCharge == 2 && g_staticParams.options.iStartCharge > 0)
@@ -928,7 +935,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       // the mono m/z value is less than selection window, it is wrong and use the
       // selection m/z as the precursor m/z. This also assumes zStop=1.  This should
       // be invoked when searching Thermo raw files and mzML converted from those.
-      if (dMonoMZ > 0.1 && dSelectionLower > 0.1 && zStop==1 && dMonoMZ < dSelectionLower)
+      if (g_staticParams.options.bCorrectMass && dMonoMZ > 0.1 && dSelectionLower > 0.1 && zStop==1 && dMonoMZ+0.1 < dSelectionLower)
          dMass = dSelectedMZ*iPrecursorCharge - (iPrecursorCharge-1)*PROTON_MASS;
 
       if (!g_staticParams.options.bOverrideCharge
