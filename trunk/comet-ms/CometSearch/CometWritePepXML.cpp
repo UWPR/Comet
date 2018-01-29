@@ -117,7 +117,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // Grab file extension from file name
    if ( (pStr = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[1024];
       sprintf(szErrorMsg,  " Error - in WriteXMLHeader missing last period in file name: %s\n",
             g_staticParams.inputFile.szFileName);
       string strErrorMsg(szErrorMsg);
@@ -482,7 +482,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, " index=\"%d\"", iWhichQuery+1);
 
-   if (mzXML)
+   if (pQuery->_spectrumInfoInternal.dRTime > 0.0)
       fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", pQuery->_spectrumInfoInternal.dRTime);
    else
       fprintf(fpout, ">\n");

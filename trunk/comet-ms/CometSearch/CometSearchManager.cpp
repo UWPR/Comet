@@ -29,6 +29,7 @@
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
+#include "CometCheckForUpdates.h"
 
 #undef PERF_DEBUG
 
@@ -123,7 +124,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    FILE *fp;
    if ( (fp=fopen(g_staticParams.inputFile.szFileName, "r"))==NULL)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[1024];
       sprintf(szErrorMsg,  " Error - cannot read input file \"%s\".\n",
             g_staticParams.inputFile.szFileName);
       string strErrorMsg(szErrorMsg);
@@ -168,7 +169,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
          if (err != EEXIST)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[1024];
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",
                   g_staticParams.inputFile.szBaseName);
             string strErrorMsg(szErrorMsg);
@@ -189,7 +190,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
             if (err != EEXIST)
             {
-               char szErrorMsg[256];
+               char szErrorMsg[1024];
                sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -201,9 +202,8 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 #else
       if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
       {
-         char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",
-               g_staticParams.inputFile.szBaseName);
+         char szErrorMsg[1024];
+         sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
@@ -211,12 +211,12 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       }
       if (g_staticParams.options.iDecoySearch == 2)
       {
-         char szDecoyDir[SIZE_FILE];
+         char szDecoyDir[1024];
          sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
 
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
          {
-            char szErrorMsg[256];
+            char szErrorMsg[1024];
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -360,6 +360,7 @@ static void CalcRunTime(time_t tStartTime)
    g_staticParams.szOutFileTimeString[255]='\0';
 }
 
+// for .out files
 static void PrintParameters()
 {
    // print parameters
@@ -456,7 +457,7 @@ static bool ValidateSequenceDatabaseFile()
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[1024];
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
             g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
@@ -677,6 +678,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
 
    GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
+
+   GetParamValue("skip_updatecheck", g_staticParams.options.bSkipUpdateCheck);
 
    GetParamValue("mango_search", g_staticParams.options.bMango);
 
@@ -1398,8 +1401,6 @@ bool CometSearchManager::DoSearch()
    if (!InitializeStaticParams())
       return false;
 
-   PrintParameters();
-
    if (!ValidateOutputFormat())
       return false;
 
@@ -1411,9 +1412,16 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
+   if (g_staticParams.options.bOutputOutFiles)
+      PrintParameters();
+
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      sprintf(szOut, " Comet version \"%s\"\n\n", comet_version);
+      sprintf(szOut, " Comet version \"%s\"", comet_version);
+      if (!g_staticParams.options.bSkipUpdateCheck)
+         CometCheckForUpdates::CheckForUpdates(szOut);
+      sprintf(szOut+strlen(szOut), "\n\n");
+
       logout(szOut);
       fflush(stdout);
    }
@@ -1455,13 +1463,13 @@ bool CometSearchManager::DoSearch()
       FILE *fpout_txt=NULL;
       FILE *fpoutd_txt=NULL;
 
-      char szOutputSQT[SIZE_FILE];
-      char szOutputDecoySQT[SIZE_FILE];
-      char szOutputPepXML[SIZE_FILE];
-      char szOutputDecoyPepXML[SIZE_FILE];
-      char szOutputPercolator[SIZE_FILE];
-      char szOutputTxt[SIZE_FILE];
-      char szOutputDecoyTxt[SIZE_FILE];
+      char szOutputSQT[1024];
+      char szOutputDecoySQT[1024];
+      char szOutputPepXML[1024];
+      char szOutputDecoyPepXML[1024];
+      char szOutputPercolator[1024];
+      char szOutputTxt[1024];
+      char szOutputDecoyTxt[1024];
 
       if (g_staticParams.options.bOutputSqtFile)
       {
@@ -1911,7 +1919,7 @@ bool CometSearchManager::DoSearch()
             FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
             if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
             {
-               char szErrorMsg[256];
+               char szErrorMsg[1024];
                sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);

@@ -1048,7 +1048,7 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
          && !g_staticParams.options.bOutputPepXMLFile
          && !g_staticParams.options.bOutputPercolatorFile)
    {
-      char szOutputFileName[SIZE_FILE];
+      char szOutputFileName[1024];
       char *pStr;
       FILE *fpcheck;
 

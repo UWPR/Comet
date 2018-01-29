@@ -35,7 +35,7 @@ void SetOptions(char *arg,
                 ICometSearchManager *pSearchMgr);
 void LoadParameters(char *pszParamsFile, ICometSearchManager *pSearchMgr);
 void PrintParams();
-bool ValidateInputMsMsFile(char *pszInputFileName);
+bool ValidateInputFile(char *pszInputFileName);
 
 
 int main(int argc, char *argv[])
@@ -639,6 +639,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("skip_researching", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "skip_updatecheck"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("skip_updatecheck", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "peff_verbose_output"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1138,7 +1145,7 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
 
    strncpy(pInputFile->szFileName, cmd, i);
    pInputFile->szFileName[i] = '\0';
-   if (!ValidateInputMsMsFile(pInputFile->szFileName))
+   if (!ValidateInputFile(pInputFile->szFileName))
    {
       return false;
    }
@@ -1390,6 +1397,7 @@ activation_method = ALL                # activation method; used if activation m
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
 num_results = 100                      # number of search hits to store internally\n\
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
+skip_updatecheck = 0                   # skip the check for the availability of a newer version of Comet\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
       MAX_FRAGMENT_CHARGE,
@@ -1473,7 +1481,7 @@ add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.0
 } // PrintParams
 
 
-bool ValidateInputMsMsFile(char *pszInputFileName)
+bool ValidateInputFile(char *pszInputFileName)
 {
    FILE *fp;
    if ((fp = fopen(pszInputFileName, "r")) == NULL)

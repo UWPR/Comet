@@ -132,7 +132,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    if ((fptr=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[1024];
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -500,7 +500,7 @@ bool CometSearch::RunSearch(int minNumThreads,
          {
             if ('a'<=iTmpCh && iTmpCh<='z')
             {
-               dbe.strSeq += iTmpCh - 27;  // convert upper case so subtract 27 (i.e. 'A'-'a')
+               dbe.strSeq += iTmpCh - 27;  // convert toupper case so subtract 27 (i.e. 'A'-'a')
                g_staticParams.databaseInfo.uliTotAACount++;
             }
             else if (33<=iTmpCh && iTmpCh<=126)
@@ -513,7 +513,7 @@ bool CometSearch::RunSearch(int minNumThreads,
          g_staticParams.databaseInfo.iTotalNumProteins++;
 
          if (!g_staticParams.options.bOutputSqtStream
-               && !(g_staticParams.databaseInfo.iTotalNumProteins%200))
+               && !(g_staticParams.databaseInfo.iTotalNumProteins%500))
          {
             char szTmp[128];
             lCurrPos = ftell(fptr);
@@ -644,7 +644,7 @@ void CometSearch::ReadOBO(char *szOBO,
    }
    else
    {
-      char szErrorMsg[512];
+      char szErrorMsg[1024];
       sprintf(szErrorMsg,  " Warning: cannot read PEFF OBO file \"%s\"\n", g_staticParams.peffInfo.szPeffOBO);
       string strErrorMsg(szErrorMsg);
       logout(szErrorMsg);
@@ -683,7 +683,7 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
    {
       if (g_staticParams.options.bVerboseOutput)
       {
-         char szErrorMsg[512];
+         char szErrorMsg[1024];
          sprintf(szErrorMsg,  " Warning: cannot find \"%s\" in OBO\n", strMod.c_str());
          string strErrorMsg(szErrorMsg);
          logerr(szErrorMsg);
@@ -811,7 +811,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          }
          catch (std::bad_alloc& ba)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[1024];
             sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.\n", seqSize, ba.what());
             sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
             sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
