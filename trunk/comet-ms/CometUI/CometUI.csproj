@@ -80,7 +80,7 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>4F4CD3C09B74D1CAD7D26CC90CBA831BB7DAFF5B</ManifestCertificateThumbprint>
+    <ManifestCertificateThumbprint>0C49387759BDA5767D86985F1FBA9C1FC00E9FD8</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
     <ManifestKeyFile>CometUI_Key.pfx</ManifestKeyFile>
@@ -385,6 +385,7 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="CometUI_Key.pfx" />
+    <None Include="CometUI_TemporaryKey.pfx" />
     <None Include="packages.config" />
     <None Include="Properties\DataSources\CometUI.Properties.Settings.datasource" />
     <None Include="Properties\DataSources\EnzymeSettingsControl.datasource" />

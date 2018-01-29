@@ -623,7 +623,7 @@ struct StaticParams
       options.bOutputOutFiles = 0;
 
       options.bSkipAlreadyDone = 1;
-      options.bSkipUpdateCheck = 1;
+      options.bSkipUpdateCheck = 0;
       options.bMango = 0;
       options.bVerboseOutput = 0;
       options.iDecoySearch = 0;

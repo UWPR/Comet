@@ -22,6 +22,10 @@
 #include <ctime>
 
 #ifdef _WIN32
+//socket
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <direct.h>
 #include <errno.h>
 #define STRCMP_IGNORE_CASE(a,b) _strcmpi(a,b)

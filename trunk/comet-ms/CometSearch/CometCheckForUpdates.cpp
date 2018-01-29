@@ -14,31 +14,8 @@
    limitations under the License.
 */
 
-#include "Common.h"
-#include "CometDataInternal.h"
 #include "CometCheckForUpdates.h"
 
-#ifndef NOUPDATECHECK
-#include <errno.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <stdarg.h>
-#ifdef WIN32
-#include <io.h>
-#include <stdio.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-#else
-#include <unistd.h>
-#include <err.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#endif
-#endif
 
 CometCheckForUpdates::CometCheckForUpdates()
 {
@@ -65,6 +42,7 @@ static void fail (int test, const char * format, ...)
 
 void CometCheckForUpdates::CheckForUpdates(char *szOut)
 {
+   
 #ifndef NOUPDATECHECK
 #define BSIZE 4096     // hold return buffer from webpage
 
@@ -83,6 +61,7 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
       exit(1);
    }
 #endif
+
 
    memset (&hints, 0, sizeof (hints));
 
@@ -155,6 +134,5 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    WSACleanup();
 #endif
 
-   return 0;
 #endif
 }
