@@ -50,7 +50,7 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    int error;
    int s;                                    // Get one of the web pages here
    const char * host = "comet-ms.sourceforge.net";
-   const char * page = "current_version.php";
+   const char * page = "current_version.htm";
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -134,5 +134,70 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    WSACleanup();
 #endif
 
+   SendAnalyticsHit(); // google analytics tracking
 #endif
+}
+
+
+void CometCheckForUpdates::SendAnalyticsHit(void)
+{
+   int portno = 80;
+   char *host = "www.google-analytics.com";
+
+   struct hostent *server;
+   struct sockaddr_in serv_addr;
+   int sockfd, bytes, sent, total;
+
+   char postData[1024];
+   char message[1024];
+   bzero(message, 1024);
+   sprintf(postData, "v=1&tid=UA-35341957-1&cid=555&t=event&ec=comet&ea=exe&el=%s", comet_version);
+   snprintf(message, 1024,
+         "POST /collect HTTP/1.1\r\n"
+         "Host: %s\r\n"
+         "Content-type: application/x-www-form-urlencoded\r\n"
+         "Content-length: %d\r\n\r\n"
+         "%s\r\n", host, strlen(postData),postData);
+
+   // create the socket
+   sockfd = socket(AF_INET, SOCK_STREAM, 0);
+   if (sockfd < 0)
+   {
+      printf("ERROR opening socket");
+      return;
+   }
+
+   // lookup the ip address
+   server = gethostbyname(host);
+   if (server == NULL)
+      return;
+
+   // fill in the structure
+   memset(&serv_addr,0,sizeof(serv_addr));
+   serv_addr.sin_family = AF_INET;
+   serv_addr.sin_port = htons(portno);
+   memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
+
+   // connect the socket
+   if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
+      return;
+
+   // send the request
+   total = strlen(message);
+   sent = 0;
+   do
+   {
+      bytes = write(sockfd,message+sent,total-sent);
+      if (bytes < 0)
+      {
+         printf("ERROR writing message to socket");
+         return;
+      }
+      if (bytes == 0)
+         break;
+      sent+=bytes;
+   } while (sent < total);
+
+   // close the socket
+   close(sockfd);
 }

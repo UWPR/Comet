@@ -48,6 +48,7 @@ public:
    static void CheckForUpdates(char *szOut);
 
 private:
+   static void SendAnalyticsHit(void);
 
 };
 
