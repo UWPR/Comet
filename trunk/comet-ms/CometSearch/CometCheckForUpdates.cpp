@@ -49,8 +49,8 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    struct addrinfo hints, *res, *res0;
    int error;
    int s;                                    // Get one of the web pages here
-   const char * host = "proteomicsresource.washington.edu";
-   const char * page = "dist/version.html";
+   const char * host = "comet-ms.sourceforge.net";
+   const char * page = "current_version.php";
 
 #ifdef WIN32
 #define snprintf _snprintf
