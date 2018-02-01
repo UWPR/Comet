@@ -49,11 +49,12 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    struct addrinfo hints, *res, *res0;
    int error;
    int s;                                    // Get one of the web pages here
-   const char * host = "comet-ms.sourceforge.net";
-   const char * page = "current_version.htm";
+   const char *host = "comet-ms.sourceforge.net";
+   const char *page = "current_version.htm";
 
 #ifdef WIN32
 #define snprintf _snprintf
+#define close _close
    WSADATA wsaData;
    if (WSAStartup(0x202, &wsaData) != 0)
    {
@@ -61,8 +62,7 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
       exit(1);
    }
 #endif
-
-
+   
    memset (&hints, 0, sizeof (hints));
 
    hints.ai_family = PF_UNSPEC;              // Don't specify what type of internet connection.
@@ -75,7 +75,7 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    {
       s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
       fail(s < 0, "socket: %s\n", strerror (errno));
-      if (connect(s, res->ai_addr, res->ai_addrlen) < 0)
+      if (connect(s, res->ai_addr, res->ai_addrlen) != 0)
       {
          fprintf(stderr, "connect: %s\n", strerror (errno));
          close(s);
@@ -130,11 +130,12 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    }
 
    freeaddrinfo(res0);
+
+   SendAnalyticsHit(); // google analytics tracking
 #ifdef WIN32
    WSACleanup();
 #endif
 
-   SendAnalyticsHit(); // google analytics tracking
 #endif
 }
 
@@ -150,7 +151,7 @@ void CometCheckForUpdates::SendAnalyticsHit(void)
 
    char postData[1024];
    char message[1024];
-   bzero(message, 1024);
+   memset(message, 0, 1024);
    sprintf(postData, "v=1&tid=UA-35341957-1&cid=555&t=event&ec=comet&ea=exe&el=%s", comet_version);
    snprintf(message, 1024,
          "POST /collect HTTP/1.1\r\n"
@@ -160,8 +161,8 @@ void CometCheckForUpdates::SendAnalyticsHit(void)
          "%s\r\n", host, strlen(postData),postData);
 
    // create the socket
-   sockfd = socket(AF_INET, SOCK_STREAM, 0);
-   if (sockfd < 0)
+   sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+   if (sockfd == INVALID_SOCKET)
    {
       printf("ERROR opening socket");
       return;
@@ -179,11 +180,18 @@ void CometCheckForUpdates::SendAnalyticsHit(void)
    memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
 
    // connect the socket
-   if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
+   if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) != 0)
       return;
 
    // send the request
    total = strlen(message);
+#ifdef WIN32
+   bytes = send(sockfd, message, total, 0);
+   // no point in checking return value here as the
+   // analytics message was sent or it wasn't
+   closesocket(sockfd);
+   WSACleanup();
+#else
    sent = 0;
    do
    {
@@ -200,4 +208,5 @@ void CometCheckForUpdates::SendAnalyticsHit(void)
 
    // close the socket
    close(sockfd);
+#endif
 }
