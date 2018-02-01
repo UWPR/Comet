@@ -158,15 +158,20 @@ void CometCheckForUpdates::SendAnalyticsHit(void)
          "Host: %s\r\n"
          "Content-type: application/x-www-form-urlencoded\r\n"
          "Content-length: %d\r\n\r\n"
-         "%s\r\n", host, strlen(postData),postData);
+         "%s\r\n", host, (int)strlen(postData), postData);
 
    // create the socket
    sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#ifdef WIN32
    if (sockfd == INVALID_SOCKET)
    {
-      printf("ERROR opening socket");
+      WSACleanup();
       return;
    }
+#else
+   if (sockfd == -1)
+      return;
+#endif
 
    // lookup the ip address
    server = gethostbyname(host);
