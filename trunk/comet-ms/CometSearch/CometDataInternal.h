@@ -99,6 +99,7 @@ struct Options             // output parameters
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
    int bSkipUpdateCheck;         // 0=do not check for updates; 1=check for updates
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
+   int bCreateIndex;             // 0=normal search; 1=create peptide index file
    int bVerboseOutput;
    int bNoEnzymeSelected;
    int bShowFragmentIons;
@@ -145,6 +146,7 @@ struct Options             // output parameters
       bSkipAlreadyDone = a.bSkipAlreadyDone;
       bSkipUpdateCheck = a.bSkipUpdateCheck;
       bMango = a.bMango;
+      bCreateIndex = a.bCreateIndex;
       bVerboseOutput = a.bVerboseOutput;
       bNoEnzymeSelected = a.bNoEnzymeSelected;
       bShowFragmentIons = a.bShowFragmentIons;
@@ -314,6 +316,17 @@ struct DBInfo
       uliTotAACount = a.uliTotAACount;
 
       return *this;
+   }
+};
+
+struct DBIndex
+{
+   char   szPeptide[128];
+   double dPepMass;       // mono neutral pep mass
+
+   bool operator==(const DBIndex &rhs) const
+   {
+      return (!strcmp(szPeptide, rhs.szPeptide));
    }
 };
 
@@ -625,6 +638,7 @@ struct StaticParams
       options.bSkipAlreadyDone = 1;
       options.bSkipUpdateCheck = 0;
       options.bMango = 0;
+      options.bCreateIndex= 0;
       options.bVerboseOutput = 0;
       options.iDecoySearch = 0;
       options.iNumThreads = 0;
@@ -859,6 +873,7 @@ extern vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
 extern Mutex                   g_searchMemoryPoolMutex;
+extern Mutex                   g_dbIndexMutex;
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {

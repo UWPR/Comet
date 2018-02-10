@@ -30,6 +30,7 @@
 #include "CometSearchManager.h"
 #include "CometStatus.h"
 #include "CometCheckForUpdates.h"
+#include "CometIndexDb.h"
 
 #undef PERF_DEBUG
 
@@ -41,6 +42,7 @@ vector<string>                g_pvProteinNames;
 Mutex                         g_pvQueryMutex;
 Mutex                         g_preprocessMemoryPoolMutex;
 Mutex                         g_searchMemoryPoolMutex;
+Mutex                         g_dbIndexMutex;
 CometStatus                   g_cometStatus;
 
 /******************************************************************************
@@ -245,9 +247,9 @@ static void SetMSLevelFilter(MSReader &mstReader)
 // Allocate memory for the _pResults struct for each g_pvQuery entry.
 static bool AllocateResultsMem()
 {
-   for (unsigned i=0; i<g_pvQuery.size(); i++)
+   for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
    {
-      Query* pQuery = g_pvQuery.at(i);
+      Query* pQuery = *it;
 
       try
       {
@@ -361,7 +363,7 @@ static void CalcRunTime(time_t tStartTime)
 }
 
 // for .out files
-static void PrintParameters()
+static void PrintOutfileHeader()
 {
    // print parameters
 
@@ -504,6 +506,8 @@ CometSearchManager::CometSearchManager()
    // Initialize the mutex we'll use to protect the search memory pool
    Threading::CreateMutex(&g_searchMemoryPoolMutex);
 
+   Threading::CreateMutex(&g_dbIndexMutex);
+
    // Initialize the Comet version
    SetParam("# comet_version ", comet_version, comet_version);
 }
@@ -519,15 +523,11 @@ CometSearchManager::~CometSearchManager()
    // Destroy the mutex we used to protect the search memory pool
    Threading::DestroyMutex(g_searchMemoryPoolMutex);
 
-   // Clean up the input files vector
-   //for (int i=0; i<(int)g_pvInputFiles.size(); i++)
-   //   delete g_pvInputFiles.at(i);
+   Threading::DestroyMutex(g_dbIndexMutex);
 
    //std::vector calls destructor of every element it contains when clear() is called
    g_pvInputFiles.clear();
 
-   //for (std::map<string, CometParam*>::iterator it = _mapStaticParams.begin(); it != _mapStaticParams.end(); ++it)
-   //   delete it->second;
    _mapStaticParams.clear();
 }
 
@@ -682,6 +682,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("skip_updatecheck", g_staticParams.options.bSkipUpdateCheck);
 
    GetParamValue("mango_search", g_staticParams.options.bMango);
+
+   GetParamValue("create_index", g_staticParams.options.bCreateIndex);
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
 
@@ -948,8 +950,19 @@ bool CometSearchManager::InitializeStaticParams()
             g_staticParams.options.iNumThreads = detectedThreads;
       }
 #endif
-      if (g_staticParams.options.iNumThreads < 1 || g_staticParams.options.iNumThreads > MAX_THREADS)
-         g_staticParams.options.iNumThreads = 2;  // Default to 2 threads.
+      if (g_staticParams.options.iNumThreads < 0)
+      {
+         g_staticParams.options.iNumThreads = 4;
+         logout(" Setting number of threads to 4");
+      }
+
+      if (g_staticParams.options.iNumThreads > MAX_THREADS)
+      {
+         char szOut[64];
+         g_staticParams.options.iNumThreads = MAX_THREADS;
+         sprintf(szOut, " Setting number of threads to %d", MAX_THREADS);
+         logout(szOut);
+      }
    }
 
    // Set masses to either average or monoisotopic.
@@ -1412,9 +1425,6 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
-   if (g_staticParams.options.bOutputOutFiles)
-      PrintParameters();
-
    if (!g_staticParams.options.bOutputSqtStream)
    {
       sprintf(szOut, " Comet version \"%s\"", comet_version);
@@ -1425,6 +1435,18 @@ bool CometSearchManager::DoSearch()
       logout(szOut);
       fflush(stdout);
    }
+
+   if (g_staticParams.options.bCreateIndex) //index
+   {
+      sprintf(szOut, " Creating peptide index file\n");
+      logout(szOut);
+      bSucceeded = CometIndexDb::CreateIndex();
+      return bSucceeded;
+   }
+
+   if (g_staticParams.options.bOutputOutFiles)
+      PrintOutfileHeader();
+
 
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
@@ -1806,13 +1828,12 @@ bool CometSearchManager::DoSearch()
             {
                int iCurrentScanNumber = 0;       // used to track multiple Mango precursors from same scan number
                int iMangoIndex=0;
-               std::vector<Query*>::iterator it;
 
                // sort back to original spectrum order in MS2 scan in order to associate pairs
                // based on sequential order of precursors for each scan
                std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByMangoIndex);
 
-               for (it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+               for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
                {
                   if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
                   {
@@ -1960,8 +1981,9 @@ bool CometSearchManager::DoSearch()
    cleanup_results:
             // Deleting each Query object in the vector calls its destructor, which
             // frees the spectral memory (see definition for Query in CometData.h).
-            for (int i=0; i<(int)g_pvQuery.size(); i++)
-               delete g_pvQuery.at(i);
+            for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+               delete *it;
+
             g_pvQuery.clear();
 
             if (!bSucceeded)

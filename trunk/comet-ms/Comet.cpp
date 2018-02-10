@@ -86,6 +86,7 @@ void Usage(char *pszCmd)
    logout("                 -F<num>    to specify the first/start scan to search, overriding entry in parameters file\n");
    logout("                 -L<num>    to specify the last/end scan to search, overriding entry in parameters file\n");
    logout("                            (-L option is required if -F option is used)\n");
+   logout("                 -i         create peptide index file only (specify .idx file as database for index search)\n");
    logout("\n");
    sprintf(szErrorMsg, "       example:  %s file1.mzXML file2.mzXML\n", pszCmd);
    logout(szErrorMsg);
@@ -173,6 +174,11 @@ void SetOptions(char *arg,
          break;
       case 'p':
          *bPrintParams = true;
+         break;
+      case 'i':
+         char szParamStringVal[512];
+         sprintf(szParamStringVal, "1");
+         pSearchMgr->SetParam("create_index", szParamStringVal, 1);
          break;
       default:
          break;

@@ -68,7 +68,7 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
          char szErrorMsg[256];
          sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
@@ -220,7 +220,9 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    int  iLenAttributeVariant = strlen(szAttributeVariant);
    int  iLenAttributeMod = strlen(szAttributeMod);
+   int  iNumBadChars = 0; // count # of bad (non-printing) characters in header 
 
+   bool bHeadOfFasta = true;
    // Loop through entire database.
    while(!feof(fptr))
    {
@@ -235,16 +237,21 @@ bool CometSearch::RunSearch(int minNumThreads,
       dbe.vectorPeffMod.clear();
       dbe.vectorPeffVariantSimple.clear();
 
-      // skip through whitespace at head of line
-      while (isspace(iTmpCh))
-         iTmpCh = getc(fptr);
-
-      // skip comment lines
-      if (iTmpCh == '#')
+      if (bHeadOfFasta)
       {
-         // skip to description line
-         while ((iTmpCh != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
+         // skip through whitespace at head of line
+         while (isspace(iTmpCh))
             iTmpCh = getc(fptr);
+
+         // skip comment lines
+         if (iTmpCh == '#')
+         {
+            // skip to description line
+            while ((iTmpCh != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
+               iTmpCh = getc(fptr);
+         }
+
+         bHeadOfFasta = false;
       }
 
       if (iTmpCh == '>') // Expect a '>' for sequence header line.
@@ -262,7 +269,20 @@ bool CometSearch::RunSearch(int minNumThreads,
                bTrimDescr = true;
 
             if (!bTrimDescr && dbe.strName.size() < (WIDTH_REFERENCE-1))
-               dbe.strName += iTmpCh;
+            {
+               if (iTmpCh < 32 || iTmpCh>126)  // sanity check for reading binary (index) file
+               {
+                  iNumBadChars++;
+                  if (iNumBadChars > 20)
+                  {
+                     logerr(" Too many non-printing characters in database header lines; wrong file type/format?\n");
+                     fclose(fptr);
+                     return false;
+                  }
+               }
+               else
+                  dbe.strName += iTmpCh;
+            }
 
             // load and parse PEFF header
             if (g_staticParams.peffInfo.iPeffSearch)
@@ -286,6 +306,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         string strErrorMsg(szErrorMsg);
                         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                         logerr(szErrorMsg);
+                        fclose(fptr);
                         return false;
                      }
                      szPeffLine = pTmp;
@@ -317,6 +338,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            string strErrorMsg(szErrorMsg);
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                            logerr(szErrorMsg);
+                           fclose(fptr);
                            return false;
                         }
                         szMods = pTmp;
@@ -424,6 +446,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            string strErrorMsg(szErrorMsg);
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                            logerr(szErrorMsg);
+                           fclose(fptr);
                            return false;
                         }
                         szMods = pTmp;
@@ -495,15 +518,25 @@ bool CometSearch::RunSearch(int minNumThreads,
             } // done with PEFF
          }
 
+         if (dbe.strName.length() <= 0)
+         {
+            char szErrorMsg[512];
+            sprintf(szErrorMsg,  "\n Error - zero length sequence description; wrong database file/format?\n");
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            return false;
+         }
+
          // Load sequence
          while (((iTmpCh=getc(fptr)) != '>') && (iTmpCh != EOF))
          {
             if ('a'<=iTmpCh && iTmpCh<='z')
             {
-               dbe.strSeq += iTmpCh - 27;  // convert toupper case so subtract 27 (i.e. 'A'-'a')
+               dbe.strSeq += iTmpCh - 32;  // convert toupper case so subtract 32 (i.e. 'A'-'a')
                g_staticParams.databaseInfo.uliTotAACount++;
             }
-            else if (33<=iTmpCh && iTmpCh<=126)
+            else if ('A'<=iTmpCh && iTmpCh<='Z')
             {
                dbe.strSeq += iTmpCh;
                g_staticParams.databaseInfo.uliTotAACount++;
@@ -539,7 +572,6 @@ bool CometSearch::RunSearch(int minNumThreads,
          iTmpCh = getc(fptr);
       }
    }
-
 
    // Wait for active search threads to complete processing.
    pSearchThreadPool->WaitForThreads();
@@ -814,7 +846,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             char szErrorMsg[1024];
             sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.\n", seqSize, ba.what());
             sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-            sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+            sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to mitigate memory use.\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(szErrorMsg);
