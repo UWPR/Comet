@@ -906,9 +906,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    // Set our boundaries for multiple z lines.
    zStop = spec.sizeZ();
 
-   double dSelectionLower;
-   double dSelectedMZ;
-   double dMonoMZ;
+   double dSelectionLower = 0.0;
+   double dSelectedMZ = 0.0;
+   double dMonoMZ = 0.0;
 
    if (g_staticParams.options.bCorrectMass)
    {

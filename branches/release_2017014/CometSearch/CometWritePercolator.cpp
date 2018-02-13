@@ -184,7 +184,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       double dLastDeltaCn=1.0;   // this is deltaCn between first and last peptide in output list
 
       // go one past iNumPrintLines to calculate deltaCn value
-      for (j=1; j<iNumPrintLines+1; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
+      for (j=iWhichResult+1; j<iNumPrintLines+1; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
       {
          if (j<g_staticParams.options.iNumStored)
          {
