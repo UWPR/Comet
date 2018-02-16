@@ -942,10 +942,11 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 bool CometSearch::IndexSearch(FILE *fp)
 {
    long lEndOfStruct;
+   long lSizeLong = (long)sizeof(long);
 
    // read fp of index
-   fseek(fp, -(sizeof(long)), SEEK_END);
-   fread(&lEndOfStruct, sizeof(long), 1, fp);
+   fseek(fp, -lSizeLong, SEEK_END);
+   fread(&lEndOfStruct, lSizeLong, 1, fp);
 
    // read index
    int iMinMass=0;
@@ -956,11 +957,11 @@ bool CometSearch::IndexSearch(FILE *fp)
    fread(&iMaxMass, sizeof(int), 1, fp);
    fread(&iNumPeptides, sizeof(int), 1, fp);
 
-   long lReadIndex[iMaxMass+1];
+   long *lReadIndex = new long[iMaxMass+1];
    for (int i=0; i<iMaxMass+1; i++)
       lReadIndex[i] = -1;
 
-   fread(lReadIndex, sizeof(long), iMaxMass+1, fp);
+   fread(lReadIndex, lSizeLong, iMaxMass+1, fp);
 
    // analyze no variable mods
 
@@ -1061,6 +1062,7 @@ bool CometSearch::IndexSearch(FILE *fp)
       }
    }
 
+   delete [] lReadIndex;
    return true;
 }
 

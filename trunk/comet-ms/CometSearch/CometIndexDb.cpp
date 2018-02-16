@@ -196,7 +196,7 @@ bool CometIndexDb::CreateIndex(void)
 
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
 
-   long lIndex[iMaxPeptideMass];
+   long *lIndex = new long[iMaxPeptideMass];
    for (int i=0; i<iMaxPeptideMass; i++)
       lIndex[i] = -1;
 
@@ -229,6 +229,7 @@ bool CometIndexDb::CreateIndex(void)
    fwrite(&lEndOfStruct, sizeof(long), 1, fptr);  // write ftell position of index
 
    fclose(fptr);
+   delete [] lIndex;
 
    sprintf(szOut, " Done.\n\n");
    logout(szOut);
