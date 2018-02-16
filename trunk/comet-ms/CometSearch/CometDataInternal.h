@@ -107,6 +107,7 @@ struct Options             // output parameters
    int bOverrideCharge;
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
+   int bIndexDb;                 // 0 = normal fasta; 1 = indexed database
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;
    double dRemovePrecursorTol;
@@ -321,7 +322,8 @@ struct DBInfo
 
 struct DBIndex
 {
-   char   szPeptide[128];
+   char   szPeptide[MAX_PEPTIDE_LEN];
+   int    iAAComposition[26]; ///0=A, 26=Z
    double dPepMass;       // mono neutral pep mass
 
    bool operator==(const DBIndex &rhs) const
@@ -624,9 +626,10 @@ struct StaticParams
       options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;
       options.bCorrectMass = 0;
-      options.bTreatSameIL= 1;
+      options.bTreatSameIL = 1;
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;
+      options.bIndexDb = 0;
 
       options.bOutputSqtStream = 0;
       options.bOutputSqtFile = 0;
@@ -879,5 +882,6 @@ struct IonSeriesStruct         // defines which fragment ion series are consider
 {
    int bPreviousMatch[8];
 };
+
 
 #endif // _COMETDATAINTERNAL_H_

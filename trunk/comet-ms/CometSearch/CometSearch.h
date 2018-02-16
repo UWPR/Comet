@@ -185,6 +185,7 @@ private:
                        int iLenPeptide,
                        struct sDBEntry *dbe,
                        long *lNumIterations);
+   bool IndexSearch(FILE *fptr);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool bNtermPeptideOnly,
@@ -195,6 +196,12 @@ private:
    bool TranslateNA2AA(int *frame,
                        int iDirection,
                        char *sDNASequence);
+   void AnalyzeIndexPep(int iWhichQuery,
+                        char *szProteinSeq,
+                        double dCalcPepMass,
+                        bool *pbDuplFragment,
+                        struct sDBEntry *dbe);
+
    char GetAA(int i,
               int iDirection,
               char *sDNASequence);

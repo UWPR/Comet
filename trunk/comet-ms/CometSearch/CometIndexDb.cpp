@@ -210,11 +210,15 @@ bool CometIndexDb::CreateIndex(void)
          if (iPrevMass < iMaxPeptideMass)
             lIndex[iPrevMass] = ftell(fptr);
       }
+      // add composition
+      for (int i=0; i<26; i++)
+         (*it).iAAComposition[i]=0;
+      for (int i=0; i<strlen((*it).szPeptide); i++)
+         (*it).iAAComposition[(*it).szPeptide[i] - 65] += 1;
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
    }
 
    long lEndOfStruct = ftell(fptr);  // will seek to this position to read index
-
 
    iTmpCh = (int)(g_staticParams.options.dPeptideMassLow);
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
@@ -292,7 +296,7 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
          Threading::LockMutex(g_dbIndexMutex);
          // add to vector
          struct DBIndex sEntry;
-         sEntry.dPepMass = dCalcPepMass - PROTON_MASS;
+         sEntry.dPepMass = dCalcPepMass;  //MH+ mass
          strncpy(sEntry.szPeptide, szProteinSeq+iStartPos, iEndPos-iStartPos+1);
          sEntry.szPeptide[iEndPos-iStartPos+1]='\0';
          vIndex.push_back(sEntry);

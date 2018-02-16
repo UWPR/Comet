@@ -103,293 +103,421 @@ bool CometSearch::RunSearch(int minNumThreads,
                             int iPercentEnd)
 {
    bool bSucceeded = true;
-   sDBEntry dbe;
-   FILE *fptr;
-   int iTmpCh = 0;
-   long lEndPos = 0;
-   long lCurrPos = 0;
-   bool bTrimDescr = false;
-   string strPeffHeader;
-   char *szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
-   char *szPeffLine = 0;         // store description line starting with first \ to parse above
-   int iLenAllocMods = 0;
-   int iLenSzLine = 0;
-   int iLen = 0;
 
-   vector<OBOStruct> vectorPeffOBO;
-
-   // Create the thread pool containing g_staticParams.options.iNumThreads,
-   // each hanging around and sleeping until asked to so a search.
-   // NOTE: We don't want to read in ALL the database sequences at once or we
-   // will run out of memory for large databases, so we specify a
-   // "maxNumParamsToQueue" to indicate that, at most, we will only read in
-   // and queue "maxNumParamsToQueue" additional parameters (1 in this case)
-   ThreadPool<SearchThreadData *> *pSearchThreadPool = new ThreadPool<SearchThreadData *>(SearchThreadProc,
-       minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
-
-   g_staticParams.databaseInfo.uliTotAACount = 0;
-   g_staticParams.databaseInfo.iTotalNumProteins = 0;
-
-   if ((fptr=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+   if (g_staticParams.options.bIndexDb)
    {
-      char szErrorMsg[1024];
-      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return false;
-   }
+      FILE *fp;
 
-   fseek(fptr, 0, SEEK_END);
-   lEndPos=ftell(fptr);
-   rewind(fptr);
-
-   // Load database entry header.
-   lCurrPos = ftell(fptr);
-   iTmpCh = getc(fptr);
-
-   if (g_staticParams.peffInfo.iPeffSearch)
-   {
-      iLenSzLine = 2048;
-      szPeffLine = (char*)malloc( iLenSzLine* sizeof(char));
-      if (szPeffLine == NULL)
+      if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
       {
-         char szErrorMsg[256];
-         sprintf(szErrorMsg, " Error - malloc szPeffLine\n");
+         char szErrorMsg[1024];
+         sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }
 
-      // allocate initial storage for mod strings that will be parsed from each def line
-      iLenAllocMods = 5000;
-      szMods = (char*)malloc( iLenAllocMods * sizeof(char));
-      if (szMods == NULL)
+      // worry about threading later
+      CometSearch sqSearch;
+      sqSearch.IndexSearch(fp);
+
+      fclose(fp);
+   }
+   else
+   {
+      sDBEntry dbe;
+      FILE *fp;
+      int iTmpCh = 0;
+      long lEndPos = 0;
+      long lCurrPos = 0;
+      bool bTrimDescr = false;
+      string strPeffHeader;
+      char *szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
+      char *szPeffLine = 0;         // store description line starting with first \ to parse above
+      int iLenAllocMods = 0;
+      int iLenSzLine = 0;
+      int iLen = 0;
+
+      vector<OBOStruct> vectorPeffOBO;
+
+      // Create the thread pool containing g_staticParams.options.iNumThreads,
+      // each hanging around and sleeping until asked to so a search.
+      // NOTE: We don't want to read in ALL the database sequences at once or we
+      // will run out of memory for large databases, so we specify a
+      // "maxNumParamsToQueue" to indicate that, at most, we will only read in
+      // and queue "maxNumParamsToQueue" additional parameters (1 in this case)
+      ThreadPool<SearchThreadData *> *pSearchThreadPool = new ThreadPool<SearchThreadData *>(SearchThreadProc,
+          minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
+
+      g_staticParams.databaseInfo.uliTotAACount = 0;
+      g_staticParams.databaseInfo.iTotalNumProteins = 0;
+
+      if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
       {
-         char szErrorMsg[256];
-         sprintf(szErrorMsg, " Error - malloc szMods\n");
+         char szErrorMsg[1024];
+         sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
          return false;
       }
 
-      // if PEFF database, make sure OBO file is specified
-      if (strlen(g_staticParams.peffInfo.szPeffOBO)==0)
+      fseek(fp, 0, SEEK_END);
+      lEndPos=ftell(fp);
+      rewind(fp);
+
+      // Load database entry header.
+      lCurrPos = ftell(fp);
+      iTmpCh = getc(fp);
+
+      if (g_staticParams.peffInfo.iPeffSearch)
       {
-         char szErrorMsg[512];
-         sprintf(szErrorMsg,  " Error: \"peff_format\" is specified but \"peff_obo\" is not set\n");
-         string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
-         exit(1);
-      }
-
-      // read in PSI or UniMod file and get a map of all mod codes and mod masses
-      CometSearch pOBO;
-      if (strlen(g_staticParams.peffInfo.szPeffOBO) > 0)
-      {
-         pOBO.ReadOBO(g_staticParams.peffInfo.szPeffOBO, &vectorPeffOBO);
-         sort(vectorPeffOBO.begin(), vectorPeffOBO.end());  // sort by strMod for efficient binary search
-      }
-   }
-
-   if (!g_staticParams.options.bOutputSqtStream)
-   {
-      logout("     - Search progress: ");
-      fflush(stdout);
-   }
-
-   char szBuf[8192];
-   char szAttributeMod[16];                                // from ModRes
-   char szAttributeVariant[16];
-
-   if (g_staticParams.peffInfo.iPeffSearch == 1 || g_staticParams.peffInfo.iPeffSearch == 3)
-      strcpy(szAttributeMod, "\\ModResPsi=");
-   else if (g_staticParams.peffInfo.iPeffSearch == 2 || g_staticParams.peffInfo.iPeffSearch == 4)
-      strcpy(szAttributeMod, "\\ModResUnimod=");
-   else
-      strcpy(szAttributeMod, "");
-
-   if (g_staticParams.peffInfo.iPeffSearch == 1 || g_staticParams.peffInfo.iPeffSearch == 2
-         || g_staticParams.peffInfo.iPeffSearch == 5)
-      strcpy(szAttributeVariant, "\\VariantSimple=");
-   else
-      strcpy(szAttributeVariant, "");
-
-   int  iLenAttributeVariant = strlen(szAttributeVariant);
-   int  iLenAttributeMod = strlen(szAttributeMod);
-   int  iNumBadChars = 0; // count # of bad (non-printing) characters in header 
-
-   bool bHeadOfFasta = true;
-   // Loop through entire database.
-   while(!feof(fptr))
-   {
-      // When we created the thread pool above, we specified the max number of
-      // additional params to queue. Here, we must call this method if we want
-      // to wait for the queued params to be processed by the threads before we
-      // load any more params.
-      pSearchThreadPool->WaitForQueuedParams();
-
-      dbe.strName = "";
-      dbe.strSeq = "";
-      dbe.vectorPeffMod.clear();
-      dbe.vectorPeffVariantSimple.clear();
-
-      if (bHeadOfFasta)
-      {
-         // skip through whitespace at head of line
-         while (isspace(iTmpCh))
-            iTmpCh = getc(fptr);
-
-         // skip comment lines
-         if (iTmpCh == '#')
+         iLenSzLine = 2048;
+         szPeffLine = (char*)malloc( iLenSzLine* sizeof(char));
+         if (szPeffLine == NULL)
          {
-            // skip to description line
-            while ((iTmpCh != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
-               iTmpCh = getc(fptr);
+            char szErrorMsg[256];
+            sprintf(szErrorMsg, " Error - malloc szPeffLine\n");
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            return false;
          }
 
-         bHeadOfFasta = false;
+         // allocate initial storage for mod strings that will be parsed from each def line
+         iLenAllocMods = 5000;
+         szMods = (char*)malloc( iLenAllocMods * sizeof(char));
+         if (szMods == NULL)
+         {
+            char szErrorMsg[256];
+            sprintf(szErrorMsg, " Error - malloc szMods\n");
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            return false;
+         }
+
+         // if PEFF database, make sure OBO file is specified
+         if (strlen(g_staticParams.peffInfo.szPeffOBO)==0)
+         {
+            char szErrorMsg[512];
+            sprintf(szErrorMsg,  " Error: \"peff_format\" is specified but \"peff_obo\" is not set\n");
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            exit(1);
+         }
+
+         // read in PSI or UniMod file and get a map of all mod codes and mod masses
+         CometSearch pOBO;
+         if (strlen(g_staticParams.peffInfo.szPeffOBO) > 0)
+         {
+            pOBO.ReadOBO(g_staticParams.peffInfo.szPeffOBO, &vectorPeffOBO);
+            sort(vectorPeffOBO.begin(), vectorPeffOBO.end());  // sort by strMod for efficient binary search
+         }
       }
 
-      if (iTmpCh == '>') // Expect a '>' for sequence header line.
+      if (!g_staticParams.options.bOutputSqtStream)
       {
-         // grab file pointer here for this sequence entry
-         // this will be stored for protein references for each matched entry and
-         // will be used to retrieve actual protein references when printing output
-         dbe.lProteinFilePosition = ftell(fptr);
+         logout("     - Search progress: ");
+         fflush(stdout);
+      }
 
-         bTrimDescr = false;
-         while (((iTmpCh = getc(fptr)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
+      char szBuf[8192];
+      char szAttributeMod[16];                                // from ModRes
+      char szAttributeVariant[16];
+
+      if (g_staticParams.peffInfo.iPeffSearch == 1 || g_staticParams.peffInfo.iPeffSearch == 3)
+         strcpy(szAttributeMod, "\\ModResPsi=");
+      else if (g_staticParams.peffInfo.iPeffSearch == 2 || g_staticParams.peffInfo.iPeffSearch == 4)
+         strcpy(szAttributeMod, "\\ModResUnimod=");
+      else
+         strcpy(szAttributeMod, "");
+
+      if (g_staticParams.peffInfo.iPeffSearch == 1 || g_staticParams.peffInfo.iPeffSearch == 2
+            || g_staticParams.peffInfo.iPeffSearch == 5)
+         strcpy(szAttributeVariant, "\\VariantSimple=");
+      else
+         strcpy(szAttributeVariant, "");
+
+      int  iLenAttributeVariant = strlen(szAttributeVariant);
+      int  iLenAttributeMod = strlen(szAttributeMod);
+      int  iNumBadChars = 0; // count # of bad (non-printing) characters in header 
+
+      bool bHeadOfFasta = true;
+      // Loop through entire database.
+      while(!feof(fp))
+      {
+         // When we created the thread pool above, we specified the max number of
+         // additional params to queue. Here, we must call this method if we want
+         // to wait for the queued params to be processed by the threads before we
+         // load any more params.
+         pSearchThreadPool->WaitForQueuedParams();
+
+         dbe.strName = "";
+         dbe.strSeq = "";
+         dbe.vectorPeffMod.clear();
+         dbe.vectorPeffVariantSimple.clear();
+
+         if (bHeadOfFasta)
          {
-            // Don't bother storing description text past first blank.
-            if (!bTrimDescr && (isspace(iTmpCh) || iscntrl(iTmpCh)))
-               bTrimDescr = true;
+            // skip through whitespace at head of line
+            while (isspace(iTmpCh))
+               iTmpCh = getc(fp);
 
-            if (!bTrimDescr && dbe.strName.size() < (WIDTH_REFERENCE-1))
+            // skip comment lines
+            if (iTmpCh == '#')
             {
-               if (iTmpCh < 32 || iTmpCh>126)  // sanity check for reading binary (index) file
-               {
-                  iNumBadChars++;
-                  if (iNumBadChars > 20)
-                  {
-                     logerr(" Too many non-printing characters in database header lines; wrong file type/format?\n");
-                     fclose(fptr);
-                     return false;
-                  }
-               }
-               else
-                  dbe.strName += iTmpCh;
+               // skip to description line
+               while ((iTmpCh != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
+                  iTmpCh = getc(fp);
             }
 
-            // load and parse PEFF header
-            if (g_staticParams.peffInfo.iPeffSearch)
-            {
-               if (iTmpCh == '\\')
-               {
-                  ungetc(iTmpCh, fptr);
+            bHeadOfFasta = false;
+         }
 
-                  // grab rest of description line here
-                  szPeffLine[0]='\0';
-                  fgets(szPeffLine, iLenSzLine, fptr);
-                  while (!feof(fptr) && szPeffLine[strlen(szPeffLine)-1]!='\n')
+         if (iTmpCh == '>') // Expect a '>' for sequence header line.
+         {
+            // grab file pointer here for this sequence entry
+            // this will be stored for protein references for each matched entry and
+            // will be used to retrieve actual protein references when printing output
+            dbe.lProteinFilePosition = ftell(fp);
+
+            bTrimDescr = false;
+            while (((iTmpCh = getc(fp)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
+            {
+               // Don't bother storing description text past first blank.
+               if (!bTrimDescr && (isspace(iTmpCh) || iscntrl(iTmpCh)))
+                  bTrimDescr = true;
+
+               if (!bTrimDescr && dbe.strName.size() < (WIDTH_REFERENCE-1))
+               {
+                  if (iTmpCh < 32 || iTmpCh>126)  // sanity check for reading binary (index) file
                   {
-                     char *pTmp;
-                     iLenSzLine += 512;
-                     pTmp = (char *)realloc(szPeffLine, iLenSzLine);
-                     if (pTmp == NULL)
+                     iNumBadChars++;
+                     if (iNumBadChars > 20)
                      {
-                        char szErrorMsg[512];
-                        sprintf(szErrorMsg,  " Error realloc(szPeffLine[%d])\n", iLenSzLine);
-                        string strErrorMsg(szErrorMsg);
-                        g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                        logerr(szErrorMsg);
-                        fclose(fptr);
+                        logerr(" Too many non-printing characters in database header lines; wrong file type/format?\n");
+                        fclose(fp);
                         return false;
                      }
-                     szPeffLine = pTmp;
-                     fgets(szPeffLine+strlen(szPeffLine), iLenSzLine - strlen(szPeffLine), fptr);
                   }
+                  else
+                     dbe.strName += iTmpCh;
+               }
 
-                  // grab from \ModResPsi or \ModResUnimod and \VariantSimple to end of line
-                  char *pStr;
-                  if (iLenAttributeMod>0 && (pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
+               // load and parse PEFF header
+               if (g_staticParams.peffInfo.iPeffSearch)
+               {
+                  if (iTmpCh == '\\')
                   {
-                     char *pStr2;
-                     pStr += iLenAttributeMod;
+                     ungetc(iTmpCh, fp);
 
-                     if ( (pStr2 = strchr(pStr, ' '))!=NULL)
-                        iLen = pStr2 - pStr;
-                     else
-                        iLen = strlen(szPeffLine) - (pStr - szPeffLine);
-
-                     if ( iLen > iLenAllocMods)
+                     // grab rest of description line here
+                     szPeffLine[0]='\0';
+                     fgets(szPeffLine, iLenSzLine, fp);
+                     while (!feof(fp) && szPeffLine[strlen(szPeffLine)-1]!='\n')
                      {
                         char *pTmp;
-
-                        iLenAllocMods = iLen + 1000;
-                        pTmp=(char *)realloc(szMods, iLenAllocMods);
+                        iLenSzLine += 512;
+                        pTmp = (char *)realloc(szPeffLine, iLenSzLine);
                         if (pTmp == NULL)
                         {
                            char szErrorMsg[512];
-                           sprintf(szErrorMsg,  " Error realloc(szMods[%d])\n", iLenAllocMods);
+                           sprintf(szErrorMsg,  " Error realloc(szPeffLine[%d])\n", iLenSzLine);
                            string strErrorMsg(szErrorMsg);
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                            logerr(szErrorMsg);
-                           fclose(fptr);
+                           fclose(fp);
                            return false;
                         }
-                        szMods = pTmp;
+                        szPeffLine = pTmp;
+                        fgets(szPeffLine+strlen(szPeffLine), iLenSzLine - strlen(szPeffLine), fp);
                      }
 
-                     strncpy(szMods, pStr, iLen);
-                     szMods[iLen]=0;
-
-                     int iPos;
-                     string strModID;
-
-                     // now tokenize/split szMods on ')' character
-                     string strModRes(szMods);
-                     istringstream ssMods(strModRes);
-                     while (!ssMods.eof())
+                     // grab from \ModResPsi or \ModResUnimod and \VariantSimple to end of line
+                     char *pStr;
+                     if (iLenAttributeMod>0 && (pStr = strstr(szPeffLine, szAttributeMod)) != NULL)
                      {
-                        string strModEntry;
-                        getline(ssMods, strModEntry, ')');
+                        char *pStr2;
+                        pStr += iLenAttributeMod;
 
-                        iPos = 0;
+                        if ( (pStr2 = strchr(pStr, ' '))!=NULL)
+                           iLen = pStr2 - pStr;
+                        else
+                           iLen = strlen(szPeffLine) - (pStr - szPeffLine);
 
-                        // at this point, strModEntry should look like (118,121|MOD:00000 
-                        if (strModEntry[0]=='(' && isdigit(strModEntry[1]))  //handle possible '?' in the position field ; need to check that strModEntry looks like "(number"
+                        if ( iLen > iLenAllocMods)
                         {
-                           // turn '|' to space
-                           std::string::iterator it;
-                           for (it = strModEntry.begin(); it != strModEntry.end(); ++it)
+                           char *pTmp;
+
+                           iLenAllocMods = iLen + 1000;
+                           pTmp=(char *)realloc(szMods, iLenAllocMods);
+                           if (pTmp == NULL)
                            {
-                              if (*it == '|' || *it == '(')
-                                 *it = ' ';
+                              char szErrorMsg[512];
+                              sprintf(szErrorMsg,  " Error realloc(szMods[%d])\n", iLenAllocMods);
+                              string strErrorMsg(szErrorMsg);
+                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                              logerr(szErrorMsg);
+                              fclose(fp);
+                              return false;
                            }
+                           szMods = pTmp;
+                        }
 
-                           // split "118,121 MOD:00000" into "118,121" and "MOD:00000"
-                           std::stringstream converter(strModEntry);
-                           string strPos;
-                           string strModID;
-                           converter >> strPos >> strModID;
+                        strncpy(szMods, pStr, iLen);
+                        szMods[iLen]=0;
 
-                           // now tokenize on comma separated szPos
-                           istringstream ss(strPos);
-                           while (!ss.eof())
+                        int iPos;
+                        string strModID;
+
+                        // now tokenize/split szMods on ')' character
+                        string strModRes(szMods);
+                        istringstream ssMods(strModRes);
+                        while (!ssMods.eof())
+                        {
+                           string strModEntry;
+                           getline(ssMods, strModEntry, ')');
+
+                           iPos = 0;
+
+                           // at this point, strModEntry should look like (118,121|MOD:00000 
+                           if (strModEntry[0]=='(' && isdigit(strModEntry[1]))  //handle possible '?' in the position field ; need to check that strModEntry looks like "(number"
                            {
-                              string x;               // here's a nice, empty string
-                              getline( ss, x, ',' );  // try to read the next field into it
-                              iPos = atoi(x.c_str());
-                              if (iPos <= 0)
+                              // turn '|' to space
+                              std::string::iterator it;
+                              for (it = strModEntry.begin(); it != strModEntry.end(); ++it)
+                              {
+                                 if (*it == '|' || *it == '(')
+                                    *it = ' ';
+                              }
+
+                              // split "118,121 MOD:00000" into "118,121" and "MOD:00000"
+                              std::stringstream converter(strModEntry);
+                              string strPos;
+                              string strModID;
+                              converter >> strPos >> strModID;
+
+                              // now tokenize on comma separated szPos
+                              istringstream ss(strPos);
+                              while (!ss.eof())
+                              {
+                                 string x;               // here's a nice, empty string
+                                 getline( ss, x, ',' );  // try to read the next field into it
+                                 iPos = atoi(x.c_str());
+                                 if (iPos <= 0)
+                                 {
+                                    if (g_staticParams.options.bVerboseOutput)
+                                    {
+                                       char szErrorMsg[512];
+                                       sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str());
+                                       string strErrorMsg(szErrorMsg);
+                                       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                                       logerr(szErrorMsg);
+                                    }
+                                 }
+                                 else
+                                 {
+                                    struct PeffModStruct pData;
+                                    CometSearch pOBO;
+
+                                    pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
+
+                                    // find strModID in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
+                                    if (pOBO.MapOBO(strModID, &vectorPeffOBO, &pData))
+                                    {
+                                       dbe.vectorPeffMod.push_back(pData);
+                                    }
+                                 }
+                              }
+                           }
+                           else
+                           {
+                              if (g_staticParams.options.bVerboseOutput)
+                              {
+                                 char szErrorMsg[512];
+                                 sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str());
+                                 string strErrorMsg(szErrorMsg);
+                                 g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                                 logerr(szErrorMsg);
+                              }
+                           }
+                        }
+                     }
+
+                     if (iLenAttributeVariant>0 && (pStr = strstr(szPeffLine, szAttributeVariant)) != NULL)
+                     {
+                        char *pStr2;
+                        pStr += iLenAttributeVariant;
+
+                        if ( (pStr2 = strchr(pStr, ' '))!=NULL)
+                           iLen = pStr2 - pStr;
+                        else
+                           iLen = strlen(szPeffLine) - (pStr - szPeffLine);
+
+                        if ( iLen > iLenAllocMods)
+                        {
+                           char *pTmp;
+                           iLenAllocMods = iLen + 1000;
+                           pTmp=(char *)realloc(szMods, iLenAllocMods);
+                           if (pTmp == NULL)
+                           {
+                              char szErrorMsg[512];
+                              sprintf(szErrorMsg,  " Error realloc(szMods[%d])\n", iLenAllocMods);
+                              string strErrorMsg(szErrorMsg);
+                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                              logerr(szErrorMsg);
+                              fclose(fp);
+                              return false;
+                           }
+                           szMods = pTmp;
+                        }
+
+                        strncpy(szMods, pStr, iLen);
+                        szMods[iLen]=0;
+
+                        // parse VariantSimple entries
+                        string strMods(szMods);
+                        istringstream ssVariants(strMods);
+                        string strVariant;
+                        char cVariant;
+                        int iPos;
+
+                        while (!ssVariants.eof())
+                        {
+                           string strVariantEntry;
+                           getline(ssVariants, strVariantEntry, ')');
+
+                           //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
+                           if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
+                           {
+                              // turn '|' to space
+                              std::string::iterator it;
+                              for (it = strVariantEntry.begin(); it != strVariantEntry.end(); ++it)
+                              {
+                                 if (*it == '|' || *it == '(')
+                                    *it = ' ';
+                              }
+
+                              // split "8 C" into "8" and "C"
+                              iPos = -1;
+                              std::stringstream converter(strVariantEntry);
+                              converter >> iPos >> strVariant;
+
+                              // make sure variant residue is just a single residue in VariantSimple entry
+                              cVariant = '\0';
+                              if (strVariant.length() == 1)
+                                 cVariant = strVariant[0];
+
+                              // sanity check: make sure position is positive and residue is A-Z or *
+                              if (iPos<0 || ((cVariant<65 || cVariant>90) && cVariant!=42))  // char can be AA or *
                               {
                                  if (g_staticParams.options.bVerboseOutput)
                                  {
                                     char szErrorMsg[512];
-                                    sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str());
+                                    sprintf(szErrorMsg,  "Warning:  %s, VariantSimple=(%d|%c) ignored\n", dbe.strName.c_str(), iPos, cVariant);
                                     string strErrorMsg(szErrorMsg);
                                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                                     logerr(szErrorMsg);
@@ -397,209 +525,105 @@ bool CometSearch::RunSearch(int minNumThreads,
                               }
                               else
                               {
-                                 struct PeffModStruct pData;
-                                 CometSearch pOBO;
+                                 struct PeffVariantSimpleStruct pData;
 
-                                 pData.iPosition = iPos - 1;   // represent PEFF mod position in 0 array index coordinates
-
-                                 // find strModID in vectorPeffOBO and get pData.dMassDiffAvg and pData.MassDiffMono
-                                 if (pOBO.MapOBO(strModID, &vectorPeffOBO, &pData))
-                                 {
-                                    dbe.vectorPeffMod.push_back(pData);
-                                 }
+                                 pData.iPosition = iPos - 1;   // represent PEFF variant position in 0 array index coordinates
+                                 pData.cResidue = cVariant;
+                                 dbe.vectorPeffVariantSimple.push_back(pData);
                               }
                            }
                         }
-                        else
-                        {
-                           if (g_staticParams.options.bVerboseOutput)
-                           {
-                              char szErrorMsg[512];
-                              sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str());
-                              string strErrorMsg(szErrorMsg);
-                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                              logerr(szErrorMsg);
-                           }
-                        }
                      }
+
+                     // exit out of this as end of line grabbed
+                     break;
                   }
+               } // done with PEFF
+            }
 
-                  if (iLenAttributeVariant>0 && (pStr = strstr(szPeffLine, szAttributeVariant)) != NULL)
-                  {
-                     char *pStr2;
-                     pStr += iLenAttributeVariant;
+            if (dbe.strName.length() <= 0)
+            {
+               char szErrorMsg[512];
+               sprintf(szErrorMsg,  "\n Error - zero length sequence description; wrong database file/format?\n");
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(szErrorMsg);
+               return false;
+            }
 
-                     if ( (pStr2 = strchr(pStr, ' '))!=NULL)
-                        iLen = pStr2 - pStr;
-                     else
-                        iLen = strlen(szPeffLine) - (pStr - szPeffLine);
-
-                     if ( iLen > iLenAllocMods)
-                     {
-                        char *pTmp;
-                        iLenAllocMods = iLen + 1000;
-                        pTmp=(char *)realloc(szMods, iLenAllocMods);
-                        if (pTmp == NULL)
-                        {
-                           char szErrorMsg[512];
-                           sprintf(szErrorMsg,  " Error realloc(szMods[%d])\n", iLenAllocMods);
-                           string strErrorMsg(szErrorMsg);
-                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(szErrorMsg);
-                           fclose(fptr);
-                           return false;
-                        }
-                        szMods = pTmp;
-                     }
-
-                     strncpy(szMods, pStr, iLen);
-                     szMods[iLen]=0;
-
-                     // parse VariantSimple entries
-                     string strMods(szMods);
-                     istringstream ssVariants(strMods);
-                     string strVariant;
-                     char cVariant;
-                     int iPos;
-
-                     while (!ssVariants.eof())
-                     {
-                        string strVariantEntry;
-                        getline(ssVariants, strVariantEntry, ')');
-
-                        //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
-                        if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
-                        {
-                           // turn '|' to space
-                           std::string::iterator it;
-                           for (it = strVariantEntry.begin(); it != strVariantEntry.end(); ++it)
-                           {
-                              if (*it == '|' || *it == '(')
-                                 *it = ' ';
-                           }
-
-                           // split "8 C" into "8" and "C"
-                           iPos = -1;
-                           std::stringstream converter(strVariantEntry);
-                           converter >> iPos >> strVariant;
-
-                           // make sure variant residue is just a single residue in VariantSimple entry
-                           cVariant = '\0';
-                           if (strVariant.length() == 1)
-                              cVariant = strVariant[0];
-
-                           // sanity check: make sure position is positive and residue is A-Z or *
-                           if (iPos<0 || ((cVariant<65 || cVariant>90) && cVariant!=42))  // char can be AA or *
-                           {
-                              if (g_staticParams.options.bVerboseOutput)
-                              {
-                                 char szErrorMsg[512];
-                                 sprintf(szErrorMsg,  "Warning:  %s, VariantSimple=(%d|%c) ignored\n", dbe.strName.c_str(), iPos, cVariant);
-                                 string strErrorMsg(szErrorMsg);
-                                 g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                                 logerr(szErrorMsg);
-                              }
-                           }
-                           else
-                           {
-                              struct PeffVariantSimpleStruct pData;
-
-                              pData.iPosition = iPos - 1;   // represent PEFF variant position in 0 array index coordinates
-                              pData.cResidue = cVariant;
-                              dbe.vectorPeffVariantSimple.push_back(pData);
-                           }
-                        }
-                     }
-                  }
-
-                  // exit out of this as end of line grabbed
-                  break;
+            // Load sequence
+            while (((iTmpCh=getc(fp)) != '>') && (iTmpCh != EOF))
+            {
+               if ('a'<=iTmpCh && iTmpCh<='z')
+               {
+                  dbe.strSeq += iTmpCh - 32;  // convert toupper case so subtract 32 (i.e. 'A'-'a')
+                  g_staticParams.databaseInfo.uliTotAACount++;
                }
-            } // done with PEFF
-         }
-
-         if (dbe.strName.length() <= 0)
-         {
-            char szErrorMsg[512];
-            sprintf(szErrorMsg,  "\n Error - zero length sequence description; wrong database file/format?\n");
-            string strErrorMsg(szErrorMsg);
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
-            return false;
-         }
-
-         // Load sequence
-         while (((iTmpCh=getc(fptr)) != '>') && (iTmpCh != EOF))
-         {
-            if ('a'<=iTmpCh && iTmpCh<='z')
-            {
-               dbe.strSeq += iTmpCh - 32;  // convert toupper case so subtract 32 (i.e. 'A'-'a')
-               g_staticParams.databaseInfo.uliTotAACount++;
+               else if ('A'<=iTmpCh && iTmpCh<='Z')
+               {
+                  dbe.strSeq += iTmpCh;
+                  g_staticParams.databaseInfo.uliTotAACount++;
+               }
             }
-            else if ('A'<=iTmpCh && iTmpCh<='Z')
+
+            g_staticParams.databaseInfo.iTotalNumProteins++;
+
+            if (!g_staticParams.options.bOutputSqtStream
+                  && !(g_staticParams.databaseInfo.iTotalNumProteins%500))
             {
-               dbe.strSeq += iTmpCh;
-               g_staticParams.databaseInfo.uliTotAACount++;
+               char szTmp[128];
+               lCurrPos = ftell(fp);
+               // go from iPercentStart to iPercentEnd, scaled by lCurrPos/iEndPos
+               sprintf(szTmp, "%3d%%", (int)(((double)(iPercentStart + (iPercentEnd-iPercentStart)*(double)lCurrPos/(double)lEndPos) )));
+               logout(szTmp);
+               fflush(stdout);
+               logout("\b\b\b\b");
             }
+
+            // Now search sequence entry; add threading here so that
+            // each protein sequence is passed to a separate thread.
+            SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
+            pSearchThreadPool->Launch(pSearchThreadData);
+
+            bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+            if (!bSucceeded)
+               break;
          }
-
-         g_staticParams.databaseInfo.iTotalNumProteins++;
-
-         if (!g_staticParams.options.bOutputSqtStream
-               && !(g_staticParams.databaseInfo.iTotalNumProteins%500))
+         else
          {
-            char szTmp[128];
-            lCurrPos = ftell(fptr);
-            // go from iPercentStart to iPercentEnd, scaled by lCurrPos/iEndPos
-            sprintf(szTmp, "%3d%%", (int)(((double)(iPercentStart + (iPercentEnd-iPercentStart)*(double)lCurrPos/(double)lEndPos) )));
-            logout(szTmp);
-            fflush(stdout);
-            logout("\b\b\b\b");
+            fgets(szBuf, sizeof(szBuf), fp);
+            iTmpCh = getc(fp);
          }
-
-         // Now search sequence entry; add threading here so that
-         // each protein sequence is passed to a separate thread.
-         SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
-         pSearchThreadPool->Launch(pSearchThreadData);
-
-         bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-         if (!bSucceeded)
-            break;
       }
-      else
+
+      // Wait for active search threads to complete processing.
+      pSearchThreadPool->WaitForThreads();
+
+      delete pSearchThreadPool;
+      pSearchThreadPool = NULL;
+
+      // Check for errors one more time since there might have been an error
+      // while we were waiting for the threads.
+      if (bSucceeded)
       {
-         fgets(szBuf, sizeof(szBuf), fptr);
-         iTmpCh = getc(fptr);
+         bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
       }
-   }
 
-   // Wait for active search threads to complete processing.
-   pSearchThreadPool->WaitForThreads();
+      fclose(fp);
 
-   delete pSearchThreadPool;
-   pSearchThreadPool = NULL;
+      if (!g_staticParams.options.bOutputSqtStream)
+      {
+         char szTmp[12];
+         sprintf(szTmp, "%3d%%\n", iPercentEnd);
+         logout(szTmp);
+         fflush(stdout);
+      }
 
-   // Check for errors one more time since there might have been an error
-   // while we were waiting for the threads.
-   if (bSucceeded)
-   {
-      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-   }
-
-   fclose(fptr);
-
-   if (!g_staticParams.options.bOutputSqtStream)
-   {
-      char szTmp[12];
-      sprintf(szTmp, "%3d%%\n", iPercentEnd);
-      logout(szTmp);
-      fflush(stdout);
-   }
-
-   if (g_staticParams.peffInfo.iPeffSearch)
-   {
-      free(szMods);
-      free(szPeffLine);
+      if (g_staticParams.peffInfo.iPeffSearch)
+      {
+         free(szMods);
+         free(szPeffLine);
+      }
    }
 
    return bSucceeded;
@@ -908,6 +932,132 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 
          delete[] pszTemp;
          pszTemp = NULL;
+      }
+   }
+
+   return true;
+}
+
+
+bool CometSearch::IndexSearch(FILE *fp)
+{
+   long lEndOfStruct;
+
+   // read fp of index
+   fseek(fp, -(sizeof(long)), SEEK_END);
+   fread(&lEndOfStruct, sizeof(long), 1, fp);
+
+   // read index
+   int iMinMass=0;
+   int iMaxMass=0;
+   int iNumPeptides=0;
+   fseek(fp, lEndOfStruct, SEEK_SET);
+   fread(&iMinMass, sizeof(int), 1, fp);
+   fread(&iMaxMass, sizeof(int), 1, fp);
+   fread(&iNumPeptides, sizeof(int), 1, fp);
+
+   long lReadIndex[iMaxMass+1];
+   for (int i=0; i<iMaxMass+1; i++)
+      lReadIndex[i] = -1;
+
+   fread(lReadIndex, sizeof(long), iMaxMass+1, fp);
+
+   // analyze no variable mods
+
+   int iStart = (int)g_massRange.dMinMass;
+   int iEnd = (int)g_massRange.dMaxMass;
+
+   if (iStart < iMinMass)
+      iStart = iMinMass;
+   if (iEnd > iMaxMass)
+      iEnd = iMaxMass;
+
+   struct DBIndex sTmp;
+   sDBEntry dbe;
+
+   while (lReadIndex[iStart] == -1 && iStart<=iEnd)
+      iStart++;
+   fseek(fp, lReadIndex[iStart], SEEK_SET);
+   fread(&sTmp, sizeof(struct DBIndex), 1, fp);
+
+   while ((int)sTmp.dPepMass <= iEnd)
+   {
+      int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sTmp.dPepMass);
+      while (iWhichQuery>0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sTmp.dPepMass)
+         iWhichQuery--;
+
+      if (iWhichQuery != -1)
+         AnalyzeIndexPep(iWhichQuery, sTmp.szPeptide, sTmp.dPepMass, _ppbDuplFragmentArr[0], &dbe);
+
+      if (ftell(fp)>=lEndOfStruct || sTmp.dPepMass>g_massRange.dMaxMass)
+         break;
+
+      fread(&sTmp, sizeof(struct DBIndex), 1, fp);
+   }
+
+   // analyze variable mods; currently only supports variable_mod01 w/o options
+   if (!isEqual(g_staticParams.variableModParameters.varModList[0].dVarModMass, 0.0))
+   {
+      // go through each mass region subtracting 'i' number of variable mods
+      for (int i=1; i<=g_staticParams.variableModParameters.varModList[0].iMaxNumVarModAAPerMod; i++)
+      {
+         double dMassAddition = i * g_staticParams.variableModParameters.varModList[0].dVarModMass;
+ 
+         iStart = (int)(g_massRange.dMinMass - i * g_staticParams.variableModParameters.varModList[0].dVarModMass);
+         iEnd = (int)(g_massRange.dMaxMass - i * g_staticParams.variableModParameters.varModList[0].dVarModMass);
+
+         if (iStart < iMinMass)
+            iStart = iMinMass;
+         if (iEnd > iMaxMass)
+            iEnd = iMaxMass;
+
+         while (lReadIndex[iStart] == -1 && iStart<=iEnd)
+            iStart++;
+         fseek(fp, lReadIndex[iStart], SEEK_SET);
+         fread(&sTmp, sizeof(struct DBIndex), 1, fp);
+         while ((int)sTmp.dPepMass <= iEnd)
+         {
+            int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sTmp.dPepMass + dMassAddition);
+            while (iWhichQuery>0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sTmp.dPepMass + dMassAddition)
+               iWhichQuery--;
+
+            if (iWhichQuery != -1)
+            {
+               // validate is has at least i number of modifiable residues
+               int iResidueModCount = 0;
+               for (int j=0; j<(int)strlen(g_staticParams.variableModParameters.varModList[0].szVarModChar); j++)
+                  iResidueModCount += sTmp.iAAComposition[g_staticParams.variableModParameters.varModList[0].szVarModChar[j] - 65];
+               if (iResidueModCount >= i)
+               {
+                  for (int j=0; j<VMODS; j++)
+                  {
+                     // this variable tracks how many of each variable mod is in the peptide
+                     _varModInfo.varModStatList[j].iTotVarModCt = 0;
+                     _varModInfo.varModStatList[j].iMatchVarModCt = 0;
+                     _varModInfo.varModStatList[j].iTotBinaryModCt = 0;
+                     memset(_varModInfo.varModStatList[j].iVarModSites, 0, sizeof(_varModInfo.varModStatList[j].iVarModSites));
+                  }
+                  _varModInfo.varModStatList[0].iTotVarModCt = iResidueModCount; // total modifiable residues
+                  _varModInfo.varModStatList[0].iMatchVarModCt = i;              // number of mods
+
+                  _varModInfo.iStartPos = 0;
+                  _varModInfo.iEndPos = strlen(sTmp.szPeptide) - 1;
+                  _varModInfo.dCalcPepMass = sTmp.dPepMass;
+                                             
+                  bool bDoPeffAnalysis = false;
+                  vector<PeffPositionStruct> vPeffArray;
+                  long lNumIterations = 0;
+
+                  // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
+                  PermuteMods(sTmp.szPeptide, iWhichQuery, 1, _ppbDuplFragmentArr[0], &bDoPeffAnalysis, &vPeffArray, &dbe, &lNumIterations);
+               }
+            }
+      
+            if (ftell(fp)>=lEndOfStruct || sTmp.dPepMass>g_massRange.dMaxMass)
+               break;
+
+            fread(&sTmp, sizeof(struct DBIndex), 1, fp);
+         }
       }
    }
 
@@ -1319,6 +1469,230 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    }
 
    return true;
+}
+
+
+void CometSearch::AnalyzeIndexPep(int iWhichQuery,
+                                  char *szProteinSeq,
+                                  double dCalcPepMass,
+                                  bool *pbDuplFragment,
+                                  struct sDBEntry *dbe)
+{
+   int iWhichIonSeries;
+   int ctIonSeries;
+   int ctLen;
+   int ctCharge;
+   int iStartPos = 0;
+   int iEndPos = strlen(szProteinSeq)-1;
+   int iLenPeptide = strlen(szProteinSeq);
+   bool bFirstTimeThroughLoopForPeptide = true;
+
+   // Compare calculated fragment ions against all matching query spectra.
+   while (iWhichQuery < (int)g_pvQuery.size())
+   {
+      if (dCalcPepMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+      {
+         // If calculated mass is smaller than low mass range.
+         break;
+      }
+
+      // Mass tolerance check for particular query against this candidate peptide mass.
+      if (CheckMassMatch(iWhichQuery, dCalcPepMass))
+      {
+         char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];  // Allow for prev/next AA in string.
+
+         // Calculate ion series just once to compare against all relevant query spectra.
+         if (bFirstTimeThroughLoopForPeptide)
+         {
+            int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
+
+            bFirstTimeThroughLoopForPeptide = false;
+
+            int i;
+            double dBion = g_staticParams.precalcMasses.dNtermProton;
+            double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+/*
+OK Need to fox annotation of terminal residues in index
+            if (iStartPos == 0)
+               dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+            if (iEndPos == iProteinSeqLengthMinus1)
+               dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+*/
+
+            int iPos;
+            for (i=iStartPos; i<iEndPos; i++)
+            {
+               iPos = i-iStartPos;
+
+               dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
+               _pdAAforward[iPos] = dBion;
+
+               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iEndPos-iPos]];
+               _pdAAreverse[iPos] = dYion;
+            }
+
+            // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
+            for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+            {
+               for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+               {
+                  iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+                  for (ctLen=0; ctLen<iLenMinus1; ctLen++)
+                  {
+                     pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
+                  }
+               }
+            }
+
+            for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+            {
+               for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+               {
+                  iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+                  // As both _pdAAforward and _pdAAreverse are increasing, loop through
+                  // iLenPeptide-1 to complete set of internal fragment ions.
+                  for (ctLen=0; ctLen<iLenMinus1; ctLen++)
+                  {
+                     int iVal = BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse));
+
+                     if (pbDuplFragment[iVal] == false)
+                     {
+                        _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen] = iVal;
+                        pbDuplFragment[iVal] = true;
+                     }
+                     else
+                        _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen] = 0;
+                  }
+               }
+            }
+
+            // Also take care of decoy here.
+            if (g_staticParams.options.iDecoySearch)
+            {
+               // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.
+               // So actual reverse peptide starts at position 1 and ends at len-2 (as len-1
+               // is next AA).
+
+               // Store flanking residues from original sequence.
+/* 
+NEED TO FIX 
+               if (iStartPos==0)
+                  szDecoyPeptide[0]='-';
+               else
+                  szDecoyPeptide[0]=szProteinSeq[iStartPos-1];
+
+               if (iEndPos == iProteinSeqLengthMinus1)
+                  szDecoyPeptide[iLenPeptide+1]='-';
+               else
+                  szDecoyPeptide[iLenPeptide+1]=szProteinSeq[iEndPos+1];
+*/
+szDecoyPeptide[0]='-';
+szDecoyPeptide[iLenPeptide+1]='-';
+               szDecoyPeptide[iLenPeptide+2]='\0';
+
+               if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet==1)
+               {
+                  // Last residue stays the same:  change ABCDEK to EDCBAK.
+                  for (i=iEndPos-1; i>=iStartPos; i--)
+                     szDecoyPeptide[iEndPos-i] = szProteinSeq[i];
+
+                  szDecoyPeptide[iEndPos-iStartPos+1]=szProteinSeq[iEndPos];  // Last residue stays same.
+               }
+               else
+               {
+                  // First residue stays the same:  change ABCDEK to AKEDCB.
+                  for (i=iEndPos; i>=iStartPos+1; i--)
+                     szDecoyPeptide[iEndPos-i+2] = szProteinSeq[i];
+
+                  szDecoyPeptide[1]=szProteinSeq[iStartPos];  // First residue stays same.
+               }
+
+               // Now given szDecoyPeptide, calculate pdAAforwardDecoy and pdAAreverseDecoy.
+               dBion = g_staticParams.precalcMasses.dNtermProton;
+               dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+/*
+OK FIX
+               if (iStartPos == 0)
+                  dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+               if (iEndPos == iProteinSeqLengthMinus1)
+                  dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+*/
+
+               int iDecoyStartPos;       // This is start/end for newly created decoy peptide
+               int iDecoyEndPos;
+               int iTmp;
+
+               iDecoyStartPos = 1;
+               iDecoyEndPos = strlen(szDecoyPeptide)-2;
+
+               for (i=iDecoyStartPos; i<iDecoyEndPos; i++)
+               {
+                  iTmp = i-iDecoyStartPos;
+
+                  dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
+                  _pdAAforwardDecoy[iTmp] = dBion;
+
+                  dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iDecoyEndPos - iTmp]];
+                  _pdAAreverseDecoy[iTmp] = dYion;
+               }
+
+               for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+               {
+                  for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                  {
+                     iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+                     for (ctLen=0; ctLen<iLenMinus1; ctLen++)
+                        pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy))] = false;
+                  }
+               }
+
+               // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
+               for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+               {
+                  for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                  {
+                     iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+                     // As both _pdAAforward and _pdAAreverse are increasing, loop through
+                     // iLenPeptide-1 to complete set of internal fragment ions.
+                     for (ctLen=0; ctLen<iLenMinus1; ctLen++)
+                     {
+                        int iVal = BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy));
+
+                        if (pbDuplFragment[iVal] == false)
+                        {
+                           _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen] = iVal;
+                           pbDuplFragment[iVal] = true;
+                        }
+                        else
+                           _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen] = 0;
+                     }
+                  }
+               }
+            }
+         }
+
+         int piVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
+
+         if (!g_staticParams.variableModParameters.bRequireVarMod)
+         {
+            XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, false,
+                  dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
+
+            if (g_staticParams.options.iDecoySearch)
+            {
+               XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, false,
+                     dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSites, dbe);
+            }
+         }
+      }
+      iWhichQuery++;
+   }
 }
 
 
