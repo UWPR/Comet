@@ -20,7 +20,7 @@
 #define SIZE_BUF                    8192
 #define SIZE_FILE                   512
 
-#define MAX_THREADS                 64
+#define MAX_THREADS                 128
 
 #define MAX_ENZYME_AA               20       // max # of AA for enzyme break point
 #define MAX_VARMOD_AA               20       // max # of modified AAs in a peptide per variable modification
