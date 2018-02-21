@@ -149,7 +149,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          dDeltaCn = 1.0;
 
-         if (pOutput[0].fXcorr > 0.0
+         if (pOutput[iWhichResult].fXcorr > 0.0
                && iWhichResult+1 < (size_t)g_staticParams.options.iNumStored
                && pOutput[iWhichResult+1].fXcorr >= 0.0)
          {
@@ -349,9 +349,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                // calculate deltaCn only if sequences are less than 0.75 similar
                if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
                {
-                  if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                     dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[0].fXcorr;
-                  else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+                  if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                     dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[iWhichResult].fXcorr;
+                  else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
                      dDeltaCn = 1.0;
                   else
                      dDeltaCn = 0.0;
