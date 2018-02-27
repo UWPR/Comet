@@ -107,7 +107,6 @@ struct Options             // output parameters
    int bOverrideCharge;
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
-   int bIndexDb;                 // 0 = normal fasta; 1 = indexed database
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;
    double dRemovePrecursorTol;
@@ -534,6 +533,7 @@ struct StaticParams
    PeaksInfo       peaksInformation;
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
+   int             bIndexDb;                 // 0 = normal fasta; 1 = indexed database
    vector<double>  vectorMassOffsets;
 
    StaticParams()
@@ -545,6 +545,7 @@ struct StaticParams
       szMod[0] = '\0';
 
       iXcorrProcessingOffset = 75;
+      bIndexDb = 0;
 
       databaseInfo.szDatabase[0] = '\0';
 
@@ -629,7 +630,6 @@ struct StaticParams
       options.bTreatSameIL = 1;
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;
-      options.bIndexDb = 0;
 
       options.bOutputSqtStream = 0;
       options.bOutputSqtFile = 0;
