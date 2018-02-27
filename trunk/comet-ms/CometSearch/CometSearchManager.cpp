@@ -2091,3 +2091,96 @@ bool CometSearchManager::DoSearch()
    return bSucceeded;
 }
 
+
+bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge, double dMZ)
+{
+   if (!InitializeStaticParams())
+      return false;
+
+   // At this point, check extension to set whether index database or not
+   if (!strcmp(g_staticParams.databaseInfo.szDatabase+strlen(g_staticParams.databaseInfo.szDatabase)-4, ".idx"))
+      g_staticParams.options.bIndexDb = 1;
+
+   bool bSucceeded;
+   
+   g_staticParams.options.iNumThreads = 1;   // this uses a single thread
+
+   //MH: Allocate memory shared by threads during spectral processing.
+   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+      return bSucceeded;
+
+   // Allocate memory shared by threads during search
+   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+      return bSucceeded;
+
+   // We need to reset some of the static variables in-between input files
+   CometPreprocess::Reset();
+
+   // IMPORTANT: From this point onwards, because we've loaded some
+   // spectra, we MUST "goto cleanup_results" before exiting the loop,
+   // or we will create a memory leak!
+
+   bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ);
+
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   if (g_pvQuery.empty())
+      return false; // no search to run
+
+   bSucceeded = AllocateResultsMem();
+
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   // Sort g_pvQuery vector by dExpPepMass.
+   //std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
+
+   g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
+   g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
+
+   int iPercentStart, iPercentEnd;
+
+   // Now that spectra are loaded to memory and sorted, do search.
+   bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   // Sort each entry by xcorr, calculate E-values, etc.
+   bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   // Search done.  Do something with results
+   for (int i=0; i<(int)g_pvQuery.size(); i++)
+      printf("xcorr %0.4f\texpect %0.3E\t%s\n",
+         g_pvQuery.at(i)->_pResults[0].fXcorr, 
+         g_pvQuery.at(i)->_pResults[0].dExpect,
+         g_pvQuery.at(i)->_pResults[0].szPeptide);
+
+cleanup_results:
+   // Deleting each Query object in the vector calls its destructor, which
+   // frees the spectral memory (see definition for Query in CometData.h).
+   for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+      delete *it;
+
+   g_pvQuery.clear();
+   
+   // Clean up the input files vector
+   g_staticParams.vectorMassOffsets.clear();
+
+   //MH: Deallocate spectral processing memory.
+   CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
+
+   // Deallocate search memory
+   CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+
+
+   return bSucceeded;
+}

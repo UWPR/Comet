@@ -32,6 +32,7 @@ public:
 
    // Methods inherited from ICometSearchManager
    virtual bool DoSearch();
+   virtual bool DoSingleSpectrumSearch(const int intValue, const double value);
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);

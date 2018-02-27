@@ -62,6 +62,16 @@ bool CometSearchManagerWrapper::DoSearch()
     return _pSearchMgr->DoSearch();
 }
 
+bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge, double dMZ)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+
+    return _pSearchMgr->DoSingleSpectrumSearch(iPrecursorCharge, dMZ);
+}
+
 bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList)
 {
     if (!_pSearchMgr)
@@ -124,7 +134,6 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, System::Stri
         return false;
     }
     
-
     value = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStringValue.c_str())))); 
 
     return true;

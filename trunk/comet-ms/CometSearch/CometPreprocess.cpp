@@ -1733,3 +1733,319 @@ bool CometPreprocess::IsValidInputType(int inputType)
 {
    return (inputType == InputType_MZXML || inputType == InputType_RAW);
 }
+
+
+bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
+                                               double dMZ)
+{
+   int iScanNumber = 1;
+
+   Query *pScoring = new Query();
+
+   pScoring->_pepMassInfo.dExpPepMass = (iPrecursorCharge*dMZ) - (iPrecursorCharge-1)*PROTON_MASS;
+   pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
+
+   g_massRange.dMinMass = pScoring->_pepMassInfo.dExpPepMass;
+   g_massRange.dMaxMass = pScoring->_pepMassInfo.dExpPepMass;
+
+   if (iPrecursorCharge == 1)
+      pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;
+   else
+   {
+      pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
+
+      if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
+         pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
+   }
+
+   //preprocess here
+   int i;
+   int x;
+   int y;
+   struct msdata pTmpSpData[NUM_SP_IONS];
+   struct PreprocessStruct pPre;
+
+   pPre.iHighestIon = 0;
+   pPre.dHighestIntensity = 0;
+
+   //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
+   // very wide mass tolerance searches (i.e. 500 Da).
+   double dCushion = 0.0;
+   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+        dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+   }
+   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+   }
+   else // ppm
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dPeptideMassHigh / 1000000.0;
+   }
+
+   if (!AdjustMassTol(pScoring))
+   {
+      return false;
+   }
+
+   pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
+   g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
+
+   // initialize these temporary arrays before re-using
+   size_t iTmp= (size_t)(pScoring->_spectrumInfoInternal.iArraySize)*sizeof(double);
+
+   double *pdTmpRawData = ppdTmpRawDataArr[0];
+   double *pdTmpFastXcorrData = ppdTmpFastXcorrDataArr[0];
+   double *pdTmpCorrelationData = ppdTmpCorrelationDataArr[0];
+   double *pdTmpSmoothedSpectrum = ppdTmpSmoothedSpectrumArr[0];
+   double *pdTmpPeakExtracted = ppdTmpPeakExtractedArr[0];
+
+   memset(pdTmpRawData, 0, iTmp);
+   memset(pdTmpFastXcorrData, 0, iTmp);
+   memset(pdTmpCorrelationData, 0, iTmp);
+   memset(pdTmpSmoothedSpectrum, 0, iTmp);
+   memset(pdTmpPeakExtracted, 0, iTmp);
+ 
+   // Loop through single spectrum and store in pdTmpRawData array
+   double dIon=0,
+          dIntensity=0;
+
+   int iNumPeaks = 5;
+   struct
+   {
+      double dMass;
+      double dInten;
+   } sTmp[5];
+   sTmp[0].dMass = 405.209;
+   sTmp[1].dMass = 502.262;
+   sTmp[2].dMass = 601.330;
+   sTmp[3].dMass = 672.368;
+   sTmp[4].dMass = 800.462;
+
+   for (i=0; i<iNumPeaks; i++)
+   {
+      dIon = sTmp[i].dMass;  //FIX ... load spectrum here
+      dIntensity = 100.0;  //FIX ... load spectrum here
+
+      if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
+      {
+         if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
+         {
+            int iBinIon = BIN(dIon);
+
+            dIntensity = sqrt(dIntensity);
+
+            if (iBinIon > pPre.iHighestIon)
+               pPre.iHighestIon = iBinIon;
+
+            if ((iBinIon < pScoring->_spectrumInfoInternal.iArraySize)
+                  && (dIntensity > pdTmpRawData[iBinIon]))
+            {
+               if (dIntensity > pdTmpRawData[iBinIon])
+                  pdTmpRawData[iBinIon] = dIntensity;
+
+               if (pdTmpRawData[iBinIon] > pPre.dHighestIntensity)
+                  pPre.dHighestIntensity = pdTmpRawData[iBinIon];
+            }
+         }
+      }
+   }
+
+   pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+
+   if (g_staticParams.ionInformation.bUseNeutralLoss
+         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+   {
+      pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+   }
+
+   // Create data for correlation analysis.
+   // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
+
+   // Make fast xcorr spectrum.
+   double dSum=0.0;
+   int iTmpRange = 2*g_staticParams.iXcorrProcessingOffset + 1;
+   double dTmp = 1.0 / (double)(iTmpRange - 1);
+
+   dSum=0.0;
+   for (i=0; i<g_staticParams.iXcorrProcessingOffset; i++)
+      dSum += pdTmpCorrelationData[i];
+   for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; i++)
+   {
+      if (i<pScoring->_spectrumInfoInternal.iArraySize)
+         dSum += pdTmpCorrelationData[i];
+      if (i>=iTmpRange)
+         dSum -= pdTmpCorrelationData[i-iTmpRange];
+      pdTmpFastXcorrData[i-g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i-g_staticParams.iXcorrProcessingOffset])* dTmp;
+   }
+
+   pScoring->pfFastXcorrData[0] = 0.0;
+   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   {
+      double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
+
+      pScoring->pfFastXcorrData[i] = (float)dTmp;
+
+      // Add flanking peaks if used
+      if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+      {
+         int iTmp;
+
+         iTmp = i-1;
+         pScoring->pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
+
+         iTmp = i+1;
+         if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
+            pScoring->pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
+      }
+
+      // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
+      if (g_staticParams.ionInformation.bUseNeutralLoss
+            && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+               || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+               || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+      {
+         int iTmp;
+
+         pScoring->pfFastXcorrDataNL[i] = pScoring->pfFastXcorrData[i];
+
+         iTmp = i-g_staticParams.precalcMasses.iMinus17;
+         if (iTmp>= 0)
+         {
+            pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
+         }
+
+         iTmp = i-g_staticParams.precalcMasses.iMinus18;
+         if (iTmp>= 0)
+         {
+            pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
+         }
+      }
+   }
+
+   // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
+   // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
+   if (g_staticParams.ionInformation.bUseNeutralLoss
+         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+   {
+      pScoring->iFastXcorrDataNL=pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE+1;
+
+      pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataNL]();
+
+      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+      {
+         if (pScoring->pfFastXcorrDataNL[i]>FLOAT_ZERO || pScoring->pfFastXcorrDataNL[i]<-FLOAT_ZERO)
+         {
+            x=i/SPARSE_MATRIX_SIZE;
+            if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
+            {
+               pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
+
+               for (y=0; y<SPARSE_MATRIX_SIZE; y++)
+                  pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
+            }
+            y=i-(x*SPARSE_MATRIX_SIZE);
+            pScoring->ppfSparseFastXcorrDataNL[x][y] = pScoring->pfFastXcorrDataNL[i];
+         }
+      }
+
+      delete[] pScoring->pfFastXcorrDataNL;
+      pScoring->pfFastXcorrDataNL = NULL;
+   }
+
+   pScoring->iFastXcorrData = pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
+
+   //MH: Fill sparse matrix
+   pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrData]();
+
+   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   {
+      if (pScoring->pfFastXcorrData[i]>FLOAT_ZERO || pScoring->pfFastXcorrData[i]<-FLOAT_ZERO)
+      {
+         x=i/SPARSE_MATRIX_SIZE;
+         if (pScoring->ppfSparseFastXcorrData[x]==NULL)
+         {
+            pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
+
+            for (y=0; y<SPARSE_MATRIX_SIZE; y++)
+               pScoring->ppfSparseFastXcorrData[x][y]=0;
+         }
+         y=i-(x*SPARSE_MATRIX_SIZE);
+         pScoring->ppfSparseFastXcorrData[x][y] = pScoring->pfFastXcorrData[i];
+      }
+   }
+
+   delete[] pScoring->pfFastXcorrData;
+   pScoring->pfFastXcorrData = NULL;
+
+   // Create data for sp scoring.
+   // Arbitrary bin size cutoff to do smoothing, peak extraction.
+   if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
+   {
+      if (!Smooth(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpSmoothedSpectrum))
+         return false;
+
+      if (!PeakExtract(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpPeakExtracted))
+         return false;
+   }
+
+   for (i=0; i<NUM_SP_IONS; i++)
+   {
+      pTmpSpData[i].dIon = 0.0;
+      pTmpSpData[i].dIntensity = 0.0;
+   }
+
+   GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
+
+   qsort(pTmpSpData, NUM_SP_IONS, sizeof(struct msdata), QsortByIon);
+
+   // Modify for Sp data.
+   StairStep(pTmpSpData);
+
+   pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+
+   // note that pTmpSpData[].dIon values are already BIN'd
+   for (i=0; i<NUM_SP_IONS; i++)
+      pScoring->pfSpScoreData[(int)(pTmpSpData[i].dIon)] = (float) pTmpSpData[i].dIntensity;
+
+   // MH: Fill sparse matrix for SpScore
+   pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
+
+   pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
+
+   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   {
+      if (pScoring->pfSpScoreData[i] > FLOAT_ZERO)
+      {
+         x=i/SPARSE_MATRIX_SIZE;
+         if (pScoring->ppfSparseSpScoreData[x]==NULL)
+         {
+            pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
+
+            for (y=0; y<SPARSE_MATRIX_SIZE; y++)
+               pScoring->ppfSparseSpScoreData[x][y]=0;
+         }
+         y=i-(x*SPARSE_MATRIX_SIZE);
+         pScoring->ppfSparseSpScoreData[x][y] = pScoring->pfSpScoreData[i];
+      }
+   }
+
+   delete[] pScoring->pfSpScoreData;
+   pScoring->pfSpScoreData = NULL;
+
+   g_pvQuery.push_back(pScoring);
+
+   return true;
+}

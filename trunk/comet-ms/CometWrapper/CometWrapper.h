@@ -36,6 +36,7 @@ namespace CometWrapper {
         virtual ~CometSearchManagerWrapper();
 		
         bool DoSearch();
+        bool DoSingleSpectrumSearch(int intValue, double value);
         // Need to convert vector to List and back
         bool AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList);
         bool SetOutputFileBaseName(String^ baseName);

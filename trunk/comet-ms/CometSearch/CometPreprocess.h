@@ -77,6 +77,8 @@ public:
    static bool DoneProcessingAllSpectra();
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
+   static bool PreprocessSingleSpectrum(int iPrecursorCharge,
+                                        double dMZ);
 
 private:
 

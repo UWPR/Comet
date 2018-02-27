@@ -962,12 +962,10 @@ bool CometSearch::IndexSearch(FILE *fp)
       lReadIndex[i] = -1;
 
    fread(lReadIndex, lSizeLong, iMaxMass+1, fp);
-
    // analyze no variable mods
 
-   int iStart = (int)g_massRange.dMinMass;
-   int iEnd = (int)g_massRange.dMaxMass;
-
+   int iStart = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass;
+   int iEnd = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass;
    if (iStart < iMinMass)
       iStart = iMinMass;
    if (iEnd > iMaxMass)
@@ -984,6 +982,7 @@ bool CometSearch::IndexSearch(FILE *fp)
    while ((int)sTmp.dPepMass <= iEnd)
    {
       int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sTmp.dPepMass);
+
       while (iWhichQuery>0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sTmp.dPepMass)
          iWhichQuery--;
 
@@ -1515,7 +1514,7 @@ void CometSearch::AnalyzeIndexPep(int iWhichQuery,
             double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
 /*
-OK Need to fox annotation of terminal residues in index
+OK Need to fix annotation of terminal residues in index
             if (iStartPos == 0)
                dBion += g_staticParams.staticModifications.dAddNterminusProtein;
             if (iEndPos == iProteinSeqLengthMinus1)
