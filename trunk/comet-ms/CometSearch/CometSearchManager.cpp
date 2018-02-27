@@ -470,7 +470,7 @@ static bool ValidateSequenceDatabaseFile()
 
    // At this point, check extension to set whether index database or not
    if (!strcmp(g_staticParams.databaseInfo.szDatabase+strlen(g_staticParams.databaseInfo.szDatabase)-4, ".idx"))
-      g_staticParams.options.bIndexDb = 1;
+      g_staticParams.bIndexDb = 1;
 
    fclose(fpcheck);
    return true;
@@ -1429,7 +1429,7 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
-   if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.options.bIndexDb)
+   if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
    {
       sprintf(szOut, " Comet version \"%s\"", comet_version);
       if (!g_staticParams.options.bSkipUpdateCheck)
@@ -1462,7 +1462,7 @@ bool CometSearchManager::DoSearch()
       time(&tStartTime);
       strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
 
-      if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.options.bIndexDb)
+      if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
       {
          sprintf(szOut, " Search start:  %s\n", g_staticParams.szDate);
          sprintf(szOut+strlen(szOut), " - Input file: %s\n", g_staticParams.inputFile.szFileName);
@@ -1761,7 +1761,7 @@ bool CometSearchManager::DoSearch()
 #endif
 
             // Load and preprocess all the spectra.
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.options.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
                logout("   - Load spectra:");
 
@@ -1820,7 +1820,7 @@ bool CometSearchManager::DoSearch()
 
             char szStatusMsg[256];
             sprintf(szStatusMsg, " %d\n", (int)g_pvQuery.size());
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.options.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
                char szOut[128];
                sprintf(szOut, "%s", szStatusMsg);
@@ -1908,7 +1908,7 @@ bool CometSearchManager::DoSearch()
             if (!bSucceeded)
                goto cleanup_results;
 
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.options.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
                logout("     - Post analysis:");
                fflush(stdout);
@@ -1952,7 +1952,7 @@ bool CometSearchManager::DoSearch()
                return false;
             }
 
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.options.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
                logout("  done\n");
                fflush(stdout);
@@ -1999,7 +1999,7 @@ bool CometSearchManager::DoSearch()
             if (iTotalSpectraSearched == 0)
                logout(" Warning - no spectra searched.\n\n");
 
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.options.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
                char szOut[128];
                time_t tEndTime;
@@ -2099,7 +2099,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge, double dMZ
 
    // At this point, check extension to set whether index database or not
    if (!strcmp(g_staticParams.databaseInfo.szDatabase+strlen(g_staticParams.databaseInfo.szDatabase)-4, ".idx"))
-      g_staticParams.options.bIndexDb = 1;
+      g_staticParams.bIndexDb = 1;
 
    bool bSucceeded;
    

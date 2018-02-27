@@ -104,7 +104,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 {
    bool bSucceeded = true;
 
-   if (g_staticParams.options.bIndexDb)
+   if (g_staticParams.bIndexDb)
    {
       FILE *fp;
 

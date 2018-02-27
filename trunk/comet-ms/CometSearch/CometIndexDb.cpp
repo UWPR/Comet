@@ -213,7 +213,7 @@ bool CometIndexDb::CreateIndex(void)
       // add composition
       for (int i=0; i<26; i++)
          (*it).iAAComposition[i]=0;
-      for (int i=0; i<strlen((*it).szPeptide); i++)
+      for (int i=0; i<(int)strlen((*it).szPeptide); i++)
          (*it).iAAComposition[(*it).szPeptide[i] - 65] += 1;
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
    }
