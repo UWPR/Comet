@@ -62,14 +62,31 @@ bool CometSearchManagerWrapper::DoSearch()
     return _pSearchMgr->DoSearch();
 }
 
-bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge, double dMZ)
+bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
+                                                       double dMZ,
+                                                       array<double>^ pdMass,
+                                                       array<double>^ pdInten,
+                                                       int iNumPeaks,
+                                                       array<char>^ szPeptide,
+                                                       array<double>^ pdYions,
+                                                       array<double>^ pdBions,
+                                                       int iNumFragIons,
+                                                       array<double>^ pdScores)
 {
     if (!_pSearchMgr)
     {
         return false;
     }
+    pin_ptr<double> ptrMasses = &pdMass[0];
+    pin_ptr<double> ptrInten = &pdInten[0];
+    pin_ptr<double> ptrScores = &pdScores[0];
+    pin_ptr<double> ptrYions = &pdYions[0];
+    pin_ptr<double> ptrBions = &pdBions[0];
+    pin_ptr<char> ptrPeptide = &szPeptide[0];
 
-    return _pSearchMgr->DoSingleSpectrumSearch(iPrecursorCharge, dMZ);
+
+    return _pSearchMgr->DoSingleSpectrumSearch(iPrecursorCharge, dMZ, ptrMasses, ptrInten, iNumPeaks,
+       ptrPeptide, ptrYions, ptrBions, iNumFragIons, ptrScores);
 }
 
 bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList)

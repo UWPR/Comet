@@ -36,7 +36,17 @@ namespace CometWrapper {
         virtual ~CometSearchManagerWrapper();
 		
         bool DoSearch();
-        bool DoSingleSpectrumSearch(int intValue, double value);
+        bool DoSingleSpectrumSearch(int intValue,
+                                    double value,
+                                    array<double>^ dVal1,
+                                    array<double>^ dVal2,
+                                    const int iVal1,
+                                    array<char>^ szPeptide,
+                                    array<double>^ pdYions,
+                                    array<double>^ pdBions,
+                                    int iNumFragIons,
+                                    array<double>^ pdScores);
+
         // Need to convert vector to List and back
         bool AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList);
         bool SetOutputFileBaseName(String^ baseName);

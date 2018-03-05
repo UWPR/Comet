@@ -30,6 +30,9 @@ EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "CometSetup32", "CometSetup\CometSetup32.vdproj", "{7775F5E8-568D-471C-81BA-8F0694AE37B9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealtimeSearch", "RealtimeSearch\RealtimeSearch.csproj", "{581E4213-1629-49E9-958B-070F106A07E9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B} = {887C017B-8E91-4CCE-85C6-4D36D4033F1B}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

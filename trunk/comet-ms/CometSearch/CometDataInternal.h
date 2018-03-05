@@ -883,5 +883,4 @@ struct IonSeriesStruct         // defines which fragment ion series are consider
    int bPreviousMatch[8];
 };
 
-
 #endif // _COMETDATAINTERNAL_H_

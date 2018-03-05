@@ -1736,7 +1736,11 @@ bool CometPreprocess::IsValidInputType(int inputType)
 
 
 bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
-                                               double dMZ)
+                                               double dMZ,
+                                               double *pdMass,
+                                               double *pdInten,
+                                               int iNumPeaks,
+                                               double *pdTmpSpectrum)
 {
    int iScanNumber = 1;
 
@@ -1817,22 +1821,13 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    double dIon=0,
           dIntensity=0;
 
-   int iNumPeaks = 5;
-   struct
-   {
-      double dMass;
-      double dInten;
-   } sTmp[5];
-   sTmp[0].dMass = 405.209;
-   sTmp[1].dMass = 502.262;
-   sTmp[2].dMass = 601.330;
-   sTmp[3].dMass = 672.368;
-   sTmp[4].dMass = 800.462;
+   int iTmpArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
+   memset(pdTmpSpectrum, 0, iTmpArraySize);
 
    for (i=0; i<iNumPeaks; i++)
    {
-      dIon = sTmp[i].dMass;  //FIX ... load spectrum here
-      dIntensity = 100.0;  //FIX ... load spectrum here
+      dIon = pdMass[i];
+      dIntensity = pdInten[i];
 
       if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
       {
@@ -1841,6 +1836,9 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
             int iBinIon = BIN(dIon);
 
             dIntensity = sqrt(dIntensity);
+
+            if (iBinIon < iTmpArraySize && pdTmpSpectrum[iBinIon] < dIntensity)  // used in DoSingleSpectrumSearch to return matched ions
+                pdTmpSpectrum[iBinIon] = dIntensity;
 
             if (iBinIon > pPre.iHighestIon)
                pPre.iHighestIon = iBinIon;

@@ -78,7 +78,11 @@ public:
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
    static bool PreprocessSingleSpectrum(int iPrecursorCharge,
-                                        double dMZ);
+                                        double dMZ,
+                                        double *pdMass,
+                                        double *pdInten,
+                                        int iNumPeaks,
+                                        double *pdTmpSpectrum);
 
 private:
 

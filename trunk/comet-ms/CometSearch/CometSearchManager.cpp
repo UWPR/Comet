@@ -1392,8 +1392,10 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
-    const char *pszCometVersion = version.c_str();
-    return strstr(comet_version, pszCometVersion);
+    if (strstr(comet_version, version.c_str()))
+       return true;
+    else
+       return false;
 }
 
 void CometSearchManager::CancelSearch()
@@ -2092,7 +2094,16 @@ bool CometSearchManager::DoSearch()
 }
 
 
-bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge, double dMZ)
+bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
+                                                double dMZ,
+                                                double* pdMass,
+                                                double* pdInten,
+                                                int iNumPeaks,
+                                                char* szReturnPeptide,
+                                                double* pdReturnYions,
+                                                double* pdReturnBions,
+                                                int iNumFragIons,
+                                                double* pdReturnScores)
 {
    if (!InitializeStaticParams())
       return false;
@@ -2122,7 +2133,9 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge, double dMZ
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
 
-   bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ);
+   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
+   double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
+   bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
 
    if (!bSucceeded)
       goto cleanup_results;
@@ -2141,7 +2154,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge, double dMZ
    g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
-   int iPercentStart, iPercentEnd;
+   int iPercentStart=0, iPercentEnd=0;
 
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
@@ -2157,12 +2170,133 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge, double dMZ
    if (!bSucceeded)
       goto cleanup_results;
 
-   // Search done.  Do something with results
-   for (int i=0; i<(int)g_pvQuery.size(); i++)
-      printf("xcorr %0.4f\texpect %0.3E\t%s\n",
-         g_pvQuery.at(i)->_pResults[0].fXcorr, 
-         g_pvQuery.at(i)->_pResults[0].dExpect,
-         g_pvQuery.at(i)->_pResults[0].szPeptide);
+
+   Query* pQuery = g_pvQuery.at(0);  // return info for top hit only
+
+   if (pQuery->_pResults[0].fXcorr > 0.0)
+   {
+      // Set return values for peptide sequence, xcorr and E-value
+      szReturnPeptide[0]='\0';
+      strcpy(szReturnPeptide, pQuery->_pResults[0].szPeptide);  // peptide
+      for (int i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
+      {
+         sprintf(szReturnPeptide+strlen(szReturnPeptide), "%c", pQuery->_pResults[0].szPeptide[i]);
+
+         if (pQuery->_pResults[0].piVarModSites[i] != 0)
+            sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]", pQuery->_pResults[0].pdVarModSites[i]);
+      }
+
+      pdReturnScores[0] = pQuery->_pResults[0].fXcorr;          // xcorr
+      pdReturnScores[1] = pQuery->_pResults[0].dExpect;         // expect
+
+      // now deal with calculating b- and y-ions and returning most intense matches
+      double dBion = g_staticParams.precalcMasses.dNtermProton;
+      double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+/*
+FIX:  need to add terminal modification information to indexed database for this to work
+      if (pQuery->_pResults[0].szPrevNextAA[0] == '-')
+         dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+      if (pQuery->_pResults[0].szPrevNextAA[1] == '-')
+         dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+*/
+
+      if (g_staticParams.variableModParameters.bVarModSearch
+            && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
+      {
+         dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide]-1].dVarModMass;
+      }
+
+      if (g_staticParams.variableModParameters.bVarModSearch
+            && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
+      {
+         dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide+1]-1].dVarModMass;
+      }
+
+      struct MatchedIonsStruct
+      {
+         double dMass;
+         double dInten;
+
+         bool operator<(const MatchedIonsStruct& a) const
+         {
+            return dInten > a.dInten;
+         }
+      };
+
+      vector<MatchedIonsStruct> vMatchedYions;
+      vector<MatchedIonsStruct> vMatchedBions;
+
+      int iTmp;
+
+      // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
+      for (int i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
+      {
+         int iPos = pQuery->_pResults[0].iLenPeptide - i - 1;
+
+         dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[i]];
+         dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[iPos]];
+
+         if (g_staticParams.variableModParameters.bVarModSearch)
+         {
+            if (pQuery->_pResults[0].piVarModSites[i] != 0)
+               dBion += pQuery->_pResults[0].pdVarModSites[i];
+
+            if (pQuery->_pResults[0].piVarModSites[iPos] != 0)
+               dYion += pQuery->_pResults[0].pdVarModSites[iPos];
+         }
+
+         //FIX would loop through fragment charge states here
+         for (int ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+         {
+            MatchedIonsStruct pTmp;
+
+            double dTmpIon = (dBion + (ctCharge-1)*PROTON_MASS)/ctCharge;
+            iTmp = BIN(dTmpIon);
+            if (pdTmpSpectrum[iTmp] > 0.0)
+            {
+               pTmp.dMass = dTmpIon;
+               pTmp.dInten = pdTmpSpectrum[iTmp];
+               vMatchedBions.push_back(pTmp);
+            }
+
+            dTmpIon = (dYion + (ctCharge-1)*PROTON_MASS)/ctCharge;
+            iTmp = BIN(dTmpIon);
+            if (pdTmpSpectrum[iTmp] > 0.0)
+            {
+               pTmp.dMass = dTmpIon;
+               pTmp.dInten = pdTmpSpectrum[iTmp];
+               vMatchedYions.push_back(pTmp);
+            }
+         }
+      }
+
+      std::sort(vMatchedBions.begin(), vMatchedBions.end());
+      std::sort(vMatchedYions.begin(), vMatchedYions.end());
+      iTmp=0;
+      for (std::vector<MatchedIonsStruct>::iterator it=vMatchedBions.begin(); it!=vMatchedBions.end(); ++it)
+      {
+         if ((*it).dInten > 0 && iTmp<iNumFragIons)
+            pdReturnBions[iTmp++] = (*it).dMass;
+         else
+            break;
+      }
+      iTmp=0;
+      for (std::vector<MatchedIonsStruct>::iterator it=vMatchedYions.begin(); it!=vMatchedYions.end(); ++it)
+      {
+         if ((*it).dInten > 0 && iTmp<iNumFragIons)
+            pdReturnYions[iTmp++] = (*it).dMass;
+         else
+            break;
+      }
+
+   }
+   else
+   {
+      strcpy(szReturnPeptide, "");  // peptide
+      pdReturnScores[0] = -1;   // xcorr
+      pdReturnScores[1] = -1;  // expect
+   }
 
 cleanup_results:
    // Deleting each Query object in the vector calls its destructor, which

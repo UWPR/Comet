@@ -29,7 +29,8 @@ namespace CometInterfaces
 public:
       virtual ~ICometSearchManager() {}
       virtual bool DoSearch() = 0;
-      virtual bool DoSingleSpectrumSearch(const int intValue, const double value) = 0;
+      virtual bool DoSingleSpectrumSearch(const int intValue, const double value, double* dVal1, double* dVal2, const int iVal1,
+         char* szPep, double* pdReturnYions, double* pdReturnBions, int iNumFragIons, double* pdScores) = 0;
       virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles) = 0;
       virtual void SetOutputFileBaseName(const char *pszBaseName) = 0;
       virtual void SetParam(const string &name, const string &strValue, const string &value) = 0;

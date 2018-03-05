@@ -306,6 +306,12 @@ struct InputFileInfo
    }
 };
 
+struct SingleSpectrumStruct
+{
+   double dMass;
+   double dInt;
+};
+
 enum CometParamType
 {
    CometParamType_Unknown = 0,

@@ -9,7 +9,7 @@
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.i
    See the License for the specific language governing permissions and
    limitations under the License.
 */
@@ -346,7 +346,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         if ( (pStr2 = strchr(pStr, ' '))!=NULL)
                            iLen = pStr2 - pStr;
                         else
-                           iLen = strlen(szPeffLine) - (pStr - szPeffLine);
+                           iLen = strlen(szPeffLine) - (pStr - szPeffLine) -1;
 
                         if ( iLen > iLenAllocMods)
                         {
@@ -368,7 +368,22 @@ bool CometSearch::RunSearch(int minNumThreads,
                         }
 
                         strncpy(szMods, pStr, iLen);
-                        szMods[iLen]=0;
+                        szMods[iLen]='\0';
+                        if ( (pStr2 = strrchr(szMods, ')'))!=NULL)
+                        {
+                           pStr2++;
+                           *pStr2 = '\0';
+                        }
+                        else
+                        {
+                           char szErrorMsg[512];
+                           sprintf(szErrorMsg,  " Error: PEFF entry '%s' missing mod closing parenthesis\n", dbe.strName.c_str()); 
+                           string strErrorMsg(szErrorMsg);
+                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                           logerr(szErrorMsg);
+                           fclose(fp);
+                           return false;
+                        }
 
                         int iPos;
                         string strModID;
@@ -382,6 +397,9 @@ bool CometSearch::RunSearch(int minNumThreads,
                            getline(ssMods, strModEntry, ')');
 
                            iPos = 0;
+
+                           if (strModEntry.length() < 8)   // strModEntry should look like "(1|XXX:1|name"
+                              break;
 
                            // at this point, strModEntry should look like (118,121|MOD:00000 
                            if (strModEntry[0]=='(' && isdigit(strModEntry[1]))  //handle possible '?' in the position field ; need to check that strModEntry looks like "(number"
@@ -412,7 +430,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                                     if (g_staticParams.options.bVerboseOutput)
                                     {
                                        char szErrorMsg[512];
-                                       sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str());
+                                       sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored; modentry: %s\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str(), strModEntry.c_str());
                                        string strErrorMsg(szErrorMsg);
                                        g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                                        logerr(szErrorMsg);
@@ -438,7 +456,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                               if (g_staticParams.options.bVerboseOutput)
                               {
                                  char szErrorMsg[512];
-                                 sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str());
+                                 sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored; modentry: %s\n", dbe.strName.c_str(), szAttributeMod, iPos, strModID.c_str(), strModEntry.c_str());
                                  string strErrorMsg(szErrorMsg);
                                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                                  logerr(szErrorMsg);
@@ -455,7 +473,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         if ( (pStr2 = strchr(pStr, ' '))!=NULL)
                            iLen = pStr2 - pStr;
                         else
-                           iLen = strlen(szPeffLine) - (pStr - szPeffLine);
+                           iLen = strlen(szPeffLine) - (pStr - szPeffLine) - 1;
 
                         if ( iLen > iLenAllocMods)
                         {
@@ -476,7 +494,22 @@ bool CometSearch::RunSearch(int minNumThreads,
                         }
 
                         strncpy(szMods, pStr, iLen);
-                        szMods[iLen]=0;
+                        szMods[iLen]='\0';
+                        if ( (pStr2 = strrchr(szMods, ')'))!=NULL)
+                        {
+                           pStr2++;
+                           *pStr2 = '\0';
+                        }
+                        else
+                        {
+                           char szErrorMsg[512];
+                           sprintf(szErrorMsg,  " Error: PEFF entry '%s' missing variant closing parenthesis\n", dbe.strName.c_str()); 
+                           string strErrorMsg(szErrorMsg);
+                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                           logerr(szErrorMsg);
+                           fclose(fp);
+                           return false;
+                        }
 
                         // parse VariantSimple entries
                         string strMods(szMods);
@@ -1988,9 +2021,9 @@ bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
 
 
 int CometSearch::BinarySearchPeffStrMod(int start,
-                                    int end,
-                                    string strMod,
-                                    vector<OBOStruct>& vectorPeffOBO)
+                                        int end,
+                                        string strMod,
+                                        vector<OBOStruct>& vectorPeffOBO)
 {
 
    // Termination condition: start index greater than end index.
@@ -2075,22 +2108,6 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             return false;
          }
          else if (g_staticParams.tolerances.iIsotopeError == 1)
-         {
-            double dC13diff  = C13_DIFF;
-
-            for (int i=0; i<iMassOffsetsSize; i++)
-            {
-               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
-
-               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
-               {
-                  return true;
-               }
-            }
-            return false;
-         }
-         else if (g_staticParams.tolerances.iIsotopeError == 2)
          {
             double dC13diff  = C13_DIFF;
 
