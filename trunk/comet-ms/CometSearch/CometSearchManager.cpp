@@ -2177,13 +2177,13 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    {
       // Set return values for peptide sequence, xcorr and E-value
       szReturnPeptide[0]='\0';
-      strcpy(szReturnPeptide, pQuery->_pResults[0].szPeptide);  // peptide
+
       for (int i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
       {
-         sprintf(szReturnPeptide+strlen(szReturnPeptide), "%c", pQuery->_pResults[0].szPeptide[i]);
+         sprintf(szReturnPeptide+strlen(szReturnPeptide), "%c\0", pQuery->_pResults[0].szPeptide[i]);
 
          if (pQuery->_pResults[0].piVarModSites[i] != 0)
-            sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]", pQuery->_pResults[0].pdVarModSites[i]);
+            sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]\0", pQuery->_pResults[0].pdVarModSites[i]);
       }
 
       pdReturnScores[0] = pQuery->_pResults[0].fXcorr;          // xcorr
