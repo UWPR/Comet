@@ -71,9 +71,11 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
 void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
 {
    // Write header line
-   fprintf(fpout, "id\t");
-   fprintf(fpout, "label\t");
+   fprintf(fpout, "SpecId\t");
+   fprintf(fpout, "Label\t");
    fprintf(fpout, "ScanNr\t");
+   fprintf(fpout, "ExpMass\t");
+   fprintf(fpout, "CalcMass\t");
    fprintf(fpout, "lnrSp\t");
    fprintf(fpout, "deltLCn\t");
    fprintf(fpout, "deltCn\t");
@@ -81,7 +83,6 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "Xcorr\t");
    fprintf(fpout, "Sp\t");
    fprintf(fpout, "IonFrac\t");
-   fprintf(fpout, "Mass\t");
    fprintf(fpout, "PepLen\t");
    for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
       fprintf(fpout, "Charge%d\t", i);
@@ -91,8 +92,8 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "lnNumSP\t");
    fprintf(fpout, "dM\t");
    fprintf(fpout, "absdM\t");
-   fprintf(fpout, "peptide\t");
-   fprintf(fpout, "proteinId1\n");
+   fprintf(fpout, "Peptide\t");
+   fprintf(fpout, "Proteins\n");
 
    fflush(fpout);
 }
@@ -167,6 +168,8 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          fprintf(fpout, "1\t");   // target label
 
       fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
+      fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);  //ExpMass
+      fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);  //CalcMass
 
       iMinLength = 999;
       for (i=0; i<iNumPrintLines; i++)
@@ -184,7 +187,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       double dLastDeltaCn=1.0;   // this is deltaCn between first and last peptide in output list
 
       // go one past iNumPrintLines to calculate deltaCn value
-      for (j=1; j<iNumPrintLines+1; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
+      for (j=iWhichResult+1; j<iNumPrintLines+1; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
       {
          if (j<g_staticParams.options.iNumStored)
          {
@@ -194,11 +197,11 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
             for (int k=0; k<iMinLength; k++)
             {
                // I-L and Q-K are same for purposes here
-               if (pOutput[0].szPeptide[k] != pOutput[j].szPeptide[k])
+               if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
                {
-                  if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
+                  if (!((pOutput[iWhichResult].szPeptide[k] == 'K' || pOutput[iWhichResult].szPeptide[k] == 'Q')
                           && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                        && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
+                        && !((pOutput[iWhichResult].szPeptide[k] == 'I' || pOutput[iWhichResult].szPeptide[k] == 'L')
                            && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
                   {
                      iDiffCt++;
@@ -209,9 +212,9 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
             // calculate deltaCn only if sequences are less than 0.75 similar
             if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
             {
-               if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[0].fXcorr;
-               else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+               if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[iWhichResult].fXcorr;
+               else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
                   dDeltaCn = 1.0;
                else
                   dDeltaCn = 0.0;
@@ -223,9 +226,9 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          }
       }
 
-      if (pOutput[0].fXcorr > 0.0 && pOutput[iNumPrintLines].fXcorr >= 0.0)
-         dLastDeltaCn = 1.0 - pOutput[iNumPrintLines].fXcorr/pOutput[0].fXcorr;
-      else if (pOutput[0].fXcorr > 0.0 && pOutput[iNumPrintLines].fXcorr < 0.0)
+      if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iNumPrintLines-1].fXcorr >= 0.0)
+         dLastDeltaCn = (pOutput[iWhichResult].fXcorr - pOutput[iNumPrintLines-1].fXcorr)/pOutput[iWhichResult].fXcorr;
+      else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iNumPrintLines-1].fXcorr < 0.0)
          dLastDeltaCn = 1.0;
       else
          dLastDeltaCn = 0.0;
@@ -278,7 +281,6 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "%0.4f\t", 0.0);
 
-   fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass); // Mass is observed MH+
    fprintf(fpout, "%d\t", pOutput[iWhichResult].iLenPeptide); // PepLen
 
    for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
