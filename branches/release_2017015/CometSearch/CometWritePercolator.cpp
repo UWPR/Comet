@@ -71,9 +71,11 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
 void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
 {
    // Write header line
-   fprintf(fpout, "id\t");
-   fprintf(fpout, "label\t");
+   fprintf(fpout, "SpecId\t");
+   fprintf(fpout, "Label\t");
    fprintf(fpout, "ScanNr\t");
+   fprintf(fpout, "ExpMass\t");
+   fprintf(fpout, "CalcMass\t");
    fprintf(fpout, "lnrSp\t");
    fprintf(fpout, "deltLCn\t");
    fprintf(fpout, "deltCn\t");
@@ -81,7 +83,6 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "Xcorr\t");
    fprintf(fpout, "Sp\t");
    fprintf(fpout, "IonFrac\t");
-   fprintf(fpout, "Mass\t");
    fprintf(fpout, "PepLen\t");
    for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
       fprintf(fpout, "Charge%d\t", i);
@@ -91,8 +92,8 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "lnNumSP\t");
    fprintf(fpout, "dM\t");
    fprintf(fpout, "absdM\t");
-   fprintf(fpout, "peptide\t");
-   fprintf(fpout, "proteinId1\n");
+   fprintf(fpout, "Peptide\t");
+   fprintf(fpout, "Proteins\n");
 
    fflush(fpout);
 }
@@ -167,6 +168,8 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          fprintf(fpout, "1\t");   // target label
 
       fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
+      fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);  //ExpMass
+      fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);  //CalcMass
 
       iMinLength = 999;
       for (i=0; i<iNumPrintLines; i++)
@@ -278,7 +281,6 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "%0.4f\t", 0.0);
 
-   fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass); // Mass is observed MH+
    fprintf(fpout, "%d\t", pOutput[iWhichResult].iLenPeptide); // PepLen
 
    for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
@@ -366,9 +368,9 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    {
       CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
       if (bPrintDecoyPrefix)
-         fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+         fprintf(fpout, "\t%s%s", g_staticParams.szDecoyPrefix, szProteinName);
       else
-         fprintf(fpout, ",%s", szProteinName);
+         fprintf(fpout, "\t%s", szProteinName);
    }
 
    // If combined search printed out target proteins above, now print out decoy proteins if necessary
@@ -377,7 +379,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
       {
          CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-         fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+         fprintf(fpout, "\t%s%s", g_staticParams.szDecoyPrefix, szProteinName);
       }
    }
 
