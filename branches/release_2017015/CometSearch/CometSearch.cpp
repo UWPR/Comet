@@ -2297,7 +2297,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if (_proteinInfo.iPeffOrigResiduePosition-1 != -9 && (iStartPos <= _proteinInfo.iPeffOrigResiduePosition+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
+      if (_proteinInfo.iPeffOrigResiduePosition != -9 && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition) && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
@@ -2405,7 +2405,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if (_proteinInfo.iPeffOrigResiduePosition-1 != -9 && (iStartPos <= _proteinInfo.iPeffOrigResiduePosition+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
+      if (_proteinInfo.iPeffOrigResiduePosition-1 != -9 && (iStartPos < _proteinInfo.iPeffOrigResiduePosition) && (_proteinInfo.iPeffOrigResiduePosition < iEndPos))
       {
          pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
          pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
