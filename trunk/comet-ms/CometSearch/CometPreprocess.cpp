@@ -1742,8 +1742,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
                                                int iNumPeaks,
                                                double *pdTmpSpectrum)
 {
-   int iScanNumber = 1;
-
    Query *pScoring = new Query();
 
    pScoring->_pepMassInfo.dExpPepMass = (iPrecursorCharge*dMZ) - (iPrecursorCharge-1)*PROTON_MASS;
