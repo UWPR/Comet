@@ -110,7 +110,8 @@ void CometPostAnalysis::AnalyzeSP(int i)
       iSize = g_staticParams.options.iNumStored;
 
    // Target search
-   CalculateSP(pQuery->_pResults, i, iSize);
+   if (!g_staticParams.bRealtimeSearch)
+      CalculateSP(pQuery->_pResults, i, iSize);
 
    qsort(pQuery->_pResults, iSize, sizeof(struct Results), QSortFnSp);
    pQuery->_pResults[0].iRankSp = 1;

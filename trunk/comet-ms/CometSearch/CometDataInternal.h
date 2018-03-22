@@ -322,13 +322,19 @@ struct DBInfo
 struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
-   int    iAAComposition[26]; ///0=A, 26=Z
-   double dPepMass;       // mono neutral pep mass
+   int    iAAComposition[26];   // 0=A, 26=Z
+   double dPepMass;             // mono neutral pep mass
+   long   lFP;                  // file position index to protein reference
 
    bool operator==(const DBIndex &rhs) const
    {
       return (!strcmp(szPeptide, rhs.szPeptide));
    }
+};
+
+struct ProteinStruct  // for indexed database
+{
+   char szProt[WIDTH_REFERENCE];
 };
 
 struct PEFFInfo
@@ -534,6 +540,7 @@ struct StaticParams
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
    int             bIndexDb;                 // 0 = normal fasta; 1 = indexed database
+   int             bRealtimeSearch;          // 0 = no; 1 = online/realtime search of single spectra
    vector<double>  vectorMassOffsets;
 
    StaticParams()
@@ -546,6 +553,7 @@ struct StaticParams
 
       iXcorrProcessingOffset = 75;
       bIndexDb = 0;
+      bRealtimeSearch = 0;
 
       databaseInfo.szDatabase[0] = '\0';
 
@@ -882,5 +890,6 @@ struct IonSeriesStruct         // defines which fragment ion series are consider
 {
    int bPreviousMatch[8];
 };
+
 
 #endif // _COMETDATAINTERNAL_H_

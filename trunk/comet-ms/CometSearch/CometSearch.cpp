@@ -9,7 +9,7 @@
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.i
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
 */
@@ -1012,6 +1012,8 @@ bool CometSearch::IndexSearch(FILE *fp)
    fseek(fp, lReadIndex[iStart], SEEK_SET);
    fread(&sTmp, sizeof(struct DBIndex), 1, fp);
 
+   dbe.lProteinFilePosition = sTmp.lFP;
+
    while ((int)sTmp.dPepMass <= iEnd)
    {
       int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sTmp.dPepMass);
@@ -1094,6 +1096,14 @@ bool CometSearch::IndexSearch(FILE *fp)
       }
    }
 
+   // Retrieve protein name
+   if (g_pvQuery.at(0)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
+   {
+      char szProtein[WIDTH_REFERENCE];
+      fseek(fp, g_pvQuery.at(0)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
+      fread(szProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+      printf("\n*** protein %s\n", szProtein);
+   }
    delete [] lReadIndex;
    return true;
 }
@@ -2689,7 +2699,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if (_proteinInfo.iPeffOrigResiduePosition-1 != -9 && (iStartPos <= _proteinInfo.iPeffOrigResiduePosition+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
+      if (_proteinInfo.iPeffOrigResiduePosition != -9 && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition) && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
@@ -2797,7 +2807,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if (_proteinInfo.iPeffOrigResiduePosition-1 != -9 && (iStartPos <= _proteinInfo.iPeffOrigResiduePosition+1) && (_proteinInfo.iPeffOrigResiduePosition-1 <=iEndPos))
+      if (_proteinInfo.iPeffOrigResiduePosition != -9 && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition) && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {
          pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
          pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;

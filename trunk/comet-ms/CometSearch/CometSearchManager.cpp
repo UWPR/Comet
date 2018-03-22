@@ -2105,6 +2105,15 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 int iNumFragIons,
                                                 double* pdReturnScores)
 {
+
+#define TIMING
+#ifdef TIMING
+clock_t start, finish;
+double interval;
+start = clock();
+#endif
+   g_staticParams.bRealtimeSearch = 1;
+
    if (!InitializeStaticParams())
       return false;
 
@@ -2128,6 +2137,13 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    // We need to reset some of the static variables in-between input files
    CometPreprocess::Reset();
+
+#ifdef TIMING
+finish = clock() - start;
+interval = finish / (double)CLOCKS_PER_SEC;
+printf("elapsed after preprocess %f\n", interval);
+start = clock();
+#endif
 
    // IMPORTANT: From this point onwards, because we've loaded some
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
@@ -2160,17 +2176,31 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
    if (!bSucceeded)
       goto cleanup_results;
-
+#ifdef TIMING
+finish = clock() - start;
+interval = finish / (double)CLOCKS_PER_SEC;
+printf("elapsed after search %f\n", interval);
+start = clock();
+#endif
    bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
    if (!bSucceeded)
       goto cleanup_results;
 
+   int iSize = g_pvQuery.at(0)->iMatchPeptideCount;
+   if (iSize > g_staticParams.options.iNumStored)
+      iSize = g_staticParams.options.iNumStored;
+//   qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
+
    // Sort each entry by xcorr, calculate E-values, etc.
-   bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
-   if (!bSucceeded)
-      goto cleanup_results;
-
-
+     bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+//   if (!bSucceeded)
+//      goto cleanup_results;
+#ifdef TIMING
+finish = clock() - start;
+interval = finish / (double)CLOCKS_PER_SEC;
+printf("elapsed after post analysis %f\n", interval);
+start = clock();
+#endif
    Query* pQuery = g_pvQuery.at(0);  // return info for top hit only
 
    if (pQuery->_pResults[0].fXcorr > 0.0)
@@ -2289,7 +2319,6 @@ FIX:  need to add terminal modification information to indexed database for this
          else
             break;
       }
-
    }
    else
    {
@@ -2314,7 +2343,10 @@ cleanup_results:
 
    // Deallocate search memory
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
-
-
+#ifdef TIMING
+finish = clock() - start;
+interval = finish / (double)CLOCKS_PER_SEC;
+printf("elapsed to finish %f\n", interval);
+#endif
    return bSucceeded;
 }

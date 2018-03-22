@@ -89,9 +89,12 @@ bool CometIndexDb::CreateIndex(void)
    iTmpCh = getc(fptr);
 
    char szBuf[8192];
+   int iProtNum = 0;
 
    sprintf(szOut, " - generating peptides\n");
    logout(szOut);
+
+   vector<struct ProteinStruct> vProtein;  // just store a list of protein names
 
    // Loop through entire database.
    while (!feof(fptr))
@@ -143,7 +146,15 @@ bool CometIndexDb::CreateIndex(void)
          }
 
          CometIndexDb sqIndex;
-         sqIndex.DoIndex(dbe, vIndex);
+         sqIndex.DoIndex(dbe, vIndex, iProtNum);
+
+         struct ProteinStruct sEntry;
+         strcpy(sEntry.szProt, dbe.strName.c_str());
+
+         // store protein name
+         vProtein.push_back(sEntry);
+
+         iProtNum++;
 
          bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
          if (!bSucceeded)
@@ -180,10 +191,8 @@ bool CometIndexDb::CreateIndex(void)
    // sort by mass;
    sort(vIndex.begin(), vIndex.end(), SortByMass);
 
-// for (std::vector<DBIndex>::iterator it=vIndex.begin(); it != vIndex.end(); ++it)
-//    printf("%s\t%f\n", (*it).szPeptide, (*it).dPepMass);
-
    // write output file
+
    char szIndexFile[SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
    sprintf(szOut, " - writing index file:  %s\n", szIndexFile);
@@ -194,6 +203,20 @@ bool CometIndexDb::CreateIndex(void)
       exit(1);
    }
 
+   long *lProteinIndex = new long[iProtNum];
+   for (int i=0; i<iProtNum; i++)
+      lProteinIndex[i] = -1;
+
+   // first just write out protein names. Track file position of each protein name
+   int i=0;
+   for (std::vector<ProteinStruct>::iterator it=vProtein.begin(); it != vProtein.end(); ++it)
+   {
+      lProteinIndex[i] = ftell(fptr);
+      fwrite((*it).szProt, sizeof(char)*WIDTH_REFERENCE, 1, fptr);
+      i++;
+   }
+
+   // next write out the peptides and track peptide mass index
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
 
    long *lIndex = new long[iMaxPeptideMass];
@@ -215,10 +238,14 @@ bool CometIndexDb::CreateIndex(void)
          (*it).iAAComposition[i]=0;
       for (int i=0; i<(int)strlen((*it).szPeptide); i++)
          (*it).iAAComposition[(*it).szPeptide[i] - 65] += 1;
+
+      (*it).lFP = lProteinIndex[(int) (*it).lFP];
+
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
    }
 
-   long lEndOfStruct = ftell(fptr);  // will seek to this position to read index
+
+   long lEndOfPeptides = ftell(fptr); 
 
    iTmpCh = (int)(g_staticParams.options.dPeptideMassLow);
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
@@ -226,10 +253,11 @@ bool CometIndexDb::CreateIndex(void)
    iTmpCh = vIndex.size();
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write # of peptides
    fwrite(lIndex, sizeof(long), iMaxPeptideMass, fptr); // write index
-   fwrite(&lEndOfStruct, sizeof(long), 1, fptr);  // write ftell position of index
+   fwrite(&lEndOfPeptides, sizeof(long), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
 
    fclose(fptr);
    delete [] lIndex;
+   delete [] lProteinIndex;
 
    sprintf(szOut, " Done.\n\n");
    logout(szOut);
@@ -237,7 +265,7 @@ bool CometIndexDb::CreateIndex(void)
 }
 
 
-bool CometIndexDb::DoIndex(sDBEntry dbe, vector<struct DBIndex> &vIndex)
+bool CometIndexDb::DoIndex(sDBEntry dbe, vector<struct DBIndex> &vIndex, int iProtNum)
 {
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
@@ -246,7 +274,7 @@ bool CometIndexDb::DoIndex(sDBEntry dbe, vector<struct DBIndex> &vIndex)
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
 
       // have to pass sequence as it can be modified per below
-      if (!DigestPeptides((char *)dbe.strSeq.c_str(), vIndex))
+      if (!DigestPeptides((char *)dbe.strSeq.c_str(), vIndex, iProtNum))
          return false;
    }
    else
@@ -265,7 +293,8 @@ bool CometIndexDb::DoIndex(sDBEntry dbe, vector<struct DBIndex> &vIndex)
 
 // Compare MSMS data to peptide with szProteinSeq from the input database.
 bool CometIndexDb::DigestPeptides(char *szProteinSeq,
-                                  vector<struct DBIndex> &vIndex)
+                                  vector<struct DBIndex> &vIndex,
+                                  int iProtNum)
 {
    int iLenPeptide = 0;
    int iLenProtein;
@@ -295,11 +324,14 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
       if (iLenPeptide<MAX_PEPTIDE_LEN && WithinDigestRange(dCalcPepMass, szProteinSeq, iStartPos, iEndPos))
       {
          Threading::LockMutex(g_dbIndexMutex);
+
          // add to vector
          struct DBIndex sEntry;
          sEntry.dPepMass = dCalcPepMass;  //MH+ mass
          strncpy(sEntry.szPeptide, szProteinSeq+iStartPos, iEndPos-iStartPos+1);
          sEntry.szPeptide[iEndPos-iStartPos+1]='\0';
+         sEntry.lFP = iProtNum;
+
          vIndex.push_back(sEntry);
          Threading::UnlockMutex(g_dbIndexMutex);
       }

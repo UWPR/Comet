@@ -40,7 +40,8 @@ public:
    ~CometPostAnalysis();
    static bool PostAnalysis(int minNumThreads, int maxNumThreads);
    static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData);
-
+   static int QSortFnXcorr(const void *a,
+                           const void *b);
 private:
    static void AnalyzeSP(int i);
    static void CalculateSP(Results *pOutput,
@@ -48,8 +49,7 @@ private:
                            int iSize);
    static int QSortFnSp(const void *a,
                         const void *b);
-   static int QSortFnXcorr(const void *a,
-                           const void *b);
+
    static int QSortFnPep(const void *a,
                          const void *b);
    static int QSortFnMod(const void *a,

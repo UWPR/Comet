@@ -50,7 +50,8 @@ public:
 
    static bool CreateIndex(void);
    bool DoIndex(sDBEntry dbe,
-                vector<struct DBIndex> &vIndex);
+                vector<struct DBIndex> &vIndex,
+                int iProtNum);
    static bool SortByPeptide(const DBIndex &lhs,
                              const DBIndex &rhs);
    static bool SortByMass(const DBIndex &lhs,
@@ -59,7 +60,8 @@ public:
 private:
 
    bool DigestPeptides(char *szProteinSeq,
-                       vector<struct DBIndex> &vIndex);
+                       vector<struct DBIndex> &vIndex,
+                       int iProtNum);
    bool WithinDigestRange(double dCalcPepMass,
                           char *szProteinSeq,
                           int iStartPos,

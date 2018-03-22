@@ -30,11 +30,11 @@ namespace RealtimeSearch
          sTmp = iTmp.ToString();
          SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
 
-         iTmp = 1; // m/z tolerance
+         iTmp = 0; // m/z tolerance
          sTmp = iTmp.ToString();
          SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-         iTmp = 3; // isotope error 0 to 3
+         iTmp = 1; // isotope error 0 to 3
          sTmp = iTmp.ToString();
          SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
@@ -46,12 +46,24 @@ namespace RealtimeSearch
          sTmp = dTmp.ToString();
          SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
+         dTmp = 229.162932;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_Nterm_peptide", sTmp, dTmp);
+
+         dTmp = 229.162932;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_K_lysine", sTmp, dTmp);
+
+         dTmp = 57.0214637236;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_C_cysteine", sTmp, dTmp);
+
          // set variable mod ... note this realtime this search can only set 1 variable mod
          // sadly have to follow this format unless you want to deal with more code
-         string modString = "ST,79.966331,0,3,-1,0,0";
+         string modString = "M,15.9949146221,0,3,-1,0,0";
          var varModsWrapper = new VarModsWrapper();
-         varModsWrapper.set_VarModChar("ST");
-         varModsWrapper.set_VarModMass(79.966331);
+         varModsWrapper.set_VarModChar("M");
+         varModsWrapper.set_VarModMass(15.9949146221);
          varModsWrapper.set_BinaryMod(0);
          varModsWrapper.set_MaxNumVarModAAPerMod(3);  // allow up to 3 of these mods in peptide
          varModsWrapper.set_VarModTermDistance(-1);   // allow mod to be anywhere in peptide
@@ -63,21 +75,51 @@ namespace RealtimeSearch
          // need precursor charge, precursor m/z and peaklist to do search
 
          int iPrecursorCharge = 2;
-         double dMZ = 604.768;
+         double dMZ = 785.473206;
+
+         int iNumPeaks = 662;                         // number of peaks in spectrum
+         double[] pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
+         double[] pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
+
+         iNumPeaks = 0;
+         string line;
+
+         // Read the file and display it line by line.  
+         System.IO.StreamReader file = new System.IO.StreamReader(@"C:\Users\Jimmy\Desktop\debug\scan.txt");
+         while ((line = file.ReadLine()) != null)
+         {
+            var parts = line.Split(' ');
+            double a = Convert.ToDouble(parts[0]);
+            double b = Convert.ToDouble(parts[1]);
+
+            pdMass[iNumPeaks] = a;
+            pdInten[iNumPeaks] = b;
+            iNumPeaks++;
+         }
+
+         file.Close();
+
+         if (iNumPeaks != 662)
+         {
+            Console.WriteLine("Error\n");
+            System.Environment.Exit(1);
+         }
          
+         /*
          int iNumPeaks = 6;                         // number of peaks in spectrum
          double[] pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
          double[] pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
          
          // now populate the spectrum as mass and intensity arrays from whatever is retrieved from Thermo interface
          // example below is y-ions from human tryptic peptide EAGAQAVPETREAGAQAVPET[79.9663]R
-         pdMass[0] = 356.132; pdInten[0] = 100.0;
-         pdMass[1] = 485.176; pdInten[1] = 90.0;
-         pdMass[2] = 582.228; pdInten[2] = 120.0;
-         pdMass[3] = 627.310; pdInten[3] = 110.0;  // threw in this b-ion
-         pdMass[4] = 681.297; pdInten[4] = 300.0;
-         pdMass[5] = 880.392; pdInten[5] = 85.0;
-
+         pdMass[0] = 376.275; pdInten[0] = 100.0;
+         pdMass[1] = 507.316; pdInten[1] = 90.0;
+         pdMass[2] = 606.348; pdInten[2] = 120.0;
+         pdMass[3] = 735.427; pdInten[3] = 110.0;
+         pdMass[4] = 822.459; pdInten[4] = 300.0;
+         pdMass[5] = 921.527; pdInten[5] = 85.0;
+         */
+          
          // these are the return information from search
          sbyte[] szPeptide = new sbyte[512];
          int iNumFragIons = 10;              // return 10 most intense matched b- and y-ions
