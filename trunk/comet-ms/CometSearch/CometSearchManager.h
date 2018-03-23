@@ -32,8 +32,17 @@ public:
 
    // Methods inherited from ICometSearchManager
    virtual bool DoSearch();
-   virtual bool DoSingleSpectrumSearch(const int intValue, const double value, double* dVal1, double* dVal2, const int iVal1,
-      char* szPep, double* pdReturnYions, double* pdReturnBions, int iNumFragIons, double* pdScores);
+   virtual bool DoSingleSpectrumSearch(const int iPrecursorCharge,
+                                       const double dMZ,
+                                       double* dMass,
+                                       double* dInten,
+                                       const int iNumPeaks,
+                                       char* szReturnPeptide,
+                                       char* szReturnProtein,
+                                       double* pdReturnYions,
+                                       double* pdReturnBions,
+                                       int iNumFragIons,
+                                       double* pdScores);
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);

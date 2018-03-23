@@ -2100,18 +2100,12 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 double* pdInten,
                                                 int iNumPeaks,
                                                 char* szReturnPeptide,
+                                                char* szReturnProtein,
                                                 double* pdReturnYions,
                                                 double* pdReturnBions,
                                                 int iNumFragIons,
                                                 double* pdReturnScores)
 {
-
-#define TIMING
-#ifdef TIMING
-clock_t start, finish;
-double interval;
-start = clock();
-#endif
    g_staticParams.bRealtimeSearch = 1;
 
    if (!InitializeStaticParams())
@@ -2138,13 +2132,6 @@ start = clock();
    // We need to reset some of the static variables in-between input files
    CometPreprocess::Reset();
 
-#ifdef TIMING
-finish = clock() - start;
-interval = finish / (double)CLOCKS_PER_SEC;
-printf("elapsed after preprocess %f\n", interval);
-start = clock();
-#endif
-
    // IMPORTANT: From this point onwards, because we've loaded some
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
@@ -2170,38 +2157,36 @@ start = clock();
    g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
-   int iPercentStart=0, iPercentEnd=0;
+   int iPercentStart,
+       iPercentEnd;
+   
+   iPercentStart=iPercentEnd=0;
 
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
+
    if (!bSucceeded)
       goto cleanup_results;
-#ifdef TIMING
-finish = clock() - start;
-interval = finish / (double)CLOCKS_PER_SEC;
-printf("elapsed after search %f\n", interval);
-start = clock();
-#endif
+
    bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
    if (!bSucceeded)
       goto cleanup_results;
 
-   int iSize = g_pvQuery.at(0)->iMatchPeptideCount;
+   int iSize;
+   iSize  = g_pvQuery.at(0)->iMatchPeptideCount;
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
-//   qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
 
+   qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
+/*
    // Sort each entry by xcorr, calculate E-values, etc.
-     bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
-//   if (!bSucceeded)
-//      goto cleanup_results;
-#ifdef TIMING
-finish = clock() - start;
-interval = finish / (double)CLOCKS_PER_SEC;
-printf("elapsed after post analysis %f\n", interval);
-start = clock();
-#endif
-   Query* pQuery = g_pvQuery.at(0);  // return info for top hit only
+   bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+      goto cleanup_results;
+*/
+
+   Query* pQuery;
+   pQuery = g_pvQuery.at(0);  // return info for top hit only
 
    if (pQuery->_pResults[0].fXcorr > 0.0)
    {
@@ -2210,11 +2195,13 @@ start = clock();
 
       for (int i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
       {
-         sprintf(szReturnPeptide+strlen(szReturnPeptide), "%c\0", pQuery->_pResults[0].szPeptide[i]);
+         sprintf(szReturnPeptide+strlen(szReturnPeptide), "%c", pQuery->_pResults[0].szPeptide[i]);
 
          if (pQuery->_pResults[0].piVarModSites[i] != 0)
-            sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]\0", pQuery->_pResults[0].pdVarModSites[i]);
+            sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]", pQuery->_pResults[0].pdVarModSites[i]);
       }
+
+      strcpy(szReturnProtein, pQuery->_pResults[0].szSingleProtein);
 
       pdReturnScores[0] = pQuery->_pResults[0].fXcorr;          // xcorr
       pdReturnScores[1] = pQuery->_pResults[0].dExpect;         // expect
@@ -2242,17 +2229,6 @@ FIX:  need to add terminal modification information to indexed database for this
       {
          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide+1]-1].dVarModMass;
       }
-
-      struct MatchedIonsStruct
-      {
-         double dMass;
-         double dInten;
-
-         bool operator<(const MatchedIonsStruct& a) const
-         {
-            return dInten > a.dInten;
-         }
-      };
 
       vector<MatchedIonsStruct> vMatchedYions;
       vector<MatchedIonsStruct> vMatchedBions;
@@ -2323,6 +2299,7 @@ FIX:  need to add terminal modification information to indexed database for this
    else
    {
       strcpy(szReturnPeptide, "");  // peptide
+      strcpy(szReturnProtein, "");  // protein
       pdReturnScores[0] = -1;   // xcorr
       pdReturnScores[1] = -1;  // expect
    }
@@ -2343,10 +2320,6 @@ cleanup_results:
 
    // Deallocate search memory
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
-#ifdef TIMING
-finish = clock() - start;
-interval = finish / (double)CLOCKS_PER_SEC;
-printf("elapsed to finish %f\n", interval);
-#endif
+
    return bSucceeded;
 }

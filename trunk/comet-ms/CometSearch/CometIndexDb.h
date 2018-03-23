@@ -56,6 +56,8 @@ public:
                              const DBIndex &rhs);
    static bool SortByMass(const DBIndex &lhs,
                           const DBIndex &rhs);
+   static bool SortByFP(const DBIndex &lhs,
+                        const DBIndex &rhs);
 
 private:
 

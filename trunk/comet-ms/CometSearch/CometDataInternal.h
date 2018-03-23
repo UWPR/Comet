@@ -177,6 +177,7 @@ struct Results
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
+   char   szSingleProtein[WIDTH_REFERENCE];   // used only in single spectrum search to return protein name from index file
    char   cPeffOrigResidue;                   // original residue of a PEFF variant
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
    vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
@@ -332,7 +333,7 @@ struct DBIndex
    }
 };
 
-struct ProteinStruct  // for indexed database
+struct IndexProteinStruct  // for indexed database
 {
    char szProt[WIDTH_REFERENCE];
 };
@@ -891,5 +892,16 @@ struct IonSeriesStruct         // defines which fragment ion series are consider
    int bPreviousMatch[8];
 };
 
+
+struct MatchedIonsStruct  // for SingleSpectrumSearch
+{
+   double dMass;
+   double dInten;
+
+   bool operator<(const MatchedIonsStruct& a) const
+   {
+      return dInten > a.dInten;
+   }
+};
 
 #endif // _COMETDATAINTERNAL_H_

@@ -995,6 +995,7 @@ bool CometSearch::IndexSearch(FILE *fp)
       lReadIndex[i] = -1;
 
    fread(lReadIndex, lSizeLong, iMaxMass+1, fp);
+
    // analyze no variable mods
 
    int iStart = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass;
@@ -1012,8 +1013,6 @@ bool CometSearch::IndexSearch(FILE *fp)
    fseek(fp, lReadIndex[iStart], SEEK_SET);
    fread(&sTmp, sizeof(struct DBIndex), 1, fp);
 
-   dbe.lProteinFilePosition = sTmp.lFP;
-
    while ((int)sTmp.dPepMass <= iEnd)
    {
       int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sTmp.dPepMass);
@@ -1022,7 +1021,10 @@ bool CometSearch::IndexSearch(FILE *fp)
          iWhichQuery--;
 
       if (iWhichQuery != -1)
+      {
+         dbe.lProteinFilePosition = sTmp.lFP;
          AnalyzeIndexPep(iWhichQuery, sTmp.szPeptide, sTmp.dPepMass, _ppbDuplFragmentArr[0], &dbe);
+      }
 
       if (ftell(fp)>=lEndOfStruct || sTmp.dPepMass>g_massRange.dMaxMass)
          break;
@@ -1031,6 +1033,7 @@ bool CometSearch::IndexSearch(FILE *fp)
    }
 
    // analyze variable mods; currently only supports variable_mod01 w/o options
+
    if (!isEqual(g_staticParams.variableModParameters.varModList[0].dVarModMass, 0.0))
    {
       // go through each mass region subtracting 'i' number of variable mods
@@ -1099,10 +1102,8 @@ bool CometSearch::IndexSearch(FILE *fp)
    // Retrieve protein name
    if (g_pvQuery.at(0)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
    {
-      char szProtein[WIDTH_REFERENCE];
       fseek(fp, g_pvQuery.at(0)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
-      fread(szProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
-      printf("\n*** protein %s\n", szProtein);
+      fread(g_pvQuery.at(0)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
    }
    delete [] lReadIndex;
    return true;
