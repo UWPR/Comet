@@ -122,15 +122,17 @@ namespace RealtimeSearch
           
          // these are the return information from search
          sbyte[] szPeptide = new sbyte[512];
+         sbyte[] szProtein = new sbyte[512];
          int iNumFragIons = 10;              // return 10 most intense matched b- and y-ions
          double[] pdYions = new double[iNumFragIons];
          double[] pdBions = new double[iNumFragIons];
          double[] pdScores = new double[2];   // dScores[0] = xcorr, dScores[1] = E-value
 
          // call Comet search here
-         SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, szPeptide, pdYions, pdBions, iNumFragIons, pdScores);
+         SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, szPeptide, szProtein, pdYions, pdBions, iNumFragIons, pdScores);
 
          string peptide = Encoding.UTF8.GetString(szPeptide.Select(b=>(byte) b).ToArray());
+         string protein = Encoding.UTF8.GetString(szProtein.Select(b => (byte)b).ToArray());
          int index = peptide.IndexOf('\0');
          if (index >= 0)
             peptide = peptide.Remove(index);
@@ -140,7 +142,7 @@ namespace RealtimeSearch
 
          if (xcorr > 0)
          {
-            Console.WriteLine("peptide: {0}\nxcorr {1}\nexpect {2}", peptide, xcorr, expect);
+            Console.WriteLine("peptide: {0}\nprotein: {1}\nxcorr {2}\nexpect {3}", peptide, protein, xcorr, expect);
 
             for (int i = 0; i < iNumFragIons; i++)
             {

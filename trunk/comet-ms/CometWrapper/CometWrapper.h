@@ -42,6 +42,7 @@ namespace CometWrapper {
                                     array<double>^ dVal2,
                                     const int iVal1,
                                     array<char>^ szPeptide,
+                                    array<char>^ szProtein,
                                     array<double>^ pdYions,
                                     array<double>^ pdBions,
                                     int iNumFragIons,

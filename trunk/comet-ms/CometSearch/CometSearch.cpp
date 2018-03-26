@@ -18,6 +18,7 @@
 #include "CometSearch.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
+#include "CometPostAnalysis.h"
 
 #include <stdio.h>
 #include <sstream>
@@ -1012,6 +1013,7 @@ bool CometSearch::IndexSearch(FILE *fp)
       iStart++;
    fseek(fp, lReadIndex[iStart], SEEK_SET);
    fread(&sTmp, sizeof(struct DBIndex), 1, fp);
+   dbe.lProteinFilePosition = sTmp.lFP;
 
    while ((int)sTmp.dPepMass <= iEnd)
    {
@@ -1021,8 +1023,7 @@ bool CometSearch::IndexSearch(FILE *fp)
          iWhichQuery--;
 
       if (iWhichQuery != -1)
-      {
-         dbe.lProteinFilePosition = sTmp.lFP;
+      {         
          AnalyzeIndexPep(iWhichQuery, sTmp.szPeptide, sTmp.dPepMass, _ppbDuplFragmentArr[0], &dbe);
       }
 
@@ -1030,6 +1031,7 @@ bool CometSearch::IndexSearch(FILE *fp)
          break;
 
       fread(&sTmp, sizeof(struct DBIndex), 1, fp);
+      dbe.lProteinFilePosition = sTmp.lFP;
    }
 
    // analyze variable mods; currently only supports variable_mod01 w/o options
@@ -1053,6 +1055,7 @@ bool CometSearch::IndexSearch(FILE *fp)
             iStart++;
          fseek(fp, lReadIndex[iStart], SEEK_SET);
          fread(&sTmp, sizeof(struct DBIndex), 1, fp);
+         dbe.lProteinFilePosition = sTmp.lFP;
          while ((int)sTmp.dPepMass <= iEnd)
          {
             int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sTmp.dPepMass + dMassAddition);
@@ -1095,9 +1098,18 @@ bool CometSearch::IndexSearch(FILE *fp)
                break;
 
             fread(&sTmp, sizeof(struct DBIndex), 1, fp);
+            dbe.lProteinFilePosition = sTmp.lFP;
          }
       }
    }
+
+   int iSize;
+   iSize  = g_pvQuery.at(0)->iMatchPeptideCount;
+   if (iSize > g_staticParams.options.iNumStored)
+      iSize = g_staticParams.options.iNumStored;
+
+   // simply take top xcorr peptide as E-value calculation too expensive
+   qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
 
    // Retrieve protein name
    if (g_pvQuery.at(0)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)

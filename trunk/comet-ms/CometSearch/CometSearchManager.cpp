@@ -1446,6 +1446,7 @@ bool CometSearchManager::DoSearch()
    {
       sprintf(szOut, " Creating peptide index file\n");
       logout(szOut);
+      fflush(stdout);
       bSucceeded = CometIndexDb::CreateIndex();
       return bSucceeded;
    }
@@ -2177,6 +2178,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
+   // simply take top xcorr peptide as E-value calculation too expensive
    qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
 /*
    // Sort each entry by xcorr, calculate E-values, etc.
@@ -2190,7 +2192,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    if (pQuery->_pResults[0].fXcorr > 0.0)
    {
-      // Set return values for peptide sequence, xcorr and E-value
+      // Set return values for peptide sequence, protein, xcorr and E-value
       szReturnPeptide[0]='\0';
 
       for (int i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
@@ -2201,8 +2203,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
             sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]", pQuery->_pResults[0].pdVarModSites[i]);
       }
 
-      strcpy(szReturnProtein, pQuery->_pResults[0].szSingleProtein);
-
+      strcpy(szReturnProtein, pQuery->_pResults[0].szSingleProtein);  //protein
       pdReturnScores[0] = pQuery->_pResults[0].fXcorr;          // xcorr
       pdReturnScores[1] = pQuery->_pResults[0].dExpect;         // expect
 

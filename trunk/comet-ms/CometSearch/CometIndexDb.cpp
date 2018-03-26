@@ -102,6 +102,7 @@ bool CometIndexDb::CreateIndex(void)
 
    sprintf(szOut, " - generating peptides\n");
    logout(szOut);
+   fflush(stdout);
 
    vector<struct IndexProteinStruct> vProtein;  // just store a list of protein names
 
@@ -194,6 +195,7 @@ bool CometIndexDb::CreateIndex(void)
    // remove duplicates
    sprintf(szOut, " - removing duplicates\n");
    logout(szOut);
+   fflush(stdout);
    sort(vIndex.begin(), vIndex.end(), SortByPeptide); // sort by peptide; also sorted by protein ftell position
    vIndex.erase(unique(vIndex.begin(), vIndex.end()), vIndex.end());
 
@@ -206,6 +208,7 @@ bool CometIndexDb::CreateIndex(void)
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
    sprintf(szOut, " - writing index file:  %s\n", szIndexFile);
    logout(szOut);
+   fflush(stdout);
    if ( (fptr=fopen(szIndexFile, "wb"))==NULL)
    {
       printf(" Error - cannot open file %s to write\n", szIndexFile);
@@ -249,7 +252,6 @@ bool CometIndexDb::CreateIndex(void)
          (*it).iAAComposition[(*it).szPeptide[i] - 65] += 1;
 
       (*it).lFP = lProteinIndex[(int) (*it).lFP];
-
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
    }
 
