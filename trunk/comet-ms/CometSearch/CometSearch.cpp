@@ -2201,6 +2201,50 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             }
             return false;
          }
+         else if (g_staticParams.tolerances.iIsotopeError == 5)  // -1/0/1/2/3
+         {
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
+
+            for (int i=0; i<iMassOffsetsSize; i++)
+            {
+               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
+
+               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+               {
+                  return true;
+               }
+            }
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 6)  //  -3/-2/-1/0/1/2/3
+         {
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
+
+            for (int i=0; i<iMassOffsetsSize; i++)
+            {
+               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
+
+               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff + d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff + d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
+               {
+                  return true;
+               }
+            }
+            return false;
+         }
          else
          {
             char szErrorMsg[256];
