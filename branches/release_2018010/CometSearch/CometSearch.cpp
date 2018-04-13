@@ -299,10 +299,23 @@ bool CometSearch::RunSearch(int minNumThreads,
                      char *pStr2;
                      pStr += iLenAttributeMod;
 
-                     if ( (pStr2 = strchr(pStr, ' '))!=NULL)
-                        iLen = pStr2 - pStr;
-                     else
-                        iLen = strlen(szPeffLine) - (pStr - szPeffLine) - 1;
+                     pStr2 = pStr;
+
+                     // need to find closing parenthesis
+                     int iTmp=0;  // count of number of open parenthesis
+                     while (1)
+                     {
+                        if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2=='\n')
+                           break;
+                        else if (*pStr2 == '(')
+                           iTmp++;
+                        else if (*pStr2 == ')')
+                           iTmp--;
+
+                        *pStr2++;
+                     }
+                     
+                     iLen = pStr2 - pStr;
 
                      if ( iLen > iLenAllocMods)
                      {
@@ -324,6 +337,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                      strncpy(szMods, pStr, iLen);
                      szMods[iLen]='\0';
+
                      if ( (pStr2 = strrchr(szMods, ')'))!=NULL)
                      {
                         pStr2++;
@@ -424,10 +438,23 @@ bool CometSearch::RunSearch(int minNumThreads,
                      char *pStr2;
                      pStr += iLenAttributeVariant;
 
-                     if ( (pStr2 = strchr(pStr, ' '))!=NULL)
-                        iLen = pStr2 - pStr;
-                     else
-                        iLen = strlen(szPeffLine) - (pStr - szPeffLine) - 1;
+                     pStr2 = pStr;
+
+                     // need to find closing parenthesis
+                     int iTmp=0;  // count of number of open parenthesis
+                     while (1)
+                     {
+                        if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2=='\n')
+                           break;
+                        else if (*pStr2 == '(')
+                           iTmp++;
+                        else if (*pStr2 == ')')
+                           iTmp--;
+
+                        *pStr2++;
+                     }
+
+                     iLen = pStr2 - pStr;
 
                      if ( iLen > iLenAllocMods)
                      {
@@ -448,6 +475,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                      strncpy(szMods, pStr, iLen);
                      szMods[iLen]='\0';
+
                      if ( (pStr2 = strrchr(szMods, ')'))!=NULL)
                      {
                         pStr2++;
@@ -1718,22 +1746,6 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
          else if (g_staticParams.tolerances.iIsotopeError == 2)
          {
             double dC13diff  = C13_DIFF;
-
-            for (int i=0; i<iMassOffsetsSize; i++)
-            {
-               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
-
-               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
-               {
-                  return true;
-               }
-            }
-            return false;
-         }
-         else if (g_staticParams.tolerances.iIsotopeError == 2)
-         {
-            double dC13diff  = C13_DIFF;
             double d2C13diff = C13_DIFF + C13_DIFF;
 
             for (int i=0; i<iMassOffsetsSize; i++)
@@ -1780,6 +1792,50 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
                      || (fabs(dTmpDiff - 8.014199)  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
                      || (fabs(dTmpDiff + 4.0070995) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
                      || (fabs(dTmpDiff + 8.014199)  <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+               {
+                  return true;
+               }
+            }
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 5)
+         {
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
+
+            for (int i=0; i<iMassOffsetsSize; i++)
+            {
+               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
+
+               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+               {
+                  return true;
+               }
+            }
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 6)
+         {
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
+
+            for (int i=0; i<iMassOffsetsSize; i++)
+            {
+               double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
+
+               if (     (fabs(dTmpDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff + d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dTmpDiff + d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
                {
                   return true;
                }
@@ -1854,6 +1910,40 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
                   || (fabs(dMassDiff - 8.014199)  <= pQuery->_pepMassInfo.dPeptideMassTolerance)
                   || (fabs(dMassDiff + 4.0070995) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
                   || (fabs(dMassDiff + 8.014199)  <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+            {
+               return true;
+            }
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 5)
+         {  
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
+            
+            if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+            {
+               return true;
+            }
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 6)
+         {  
+            double dC13diff  = C13_DIFF;
+            double d2C13diff = C13_DIFF + C13_DIFF;
+            double d3C13diff = C13_DIFF + C13_DIFF + C13_DIFF;
+            
+            if (     (fabs(dMassDiff)            <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff - d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff + d2C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                  || (fabs(dMassDiff + d3C13diff)<= pQuery->_pepMassInfo.dPeptideMassTolerance))
             {
                return true;
             }
@@ -2296,6 +2386,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       else
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
+//FIX this iPefPos-1 makes no sense!  Is it correct??
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
       if (_proteinInfo.iPeffOrigResiduePosition != -9 && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition) && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {

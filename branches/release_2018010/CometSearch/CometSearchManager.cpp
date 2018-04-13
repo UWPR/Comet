@@ -403,14 +403,8 @@ static void PrintParameters()
    else
       szReadingFrame[0]=0;
 
-   if (g_staticParams.tolerances.iIsotopeError==1)
-      strcpy(szIsotope, "ISOTOPE1");
-   else if (g_staticParams.tolerances.iIsotopeError==2)
-      strcpy(szIsotope, "ISOTOPE2");
-   else if (g_staticParams.tolerances.iIsotopeError==3)
-      strcpy(szIsotope, "ISOTOPE3");
-   else if (g_staticParams.tolerances.iIsotopeError==4)
-      strcpy(szIsotope, "ISOTOPE4");
+   if (g_staticParams.tolerances.iIsotopeError>0)
+      sprintf(szIsotope, "ISOTOPE%d", g_staticParams.tolerances.iIsotopeError);
 
    szPeak[0]='\0';
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
@@ -639,7 +633,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("isotope_error", g_staticParams.tolerances.iIsotopeError);
    if ((g_staticParams.tolerances.iIsotopeError < 0)
-         || (g_staticParams.tolerances.iIsotopeError > 4))
+         || (g_staticParams.tolerances.iIsotopeError > 6))
    {
       g_staticParams.tolerances.iIsotopeError = 0;
    }
