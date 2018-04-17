@@ -341,8 +341,19 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
          sEntry.dPepMass = dCalcPepMass;  //MH+ mass
          strncpy(sEntry.szPeptide, szProteinSeq+iStartPos, iEndPos-iStartPos+1);
          sEntry.szPeptide[iEndPos-iStartPos+1]='\0';
+
+         if (iStartPos == 0)
+            sEntry.szPrevNextAA[0] = '-';
+         else
+            sEntry.szPrevNextAA[0] = szProteinSeq[iStartPos-1];
+         if (iEndPos == iLenProtein-1)
+            sEntry.szPrevNextAA[1] = '-';
+         else
+            sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos+1];
+
          sEntry.lFP = iProtNum;
          vIndex.push_back(sEntry);
+
          Threading::UnlockMutex(g_dbIndexMutex);
       }
 

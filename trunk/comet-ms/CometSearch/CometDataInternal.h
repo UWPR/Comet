@@ -297,6 +297,8 @@ typedef struct sDBEntry
 {
    string strName;           // might be able to delete this here
    string strSeq;
+   char cPrevAA;            // only used in index db search
+   char cNextAA;            // only used in index db search
    long lProteinFilePosition;
    vector<PeffModStruct> vectorPeffMod;
    vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
@@ -323,6 +325,7 @@ struct DBInfo
 struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
+   char   szPrevNextAA[2];
    int    iAAComposition[26];   // 0=A, 26=Z
    double dPepMass;             // mono neutral pep mass
    long   lFP;                  // file position index to protein reference

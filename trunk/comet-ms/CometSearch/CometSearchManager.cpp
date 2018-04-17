@@ -2111,8 +2111,9 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       g_staticParams.bIndexDb = 1;
 
    bool bSucceeded;
-   
+
    g_staticParams.options.iNumThreads = 1;   // this uses a single thread
+   g_staticParams.options.dPeptideMassHigh = (iPrecursorCharge*dMZ) - (iPrecursorCharge-1)*PROTON_MASS;
 
    //MH: Allocate memory shared by threads during spectral processing.
    bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
@@ -2130,7 +2131,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // IMPORTANT: From this point onwards, because we've loaded some
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
-
    int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
    double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
    bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
@@ -2184,10 +2184,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    Query* pQuery;
    pQuery = g_pvQuery.at(0);  // return info for top hit only
 
-   if (pQuery->_pResults[0].fXcorr > 0.0)
+   if (pQuery->_pResults[0].fXcorr>0.0 && pQuery->_pResults[0].iLenPeptide>0)
    {
       // Set return values for peptide sequence, protein, xcorr and E-value
-      szReturnPeptide[0]='\0';
+      sprintf(szReturnPeptide, "%c.", pQuery->_pResults[0].szPrevNextAA[0]);
 
       for (int i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
       {
@@ -2196,10 +2196,17 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          if (pQuery->_pResults[0].piVarModSites[i] != 0)
             sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]", pQuery->_pResults[0].pdVarModSites[i]);
       }
+      sprintf(szReturnPeptide+strlen(szReturnPeptide), ".%c", pQuery->_pResults[0].szPrevNextAA[1]);
 
       strcpy(szReturnProtein, pQuery->_pResults[0].szSingleProtein);  //protein
       pdReturnScores[0] = pQuery->_pResults[0].fXcorr;          // xcorr
-      pdReturnScores[1] = pQuery->_pResults[0].dExpect;         // expect
+      pdReturnScores[1] = pQuery->_pResults[0].dPepMass;        // calc pep mass
+      pdReturnScores[2] = pQuery->_pResults[0].iMatchedIons;    // ions matched
+      pdReturnScores[3] = pQuery->_pResults[0].iTotalIons;      // ions tot
+      if (pQuery->_pResults[0].fXcorr > 0)
+         pdReturnScores[4] = (pQuery->_pResults[0].fXcorr - pQuery->_pResults[1].fXcorr)/pQuery->_pResults[0].fXcorr;   // dCn
+      else
+         pdReturnScores[4] = 0;
 
       // now deal with calculating b- and y-ions and returning most intense matches
       double dBion = g_staticParams.precalcMasses.dNtermProton;
@@ -2299,6 +2306,7 @@ FIX:  need to add terminal modification information to indexed database for this
       pdReturnScores[1] = -1;  // expect
    }
 
+
 cleanup_results:
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometData.h).
@@ -2306,7 +2314,7 @@ cleanup_results:
       delete *it;
 
    g_pvQuery.clear();
-   
+  
    // Clean up the input files vector
    g_staticParams.vectorMassOffsets.clear();
 
