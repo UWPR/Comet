@@ -40,10 +40,10 @@ public:
    ~CometPostAnalysis();
    static bool PostAnalysis(int minNumThreads, int maxNumThreads);
    static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData);
+   static void AnalyzeSP(int i);
    static int QSortFnXcorr(const void *a,
                            const void *b);
 private:
-   static void AnalyzeSP(int i);
    static void CalculateSP(Results *pOutput,
                            int iWhichQuery,
                            int iSize);

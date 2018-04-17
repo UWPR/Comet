@@ -297,8 +297,6 @@ typedef struct sDBEntry
 {
    string strName;           // might be able to delete this here
    string strSeq;
-   char cPrevAA;            // only used in index db search
-   char cNextAA;            // only used in index db search
    long lProteinFilePosition;
    vector<PeffModStruct> vectorPeffMod;
    vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;

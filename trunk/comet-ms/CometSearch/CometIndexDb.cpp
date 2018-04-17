@@ -314,6 +314,8 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
    int iEndPos = 0;
    double dCalcPepMass = 0.0;
 
+   Threading::LockMutex(g_dbIndexMutex);
+
    iLenProtein = _proteinInfo.iProteinSeqLength;  // FIX: need to confirm this is always same as strlen(szProteinSeq)
 
    iProteinSeqLengthMinus1 = iLenProtein-1;
@@ -334,10 +336,8 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
 
       if (iLenPeptide<MAX_PEPTIDE_LEN && WithinDigestRange(dCalcPepMass, szProteinSeq, iStartPos, iEndPos))
       {
-         Threading::LockMutex(g_dbIndexMutex);
-
          // add to vector
-         struct DBIndex sEntry;
+         DBIndex sEntry;
          sEntry.dPepMass = dCalcPepMass;  //MH+ mass
          strncpy(sEntry.szPeptide, szProteinSeq+iStartPos, iEndPos-iStartPos+1);
          sEntry.szPeptide[iEndPos-iStartPos+1]='\0';
@@ -351,10 +351,10 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
          else
             sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos+1];
 
+printf("%c.%s.%c   %d\n", sEntry.szPrevNextAA[0], sEntry.szPeptide, sEntry.szPrevNextAA[1], iProtNum);
+
          sEntry.lFP = iProtNum;
          vIndex.push_back(sEntry);
-
-         Threading::UnlockMutex(g_dbIndexMutex);
       }
 
       // increment end
@@ -379,6 +379,8 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
          }
       }
    }
+
+   Threading::UnlockMutex(g_dbIndexMutex);
 
    return true;
 }

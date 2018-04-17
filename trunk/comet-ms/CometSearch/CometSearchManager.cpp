@@ -2160,6 +2160,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
 
+   CometPostAnalysis::AnalyzeSP(0);
+
    if (!bSucceeded)
       goto cleanup_results;
 

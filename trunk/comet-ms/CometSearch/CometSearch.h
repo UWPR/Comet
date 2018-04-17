@@ -272,6 +272,8 @@ private:
        char szProteinName[WIDTH_REFERENCE];
        char *pszProteinSeq;
        char cPeffOrigResidue;                     // original residue of a PEFF variant
+       char cPrevAA;  // hack for indexdb realtime search
+       char cNextAA;  // hack for indexdb realtime search
    };
 
    struct SpectrumInfoInternal
