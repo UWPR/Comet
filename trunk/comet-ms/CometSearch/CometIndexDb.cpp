@@ -351,8 +351,6 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
          else
             sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos+1];
 
-printf("%c.%s.%c   %d\n", sEntry.szPrevNextAA[0], sEntry.szPeptide, sEntry.szPrevNextAA[1], iProtNum);
-
          sEntry.lFP = iProtNum;
          vIndex.push_back(sEntry);
       }

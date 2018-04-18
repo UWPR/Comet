@@ -2201,10 +2201,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       sprintf(szReturnPeptide+strlen(szReturnPeptide), ".%c", pQuery->_pResults[0].szPrevNextAA[1]);
 
       strcpy(szReturnProtein, pQuery->_pResults[0].szSingleProtein);  //protein
-      pdReturnScores[0] = pQuery->_pResults[0].fXcorr;          // xcorr
-      pdReturnScores[1] = pQuery->_pResults[0].dPepMass;        // calc pep mass
-      pdReturnScores[2] = pQuery->_pResults[0].iMatchedIons;    // ions matched
-      pdReturnScores[3] = pQuery->_pResults[0].iTotalIons;      // ions tot
+      pdReturnScores[0] = pQuery->_pResults[0].fXcorr;                // xcorr
+      pdReturnScores[1] = pQuery->_pResults[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
+      pdReturnScores[2] = pQuery->_pResults[0].iMatchedIons;          // ions matched
+      pdReturnScores[3] = pQuery->_pResults[0].iTotalIons;            // ions tot
       if (pQuery->_pResults[0].fXcorr > 0)
          pdReturnScores[4] = (pQuery->_pResults[0].fXcorr - pQuery->_pResults[1].fXcorr)/pQuery->_pResults[0].fXcorr;   // dCn
       else
@@ -2304,8 +2304,11 @@ FIX:  need to add terminal modification information to indexed database for this
    {
       strcpy(szReturnPeptide, "");  // peptide
       strcpy(szReturnProtein, "");  // protein
-      pdReturnScores[0] = -1;   // xcorr
-      pdReturnScores[1] = -1;  // expect
+      pdReturnScores[0] = -1;       // xcorr
+      pdReturnScores[1] = 0;        // calc neutral pep mass
+      pdReturnScores[2] = 0;        // ions matched
+      pdReturnScores[3] = 0;        // ions tot
+      pdReturnScores[4] = 0;        // dCn
    }
 
 

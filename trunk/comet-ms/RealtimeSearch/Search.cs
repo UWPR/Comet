@@ -27,11 +27,11 @@ namespace RealtimeSearch
          sTmp = iTmp.ToString();
          SearchMgr.SetParam("decoy_search", sTmp, iTmp);
 
-         dTmp = 20.0; //ppm window
+         dTmp = 100.0; //ppm window
          sTmp = dTmp.ToString();
          SearchMgr.SetParam("peptide_mass_tolerance", sDB, dTmp);
 
-         iTmp = 2; // ppm
+         iTmp = 2; // 0=Da, 2=ppm
          sTmp = iTmp.ToString();
          SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
 
@@ -75,19 +75,129 @@ namespace RealtimeSearch
          sTmp = iTmp.ToString();
          SearchMgr.SetParam("max_precursor_charge", sTmp, iTmp);
 
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_Cterm_peptide", sTmp, dTmp);
+
          dTmp = 229.162932;
          sTmp = dTmp.ToString();
          SearchMgr.SetParam("add_Nterm_peptide", sTmp, dTmp);
 
-         dTmp = 229.162932;
+         dTmp = 0.0;
          sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_K_lysine", sTmp, dTmp);
+         SearchMgr.SetParam("add_Cterm_protein", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_Nterm_protein", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_G_glucine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_A_alanine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_S_serine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_P_proline", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_V_valine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_T_threonine", sTmp, dTmp);
 
          dTmp = 57.0214637236;
          sTmp = dTmp.ToString();
          SearchMgr.SetParam("add_C_cysteine", sTmp, dTmp);
 
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_L_leucine", sTmp, dTmp);
 
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_I_isoleucine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_N_asparagine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_D_aspartic_acid", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_Q_glutamine", sTmp, dTmp);
+
+         dTmp = 229.162932;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_K_lysine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_E_glutamic_acid", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_M_methionine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_O_ornithine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_H_histidine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_F_phenylalanine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_U_selenocysteine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_R_arginine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_Y_tyrosine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_W_tryptophan", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_Y_tyrosine", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_B_user_amino_acid", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_J_user_amino_acid", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_X_user_amino_acid", sTmp, dTmp);
+
+         dTmp = 0.0;
+         sTmp = dTmp.ToString();
+         SearchMgr.SetParam("add_Z_user_amino_acid", sTmp, dTmp); 
 
          string modString = "M,15.9949146221,0,3,-1,0,0";
          var varModsWrapper = new VarModsWrapper();
@@ -100,44 +210,9 @@ namespace RealtimeSearch
          varModsWrapper.set_RequireThisMod(0);        // 0=not required, 1=required
          SearchMgr.SetParam("variable_mod01", modString, varModsWrapper);   
 
-
          // need precursor charge, precursor m/z and peaklist to do search
-/*
-         int iPrecursorCharge = 2;
-         double dMZ = 785.473206;
-
-         int iNumPeaks = 662;                         // number of peaks in spectrum
-         double[] pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
-         double[] pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
-
-
-         iNumPeaks = 0;
-         string line;
-
-         // Read the file and display it line by line.  
-         System.IO.StreamReader file = new System.IO.StreamReader(@"C:\Users\Jimmy\Desktop\debug\scan.txt");
-         while ((line = file.ReadLine()) != null)
-         {
-            var parts = line.Split(' ');
-            double a = Convert.ToDouble(parts[0]);
-            double b = Convert.ToDouble(parts[1]);
-
-            pdMass[iNumPeaks] = a;
-            pdInten[iNumPeaks] = b;
-            iNumPeaks++;
-         }
-
-         file.Close();
-
-         if (iNumPeaks != 662)
-         {
-            Console.WriteLine("Error\n");
-            System.Environment.Exit(1);
-         }
- */       
-
-         int iPrecursorCharge = 5;
-         double dMZ = 1162.012;
+         int iPrecursorCharge = 3;
+         double dMZ = 562.012;
          int iNumPeaks = 318;                         // number of peaks in spectrum
          double[] pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
          double[] pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
