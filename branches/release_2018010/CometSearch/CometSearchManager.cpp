@@ -29,6 +29,7 @@
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
+#include "CometCheckForUpdates.h"
 
 #undef PERF_DEBUG
 
@@ -671,6 +672,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
 
    GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
+
+   GetParamValue("skip_updatecheck", g_staticParams.options.bSkipUpdateCheck);
 
    GetParamValue("mango_search", g_staticParams.options.bMango);
 
@@ -1394,6 +1397,10 @@ bool CometSearchManager::DoSearch()
    if (!g_staticParams.options.bOutputSqtStream)
    {
       sprintf(szOut, " Comet version \"%s\"\n\n", comet_version);
+      if (!g_staticParams.options.bSkipUpdateCheck)
+         CometCheckForUpdates::CheckForUpdates(szOut);
+      sprintf(szOut+strlen(szOut), "\n\n");
+
       logout(szOut);
       fflush(stdout);
    }

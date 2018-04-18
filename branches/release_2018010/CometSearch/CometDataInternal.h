@@ -97,6 +97,7 @@ struct Options             // output parameters
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
+   int bSkipUpdateCheck;         // 0=do not check for updates; 1=check for updates
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
    int bVerboseOutput;
    int bNoEnzymeSelected;
@@ -140,6 +141,7 @@ struct Options             // output parameters
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
+      bSkipUpdateCheck = a.bSkipUpdateCheck;
       bMango = a.bMango;
       bVerboseOutput = a.bVerboseOutput;
       bNoEnzymeSelected = a.bNoEnzymeSelected;
@@ -619,6 +621,7 @@ struct StaticParams
       options.bOutputOutFiles = 0;
 
       options.bSkipAlreadyDone = 1;
+      options.bSkipUpdateCheck = 0;
       options.bMango = 0;
       options.bVerboseOutput = 0;
       options.iDecoySearch = 0;

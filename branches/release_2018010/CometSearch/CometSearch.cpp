@@ -1439,17 +1439,19 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
 // This function will return true if unmodified peptide mass + any combination of
 // PEFF mod is within mass tolerance of any peptide query
 bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
-                                          vector<PeffPositionStruct>* vPeffArray)
+                                          vector<PeffPositionStruct>* vPeffArray,
+                                          int iStartPos,
+                                          int iEndPos)
 {
    int i;
 
-/* 
+ 
+/*
    // Print out list of PEFF mods
-   int ii;
    for (i=0; i<(int) (*vPeffArray).size(); i++)
    {
       printf("*** OK  %d.  position %d\n", i, (*vPeffArray).at(i).iPosition);
-      for (ii=0; ii<(int)(*vPeffArray).at(i).vectorWhichPeff.size(); ii++)
+      for (int ii=0; ii<(int)(*vPeffArray).at(i).vectorWhichPeff.size(); ii++)
       {
          printf(" ... %f %f\n",
                (*vPeffArray).at(i).vectorMassDiffMono.at(ii),
@@ -1460,63 +1462,36 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
 
    // number of residues with a PEFF mod
    int n = (int)(*vPeffArray).size();
-
-   vector<int> a(n);
-   vector<int> len(n);
-   int j;
-
-   for (i = 0 ; i < n ; i++)
-   {
-      // number of mods at each residue position
-      len[i] = (int)(*vPeffArray).at(i).vectorWhichPeff.size();
-
-      a[i]=0;
-   }
-
    double dMassAddition;
-   bool bFirst=true;
 
-   // permute through all combination of PEFF mods; return true if any are of right mass
-   while (1)
+   // permute through each PEFF mod; return true if any are of right mass; only 1 PEFF mod at a time
+   
+   for (i=0 ; i<n ; i++)
    {
-      if (!bFirst) // skip first iteration of this where there are no mods
+      // only consider those PEFF mods that are within the peptide
+      if ((*vPeffArray).at(i).iPosition >= iStartPos && (*vPeffArray).at(i).iPosition <=iEndPos)
       {
-         dMassAddition = 0.0;
-         for (i=0; i<n; i++)
+         for (int ii=0; ii<(int)(*vPeffArray).at(i).vectorWhichPeff.size(); ii++)
          {
-            if (a[i]>0)
-               dMassAddition += (*vPeffArray).at(i).vectorMassDiffMono.at(a[i]-1);
-         }
+            dMassAddition = (*vPeffArray).at(i).vectorMassDiffMono.at(ii);
 
-         // if dCalcPepMass + dMassAddition is within mass tol, add these mods
+            // if dCalcPepMass + dMassAddition is within mass tol, add these mods
 
-         // At this stage here, just need to see if any PEFF combination is within mass tolerance
-         // of any entry.  If so, simply return true here and will repeat the PEFF permutations later.
+            // At this stage here, just need to see if any PEFF mod addition is within mass tolerance
+            // of any entry.  If so, simply return true here and will repeat the PEFF permutations later.
          
-         // Do a binary search on list of input queries to find matching mass.
-         int iPos=BinarySearchMass(0, g_pvQuery.size(), dCalcPepMass + dMassAddition);
+            // Do a binary search on list of input queries to find matching mass.
+            int iPos=BinarySearchMass(0, g_pvQuery.size(), dCalcPepMass + dMassAddition);
 
-         // Seek back to first peptide entry that matches mass tolerance in case binary
-         // search doesn't hit the first entry.
-         while (iPos>0 && g_pvQuery.at(iPos)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
-            iPos--;
+            // Seek back to first peptide entry that matches mass tolerance in case binary
+            // search doesn't hit the first entry.
+            while (iPos>0 && g_pvQuery.at(iPos)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
+               iPos--;
 
-         if (iPos != -1)
-            return true;
+            if (iPos != -1)
+               return true;
+         }
       }
-      else
-         bFirst=false;
-
-      for (j=n-1; j>=0; j--)
-      {
-         if (++a[j]<=len[j])
-            break;
-         else
-            a[j]=0;
-      }
-
-      if (j<0)
-         break;
    }    
 
    return false;
@@ -3072,7 +3047,8 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
    else
       iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
 
-   if ((int)dbe->vectorPeffMod.size() > 0)
+   // do not apply PEFF mods to a PEFF variant peptide
+   if (_proteinInfo.iPeffOrigResiduePosition < 0 && (int)dbe->vectorPeffMod.size() > 0)
    {
       bool bMatch;
 
@@ -3503,7 +3479,6 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                           }
                                        }
 
-
                                        bool bValid = true;
 
                                        // since we're varying iEndPos, check enzyme consistency first
@@ -3698,7 +3673,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                              }
 
                                              if (bPeff)
-                                                bDoPeffAnalysis = WithinMassTolerancePeff(dTmpCalcPepMass, &vPeffArray);
+                                                bDoPeffAnalysis = WithinMassTolerancePeff(dTmpCalcPepMass, &vPeffArray, iStartPos, iTmpEnd);
                                           }
 
                                           if (iWhichQuery != -1 || bDoPeffAnalysis)
@@ -3722,7 +3697,6 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
 
                                              // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
                                              PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe);
-
                                           }
                                        }
 
@@ -3861,7 +3835,9 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          if (iWhichMod == 9)
          {
             if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+            {
                return false;
+            }
          }
          else
          {
@@ -4239,117 +4215,77 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
       int n = (int)(*vPeffArray).size();  // number of residues with a PEFF mod
 
+/*
       vector<int> a(n);
       vector<int> len(n);
-      int j;
-
-      for (i=0; i<n; i++)
-      {
-         // number of mods at each residue position
-         len[i] = (int)(*vPeffArray).at(i).vectorWhichPeff.size();
-
-         a[i]=0;
-      }
+      int j=0;
+*/
 
       double dMassAddition;
-      bool bFirst=true;
-      while (1)
+
+      for (i=0 ; i<n ; i++)
       {
-         if (!bFirst) // skip first iteration of this where there are no mods
+         // only consider those PEFF mods that are within the peptide
+         if ((*vPeffArray).at(i).iPosition >= _varModInfo.iStartPos && (*vPeffArray).at(i).iPosition <= _varModInfo.iEndPos)
          {
-            dMassAddition = 0.0;
-            
-            // For each iteration of PEFF mods, start with fresh state of variable mods
-            memcpy(piVarModSites, piTmpVarModSites, _iSizepiVarModSites);
+            for (int ii=0; ii<(int)(*vPeffArray).at(i).vectorWhichPeff.size(); ii++)
+            {  
+               dMassAddition = (*vPeffArray).at(i).vectorMassDiffMono.at(ii);
 
-            // Now have permutations of PEFF. First, add PEFF masses and see if within mass tolerance
-            for (i=0; i<n; i++)
-            {
-               if (a[i]>0)
-                  dMassAddition += (*vPeffArray).at(i).vectorMassDiffMono.at(a[i]-1);
-            }
+               // For each iteration of PEFF mods, start with fresh state of variable mods
+               memcpy(piVarModSites, piTmpVarModSites, _iSizepiVarModSites);
 
-            // if dCalcPepMass + dMassAddition is within mass tol, add these mods
+               // if dCalcPepMass + dMassAddition is within mass tol, add these mods
 
-            // Validate that total mass is within tolerance of some query entry
-            double dTmpCalcPepMass = dCalcPepMass + dMassAddition;
+               // Validate that total mass is within tolerance of some query entry
+               double dTmpCalcPepMass = dCalcPepMass + dMassAddition;
 
-            // With PEFF mods added in, find if new mass is within any query tolerance
-            iWhichQuery = WithinMassTolerance(dTmpCalcPepMass, szProteinSeq, _varModInfo.iStartPos, _varModInfo.iEndPos);
+               // With PEFF mods added in, find if new mass is within any query tolerance
+               iWhichQuery = WithinMassTolerance(dTmpCalcPepMass, szProteinSeq, _varModInfo.iStartPos, _varModInfo.iEndPos);
 
-            bool bValidPeffPosition = true;
-            if (iWhichQuery != -1)
-            {
-               for (int ii=_varModInfo.iStartPos; ii<=_varModInfo.iEndPos; ii++)
+               if (iWhichQuery != -1)
                {
-                  // See if there's a PEFF mod at this 'i' sequence location based on current permutation of PEFFs
-                  for (i=0; i<n; i++)
+                  bool bValidPeffPosition = true;
+                  int iTmpModPosition  = (*vPeffArray).at(i).iPosition - _varModInfo.iStartPos;
+
+                  // make sure PEFF mod location doesn't conflict with existing variable mod
+                  if (piVarModSites[iTmpModPosition] == 0)
                   {
-                     // Check if sequence position matches PEFF position inside this if statement
-                     if (a[i]>0)
+                     // PEFF mods are encoded as negative values to reference appropriate PeffModStruct entry
+                     // Sadly needs to be offset by -1 because first PEFF index is 0
+                     piVarModSites[iTmpModPosition] = -1 -(*vPeffArray).at(i).vectorWhichPeff.at(ii); // use negative values for PEFF mods
+                  }
+                  else
+                  {
+                     bValidPeffPosition = false;
+                     break;
+                  }
+
+                  // FIX: add test here as piVarModSites must contain a negative PEFF value
+
+                  if  (bValidPeffPosition)
+                  {
+                     // Need to check if mass is ok
+         
+                     // Do a binary search on list of input queries to find matching mass.
+                     iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), dTmpCalcPepMass);
+
+                     // Seek back to first peptide entry that matches mass tolerance in case binary
+                     // search doesn't hit the first entry.
+                     while (iWhichQuery>0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
+                        iWhichQuery--;
+
+                     // Only if this PEFF mod (plus possible variable mods) is within mass tolerance, continue
+                     if (iWhichQuery != -1)
                      {
-                        if ((*vPeffArray).at(i).iPosition > _varModInfo.iEndPos)
-                        {
-                           bValidPeffPosition = false;
-                           break;
-                        }
-                        else if (ii == (*vPeffArray).at(i).iPosition)
-                        {
-                           // make sure PEFF mod location doesn't conflict with existing variable mod
-                           if (piVarModSites[ii - _varModInfo.iStartPos] == 0)
-                           {
-                              // PEFF mods are encoded as negative values to reference appropriate PeffModStruct entry
-                              // Sadly needs to be offset by -1 because first PEFF index is 0
-                              piVarModSites[ii - _varModInfo.iStartPos] = -1 -(*vPeffArray).at(i).vectorWhichPeff.at(a[i]-1); // use negative values for PEFF mods
-                           }
-                           else
-                           {
-                              bValidPeffPosition = false;
-                              break;
-                           }
-                        }
+                        // FIX: add test here as piVarModSites must contain a negative PEFF value
+                        CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dTmpCalcPepMass, iLenPeptide, dbe);
                      }
                   }
                }
-
-               // FIX: add test here as piVarModSites must contain a negative PEFF value
-
-               if  (bValidPeffPosition)
-               {
-                  // Need to check if mass is ok
-         
-                  // Do a binary search on list of input queries to find matching mass.
-                  iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), dTmpCalcPepMass);
-
-                  // Seek back to first peptide entry that matches mass tolerance in case binary
-                  // search doesn't hit the first entry.
-                  while (iWhichQuery>0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
-                     iWhichQuery--;
-
-                  // Only if this PEFF mod (plus possible variable mods) is within mass tolerance, continue
-                  if (iWhichQuery != -1)
-                  {
-                     // FIX: add test here as piVarModSites must contain a negative PEFF value
-                     CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dTmpCalcPepMass, iLenPeptide, dbe);
-                  }
-               }
+               //else move onto next permutation of PEFF mods
             }
-            //else move onto next permutation of PEFF mods
-
          }
-         else
-            bFirst=false;
-
-         for (j=n-1; j>=0; j--)
-         {
-            if (++a[j]<=len[j])
-               break;
-            else
-               a[j]=0;
-         }
-
-         if (j<0)
-            break;
       }    
    }
    else

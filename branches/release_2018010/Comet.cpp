@@ -35,7 +35,7 @@ void SetOptions(char *arg,
                 ICometSearchManager *pSearchMgr);
 void LoadParameters(char *pszParamsFile, ICometSearchManager *pSearchMgr);
 void PrintParams();
-bool ValidateInputMsMsFile(char *pszInputFileName);
+bool ValidateInputFile(char *pszInputFileName);
 
 
 int main(int argc, char *argv[])
@@ -228,7 +228,8 @@ void LoadParameters(char *pszParamsFile,
             sscanf(szParamBuf, "%*s %*s %128s %12s %12s", szVersion, szRev1, szRev2);
 
 
-            if (pSearchMgr->IsValidCometVersion(string(szVersion)))
+            if (pSearchMgr->IsValidCometVersion(string(szVersion))
+                  || strstr(szVersion, "2017.01"))  // also compatible with 2017.01 params
             {
                bValidParamsFile = true;
                sprintf(szVersion, "%s %s %s", szVersion, szRev1, szRev2);
@@ -636,6 +637,13 @@ void LoadParameters(char *pszParamsFile,
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("skip_researching", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "skip_updatecheck"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("skip_updatecheck", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "peff_verbose_output"))
             {
@@ -1129,7 +1137,7 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
 
    strncpy(pInputFile->szFileName, cmd, i);
    pInputFile->szFileName[i] = '\0';
-   if (!ValidateInputMsMsFile(pInputFile->szFileName))
+   if (!ValidateInputFile(pInputFile->szFileName))
    {
       return false;
    }
@@ -1464,7 +1472,7 @@ add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.0
 } // PrintParams
 
 
-bool ValidateInputMsMsFile(char *pszInputFileName)
+bool ValidateInputFile(char *pszInputFileName)
 {
    FILE *fp;
    if ((fp = fopen(pszInputFileName, "r")) == NULL)
