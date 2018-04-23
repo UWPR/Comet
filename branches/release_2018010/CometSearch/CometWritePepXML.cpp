@@ -117,7 +117,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // Grab file extension from file name
    if ( (pStr = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[1024];
       sprintf(szErrorMsg,  " Error - in WriteXMLHeader missing last period in file name: %s\n",
             g_staticParams.inputFile.szFileName);
       string strErrorMsg(szErrorMsg);
@@ -482,7 +482,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, " index=\"%d\"", iWhichQuery+1);
 
-   if (mzXML)
+   if (pQuery->_spectrumInfoInternal.dRTime > 0.0)
       fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", pQuery->_spectrumInfoInternal.dRTime);
    else
       fprintf(fpout, ">\n");
@@ -553,7 +553,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
             if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
             {
                if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                  dDeltaCn = (pOutput[i].fXcorr - pOutput[j].fXcorr)/pOutput[i].fXcorr;
+                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
                else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
                   dDeltaCn = 1.0;
                else
@@ -580,7 +580,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          {
             if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr >= 0.0)
             {
-               dDeltaCnStar = (pOutput[i].fXcorr - pOutput[i+1].fXcorr)/pOutput[i].fXcorr;
+               dDeltaCnStar = 1.0 - pOutput[i+1].fXcorr/pOutput[i].fXcorr;
                if (isEqual(dDeltaCnStar, 0.0)) // note top two xcorrs could be identical so this gives a
                   dDeltaCnStar = 0.001;        // non-zero deltacnstar value to denote deltaCn is not explicit
             }
@@ -743,7 +743,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       {
          bNterm = true;
 
-         // pepXML format reports modified c-term mass (vs. mass diff)
+         // pepXML format reports modified term mass (vs. mass diff)
          dNterm = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
          if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)

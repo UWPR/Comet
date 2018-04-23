@@ -31,7 +31,7 @@ CometWritePercolator.o:   CometWritePercolator.cpp Common.h CometData.h CometDat
 	${CXX} ${CXXFLAGS} CometWritePercolator.cpp -c
 CometWriteTxt.o:      CometWriteTxt.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWriteTxt.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometWriteTxt.cpp -c
-CometCheckForUpdates.o:   CometCheckForUpdates.cpp Common.h
+CometCheckForUpdates.o:   CometCheckForUpdates.cpp Common.h CometCheckForUpdates.h
 	${CXX} ${CXXFLAGS} CometCheckForUpdates.cpp -c
 CometSearchManager.o:      CometSearchManager.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h CometCheckForUpdates.h
 	${CXX} ${CXXFLAGS} CometSearchManager.cpp -c

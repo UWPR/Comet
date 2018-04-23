@@ -696,8 +696,8 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
    iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
 
-   // DECOY_SIZE is the minimum # of decoys required or else this function is
-   // called.  So need generate iLoopMax more xcorr scores for the histogram.
+   // DECOY_SIZE is the minimum # of decoys required or else this function isn't
+   // called.  So need to generate iLoopMax more xcorr scores for the histogram.
    int iLoopMax = DECOY_SIZE - pQuery->iHistogramCount;
    int iLastEntry;
 

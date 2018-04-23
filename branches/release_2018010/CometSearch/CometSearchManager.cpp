@@ -1396,7 +1396,7 @@ bool CometSearchManager::DoSearch()
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
-      sprintf(szOut, " Comet version \"%s\"\n\n", comet_version);
+      sprintf(szOut, " Comet version \"%s\"", comet_version);
       if (!g_staticParams.options.bSkipUpdateCheck)
          CometCheckForUpdates::CheckForUpdates(szOut);
       sprintf(szOut+strlen(szOut), "\n\n");
@@ -1671,6 +1671,7 @@ bool CometSearchManager::DoSearch()
          }
       }
 
+      int iTotalSpectraSearched = 0;
       if (bSucceeded)
       {
          //MH: Allocate memory shared by threads during spectral processing.
@@ -1689,7 +1690,6 @@ bool CometSearchManager::DoSearch()
          // We want to read only MS2/MS3 scans.
          SetMSLevelFilter(mstReader);
 
-         int iTotalSpectraSearched = 0;
 
          // We need to reset some of the static variables in-between input files
          CometPreprocess::Reset();
@@ -1999,42 +1999,56 @@ bool CometSearchManager::DoSearch()
       {
          fclose(fpout_pepxml);
          fpout_pepxml = NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputPepXML);
       }
 
       if (NULL != fpoutd_pepxml)
       {
          fclose(fpoutd_pepxml);
          fpoutd_pepxml = NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputDecoyPepXML);
       }
 
       if (NULL != fpout_percolator)
       {
          fclose(fpout_percolator);
          fpout_percolator = NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputPercolator);
       }
 
       if (NULL != fpout_sqt)
       {
          fclose(fpout_sqt);
          fpout_sqt = NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputSQT);
       }
 
       if (NULL != fpoutd_sqt)
       {
          fclose(fpoutd_sqt);
          fpoutd_sqt = NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputDecoySQT);
       }
 
       if (NULL != fpout_txt)
       {
          fclose(fpout_txt);
          fpout_txt = NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputTxt);
       }
 
       if (NULL != fpoutd_txt)
       {
          fclose(fpoutd_txt);
          fpoutd_txt = NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputDecoyTxt);
       }
 
       if (!bSucceeded)

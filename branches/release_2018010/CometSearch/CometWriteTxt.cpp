@@ -335,7 +335,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                   // I-L and Q-K are same for purposes here
                   if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
                   {
-
                      if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
                               && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
                            && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
