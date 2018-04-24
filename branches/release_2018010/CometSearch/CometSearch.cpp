@@ -3988,7 +3988,7 @@ void CometSearch::inittwiddle(int m, int n, int *p)
 }
 
 
-// FIX: 'false' is never returned by this function, why?
+// alwasy need to return true so permutations of variable mods continues
 bool CometSearch::MergeVarMods(char *szProteinSeq,
                                int iWhichQuery,
                                bool *pbDuplFragment,
@@ -4031,7 +4031,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
          {
             if (piVarModSites[iLenPeptide] != 0)  // conflict in two variable mods on n-term
-               return false;
+               return true;
 
             // store the modification number at modification position
             piVarModSites[iLenPeptide] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];   //FIX: check this logic
@@ -4051,7 +4051,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
          {
             if (piVarModSites[iLenPeptide+1] != 0)  // conflict in two variable mods on c-term
-               return false;
+               return true;
 
             // store the modification number at modification position
             piVarModSites[iLenPeptide+1] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];   //FIX: check this logic
@@ -4080,7 +4080,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
                {
                   if (piVarModSites[iPos] != 0)  // conflict in two variable mods on same residue
-                     return false;
+                     return true;
 
                   // store the modification number at modification position
                   piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
@@ -4097,7 +4097,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                      if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
                      {
                         if (piVarModSites[iPos] != 0)  // conflict in two variable mods on same residue
-                           return false;
+                           return true;
 
                         // store the modification number at modification position
                         piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
@@ -4113,7 +4113,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                      if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
                      {
                         if (piVarModSites[iPos] != 0)  // conflict in two variable mods on same residue
-                           return false;
+                           return true;
 
                         // store the modification number at modification position
                         piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
@@ -4129,7 +4129,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                      if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
                      {
                         if (piVarModSites[iPos] != 0)  // conflict in two variable mods on same residue
-                           return false;
+                           return true;
 
                         // store the modification number at modification position
                         piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
@@ -4145,7 +4145,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                      if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
                      {
                         if (piVarModSites[iPos] != 0)  // conflict in two variable mods on same residue
-                           return false;
+                           return true;
 
                         // store the modification number at modification position
                         piVarModSites[iPos] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
