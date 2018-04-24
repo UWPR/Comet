@@ -731,7 +731,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       szModPep[0]='\0';
 
       bool bNterm = false;
+      bool bNtermVariable = false;
       bool bCterm = false;
+      bool bCtermVariable = false;
       double dNterm = 0.0;
       double dCterm = 0.0;
 
@@ -747,7 +749,10 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          dNterm = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
          if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         {
             dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
+            bNtermVariable = true;
+         }
 
          if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
             dNterm += g_staticParams.staticModifications.dAddNterminusProtein;
@@ -764,14 +769,17 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          dCterm = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
          if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
+         {
             dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
+            bCtermVariable = true;
+         }
 
          if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
             dCterm += g_staticParams.staticModifications.dAddCterminusProtein;
       }
 
       // generate modified_peptide string
-      if (bNterm)
+      if (bNtermVariable)
          sprintf(szModPep+strlen(szModPep), "n[%0.0f]", dNterm);
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
@@ -783,7 +791,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                   pOutput[iWhichResult].pdVarModSites[i] + g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]);
          }
       }
-      if (bCterm)
+      if (bCtermVariable)
          sprintf(szModPep+strlen(szModPep), "c[%0.0f]", dCterm);
 
       fprintf(fpout, "    <modification_info modified_peptide=\"%s\"", szModPep);
