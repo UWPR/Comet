@@ -1405,6 +1405,8 @@ bool CometSearchManager::DoSearch()
       fflush(stdout);
    }
 
+   bool bBlankSearchFile = false;
+
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
       bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
@@ -2051,10 +2053,16 @@ bool CometSearchManager::DoSearch()
             unlink(szOutputDecoyTxt);
       }
 
+      if (iTotalSpectraSearched == 0)
+         bBlankSearchFile = true;
+
       if (!bSucceeded)
          break;
    }
 
-   return bSucceeded;
+   if (bBlankSearchFile)
+      return 1;
+   else
+      return bSucceeded;
 }
 
