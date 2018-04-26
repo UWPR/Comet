@@ -3,8 +3,29 @@
       <div class="post hr">
          <h1>Comet release 2017.01</h1>
             <ul>
+               <b>release 2017.01 rev. 4 (2017.01.4), release date 2018/02/14</b>
+               <li>Bug fix: In the Percolator .pin output format, the deltCn and deltLCn values
+                   for the top hit is repeated for all lower hits; this is now fixed. Thanks
+                   to F. Long for reporting the bug.
+               <li>Modified deltaCn calculation for lower hits for pin, pep.xml, and txt outputs.
+                   Instead of reporting the deltaCn values as they would have been historically
+                   shown in the sqt/out formats, the deltaCn for lower hits is calculated as
+                   the normalized xcorr difference for that hit and the next hit.
+               <li>Extend the maximum possible number of spawned threads to 128.
+            </ul>
+            <ul>
+               <b>release 2017.01 rev. 3 (2017.01.3), release date 2018/01/05</b>
+               <li>Bug fix: Corrected issue where Percolator .pin output "label" column was always set to "1" when
+                   "<a href="/parameters/parameters_201701/decoy_search.php">decoy_search = 0</a>".
+                   Thanks to F. Long and J. Smith for reporting this issue.
+               <li>Implementation change: Percolator .pin output format now respects the
+                   "<a href="http://comet-ms.sourceforge.net/parameters/parameters_201701/num_output_lines.php">num_output_lines</a>"
+                   parameter; it previously only reported the top hit.  Thanks to S. Ting
+                   for the feature request.
+            </ul>
+            <ul>
                <b>release 2017.01 rev. 2 (2017.01.2), release date 2017/11/08</b>
-               <li>Buf fix: in SQT, text and Percolator outputs, static n-term and c-term modification were
+               <li>Bug fix: in SQT, text and Percolator outputs, static n-term and c-term modification were
                    being reported in the peptide string.  These are no longer being reported and
                    the peptide string now correctly only includes variable modification mass
                    differences if present.
@@ -13,6 +34,15 @@
                    L entry reported the correct start position but the position was off by one in
                    subsequent duplicate proteins.  This is corrected.  Thanks P. Wilmarth for
                    reporting both of these issues.
+               <li>Known bug: in the Percolator .pin output file, the entry "label" for a decoy protein
+                   match is not set to -1 when "<a href="/parameters/parameters_201701/decoy_search.php">decoy_search = 0</a>".
+                   This is an artifact of the new protein handling (tracking/reporting all protein hits).
+                   The next release will address this bug but if you would like a fix sooner, send me
+                   an email and I'll get you a patched binary.
+               <li>Known implementation issue: the Percolator .pin output format only exports the top
+                   hit for each spectrum query.  Per request, it has been updated to respect the
+                   <a href="http://comet-ms.sourceforge.net/parameters/parameters_201701/num_output_lines.php">num_output_lines</a>
+                   parameter which will be available in the next release.
             </ul>
             <ul>
                <b>release 2017.01 rev. 1 (2017.01.1), release date 2017/10/17</b>

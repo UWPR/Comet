@@ -2,7 +2,7 @@
    <ul>
       <li><a href="/">Home</a></li>
       <li><a href="/release/">Releases</a></li>
-      <li><a href="/parameters/parameters_201701/">Parameters</a></li>
+      <li><a href="/parameters/parameters_201801/">Parameters</a></li>
       <li><a href="/notes/">Notes</a></li>
       <li><a href="/CometUI/">Comet UI</a></li>
       <li><a target="new" href="https://sourceforge.net/projects/comet-ms/">SF project</a></li>
