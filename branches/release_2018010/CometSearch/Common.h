@@ -22,6 +22,7 @@
 #include <ctime>
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <direct.h>
 #include <errno.h>
 #define STRCMP_IGNORE_CASE(a,b) _strcmpi(a,b)
