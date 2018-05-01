@@ -276,6 +276,12 @@ struct PeffVariantSimpleStruct  // stores info read from PEFF header
    }
 };
 
+struct PeffProcessedStruct
+{
+   int iBeginResidue;
+   int iEndResidue;
+};
+
 struct PeffPositionStruct  // collate PEFF mods by position in sequence
 {
    int iPosition;  // position within the sequence
@@ -300,6 +306,7 @@ typedef struct sDBEntry
    long lProteinFilePosition;
    vector<PeffModStruct> vectorPeffMod;
    vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
+   vector<PeffProcessedStruct> vectorPeffProcessed;
 } sDBEntry;
 
 struct DBInfo

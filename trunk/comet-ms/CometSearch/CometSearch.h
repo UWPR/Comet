@@ -104,7 +104,9 @@ private:
                            int iStartPos,
                            int iEndPos);
    bool WithinMassTolerancePeff(double dCalcPepMass,
-                                vector<PeffPositionStruct>* vPeffArray);
+                                vector<PeffPositionStruct>* vPeffArray,
+                                int iStartPos,
+                                int iEndPos);
    void XcorrScore(char *szProteinSeq,
                    int iStartResidue,
 				   int iEndResidue,

@@ -83,6 +83,7 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "Xcorr\t");
    fprintf(fpout, "Sp\t");
    fprintf(fpout, "IonFrac\t");
+   fprintf(fpout, "Mass\t");
    fprintf(fpout, "PepLen\t");
    for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
       fprintf(fpout, "Charge%d\t", i);
@@ -281,6 +282,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "%0.4f\t", 0.0);
 
+   fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass); // Mass is observed MH+
    fprintf(fpout, "%d\t", pOutput[iWhichResult].iLenPeptide); // PepLen
 
    for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
