@@ -724,7 +724,14 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
          {
             int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
 
+            // skip any padded 0.0 masses in decoy ions
+            if (dBion == 0.0 && (iWhichIonSeries == ION_SERIES_A || iWhichIonSeries == ION_SERIES_B || iWhichIonSeries == ION_SERIES_C))
+               continue;
+            else if (dYion == 0.0 && (iWhichIonSeries == ION_SERIES_X || iWhichIonSeries == ION_SERIES_Y || iWhichIonSeries == ION_SERIES_Z))
+               continue;
+
             dFragmentIonMass =  0.0;
+
             switch (iWhichIonSeries)
             {
                case ION_SERIES_A:
