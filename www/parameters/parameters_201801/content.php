@@ -95,6 +95,7 @@
          <li><a href="decoy_prefix.php">decoy_prefix</a></li>
          <li><a href="output_suffix.php">output_suffix</a></li>
          <li><a href="mass_offsets.php">mass_offsets</a></li>
+         <li><a href="equal_I_and_L.php">equal_I_and_L</a></li>
          <li><a href="peff_verbose_output.php">peff_verbose_output</a>
          </ul>
 
