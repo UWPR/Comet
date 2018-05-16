@@ -104,7 +104,7 @@ struct Options             // output parameters
    int bShowFragmentIons;
    int bPrintExpectScore;
    int bOverrideCharge;
-   int bCorrectMass;
+   int bCorrectMass;             // in cases where Thermo chooses precursor m/z outside of selection window
    int bTreatSameIL;
    double dMinIntensity;
    double dRemovePrecursorTol;
@@ -640,7 +640,7 @@ struct StaticParams
       options.iMSLevel = 2;
       options.dMinIntensity = 0.0;
       options.dPeptideMassLow = 600.0;
-      options.dPeptideMassHigh = 5000.0;
+      options.dPeptideMassHigh = 8000.0;
       strcpy(options.szActivationMethod, "ALL");
       // End of mzXML specific parameters.
 

@@ -797,19 +797,20 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("override_charge", iIntData))
    {
-      if (iIntData > 0)
+      if (iIntData >= 0)
          g_staticParams.options.bOverrideCharge = iIntData;
    }
 
    if (GetParamValue("correct_mass", iIntData))
    {
-      if (iIntData > 0)
+      if (iIntData >= 0)
          g_staticParams.options.bCorrectMass = iIntData;
    }
 
    if (GetParamValue("equal_I_and_L", iIntData))
    {
-      g_staticParams.options.bTreatSameIL = iIntData;
+      if (iIntData >= 0)
+         g_staticParams.options.bTreatSameIL = iIntData;
    }
 
    if (GetParamValue("precursor_charge", intRangeData))
@@ -1456,22 +1457,26 @@ bool CometSearchManager::DoSearch()
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
-#ifdef CRUX
-            sprintf(szOutputSQT, "%s%s.target.sqt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-#else
             sprintf(szOutputSQT, "%s%s.sqt",
                   g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+#ifdef CRUX
+            if (g_staticParams.options.iDecoySearch == 2)
+            {
+               sprintf(szOutputSQT, "%s%s.target.sqt",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            }
 #endif
          }
          else
          {
-#ifdef CRUX
-            sprintf(szOutputSQT, "%s%s.%d-%d.target.sqt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-#else
             sprintf(szOutputSQT, "%s%s.%d-%d.sqt",
                   g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+#ifdef CRUX
+            if (g_staticParams.options.iDecoySearch == 2)
+            {
+               sprintf(szOutputSQT, "%s%s.%d-%d.target.sqt",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            }
 #endif
          }
 
@@ -1518,22 +1523,26 @@ bool CometSearchManager::DoSearch()
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
-#ifdef CRUX
-            sprintf(szOutputTxt, "%s%s.target.txt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-#else
             sprintf(szOutputTxt, "%s%s.txt",
                   g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+#ifdef CRUX
+            if (g_staticParams.options.iDecoySearch == 2)
+            {
+               sprintf(szOutputTxt, "%s%s.target.txt",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            }
 #endif
          }
          else
          {
-#ifdef CRUX
-            sprintf(szOutputTxt, "%s%s.%d-%d.target.txt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-#else
             sprintf(szOutputTxt, "%s%s.%d-%d.txt",
                   g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+#ifdef CRUX
+            if (g_staticParams.options.iDecoySearch == 2)
+            {
+               sprintf(szOutputTxt, "%s%s.%d-%d.target.txt",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            }
 #endif
          }
 
@@ -1581,22 +1590,26 @@ bool CometSearchManager::DoSearch()
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
-#ifdef CRUX
-            sprintf(szOutputPepXML, "%s%s.target.pep.xml",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-#else
             sprintf(szOutputPepXML, "%s%s.pep.xml",
                   g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+#ifdef CRUX
+            if (g_staticParams.options.iDecoySearch == 2)
+            {
+               sprintf(szOutputPepXML, "%s%s.target.pep.xml",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            }
 #endif
          }
          else
          {
-#ifdef CRUX
-            sprintf(szOutputPepXML, "%s%s.%d-%d.target.pep.xml",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-#else
             sprintf(szOutputPepXML, "%s%s.%d-%d.pep.xml",
                   g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+#ifdef CRUX
+            if (g_staticParams.options.iDecoySearch == 2)
+            {
+               sprintf(szOutputPepXML, "%s%s.%d-%d.target.pep.xml",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            }
 #endif
          }
 
