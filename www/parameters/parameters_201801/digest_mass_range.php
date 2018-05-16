@@ -20,12 +20,12 @@
          mass ranges are searched.
          <li>Valid values are two decimal numbers where the first number must
          be less or equal to the second number.
-         <li>The default value is "600.0 5000.0" if this parameter is missing.
+         <li>The default value is "600.0 8000.0" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>digest_mass_range = 600.0 5000.0</tt> &nbsp; &nbsp; <i>search only 600.0 to 5000.0 mass range</i>
-         <br><tt>digest_mass_range = 0.0 6500.0</tt> &nbsp; &nbsp; <i>search all spectra with peptide masses between 0.0 and 6000.0</i>
+         <br><tt>digest_mass_range = 600.0 8000.0</tt> &nbsp; &nbsp; <i>search only 600.0 to 8000.0 mass range</i>
+         <br><tt>digest_mass_range = 400.0 5000.0</tt> &nbsp; &nbsp; <i>search all spectra with peptide masses between 400.0 and 5000.0</i>
 
       </div>
    </div>

@@ -99,6 +99,7 @@ spectrum_batch_size = 0                # max. # of spectra to search at a time; 
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession
 output_suffix =                        # add a suffix to output base names i.e. suffix "-C" generates base-C.pep.xml from base.mzXML input
 mass_offsets =                         # one or more mass offsets to search (values substracted from deconvoluted precursor mass)
+equal_I_and_L = 1                      # 0=treat I and L as different; 1=treat I and L as same
 
 #
 # spectral processing
