@@ -2133,7 +2133,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    bool bSucceeded;
 
    g_staticParams.options.iNumThreads = 1;   // this uses a single thread
-   g_staticParams.options.dPeptideMassHigh = (iPrecursorCharge*dMZ) - (iPrecursorCharge-1)*PROTON_MASS;
+//   g_staticParams.options.dPeptideMassHigh = (iPrecursorCharge*dMZ) - (iPrecursorCharge-1)*PROTON_MASS;
 
    //MH: Allocate memory shared by threads during spectral processing.
    bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
