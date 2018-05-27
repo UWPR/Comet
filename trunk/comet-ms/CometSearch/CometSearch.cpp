@@ -1007,7 +1007,14 @@ bool CometSearch::IndexSearch(FILE *fp)
    // analyze no variable mods
 
    int iStart = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass;
-   int iEnd = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass;
+   int iEnd = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass +1;
+
+   if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass)
+   {
+      delete [] lReadIndex;
+      return true;
+   }
+
    if (iStart < iMinMass)
       iStart = iMinMass;
    if (iEnd > iMaxMass)
@@ -1032,14 +1039,11 @@ bool CometSearch::IndexSearch(FILE *fp)
          iWhichQuery--;
 
       if (iWhichQuery != -1)
-      {
-
          AnalyzeIndexPep(iWhichQuery, sTmp.szPeptide, sTmp.dPepMass, _ppbDuplFragmentArr[0], &dbe);
-      }
 
       if (ftell(fp)>=lEndOfStruct || sTmp.dPepMass>g_massRange.dMaxMass)
          break;
-
+ 
       fread(&sTmp, sizeof(struct DBIndex), 1, fp);
       _proteinInfo.cPrevAA = sTmp.szPrevNextAA[0];
       _proteinInfo.cNextAA = sTmp.szPrevNextAA[1];
