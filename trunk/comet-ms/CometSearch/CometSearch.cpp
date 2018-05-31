@@ -351,10 +351,23 @@ bool CometSearch::RunSearch(int minNumThreads,
                         char *pStr2;
                         pStr += iLenAttributeMod;
 
-                        if ( (pStr2 = strchr(pStr, ' '))!=NULL)
-                           iLen = pStr2 - pStr;
-                        else
-                           iLen = strlen(szPeffLine) - (pStr - szPeffLine) -1;
+                        pStr2 = pStr;
+
+                        // need to find closing parenthesis
+                        int iTmp=0;  // count of number of open parenthesis
+                        while (1)
+                        {
+                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2=='\n')
+                              break;
+                           else if (*pStr2 == '(')
+                              iTmp++;
+                           else if (*pStr2 == ')')
+                              iTmp--;
+
+                           *pStr2++;
+                        }
+
+                        iLen = pStr2 - pStr;
 
                         if ( iLen > iLenAllocMods)
                         {
@@ -377,6 +390,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                         strncpy(szMods, pStr, iLen);
                         szMods[iLen]='\0';
+
                         if ( (pStr2 = strrchr(szMods, ')'))!=NULL)
                         {
                            pStr2++;
@@ -478,10 +492,23 @@ bool CometSearch::RunSearch(int minNumThreads,
                         char *pStr2;
                         pStr += iLenAttributeVariant;
 
-                        if ( (pStr2 = strchr(pStr, ' '))!=NULL)
-                           iLen = pStr2 - pStr;
-                        else
-                           iLen = strlen(szPeffLine) - (pStr - szPeffLine) - 1;
+                        pStr2 = pStr;
+
+                        // need to find closing parenthesis
+                        int iTmp=0;  // count of number of open parenthesis
+                        while (1)
+                        {
+                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2=='\n')
+                              break;
+                           else if (*pStr2 == '(')
+                              iTmp++;
+                           else if (*pStr2 == ')')
+                              iTmp--;
+
+                           *pStr2++;
+                        }
+
+                        iLen = pStr2 - pStr;
 
                         if ( iLen > iLenAllocMods)
                         {
@@ -503,6 +530,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                         strncpy(szMods, pStr, iLen);
                         szMods[iLen]='\0';
+
                         if ( (pStr2 = strrchr(szMods, ')'))!=NULL)
                         {
                            pStr2++;
@@ -851,6 +879,9 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
       // in peptide or a flanking residue that causes a enzyme cut site
       if (dbe.vectorPeffVariantSimple.size() > 0)
          SearchForVariants(dbe, (char *)dbe.strSeq.c_str(), pbDuplFragment);
+
+      // FIX: how to incorporate Variant search with clipped N-term Met protein??
+
    }
    else
    {
@@ -1007,8 +1038,7 @@ bool CometSearch::IndexSearch(FILE *fp)
    // analyze no variable mods
 
    int iStart = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass;
-   int iEnd = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass +1;
-
+   int iEnd = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass + 1;
    if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass)
    {
       delete [] lReadIndex;
@@ -1043,7 +1073,7 @@ bool CometSearch::IndexSearch(FILE *fp)
 
       if (ftell(fp)>=lEndOfStruct || sTmp.dPepMass>g_massRange.dMaxMass)
          break;
- 
+
       fread(&sTmp, sizeof(struct DBIndex), 1, fp);
       _proteinInfo.cPrevAA = sTmp.szPrevNextAA[0];
       _proteinInfo.cNextAA = sTmp.szPrevNextAA[1];
@@ -1658,21 +1688,9 @@ OK Need to fix annotation of terminal residues in index
                // is next AA).
 
                // Store flanking residues from original sequence.
-/* 
-NEED TO FIX 
-               if (iStartPos==0)
-                  szDecoyPeptide[0]='-';
-               else
-                  szDecoyPeptide[0]=szProteinSeq[iStartPos-1];
-
-               if (iEndPos == iProteinSeqLengthMinus1)
-                  szDecoyPeptide[iLenPeptide+1]='-';
-               else
-                  szDecoyPeptide[iLenPeptide+1]=szProteinSeq[iEndPos+1];
-*/
-szDecoyPeptide[0]='-';
-szDecoyPeptide[iLenPeptide+1]='-';
-               szDecoyPeptide[iLenPeptide+2]='\0';
+               szDecoyPeptide[0] = _proteinInfo.cPrevAA;
+               szDecoyPeptide[iLenPeptide+1] = _proteinInfo.cNextAA;
+               szDecoyPeptide[iLenPeptide+2] = '\0';
 
                if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet==1)
                {
@@ -1696,7 +1714,7 @@ szDecoyPeptide[iLenPeptide+1]='-';
                dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
 /*
-OK FIX
+FIX ... need mechanism to know if protein termini
                if (iStartPos == 0)
                   dBion += g_staticParams.staticModifications.dAddNterminusProtein;
                if (iEndPos == iProteinSeqLengthMinus1)
@@ -1952,8 +1970,8 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
 
       if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)      // Check full enzyme search.
       {
-        if (!(bBeginCleavage && bEndCleavage))
-           return false;
+         if (!(bBeginCleavage && bEndCleavage))
+            return false;
       }
       else if (g_staticParams.options.iEnzymeTermini == ENZYME_SINGLE_TERMINI) // Check semi enzyme search.
       {
@@ -2917,7 +2935,9 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if (_proteinInfo.iPeffOrigResiduePosition != -9 && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition) && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
+      if (_proteinInfo.iPeffOrigResiduePosition != -9
+            && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition)
+            && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {
          pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
          pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
@@ -3039,7 +3059,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             {
                bIsDuplicate = 1;
             }
-            else if (g_staticParams.options.bTreatSameIL)  // FIX: equivalence of I/L can be turned off here
+            else if (g_staticParams.options.bTreatSameIL)
             {
                bIsDuplicate = 1;
 
@@ -3157,7 +3177,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
             {
                bIsDuplicate = 1;
             }
-            else if (g_staticParams.options.bTreatSameIL)  // FIX: equivalence of I/L can be turned off here
+            else if (g_staticParams.options.bTreatSameIL)
             {
                bIsDuplicate = 1;
 
@@ -4093,7 +4113,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                           }
                                        }
 
-                                       if (bValid && HasVariableMod(piTmpVarModCounts, iStartPos, iTmpEnd, dbe))   //FIX:  iTmpEnd here vs. iEndPos before??
+                                       if (bValid && HasVariableMod(piTmpVarModCounts, iStartPos, iTmpEnd, dbe))
                                        {
                                           // mass including terminal mods that need to be tracked separately here
                                           // because we are considering multiple terminating positions in peptide
@@ -4681,68 +4701,66 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       double dMassAddition;
 
       for (i=0 ; i<n ; i++)
-      {     
+      {
          // only consider those PEFF mods that are within the peptide
          if ((*vPeffArray).at(i).iPosition >= _varModInfo.iStartPos && (*vPeffArray).at(i).iPosition <= _varModInfo.iEndPos)
-         {     
+         {
             for (int ii=0; ii<(int)(*vPeffArray).at(i).vectorWhichPeff.size(); ii++)
             {  
                dMassAddition = (*vPeffArray).at(i).vectorMassDiffMono.at(ii);
-               
+
                // For each iteration of PEFF mods, start with fresh state of variable mods
                memcpy(piVarModSites, piTmpVarModSites, _iSizepiVarModSites);
-               
+
                // if dCalcPepMass + dMassAddition is within mass tol, add these mods
-               
+
                // Validate that total mass is within tolerance of some query entry
                double dTmpCalcPepMass = dCalcPepMass + dMassAddition;
-               
+
                // With PEFF mods added in, find if new mass is within any query tolerance
                iWhichQuery = WithinMassTolerance(dTmpCalcPepMass, szProteinSeq, _varModInfo.iStartPos, _varModInfo.iEndPos);
-                  
+
                if (iWhichQuery != -1)
-               {  
+               {
                   bool bValidPeffPosition = true;
                   int iTmpModPosition  = (*vPeffArray).at(i).iPosition - _varModInfo.iStartPos;
-                     
+
                   // make sure PEFF mod location doesn't conflict with existing variable mod
                   if (piVarModSites[iTmpModPosition] == 0)
                   {
                      // PEFF mods are encoded as negative values to reference appropriate PeffModStruct entry
                      // Sadly needs to be offset by -1 because first PEFF index is 0
                      piVarModSites[iTmpModPosition] = -1 -(*vPeffArray).at(i).vectorWhichPeff.at(ii); // use negative values for PEFF mods
-                  }  
+                  }
                   else
                   {
                      bValidPeffPosition = false;
                      break;
                   }
-                     
-                  // FIX: add test here as piVarModSites must contain a negative PEFF value
-                     
+
                   if  (bValidPeffPosition)
-                  {  
+                  {
                      // Need to check if mass is ok
-                     
+         
                      // Do a binary search on list of input queries to find matching mass.
                      iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), dTmpCalcPepMass);
-                        
+
                      // Seek back to first peptide entry that matches mass tolerance in case binary
                      // search doesn't hit the first entry.
                      while (iWhichQuery>0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
                         iWhichQuery--;
-                        
+
                      // Only if this PEFF mod (plus possible variable mods) is within mass tolerance, continue
                      if (iWhichQuery != -1)
                      {
                         // FIX: add test here as piVarModSites must contain a negative PEFF value
                         CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dTmpCalcPepMass, iLenPeptide, dbe, lNumIterations);
                      }
-                  }  
+                  }
                }
-            }  
-         }  
-      }     
+            }
+         }
+      }
    }
    else
    {
@@ -4804,7 +4822,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
    *lNumIterations += 1;
 
-   // FIX:  any case when strlen(szProtein) not be the same as _proteinInfo.iProteinSeqLength??
    iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
 
    // Compare calculated fragment ions against all matching query spectra

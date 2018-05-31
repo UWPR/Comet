@@ -906,9 +906,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    // Set our boundaries for multiple z lines.
    zStop = spec.sizeZ();
 
-   double dSelectionLower = spec.getSelWindowLower();
-   double dSelectedMZ = spec.getMZ();
-   double dMonoMZ = spec.getMonoMZ();
+   double dSelectionLower = 0.0;
+   double dSelectedMZ = 0.0;
+   double dMonoMZ = 0.0;
 
    if (g_staticParams.options.bCorrectMass)
    {
@@ -1048,7 +1048,7 @@ bool CometPreprocess::CheckExistOutFile(int iCharge,
          && !g_staticParams.options.bOutputPepXMLFile
          && !g_staticParams.options.bOutputPercolatorFile)
    {
-      char szOutputFileName[1024];
+      char szOutputFileName[SIZE_FILE];
       char *pStr;
       FILE *fpcheck;
 

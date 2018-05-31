@@ -1057,7 +1057,6 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.peaksInformation.iNumMatchPeaks > 5)
       g_staticParams.peaksInformation.iNumMatchPeaks = 5;
 
-   // FIX how to deal with term mod on both peptide and protein?
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
    {
       sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ct=%0.6f ",
@@ -1386,7 +1385,7 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
-    if (strstr(comet_version, version.c_str()))
+    if (strstr(comet_version, version.c_str()) || strstr("2018.01", version.c_str()) || strstr("2017.01", version.c_str())) //FIX
        return true;
     else
        return false;
@@ -2133,7 +2132,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    bool bSucceeded;
 
    g_staticParams.options.iNumThreads = 1;   // this uses a single thread
-//   g_staticParams.options.dPeptideMassHigh = (iPrecursorCharge*dMZ) - (iPrecursorCharge-1)*PROTON_MASS;
 
    //MH: Allocate memory shared by threads during spectral processing.
    bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
@@ -2234,13 +2232,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       double dBion = g_staticParams.precalcMasses.dNtermProton;
       double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
-/*
-FIX:  need to add terminal modification information to indexed database for this to work
       if (pQuery->_pResults[0].szPrevNextAA[0] == '-')
          dBion += g_staticParams.staticModifications.dAddNterminusProtein;
       if (pQuery->_pResults[0].szPrevNextAA[1] == '-')
          dYion += g_staticParams.staticModifications.dAddCterminusProtein;
-*/
 
       if (g_staticParams.variableModParameters.bVarModSearch
             && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
@@ -2276,7 +2271,6 @@ FIX:  need to add terminal modification information to indexed database for this
                dYion += pQuery->_pResults[0].pdVarModSites[iPos];
          }
 
-         //FIX would loop through fragment charge states here
          for (int ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
          {
             MatchedIonsStruct pTmp;

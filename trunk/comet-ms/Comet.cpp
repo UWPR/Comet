@@ -236,7 +236,8 @@ void LoadParameters(char *pszParamsFile,
             sscanf(szParamBuf, "%*s %*s %128s %12s %12s", szVersion, szRev1, szRev2);
 
 
-            if (pSearchMgr->IsValidCometVersion(string(szVersion)))
+            if (pSearchMgr->IsValidCometVersion(string(szVersion))
+                  || strstr(szVersion, "2017.01"))  // also compatible with 2017.01 params
             {
                bValidParamsFile = true;
                sprintf(szVersion, "%s %s %s", szVersion, szRev1, szRev2);
@@ -938,7 +939,7 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("override_charge", szParamStringVal, iIntParam);
             }
-            else if (!strcmp(szParamName, "correct_mass"))
+            else if (!strcmp(szParamName, "correct_mass"))  // hidden param
             {
                iIntParam = 0;
                sscanf(szParamVal, "%d",  &iIntParam);
@@ -952,7 +953,7 @@ void LoadParameters(char *pszParamsFile,
                sscanf(szParamVal, "%d",  &iIntParam);
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%d", iIntParam);
-               pSearchMgr->SetParam("assume_IL_equal", szParamStringVal, iIntParam);
+               pSearchMgr->SetParam("equal_I_and_L", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "max_fragment_charge"))
             {
@@ -1325,12 +1326,12 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 "#\n\
 # masses\n\
 #\n\
-peptide_mass_tolerance = 3.00\n\
-peptide_mass_units = 0                 # 0=amu, 1=mmu, 2=ppm\n\
+peptide_mass_tolerance = 20.00\n\
+peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm\n\
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\
-precursor_tolerance_type = 0           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances\n\
-isotope_error = 0                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)\n\
+precursor_tolerance_type = 1           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances\n\
+isotope_error = 3                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)\n\
 \n\
 #\n\
 # search enzyme\n\
@@ -1414,6 +1415,7 @@ fprintf(fp,
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
 spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
+equal_I_and_L = 1                      # 0=treat I and L as different; 1=treat I and L as same\n\
 output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\
 mass_offsets =                         # one or more mass offsets to search (values substracted from deconvoluted precursor mass)\n\
 \n\

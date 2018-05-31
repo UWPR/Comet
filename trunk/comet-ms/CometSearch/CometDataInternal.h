@@ -658,7 +658,7 @@ struct StaticParams
       options.bSkipAlreadyDone = 1;
       options.bSkipUpdateCheck = 0;
       options.bMango = 0;
-      options.bCreateIndex= 0;
+      options.bCreateIndex = 0;
       options.bVerboseOutput = 0;
       options.iDecoySearch = 0;
       options.iNumThreads = 0;
@@ -678,7 +678,7 @@ struct StaticParams
       options.iMSLevel = 2;
       options.dMinIntensity = 0.0;
       options.dPeptideMassLow = 600.0;
-      options.dPeptideMassHigh = 5000.0;
+      options.dPeptideMassHigh = 8000.0;
       strcpy(options.szActivationMethod, "ALL");
       // End of mzXML specific parameters.
 
@@ -787,8 +787,8 @@ struct Query
       for (int i=0; i < HISTO_SIZE; i++)
          iXcorrHistogram[i] = 0;
 
-      iMatchPeptideCount= 0;
-      iDecoyMatchPeptideCount= 0;
+      iMatchPeptideCount = 0;
+      iDecoyMatchPeptideCount = 0;
       iHistogramCount = 0;
 
       fPar[0]=0.0;

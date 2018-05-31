@@ -125,7 +125,6 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       logerr(szErrorMsg);
       return false;
    }
-   //FIX:  if going to support .mzXML.gz, .mzML.gz files, need to back a second period
 
    fprintf(fpout, "raw_data_type=\"raw\" ");
    fprintf(fpout, "raw_data=\"%s\">\n", pStr);

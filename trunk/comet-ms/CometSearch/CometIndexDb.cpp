@@ -316,7 +316,7 @@ bool CometIndexDb::DigestPeptides(char *szProteinSeq,
 
    Threading::LockMutex(g_dbIndexMutex);
 
-   iLenProtein = _proteinInfo.iProteinSeqLength;  // FIX: need to confirm this is always same as strlen(szProteinSeq)
+   iLenProtein = _proteinInfo.iProteinSeqLength;
 
    iProteinSeqLengthMinus1 = iLenProtein-1;
 
