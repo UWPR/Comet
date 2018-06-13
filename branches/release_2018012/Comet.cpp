@@ -638,6 +638,7 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("skip_researching", szParamStringVal, iIntParam);
             }
+/*
             else if (!strcmp(szParamName, "skip_updatecheck"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -645,6 +646,7 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("skip_updatecheck", szParamStringVal, iIntParam);
             }
+*/
             else if (!strcmp(szParamName, "peff_verbose_output"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
