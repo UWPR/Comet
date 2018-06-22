@@ -2404,5 +2404,7 @@ cleanup_results:
    // Deallocate search memory
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
+   free(pdTmpSpectrum);
+
    return bSucceeded;
 }
