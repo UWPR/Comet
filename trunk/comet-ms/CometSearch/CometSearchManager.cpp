@@ -36,6 +36,7 @@
 
 std::vector<Query*>           g_pvQuery;
 std::vector<InputFileInfo *>  g_pvInputFiles;
+std::vector<double>           g_pvDIAWindows;
 StaticParams                  g_staticParams;
 MassRange                     g_massRange;
 vector<string>                g_pvProteinNames;
@@ -546,6 +547,9 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("output_suffix", strData))
       strcpy(g_staticParams.szOutputSuffix, strData.c_str());
 
+   if (GetParamValue("dia_windows_file", strData))
+      strcpy(g_staticParams.szDIAWindowsFile, strData.c_str());
+
    if (GetParamValue("peff_obo", strData))
       strcpy(g_staticParams.peffInfo.szPeffOBO, strData.c_str());
 
@@ -677,7 +681,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
 
-   GetParamValue("skip_updatecheck", g_staticParams.options.bSkipUpdateCheck);
+// GetParamValue("skip_updatecheck", g_staticParams.options.bSkipUpdateCheck);
 
    GetParamValue("mango_search", g_staticParams.options.bMango);
 
@@ -1427,8 +1431,8 @@ bool CometSearchManager::DoSearch()
    if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
    {
       sprintf(szOut, " Comet version \"%s\"", comet_version);
-      if (!g_staticParams.options.bSkipUpdateCheck)
-         CometCheckForUpdates::CheckForUpdates(szOut);
+//    if (!g_staticParams.options.bSkipUpdateCheck)
+//       CometCheckForUpdates::CheckForUpdates(szOut);
       sprintf(szOut+strlen(szOut), "\n\n");
 
       logout(szOut);
@@ -1448,6 +1452,47 @@ bool CometSearchManager::DoSearch()
       PrintOutfileHeader();
 
    bool bBlankSearchFile = false;
+
+   if (strlen(g_staticParams.szDIAWindowsFile) > 0)
+   {
+      FILE *fp;
+
+      if ((fp=fopen(g_staticParams.szDIAWindowsFile, "r")) != NULL)
+      {
+         // read DIA windows
+         double dStartMass=0.0,
+                dEndMass=0.0;
+         char szTmp[512];
+
+         while (fgets(szTmp, 512, fp))
+         {
+            sscanf(szTmp, "%lf %lf", &dStartMass, &dEndMass);
+            if (dEndMass <= dStartMass)
+            {
+               char szErrorMsg[256];
+               sprintf(szErrorMsg,  " Error - DIA window file end mass <= start mass:  %f %f.\n",  dStartMass, dEndMass);
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(szErrorMsg);
+               
+               g_pvDIAWindows.clear();
+               return false;
+            }
+
+            g_pvDIAWindows.push_back(dStartMass);
+            g_pvDIAWindows.push_back(dEndMass);
+         }
+         fclose(fp);
+      }
+      else
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg,  " Error - cannot read DIA window file \"%s\".\n",  g_staticParams.szDIAWindowsFile);
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(szErrorMsg);
+      }
+   }
 
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
@@ -1847,6 +1892,23 @@ bool CometSearchManager::DoSearch()
                }
             }
 
+            if (g_pvDIAWindows.size() > 0)
+            {
+               // delete scan entries that do not map to a DIA window;
+               // should we throw error and abort search in this case instead?
+               std::vector<Query*>::iterator it = g_pvQuery.begin();
+
+               while(it != g_pvQuery.end())
+               {
+                  if ( (*it)->_pepMassInfo.dPeptideMassToleranceMinus == 0.0
+                        || (*it)->_pepMassInfo.dPeptideMassTolerancePlus == 0.0)
+                  {
+                     g_pvQuery.erase(it);
+                  }
+                  else
+                     ++it;
+               }
+            }
 
             // Sort g_pvQuery vector by dExpPepMass.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
@@ -1863,7 +1925,6 @@ bool CometSearchManager::DoSearch()
                sprintf(szOut, " - Start RunSearch:  %s\n", szTimeBuffer);
                logout(szOut);
                fflush(stdout);
-
             }
 #endif
 
@@ -2102,7 +2163,7 @@ bool CometSearchManager::DoSearch()
    }
 
    if (bBlankSearchFile)
-      return 1;
+      return true;
    else
       return bSucceeded;
 }

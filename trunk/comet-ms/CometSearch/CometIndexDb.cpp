@@ -63,8 +63,6 @@ bool CometIndexDb::CreateIndex(void)
    sDBEntry dbe;
    FILE *fptr;
    int iTmpCh = 0;
-   long lEndPos = 0;
-   long lCurrPos = 0;
    bool bTrimDescr = false;
    char szOut[1024];
 
@@ -90,12 +88,9 @@ bool CometIndexDb::CreateIndex(void)
    }
 
    fseek(fptr, 0, SEEK_END);
-   lEndPos=ftell(fptr);
    rewind(fptr);
 
    // Load database entry header.
-   lCurrPos = ftell(fptr);
-   iTmpCh = getc(fptr);
 
    char szBuf[8192];
    int iProtNum = 0;

@@ -97,7 +97,7 @@ struct Options             // output parameters
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
-   int bSkipUpdateCheck;         // 0=do not check for updates; 1=check for updates
+// int bSkipUpdateCheck;         // 0=do not check for updates; 1=check for updates
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
    int bCreateIndex;             // 0=normal search; 1=create peptide index file
    int bVerboseOutput;
@@ -144,7 +144,7 @@ struct Options             // output parameters
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
-      bSkipUpdateCheck = a.bSkipUpdateCheck;
+//    bSkipUpdateCheck = a.bSkipUpdateCheck;
       bMango = a.bMango;
       bCreateIndex = a.bCreateIndex;
       bVerboseOutput = a.bVerboseOutput;
@@ -187,7 +187,7 @@ struct Results
 struct PepMassInfo
 {
    double dCalcPepMass;
-   double dExpPepMass;
+   double dExpPepMass;                        // protonated MH+ experimental mass
    double dPeptideMassTolerance;
    double dPeptideMassToleranceMinus;
    double dPeptideMassTolerancePlus;
@@ -551,6 +551,7 @@ struct StaticParams
    int             bIndexDb;                 // 0 = normal fasta; 1 = indexed database
    int             bRealtimeSearch;          // 0 = no; 1 = online/realtime search of single spectra
    vector<double>  vectorMassOffsets;
+   char            szDIAWindowsFile[SIZE_FILE];
 
    StaticParams()
    {
@@ -571,6 +572,8 @@ struct StaticParams
 
       peffInfo.szPeffOBO[0] = '\0';
       peffInfo.iPeffSearch = 0;
+
+      szDIAWindowsFile[0]='\0';
 
       for (i=0; i<SIZE_MASS; i++)
       {
@@ -656,7 +659,7 @@ struct StaticParams
       options.bOutputOutFiles = 0;
 
       options.bSkipAlreadyDone = 1;
-      options.bSkipUpdateCheck = 0;
+//    options.bSkipUpdateCheck = 0;
       options.bMango = 0;
       options.bCreateIndex = 0;
       options.bVerboseOutput = 0;
@@ -732,6 +735,8 @@ struct StaticParams
 };
 
 extern StaticParams g_staticParams;
+
+extern vector<double> g_pvDIAWindows;    // vector of start-end masses for DIA window; even number start mass, odd number end mass
 
 extern vector<string> g_pvProteinNames;
 
