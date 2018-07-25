@@ -1500,7 +1500,20 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                   int piVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
 
-                  if (!g_staticParams.variableModParameters.bRequireVarMod)
+                  bool bDeltaXcorrSearch = false;  // Comet-PTM
+                  double deltaXcorrMass;           // Comet-PTM
+
+                  if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
+                  {
+                     // Comet-PTM: don´t calculate modified xcorr when dera mass not near 0
+                     deltaXcorrMass = g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass;
+                     bDeltaXcorrSearch = g_staticParams.options.bUseDeltaXcorr
+                        && g_staticParams.options.bDontCalcPseudoNonMod
+                        && (deltaXcorrMass < -g_staticParams.options.dDeltaInnerTol
+                              || deltaXcorrMass > g_staticParams.options.dDeltaInnerTol);
+                  }
+
+                  if (!g_staticParams.variableModParameters.bRequireVarMod && !bDeltaXcorrSearch)
                   {
                      XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, false,
                            dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
@@ -1511,6 +1524,35 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                               dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
                      }
                   }
+
+// Comet-PTM start
+                  if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
+                  {
+                     // No saltitos:
+                     DeltaXcorrSearch(deltaXcorrMass, iWhichQuery, dCalcPepMass, iEndPos, iStartPos, iProteinSeqLengthMinus1,
+                                      szProteinSeq, pbDuplFragment, &dbe, iLenPeptide);
+   
+                     for (int iSaltito = 1; iSaltito < g_massRange.iMaxFragmentCharge; ++iSaltito)
+                     {
+                        // Backward saltitos:
+                        if (g_staticParams.options.bUseDeltaBackJumps)
+                        {
+                           deltaXcorrMass = g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass - iSaltito*C13_DIFF;
+                           DeltaXcorrSearch(deltaXcorrMass, iWhichQuery, dCalcPepMass, iEndPos, iStartPos, iProteinSeqLengthMinus1,
+                                            szProteinSeq, pbDuplFragment, &dbe, iLenPeptide, "-", iSaltito);
+                        }
+   
+                        // Forward saltitos:
+                        if (g_staticParams.options.bUseDeltaForwardJumps)
+                        {
+                           deltaXcorrMass = g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass + iSaltito*C13_DIFF;
+                           DeltaXcorrSearch(deltaXcorrMass, iWhichQuery, dCalcPepMass, iEndPos, iStartPos, iProteinSeqLengthMinus1,
+                                            szProteinSeq, pbDuplFragment, &dbe, iLenPeptide, "+", iSaltito);
+                        }
+                     }
+// Comet-PTM end
+                  }
+
                }
                iWhichQuery++;
             }
@@ -2604,7 +2646,12 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                              int iWhichQuery,
                              int iLenPeptide,
                              int *piVarModSites,
-                             struct sDBEntry *dbe)
+                             struct sDBEntry *dbe,
+// Comet-PTM start
+                             bool bDeltaXcorrSearch /*= false*/,
+                             double dDeltaXcorrMass /*= 0.0*/,
+                             std::string sDeltaJumps)
+// Comet-PTM end
 {
    int  ctLen,
         ctIonSeries,
@@ -2614,12 +2661,19 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    // Pointer to either regular or decoy uiBinnedIonMasses[][][].
    unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
+   unsigned int (*p_uiBinnedIonMassesDelta)[MAX_FRAGMENT_CHARGE + 1][9][MAX_PEPTIDE_LEN]; // Comet-PTM
 
    // Point to right set of arrays depending on target or decoy search.
    if (bDecoyPep)
+   {
       p_uiBinnedIonMasses = &_uiBinnedIonMassesDecoy;
+      p_uiBinnedIonMassesDelta = &_uiBinnedIonMassesDelta;  // Comet-PTM; here only to avoid compile warning
+   }
    else
+   {
       p_uiBinnedIonMasses = &_uiBinnedIonMasses;
+      p_uiBinnedIonMassesDelta = &_uiBinnedIonMassesDelta;  // Comet-PTM
+   }
 
    int iWhichIonSeries;
    bool bUseNLPeaks = false;
@@ -2630,6 +2684,15 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    dXcorr = 0.0;
 
    int iMax = pQuery->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
+
+   // Comet-PTM: store all the fragment Xcorrs and DeltaXcorrs in this vector to calculate where the modification most likely is
+   std::vector<std::vector<std::vector<std::vector<double> > > > vctXcorrs(pQuery->_spectrumInfoInternal.iMaxFragCharge,   // per charge
+         std::vector<std::vector<std::vector<double> > >(g_staticParams.ionInformation.iNumIonSeriesUsed,                 // per series
+               std::vector<std::vector<double> >(2, std::vector<double>(iLenPeptideMinus1, 0))));   // one for Xcorr, one for DeltaXcorr
+
+   const short XCORR_ID = 0;
+   const short DELTA_XCORR_ID = 1;
+
    for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
    {
       for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -2654,6 +2717,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          }
 
          int bin,x,y;
+         int binDelta, xDelta, yDelta;  // Comet-PTM
+
          for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
          {
             //MH: newer sparse matrix converts bin to sparse matrix bin
@@ -2663,11 +2728,130 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                continue;
             y = bin - (x*SPARSE_MATRIX_SIZE);
             dXcorr += ppSparseFastXcorrData[x][y];
+
+// Comet-PTM start
+            if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
+            {
+               vctXcorrs[ctCharge-1][ctIonSeries][XCORR_ID][ctLen] = ppSparseFastXcorrData[x][y];
+               if (bDeltaXcorrSearch)
+               {
+                  binDelta = *(*(*(*p_uiBinnedIonMassesDelta + ctCharge) + ctIonSeries) + ctLen);
+                  xDelta = binDelta / SPARSE_MATRIX_SIZE;
+   
+                  if (xDelta < pQuery->iFastXcorrData && ppSparseFastXcorrData[xDelta] != NULL)
+                  {
+                     yDelta = binDelta - (xDelta*SPARSE_MATRIX_SIZE);
+                     vctXcorrs[ctCharge-1][ctIonSeries][DELTA_XCORR_ID][ctLen] = ppSparseFastXcorrData[xDelta][yDelta];
+                  }
+               }
+            }
+// Comet-PTM end
          }
 
          // *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen].
       }
    }
+
+// Comet-PTM start: make this a separate function
+   std::vector<double> vctXcorrAtPos(iLenPeptideMinus1, 0);
+   std::vector<double>::iterator best;
+   int bestPos = -1;
+
+   // encodes b and y series modifications, b series at [0], y series at [1]
+   std::vector<std::bitset<MAX_PEPTIDE_LEN> > vctBitMods(2, std::bitset<64>());
+
+   if (bDeltaXcorrSearch && iLenPeptideMinus1 > 0)
+   {
+      // calculate the best Xcorr: for each residue, calculate the Xcorr with the modification at that residue
+      for (int j = 0; j < iLenPeptideMinus1; ++j)
+      {
+         for (int i = 0; i < iLenPeptideMinus1; ++i)
+         {
+            for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+            {
+               iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+               if (iWhichIonSeries == ION_SERIES_B)   // b series
+               {
+                  if (j - i > 0)
+                  {
+                     for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+                     {
+                        vctXcorrAtPos[j] += vctXcorrs[ctCharge - 1][ctIonSeries][XCORR_ID][i];   // Xcorr
+                     }
+                  }
+                  else
+                  {
+                     for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+                     {
+                        vctXcorrAtPos[j] += vctXcorrs[ctCharge - 1][ctIonSeries][DELTA_XCORR_ID][i];    // deltaXcorr
+                     }
+                  }
+               }
+               else if (iWhichIonSeries == ION_SERIES_Y) // y series
+               {
+                  if (iLenPeptideMinus1 - j - i > 0)
+                  {
+                     for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+                     {
+                        vctXcorrAtPos[j] += vctXcorrs[ctCharge - 1][ctIonSeries][XCORR_ID][i];    // Xcorr
+                     }
+                  }
+                  else
+                  {
+                     for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+                     {
+                        vctXcorrAtPos[j] += vctXcorrs[ctCharge - 1][ctIonSeries][DELTA_XCORR_ID][i];    // deltaXcorr
+                     }
+                  }
+               }
+            }
+         }
+      }
+
+      best = std::max_element(vctXcorrAtPos.begin(), vctXcorrAtPos.end());
+      bestPos = std::distance(vctXcorrAtPos.begin(), best);
+
+      for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+      {
+         iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+         // found best, now mark the vctBitMods to display it
+         if (iWhichIonSeries == ION_SERIES_B)
+         {
+            for (int i = bestPos; i < iLenPeptideMinus1; ++i)   // b series
+            {
+               for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+               {
+                  // DeltaXcorr > Xcorr
+                  if (vctXcorrs[ctCharge - 1][ctIonSeries][DELTA_XCORR_ID][i] > vctXcorrs[ctCharge - 1][ctIonSeries][XCORR_ID][i])
+                  {
+                     vctBitMods[ctIonSeries][i] = 1;
+                  }
+               }
+            }
+         }
+         else if (iWhichIonSeries == ION_SERIES_Y)
+         {
+            for (int i = iLenPeptideMinus1 - bestPos; i < iLenPeptideMinus1; ++i)   // y series
+            {
+               for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+               {
+                  // DeltaXcorr > Xcorr
+                  if (vctXcorrs[ctCharge - 1][ctIonSeries][DELTA_XCORR_ID][i] > vctXcorrs[ctCharge - 1][ctIonSeries][XCORR_ID][i])
+                  {
+                     vctBitMods[ctIonSeries][iLenPeptideMinus1 - i] = 1;
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   if (bestPos != -1)
+      dXcorr = *best;
+// Comet-PTM end
+
 
    if (dXcorr < XCORR_CUTOFF)
       dXcorr = XCORR_CUTOFF;
@@ -2706,10 +2890,11 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       if (dXcorr > pQuery->fLowestDecoyXcorrScore)
       {
          if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
-                  szProteinSeq, bDecoyPep, piVarModSites, dbe))
+                  szProteinSeq, bDecoyPep, piVarModSites, dbe, bDeltaXcorrSearch, dDeltaXcorrMass))
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, bDecoyPep,  piVarModSites, dbe);
+                  dCalcPepMass, dXcorr, bDecoyPep,  piVarModSites, dbe,
+                  bDeltaXcorrSearch, dDeltaXcorrMass, vctBitMods, sDeltaJumps, bestPos);
          }
       }
    }
@@ -2774,7 +2959,14 @@ void CometSearch::StorePeptide(int iWhichQuery,
                                double dXcorr,
                                bool bDecoyPep,
                                int *piVarModSites,
-                               struct sDBEntry *dbe)
+                               struct sDBEntry *dbe,
+// Comet-PTM start
+                               bool bDeltaXcorrSearch /*= false*/,
+                               double dDeltaXcorrMass /*= 0.0*/,
+                               std::vector<std::bitset<MAX_PEPTIDE_LEN> > vctBitMods,
+                               std::string sDeltaJumps /*= "0"*/,
+                               const int& iModPos /*= -1*/)
+// Comet-PTM end
 {
    int i;
    int iLenPeptide;
@@ -2914,6 +3106,41 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
 
+// Comet-PTM start
+      char szTemp[MAX_PEPTIDE_LEN * 2];
+      memcpy(szTemp, szProteinSeq + iStartPos, iLenPeptide);
+      szTemp[iLenPeptide] = '\0';
+
+      std::string sTempYSeries(szTemp);
+      std::string sTempBSeries(szTemp);
+      int iWhichIonSeries;
+
+      for (int j = 0; j < 2; ++j)
+      {
+         iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[j];
+
+         int iDeltaAAs = 0;
+         if (vctBitMods[j].any())
+         {
+            for (size_t i = 0; i < vctBitMods[j].size(); ++i)
+            {
+               if (vctBitMods[j][i])
+               {
+                  if (iWhichIonSeries == ION_SERIES_B)
+                     sTempBSeries.insert(i+1 + iDeltaAAs, "<");
+                  else if(iWhichIonSeries == ION_SERIES_Y)
+                     sTempYSeries.insert(i + iDeltaAAs, ">");
+                  ++iDeltaAAs;
+               }
+            }
+         }
+      }
+
+      strcpy(pQuery->_pResults[siLowestSpScoreIndex].szDeltaBSeries, const_cast<char*>(sTempBSeries.c_str()));
+      strcpy(pQuery->_pResults[siLowestSpScoreIndex].szDeltaYSeries, const_cast<char*>(sTempYSeries.c_str()));
+// Comet-PTM end
+
+
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
          pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
@@ -2927,6 +3154,20 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
+
+// Comet-PTM start
+      if (bDeltaXcorrSearch)
+      {
+         pQuery->_pResults[siLowestSpScoreIndex].dDeltaXcorrMass = dDeltaXcorrMass;
+         pQuery->_pResults[siLowestSpScoreIndex].sDeltaJumps = sDeltaJumps;
+      }
+      else
+      {
+         pQuery->_pResults[siLowestSpScoreIndex].dDeltaXcorrMass = 0.0;
+         pQuery->_pResults[siLowestSpScoreIndex].sDeltaJumps = "";
+      }
+      pQuery->_pResults[siLowestSpScoreIndex].iModPos = iModPos;
+// Comet-PTM end
 
       if (g_staticParams.bRealtimeSearch && g_staticParams.bIndexDb)
       {
@@ -3051,7 +3292,10 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                                 char *szProteinSeq,
                                 bool bDecoyPep,
                                 int *piVarModSites,
-                                struct sDBEntry *dbe)
+                                struct sDBEntry *dbe,
+                                bool bDeltaXcorrSearch /*= false*/,  // Comet-PTM
+                                double dDeltaXcorrMass /*= 0.0*/)    // Comet-PTM
+
 {
    int i,
        iLenMinus1,
@@ -3133,6 +3377,20 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                     bIsDuplicate = 0;
                }
             }
+
+// Comet-PTM start
+            // If bIsDuplicate & deltaX search, check delta_mod to see if peptide already stored.
+            if (bIsDuplicate && bDeltaXcorrSearch)
+            {
+               // marco bug fix start
+               int flooring = 1e7;
+               if (floor(pQuery->_pResults[i].dDeltaXcorrMass * flooring) == floor(dDeltaXcorrMass * flooring))
+                  bIsDuplicate = 1;
+               else
+                  bIsDuplicate = 0;
+               // marco bug fix end
+            }
+// Comet-PTM end
 
             if (bIsDuplicate)
             {
@@ -5089,3 +5347,114 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
    return true;
 }
+
+
+// Comet-PTM start
+void CometSearch::DeltaXcorrSearch(const double& dDeltaXcorrMass,
+                                   const int& iWhichQuery,
+                                   const double& dCalcPepMass,
+                                   const int& iEndPos,
+                                   const int& iStartPos,
+                                   const int& iProteinSeqLengthMinus1,
+                                   char* szProteinSeq,
+                                   bool* pbDuplFragment,
+                                   struct sDBEntry *dbe,
+                                   const int& iLenPeptide,
+                                   std::string sSaltito /*= "0"*/,
+                                   int iSaltito /*= 0*/)
+{
+   bool bDeltaXcorrSearch = g_staticParams.options.bUseDeltaXcorr &&
+      ((dDeltaXcorrMass > -g_staticParams.options.dDeltaOuterTol && dDeltaXcorrMass < -g_staticParams.options.dDeltaInnerTol) ||
+       (dDeltaXcorrMass > g_staticParams.options.dDeltaInnerTol && dDeltaXcorrMass < g_staticParams.options.dDeltaOuterTol));
+
+   if (bDeltaXcorrSearch)
+   {
+      int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
+
+      int i;
+      double dBion = g_staticParams.precalcMasses.dNtermProton;
+      double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+      if (iStartPos == 0)
+         dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+      if (iEndPos == iProteinSeqLengthMinus1)
+         dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+
+      int iPos;
+      for (i = iStartPos; i < iEndPos; i++)
+      {
+         iPos = i - iStartPos;
+
+         dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
+
+         double dBionDelta = dBion + dDeltaXcorrMass;
+         if (dBionDelta >= 0.0)
+            _pdAAforwardDelta[iPos] = dBionDelta;
+         else
+            _pdAAforwardDelta[iPos] = 0.0;
+
+         dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iEndPos - iPos]];
+         double dYionDelta = dYion + dDeltaXcorrMass;
+         if (dYionDelta >= 0.0)
+            _pdAAreverseDelta[iPos] = dYionDelta;
+         else
+            _pdAAreverseDelta[iPos] = 0.0;
+      }
+
+      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
+      for (int ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ctCharge++)
+      for (int ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ctCharge++)
+      {
+         for (int ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+         {
+            int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+            for (int ctLen = 0; ctLen < iLenMinus1; ctLen++)
+            {
+               pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDelta, _pdAAreverseDelta))] = false;
+            }
+         }
+      }
+
+      for (int ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ctCharge++)
+      {
+         for (int ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+         {
+            int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+            // As both _pdAAforward and _pdAAreverse are increasing, loop through
+            // iLenPeptide-1 to complete set of internal fragment ions.
+            for (int ctLen = 0; ctLen < iLenMinus1; ctLen++)
+            {
+               int iValDelta = BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDelta, _pdAAreverseDelta));
+
+               if (pbDuplFragment[iValDelta] == false)
+               {
+                  _uiBinnedIonMassesDelta[ctCharge][ctIonSeries][ctLen] = iValDelta;
+                  pbDuplFragment[iValDelta] = true;
+               }
+               else
+                  _uiBinnedIonMassesDelta[ctCharge][ctIonSeries][ctLen] = 0;
+            }
+         }
+      }
+
+      if (!g_staticParams.variableModParameters.bRequireVarMod)
+      {
+         int piVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
+
+         if (iSaltito != 0)
+         {
+            char buffer[2];
+            sprintf(buffer, "%d", iSaltito);
+            sSaltito += buffer;
+         }
+
+         // XcorrScore now takes into account deltaXcorr
+         XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, false, dCalcPepMass, false, iWhichQuery, iLenPeptide,
+                    piVarModSites, dbe, bDeltaXcorrSearch, dDeltaXcorrMass, sSaltito);
+      }
+
+   }
+}
+// Comet-PTM end

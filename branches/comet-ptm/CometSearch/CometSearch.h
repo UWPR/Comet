@@ -20,6 +20,8 @@
 #include "Common.h"
 #include "CometDataInternal.h"
 
+#include <bitset>  // Comet-PTM
+
 struct SearchThreadData
 {
    sDBEntry dbEntry;
@@ -109,7 +111,7 @@ private:
                                 int iEndPos);
    void XcorrScore(char *szProteinSeq,
                    int iStartResidue,
-				   int iEndResidue,
+                   int iEndResidue,
                    int iStartPos,
                    int iEndPos,
                    bool bFoundVariableMod,
@@ -118,7 +120,13 @@ private:
                    int iWhichQuery,
                    int iLenPeptide,
                    int *piVarModSites,
-                   struct sDBEntry *dbe);
+                   struct sDBEntry *dbe,
+// Comet-PTM start
+                   bool bDeltaXcorrSearch = false,
+                   double dDeltaXcorrMass = 0.0,
+                   std::string sDeltaJumps = "0");
+// Comet-PTM end
+
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
@@ -135,7 +143,7 @@ private:
                              double *pdAAreverse);
    int CheckDuplicate(int iWhichQuery,
                       int iStartResidue,
-					  int iEndResidue,
+                      int iEndResidue,
                       int iStartPos,
                       int iEndPos,
                       bool bFoundVariableMod,
@@ -143,7 +151,9 @@ private:
                       char *szProteinSeq,
                       bool bDecoyResults,
                       int *piVarModSites,
-                      struct sDBEntry *dbe);
+                      struct sDBEntry *dbe,
+                      bool bDeltaXcorrSearch = false,  // Comet-PTM
+                      double dDeltaXcorrMass = 0.0);   // Comet-PTM
    void StorePeptide(int iWhichQuery,
                      int iStartResidue,
                      int iStartPos,
@@ -154,7 +164,14 @@ private:
                      double dScoreSp,
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
-                     struct sDBEntry *dbe);
+                     struct sDBEntry *dbe,
+// Comet-PTM start
+                     bool bDeltaXcorrSearch = false,
+                     double dDeltaXcorrMass = 0.0,
+                     std::vector<std::bitset<MAX_PEPTIDE_LEN> > vctBitMods = std::vector<std::bitset<MAX_PEPTIDE_LEN> >(),
+                     std::string sDeltaJumps = "0",
+                     const int& iModPos = -1);
+// Comet-PTM end
    void VariableModSearch(char *szProteinSeq,
                           int varModCounts[],
                           int iStartPos,
@@ -203,7 +220,6 @@ private:
                         double dCalcPepMass,
                         bool *pbDuplFragment,
                         struct sDBEntry *dbe);
-
    char GetAA(int i,
               int iDirection,
               char *sDNASequence);
@@ -213,7 +229,21 @@ private:
    void GenerateXcorrDecoys(struct Results *_pResults,
                             bool bDecoy);
 
-    // Displaying results
+// Comet-PTM
+   void DeltaXcorrSearch(const double& dDeltaXcorrMass,
+                         const int& iWhichQuery,
+                         const double& dCalcPepMass,
+                         const int& iEndPos,
+                         const int& iStartPos,
+                         const int& iProteinSeqLengthMinus1,
+                         char* szProteinSeq,
+                         bool* pbDuplFragment,
+                         struct sDBEntry *dbe,
+                         const int& iLenPeptide,
+                         std::string sSaltito = "0",
+                         int iSaltito = 0);
+
+   // Displaying results
    void PrintResults(struct Results *_pResults,
                      bool bDecoySearch);
    void PrintOutputLine(struct Results *_pResults,
@@ -291,6 +321,8 @@ private:
 
    double             _pdAAforward[MAX_PEPTIDE_LEN];      // Stores fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAreverse[MAX_PEPTIDE_LEN];      // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
+   double             _pdAAforwardDelta[MAX_PEPTIDE_LEN]; // Comet-PTM
+   double             _pdAAreverseDelta[MAX_PEPTIDE_LEN]; // Comet-PTM
    double             _pdAAforwardDecoy[MAX_PEPTIDE_LEN]; // Stores fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAreverseDecoy[MAX_PEPTIDE_LEN]; // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
    int                _iSizepiVarModSites;
@@ -299,6 +331,7 @@ private:
    ProteinInfo        _proteinInfo;
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
+   unsigned int       _uiBinnedIonMassesDelta[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN]; // Comet-PTM
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads

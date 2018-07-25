@@ -64,6 +64,8 @@ private:
                                 int *iNextCorr);
    static float FindSpScore(Query *pQuery,
                             int bin);
+   static float FindQScore(Query *pQuery,  // Comet-PTM
+                           int bin);
    static bool ProteinEntryCmp(const struct ProteinEntryStruct &a,
                                const struct ProteinEntryStruct &b);
 };

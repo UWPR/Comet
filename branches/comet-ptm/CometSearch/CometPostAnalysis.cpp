@@ -386,6 +386,68 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             }
          }
 
+
+         if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
+         {
+            // Comet-PTM: new QScore for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
+            for (ctCharge=1; ctCharge<=iMaxFragCharge+1; ctCharge++)
+            {  
+               for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+               {  
+                  int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
+                  
+                  // As both _pdAAforward and _pdAAreverse are increasing, loop through
+                  // iLenPeptide-1 to complete set of internal fragment ions.
+                  for (int iii=0; iii<pOutput[i].iLenPeptide-1; iii++)
+                  {  
+                     // Gets fragment ion mass.
+                     dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
+                     
+                     if ( !(dFragmentIonMass <= FLOAT_ZERO))
+                     {  
+                        int iFragmentIonMass = BIN(dFragmentIonMass);
+                        float fSpScore, fQScore;
+                        
+                        fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
+                        fQScore = FindQScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass);
+                        
+                        if (fSpScore > FLOAT_ZERO)
+                        {  
+                           iMatchedFragmentIonCt++;
+                           
+                           // Simple sum intensity.
+                           dTmpIntenMatch += fSpScore;
+                           dQTmpIntenMatch += fQScore;
+                           
+                           // Increase score for consecutive fragment ion series matches.
+                           if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
+                              dConsec += 0.075;
+                           
+                           ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                        }
+                        else
+                        {  
+                           ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                        }
+                     }
+                  }
+               }
+            }
+
+            // calculate qscore
+            float fPrecursorMass = g_pvQuery.at(iWhichQuery)->_precursorMZIntensity.mz;
+            float fTemp = fPrecursorMass*((g_pvQuery.at(iWhichQuery))->_spectrumInfoInternal).iChargeState;
+            float fTempDiff = (fTemp - g_staticParams.precalcMasses.dNtermProton) - pOutput[i].dPepMass;
+
+            if (abs(fTempDiff) < 0.1)
+            {
+               float fPrecursorFragment = g_pvQuery.at(iWhichQuery)->_precursorMZIntensity.intensity;
+               dQTmpIntenMatch += fPrecursorFragment;
+            }
+
+            pOutput[i].fScoreQ = dQTmpIntenMatch;
+         }
+
          pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) /
                ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
 
@@ -809,10 +871,25 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 float CometPostAnalysis::FindSpScore(Query *pQuery,
                                      int bin)
 {
+   if (pQuery->ppfSparseSpScoreData == NULL)
+      return 0.0f;
+
    int x = bin / SPARSE_MATRIX_SIZE;
    if (pQuery->ppfSparseSpScoreData[x] == NULL)
       return 0.0f;
+
    int y = bin - (x*SPARSE_MATRIX_SIZE);
    return pQuery->ppfSparseSpScoreData[x][y];
 }
 
+
+float CometPostAnalysis::FindQScore(Query *pQuery,  // Comet-PTM
+                                    int bin)
+{
+   int x = bin / SPARSE_MATRIX_SIZE;
+   if (pQuery->ppfSparseQScoreData[x] == NULL)
+      return 0.0f;
+
+   int y = bin - (x*SPARSE_MATRIX_SIZE);
+   return pQuery->ppfSparseQScoreData[x][y];
+}

@@ -89,8 +89,10 @@ private:
    // Private static methods
    static bool PreprocessSpectrum(Spectrum &spec,
                                   double *pdTmpRawData,
+                                  double *pdQTmpRawData,
                                   double *pdTmpFastXcorrData,
                                   double *pdTmpCorrelationData,
+                                  double *pdQTmpCorrelationData,
                                   double *pdTmpSmoothedSpectrum,
                                   double *pdTmpPeakExtracted);
    static bool CheckExistOutFile(int iCharge,
@@ -110,16 +112,21 @@ private:
    static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum,
                           double *pdTmpRawData,
+                          double *pdQTmpRawData,
                           double *pdTmpFastXcorrData,
                           double *pdTmpCorrelationData,
+                          double *pdQTmpCorrelationData,
                           double *pdSmoothedSpectrum,
                           double *pdTmpPeakExtracted);
    static bool LoadIons(struct Query *pScoring,
                         double *pdTmpRawData,
+                        double *pdQTmpRawData,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
    static void MakeCorrData(double *pdTmpRawData,
+                            double *pdQTmpRawData,
                             double *pdTmpCorrelationData,
+                            double *pdQTmpCorrelationData,
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);
    static bool Smooth(double *data,
@@ -129,7 +136,9 @@ private:
                            int iArraySize,
                            double *pdTmpPeakExtracted);
    static void GetTopIons(double *pdTmpRawData,
+                          double *pdQTmpRawData,
                           struct msdata *pTmpSpData,
+                          struct msdata *pTmpQData,
                           int iArraySize);
    static int QsortByIon(const void *p0,
                          const void *p1);
@@ -149,6 +158,9 @@ private:
    static double **ppdTmpCorrelationDataArr;  //MH: Ditto
    static double **ppdTmpSmoothedSpectrumArr; //MH: Ditto
    static double **ppdTmpPeakExtractedArr;    //MH: Ditto
+   static double **ppdQTmpRawDataArr;         // Comet-PTM
+   static double **ppdQTmpCorrelationDataArr; // Comet-PTM
+
 };
 
 #endif // _COMETPREPROCESS_H_

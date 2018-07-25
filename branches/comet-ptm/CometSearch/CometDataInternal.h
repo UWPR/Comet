@@ -113,6 +113,15 @@ struct Options             // output parameters
    double dPeptideMassLow;       // MH+ mass
    double dPeptideMassHigh;      // MH+ mass
 
+// Comet-PTM start
+   int bUseDeltaXcorr;           // 0=no (default), 1=yes
+   int bUseDeltaBackJumps;       // 0=no (default), 1=yes
+   int bUseDeltaForwardJumps;    // 0=no (default), 1=yes
+   int bDontCalcPseudoNonMod;    // 0=no (default), 1=yes
+   double dDeltaOuterTol;        // ignored if use_delta_xcorr 0, default 320
+   double dDeltaInnerTol;        // ignored if use_delta_xcorr 0, default 0.8
+// Comet-PTM end
+
    IntRange scanRange;
    DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
@@ -155,6 +164,14 @@ struct Options             // output parameters
       clearMzRange = a.clearMzRange;
       dPeptideMassLow = a.dPeptideMassLow;
       dPeptideMassHigh = a.dPeptideMassHigh;
+// Comet-PTM start
+      bUseDeltaXcorr = a.bUseDeltaXcorr;
+      dDeltaOuterTol = a.dDeltaOuterTol;
+      dDeltaInnerTol = a.dDeltaInnerTol;
+      bUseDeltaBackJumps = a.bUseDeltaBackJumps;
+      bUseDeltaForwardJumps = a.bUseDeltaForwardJumps;
+      bDontCalcPseudoNonMod = a.bDontCalcPseudoNonMod;
+// Comet-PTM end
       strcpy(szActivationMethod, a.szActivationMethod);
 
       return *this;
@@ -182,6 +199,13 @@ struct Results
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
    vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
    vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
+// Comet-PTM start
+   double dDeltaXcorrMass;
+   char szDeltaYSeries[MAX_PEPTIDE_LEN*2];
+   char szDeltaBSeries[MAX_PEPTIDE_LEN*2];
+   std::string sDeltaJumps; // "-2", "-1", "0", "+1", "+2"
+   int  iModPos;  // position (in the peptide string) of PTM
+// Comet-PTM end
 };
 
 struct PepMassInfo
@@ -667,6 +691,15 @@ struct StaticParams
       options.iNumThreads = 0;
       options.bClipNtermMet = 0;
 
+// Comet-PTM start
+      options.bUseDeltaXcorr = 0;
+      options.dDeltaOuterTol = 320;
+      options.dDeltaInnerTol = 0.8;
+      options.bUseDeltaBackJumps = 0;
+      options.bUseDeltaForwardJumps = 0;
+      options.bDontCalcPseudoNonMod = 0;
+// Comet-PTM end
+
       options.lMaxIterations = 0;
 
       // These parameters affect mzXML/RAMP spectra only.
@@ -772,13 +805,18 @@ struct Query
    int iFastXcorrData;  //MH: I believe these are all the same size now.
    int iFastXcorrDataNL;
    float **ppfSparseSpScoreData;
+   float **ppfSparseQScoreData;  // Comet-PTM
    float **ppfSparseFastXcorrData;
    float **ppfSparseFastXcorrDataNL;
 
    // Standard array representation of data
    float *pfSpScoreData;
+   float *pfQScoreData;  // Comet-PTM
    float *pfFastXcorrData;
    float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
+
+   // Comet-PTM: Precursor mass and intensity
+   Peak_T _precursorMZIntensity;
 
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;
@@ -823,6 +861,11 @@ struct Query
       pfSpScoreData = NULL;
       pfFastXcorrData = NULL;
       pfFastXcorrDataNL = NULL;              // pfFastXcorrData with NH3, H2O contributions
+
+// Comet-PTM qscore start
+      _precursorMZIntensity.intensity = 0.0;
+      _precursorMZIntensity.mz = 0.0;
+// Comet-PTM qscore end
 
       _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;

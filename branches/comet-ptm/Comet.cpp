@@ -1061,6 +1061,50 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%ld", lLongParam);
                pSearchMgr->SetParam("max_iterations", szParamStringVal, lLongParam);
             }
+// Comet-PTM start
+            else if (!strcmp(szParamName, "use_delta_xcorr"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("use_delta_xcorr", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "delta_outer_tolerance"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("delta_outer_tolerance", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "delta_inner_tolerance"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("delta_inner_tolerance", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "use_delta_back_jumps"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("use_delta_back_jumps", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "use_delta_forward_jumps"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("use_delta_forward_jumps", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "dont_calc_pseudo_non_mod"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("dont_calc_pseudo_non_mod", szParamStringVal, iIntParam);
+            }
+// Comet-PTM end
             else
             {
                sprintf(szErrorMsg, " Warning - invalid parameter found: %s.  Parameter will be ignored.\n", szParamName);
