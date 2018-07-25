@@ -1897,9 +1897,13 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
                                      int iStartPos,
                                      int iEndPos)
 {
+   int iLength = iEndPos - iStartPos + 1;
+
    if (dCalcPepMass >= g_massRange.dMinMass
          && dCalcPepMass <= g_massRange.dMaxMass
-         && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
+         && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos)
+         && iLength >= g_staticParams.options.iPeptideLengthLow
+         && (g_staticParams.options.iPeptideLengthHigh == 0 || (iLength <= g_staticParams.options.iPeptideLengthHigh)))
    {
       // Now that we know it's within the global mass range of our queries and has
       // proper enzyme termini, check if within mass tolerance of any given entry.
