@@ -81,6 +81,8 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "%s\n", g_staticParams.databaseInfo.szDatabase);
 
    fprintf(fpout, "scan\t");
+   if (g_staticParams.options.bMango)   // Mango specific
+      fprintf(fpout, "spectrum\t");
    fprintf(fpout, "num\t");
    fprintf(fpout, "charge\t");
    fprintf(fpout, "exp_neutral_mass\t");
@@ -100,6 +102,8 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "protein\t");
    fprintf(fpout, "protein_count\t");
    fprintf(fpout, "modifications\n");
+
+
 
 #endif
 }
@@ -212,6 +216,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // prints modification encoding
          PrintModifications(fpout, pOutput, iWhichResult);
+         fprintf("\t");
 
          // Print protein reference/accession.
          char szProteinName[100];
@@ -364,6 +369,29 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             iRankXcorr++;
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
+
+         // Print spectrum_query element.
+         if (g_staticParams.options.bMango)   // Mango specific
+         {
+            char *pStr;
+
+            // look for either \ or / separator so valid for Windows or Linux
+            if ((pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL
+                  && (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
+            {
+               pStr = g_staticParams.inputFile.szBaseName;
+            }
+            else
+               pStr++;  // skip separation character
+
+            fprintf(fpout, "%s_%s.%05d.%05d.%d\t",
+                  pStr,
+                  pQuery->_spectrumInfoInternal.szMango,
+                  pQuery->_spectrumInfoInternal.iScanNumber,
+                  pQuery->_spectrumInfoInternal.iScanNumber,
+                  pQuery->_spectrumInfoInternal.iChargeState);
+         }
+
          fprintf(fpout, "%d\t", iRankXcorr);
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iChargeState);
          fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
@@ -642,8 +670,4 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
 
       fprintf(fpout, "%d_p_%c", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
    }
-
-
-   fprintf(fpout, "\t");
-
 }
