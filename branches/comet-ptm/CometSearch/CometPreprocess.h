@@ -60,6 +60,16 @@ struct PreprocessThreadData
 };
 
 
+// Comet-PTM
+struct less_than_Peaks
+{
+   inline bool operator() (const Peak_T& left, const Peak_T& right)
+   {
+      return (left.mz < right.mz);
+   }
+};
+
+
 class CometPreprocess
 {
 public:

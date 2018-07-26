@@ -288,6 +288,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
          double dTmpIntenMatch = 0.0;
+         double dQTmpIntenMatch = 0.0;  // Comet-PTM
 
          int iMatchedFragmentIonCt = 0;
          int iMaxFragCharge;
@@ -473,6 +474,21 @@ int CometPostAnalysis::QSortFnSp(const void *a,
    if (ia->fScoreSp < ib->fScoreSp)
       return 1;
    else if (ia->fScoreSp > ib->fScoreSp)
+      return -1;
+   else
+      return 0;
+}
+
+
+int CometPostAnalysis::QSortFnQ(const void *a,  // Comet-PTM
+                                const void *b)
+{
+   struct Results *ia = (struct Results *)a;
+   struct Results *ib = (struct Results *)b;
+
+   if (ia->fScoreQ < ib->fScoreQ)
+      return 1;
+   else if (ia->fScoreQ > ib->fScoreQ)
       return -1;
    else
       return 0;

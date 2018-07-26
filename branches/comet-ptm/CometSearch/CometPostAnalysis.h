@@ -49,6 +49,8 @@ private:
                            int iSize);
    static int QSortFnSp(const void *a,
                         const void *b);
+   static int QSortFnQ(const void *a,  // Comet-PTM
+                       const void *b);
 
    static int QSortFnPep(const void *a,
                          const void *b);

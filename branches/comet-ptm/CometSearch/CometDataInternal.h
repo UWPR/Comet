@@ -187,6 +187,7 @@ struct Results
    double dPepMass;
    double dExpect;
    float  fScoreSp;
+   float  fScoreQ;  // Comet-PTM
    float  fXcorr;
    int    iLenPeptide;
    int    iRankSp;
