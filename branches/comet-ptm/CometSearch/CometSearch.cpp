@@ -3144,7 +3144,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
       strcpy(pQuery->_pResults[siLowestSpScoreIndex].szDeltaYSeries, const_cast<char*>(sTempYSeries.c_str()));
 // Comet-PTM end
 
-
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
          pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
