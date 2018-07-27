@@ -578,6 +578,15 @@ bool CometSearchManager::InitializeStaticParams()
       g_staticParams.ionInformation.iTheoreticalFragmentIons = 0;
    }
 
+// Comet-PTM start
+   GetParamValue("use_delta_xcorr", g_staticParams.options.bUseDeltaXcorr);
+   GetParamValue("delta_outer_tolerance", g_staticParams.options.dDeltaOuterTol);
+   GetParamValue("delta_inner_tolerance", g_staticParams.options.dDeltaInnerTol);
+   GetParamValue("use_delta_back_jumps", g_staticParams.options.bUseDeltaBackJumps);
+   GetParamValue("use_delta_forward_jumps", g_staticParams.options.bUseDeltaForwardJumps);
+   GetParamValue("dont_calc_pseudo_non_mod", g_staticParams.options.bDontCalcPseudoNonMod);
+// Comet-PTM end
+
    GetParamValue("use_A_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_A]);
 
    GetParamValue("use_B_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_B]);
