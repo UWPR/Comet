@@ -16,7 +16,7 @@
          <li>This parameter has two decimal values.
          <li>The first value is the lower mass cutoff and the second value is
          the high mass cutoff.
-         <li>Only spectra with experimental MH+ masses in within the defined
+         <li>Only spectra with experimental MH+ masses within (or equal to) the defined
          mass ranges are searched.
          <li>Valid values are two decimal numbers where the first number must
          be less or equal to the second number.

@@ -10,6 +10,7 @@
 
          <h2>Comet parameter: skip_researching</h2>
 
+         <b>Note that this parameter has been deprecated in version 2018.01 rev. 2.</b>
          <ul>
          <li>This parameter is valid only when <a href="output_outfiles.php">output_outfiles</a> is set
          to 1 and each of
