@@ -3081,6 +3081,11 @@ void CometSearch::StorePeptide(int iWhichQuery,
             }
          }
       }
+      else
+      {
+         memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+         memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+      }
 
       // Get new lowest score.
       pQuery->fLowestDecoyXcorrScore = pQuery->_pDecoys[0].fXcorr;
@@ -3264,6 +3269,11 @@ void CometSearch::StorePeptide(int iWhichQuery,
                   pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = 0.0;
             }
          }
+      }
+      else
+      {
+         memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+         memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
       }
 
       // Get new lowest score.
