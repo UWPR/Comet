@@ -240,8 +240,8 @@ private:
                          bool* pbDuplFragment,
                          struct sDBEntry *dbe,
                          const int& iLenPeptide,
-                         std::string sSaltito = "0",
-                         int iSaltito = 0);
+                         std::string sJump = "0",
+                         int iJump = 0);
 
    // Displaying results
    void PrintResults(struct Results *_pResults,

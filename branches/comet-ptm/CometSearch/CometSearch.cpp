@@ -1505,7 +1505,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                   if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
                   {
-                     // Comet-PTM: don´t calculate modified xcorr when dera mass not near 0
+                     // Comet-PTM: don´t calculate modified xcorr when delta mass not near 0
                      deltaXcorrMass = g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass;
                      bDeltaXcorrSearch = g_staticParams.options.bUseDeltaXcorr
                         && g_staticParams.options.bDontCalcPseudoNonMod
@@ -1525,32 +1525,30 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                      }
                   }
 
-// Comet-PTM start
                   if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
                   {
-                     // No saltitos:
+                     // No jumps:
                      DeltaXcorrSearch(deltaXcorrMass, iWhichQuery, dCalcPepMass, iEndPos, iStartPos, iProteinSeqLengthMinus1,
                                       szProteinSeq, pbDuplFragment, &dbe, iLenPeptide);
    
-                     for (int iSaltito = 1; iSaltito < g_massRange.iMaxFragmentCharge; ++iSaltito)
+                     for (int iJump = 1; iJump < g_massRange.iMaxFragmentCharge; ++iJump)
                      {
-                        // Backward saltitos:
+                        // Backward jumps:
                         if (g_staticParams.options.bUseDeltaBackJumps)
                         {
-                           deltaXcorrMass = g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass - iSaltito*C13_DIFF;
+                           deltaXcorrMass = g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass - iJump*C13_DIFF;
                            DeltaXcorrSearch(deltaXcorrMass, iWhichQuery, dCalcPepMass, iEndPos, iStartPos, iProteinSeqLengthMinus1,
-                                            szProteinSeq, pbDuplFragment, &dbe, iLenPeptide, "-", iSaltito);
+                                            szProteinSeq, pbDuplFragment, &dbe, iLenPeptide, "-", iJump);
                         }
    
-                        // Forward saltitos:
+                        // Forward jumps:
                         if (g_staticParams.options.bUseDeltaForwardJumps)
                         {
-                           deltaXcorrMass = g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass + iSaltito*C13_DIFF;
+                           deltaXcorrMass = g_pvQuery.at(iWhichQuery)->_pepMassInfo.dExpPepMass - dCalcPepMass + iJump*C13_DIFF;
                            DeltaXcorrSearch(deltaXcorrMass, iWhichQuery, dCalcPepMass, iEndPos, iStartPos, iProteinSeqLengthMinus1,
-                                            szProteinSeq, pbDuplFragment, &dbe, iLenPeptide, "+", iSaltito);
+                                            szProteinSeq, pbDuplFragment, &dbe, iLenPeptide, "+", iJump);
                         }
                      }
-// Comet-PTM end
                   }
 
                }
@@ -2671,7 +2669,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    if (bDecoyPep)
    {
       p_uiBinnedIonMasses = &_uiBinnedIonMassesDecoy;
-      p_uiBinnedIonMassesDelta = &_uiBinnedIonMassesDelta;  // Comet-PTM; here only to avoid compile warning
+      p_uiBinnedIonMassesDelta = &_uiBinnedIonMassesDelta;  // Comet-PTM
    }
    else
    {
@@ -2733,7 +2731,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             y = bin - (x*SPARSE_MATRIX_SIZE);
             dXcorr += ppSparseFastXcorrData[x][y];
 
-// Comet-PTM start
             if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
             {
                vctXcorrs[ctCharge-1][ctIonSeries][XCORR_ID][ctLen] = ppSparseFastXcorrData[x][y];
@@ -2749,7 +2746,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                   }
                }
             }
-// Comet-PTM end
          }
 
          // *(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen].
@@ -3115,39 +3111,48 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
 
-// Comet-PTM start
-      char szTemp[MAX_PEPTIDE_LEN * 2];
-      memcpy(szTemp, szProteinSeq + iStartPos, iLenPeptide);
-      szTemp[iLenPeptide] = '\0';
-
-      std::string sTempYSeries(szTemp);
-      std::string sTempBSeries(szTemp);
-      int iWhichIonSeries;
-
-      for (int j = 0; j < 2; ++j)
+      if (bDeltaXcorrSearch)  // Comet-PTM
       {
-         iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[j];
+         char szTemp[MAX_PEPTIDE_LEN * 2];
+         memcpy(szTemp, szProteinSeq + iStartPos, iLenPeptide);
+         szTemp[iLenPeptide] = '\0';
 
-         int iDeltaAAs = 0;
-         if (vctBitMods[j].any())
+         std::string sTempYSeries(szTemp);
+         std::string sTempBSeries(szTemp);
+         int iWhichIonSeries;
+
+         for (int j = 0; j < 2; ++j)
          {
-            for (size_t i = 0; i < vctBitMods[j].size(); ++i)
+            iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[j];
+
+            int iDeltaAAs = 0;
+            if (vctBitMods[j].any())
             {
-               if (vctBitMods[j][i])
+               for (size_t i = 0; i < vctBitMods[j].size(); ++i)
                {
-                  if (iWhichIonSeries == ION_SERIES_B)
-                     sTempBSeries.insert(i+1 + iDeltaAAs, "<");
-                  else if(iWhichIonSeries == ION_SERIES_Y)
-                     sTempYSeries.insert(i + iDeltaAAs, ">");
-                  ++iDeltaAAs;
+                  if (vctBitMods[j][i])
+                  {
+                     if (iWhichIonSeries == ION_SERIES_B)
+                        sTempBSeries.insert(i+1 + iDeltaAAs, "<");
+                     else if(iWhichIonSeries == ION_SERIES_Y)
+                        sTempYSeries.insert(i + iDeltaAAs, ">");
+                     ++iDeltaAAs;
+                  }
                }
             }
          }
-      }
 
-      strcpy(pQuery->_pResults[siLowestSpScoreIndex].szDeltaBSeries, const_cast<char*>(sTempBSeries.c_str()));
-      strcpy(pQuery->_pResults[siLowestSpScoreIndex].szDeltaYSeries, const_cast<char*>(sTempYSeries.c_str()));
-// Comet-PTM end
+         strcpy(pQuery->_pResults[siLowestSpScoreIndex].szDeltaBSeries, const_cast<char*>(sTempBSeries.c_str()));
+         strcpy(pQuery->_pResults[siLowestSpScoreIndex].szDeltaYSeries, const_cast<char*>(sTempYSeries.c_str()));
+
+         pQuery->_pResults[siLowestSpScoreIndex].dDeltaXcorrMass = dDeltaXcorrMass;
+         pQuery->_pResults[siLowestSpScoreIndex].sDeltaJumps = sDeltaJumps;
+      }
+      else
+      {
+         pQuery->_pResults[siLowestSpScoreIndex].dDeltaXcorrMass = 0.0;
+         pQuery->_pResults[siLowestSpScoreIndex].sDeltaJumps = "";
+      }
 
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
@@ -3162,20 +3167,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
-
-// Comet-PTM start
-      if (bDeltaXcorrSearch)
-      {
-         pQuery->_pResults[siLowestSpScoreIndex].dDeltaXcorrMass = dDeltaXcorrMass;
-         pQuery->_pResults[siLowestSpScoreIndex].sDeltaJumps = sDeltaJumps;
-      }
-      else
-      {
-         pQuery->_pResults[siLowestSpScoreIndex].dDeltaXcorrMass = 0.0;
-         pQuery->_pResults[siLowestSpScoreIndex].sDeltaJumps = "";
-      }
       pQuery->_pResults[siLowestSpScoreIndex].iModPos = iModPos;
-// Comet-PTM end
 
       if (g_staticParams.bRealtimeSearch && g_staticParams.bIndexDb)
       {
@@ -3391,19 +3383,15 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                }
             }
 
-// Comet-PTM start
             // If bIsDuplicate & deltaX search, check delta_mod to see if peptide already stored.
-            if (bIsDuplicate && bDeltaXcorrSearch)
+            if (bIsDuplicate && bDeltaXcorrSearch)  // Comet-PTM
             {
-               // marco bug fix start
                int flooring = 1e7;
                if (floor(pQuery->_pResults[i].dDeltaXcorrMass * flooring) == floor(dDeltaXcorrMass * flooring))
                   bIsDuplicate = 1;
                else
                   bIsDuplicate = 0;
-               // marco bug fix end
             }
-// Comet-PTM end
 
             if (bIsDuplicate)
             {
@@ -5373,8 +5361,8 @@ void CometSearch::DeltaXcorrSearch(const double& dDeltaXcorrMass,
                                    bool* pbDuplFragment,
                                    struct sDBEntry *dbe,
                                    const int& iLenPeptide,
-                                   std::string sSaltito /*= "0"*/,
-                                   int iSaltito /*= 0*/)
+                                   std::string sJump /*= "0"*/,
+                                   int iJump /*= 0*/)
 {
    bool bDeltaXcorrSearch = g_staticParams.options.bUseDeltaXcorr &&
       ((dDeltaXcorrMass > -g_staticParams.options.dDeltaOuterTol && dDeltaXcorrMass < -g_staticParams.options.dDeltaInnerTol) ||
@@ -5456,16 +5444,16 @@ void CometSearch::DeltaXcorrSearch(const double& dDeltaXcorrMass,
       {
          int piVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
 
-         if (iSaltito != 0)
+         if (iJump != 0)
          {
             char buffer[2];
-            sprintf(buffer, "%d", iSaltito);
-            sSaltito += buffer;
+            sprintf(buffer, "%d", iJump);
+            sJump += buffer;
          }
 
          // XcorrScore now takes into account deltaXcorr
-         XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, false, dCalcPepMass, false, iWhichQuery, iLenPeptide,
-                    piVarModSites, dbe, bDeltaXcorrSearch, dDeltaXcorrMass, sSaltito);
+         XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, false, dCalcPepMass, false,
+               iWhichQuery, iLenPeptide, piVarModSites, dbe, bDeltaXcorrSearch, dDeltaXcorrMass, sJump);
       }
 
    }
