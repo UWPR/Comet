@@ -328,11 +328,15 @@ static bool compareByPeptideMass(Query const* a, Query const* b)
 
 static bool compareByMangoIndex(Query const* a, Query const* b)
 {
-      return (a->dMangoIndex < b->dMangoIndex);
+   return (a->dMangoIndex < b->dMangoIndex);
 }
 
 static bool compareByScanNumber(Query const* a, Query const* b)
 {
+   // sort by charge state if same scan number
+   if (a->_spectrumInfoInternal.iScanNumber == b->_spectrumInfoInternal.iScanNumber)
+      return (a->_spectrumInfoInternal.iChargeState < b->_spectrumInfoInternal.iChargeState);
+
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }
 
@@ -2244,9 +2248,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    if (!bSucceeded)
       goto cleanup_results;
-
-   // Sort g_pvQuery vector by dExpPepMass.
-   //std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
 
    g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
