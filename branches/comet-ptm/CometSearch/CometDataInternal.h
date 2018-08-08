@@ -862,6 +862,7 @@ struct Query
       _uliNumMatchedDecoyPeptides = 0;
 
       ppfSparseSpScoreData = NULL;
+      ppfSparseQScoreData = NULL;  // Comet-PTM
       ppfSparseFastXcorrData = NULL;
       ppfSparseFastXcorrDataNL = NULL;          // pfFastXcorrData with NH3, H2O contributions
 
@@ -899,9 +900,20 @@ struct Query
       {
          if (ppfSparseSpScoreData[i] != NULL)
             delete[] ppfSparseSpScoreData[i];
+         if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
+         {
+            if (ppfSparseQScoreData[i] != NULL)
+               delete[] ppfSparseQScoreData[i];
+         }
       }
       delete[] ppfSparseSpScoreData;
       ppfSparseSpScoreData = NULL;
+
+      if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
+      {
+         delete[] ppfSparseQScoreData;
+         ppfSparseQScoreData = NULL;
+      }
 
       for (i=0;i<iFastXcorrData;i++)
       {

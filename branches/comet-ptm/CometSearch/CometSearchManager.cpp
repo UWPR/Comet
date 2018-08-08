@@ -1164,7 +1164,6 @@ bool CometSearchManager::InitializeStaticParams()
       + g_staticParams.staticModifications.dAddCterminusPeptide
       + g_staticParams.staticModifications.dAddNterminusPeptide;
 
-
    if (g_staticParams.options.bUseDeltaXcorr)  // Comet-PTM
       g_staticParams.options.bOutputTxtFile = 1;
 
