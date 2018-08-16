@@ -2851,10 +2851,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             }
          }
       }
-   }
 
-   if (bestPos != -1)
-      dXcorr = *best;
+      if (bestPos != -1)
+         dXcorr = *best;
+   }
 // Comet-PTM end
 
 

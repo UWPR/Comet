@@ -361,9 +361,11 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   if ( !(dFragmentIonMass <= FLOAT_ZERO))
                   {
                      int iFragmentIonMass = BIN(dFragmentIonMass);
-                     float fSpScore;
+                     float fSpScore,
+                           fQScore;  // Comet-PTM
 
                      fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
+                     fQScore = FindQScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass);
 
                      if (fSpScore > FLOAT_ZERO)
                      {
@@ -371,6 +373,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
                         // Simple sum intensity.
                         dTmpIntenMatch += fSpScore;
+                        dQTmpIntenMatch += fQScore;
 
                         // Increase score for consecutive fragment ion series matches.
                         if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
@@ -387,54 +390,8 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             }
          }
 
-
          if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
          {
-            // Comet-PTM: new QScore for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
-            for (ctCharge=1; ctCharge<=iMaxFragCharge+1; ctCharge++)
-            {  
-               for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
-               {  
-                  int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
-                  
-                  // As both _pdAAforward and _pdAAreverse are increasing, loop through
-                  // iLenPeptide-1 to complete set of internal fragment ions.
-                  for (int iii=0; iii<pOutput[i].iLenPeptide-1; iii++)
-                  {  
-                     // Gets fragment ion mass.
-                     dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
-                     
-                     if ( !(dFragmentIonMass <= FLOAT_ZERO))
-                     {  
-                        int iFragmentIonMass = BIN(dFragmentIonMass);
-                        float fSpScore, fQScore;
-                        
-                        fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
-                        fQScore = FindQScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass);
-                        
-                        if (fSpScore > FLOAT_ZERO)
-                        {  
-                           iMatchedFragmentIonCt++;
-                           
-                           // Simple sum intensity.
-                           dTmpIntenMatch += fSpScore;
-                           dQTmpIntenMatch += fQScore;
-                           
-                           // Increase score for consecutive fragment ion series matches.
-                           if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
-                              dConsec += 0.075;
-                           
-                           ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
-                        }
-                        else
-                        {  
-                           ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
-                        }
-                     }
-                  }
-               }
-            }
-
             // calculate qscore
             float fPrecursorMass = g_pvQuery.at(iWhichQuery)->_precursorMZIntensity.mz;
             float fTemp = fPrecursorMass*((g_pvQuery.at(iWhichQuery))->_spectrumInfoInternal).iChargeState;
