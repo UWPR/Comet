@@ -101,9 +101,21 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "next_aa\t");
    fprintf(fpout, "protein\t");
    fprintf(fpout, "protein_count\t");
-   fprintf(fpout, "modifications\n");
+   fprintf(fpout, "modifications\t");
+   fprintf(fpout, "retention_time");
 
+   if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
+   {
+      fprintf(fpout, "\t");
+      fprintf(fpout, "exp_mz\t");
+      fprintf(fpout, "delta_mods\t");
+      fprintf(fpout, "b_series_delta_mods\t");
+      fprintf(fpout, "y_series_delta_mods\t");
+      fprintf(fpout, "delta_jumps\t");
+      fprintf(fpout, "delta_peptide");
+   }
 
+   fprintf(fpout, "\n");
 
 #endif
 }
@@ -216,7 +228,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // prints modification encoding
          PrintModifications(fpout, pOutput, iWhichResult);
-         fprintf("\t");
+         fprintf(fpout, "\t");
 
          // Print protein reference/accession.
          char szProteinName[100];
@@ -530,6 +542,39 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
+         fprintf(fpout, "\t");
+
+         fprintf(fpout, "%0.2f\t", pQuery->_spectrumInfoInternal.dRTime/60.0);
+
+         if (g_staticParams.options.bUseDeltaXcorr) // Comet-PTM
+         {
+            fprintf(fpout, "%0.6f\t", pQuery->_precursorMZIntensity.mz);
+
+            // prints deltaXcorrMass used to calculate deltaXcorr
+            fprintf(fpout, "%0.7f\t", pOutput[iWhichResult].dDeltaXcorrMass); // delta_mods
+
+            // Print deltaX modified peptides
+            fprintf(fpout, "%s\t", pOutput[iWhichResult].szDeltaBSeries);  // b_series_delta_mods
+            fprintf(fpout, "%s\t", pOutput[iWhichResult].szDeltaYSeries);  // y_series_delta_mods
+
+            // print saltitos indicator
+            std::string sDeltaJumps = pOutput[iWhichResult].sDeltaJumps;
+            if (sDeltaJumps.empty())
+               fprintf(fpout, "\t");
+            else
+               fprintf(fpout, "'%s'\t", pOutput[iWhichResult].sDeltaJumps.c_str());  // delta_jumps
+
+            // delta_peptide
+            for (int i = 0; i < pOutput[iWhichResult].iLenPeptide; i++)
+            {
+               fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
+
+               if (i == pOutput[iWhichResult].iModPos)
+               {
+                  fprintf(fpout, "[%0.2f]", ((int)(100 * pOutput[iWhichResult].dDeltaXcorrMass) / 100.0));
+               }
+            }
+         }
 
          fprintf(fpout, "\n");
       }
@@ -670,4 +715,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
 
       fprintf(fpout, "%d_p_%c", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
    }
+
+   if (bFirst)
+      fprintf(fpout, "."); // to not have empty modification field
 }
