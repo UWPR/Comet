@@ -1036,9 +1036,43 @@ bool CometSearch::IndexSearch(FILE *fp)
    fread(lReadIndex, lSizeLong, iMaxMass+1, fp);
 
    // analyze no variable mods
+ 
+   // mass extension to account for isotope errors in index search
+   double dMassExtensionStart = 0.0;
+   double dMassExtensionEnd = 0.0;
 
-   int iStart = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass;
-   int iEnd = (int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass + 1;
+   if (g_staticParams.tolerances.iIsotopeError == 1)
+   {
+      dMassExtensionStart = C13_DIFF;
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 2)
+   {
+      dMassExtensionStart = C13_DIFF + C13_DIFF;
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 3)
+   {
+      dMassExtensionStart = C13_DIFF + C13_DIFF + C13_DIFF;
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 4)
+   {
+      dMassExtensionStart = 8.014199;
+      dMassExtensionEnd   = 8.014199;
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 5)
+   {
+      dMassExtensionStart = C13_DIFF + C13_DIFF + C13_DIFF;
+      dMassExtensionEnd   = C13_DIFF;
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 6)
+   {
+      dMassExtensionStart = C13_DIFF + C13_DIFF + C13_DIFF;
+      dMassExtensionEnd   = C13_DIFF + C13_DIFF + C13_DIFF;
+   }
+
+
+   int iStart = (int)(g_pvQuery.at(0)->_pepMassInfo.dExpPepMass - dMassExtensionStart) - 1;
+   int iEnd = (int)(g_pvQuery.at(0)->_pepMassInfo.dExpPepMass + dMassExtensionEnd) + 1;
+
    if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass)
    {
       delete [] lReadIndex;
