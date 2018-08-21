@@ -882,9 +882,9 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("peptide_length_range", intRangeData))
    {
       if (intRangeData.iStart >= 0)
-         g_staticParams.options.iPeptideLengthLow = intRangeData.iStart;
+         g_staticParams.options.iPeptideLengthMin = intRangeData.iStart;
       if (intRangeData.iEnd == 0 || intRangeData.iEnd >= intRangeData.iStart)
-         g_staticParams.options.iPeptideLengthHigh = intRangeData.iEnd;
+         g_staticParams.options.iPeptideLengthMax = intRangeData.iEnd;
    }
 
    if (GetParamValue("ms_level", iIntData))

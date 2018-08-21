@@ -107,8 +107,8 @@ struct Options             // output parameters
    int bOverrideCharge;
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
-   int iPeptideLengthLow;        // minimum peptide length
-   int iPeptideLengthHigh;       // maximum peptide length
+   int iPeptideLengthMin;        // minimum peptide length
+   int iPeptideLengthMax;       // maximum peptide length
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;
    double dRemovePrecursorTol;
@@ -166,8 +166,8 @@ struct Options             // output parameters
       clearMzRange = a.clearMzRange;
       dPeptideMassLow = a.dPeptideMassLow;
       dPeptideMassHigh = a.dPeptideMassHigh;
-      iPeptideLengthLow = a.iPeptideLengthLow;
-      iPeptideLengthHigh = a.iPeptideLengthHigh;
+      iPeptideLengthMin = a.iPeptideLengthMin;
+      iPeptideLengthMax = a.iPeptideLengthMax;
 // Comet-PTM start
       bUseDeltaXcorr = a.bUseDeltaXcorr;
       dDeltaOuterTol = a.dDeltaOuterTol;
@@ -718,8 +718,8 @@ struct StaticParams
       options.dMinIntensity = 0.0;
       options.dPeptideMassLow = 600.0;
       options.dPeptideMassHigh = 8000.0;
-      options.iPeptideLengthLow = 0;
-      options.iPeptideLengthHigh = 0;
+      options.iPeptideLengthMin = 0;
+      options.iPeptideLengthMax = 0;
       strcpy(options.szActivationMethod, "ALL");
       // End of mzXML specific parameters.
 
