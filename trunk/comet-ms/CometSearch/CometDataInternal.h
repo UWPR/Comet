@@ -549,7 +549,6 @@ struct StaticParams
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
    int             bIndexDb;                 // 0 = normal fasta; 1 = indexed database
-   int             bRealtimeSearch;          // 0 = no; 1 = online/realtime search of single spectra
    vector<double>  vectorMassOffsets;
    char            szDIAWindowsFile[SIZE_FILE];
 
@@ -563,7 +562,6 @@ struct StaticParams
 
       iXcorrProcessingOffset = 75;
       bIndexDb = 0;
-      bRealtimeSearch = 0;
 
       databaseInfo.szDatabase[0] = '\0';
 

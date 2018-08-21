@@ -2181,8 +2181,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 int iNumFragIons,
                                                 double* pdReturnScores)
 {
-   g_staticParams.bRealtimeSearch = 1;
-
    if (!InitializeStaticParams())
       return false;
 

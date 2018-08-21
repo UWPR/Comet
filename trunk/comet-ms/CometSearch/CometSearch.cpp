@@ -1035,7 +1035,6 @@ bool CometSearch::IndexSearch(FILE *fp)
 
    fread(lReadIndex, lSizeLong, iMaxMass+1, fp);
 
-   // analyze no variable mods
  
    // mass extension to account for isotope errors in index search
    double dMassExtensionStart = 0.0;
@@ -1069,9 +1068,10 @@ bool CometSearch::IndexSearch(FILE *fp)
       dMassExtensionEnd   = C13_DIFF + C13_DIFF + C13_DIFF;
    }
 
+   // analyze no variable mods
 
-   int iStart = (int)(g_pvQuery.at(0)->_pepMassInfo.dExpPepMass - dMassExtensionStart) - 1;
-   int iEnd = (int)(g_pvQuery.at(0)->_pepMassInfo.dExpPepMass + dMassExtensionEnd) + 1;
+   int iStart = (int)(g_pvQuery.at(0)->_pepMassInfo.dExpPepMass - dMassExtensionStart) - 1;  // smallest mass/index start
+   int iEnd = (int)(g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dExpPepMass + dMassExtensionEnd) + 1;  // largest mass/index end
 
    if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass)
    {
@@ -1123,8 +1123,8 @@ bool CometSearch::IndexSearch(FILE *fp)
       {
          double dMassAddition = i * g_staticParams.variableModParameters.varModList[0].dVarModMass;
  
-         iStart = (int)(g_massRange.dMinMass - i * g_staticParams.variableModParameters.varModList[0].dVarModMass);
-         iEnd = (int)(g_massRange.dMaxMass - i * g_staticParams.variableModParameters.varModList[0].dVarModMass);
+         iStart = (int)(g_massRange.dMinMass - dMassExtensionStart - i * g_staticParams.variableModParameters.varModList[0].dVarModMass) - 1;
+         iEnd = (int)(g_massRange.dMaxMass + dMassExtensionStart - i * g_staticParams.variableModParameters.varModList[0].dVarModMass) + 1;
 
          if (iStart < iMinMass)
             iStart = iMinMass;
@@ -2847,11 +2847,12 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
 
-      if (g_staticParams.bRealtimeSearch && g_staticParams.bIndexDb)
+      if (g_staticParams.bIndexDb)
       {
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = _proteinInfo.cPrevAA;
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = _proteinInfo.cNextAA;
       }
+      else
       {
          if (iStartPos == 0)
             pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = '-';
@@ -2962,7 +2963,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
 
-      if (g_staticParams.bRealtimeSearch && g_staticParams.bIndexDb)
+      if (g_staticParams.bIndexDb)
       {
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = _proteinInfo.cPrevAA;
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = _proteinInfo.cNextAA;
