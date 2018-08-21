@@ -1035,43 +1035,10 @@ bool CometSearch::IndexSearch(FILE *fp)
 
    fread(lReadIndex, lSizeLong, iMaxMass+1, fp);
 
- 
-   // mass extension to account for isotope errors in index search
-   double dMassExtensionStart = 0.0;
-   double dMassExtensionEnd = 0.0;
-
-   if (g_staticParams.tolerances.iIsotopeError == 1)
-   {
-      dMassExtensionStart = C13_DIFF;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 2)
-   {
-      dMassExtensionStart = C13_DIFF + C13_DIFF;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 3)
-   {
-      dMassExtensionStart = C13_DIFF + C13_DIFF + C13_DIFF;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 4)
-   {
-      dMassExtensionStart = 8.014199;
-      dMassExtensionEnd   = 8.014199;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 5)
-   {
-      dMassExtensionStart = C13_DIFF + C13_DIFF + C13_DIFF;
-      dMassExtensionEnd   = C13_DIFF;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 6)
-   {
-      dMassExtensionStart = C13_DIFF + C13_DIFF + C13_DIFF;
-      dMassExtensionEnd   = C13_DIFF + C13_DIFF + C13_DIFF;
-   }
-
    // analyze no variable mods
 
-   int iStart = (int)(g_pvQuery.at(0)->_pepMassInfo.dExpPepMass - dMassExtensionStart) - 1;  // smallest mass/index start
-   int iEnd = (int)(g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dExpPepMass + dMassExtensionEnd) + 1;  // largest mass/index end
+   int iStart = (int)(g_massRange.dMinMass) - 1;  // smallest mass/index start
+   int iEnd = (int)(g_massRange.dMaxMass) + 1;  // largest mass/index end
 
    if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass)
    {
@@ -1123,8 +1090,8 @@ bool CometSearch::IndexSearch(FILE *fp)
       {
          double dMassAddition = i * g_staticParams.variableModParameters.varModList[0].dVarModMass;
  
-         iStart = (int)(g_massRange.dMinMass - dMassExtensionStart - i * g_staticParams.variableModParameters.varModList[0].dVarModMass) - 1;
-         iEnd = (int)(g_massRange.dMaxMass + dMassExtensionStart - i * g_staticParams.variableModParameters.varModList[0].dVarModMass) + 1;
+         iStart = (int)(g_massRange.dMinMass - i * g_staticParams.variableModParameters.varModList[0].dVarModMass) - 1;
+         iEnd = (int)(g_massRange.dMaxMass - i * g_staticParams.variableModParameters.varModList[0].dVarModMass) + 1;
 
          if (iStart < iMinMass)
             iStart = iMinMass;
@@ -1151,6 +1118,7 @@ bool CometSearch::IndexSearch(FILE *fp)
                int iResidueModCount = 0;
                for (int j=0; j<(int)strlen(g_staticParams.variableModParameters.varModList[0].szVarModChar); j++)
                   iResidueModCount += sTmp.iAAComposition[g_staticParams.variableModParameters.varModList[0].szVarModChar[j] - 65];
+
                if (iResidueModCount >= i)
                {
                   for (int j=0; j<VMODS; j++)
