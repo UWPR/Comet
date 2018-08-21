@@ -62,7 +62,7 @@ bool CometIndexDb::CreateIndex(void)
    bool bSucceeded = true;
    sDBEntry dbe;
    FILE *fptr;
-   int iTmpCh = 0;
+   int iTmpCh;
    bool bTrimDescr = false;
    char szOut[1024];
 
@@ -102,6 +102,7 @@ bool CometIndexDb::CreateIndex(void)
    vector<struct IndexProteinStruct> vProtein;  // just store a list of protein names
 
    // Loop through entire database.
+   iTmpCh = getc(fptr);
    while (!feof(fptr))
    {
       dbe.strName = "";
