@@ -362,10 +362,11 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   {
                      int iFragmentIonMass = BIN(dFragmentIonMass);
                      float fSpScore,
-                           fQScore;  // Comet-PTM
+                           fQScore = 0.0;  // Comet-PTM
 
                      fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
-                     fQScore = FindQScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass);
+                     if (g_staticParams.options.bUseDeltaXcorr)
+                        fQScore = FindQScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass);
 
                      if (fSpScore > FLOAT_ZERO)
                      {

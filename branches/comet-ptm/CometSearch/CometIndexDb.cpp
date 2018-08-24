@@ -406,19 +406,31 @@ bool CometIndexDb::CheckEnzymeTermini(char *szProteinSeq,
       bool bBeginCleavage=0;
       bool bEndCleavage=0;
       bool bBreakPoint;
-      int iOneMinusEnzymeOffSet = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
-      int iTwoMinusEnzymeOffSet = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
       int iCountInternalCleavageSites=0;
 
       bBeginCleavage = (iStartPos==0
             || szProteinSeq[iStartPos-1]=='*'
-            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + iOneMinusEnzymeOffSet])
-               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
+            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos - g_staticParams.enzymeInformation.iSearchEnzymeOffSet])
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos - g_staticParams.enzymeInformation.iSearchEnzymeOffSet + 1])));
 
       bEndCleavage = (iEndPos==(int)(_proteinInfo.iProteinSeqLength-1)
             || szProteinSeq[iEndPos+1]=='*'
-            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
-               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
+            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos - g_staticParams.enzymeInformation.iSearchEnzymeOffSet + 1])
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos - g_staticParams.enzymeInformation.iSearchEnzymeOffSet + 2])));
+
+      if (g_staticParams.enzymeInformation.szSearchEnzyme2Name[0] != '\0')
+      {
+         if (!bBeginCleavage)
+         {
+            bBeginCleavage = strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iStartPos - g_staticParams.enzymeInformation.iSearchEnzyme2OffSet])
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iStartPos - g_staticParams.enzymeInformation.iSearchEnzyme2OffSet + 1]);
+         }
+         if (!bEndCleavage)
+         {
+            bEndCleavage = strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iEndPos - g_staticParams.enzymeInformation.iSearchEnzyme2OffSet + 1])
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iEndPos - g_staticParams.enzymeInformation.iSearchEnzyme2OffSet + 2]);
+         }
+      }
 
       if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)      // Check full enzyme search.
       {
@@ -445,20 +457,19 @@ bool CometIndexDb::CheckEnzymeTermini(char *szProteinSeq,
       int i;
       for (i=iStartPos; i<=iEndPos; i++)
       {
-         bBreakPoint = strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[i+iOneMinusEnzymeOffSet])
-            && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[i+iTwoMinusEnzymeOffSet]);
+         bBreakPoint = strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[i+g_staticParams.enzymeInformation.iSearchEnzymeOffSet-1])
+            && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[i+g_staticParams.enzymeInformation.iSearchEnzymeOffSet-2]);
 
          if (bBreakPoint)
          {
-            if ((iOneMinusEnzymeOffSet == 0 && i!=iEndPos)  // Ignore last residue.
-                  || (iOneMinusEnzymeOffSet == 1 && i!= iStartPos))  // Ignore first residue.
+            if ((g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1 && i!=iEndPos)  // Ignore last residue.
+                  || (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 0 && i!= iStartPos))  // Ignore first residue.
             {
                iCountInternalCleavageSites++;
 
-               // Need to include -iOneMinusEnzymeOffSet in if statement below because for
-               // AspN cleavage, the very last residue, if followed by a D, will be counted
-               // as an internal cleavage site.
-               if (iCountInternalCleavageSites-iOneMinusEnzymeOffSet > g_staticParams.enzymeInformation.iAllowedMissedCleavage)
+               // Account for iSearchEnzymeOffset -1 below as for AspN cleavage,the very last
+               // residue, if followed by a D, will be counted as an internal cleavage site.
+               if (iCountInternalCleavageSites + g_staticParams.enzymeInformation.iSearchEnzymeOffSet -1 > g_staticParams.enzymeInformation.iAllowedMissedCleavage)
                   return false;
             }
          }

@@ -1019,7 +1019,9 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("[COMET_ENZYME_INFO]", g_staticParams.enzymeInformation);
    if (!strncmp(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, "-", 1)
-         && !strncmp(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, "-", 1))
+         && !strncmp(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, "-", 1)
+         && !strncmp(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, "-", 1)
+         && !strncmp(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, "-", 1))
    {
       g_staticParams.options.bNoEnzymeSelected = 1;
    }

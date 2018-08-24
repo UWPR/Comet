@@ -193,6 +193,7 @@ void LoadParameters(char *pszParamsFile,
    double dTempMass,
           dDoubleParam;
    int   iSearchEnzymeNumber = 1,
+         iSearchEnzyme2Number = -1,
          iSampleEnzymeNumber = 1,
          iIntParam,
          iAllowedMissedCleavages = 2;
@@ -900,6 +901,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iSearchEnzymeNumber);
                pSearchMgr->SetParam("search_enzyme_number", szParamStringVal, iSearchEnzymeNumber);
             }
+            else if (!strcmp(szParamName, "search_enzyme2_number"))
+            {
+               sscanf(szParamVal, "%d", &iSearchEnzyme2Number);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iSearchEnzyme2Number);
+               pSearchMgr->SetParam("search_enzyme2_number", szParamStringVal, iSearchEnzyme2Number);
+            }
             else if (!strcmp(szParamName, "sample_enzyme_number"))
             {
                sscanf(szParamVal, "%d", &iSampleEnzymeNumber);
@@ -1127,12 +1135,12 @@ void LoadParameters(char *pszParamsFile,
 
    // Get enzyme specificity.
    char szSearchEnzymeName[ENZYME_NAME_LEN];
-   szSearchEnzymeName[0] = '\0';
+   char szSearchEnzyme2Name[ENZYME_NAME_LEN];
    char szSampleEnzymeName[ENZYME_NAME_LEN];
-   szSampleEnzymeName[0] = '\0';
    EnzymeInfo enzymeInformation;
 
    strcpy(szSearchEnzymeName, "-");
+   strcpy(szSearchEnzyme2Name, "-");
    strcpy(szSampleEnzymeName, "-");
 
    string enzymeInfoStrVal;
@@ -1151,6 +1159,16 @@ void LoadParameters(char *pszParamsFile,
                &enzymeInformation.iSearchEnzymeOffSet,
                enzymeInformation.szSearchEnzymeBreakAA,
                enzymeInformation.szSearchEnzymeNoBreakAA);
+      }
+
+      if (iCurrentEnzymeNumber == iSearchEnzyme2Number)
+      {
+         sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
+               &dTempMass,
+               enzymeInformation.szSearchEnzyme2Name,
+               &enzymeInformation.iSearchEnzyme2OffSet,
+               enzymeInformation.szSearchEnzyme2BreakAA,
+               enzymeInformation.szSearchEnzyme2NoBreakAA);
       }
 
       if (iCurrentEnzymeNumber == iSampleEnzymeNumber)
