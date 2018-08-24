@@ -1567,7 +1567,7 @@ add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.0
 0.  No_enzyme              0      -           -\n\
 1.  Trypsin                1      KR          P\n\
 2.  Trypsin/P              1      KR          -\n\
-3.  Lys_C                  1      K           P\n\
+3.  Lys_C                  1      K           -\n\
 4.  Lys_N                  0      K           -\n\
 5.  Arg_C                  1      R           P\n\
 6.  Asp_N                  0      D           -\n\
