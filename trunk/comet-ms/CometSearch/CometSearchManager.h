@@ -18,6 +18,7 @@
 #define _COMETSEARCHMANAGER_H_
 
 #include "CometData.h"
+#include "CometDataInternal.h"
 #include "CometInterfaces.h"
 
 using namespace CometInterfaces;
@@ -73,6 +74,11 @@ public:
 
 private:
    bool InitializeStaticParams();
+   static bool CompareByPeptide(const DBIndex &lhs,
+                                const DBIndex &rhs);
+   static bool CompareByMass(const DBIndex &lhs,
+                             const DBIndex &rhs);
+
 
    std::map<std::string, CometParam*> _mapStaticParams;
 };

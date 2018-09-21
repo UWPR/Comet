@@ -331,19 +331,47 @@ struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];
-   int    iAAComposition[26];   // 0=A, 26=Z
-   double dPepMass;             // mono neutral pep mass
-   long   lFP;                  // file position index to protein reference
+   int    piVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
+   long   lProteinFilePosition;              // file position index to protein reference
+   double dPepMass;                          // mono neutral pep mass
 
    bool operator==(const DBIndex &rhs) const
    {
-      return (!strcmp(szPeptide, rhs.szPeptide));
+      if (!strcmp(szPeptide, rhs.szPeptide))
+      {
+         // peptides are same here
+
+         if (dPepMass != rhs.dPepMass)
+            return false;
+
+         // masses are the same at this point
+         // next compare modification states
+         bool bSame = true;
+         for (unsigned int i=0; i<strlen(szPeptide)+2; i++)
+         {
+            if (piVarModSites[i] != rhs.piVarModSites[i])
+            {
+               bSame = false;
+               break;
+            }
+         }
+
+         if (bSame)  // if same peptide with same mods
+            return true;
+         else
+            return false;
+      }
+
+      // peptides are different
+      return false;
    }
 };
 
 struct IndexProteinStruct  // for indexed database
 {
    char szProt[WIDTH_REFERENCE];
+   long lProteinFilePosition;
+   int  iWhichProtein;
 };
 
 struct PEFFInfo
@@ -732,11 +760,13 @@ struct StaticParams
 
 };
 
-extern StaticParams g_staticParams;
+extern StaticParams    g_staticParams;
 
-extern vector<double> g_pvDIAWindows;    // vector of start-end masses for DIA window; even number start mass, odd number end mass
+extern vector<double>  g_pvDIAWindows;    // vector of start-end masses for DIA window; even number start mass, odd number end mass
 
-extern vector<string> g_pvProteinNames;
+extern vector<IndexProteinStruct>  g_pvProteinNames;
+
+extern vector<DBIndex> g_pvDBIndex;
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

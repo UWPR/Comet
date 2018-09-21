@@ -199,8 +199,7 @@ private:
                        int iDirection,
                        char *sDNASequence);
    void AnalyzeIndexPep(int iWhichQuery,
-                        char *szProteinSeq,
-                        double dCalcPepMass,
+                        DBIndex sTmp,
                         bool *pbDuplFragment,
                         struct sDBEntry *dbe);
 

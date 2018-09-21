@@ -3,7 +3,7 @@ GCC = gcc
 MSTOOLKIT = ../MSToolkit
 override CXXFLAGS += -O3 -fpermissive -Wall -Wextra -Wno-write-strings -static -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTOOLKIT)/include
 
-COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometIndexDb.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o CometCheckForUpdates.o
+COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o CometCheckForUpdates.o
 
 all:  $(COMETSEARCH)
 	ar rcs libcometsearch.a $(COMETSEARCH)
@@ -15,8 +15,6 @@ Threading.o:          Threading.cpp Threading.h
 	${CXX} ${CXXFLAGS} Threading.cpp -c
 CometSearch.o:        CometSearch.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
 	${CXX} ${CXXFLAGS} CometSearch.cpp -c
-CometIndexDb.o:        CometIndexDb.cpp Common.h CometData.h CometDataInternal.h CometIndexDb.h CometInterfaces.h ThreadPool.h
-	${CXX} ${CXXFLAGS} CometIndexDb.cpp -c
 CometPreprocess.o:    CometPreprocess.cpp Common.h CometData.h CometDataInternal.h CometPreprocess.h CometInterfaces.h $(MSTOOLKIT)
 	${CXX} ${CXXFLAGS} CometPreprocess.cpp -c
 CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometInterfaces.h
@@ -35,7 +33,7 @@ CometWriteTxt.o:      CometWriteTxt.cpp Common.h CometData.h CometDataInternal.h
 	${CXX} ${CXXFLAGS} CometWriteTxt.cpp -c
 CometCheckForUpdates.o:   CometCheckForUpdates.cpp Common.h CometCheckForUpdates.h
 	${CXX} ${CXXFLAGS} CometCheckForUpdates.cpp -c
-CometSearchManager.o:     CometSearchManager.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometIndexDb.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h CometCheckForUpdates.h
+CometSearchManager.o:     CometSearchManager.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h CometCheckForUpdates.h
 	${CXX} ${CXXFLAGS} CometSearchManager.cpp -c
-CometInterfaces.o:      CometInterfaces.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometIndexDb.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h
+CometInterfaces.o:      CometInterfaces.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometInterfaces.cpp -c
