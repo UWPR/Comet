@@ -1102,13 +1102,14 @@ bool CometSearch::IndexSearch(FILE *fp)
       return false;
    }
 
-
+/*
 for (int x=0; x<VMODS; x++)
    if (g_staticParams.staticModifications.pdStaticMods[x] != 0.0)
       printf("OK3 varmod[%d] = %f\n", x, g_staticParams.staticModifications.pdStaticMods[x]);
 for (int x=65; x<95; x++)
    if (g_staticParams.staticModifications.pdStaticMods[x] != 0.0)
       printf("OK4 staticmod[%c] = %f\n", x, g_staticParams.staticModifications.pdStaticMods[x]);
+*/
 
    // read fp of index
    fseek(fp, -lSizeLong, SEEK_END);
@@ -1122,8 +1123,6 @@ for (int x=65; x<95; x++)
    fread(&iMinMass, sizeof(int), 1, fp);
    fread(&iMaxMass, sizeof(int), 1, fp);
    fread(&iNumPeptides, sizeof(int), 1, fp);
-
-printf("OK  min %d max %d, numpep %d\n", iMinMass, iMaxMass, iNumPeptides);
 
    long *lReadIndex = new long[iMaxMass+1];
    for (int i=0; i<iMaxMass+1; i++)
@@ -1204,7 +1203,8 @@ printf("OK  min %d max %d, numpep %d\n", iMinMass, iMaxMass, iNumPeptides);
       fread(g_pvQuery.at(0)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
    }
 
-printf("OK  peptide %s, score %f, prot %s\n", g_pvQuery.at(0)->_pResults[0].szPeptide, g_pvQuery.at(0)->_pResults[0].fXcorr, g_pvQuery.at(0)->_pResults[0].szSingleProtein);
+//printf("OK  peptide %s, score %f, prot %s\n", g_pvQuery.at(0)->_pResults[0].szPeptide, g_pvQuery.at(0)->_pResults[0].fXcorr, g_pvQuery.at(0)->_pResults[0].szSingleProtein);
+
    delete [] lReadIndex;
 
    return true;
