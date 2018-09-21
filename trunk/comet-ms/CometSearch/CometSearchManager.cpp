@@ -30,7 +30,6 @@
 #include "CometSearchManager.h"
 #include "CometStatus.h"
 #include "CometCheckForUpdates.h"
-#include "CometIndexDb.h"
 
 #undef PERF_DEBUG
 
