@@ -1078,13 +1078,16 @@ bool CometSearch::IndexSearch(FILE *fp)
          char delims[] = " ";
          int x=0;
 
-         bFoundVariable = true;
          tok=strtok(szBuf+13, delims);
          while (tok != NULL)
          {
-            tok = strtok (NULL, delims); // skip list of residues
+            tok = strtok (NULL, delims); // skip list of var mod residues
             // for index search, storing variable mods 0-9 in pdStaticMods array 0-9
-            sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
+            sscanf(tok, "%lf", &(g_staticParams.variableModParameters.varModList[x].dVarModMass));
+
+            if (g_staticParams.variableModParameters.varModList[x].dVarModMass != 0.0)
+               bFoundVariable = true;
+
             tok = strtok (NULL, delims);
             x++;
             if (x==VMODS)
@@ -1102,14 +1105,8 @@ bool CometSearch::IndexSearch(FILE *fp)
       return false;
    }
 
-/*
-for (int x=0; x<VMODS; x++)
-   if (g_staticParams.staticModifications.pdStaticMods[x] != 0.0)
-      printf("OK3 varmod[%d] = %f\n", x, g_staticParams.staticModifications.pdStaticMods[x]);
-for (int x=65; x<95; x++)
-   if (g_staticParams.staticModifications.pdStaticMods[x] != 0.0)
-      printf("OK4 staticmod[%c] = %f\n", x, g_staticParams.staticModifications.pdStaticMods[x]);
-*/
+   // indexed searches will always set this to true
+   g_staticParams.variableModParameters.bVarModSearch = true;
 
    // read fp of index
    fseek(fp, -lSizeLong, SEEK_END);
@@ -1166,7 +1163,7 @@ for (int x=65; x<95; x++)
          if (sDBI.piVarModSites[x] != 0)
             printf("[%0.3f]", g_staticParams.variableModParameters.varModList[sDBI.piVarModSites[x]-1].dVarModMass);
       }
-      printf(" mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition);
+printf(" mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition);
 */
 
       int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sDBI.dPepMass);
@@ -1187,23 +1184,43 @@ for (int x=65; x<95; x++)
       dbe.lProteinFilePosition = sDBI.lProteinFilePosition;
    }
 
-   int iSize;
-   iSize  = g_pvQuery.at(0)->iMatchPeptideCount;
-   if (iSize > g_staticParams.options.iNumStored)
-      iSize = g_staticParams.options.iNumStored;
-
-   // simply take top xcorr peptide as E-value calculation too expensive
-   qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
-
-   // Retrieve protein name
-   if (g_pvQuery.at(0)->iMatchPeptideCount > 0
-      && g_pvQuery.at(0)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
+/*
+   for (int x=0; x< (int)g_pvQuery.size(); x++)
    {
-      fseek(fp, g_pvQuery.at(0)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
-      fread(g_pvQuery.at(0)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
-   }
+      int iSize;
 
-//printf("OK  peptide %s, score %f, prot %s\n", g_pvQuery.at(0)->_pResults[0].szPeptide, g_pvQuery.at(0)->_pResults[0].fXcorr, g_pvQuery.at(0)->_pResults[0].szSingleProtein);
+      iSize  = (*it)->iMatchPeptideCount;
+      if (iSize > g_staticParams.options.iNumStored)
+         iSize = g_staticParams.options.iNumStored;
+
+      iSize  = g_pvQuery.at(x)->iMatchPeptideCount;
+      qsort(g_pvQuery.at(x)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
+      if (g_pvQuery.at(x)->iMatchPeptideCount > 0 && g_pvQuery.at(x)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
+      {
+         fseek(fp, g_pvQuery.at(x)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
+         fread(g_pvQuery.at(x)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+      }
+   }
+*/
+
+   for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+   {
+      int iSize;
+
+      iSize  = (*it)->iMatchPeptideCount;
+      if (iSize > g_staticParams.options.iNumStored)
+         iSize = g_staticParams.options.iNumStored;
+
+      // simply take top xcorr peptide as E-value calculation too expensive
+      qsort((*it)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
+
+      // Retrieve protein name
+      if ((*it)->iMatchPeptideCount > 0 && (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
+      {
+         fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
+         fread((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+      }
+   }
 
    delete [] lReadIndex;
 
@@ -1723,7 +1740,6 @@ n/c-term protein mods not supported yet
                iPos = i;
                dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.szPeptide[i]];
 
-
                if (sDBI.piVarModSites[iPos] != 0)
                {
                   if (sDBI.piVarModSites[iPos] > 0)
@@ -1840,6 +1856,7 @@ FIX ... need mechanism to know if protein termini
                   iTmp = i-iDecoyStartPos;
 
                   dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
+// FIX:  need variable mods passed on and accounted for here
                   _pdAAforwardDecoy[iTmp] = dBion;
 
                   dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iDecoyEndPos - iTmp]];
@@ -1883,7 +1900,7 @@ FIX ... need mechanism to know if protein termini
             }
          }
 
-         if (!g_staticParams.variableModParameters.bRequireVarMod)
+         if (!g_staticParams.variableModParameters.bRequireVarMod || g_staticParams.bIndexDb)
          {
             XcorrScore(sDBI.szPeptide, iStartPos, iEndPos, iStartPos, iEndPos, bIsVarModPep,
                   sDBI.dPepMass, false, iWhichQuery, iLenPeptide, sDBI.piVarModSites, dbe);
