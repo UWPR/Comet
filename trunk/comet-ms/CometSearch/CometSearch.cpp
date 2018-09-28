@@ -1156,15 +1156,18 @@ bool CometSearch::IndexSearch(FILE *fp)
    while ((int)sDBI.dPepMass <= iEnd)
    {
 /*
-      printf("OK  pep ");
+      printf("OK  index pep ");
       for (unsigned int x=0; x<strlen(sDBI.szPeptide); x++)
       {
          printf("%c", sDBI.szPeptide[x]);
          if (sDBI.piVarModSites[x] != 0)
             printf("[%0.3f]", g_staticParams.variableModParameters.varModList[sDBI.piVarModSites[x]-1].dVarModMass);
       }
-printf(" mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition);
+      printf(", mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition);
 */
+
+      if (sDBI.dPepMass > g_massRange.dMaxMass)
+         break;
 
       int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sDBI.dPepMass);
 
@@ -1183,25 +1186,6 @@ printf(" mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition);
 
       dbe.lProteinFilePosition = sDBI.lProteinFilePosition;
    }
-
-/*
-   for (int x=0; x< (int)g_pvQuery.size(); x++)
-   {
-      int iSize;
-
-      iSize  = (*it)->iMatchPeptideCount;
-      if (iSize > g_staticParams.options.iNumStored)
-         iSize = g_staticParams.options.iNumStored;
-
-      iSize  = g_pvQuery.at(x)->iMatchPeptideCount;
-      qsort(g_pvQuery.at(x)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
-      if (g_pvQuery.at(x)->iMatchPeptideCount > 0 && g_pvQuery.at(x)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
-      {
-         fseek(fp, g_pvQuery.at(x)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
-         fread(g_pvQuery.at(x)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
-      }
-   }
-*/
 
    for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
    {
@@ -1369,32 +1353,34 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
          if (g_staticParams.options.bCreateIndex)
          {
-            if (WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos) == 1)
+            if (iEndPos - iStartPos + 1 < MAX_PEPTIDE_LEN-1) // account for terminating char
             {
-               Threading::LockMutex(g_pvQueryMutex);
+               if (WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos) == 1)
+               {
+                  Threading::LockMutex(g_pvQueryMutex);
 
-               // add to DBIndex vector
-               DBIndex sEntry;
-               sEntry.dPepMass = dCalcPepMass;  //MH+ mass
-               strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iEndPos - iStartPos + 1);
-               sEntry.szPeptide[iEndPos - iStartPos + 1]='\0';
+                  // add to DBIndex vector
+                  DBIndex sEntry;
+                  sEntry.dPepMass = dCalcPepMass;  //MH+ mass
+                  strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iEndPos - iStartPos + 1);
+                  sEntry.szPeptide[iEndPos - iStartPos + 1]='\0';
          
-               if (iStartPos == 0)
-                  sEntry.szPrevNextAA[0] = '-';
-               else
-                  sEntry.szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
-               if (iEndPos == _proteinInfo.iProteinSeqLength - 1)         //FIX why _proteinInfo.iProteinSeqLength vs. dbe.strSeq.length()?
-                  sEntry.szPrevNextAA[1] = '-';
-               else
-                  sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+                  if (iStartPos == 0)
+                     sEntry.szPrevNextAA[0] = '-';
+                  else
+                     sEntry.szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+                  if (iEndPos == _proteinInfo.iProteinSeqLength - 1)         //FIX why _proteinInfo.iProteinSeqLength vs. dbe.strSeq.length()?
+                     sEntry.szPrevNextAA[1] = '-';
+                  else
+                     sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
          
-               sEntry.lProteinFilePosition = _proteinInfo.lProteinFilePosition;
+                  sEntry.lProteinFilePosition = _proteinInfo.lProteinFilePosition;
+                  memset(sEntry.piVarModSites, 0, sizeof(sEntry.piVarModSites));
 
-               memset(sEntry.piVarModSites, 0, sizeof(sEntry.piVarModSites));
+                  g_pvDBIndex.push_back(sEntry);
 
-               g_pvDBIndex.push_back(sEntry);
-
-               Threading::UnlockMutex(g_pvQueryMutex);
+                  Threading::UnlockMutex(g_pvQueryMutex);
+               }
             }
          }
          else
@@ -2790,6 +2776,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             if (x>iMax || ppSparseFastXcorrData[x]==NULL) // x should never be > iMax so this is just a safety check
                continue;
             y = bin - (x*SPARSE_MATRIX_SIZE);
+
             dXcorr += ppSparseFastXcorrData[x][y];
          }
 
@@ -3880,7 +3867,6 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                               {
                                  double dCalcPepMass;
                                  int iTmpEnd;
-                                 int iStartTmp = iStartPos+1;
                                  char cResidue;
  
                                  dCalcPepMass = dTmpMass + TotalVarModMass(piTmpVarModCounts);
@@ -3896,7 +3882,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                  // where the end of the peptide is.
                                  for (iTmpEnd=iStartPos; iTmpEnd<=iEndPos; iTmpEnd++)
                                  {
-                                    if (iTmpEnd-iStartTmp < MAX_PEPTIDE_LEN)
+                                    if (iTmpEnd-iStartPos+1 < MAX_PEPTIDE_LEN-1)
                                     {
                                        cResidue = szProteinSeq[iTmpEnd];
 
@@ -4944,7 +4930,6 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             g_pvDBIndex.push_back(sDBTmp);
 
             Threading::UnlockMutex(g_pvQueryMutex);
-
          }
          else
          {
