@@ -75,9 +75,6 @@
     <ClInclude Include="CometCheckForUpdates.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CometIndexDb.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CometMassSpecUtils.cpp">
@@ -117,9 +114,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CometCheckForUpdates.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CometIndexDb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
