@@ -2469,7 +2469,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       int iTmp;
 
       // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
-      for (int i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
+      for (int i=0; i<pQuery->_pResults[0].iLenPeptide-1; i++)
       {
          int iPos = pQuery->_pResults[0].iLenPeptide - i - 1;
 
