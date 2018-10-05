@@ -293,6 +293,7 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].iMatchedIons = 0;
          pQuery->_pResults[j].iTotalIons = 0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
+         pQuery->_pResults[j].szSingleProtein[0] = '\0';
          pQuery->_pResults[j].pWhichProtein.clear();
          pQuery->_pResults[j].cPeffOrigResidue = '\0';
          pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
@@ -311,6 +312,7 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].iMatchedIons = 0;
             pQuery->_pDecoys[j].iTotalIons = 0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
+            pQuery->_pDecoys[j].szSingleProtein[0] = '\0';
             pQuery->_pDecoys[j].cPeffOrigResidue = '\0';
             pQuery->_pDecoys[j].iPeffOrigResiduePosition = -9;
          }
@@ -1937,7 +1939,6 @@ printf("\n");
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
          {
             iBatchNum++;
-
 #ifdef PERF_DEBUG
             time_t tTotalSearchStartTime;
             time_t tTotalSearchEndTime;
@@ -2001,7 +2002,9 @@ printf("\n");
 #endif
 
             if (g_pvQuery.empty())
-               break; // no search to run
+               continue;    //FIX make sure continue instead of break makes sense
+                            // possible no spectrum in batch passes filters; do not want to break in that case;
+ //              break; // no search to run
             else
                iTotalSpectraSearched += g_pvQuery.size();
 
@@ -2190,6 +2193,8 @@ printf("\n");
             if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
                CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, fpdb);
 
+            fclose(fpdb);
+
    cleanup_results:
             // Deleting each Query object in the vector calls its destructor, which
             // frees the spectral memory (see definition for Query in CometData.h).
@@ -2332,7 +2337,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 int iNumFragIons,
                                                 double* pdReturnScores)
 {
-   if (!InitializeStaticParams())
+  if (!InitializeStaticParams())
       return false;
 
 /*
@@ -2392,12 +2397,13 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
 
-   CometPostAnalysis::AnalyzeSP(0);
-
-   if (!bSucceeded)
+   if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
+      CometPostAnalysis::AnalyzeSP(0);
+   else
       goto cleanup_results;
 
    bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+
    if (!bSucceeded)
       goto cleanup_results;
 
@@ -2407,7 +2413,9 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       iSize = g_staticParams.options.iNumStored;
 
    // simply take top xcorr peptide as E-value calculation too expensive
-   qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
+   if (iSize > 0)
+      qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
+
 /*
    // Sort each entry by xcorr, calculate E-values, etc.
    bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
@@ -2418,7 +2426,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    Query* pQuery;
    pQuery = g_pvQuery.at(0);  // return info for top hit only
 
-   if (pQuery->_pResults[0].fXcorr>0.0 && pQuery->_pResults[0].iLenPeptide>0)
+   if (iSize > 0 && pQuery->_pResults[0].fXcorr>0.0 && pQuery->_pResults[0].iLenPeptide>0)
    {
       // Set return values for peptide sequence, protein, xcorr and E-value
       sprintf(szReturnPeptide, "%c.", pQuery->_pResults[0].szPrevNextAA[0]);
@@ -2469,7 +2477,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       int iTmp;
 
       // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
-      for (int i=0; i<pQuery->_pResults[0].iLenPeptide-1; i++)
+      for (int i=0; i<pQuery->_pResults[0].iLenPeptide - 1; i++)
       {
          int iPos = pQuery->_pResults[0].iLenPeptide - i - 1;
 
@@ -2539,15 +2547,15 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       pdReturnScores[4] = 0;        // dCn
    }
 
-
 cleanup_results:
+
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometData.h).
    for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
       delete *it;
 
    g_pvQuery.clear();
-  
+
    // Clean up the input files vector
    g_staticParams.vectorMassOffsets.clear();
 

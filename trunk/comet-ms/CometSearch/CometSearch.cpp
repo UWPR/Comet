@@ -112,7 +112,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
       {
          char szErrorMsg[1024];
-         sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+         sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\" %s.\n", g_staticParams.databaseInfo.szDatabase, strerror(errno));
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
@@ -1030,8 +1030,6 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 bool CometSearch::IndexSearch(FILE *fp)
 {
    long lEndOfStruct;
-   long lSizeLong = (long)sizeof(long);
-
    char szBuf[SIZE_BUF];
 
    // ignore any static masses in params file; only valid ones
@@ -1109,8 +1107,8 @@ bool CometSearch::IndexSearch(FILE *fp)
    g_staticParams.variableModParameters.bVarModSearch = true;
 
    // read fp of index
-   fseek(fp, -lSizeLong, SEEK_END);
-   fread(&lEndOfStruct, lSizeLong, 1, fp);
+   fseek(fp, -(sizeof(long)), SEEK_END);
+   fread(&lEndOfStruct, sizeof(long), 1, fp);
 
    // read index
    int iMinMass=0;
@@ -1125,7 +1123,7 @@ bool CometSearch::IndexSearch(FILE *fp)
    for (int i=0; i<iMaxMass+1; i++)
       lReadIndex[i] = -1;
 
-   fread(lReadIndex, lSizeLong, iMaxMass+1, fp);
+   fread(lReadIndex, sizeof(long), iMaxMass+1, fp);
 
    int iStart = (int)(g_massRange.dMinMass) - 1;  // smallest mass/index start
    int iEnd = (int)(g_massRange.dMaxMass) + 1;  // largest mass/index end
@@ -1163,9 +1161,8 @@ bool CometSearch::IndexSearch(FILE *fp)
          if (sDBI.piVarModSites[x] != 0)
             printf("[%0.3f]", g_staticParams.variableModParameters.varModList[sDBI.piVarModSites[x]-1].dVarModMass);
       }
-      printf(", mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition);
+      printf(", mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition); fflush(stdout);
 */
-
       if (sDBI.dPepMass > g_massRange.dMaxMass)
          break;
 
@@ -1195,14 +1192,25 @@ bool CometSearch::IndexSearch(FILE *fp)
       if (iSize > g_staticParams.options.iNumStored)
          iSize = g_staticParams.options.iNumStored;
 
-      // simply take top xcorr peptide as E-value calculation too expensive
-      qsort((*it)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
-
-      // Retrieve protein name
-      if ((*it)->iMatchPeptideCount > 0 && (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
+      if ((*it)->iMatchPeptideCount > 0)
       {
-         fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
-         fread((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+         // simply take top xcorr peptide as E-value calculation too expensive
+         qsort((*it)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
+
+         // Retrieve protein name
+         if ((*it)->iMatchPeptideCount > 0 && (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
+         {
+            fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
+            fread((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+         }
+/*
+         printf("OK  scan %d, pep %s, prot %s, xcorr %f, matchcount %d\n",
+            (*it)->_spectrumInfoInternal.iScanNumber,
+            (*it)->_pResults[0].szPeptide,
+            (*it)->_pResults[0].szSingleProtein,
+            (*it)->_pResults[0].fXcorr,
+            (*it)->iMatchPeptideCount); fflush(stdout);
+*/
       }
    }
 

@@ -1788,7 +1788,6 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
    delete [] ppdTmpCorrelationDataArr;
    delete [] ppdTmpSmoothedSpectrumArr;
    delete [] ppdTmpPeakExtractedArr;
-
    return true;
 }
 
@@ -1808,6 +1807,13 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    Query *pScoring = new Query();
 
    pScoring->_pepMassInfo.dExpPepMass = (iPrecursorCharge*dMZ) - (iPrecursorCharge-1)*PROTON_MASS;
+
+   if (pScoring->_pepMassInfo.dExpPepMass < g_staticParams.options.dPeptideMassLow
+      || pScoring->_pepMassInfo.dExpPepMass > g_staticParams.options.dPeptideMassHigh)
+   {
+      return false;
+   }
+
    pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
 
    g_massRange.dMinMass = pScoring->_pepMassInfo.dExpPepMass;
