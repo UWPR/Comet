@@ -32,7 +32,10 @@ public:
    std::map<std::string, CometParam*>& GetParamsMap();
 
    // Methods inherited from ICometSearchManager
+   virtual bool CreateIndex();
    virtual bool DoSearch();
+   virtual bool InitializeSingleSpectrumSearch();
+   virtual void FinalizeSingleSpectrumSearch();
    virtual bool DoSingleSpectrumSearch(const int iPrecursorCharge,
                                        const double dMZ,
                                        double* dMass,
@@ -79,7 +82,8 @@ private:
    static bool CompareByMass(const DBIndex &lhs,
                              const DBIndex &rhs);
 
-
+   bool singleSearchInitializationComplete;
+   int singleSearchThreadCount;
    std::map<std::string, CometParam*> _mapStaticParams;
 };
 

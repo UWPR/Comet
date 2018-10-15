@@ -34,19 +34,22 @@ namespace CometWrapper {
     public:
         CometSearchManagerWrapper();
         virtual ~CometSearchManagerWrapper();
-		
+
+		bool CreateIndex();
         bool DoSearch();
+        bool InitializeSingleSpectrumSearch();
+        void FinalizeSingleSpectrumSearch();
         bool DoSingleSpectrumSearch(int intValue,
                                     double value,
-                                    array<double>^ dVal1,
-                                    array<double>^ dVal2,
+                                    cli::array<double>^ dVal1,
+                                    cli::array<double>^ dVal2,
                                     const int iVal1,
-                                    array<char>^ szPeptide,
-                                    array<char>^ szProtein,
-                                    array<double>^ pdYions,
-                                    array<double>^ pdBions,
+                                    cli::array<char>^ szPeptide,
+                                    cli::array<char>^ szProtein,
+                                    cli::array<double>^ pdYions,
+                                    cli::array<double>^ pdBions,
                                     int iNumFragIons,
-                                    array<double>^ pdScores);
+                                    cli::array<double>^ pdScores);
 
         // Need to convert vector to List and back
         bool AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList);

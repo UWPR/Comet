@@ -764,7 +764,7 @@ extern StaticParams    g_staticParams;
 
 extern vector<double>  g_pvDIAWindows;    // vector of start-end masses for DIA window; even number start mass, odd number end mass
 
-extern vector<IndexProteinStruct>  g_pvProteinNames;
+extern map<long long, IndexProteinStruct>  g_pvProteinNames;
 
 extern vector<DBIndex> g_pvDBIndex;
 

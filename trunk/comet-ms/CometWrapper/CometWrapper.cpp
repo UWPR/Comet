@@ -52,6 +52,32 @@ CometSearchManagerWrapper::~CometSearchManagerWrapper()
     }
 }
 
+bool CometSearchManagerWrapper::CreateIndex()
+{
+	if (!_pSearchMgr)
+	{
+		return false;
+	}
+	return _pSearchMgr->CreateIndex();
+}
+
+bool CometSearchManagerWrapper::InitializeSingleSpectrumSearch()
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+    return _pSearchMgr->InitializeSingleSpectrumSearch();
+}
+
+void CometSearchManagerWrapper::FinalizeSingleSpectrumSearch()
+{
+    if (_pSearchMgr)
+    {
+        _pSearchMgr->FinalizeSingleSpectrumSearch();
+    }
+}
+
 bool CometSearchManagerWrapper::DoSearch()
 {
     if (!_pSearchMgr)
@@ -64,15 +90,15 @@ bool CometSearchManagerWrapper::DoSearch()
 
 bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                        double dMZ,
-                                                       array<double>^ pdMass,
-                                                       array<double>^ pdInten,
+                                                       cli::array<double>^ pdMass,
+                                                       cli::array<double>^ pdInten,
                                                        int iNumPeaks,
-                                                       array<char>^ szPeptide,
-                                                       array<char>^ szProtein,
-                                                       array<double>^ pdYions,
-                                                       array<double>^ pdBions,
+                                                       cli::array<char>^ szPeptide,
+                                                       cli::array<char>^ szProtein,
+                                                       cli::array<double>^ pdYions,
+                                                       cli::array<double>^ pdBions,
                                                        int iNumFragIons,
-                                                       array<double>^ pdScores)
+                                                       cli::array<double>^ pdScores)
 {
     if (!_pSearchMgr)
     {

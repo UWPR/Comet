@@ -28,7 +28,10 @@ namespace CometInterfaces
    {
 public:
       virtual ~ICometSearchManager() {}
+	  virtual bool CreateIndex() = 0;
       virtual bool DoSearch() = 0;
+      virtual bool InitializeSingleSpectrumSearch() = 0;
+      virtual void FinalizeSingleSpectrumSearch() = 0;
       virtual bool DoSingleSpectrumSearch(const int iPrecursorCharge,
                                           const double dMZ,
                                           double* dMass,

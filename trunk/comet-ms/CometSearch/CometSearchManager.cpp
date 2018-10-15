@@ -39,7 +39,7 @@ std::vector<double>           g_pvDIAWindows;
 StaticParams                  g_staticParams;
 vector<DBIndex>               g_pvDBIndex;
 MassRange                     g_massRange;
-vector<IndexProteinStruct>    g_pvProteinNames;  // for db index
+map<long long, IndexProteinStruct>    g_pvProteinNames;  // for db index
 Mutex                         g_pvQueryMutex;
 Mutex                         g_preprocessMemoryPoolMutex;
 Mutex                         g_searchMemoryPoolMutex;
@@ -505,7 +505,9 @@ static bool ValidateScanRange()
 *
 ******************************************************************************/
 
-CometSearchManager::CometSearchManager()
+CometSearchManager::CometSearchManager() :
+    singleSearchInitializationComplete(false),
+    singleSearchThreadCount(1)
 {
    // Initialize the mutexes we'll use to protect global data.
    Threading::CreateMutex(&g_pvQueryMutex);
@@ -1417,6 +1419,15 @@ void CometSearchManager::ResetSearchStatus()
     g_cometStatus.ResetStatus();
 }
 
+bool CometSearchManager::CreateIndex()
+{
+    // Override the Create Index flag to force it to create
+    g_staticParams.options.bCreateIndex = 1;
+
+    // The DoSearch will create the index and exit
+    return DoSearch();
+}
+
 bool CometSearchManager::DoSearch()
 {
    char szOut[256];
@@ -1470,6 +1481,14 @@ bool CometSearchManager::DoSearch()
 
       if (bSucceeded)
          bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, 0, 0);
+
+      if (!bSucceeded)
+      {
+          char szErrorMsg[256];
+          sprintf(szErrorMsg, " Error loading peptides. \n");
+          logerr(szErrorMsg);
+          return false;
+      }
 
       // sanity check
       if (g_pvDBIndex.size() == 0)
@@ -1542,11 +1561,11 @@ printf("\n");
 
       // first just write out protein names. Track file position of each protein name
       int ctProteinNames=0;
-      for (std::vector<IndexProteinStruct>::iterator it=g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
+      for (auto it=g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
       {
          lProteinIndex[ctProteinNames] = ftell(fptr);
-         fwrite((*it).szProt, sizeof(char)*WIDTH_REFERENCE, 1, fptr);
-         (*it).iWhichProtein = ctProteinNames;
+         fwrite(it->second.szProt, sizeof(char)*WIDTH_REFERENCE, 1, fptr);
+         it->second.iWhichProtein = ctProteinNames;
          ctProteinNames++;
       }
 
@@ -1568,15 +1587,21 @@ printf("\n");
                lIndex[iPrevMass] = ftell(fptr);
          }
 
+         auto result = g_pvProteinNames.find((*it).lProteinFilePosition);
+         if (result != g_pvProteinNames.end())
+         {
+             iWhichProtein = result->second.iWhichProtein;
+         }
+
          // find protein by matching g_pvDBindex.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
-         for (std::vector<IndexProteinStruct>::iterator it2=g_pvProteinNames.begin(); it2 != g_pvProteinNames.end(); ++it2)
+      /*   for (std::vector<IndexProteinStruct>::iterator it2=g_pvProteinNames.begin(); it2 != g_pvProteinNames.end(); ++it2)
          {
             if ( (*it2).lProteinFilePosition == (*it).lProteinFilePosition)
             {
                iWhichProtein = (*it2).iWhichProtein;
                break;
             }
-         }
+         }*/
 
          (*it).lProteinFilePosition = lProteinIndex[iWhichProtein];
          fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
@@ -1597,6 +1622,8 @@ printf("\n");
       sprintf(szOut, " - done\n");
       logout(szOut);
       fflush(stdout);
+
+      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
       return bSucceeded;
    }
@@ -2324,6 +2351,58 @@ printf("\n");
       return bSucceeded;
 }
 
+bool CometSearchManager::InitializeSingleSpectrumSearch()
+{
+    // Skip doing if already completed successfully.
+    if (singleSearchInitializationComplete)
+    {
+        return true;
+    }
+
+    if (!InitializeStaticParams())
+        return false;
+
+    /*
+       // At this point, check extension to set whether index database or not
+       if (!strcmp(g_staticParams.databaseInfo.szDatabase+strlen(g_staticParams.databaseInfo.szDatabase)-4, ".idx"))
+          g_staticParams.bIndexDb = 1;
+    */
+    if (!ValidateSequenceDatabaseFile())
+        return false;
+
+    // this uses a single thread
+    singleSearchThreadCount = 1;
+    g_staticParams.options.iNumThreads = singleSearchThreadCount;
+
+    bool bSucceeded;
+    //MH: Allocate memory shared by threads during spectral processing.
+    bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+    if (!bSucceeded)
+        return bSucceeded;
+
+    // Allocate memory shared by threads during search
+    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+    if (!bSucceeded)
+        return bSucceeded;
+
+    singleSearchInitializationComplete = true;
+    return true;
+}
+
+
+void CometSearchManager::FinalizeSingleSpectrumSearch()
+{
+    if (singleSearchInitializationComplete)
+    {
+        //MH: Deallocate spectral processing memory.
+        CometPreprocess::DeallocateMemory(singleSearchThreadCount);
+
+        // Deallocate search memory
+        CometSearch::DeallocateMemory(singleSearchThreadCount);
+
+        singleSearchInitializationComplete = false;
+    }
+}
 
 bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 double dMZ,
@@ -2337,30 +2416,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 int iNumFragIons,
                                                 double* pdReturnScores)
 {
-  if (!InitializeStaticParams())
+   if (!InitializeSingleSpectrumSearch())
+   {
       return false;
-
-/*
-   // At this point, check extension to set whether index database or not
-   if (!strcmp(g_staticParams.databaseInfo.szDatabase+strlen(g_staticParams.databaseInfo.szDatabase)-4, ".idx"))
-      g_staticParams.bIndexDb = 1;
-*/
-   if (!ValidateSequenceDatabaseFile())
-      return false;
-
-   bool bSucceeded;
-
-   g_staticParams.options.iNumThreads = 1;   // this uses a single thread
-
-   //MH: Allocate memory shared by threads during spectral processing.
-   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
-   if (!bSucceeded)
-      return bSucceeded;
-
-   // Allocate memory shared by threads during search
-   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
-   if (!bSucceeded)
-      return bSucceeded;
+   }
 
    // We need to reset some of the static variables in-between input files
    CometPreprocess::Reset();
@@ -2370,7 +2429,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // or we will create a memory leak!
    int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
    double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
-   bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
+   bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
 
    if (!bSucceeded)
       goto cleanup_results;
@@ -2558,12 +2617,6 @@ cleanup_results:
 
    // Clean up the input files vector
    g_staticParams.vectorMassOffsets.clear();
-
-   //MH: Deallocate spectral processing memory.
-   CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
-
-   // Deallocate search memory
-   CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
    free(pdTmpSpectrum);
 

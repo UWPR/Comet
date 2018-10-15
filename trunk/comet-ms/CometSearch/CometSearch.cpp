@@ -629,7 +629,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                // store protein name
                strcpy(sEntry.szProt, dbe.strName.c_str());
                sEntry.lProteinFilePosition = dbe.lProteinFilePosition;
-               g_pvProteinNames.push_back(sEntry);
+               g_pvProteinNames.insert({ sEntry.lProteinFilePosition, sEntry });
             }
 
             // Load sequence
