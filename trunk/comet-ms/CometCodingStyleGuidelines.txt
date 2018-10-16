@@ -26,7 +26,7 @@ C. The normal indentation is 3 spaces per logical level.
 
 D. Avoid trailing whitespace.
 
-E. Use Unix-style carriage returns ("\n") rather than Windows ones ("\r\n").
+E. Use Windows style carriange returns ("\r\n") instead of Unix style returns ("\n").
 
 F. Use '//' for comments.  This allows one to comment out large blocks of code,
    including these local comments, using /* */.
