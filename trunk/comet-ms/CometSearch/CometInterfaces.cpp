@@ -26,6 +26,9 @@ ICometSearchManager *CometInterfaces::GetCometSearchManager()
    if (NULL == g_pCometSearchManager)
    {
       g_pCometSearchManager = new CometSearchManager();
+
+      // reset the static parameters to their default if a new manager is created.
+      g_staticParams.RestoreDefaults();
    }
 
    ICometSearchManager *pCometSearchMgr = static_cast<ICometSearchManager*>(g_pCometSearchManager);

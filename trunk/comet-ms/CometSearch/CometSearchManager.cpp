@@ -1625,6 +1625,9 @@ printf("\n");
 
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
+      g_pvDBIndex.clear();
+      g_pvProteinNames.clear();
+
       return bSucceeded;
    }
 

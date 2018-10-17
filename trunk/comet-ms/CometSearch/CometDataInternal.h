@@ -582,6 +582,41 @@ struct StaticParams
 
    StaticParams()
    {
+       RestoreDefaults();
+   }
+
+   StaticParams& operator=(StaticParams& a)
+   {
+       strcpy(szHostName, a.szHostName);
+       strcpy(szOutFileTimeString, a.szOutFileTimeString);
+       strcpy(szIonSeries, a.szIonSeries);
+       strcpy(szDisplayLine, a.szDisplayLine);
+       strcpy(szMod, a.szMod);
+       strcpy(szDecoyPrefix, a.szDecoyPrefix);
+       strcpy(szOutputSuffix, a.szOutputSuffix);
+       vectorMassOffsets = a.vectorMassOffsets;
+       iElapseTime = a.iElapseTime;
+       strcpy(szDate, a.szDate);
+       options = a.options;
+       databaseInfo = a.databaseInfo;
+       inputFile = a.inputFile;
+       bPrintDuplReferences = a.bPrintDuplReferences;
+       variableModParameters = a.variableModParameters;
+       tolerances = a.tolerances;
+       staticModifications = a.staticModifications;
+       precalcMasses = a.precalcMasses;
+       enzymeInformation = a.enzymeInformation;
+       massUtility = a.massUtility;
+       dInverseBinWidth = a.dInverseBinWidth;
+       dOneMinusBinOffset = a.dOneMinusBinOffset;
+       iXcorrProcessingOffset = a.iXcorrProcessingOffset;
+       peaksInformation = a.peaksInformation;
+       ionInformation = a.ionInformation;
+       return *this;
+   }
+
+   void RestoreDefaults()
+   {
       int i;
 
       inputFile.iInputType = InputType_MS2;
@@ -728,35 +763,7 @@ struct StaticParams
       tolerances.dMatchPeakTolerance = 0.5;
    }
 
-   StaticParams& operator=(StaticParams& a)
-   {
-      strcpy(szHostName, a.szHostName);
-      strcpy(szOutFileTimeString, a.szOutFileTimeString);
-      strcpy(szIonSeries, a.szIonSeries);
-      strcpy(szDisplayLine, a.szDisplayLine);
-      strcpy(szMod, a.szMod);
-      strcpy(szDecoyPrefix, a.szDecoyPrefix);
-      strcpy(szOutputSuffix, a.szOutputSuffix);
-      vectorMassOffsets = a.vectorMassOffsets;
-      iElapseTime = a.iElapseTime;
-      strcpy(szDate, a.szDate);
-      options = a.options;
-      databaseInfo = a.databaseInfo;
-      inputFile = a.inputFile;
-      bPrintDuplReferences = a.bPrintDuplReferences;
-      variableModParameters = a.variableModParameters;
-      tolerances = a.tolerances;
-      staticModifications = a.staticModifications;
-      precalcMasses = a.precalcMasses;
-      enzymeInformation = a.enzymeInformation;
-      massUtility = a.massUtility;
-      dInverseBinWidth = a.dInverseBinWidth;
-      dOneMinusBinOffset = a.dOneMinusBinOffset;
-      iXcorrProcessingOffset = a.iXcorrProcessingOffset;
-      peaksInformation = a.peaksInformation;
-      ionInformation = a.ionInformation;
-      return *this;
-   }
+  
 
 };
 
