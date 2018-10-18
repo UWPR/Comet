@@ -26,7 +26,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>http://comet-ms.sourceforge.net/CometUI/</InstallUrl>
-    <ApplicationRevision>72</ApplicationRevision>
+    <ApplicationRevision>73</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <CreateDesktopShortcut>true</CreateDesktopShortcut>
@@ -80,10 +80,10 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>0C49387759BDA5767D86985F1FBA9C1FC00E9FD8</ManifestCertificateThumbprint>
+    <ManifestCertificateThumbprint>26E89C6FAA02A3E6E6CC67B9B8584C819B2E4F7B</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>CometUI_Key.pfx</ManifestKeyFile>
+    <ManifestKeyFile>CometUI.pfx</ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup>
     <GenerateManifests>true</GenerateManifests>
@@ -384,6 +384,7 @@
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="CometUI.pfx" />
     <None Include="CometUI_Key.pfx" />
     <None Include="CometUI_TemporaryKey.pfx" />
     <None Include="packages.config" />
