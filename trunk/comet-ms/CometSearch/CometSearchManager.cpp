@@ -651,7 +651,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("isotope_error", g_staticParams.tolerances.iIsotopeError);
    if ((g_staticParams.tolerances.iIsotopeError < 0)
-         || (g_staticParams.tolerances.iIsotopeError > 6))
+         || (g_staticParams.tolerances.iIsotopeError > 7))
    {
       g_staticParams.tolerances.iIsotopeError = 0;
    }

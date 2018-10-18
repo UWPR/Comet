@@ -1160,6 +1160,14 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
          pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
             + pScoring->_pepMassInfo.dPeptideMassTolerance + 3.0 * C13_DIFF * PROTON_MASS;
       }
+	  else if (g_staticParams.tolerances.iIsotopeError == 7) // search -1, 0, +1 isotope windows
+	  {
+		  pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
+			  - pScoring->_pepMassInfo.dPeptideMassTolerance - C13_DIFF * PROTON_MASS;
+
+		  pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
+			  + pScoring->_pepMassInfo.dPeptideMassTolerance + C13_DIFF * PROTON_MASS;
+	  }
       else  // Should not get here.
       {
          char szErrorMsg[256];
