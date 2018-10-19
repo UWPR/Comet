@@ -2521,6 +2521,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       if (pQuery->_pResults[0].szPrevNextAA[1] == '-')
          dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
+      // mods at peptide length +1 and +2 are for n- and c-terminus
       if (g_staticParams.variableModParameters.bVarModSearch
             && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
       {
@@ -2561,7 +2562,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
             double dTmpIon = (dBion + (ctCharge-1)*PROTON_MASS)/ctCharge;
             iTmp = BIN(dTmpIon);
-            if (pdTmpSpectrum[iTmp] > 0.0)
+            if (iTmp<iArraySize && pdTmpSpectrum[iTmp] > 0.0)
             {
                pTmp.dMass = dTmpIon;
                pTmp.dInten = pdTmpSpectrum[iTmp];
@@ -2570,7 +2571,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
             dTmpIon = (dYion + (ctCharge-1)*PROTON_MASS)/ctCharge;
             iTmp = BIN(dTmpIon);
-            if (pdTmpSpectrum[iTmp] > 0.0)
+            if (iTmp<iArraySize && pdTmpSpectrum[iTmp] > 0.0)
             {
                pTmp.dMass = dTmpIon;
                pTmp.dInten = pdTmpSpectrum[iTmp];

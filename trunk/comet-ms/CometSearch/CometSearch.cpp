@@ -1105,7 +1105,7 @@ bool CometSearch::IndexSearch(FILE *fp)
 
    // indexed searches will always set this to true
    g_staticParams.variableModParameters.bVarModSearch = true;
-
+ 
    // read fp of index
    fseek(fp, -(sizeof(long)), SEEK_END);
    fread(&lEndOfStruct, sizeof(long), 1, fp);
@@ -1125,10 +1125,10 @@ bool CometSearch::IndexSearch(FILE *fp)
 
    fread(lReadIndex, sizeof(long), iMaxMass+1, fp);
 
-   int iStart = (int)(g_massRange.dMinMass) - 1;  // smallest mass/index start
-   int iEnd = (int)(g_massRange.dMaxMass) + 1;  // largest mass/index end
+   int iStart = (int)(g_massRange.dMinMass - 0.5);  // smallest mass/index start
+   int iEnd = (int)(g_massRange.dMaxMass + 0.5);  // largest mass/index end
 
-   if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass)
+   if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass || iStart > iMaxMass)
    {
       delete [] lReadIndex;
       return true;
@@ -1142,7 +1142,7 @@ bool CometSearch::IndexSearch(FILE *fp)
    struct DBIndex sDBI;
    sDBEntry dbe;
 
-   while (lReadIndex[iStart] == -1 && iStart<=iEnd)
+   while (lReadIndex[iStart] == -1 && iStart<iEnd)
       iStart++;
    fseek(fp, lReadIndex[iStart], SEEK_SET);
    fread(&sDBI, sizeof(struct DBIndex), 1, fp);
@@ -1178,12 +1178,17 @@ bool CometSearch::IndexSearch(FILE *fp)
          break;
 
       fread(&sDBI, sizeof(struct DBIndex), 1, fp);
+
+      // read past last entry in indexed db, need to break out of loop
+      if (feof(fp))
+         break;
+
       _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
       _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
 
       dbe.lProteinFilePosition = sDBI.lProteinFilePosition;
    }
-
+   
    for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
    {
       int iSize;
@@ -1198,7 +1203,7 @@ bool CometSearch::IndexSearch(FILE *fp)
          qsort((*it)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
 
          // Retrieve protein name
-         if ((*it)->iMatchPeptideCount > 0 && (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
+         if ((*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
          {
             fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
             fread((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
