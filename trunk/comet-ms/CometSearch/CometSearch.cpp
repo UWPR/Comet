@@ -1707,15 +1707,6 @@ void CometSearch::AnalyzeIndexPep(int iWhichQuery,
             double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
 /*
- for (unsigned int x=0; x<strlen(sDBI.szPeptide); x++)
- {
-    printf("%c", sDBI.szPeptide[x]);
-    if (sDBI.piVarModSites[x] != 0)
-       printf("[%0.3f]", g_staticParams.variableModParameters.varModList[sDBI.piVarModSites[x]-1].dVarModMass);
- }
-*/
-
-/*
 n/c-term protein mods not supported yet
             if (iStartPos == 0)
                dBion += g_staticParams.staticModifications.dAddNterminusProtein;
@@ -1739,12 +1730,9 @@ n/c-term protein mods not supported yet
                iPos = i;
                dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.szPeptide[i]];
 
-               if (sDBI.piVarModSites[iPos] != 0)
+               if (sDBI.piVarModSites[iPos] > 0)
                {
-                  if (sDBI.piVarModSites[iPos] > 0)
-                     dBion += g_staticParams.variableModParameters.varModList[sDBI.piVarModSites[iPos]-1].dVarModMass;
-                  else if (sDBI.piVarModSites[iPos] < 0)
-                     dBion += (dbe->vectorPeffMod.at(-sDBI.piVarModSites[iPos]-1)).dMassDiffMono;
+                  dBion += g_staticParams.variableModParameters.varModList[sDBI.piVarModSites[iPos]-1].dVarModMass;
                   bIsVarModPep = true;
                }
 
@@ -1753,12 +1741,9 @@ n/c-term protein mods not supported yet
                dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.szPeptide[iEndPos - i]];
 
                iPos = iEndPos - i;
-               if (sDBI.piVarModSites[iPos] != 0)
+               if (sDBI.piVarModSites[iPos] > 0)
                {
-                  if (sDBI.piVarModSites[iPos] > 0)
-                     dYion += g_staticParams.variableModParameters.varModList[sDBI.piVarModSites[iPos]-1].dVarModMass;
-                  else if (sDBI.piVarModSites[iPos] < 0)
-                     dYion += (dbe->vectorPeffMod.at(-sDBI.piVarModSites[iPos]-1)).dMassDiffMono;
+                  dYion += g_staticParams.variableModParameters.varModList[sDBI.piVarModSites[iPos]-1].dVarModMass;
                   bIsVarModPep = true;
                }
 
