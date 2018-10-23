@@ -81,6 +81,7 @@ private:
                                 const DBIndex &rhs);
    static bool CompareByMass(const DBIndex &lhs,
                              const DBIndex &rhs);
+   static bool WriteIndexedDatabase(void);
 
    bool singleSearchInitializationComplete;
    int singleSearchThreadCount;
