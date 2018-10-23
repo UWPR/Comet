@@ -2198,11 +2198,6 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    if (!InitializeStaticParams())
       return false;
 
-   /*
-      // At this point, check extension to set whether index database or not
-      if (!strcmp(g_staticParams.databaseInfo.szDatabase+strlen(g_staticParams.databaseInfo.szDatabase)-4, ".idx"))
-         g_staticParams.bIndexDb = 1;
-   */
    if (!ValidateSequenceDatabaseFile())
        return false;
 
@@ -2279,7 +2274,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       goto cleanup_results;
 
    if (g_pvQuery.empty())
+   {
+      delete[] pdTmpSpectrum;
       return false; // no search to run
+   }
 
    bSucceeded = AllocateResultsMem();
 
@@ -2292,10 +2290,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
-   int iPercentStart,
-       iPercentEnd;
-
-   iPercentStart=iPercentEnd=0;
+   int iPercentStart = 0;
+   int iPercentEnd = 0;
 
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
@@ -2431,6 +2427,9 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          else
             break;
       }
+
+      vMatchedBions.clear();
+      vMatchedYions.clear();
    }
    else
    {
@@ -2455,7 +2454,9 @@ cleanup_results:
    // Clean up the input files vector
    g_staticParams.vectorMassOffsets.clear();
 
-   free(pdTmpSpectrum);
+   delete[] pdTmpSpectrum;
+
+   FinalizeSingleSpectrumSearch();
 
    return bSucceeded;
 }
@@ -2580,7 +2581,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    if (!bSucceeded)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error loading peptides. \n");
+      sprintf(szErrorMsg, " Error performing RunSearch() to create indexed database. \n");
       logerr(szErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
@@ -2727,6 +2728,8 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    g_pvDBIndex.clear();
    g_pvProteinNames.clear();
+   delete[] lProteinIndex;
+   delete[] lIndex;
 
    return bSucceeded;
 }
