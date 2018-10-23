@@ -1,1473 +1,293 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
+//using System.Threading.Tasks;
+
 using CometWrapper;
 
-using System.Runtime.InteropServices;
+using ThermoFisher.CommonCore.Data.Business;
+using ThermoFisher.CommonCore.Data.FilterEnums;
+using ThermoFisher.CommonCore.Data.Interfaces;
+using ThermoFisher.CommonCore.RawFileReader;
 
-
-namespace RealtimeSearch
+namespace RealTimeSearch
 {
-   class Search
+   /// <summary>
+   /// Call CometWrapper to run searches, looping through scans in a Thermo RAW file
+   /// </summary>
+   class realTimeSearch
    {
-      static void Main()
+      static int Main(string[] args)
       {
-         String sTmp;
-         int iTmp;
-         double dTmp;
+         string version = "1.0.2";
 
-         CometSearchManagerWrapper SearchMgr;
-         SearchMgr = new CometSearchManagerWrapper();
-         // can set other parameters this way
-         string sDB = "C:\\Users\\Jimmy\\Desktop\\devin\\HUMAN.fasta.idx";
+         if (args.Length == 0)
+         {
+            Console.WriteLine("{1} RealTimeSearch version {0}:  enter raw files on command line.{1}", version, Environment.NewLine, Environment.NewLine);
+            return 1;
+         }
+
+         Console.WriteLine("{1} RealTimeSearch version {0}{2}", version, Environment.NewLine, Environment.NewLine);
+
+         CometSearchManagerWrapper SearchMgr = new CometSearchManagerWrapper();
+         SearchSettings searchParams = new SearchSettings();
+
+         // Validate that indexed database is readable. Get MassRange from header.
+         int iLineCount = 0;
+         bool bFoundMassRange = false;
+         double  dPeptideMassLow = 0;
+         double  dPeptideMassHigh = 0;
+
+         string strLine;
+         string sDB = "YEAST.fasta.20180814.idx";  // database must be set here early on
+         System.IO.StreamReader dbFile = new System.IO.StreamReader(@sDB);
+
+         while ((strLine = dbFile.ReadLine()) != null)
+         {
+            string[] strParsed = strLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (strParsed[0].Equals("MassRange:"))
+            {
+               dPeptideMassLow = double.Parse(strParsed[1]);
+               dPeptideMassHigh = double.Parse(strParsed[2]);
+
+               var digestMassRange = new DoubleRangeWrapper(dPeptideMassLow, dPeptideMassHigh);
+               string digestMassRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
+               SearchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange);
+
+               bFoundMassRange = true;
+            }
+            iLineCount++;
+
+            if (iLineCount > 6)  // header information should only be in first few lines
+               break;
+         }
+         dbFile.Close();
+
+         if (!bFoundMassRange)
+         {
+            Console.WriteLine(" Error with indexed database format; missing MassRange header.\n");
+            System.Environment.Exit(1);
+         }
+
+         // Configure parameters
+         searchParams.ConfigureInputSettings(SearchMgr);
          SearchMgr.SetParam("database_name", sDB, sDB);
 
-         iTmp = 0; // 0=no, 1=concatenated, 2=separate
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("decoy_search", sTmp, iTmp);
-
-         dTmp = 20.0; //ppm window
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("peptide_mass_tolerance", sDB, dTmp);
-
-         iTmp = 2; // 0=Da, 2=ppm
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
-
-         iTmp = 1; // 1=monoisotopic, do not change
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("mass_type_parent", sTmp, iTmp);
-
-         iTmp = 1; // 1=monoisotopic, do not change
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("mass_type_fragment", sTmp, iTmp);
-
-         iTmp = 1; // m/z tolerance
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
-
-         iTmp = 3; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("isotope_error", sTmp, iTmp);
-
-         iTmp = 0; // 0=no, 1=yes
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("require_variable_mod", sTmp, iTmp);
-
-         dTmp = 1.0005; // fragment bin width
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
-
-         dTmp = 0.4; // fragment bin offset
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
-
-         iTmp = 1; // 0=use flanking peaks, 1=M peak only
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
-
-         iTmp = 3;
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("max_fragment_charge", sTmp, iTmp);
-
-         iTmp = 6;
-         sTmp = iTmp.ToString();
-         SearchMgr.SetParam("max_precursor_charge", sTmp, iTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_Cterm_peptide", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_Nterm_peptide", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_Cterm_protein", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_Nterm_protein", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_G_glucine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_A_alanine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_S_serine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_P_proline", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_V_valine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_T_threonine", sTmp, dTmp);
-
-         dTmp = 57.0214637236;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_C_cysteine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_L_leucine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_I_isoleucine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_N_asparagine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_D_aspartic_acid", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_Q_glutamine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_K_lysine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_E_glutamic_acid", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_M_methionine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_O_ornithine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_H_histidine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_F_phenylalanine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_U_selenocysteine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_R_arginine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_Y_tyrosine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_W_tryptophan", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_Y_tyrosine", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_B_user_amino_acid", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_J_user_amino_acid", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_X_user_amino_acid", sTmp, dTmp);
-
-         dTmp = 0.0;
-         sTmp = dTmp.ToString();
-         SearchMgr.SetParam("add_Z_user_amino_acid", sTmp, dTmp);
-
-         var digestMassMin = 100.0;
-         var digestMassMax = 10000.0;
-         var digestMassRange = new DoubleRangeWrapper(digestMassMin, digestMassMax);
-         string digestMassRangeString = digestMassMin.ToString() + " " + digestMassMax.ToString();
-         SearchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange);
-
-         string modString = "ST,79.9663,0,3,-1,0,0";
-         var varModsWrapper = new VarModsWrapper();
-         varModsWrapper.set_VarModChar("ST");
-         varModsWrapper.set_VarModMass(79.9663);
-         varModsWrapper.set_BinaryMod(0);
-         varModsWrapper.set_MaxNumVarModAAPerMod(3);  // allow up to 3 of these mods in peptide
-         varModsWrapper.set_VarModTermDistance(-1);   // allow mod to be anywhere in peptide
-         varModsWrapper.set_WhichTerm(0);             // unused if -1 set above; 0=protein terminus reference
-         varModsWrapper.set_RequireThisMod(0);        // 0=not required, 1=required
-         SearchMgr.SetParam("variable_mod01", modString, varModsWrapper);   
-
-         int iPrecursorCharge = 3;
-         double dMZ = 1311.87;
-         int iNumPeaks = 1159;                         // number of peaks in spectrum
-         double[] pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
-         double[] pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
-
-         // now populate the spectrum as mass and intensity arrays from whatever is retrieved from Thermo interface
-         // example below is y-ions from human tryptic peptide EAGAQAVPET[79.9663]R
- 
-pdMass[0] = 367.5310; pdInten[0] = 11;
-pdMass[1] = 368.3650; pdInten[1] = 18;
-pdMass[2] = 376.4160; pdInten[2] = 461;
-pdMass[3] = 377.3590; pdInten[3] = 190;
-pdMass[4] = 378.4750; pdInten[4] = 15;
-pdMass[5] = 380.1290; pdInten[5] = 13;
-pdMass[6] = 388.1370; pdInten[6] = 14;
-pdMass[7] = 396.4210; pdInten[7] = 23;
-pdMass[8] = 404.1860; pdInten[8] = 64;
-pdMass[9] = 406.4391; pdInten[9] = 30;
-pdMass[10] = 407.0620; pdInten[10] = 16;
-pdMass[11] = 408.0680; pdInten[11] = 8;
-pdMass[12] = 409.0830; pdInten[12] = 24;
-pdMass[13] = 415.0650; pdInten[13] = 30;
-pdMass[14] = 418.3860; pdInten[14] = 10;
-pdMass[15] = 423.3990; pdInten[15] = 12;
-pdMass[16] = 425.1341; pdInten[16] = 59;
-pdMass[17] = 427.6220; pdInten[17] = 14;
-pdMass[18] = 428.4170; pdInten[18] = 16;
-pdMass[19] = 431.3011; pdInten[19] = 86;
-pdMass[20] = 432.1750; pdInten[20] = 28;
-pdMass[21] = 433.2710; pdInten[21] = 17;
-pdMass[22] = 435.2561; pdInten[22] = 45;
-pdMass[23] = 436.4370; pdInten[23] = 15;
-pdMass[24] = 437.3600; pdInten[24] = 27;
-pdMass[25] = 440.2730; pdInten[25] = 12;
-pdMass[26] = 442.7650; pdInten[26] = 32;
-pdMass[27] = 448.4921; pdInten[27] = 32;
-pdMass[28] = 452.6290; pdInten[28] = 22;
-pdMass[29] = 454.2440; pdInten[29] = 25;
-pdMass[30] = 456.4800; pdInten[30] = 13;
-pdMass[31] = 457.0970; pdInten[31] = 17;
-pdMass[32] = 458.3300; pdInten[32] = 55;
-pdMass[33] = 459.3411; pdInten[33] = 106;
-pdMass[34] = 460.2680; pdInten[34] = 15;
-pdMass[35] = 461.3380; pdInten[35] = 28;
-pdMass[36] = 466.5230; pdInten[36] = 25;
-pdMass[37] = 467.5011; pdInten[37] = 11;
-pdMass[38] = 470.3120; pdInten[38] = 11;
-pdMass[39] = 473.3560; pdInten[39] = 25;
-pdMass[40] = 474.3270; pdInten[40] = 75;
-pdMass[41] = 476.0901; pdInten[41] = 21;
-pdMass[42] = 477.2291; pdInten[42] = 23;
-pdMass[43] = 478.3880; pdInten[43] = 47;
-pdMass[44] = 480.2360; pdInten[44] = 32;
-pdMass[45] = 481.1320; pdInten[45] = 12;
-pdMass[46] = 482.4670; pdInten[46] = 9;
-pdMass[47] = 484.2540; pdInten[47] = 54;
-pdMass[48] = 485.0970; pdInten[48] = 16;
-pdMass[49] = 486.3060; pdInten[49] = 19;
-pdMass[50] = 488.1951; pdInten[50] = 66;
-pdMass[51] = 489.2770; pdInten[51] = 63;
-pdMass[52] = 490.4580; pdInten[52] = 717;
-pdMass[53] = 491.4810; pdInten[53] = 157;
-pdMass[54] = 492.3040; pdInten[54] = 60;
-pdMass[55] = 493.2231; pdInten[55] = 76;
-pdMass[56] = 494.2030; pdInten[56] = 15;
-pdMass[57] = 494.8720; pdInten[57] = 15;
-pdMass[58] = 500.2831; pdInten[58] = 20;
-pdMass[59] = 501.3220; pdInten[59] = 27;
-pdMass[60] = 502.2770; pdInten[60] = 8;
-pdMass[61] = 504.2951; pdInten[61] = 13;
-pdMass[62] = 506.3110; pdInten[62] = 28;
-pdMass[63] = 507.3571; pdInten[63] = 16;
-pdMass[64] = 509.7211; pdInten[64] = 50;
-pdMass[65] = 512.2671; pdInten[65] = 48;
-pdMass[66] = 513.2320; pdInten[66] = 43;
-pdMass[67] = 514.4240; pdInten[67] = 9;
-pdMass[68] = 515.2921; pdInten[68] = 43;
-pdMass[69] = 516.1140; pdInten[69] = 12;
-pdMass[70] = 518.6370; pdInten[70] = 15;
-pdMass[71] = 519.3901; pdInten[71] = 58;
-pdMass[72] = 521.3541; pdInten[72] = 51;
-pdMass[73] = 522.8071; pdInten[73] = 44;
-pdMass[74] = 524.3700; pdInten[74] = 21;
-pdMass[75] = 526.4390; pdInten[75] = 11;
-pdMass[76] = 528.4750; pdInten[76] = 46;
-pdMass[77] = 529.2921; pdInten[77] = 29;
-pdMass[78] = 533.4020; pdInten[78] = 10;
-pdMass[79] = 534.2630; pdInten[79] = 28;
-pdMass[80] = 537.0900; pdInten[80] = 10;
-pdMass[81] = 538.2330; pdInten[81] = 68;
-pdMass[82] = 539.4891; pdInten[82] = 68;
-pdMass[83] = 540.2560; pdInten[83] = 59;
-pdMass[84] = 542.0720; pdInten[84] = 21;
-pdMass[85] = 545.1290; pdInten[85] = 33;
-pdMass[86] = 546.2681; pdInten[86] = 26;
-pdMass[87] = 547.3230; pdInten[87] = 48;
-pdMass[88] = 548.1500; pdInten[88] = 20;
-pdMass[89] = 549.4871; pdInten[89] = 96;
-pdMass[90] = 550.3460; pdInten[90] = 20;
-pdMass[91] = 555.2820; pdInten[91] = 10;
-pdMass[92] = 557.3511; pdInten[92] = 45;
-pdMass[93] = 559.2480; pdInten[93] = 62;
-pdMass[94] = 560.3591; pdInten[94] = 164;
-pdMass[95] = 561.4230; pdInten[95] = 62;
-pdMass[96] = 562.2630; pdInten[96] = 21;
-pdMass[97] = 563.1880; pdInten[97] = 38;
-pdMass[98] = 565.2471; pdInten[98] = 13;
-pdMass[99] = 566.5320; pdInten[99] = 41;
-pdMass[100] = 567.4360; pdInten[100] = 1070;
-pdMass[101] = 568.3880; pdInten[101] = 314;
-pdMass[102] = 569.2521; pdInten[102] = 83;
-pdMass[103] = 570.3320; pdInten[103] = 60;
-pdMass[104] = 571.3290; pdInten[104] = 28;
-pdMass[105] = 572.2010; pdInten[105] = 21;
-pdMass[106] = 574.2411; pdInten[106] = 56;
-pdMass[107] = 575.5480; pdInten[107] = 11;
-pdMass[108] = 577.4391; pdInten[108] = 1267;
-pdMass[109] = 578.5041; pdInten[109] = 476;
-pdMass[110] = 579.5721; pdInten[110] = 86;
-pdMass[111] = 580.3390; pdInten[111] = 46;
-pdMass[112] = 581.0330; pdInten[112] = 25;
-pdMass[113] = 583.6660; pdInten[113] = 17;
-pdMass[114] = 585.3121; pdInten[114] = 74;
-pdMass[115] = 586.2211; pdInten[115] = 104;
-pdMass[116] = 587.3450; pdInten[116] = 23;
-pdMass[117] = 588.2831; pdInten[117] = 33;
-pdMass[118] = 589.4681; pdInten[118] = 49;
-pdMass[119] = 590.1580; pdInten[119] = 37;
-pdMass[120] = 592.1921; pdInten[120] = 52;
-pdMass[121] = 593.3730; pdInten[121] = 51;
-pdMass[122] = 594.4800; pdInten[122] = 15;
-pdMass[123] = 595.1790; pdInten[123] = 14;
-pdMass[124] = 597.1501; pdInten[124] = 101;
-pdMass[125] = 598.5520; pdInten[125] = 17;
-pdMass[126] = 599.1730; pdInten[126] = 37;
-pdMass[127] = 601.1330; pdInten[127] = 21;
-pdMass[128] = 601.8820; pdInten[128] = 46;
-pdMass[129] = 602.4971; pdInten[129] = 15;
-pdMass[130] = 603.3101; pdInten[130] = 114;
-pdMass[131] = 604.2810; pdInten[131] = 40;
-pdMass[132] = 606.5350; pdInten[132] = 8;
-pdMass[133] = 607.2100; pdInten[133] = 13;
-pdMass[134] = 611.3470; pdInten[134] = 12;
-pdMass[135] = 612.2161; pdInten[135] = 21;
-pdMass[136] = 614.1930; pdInten[136] = 29;
-pdMass[137] = 615.2451; pdInten[137] = 37;
-pdMass[138] = 616.5500; pdInten[138] = 17;
-pdMass[139] = 620.4741; pdInten[139] = 66;
-pdMass[140] = 621.3450; pdInten[140] = 26;
-pdMass[141] = 623.4051; pdInten[141] = 63;
-pdMass[142] = 624.4940; pdInten[142] = 346;
-pdMass[143] = 625.4821; pdInten[143] = 167;
-pdMass[144] = 626.2900; pdInten[144] = 17;
-pdMass[145] = 628.4691; pdInten[145] = 166;
-pdMass[146] = 629.4100; pdInten[146] = 46;
-pdMass[147] = 630.6480; pdInten[147] = 9;
-pdMass[148] = 634.3491; pdInten[148] = 153;
-pdMass[149] = 635.6141; pdInten[149] = 30;
-pdMass[150] = 636.8060; pdInten[150] = 113;
-pdMass[151] = 637.5940; pdInten[151] = 13;
-pdMass[152] = 638.6290; pdInten[152] = 10;
-pdMass[153] = 639.6340; pdInten[153] = 25;
-pdMass[154] = 640.4620; pdInten[154] = 9;
-pdMass[155] = 641.0860; pdInten[155] = 34;
-pdMass[156] = 644.2520; pdInten[156] = 39;
-pdMass[157] = 646.6680; pdInten[157] = 72;
-pdMass[158] = 647.4811; pdInten[158] = 97;
-pdMass[159] = 648.4310; pdInten[159] = 49;
-pdMass[160] = 649.5610; pdInten[160] = 41;
-pdMass[161] = 651.9440; pdInten[161] = 13;
-pdMass[162] = 653.3520; pdInten[162] = 11;
-pdMass[163] = 654.3700; pdInten[163] = 35;
-pdMass[164] = 655.1960; pdInten[164] = 72;
-pdMass[165] = 656.3701; pdInten[165] = 14;
-pdMass[166] = 658.3390; pdInten[166] = 58;
-pdMass[167] = 659.6851; pdInten[167] = 51;
-pdMass[168] = 663.3511; pdInten[168] = 20;
-pdMass[169] = 664.5920; pdInten[169] = 1003;
-pdMass[170] = 665.5620; pdInten[170] = 320;
-pdMass[171] = 666.6111; pdInten[171] = 61;
-pdMass[172] = 668.2900; pdInten[172] = 36;
-pdMass[173] = 669.2670; pdInten[173] = 58;
-pdMass[174] = 671.2680; pdInten[174] = 13;
-pdMass[175] = 672.3181; pdInten[175] = 47;
-pdMass[176] = 673.4290; pdInten[176] = 71;
-pdMass[177] = 674.3531; pdInten[177] = 45;
-pdMass[178] = 675.5060; pdInten[178] = 49;
-pdMass[179] = 676.2860; pdInten[179] = 59;
-pdMass[180] = 676.9260; pdInten[180] = 14;
-pdMass[181] = 678.5240; pdInten[181] = 14;
-pdMass[182] = 680.3320; pdInten[182] = 11;
-pdMass[183] = 683.4261; pdInten[183] = 78;
-pdMass[184] = 684.5381; pdInten[184] = 74;
-pdMass[185] = 685.6520; pdInten[185] = 157;
-pdMass[186] = 686.3140; pdInten[186] = 106;
-pdMass[187] = 687.6041; pdInten[187] = 70;
-pdMass[188] = 689.2670; pdInten[188] = 50;
-pdMass[189] = 690.3771; pdInten[189] = 80;
-pdMass[190] = 691.4490; pdInten[190] = 142;
-pdMass[191] = 692.5231; pdInten[191] = 55;
-pdMass[192] = 693.5560; pdInten[192] = 89;
-pdMass[193] = 695.1451; pdInten[193] = 49;
-pdMass[194] = 698.2141; pdInten[194] = 196;
-pdMass[195] = 700.2210; pdInten[195] = 12;
-pdMass[196] = 702.4100; pdInten[196] = 59;
-pdMass[197] = 703.5720; pdInten[197] = 350;
-pdMass[198] = 704.4930; pdInten[198] = 373;
-pdMass[199] = 705.3901; pdInten[199] = 70;
-pdMass[200] = 706.4741; pdInten[200] = 34;
-pdMass[201] = 707.4471; pdInten[201] = 125;
-pdMass[202] = 710.7020; pdInten[202] = 23;
-pdMass[203] = 711.5630; pdInten[203] = 301;
-pdMass[204] = 712.5410; pdInten[204] = 258;
-pdMass[205] = 713.6470; pdInten[205] = 105;
-pdMass[206] = 715.5760; pdInten[206] = 176;
-pdMass[207] = 716.3730; pdInten[207] = 248;
-pdMass[208] = 717.2740; pdInten[208] = 22;
-pdMass[209] = 718.5000; pdInten[209] = 10;
-pdMass[210] = 720.6221; pdInten[210] = 198;
-pdMass[211] = 721.6120; pdInten[211] = 4453;
-pdMass[212] = 722.5681; pdInten[212] = 2529;
-pdMass[213] = 723.5421; pdInten[213] = 615;
-pdMass[214] = 724.3170; pdInten[214] = 27;
-pdMass[215] = 726.2880; pdInten[215] = 32;
-pdMass[216] = 728.0580; pdInten[216] = 72;
-pdMass[217] = 729.6030; pdInten[217] = 10;
-pdMass[218] = 730.3400; pdInten[218] = 13;
-pdMass[219] = 731.6650; pdInten[219] = 96;
-pdMass[220] = 732.3201; pdInten[220] = 49;
-pdMass[221] = 735.5570; pdInten[221] = 62;
-pdMass[222] = 736.5460; pdInten[222] = 24;
-pdMass[223] = 737.1750; pdInten[223] = 33;
-pdMass[224] = 738.4171; pdInten[224] = 79;
-pdMass[225] = 739.0621; pdInten[225] = 18;
-pdMass[226] = 740.2241; pdInten[226] = 30;
-pdMass[227] = 741.9601; pdInten[227] = 178;
-pdMass[228] = 743.4540; pdInten[228] = 39;
-pdMass[229] = 744.2590; pdInten[229] = 44;
-pdMass[230] = 745.8130; pdInten[230] = 13;
-pdMass[231] = 749.0751; pdInten[231] = 78;
-pdMass[232] = 750.4471; pdInten[232] = 164;
-pdMass[233] = 751.2610; pdInten[233] = 78;
-pdMass[234] = 754.6260; pdInten[234] = 24;
-pdMass[235] = 755.5420; pdInten[235] = 9;
-pdMass[236] = 756.3021; pdInten[236] = 33;
-pdMass[237] = 757.8370; pdInten[237] = 34;
-pdMass[238] = 759.2891; pdInten[238] = 404;
-pdMass[239] = 760.0931; pdInten[239] = 226;
-pdMass[240] = 760.7510; pdInten[240] = 164;
-pdMass[241] = 761.5391; pdInten[241] = 300;
-pdMass[242] = 762.5001; pdInten[242] = 126;
-pdMass[243] = 763.5461; pdInten[243] = 48;
-pdMass[244] = 766.2150; pdInten[244] = 13;
-pdMass[245] = 767.5690; pdInten[245] = 38;
-pdMass[246] = 768.3650; pdInten[246] = 43;
-pdMass[247] = 769.8921; pdInten[247] = 443;
-pdMass[248] = 770.6940; pdInten[248] = 86;
-pdMass[249] = 771.3240; pdInten[249] = 72;
-pdMass[250] = 772.1000; pdInten[250] = 39;
-pdMass[251] = 773.3480; pdInten[251] = 34;
-pdMass[252] = 774.3820; pdInten[252] = 17;
-pdMass[253] = 777.2971; pdInten[253] = 27;
-pdMass[254] = 778.8721; pdInten[254] = 952;
-pdMass[255] = 779.6570; pdInten[255] = 515;
-pdMass[256] = 780.5170; pdInten[256] = 63;
-pdMass[257] = 781.2080; pdInten[257] = 27;
-pdMass[258] = 782.6710; pdInten[258] = 11;
-pdMass[259] = 783.7700; pdInten[259] = 18;
-pdMass[260] = 784.5480; pdInten[260] = 35;
-pdMass[261] = 787.7870; pdInten[261] = 2907;
-pdMass[262] = 788.5370; pdInten[262] = 1316;
-pdMass[263] = 789.2441; pdInten[263] = 226;
-pdMass[264] = 790.3560; pdInten[264] = 13;
-pdMass[265] = 791.4180; pdInten[265] = 62;
-pdMass[266] = 792.3450; pdInten[266] = 11;
-pdMass[267] = 795.1830; pdInten[267] = 22;
-pdMass[268] = 797.6151; pdInten[268] = 30;
-pdMass[269] = 798.5250; pdInten[269] = 18;
-pdMass[270] = 801.4360; pdInten[270] = 172;
-pdMass[271] = 802.2281; pdInten[271] = 23;
-pdMass[272] = 803.0570; pdInten[272] = 16;
-pdMass[273] = 804.5030; pdInten[273] = 21;
-pdMass[274] = 806.6591; pdInten[274] = 62;
-pdMass[275] = 807.4241; pdInten[275] = 76;
-pdMass[276] = 808.4590; pdInten[276] = 91;
-pdMass[277] = 809.5890; pdInten[277] = 37;
-pdMass[278] = 810.2800; pdInten[278] = 61;
-pdMass[279] = 814.3710; pdInten[279] = 33;
-pdMass[280] = 816.4030; pdInten[280] = 13;
-pdMass[281] = 817.5721; pdInten[281] = 82;
-pdMass[282] = 818.4670; pdInten[282] = 238;
-pdMass[283] = 819.4641; pdInten[283] = 128;
-pdMass[284] = 820.3051; pdInten[284] = 46;
-pdMass[285] = 821.5041; pdInten[285] = 43;
-pdMass[286] = 823.8600; pdInten[286] = 26;
-pdMass[287] = 824.5110; pdInten[287] = 78;
-pdMass[288] = 825.5911; pdInten[288] = 537;
-pdMass[289] = 826.6150; pdInten[289] = 455;
-pdMass[290] = 827.7991; pdInten[290] = 60;
-pdMass[291] = 828.5961; pdInten[291] = 48;
-pdMass[292] = 829.5251; pdInten[292] = 34;
-pdMass[293] = 831.6110; pdInten[293] = 13;
-pdMass[294] = 834.3791; pdInten[294] = 86;
-pdMass[295] = 835.4770; pdInten[295] = 136;
-pdMass[296] = 836.4551; pdInten[296] = 151;
-pdMass[297] = 837.1440; pdInten[297] = 13;
-pdMass[298] = 837.7450; pdInten[298] = 34;
-pdMass[299] = 838.3470; pdInten[299] = 41;
-pdMass[300] = 839.6680; pdInten[300] = 23;
-pdMass[301] = 840.4790; pdInten[301] = 10;
-pdMass[302] = 842.3140; pdInten[302] = 59;
-pdMass[303] = 844.9240; pdInten[303] = 18;
-pdMass[304] = 848.4380; pdInten[304] = 118;
-pdMass[305] = 849.5500; pdInten[305] = 72;
-pdMass[306] = 851.0450; pdInten[306] = 99;
-pdMass[307] = 852.3281; pdInten[307] = 208;
-pdMass[308] = 853.4731; pdInten[308] = 364;
-pdMass[309] = 854.3860; pdInten[309] = 109;
-pdMass[310] = 855.4370; pdInten[310] = 36;
-pdMass[311] = 856.5411; pdInten[311] = 44;
-pdMass[312] = 858.8810; pdInten[312] = 9;
-pdMass[313] = 860.4191; pdInten[313] = 424;
-pdMass[314] = 861.2290; pdInten[314] = 513;
-pdMass[315] = 861.8930; pdInten[315] = 35;
-pdMass[316] = 862.6060; pdInten[316] = 17;
-pdMass[317] = 863.7560; pdInten[317] = 14;
-pdMass[318] = 865.3691; pdInten[318] = 39;
-pdMass[319] = 866.6251; pdInten[319] = 150;
-pdMass[320] = 867.6761; pdInten[320] = 105;
-pdMass[321] = 868.4561; pdInten[321] = 115;
-pdMass[322] = 869.3531; pdInten[322] = 1836;
-pdMass[323] = 870.1640; pdInten[323] = 1140;
-pdMass[324] = 870.8840; pdInten[324] = 186;
-pdMass[325] = 872.4271; pdInten[325] = 34;
-pdMass[326] = 873.7181; pdInten[326] = 114;
-pdMass[327] = 875.1940; pdInten[327] = 38;
-pdMass[328] = 877.7731; pdInten[328] = 62;
-pdMass[329] = 882.8340; pdInten[329] = 158;
-pdMass[330] = 883.5420; pdInten[330] = 70;
-pdMass[331] = 884.6920; pdInten[331] = 1777;
-pdMass[332] = 885.7141; pdInten[332] = 1254;
-pdMass[333] = 886.6541; pdInten[333] = 427;
-pdMass[334] = 887.4850; pdInten[334] = 187;
-pdMass[335] = 888.3830; pdInten[335] = 66;
-pdMass[336] = 889.5101; pdInten[336] = 42;
-pdMass[337] = 892.4160; pdInten[337] = 63;
-pdMass[338] = 893.2980; pdInten[338] = 61;
-pdMass[339] = 894.8970; pdInten[339] = 190;
-pdMass[340] = 895.5760; pdInten[340] = 257;
-pdMass[341] = 896.4070; pdInten[341] = 16;
-pdMass[342] = 897.2610; pdInten[342] = 26;
-pdMass[343] = 898.2670; pdInten[343] = 20;
-pdMass[344] = 899.5370; pdInten[344] = 19;
-pdMass[345] = 901.8491; pdInten[345] = 49;
-pdMass[346] = 904.1440; pdInten[346] = 521;
-pdMass[347] = 905.0001; pdInten[347] = 460;
-pdMass[348] = 905.8160; pdInten[348] = 15;
-pdMass[349] = 906.5200; pdInten[349] = 20;
-pdMass[350] = 909.1050; pdInten[350] = 56;
-pdMass[351] = 909.9640; pdInten[351] = 15;
-pdMass[352] = 910.6300; pdInten[352] = 30;
-pdMass[353] = 911.4791; pdInten[353] = 62;
-pdMass[354] = 912.8240; pdInten[354] = 1421;
-pdMass[355] = 913.5831; pdInten[355] = 1126;
-pdMass[356] = 914.4401; pdInten[356] = 115;
-pdMass[357] = 915.3320; pdInten[357] = 31;
-pdMass[358] = 917.7571; pdInten[358] = 58;
-pdMass[359] = 918.6251; pdInten[359] = 15;
-pdMass[360] = 919.7490; pdInten[360] = 16;
-pdMass[361] = 921.4200; pdInten[361] = 59;
-pdMass[362] = 922.5021; pdInten[362] = 213;
-pdMass[363] = 923.6680; pdInten[363] = 64;
-pdMass[364] = 924.5960; pdInten[364] = 15;
-pdMass[365] = 928.6061; pdInten[365] = 36;
-pdMass[366] = 931.1551; pdInten[366] = 48;
-pdMass[367] = 935.7510; pdInten[367] = 43;
-pdMass[368] = 936.5601; pdInten[368] = 75;
-pdMass[369] = 937.7800; pdInten[369] = 11;
-pdMass[370] = 938.7150; pdInten[370] = 19;
-pdMass[371] = 939.6191; pdInten[371] = 791;
-pdMass[372] = 940.6531; pdInten[372] = 784;
-pdMass[373] = 941.5541; pdInten[373] = 317;
-pdMass[374] = 942.1880; pdInten[374] = 41;
-pdMass[375] = 943.0590; pdInten[375] = 40;
-pdMass[376] = 943.8450; pdInten[376] = 12;
-pdMass[377] = 945.0870; pdInten[377] = 191;
-pdMass[378] = 946.2571; pdInten[378] = 47;
-pdMass[379] = 948.6580; pdInten[379] = 17;
-pdMass[380] = 949.3881; pdInten[380] = 32;
-pdMass[381] = 951.4691; pdInten[381] = 77;
-pdMass[382] = 952.6431; pdInten[382] = 206;
-pdMass[383] = 953.7900; pdInten[383] = 166;
-pdMass[384] = 954.6121; pdInten[384] = 173;
-pdMass[385] = 955.5090; pdInten[385] = 33;
-pdMass[386] = 956.2320; pdInten[386] = 19;
-pdMass[387] = 958.5550; pdInten[387] = 14;
-pdMass[388] = 961.5400; pdInten[388] = 184;
-pdMass[389] = 962.3571; pdInten[389] = 297;
-pdMass[390] = 963.3690; pdInten[390] = 52;
-pdMass[391] = 966.7831; pdInten[391] = 65;
-pdMass[392] = 967.4050; pdInten[392] = 10;
-pdMass[393] = 968.4510; pdInten[393] = 76;
-pdMass[394] = 970.3491; pdInten[394] = 975;
-pdMass[395] = 971.0060; pdInten[395] = 356;
-pdMass[396] = 971.6910; pdInten[396] = 2186;
-pdMass[397] = 972.7261; pdInten[397] = 1176;
-pdMass[398] = 973.6350; pdInten[398] = 260;
-pdMass[399] = 974.4261; pdInten[399] = 31;
-pdMass[400] = 975.0770; pdInten[400] = 12;
-pdMass[401] = 977.0610; pdInten[401] = 18;
-pdMass[402] = 977.8231; pdInten[402] = 22;
-pdMass[403] = 980.2831; pdInten[403] = 89;
-pdMass[404] = 981.4880; pdInten[404] = 37;
-pdMass[405] = 982.5400; pdInten[405] = 41;
-pdMass[406] = 983.7380; pdInten[406] = 84;
-pdMass[407] = 984.9031; pdInten[407] = 40;
-pdMass[408] = 987.9100; pdInten[408] = 21;
-pdMass[409] = 988.7831; pdInten[409] = 136;
-pdMass[410] = 991.6050; pdInten[410] = 36;
-pdMass[411] = 993.4480; pdInten[411] = 25;
-pdMass[412] = 997.4590; pdInten[412] = 237;
-pdMass[413] = 998.3940; pdInten[413] = 216;
-pdMass[414] = 999.7770; pdInten[414] = 30;
-pdMass[415] = 1000.6230; pdInten[415] = 77;
-pdMass[416] = 1001.3000; pdInten[416] = 19;
-pdMass[417] = 1002.6271; pdInten[417] = 39;
-pdMass[418] = 1003.3150; pdInten[418] = 47;
-pdMass[419] = 1005.3030; pdInten[419] = 15;
-pdMass[420] = 1006.6371; pdInten[420] = 15;
-pdMass[421] = 1007.3410; pdInten[421] = 19;
-pdMass[422] = 1008.1860; pdInten[422] = 33;
-pdMass[423] = 1009.1511; pdInten[423] = 95;
-pdMass[424] = 1010.4120; pdInten[424] = 170;
-pdMass[425] = 1011.2181; pdInten[425] = 49;
-pdMass[426] = 1013.0050; pdInten[426] = 55;
-pdMass[427] = 1016.4551; pdInten[427] = 53;
-pdMass[428] = 1018.6461; pdInten[428] = 736;
-pdMass[429] = 1019.6520; pdInten[429] = 474;
-pdMass[430] = 1020.5300; pdInten[430] = 50;
-pdMass[431] = 1021.6951; pdInten[431] = 14;
-pdMass[432] = 1022.8051; pdInten[432] = 46;
-pdMass[433] = 1025.6801; pdInten[433] = 87;
-pdMass[434] = 1027.4730; pdInten[434] = 1215;
-pdMass[435] = 1028.1880; pdInten[435] = 983;
-pdMass[436] = 1028.9481; pdInten[436] = 158;
-pdMass[437] = 1032.0930; pdInten[437] = 41;
-pdMass[438] = 1032.7480; pdInten[438] = 39;
-pdMass[439] = 1035.5231; pdInten[439] = 70;
-pdMass[440] = 1036.8411; pdInten[440] = 238;
-pdMass[441] = 1037.9551; pdInten[441] = 375;
-pdMass[442] = 1038.8081; pdInten[442] = 207;
-pdMass[443] = 1039.8041; pdInten[443] = 76;
-pdMass[444] = 1040.9420; pdInten[444] = 46;
-pdMass[445] = 1041.8840; pdInten[445] = 77;
-pdMass[446] = 1043.2120; pdInten[446] = 13;
-pdMass[447] = 1045.4971; pdInten[447] = 183;
-pdMass[448] = 1046.2981; pdInten[448] = 112;
-pdMass[449] = 1047.3280; pdInten[449] = 75;
-pdMass[450] = 1048.2401; pdInten[450] = 100;
-pdMass[451] = 1049.5100; pdInten[451] = 112;
-pdMass[452] = 1050.5410; pdInten[452] = 67;
-pdMass[453] = 1051.6581; pdInten[453] = 131;
-pdMass[454] = 1052.8210; pdInten[454] = 61;
-pdMass[455] = 1053.4960; pdInten[455] = 73;
-pdMass[456] = 1054.7411; pdInten[456] = 1252;
-pdMass[457] = 1055.5950; pdInten[457] = 908;
-pdMass[458] = 1056.6831; pdInten[458] = 379;
-pdMass[459] = 1057.6440; pdInten[459] = 202;
-pdMass[460] = 1058.7771; pdInten[460] = 297;
-pdMass[461] = 1059.7030; pdInten[461] = 43;
-pdMass[462] = 1061.9000; pdInten[462] = 121;
-pdMass[463] = 1062.7830; pdInten[463] = 98;
-pdMass[464] = 1063.8320; pdInten[464] = 175;
-pdMass[465] = 1066.9071; pdInten[465] = 330;
-pdMass[466] = 1067.7120; pdInten[466] = 216;
-pdMass[467] = 1068.6201; pdInten[467] = 295;
-pdMass[468] = 1069.5811; pdInten[468] = 238;
-pdMass[469] = 1070.7471; pdInten[469] = 47;
-pdMass[470] = 1071.6180; pdInten[470] = 18;
-pdMass[471] = 1072.5681; pdInten[471] = 68;
-pdMass[472] = 1073.4661; pdInten[472] = 64;
-pdMass[473] = 1074.4241; pdInten[473] = 79;
-pdMass[474] = 1075.5200; pdInten[474] = 217;
-pdMass[475] = 1076.4491; pdInten[475] = 777;
-pdMass[476] = 1077.4200; pdInten[476] = 213;
-pdMass[477] = 1080.8010; pdInten[477] = 237;
-pdMass[478] = 1081.6110; pdInten[478] = 46;
-pdMass[479] = 1082.5610; pdInten[479] = 128;
-pdMass[480] = 1083.8931; pdInten[480] = 324;
-pdMass[481] = 1084.7180; pdInten[481] = 2032;
-pdMass[482] = 1085.7631; pdInten[482] = 409;
-pdMass[483] = 1086.7361; pdInten[483] = 1252;
-pdMass[484] = 1087.6371; pdInten[484] = 902;
-pdMass[485] = 1088.6880; pdInten[485] = 248;
-pdMass[486] = 1089.5240; pdInten[486] = 208;
-pdMass[487] = 1090.3441; pdInten[487] = 86;
-pdMass[488] = 1091.4280; pdInten[488] = 27;
-pdMass[489] = 1092.5360; pdInten[489] = 28;
-pdMass[490] = 1093.5940; pdInten[490] = 16;
-pdMass[491] = 1095.4670; pdInten[491] = 14;
-pdMass[492] = 1096.5950; pdInten[492] = 63;
-pdMass[493] = 1098.2471; pdInten[493] = 188;
-pdMass[494] = 1099.4491; pdInten[494] = 173;
-pdMass[495] = 1101.0911; pdInten[495] = 47;
-pdMass[496] = 1101.7310; pdInten[496] = 26;
-pdMass[497] = 1102.6870; pdInten[497] = 51;
-pdMass[498] = 1103.6210; pdInten[498] = 65;
-pdMass[499] = 1104.5701; pdInten[499] = 61;
-pdMass[500] = 1105.6211; pdInten[500] = 36;
-pdMass[501] = 1106.7330; pdInten[501] = 81;
-pdMass[502] = 1107.5481; pdInten[502] = 145;
-pdMass[503] = 1108.4221; pdInten[503] = 67;
-pdMass[504] = 1113.4460; pdInten[504] = 115;
-pdMass[505] = 1115.6201; pdInten[505] = 244;
-pdMass[506] = 1118.2390; pdInten[506] = 49;
-pdMass[507] = 1119.2321; pdInten[507] = 13;
-pdMass[508] = 1121.2411; pdInten[508] = 48;
-pdMass[509] = 1123.9291; pdInten[509] = 172;
-pdMass[510] = 1124.6171; pdInten[510] = 67;
-pdMass[511] = 1125.8890; pdInten[511] = 154;
-pdMass[512] = 1126.9740; pdInten[512] = 64;
-pdMass[513] = 1128.8671; pdInten[513] = 17;
-pdMass[514] = 1130.2700; pdInten[514] = 49;
-pdMass[515] = 1132.5801; pdInten[515] = 269;
-pdMass[516] = 1133.4761; pdInten[516] = 490;
-pdMass[517] = 1134.6361; pdInten[517] = 135;
-pdMass[518] = 1136.4760; pdInten[518] = 26;
-pdMass[519] = 1137.5400; pdInten[519] = 117;
-pdMass[520] = 1139.6791; pdInten[520] = 59;
-pdMass[521] = 1140.5220; pdInten[521] = 67;
-pdMass[522] = 1141.5560; pdInten[522] = 1322;
-pdMass[523] = 1142.2421; pdInten[523] = 978;
-pdMass[524] = 1143.4551; pdInten[524] = 233;
-pdMass[525] = 1144.6281; pdInten[525] = 202;
-pdMass[526] = 1145.4110; pdInten[526] = 125;
-pdMass[527] = 1146.9420; pdInten[527] = 116;
-pdMass[528] = 1148.7220; pdInten[528] = 351;
-pdMass[529] = 1149.8790; pdInten[529] = 151;
-pdMass[530] = 1150.6960; pdInten[530] = 16;
-pdMass[531] = 1151.6421; pdInten[531] = 162;
-pdMass[532] = 1153.0651; pdInten[532] = 423;
-pdMass[533] = 1153.9150; pdInten[533] = 586;
-pdMass[534] = 1154.7971; pdInten[534] = 202;
-pdMass[535] = 1155.8170; pdInten[535] = 81;
-pdMass[536] = 1156.9171; pdInten[536] = 131;
-pdMass[537] = 1157.8680; pdInten[537] = 124;
-pdMass[538] = 1158.6140; pdInten[538] = 46;
-pdMass[539] = 1159.5951; pdInten[539] = 103;
-pdMass[540] = 1160.3220; pdInten[540] = 141;
-pdMass[541] = 1161.4081; pdInten[541] = 200;
-pdMass[542] = 1162.3790; pdInten[542] = 784;
-pdMass[543] = 1163.4661; pdInten[543] = 358;
-pdMass[544] = 1164.3701; pdInten[544] = 183;
-pdMass[545] = 1165.6211; pdInten[545] = 139;
-pdMass[546] = 1166.7721; pdInten[546] = 256;
-pdMass[547] = 1167.6920; pdInten[547] = 104;
-pdMass[548] = 1168.5410; pdInten[548] = 307;
-pdMass[549] = 1169.7061; pdInten[549] = 1991;
-pdMass[550] = 1170.7891; pdInten[550] = 1823;
-pdMass[551] = 1171.7841; pdInten[551] = 985;
-pdMass[552] = 1172.6140; pdInten[552] = 74;
-pdMass[553] = 1173.8461; pdInten[553] = 92;
-pdMass[554] = 1174.7760; pdInten[554] = 38;
-pdMass[555] = 1176.3740; pdInten[555] = 1500;
-pdMass[556] = 1177.2550; pdInten[556] = 1174;
-pdMass[557] = 1178.7080; pdInten[557] = 64;
-pdMass[558] = 1179.9980; pdInten[558] = 388;
-pdMass[559] = 1180.8470; pdInten[559] = 255;
-pdMass[560] = 1181.8571; pdInten[560] = 271;
-pdMass[561] = 1182.7101; pdInten[561] = 17;
-pdMass[562] = 1184.0040; pdInten[562] = 241;
-pdMass[563] = 1185.0751; pdInten[563] = 2254;
-pdMass[564] = 1185.8971; pdInten[564] = 2984;
-pdMass[565] = 1186.7661; pdInten[565] = 19;
-pdMass[566] = 1187.7490; pdInten[566] = 218;
-pdMass[567] = 1189.3800; pdInten[567] = 129;
-pdMass[568] = 1190.6381; pdInten[568] = 275;
-pdMass[569] = 1191.5360; pdInten[569] = 177;
-pdMass[570] = 1192.2310; pdInten[570] = 77;
-pdMass[571] = 1193.5450; pdInten[571] = 120;
-pdMass[572] = 1194.7671; pdInten[572] = 237;
-pdMass[573] = 1195.6591; pdInten[573] = 52;
-pdMass[574] = 1196.6600; pdInten[574] = 91;
-pdMass[575] = 1197.5830; pdInten[575] = 179;
-pdMass[576] = 1198.6171; pdInten[576] = 160;
-pdMass[577] = 1199.5291; pdInten[577] = 232;
-pdMass[578] = 1200.4281; pdInten[578] = 582;
-pdMass[579] = 1201.0870; pdInten[579] = 41;
-pdMass[580] = 1201.7540; pdInten[580] = 1055;
-pdMass[581] = 1202.7561; pdInten[581] = 1454;
-pdMass[582] = 1203.9050; pdInten[582] = 630;
-pdMass[583] = 1204.8800; pdInten[583] = 1634;
-pdMass[584] = 1206.8530; pdInten[584] = 193;
-pdMass[585] = 1208.1001; pdInten[585] = 150;
-pdMass[586] = 1209.3020; pdInten[586] = 248;
-pdMass[587] = 1210.4871; pdInten[587] = 143;
-pdMass[588] = 1211.5190; pdInten[588] = 296;
-pdMass[589] = 1212.4100; pdInten[589] = 56;
-pdMass[590] = 1213.1470; pdInten[590] = 65;
-pdMass[591] = 1214.1810; pdInten[591] = 32;
-pdMass[592] = 1215.2030; pdInten[592] = 153;
-pdMass[593] = 1216.5211; pdInten[593] = 162;
-pdMass[594] = 1217.3781; pdInten[594] = 106;
-pdMass[595] = 1218.3710; pdInten[595] = 37;
-pdMass[596] = 1219.9060; pdInten[596] = 782;
-pdMass[597] = 1220.7731; pdInten[597] = 642;
-pdMass[598] = 1221.9691; pdInten[598] = 238;
-pdMass[599] = 1222.8060; pdInten[599] = 258;
-pdMass[600] = 1223.8480; pdInten[600] = 182;
-pdMass[601] = 1225.4711; pdInten[601] = 161;
-pdMass[602] = 1226.1750; pdInten[602] = 136;
-pdMass[603] = 1228.0481; pdInten[603] = 334;
-pdMass[604] = 1228.9971; pdInten[604] = 2508;
-pdMass[605] = 1229.7710; pdInten[605] = 876;
-pdMass[606] = 1230.6371; pdInten[606] = 192;
-pdMass[607] = 1231.3840; pdInten[607] = 372;
-pdMass[608] = 1231.9971; pdInten[608] = 135;
-pdMass[609] = 1232.6560; pdInten[609] = 41;
-pdMass[610] = 1234.3521; pdInten[610] = 292;
-pdMass[611] = 1235.1680; pdInten[611] = 186;
-pdMass[612] = 1237.2721; pdInten[612] = 70;
-pdMass[613] = 1238.4181; pdInten[613] = 221;
-pdMass[614] = 1239.5281; pdInten[614] = 1099;
-pdMass[615] = 1240.1960; pdInten[615] = 703;
-pdMass[616] = 1240.8301; pdInten[616] = 697;
-pdMass[617] = 1242.1161; pdInten[617] = 238;
-pdMass[618] = 1243.3711; pdInten[618] = 349;
-pdMass[619] = 1244.1801; pdInten[619] = 85;
-pdMass[620] = 1244.9340; pdInten[620] = 57;
-pdMass[621] = 1245.8850; pdInten[621] = 69;
-pdMass[622] = 1247.4790; pdInten[622] = 360;
-pdMass[623] = 1248.5670; pdInten[623] = 3734;
-pdMass[624] = 1249.3711; pdInten[624] = 2039;
-pdMass[625] = 1250.2820; pdInten[625] = 25;
-pdMass[626] = 1251.8551; pdInten[626] = 416;
-pdMass[627] = 1252.7010; pdInten[627] = 426;
-pdMass[628] = 1253.5990; pdInten[628] = 89;
-pdMass[629] = 1254.4110; pdInten[629] = 17;
-pdMass[630] = 1255.4940; pdInten[630] = 26;
-pdMass[631] = 1256.9801; pdInten[631] = 9599;
-pdMass[632] = 1257.8240; pdInten[632] = 10230;
-pdMass[633] = 1258.7500; pdInten[633] = 1434;
-pdMass[634] = 1259.6910; pdInten[634] = 201;
-pdMass[635] = 1261.0791; pdInten[635] = 108;
-pdMass[636] = 1261.9601; pdInten[636] = 205;
-pdMass[637] = 1262.8120; pdInten[637] = 41;
-pdMass[638] = 1263.9310; pdInten[638] = 123;
-pdMass[639] = 1265.0011; pdInten[639] = 141;
-pdMass[640] = 1265.7731; pdInten[640] = 129;
-pdMass[641] = 1266.9060; pdInten[641] = 159;
-pdMass[642] = 1267.8010; pdInten[642] = 53;
-pdMass[643] = 1268.4880; pdInten[643] = 47;
-pdMass[644] = 1270.2810; pdInten[644] = 184;
-pdMass[645] = 1271.1801; pdInten[645] = 390;
-pdMass[646] = 1272.0861; pdInten[646] = 35;
-pdMass[647] = 1273.0360; pdInten[647] = 122;
-pdMass[648] = 1274.3590; pdInten[648] = 126;
-pdMass[649] = 1276.2531; pdInten[649] = 494;
-pdMass[650] = 1277.0291; pdInten[650] = 384;
-pdMass[651] = 1277.8821; pdInten[651] = 256;
-pdMass[652] = 1278.8911; pdInten[652] = 458;
-pdMass[653] = 1279.8120; pdInten[653] = 69;
-pdMass[654] = 1280.8311; pdInten[654] = 90;
-pdMass[655] = 1281.8451; pdInten[655] = 156;
-pdMass[656] = 1282.6201; pdInten[656] = 1702;
-pdMass[657] = 1283.5161; pdInten[657] = 232;
-pdMass[658] = 1284.2061; pdInten[658] = 84;
-pdMass[659] = 1285.2671; pdInten[659] = 223;
-pdMass[660] = 1287.6240; pdInten[660] = 588;
-pdMass[661] = 1288.5111; pdInten[661] = 3429;
-pdMass[662] = 1289.4871; pdInten[662] = 167;
-pdMass[663] = 1290.1400; pdInten[663] = 143;
-pdMass[664] = 1291.3490; pdInten[664] = 198;
-pdMass[665] = 1292.1261; pdInten[665] = 49;
-pdMass[666] = 1294.1001; pdInten[666] = 3516;
-pdMass[667] = 1294.8000; pdInten[667] = 2315;
-pdMass[668] = 1295.9150; pdInten[668] = 128;
-pdMass[669] = 1297.7650; pdInten[669] = 52;
-pdMass[670] = 1298.8270; pdInten[670] = 199;
-pdMass[671] = 1300.0770; pdInten[671] = 659;
-pdMass[672] = 1300.8871; pdInten[672] = 153;
-pdMass[673] = 1302.4060; pdInten[673] = 18;
-pdMass[674] = 1312.2371; pdInten[674] = 11;
-pdMass[675] = 1314.6770; pdInten[675] = 46;
-pdMass[676] = 1315.7351; pdInten[676] = 174;
-pdMass[677] = 1316.7960; pdInten[677] = 196;
-pdMass[678] = 1317.8141; pdInten[678] = 81;
-pdMass[679] = 1318.6040; pdInten[679] = 27;
-pdMass[680] = 1319.5900; pdInten[680] = 13;
-pdMass[681] = 1320.8280; pdInten[681] = 258;
-pdMass[682] = 1321.9291; pdInten[682] = 204;
-pdMass[683] = 1323.1550; pdInten[683] = 44;
-pdMass[684] = 1326.9501; pdInten[684] = 84;
-pdMass[685] = 1327.8301; pdInten[685] = 67;
-pdMass[686] = 1329.1270; pdInten[686] = 49;
-pdMass[687] = 1330.2821; pdInten[687] = 857;
-pdMass[688] = 1331.2660; pdInten[688] = 120;
-pdMass[689] = 1332.8700; pdInten[689] = 22;
-pdMass[690] = 1333.7090; pdInten[690] = 39;
-pdMass[691] = 1334.7650; pdInten[691] = 70;
-pdMass[692] = 1335.9980; pdInten[692] = 55;
-pdMass[693] = 1338.5460; pdInten[693] = 960;
-pdMass[694] = 1339.3900; pdInten[694] = 1795;
-pdMass[695] = 1340.4751; pdInten[695] = 264;
-pdMass[696] = 1343.1130; pdInten[696] = 42;
-pdMass[697] = 1343.8990; pdInten[697] = 22;
-pdMass[698] = 1344.7850; pdInten[698] = 39;
-pdMass[699] = 1346.4771; pdInten[699] = 144;
-pdMass[700] = 1347.0911; pdInten[700] = 43;
-pdMass[701] = 1348.4351; pdInten[701] = 109;
-pdMass[702] = 1349.3380; pdInten[702] = 171;
-pdMass[703] = 1350.3820; pdInten[703] = 48;
-pdMass[704] = 1351.6560; pdInten[704] = 52;
-pdMass[705] = 1352.6780; pdInten[705] = 16;
-pdMass[706] = 1353.7600; pdInten[706] = 27;
-pdMass[707] = 1355.9880; pdInten[707] = 252;
-pdMass[708] = 1357.4990; pdInten[708] = 526;
-pdMass[709] = 1358.2931; pdInten[709] = 213;
-pdMass[710] = 1359.2260; pdInten[710] = 87;
-pdMass[711] = 1360.6840; pdInten[711] = 53;
-pdMass[712] = 1361.5811; pdInten[712] = 102;
-pdMass[713] = 1363.0381; pdInten[713] = 108;
-pdMass[714] = 1364.0450; pdInten[714] = 361;
-pdMass[715] = 1364.9281; pdInten[715] = 376;
-pdMass[716] = 1366.0601; pdInten[716] = 573;
-pdMass[717] = 1366.8611; pdInten[717] = 402;
-pdMass[718] = 1368.0811; pdInten[718] = 88;
-pdMass[719] = 1371.4810; pdInten[719] = 41;
-pdMass[720] = 1373.5720; pdInten[720] = 632;
-pdMass[721] = 1374.3940; pdInten[721] = 735;
-pdMass[722] = 1375.4021; pdInten[722] = 34;
-pdMass[723] = 1377.8470; pdInten[723] = 22;
-pdMass[724] = 1378.7140; pdInten[724] = 13;
-pdMass[725] = 1381.0271; pdInten[725] = 62;
-pdMass[726] = 1382.1400; pdInten[726] = 1043;
-pdMass[727] = 1382.9071; pdInten[727] = 1926;
-pdMass[728] = 1383.8051; pdInten[728] = 161;
-pdMass[729] = 1384.8000; pdInten[729] = 178;
-pdMass[730] = 1385.7831; pdInten[730] = 56;
-pdMass[731] = 1386.7300; pdInten[731] = 10;
-pdMass[732] = 1388.0770; pdInten[732] = 17;
-pdMass[733] = 1389.6750; pdInten[733] = 70;
-pdMass[734] = 1390.5190; pdInten[734] = 64;
-pdMass[735] = 1391.8260; pdInten[735] = 60;
-pdMass[736] = 1392.7560; pdInten[736] = 31;
-pdMass[737] = 1393.7451; pdInten[737] = 72;
-pdMass[738] = 1395.0131; pdInten[738] = 84;
-pdMass[739] = 1395.9231; pdInten[739] = 106;
-pdMass[740] = 1396.9210; pdInten[740] = 70;
-pdMass[741] = 1397.8060; pdInten[741] = 297;
-pdMass[742] = 1398.7180; pdInten[742] = 46;
-pdMass[743] = 1399.5940; pdInten[743] = 22;
-pdMass[744] = 1400.6431; pdInten[744] = 28;
-pdMass[745] = 1401.7950; pdInten[745] = 246;
-pdMass[746] = 1402.7600; pdInten[746] = 521;
-pdMass[747] = 1403.7080; pdInten[747] = 460;
-pdMass[748] = 1404.7991; pdInten[748] = 123;
-pdMass[749] = 1406.4081; pdInten[749] = 583;
-pdMass[750] = 1407.2771; pdInten[750] = 273;
-pdMass[751] = 1409.6560; pdInten[751] = 14;
-pdMass[752] = 1410.5731; pdInten[752] = 24;
-pdMass[753] = 1411.7690; pdInten[753] = 99;
-pdMass[754] = 1412.7411; pdInten[754] = 281;
-pdMass[755] = 1413.8501; pdInten[755] = 406;
-pdMass[756] = 1414.9250; pdInten[756] = 313;
-pdMass[757] = 1415.9811; pdInten[757] = 428;
-pdMass[758] = 1418.8141; pdInten[758] = 169;
-pdMass[759] = 1419.7900; pdInten[759] = 5707;
-pdMass[760] = 1420.7971; pdInten[760] = 6667;
-pdMass[761] = 1421.8370; pdInten[761] = 3566;
-pdMass[762] = 1422.8451; pdInten[762] = 963;
-pdMass[763] = 1423.9441; pdInten[763] = 196;
-pdMass[764] = 1424.7271; pdInten[764] = 112;
-pdMass[765] = 1426.1980; pdInten[765] = 33;
-pdMass[766] = 1427.7020; pdInten[766] = 130;
-pdMass[767] = 1428.7240; pdInten[767] = 41;
-pdMass[768] = 1429.9081; pdInten[768] = 1040;
-pdMass[769] = 1430.9141; pdInten[769] = 1325;
-pdMass[770] = 1431.8961; pdInten[770] = 881;
-pdMass[771] = 1432.7950; pdInten[771] = 211;
-pdMass[772] = 1434.4850; pdInten[772] = 13;
-pdMass[773] = 1438.0190; pdInten[773] = 82;
-pdMass[774] = 1439.9771; pdInten[774] = 1368;
-pdMass[775] = 1440.7760; pdInten[775] = 313;
-pdMass[776] = 1441.4551; pdInten[776] = 75;
-pdMass[777] = 1442.2120; pdInten[777] = 12;
-pdMass[778] = 1445.7141; pdInten[778] = 69;
-pdMass[779] = 1446.5591; pdInten[779] = 33;
-pdMass[780] = 1447.3630; pdInten[780] = 22;
-pdMass[781] = 1448.2941; pdInten[781] = 110;
-pdMass[782] = 1449.3621; pdInten[782] = 77;
-pdMass[783] = 1450.3420; pdInten[783] = 57;
-pdMass[784] = 1451.6121; pdInten[784] = 39;
-pdMass[785] = 1454.9191; pdInten[785] = 420;
-pdMass[786] = 1455.6040; pdInten[786] = 128;
-pdMass[787] = 1456.2600; pdInten[787] = 159;
-pdMass[788] = 1458.8530; pdInten[788] = 215;
-pdMass[789] = 1459.8530; pdInten[789] = 195;
-pdMass[790] = 1461.1320; pdInten[790] = 25;
-pdMass[791] = 1462.0260; pdInten[791] = 44;
-pdMass[792] = 1463.3341; pdInten[792] = 277;
-pdMass[793] = 1464.3010; pdInten[793] = 608;
-pdMass[794] = 1465.0360; pdInten[794] = 126;
-pdMass[795] = 1465.8311; pdInten[795] = 27;
-pdMass[796] = 1467.8971; pdInten[796] = 11;
-pdMass[797] = 1470.9381; pdInten[797] = 80;
-pdMass[798] = 1471.8771; pdInten[798] = 201;
-pdMass[799] = 1473.0431; pdInten[799] = 1035;
-pdMass[800] = 1473.8680; pdInten[800] = 27;
-pdMass[801] = 1474.5861; pdInten[801] = 22;
-pdMass[802] = 1475.8490; pdInten[802] = 84;
-pdMass[803] = 1476.8060; pdInten[803] = 1276;
-pdMass[804] = 1477.7941; pdInten[804] = 1632;
-pdMass[805] = 1478.8721; pdInten[805] = 734;
-pdMass[806] = 1479.9821; pdInten[806] = 403;
-pdMass[807] = 1480.8060; pdInten[807] = 308;
-pdMass[808] = 1481.8931; pdInten[808] = 379;
-pdMass[809] = 1482.7280; pdInten[809] = 37;
-pdMass[810] = 1484.6910; pdInten[810] = 70;
-pdMass[811] = 1485.8650; pdInten[811] = 177;
-pdMass[812] = 1486.6851; pdInten[812] = 105;
-pdMass[813] = 1488.5830; pdInten[813] = 542;
-pdMass[814] = 1489.5071; pdInten[814] = 352;
-pdMass[815] = 1490.5500; pdInten[815] = 152;
-pdMass[816] = 1491.7900; pdInten[816] = 36;
-pdMass[817] = 1496.6281; pdInten[817] = 82;
-pdMass[818] = 1497.6121; pdInten[818] = 756;
-pdMass[819] = 1498.6101; pdInten[819] = 409;
-pdMass[820] = 1499.5570; pdInten[820] = 457;
-pdMass[821] = 1500.8441; pdInten[821] = 93;
-pdMass[822] = 1501.7340; pdInten[822] = 45;
-pdMass[823] = 1502.6790; pdInten[823] = 17;
-pdMass[824] = 1503.8191; pdInten[824] = 31;
-pdMass[825] = 1507.2900; pdInten[825] = 598;
-pdMass[826] = 1507.9821; pdInten[826] = 169;
-pdMass[827] = 1508.8110; pdInten[827] = 145;
-pdMass[828] = 1510.0811; pdInten[828] = 14;
-pdMass[829] = 1511.5990; pdInten[829] = 13;
-pdMass[830] = 1514.5330; pdInten[830] = 43;
-pdMass[831] = 1515.6061; pdInten[831] = 349;
-pdMass[832] = 1516.7521; pdInten[832] = 1457;
-pdMass[833] = 1517.8220; pdInten[833] = 318;
-pdMass[834] = 1518.8911; pdInten[834] = 391;
-pdMass[835] = 1519.9460; pdInten[835] = 129;
-pdMass[836] = 1520.7450; pdInten[836] = 38;
-pdMass[837] = 1525.1211; pdInten[837] = 566;
-pdMass[838] = 1525.8280; pdInten[838] = 441;
-pdMass[839] = 1527.8060; pdInten[839] = 35;
-pdMass[840] = 1528.7511; pdInten[840] = 131;
-pdMass[841] = 1529.5271; pdInten[841] = 142;
-pdMass[842] = 1530.9030; pdInten[842] = 23;
-pdMass[843] = 1532.6801; pdInten[843] = 33;
-pdMass[844] = 1534.7891; pdInten[844] = 37;
-pdMass[845] = 1536.0321; pdInten[845] = 51;
-pdMass[846] = 1537.2781; pdInten[846] = 339;
-pdMass[847] = 1538.0690; pdInten[847] = 38;
-pdMass[848] = 1538.9940; pdInten[848] = 121;
-pdMass[849] = 1540.1641; pdInten[849] = 38;
-pdMass[850] = 1541.8070; pdInten[850] = 107;
-pdMass[851] = 1542.7030; pdInten[851] = 149;
-pdMass[852] = 1543.6641; pdInten[852] = 73;
-pdMass[853] = 1545.1350; pdInten[853] = 48;
-pdMass[854] = 1545.9391; pdInten[854] = 883;
-pdMass[855] = 1546.8640; pdInten[855] = 527;
-pdMass[856] = 1547.8010; pdInten[856] = 295;
-pdMass[857] = 1548.4801; pdInten[857] = 103;
-pdMass[858] = 1550.0441; pdInten[858] = 68;
-pdMass[859] = 1553.9880; pdInten[859] = 497;
-pdMass[860] = 1554.9000; pdInten[860] = 1277;
-pdMass[861] = 1555.8370; pdInten[861] = 476;
-pdMass[862] = 1556.9911; pdInten[862] = 538;
-pdMass[863] = 1557.8981; pdInten[863] = 576;
-pdMass[864] = 1558.9470; pdInten[864] = 157;
-pdMass[865] = 1559.9060; pdInten[865] = 31;
-pdMass[866] = 1560.8761; pdInten[866] = 87;
-pdMass[867] = 1562.2440; pdInten[867] = 266;
-pdMass[868] = 1563.1390; pdInten[868] = 239;
-pdMass[869] = 1563.8650; pdInten[869] = 1463;
-pdMass[870] = 1564.8470; pdInten[870] = 1940;
-pdMass[871] = 1565.8900; pdInten[871] = 1010;
-pdMass[872] = 1566.8070; pdInten[872] = 300;
-pdMass[873] = 1567.4771; pdInten[873] = 16;
-pdMass[874] = 1568.9431; pdInten[874] = 37;
-pdMass[875] = 1570.1731; pdInten[875] = 28;
-pdMass[876] = 1571.3750; pdInten[876] = 459;
-pdMass[877] = 1572.2921; pdInten[877] = 152;
-pdMass[878] = 1573.1461; pdInten[878] = 81;
-pdMass[879] = 1573.9071; pdInten[879] = 1176;
-pdMass[880] = 1574.9370; pdInten[880] = 2173;
-pdMass[881] = 1575.8781; pdInten[881] = 855;
-pdMass[882] = 1576.9381; pdInten[882] = 305;
-pdMass[883] = 1578.0951; pdInten[883] = 74;
-pdMass[884] = 1579.4510; pdInten[884] = 230;
-pdMass[885] = 1580.1781; pdInten[885] = 814;
-pdMass[886] = 1580.9601; pdInten[886] = 596;
-pdMass[887] = 1581.9191; pdInten[887] = 165;
-pdMass[888] = 1582.8000; pdInten[888] = 87;
-pdMass[889] = 1583.7271; pdInten[889] = 99;
-pdMass[890] = 1585.7321; pdInten[890] = 48;
-pdMass[891] = 1588.1481; pdInten[891] = 267;
-pdMass[892] = 1589.0820; pdInten[892] = 1749;
-pdMass[893] = 1589.8511; pdInten[893] = 599;
-pdMass[894] = 1590.7700; pdInten[894] = 51;
-pdMass[895] = 1592.7521; pdInten[895] = 142;
-pdMass[896] = 1593.8401; pdInten[896] = 65;
-pdMass[897] = 1594.7600; pdInten[897] = 150;
-pdMass[898] = 1595.8710; pdInten[898] = 17;
-pdMass[899] = 1596.6951; pdInten[899] = 88;
-pdMass[900] = 1597.6781; pdInten[900] = 1530;
-pdMass[901] = 1598.3680; pdInten[901] = 877;
-pdMass[902] = 1599.1221; pdInten[902] = 47;
-pdMass[903] = 1599.7380; pdInten[903] = 33;
-pdMass[904] = 1600.4070; pdInten[904] = 117;
-pdMass[905] = 1601.7661; pdInten[905] = 121;
-pdMass[906] = 1603.0841; pdInten[906] = 220;
-pdMass[907] = 1603.6951; pdInten[907] = 28;
-pdMass[908] = 1605.6310; pdInten[908] = 41;
-pdMass[909] = 1606.5741; pdInten[909] = 850;
-pdMass[910] = 1607.4360; pdInten[910] = 84;
-pdMass[911] = 1608.8280; pdInten[911] = 340;
-pdMass[912] = 1609.8981; pdInten[912] = 138;
-pdMass[913] = 1610.6371; pdInten[913] = 31;
-pdMass[914] = 1611.6881; pdInten[914] = 528;
-pdMass[915] = 1612.3420; pdInten[915] = 330;
-pdMass[916] = 1613.1111; pdInten[916] = 77;
-pdMass[917] = 1613.7600; pdInten[917] = 8;
-pdMass[918] = 1614.9281; pdInten[918] = 42;
-pdMass[919] = 1615.7050; pdInten[919] = 38;
-pdMass[920] = 1617.5531; pdInten[920] = 679;
-pdMass[921] = 1618.3110; pdInten[921] = 91;
-pdMass[922] = 1619.1260; pdInten[922] = 34;
-pdMass[923] = 1620.2411; pdInten[923] = 40;
-pdMass[924] = 1624.4130; pdInten[924] = 11;
-pdMass[925] = 1626.5281; pdInten[925] = 495;
-pdMass[926] = 1627.3341; pdInten[926] = 167;
-pdMass[927] = 1628.6750; pdInten[927] = 153;
-pdMass[928] = 1629.7401; pdInten[928] = 125;
-pdMass[929] = 1630.7590; pdInten[929] = 32;
-pdMass[930] = 1631.7130; pdInten[930] = 80;
-pdMass[931] = 1632.8031; pdInten[931] = 220;
-pdMass[932] = 1633.8380; pdInten[932] = 328;
-pdMass[933] = 1635.0341; pdInten[933] = 588;
-pdMass[934] = 1635.8680; pdInten[934] = 176;
-pdMass[935] = 1638.0140; pdInten[935] = 192;
-pdMass[936] = 1638.8671; pdInten[936] = 101;
-pdMass[937] = 1640.1471; pdInten[937] = 75;
-pdMass[938] = 1642.2240; pdInten[938] = 63;
-pdMass[939] = 1643.2561; pdInten[939] = 50;
-pdMass[940] = 1644.0040; pdInten[940] = 143;
-pdMass[941] = 1645.6760; pdInten[941] = 11;
-pdMass[942] = 1647.0031; pdInten[942] = 300;
-pdMass[943] = 1647.7330; pdInten[943] = 107;
-pdMass[944] = 1648.9370; pdInten[944] = 118;
-pdMass[945] = 1650.7850; pdInten[945] = 678;
-pdMass[946] = 1651.8461; pdInten[946] = 882;
-pdMass[947] = 1652.7531; pdInten[947] = 657;
-pdMass[948] = 1653.4570; pdInten[948] = 233;
-pdMass[949] = 1654.1720; pdInten[949] = 94;
-pdMass[950] = 1655.4481; pdInten[950] = 495;
-pdMass[951] = 1656.2051; pdInten[951] = 84;
-pdMass[952] = 1657.2921; pdInten[952] = 84;
-pdMass[953] = 1658.3081; pdInten[953] = 76;
-pdMass[954] = 1660.2130; pdInten[954] = 195;
-pdMass[955] = 1661.5071; pdInten[955] = 474;
-pdMass[956] = 1662.4131; pdInten[956] = 87;
-pdMass[957] = 1663.4270; pdInten[957] = 70;
-pdMass[958] = 1664.4730; pdInten[958] = 67;
-pdMass[959] = 1665.6791; pdInten[959] = 198;
-pdMass[960] = 1666.5441; pdInten[960] = 430;
-pdMass[961] = 1667.4790; pdInten[961] = 76;
-pdMass[962] = 1668.6991; pdInten[962] = 90;
-pdMass[963] = 1669.9780; pdInten[963] = 656;
-pdMass[964] = 1670.7850; pdInten[964] = 229;
-pdMass[965] = 1672.1841; pdInten[965] = 31;
-pdMass[966] = 1674.1881; pdInten[966] = 114;
-pdMass[967] = 1675.0581; pdInten[967] = 1062;
-pdMass[968] = 1675.8961; pdInten[968] = 387;
-pdMass[969] = 1676.8690; pdInten[969] = 38;
-pdMass[970] = 1678.0221; pdInten[970] = 180;
-pdMass[971] = 1678.9561; pdInten[971] = 579;
-pdMass[972] = 1679.9150; pdInten[972] = 53;
-pdMass[973] = 1680.5531; pdInten[973] = 16;
-pdMass[974] = 1683.2760; pdInten[974] = 544;
-pdMass[975] = 1684.0321; pdInten[975] = 2256;
-pdMass[976] = 1684.8630; pdInten[976] = 149;
-pdMass[977] = 1685.5950; pdInten[977] = 18;
-pdMass[978] = 1686.8311; pdInten[978] = 149;
-pdMass[979] = 1687.8580; pdInten[979] = 72;
-pdMass[980] = 1688.7340; pdInten[980] = 50;
-pdMass[981] = 1689.9490; pdInten[981] = 18;
-pdMass[982] = 1690.8330; pdInten[982] = 18;
-pdMass[983] = 1692.0590; pdInten[983] = 23;
-pdMass[984] = 1693.0391; pdInten[984] = 40;
-pdMass[985] = 1695.3890; pdInten[985] = 456;
-pdMass[986] = 1696.6221; pdInten[986] = 148;
-pdMass[987] = 1697.3950; pdInten[987] = 14;
-pdMass[988] = 1698.9790; pdInten[988] = 26;
-pdMass[989] = 1699.8811; pdInten[989] = 60;
-pdMass[990] = 1700.9280; pdInten[990] = 73;
-pdMass[991] = 1701.8160; pdInten[991] = 68;
-pdMass[992] = 1704.6591; pdInten[992] = 315;
-pdMass[993] = 1705.4590; pdInten[993] = 151;
-pdMass[994] = 1706.6851; pdInten[994] = 34;
-pdMass[995] = 1707.9771; pdInten[995] = 27;
-pdMass[996] = 1711.9200; pdInten[996] = 21;
-pdMass[997] = 1713.5670; pdInten[997] = 291;
-pdMass[998] = 1714.2290; pdInten[998] = 108;
-pdMass[999] = 1717.4851; pdInten[999] = 77;
-pdMass[1000] = 1718.7581; pdInten[1000] = 43;
-pdMass[1001] = 1719.7871; pdInten[1001] = 78;
-pdMass[1002] = 1720.7520; pdInten[1002] = 44;
-pdMass[1003] = 1722.2981; pdInten[1003] = 333;
-pdMass[1004] = 1723.2881; pdInten[1004] = 71;
-pdMass[1005] = 1728.8680; pdInten[1005] = 24;
-pdMass[1006] = 1729.7920; pdInten[1006] = 16;
-pdMass[1007] = 1730.7791; pdInten[1007] = 108;
-pdMass[1008] = 1731.8580; pdInten[1008] = 31;
-pdMass[1009] = 1734.7571; pdInten[1009] = 39;
-pdMass[1010] = 1735.9880; pdInten[1010] = 24;
-pdMass[1011] = 1737.1311; pdInten[1011] = 210;
-pdMass[1012] = 1738.0131; pdInten[1012] = 250;
-pdMass[1013] = 1738.9241; pdInten[1013] = 179;
-pdMass[1014] = 1739.8701; pdInten[1014] = 138;
-pdMass[1015] = 1740.8461; pdInten[1015] = 60;
-pdMass[1016] = 1741.6260; pdInten[1016] = 11;
-pdMass[1017] = 1743.2380; pdInten[1017] = 24;
-pdMass[1018] = 1744.1461; pdInten[1018] = 161;
-pdMass[1019] = 1744.9310; pdInten[1019] = 56;
-pdMass[1020] = 1746.7821; pdInten[1020] = 60;
-pdMass[1021] = 1747.7910; pdInten[1021] = 303;
-pdMass[1022] = 1748.6211; pdInten[1022] = 211;
-pdMass[1023] = 1749.4780; pdInten[1023] = 165;
-pdMass[1024] = 1751.5850; pdInten[1024] = 48;
-pdMass[1025] = 1752.5780; pdInten[1025] = 125;
-pdMass[1026] = 1753.3220; pdInten[1026] = 210;
-pdMass[1027] = 1755.9830; pdInten[1027] = 83;
-pdMass[1028] = 1757.4160; pdInten[1028] = 205;
-pdMass[1029] = 1758.4611; pdInten[1029] = 62;
-pdMass[1030] = 1761.5071; pdInten[1030] = 280;
-pdMass[1031] = 1762.2631; pdInten[1031] = 215;
-pdMass[1032] = 1763.0300; pdInten[1032] = 51;
-pdMass[1033] = 1763.8131; pdInten[1033] = 14;
-pdMass[1034] = 1765.0961; pdInten[1034] = 1156;
-pdMass[1035] = 1765.9530; pdInten[1035] = 1219;
-pdMass[1036] = 1766.8821; pdInten[1036] = 713;
-pdMass[1037] = 1767.8651; pdInten[1037] = 137;
-pdMass[1038] = 1770.6001; pdInten[1038] = 395;
-pdMass[1039] = 1771.4171; pdInten[1039] = 147;
-pdMass[1040] = 1772.3490; pdInten[1040] = 54;
-pdMass[1041] = 1773.8401; pdInten[1041] = 124;
-pdMass[1042] = 1774.6691; pdInten[1042] = 155;
-pdMass[1043] = 1775.7991; pdInten[1043] = 98;
-pdMass[1044] = 1776.7981; pdInten[1044] = 159;
-pdMass[1045] = 1778.6471; pdInten[1045] = 139;
-pdMass[1046] = 1779.4580; pdInten[1046] = 394;
-pdMass[1047] = 1781.0081; pdInten[1047] = 35;
-pdMass[1048] = 1782.7261; pdInten[1048] = 62;
-pdMass[1049] = 1783.9690; pdInten[1049] = 70;
-pdMass[1050] = 1784.7841; pdInten[1050] = 21;
-pdMass[1051] = 1789.1121; pdInten[1051] = 15;
-pdMass[1052] = 1790.1331; pdInten[1052] = 35;
-pdMass[1053] = 1791.4591; pdInten[1053] = 130;
-pdMass[1054] = 1792.6641; pdInten[1054] = 354;
-pdMass[1055] = 1793.8020; pdInten[1055] = 142;
-pdMass[1056] = 1794.4950; pdInten[1056] = 13;
-pdMass[1057] = 1800.5031; pdInten[1057] = 235;
-pdMass[1058] = 1802.7500; pdInten[1058] = 14;
-pdMass[1059] = 1806.9391; pdInten[1059] = 107;
-pdMass[1060] = 1807.8911; pdInten[1060] = 109;
-pdMass[1061] = 1809.0951; pdInten[1061] = 482;
-pdMass[1062] = 1809.8490; pdInten[1062] = 115;
-pdMass[1063] = 1810.8450; pdInten[1063] = 44;
-pdMass[1064] = 1812.0980; pdInten[1064] = 23;
-pdMass[1065] = 1814.5110; pdInten[1065] = 25;
-pdMass[1066] = 1817.6580; pdInten[1066] = 18;
-pdMass[1067] = 1819.7440; pdInten[1067] = 21;
-pdMass[1068] = 1824.0250; pdInten[1068] = 76;
-pdMass[1069] = 1824.9130; pdInten[1069] = 235;
-pdMass[1070] = 1826.0260; pdInten[1070] = 132;
-pdMass[1071] = 1826.9060; pdInten[1071] = 87;
-pdMass[1072] = 1830.8461; pdInten[1072] = 18;
-pdMass[1073] = 1831.8350; pdInten[1073] = 33;
-pdMass[1074] = 1833.5131; pdInten[1074] = 40;
-pdMass[1075] = 1842.2891; pdInten[1075] = 15;
-pdMass[1076] = 1844.1550; pdInten[1076] = 17;
-pdMass[1077] = 1844.7600; pdInten[1077] = 41;
-pdMass[1078] = 1845.8300; pdInten[1078] = 24;
-pdMass[1079] = 1849.8821; pdInten[1079] = 52;
-pdMass[1080] = 1851.1960; pdInten[1080] = 27;
-pdMass[1081] = 1859.8781; pdInten[1081] = 21;
-pdMass[1082] = 1861.8361; pdInten[1082] = 127;
-pdMass[1083] = 1862.7550; pdInten[1083] = 161;
-pdMass[1084] = 1864.0410; pdInten[1084] = 28;
-pdMass[1085] = 1865.1461; pdInten[1085] = 38;
-pdMass[1086] = 1868.2211; pdInten[1086] = 27;
-pdMass[1087] = 1871.5400; pdInten[1087] = 26;
-pdMass[1088] = 1872.2650; pdInten[1088] = 27;
-pdMass[1089] = 1873.5811; pdInten[1089] = 46;
-pdMass[1090] = 1878.8401; pdInten[1090] = 519;
-pdMass[1091] = 1879.9010; pdInten[1091] = 814;
-pdMass[1092] = 1880.8940; pdInten[1092] = 547;
-pdMass[1093] = 1881.9041; pdInten[1093] = 184;
-pdMass[1094] = 1883.1331; pdInten[1094] = 45;
-pdMass[1095] = 1884.2531; pdInten[1095] = 28;
-pdMass[1096] = 1886.0510; pdInten[1096] = 10;
-pdMass[1097] = 1888.7471; pdInten[1097] = 18;
-pdMass[1098] = 1889.8290; pdInten[1098] = 11;
-pdMass[1099] = 1890.8660; pdInten[1099] = 15;
-pdMass[1100] = 1892.6531; pdInten[1100] = 23;
-pdMass[1101] = 1899.6710; pdInten[1101] = 14;
-pdMass[1102] = 1901.1970; pdInten[1102] = 31;
-pdMass[1103] = 1902.5310; pdInten[1103] = 69;
-pdMass[1104] = 1903.7760; pdInten[1104] = 15;
-pdMass[1105] = 1904.9401; pdInten[1105] = 10;
-pdMass[1106] = 1906.6160; pdInten[1106] = 50;
-pdMass[1107] = 1907.3521; pdInten[1107] = 49;
-pdMass[1108] = 1909.5570; pdInten[1108] = 21;
-pdMass[1109] = 1910.8630; pdInten[1109] = 31;
-pdMass[1110] = 1913.8480; pdInten[1110] = 11;
-pdMass[1111] = 1918.1090; pdInten[1111] = 20;
-pdMass[1112] = 1920.3301; pdInten[1112] = 117;
-pdMass[1113] = 1921.0580; pdInten[1113] = 16;
-pdMass[1114] = 1921.9460; pdInten[1114] = 23;
-pdMass[1115] = 1923.7290; pdInten[1115] = 51;
-pdMass[1116] = 1929.1720; pdInten[1116] = 19;
-pdMass[1117] = 1929.9340; pdInten[1117] = 11;
-pdMass[1118] = 1931.6870; pdInten[1118] = 20;
-pdMass[1119] = 1932.8510; pdInten[1119] = 22;
-pdMass[1120] = 1935.9370; pdInten[1120] = 14;
-pdMass[1121] = 1937.0331; pdInten[1121] = 64;
-pdMass[1122] = 1938.0660; pdInten[1122] = 63;
-pdMass[1123] = 1938.8831; pdInten[1123] = 96;
-pdMass[1124] = 1939.7401; pdInten[1124] = 60;
-pdMass[1125] = 1941.0541; pdInten[1125] = 140;
-pdMass[1126] = 1941.8840; pdInten[1126] = 48;
-pdMass[1127] = 1942.8710; pdInten[1127] = 27;
-pdMass[1128] = 1944.0200; pdInten[1128] = 14;
-pdMass[1129] = 1949.1440; pdInten[1129] = 35;
-pdMass[1130] = 1952.7930; pdInten[1130] = 13;
-pdMass[1131] = 1954.0100; pdInten[1131] = 14;
-pdMass[1132] = 1954.8721; pdInten[1132] = 17;
-pdMass[1133] = 1955.7841; pdInten[1133] = 44;
-pdMass[1134] = 1956.8671; pdInten[1134] = 58;
-pdMass[1135] = 1957.8170; pdInten[1135] = 66;
-pdMass[1136] = 1959.0040; pdInten[1136] = 13;
-pdMass[1137] = 1959.9561; pdInten[1137] = 16;
-pdMass[1138] = 1961.5670; pdInten[1138] = 23;
-pdMass[1139] = 1962.5690; pdInten[1139] = 28;
-pdMass[1140] = 1965.6980; pdInten[1140] = 11;
-pdMass[1141] = 1966.3950; pdInten[1141] = 16;
-pdMass[1142] = 1967.0020; pdInten[1142] = 34;
-pdMass[1143] = 1969.0890; pdInten[1143] = 10;
-pdMass[1144] = 1974.9391; pdInten[1144] = 74;
-pdMass[1145] = 1976.0691; pdInten[1145] = 153;
-pdMass[1146] = 1977.0140; pdInten[1146] = 120;
-pdMass[1147] = 1977.8671; pdInten[1147] = 71;
-pdMass[1148] = 1978.9871; pdInten[1148] = 18;
-pdMass[1149] = 1985.0090; pdInten[1149] = 24;
-pdMass[1150] = 1987.0920; pdInten[1150] = 27;
-pdMass[1151] = 1990.1490; pdInten[1151] = 28;
-pdMass[1152] = 1992.8070; pdInten[1152] = 289;
-pdMass[1153] = 1993.9280; pdInten[1153] = 656;
-pdMass[1154] = 1994.8611; pdInten[1154] = 493;
-pdMass[1155] = 1996.0221; pdInten[1155] = 279;
-pdMass[1156] = 1996.9200; pdInten[1156] = 35;
-pdMass[1157] = 1998.1150; pdInten[1157] = 15;
-pdMass[1158] = 1999.7681; pdInten[1158] = 11;
-
-         // these are the return information from search
-         sbyte[] szPeptide = new sbyte[512];
-         sbyte[] szProtein = new sbyte[512];
-         int iNumFragIons = 10;              // return 10 most intense matched b- and y-ions
-         double[] pdYions = new double[iNumFragIons];
-         double[] pdBions = new double[iNumFragIons];
-         double[] pdScores = new double[5];   // 0=xcorr, 1=calc pep mass, 2=matched ions, 3=tot ions, 4=dCn
-
-         // call Comet search here
-         SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks,
-            szPeptide, szProtein, pdYions, pdBions, iNumFragIons, pdScores);
-
-         string peptide = Encoding.UTF8.GetString(szPeptide.Select(b=>(byte) b).ToArray());
-         string protein = Encoding.UTF8.GetString(szProtein.Select(b => (byte)b).ToArray());
-         int index = peptide.IndexOf('\0');
-         if (index >= 0)
-            peptide = peptide.Remove(index);
-         index = protein.IndexOf('\0');
-         if (index >= 0)
-            protein = protein.Remove(index);
-
-         double xcorr = pdScores[0];
-
-         if (xcorr > 0)
+         for (int ctInput = 0; ctInput < args.Length; ctInput++)
          {
-            Console.WriteLine("peptide: {0}\nprotein: {1}\nxcorr {2}\npepmass {3}\ndCn {4}\nions {5}/{6}",
-               peptide, protein, pdScores[0], pdScores[1], pdScores[4], pdScores[2], (int)pdScores[3], (int)pdScores[4]);
+            string rawFileName = args[ctInput];
 
-            for (int i = 0; i < iNumFragIons; i++)
+            if (File.Exists(rawFileName) && !string.IsNullOrEmpty(rawFileName))
             {
-               if (pdBions[i] > 0.0)
-                  Console.WriteLine("matched b-ion {0}", pdBions[i]);
-               else
-                  break;
+               Console.Write(" input: {0}  \n", rawFileName);
+
+               try
+               {
+                  IRawDataPlus rawFile = RawFileReaderAdapter.FileFactory(rawFileName);
+                  if (!rawFile.IsOpen || rawFile.IsError)
+                  {
+                     Console.WriteLine(" Error: unable to access the RAW file using the RawFileReader class.");
+                     continue;
+                  }
+
+                  rawFile.SelectInstrument(Device.MS, 1);
+
+                  // Get the first and last scan from the RAW file
+                  int iFirstScan = rawFile.RunHeaderEx.FirstSpectrum;
+                  int iLastScan = rawFile.RunHeaderEx.LastSpectrum;
+
+                  int iNumPeaks;
+                  int iPrecursorCharge;
+                  double dPrecursorMZ = 0;
+                  double[] pdMass;
+                  double[] pdInten;
+                  Stopwatch watch = new Stopwatch();
+
+                  int[] piElapsedTime = new int[50];  // histogram of search times
+                  for (int i = 0; i < 50; i++)
+                     piElapsedTime[i] = 0;
+
+                  for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
+                  {
+                     var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
+                     //double dRT = rawFile.RetentionTimeFromScanNumber(iScanNumber);
+
+                     // Get the scan filter for this scan number
+                     var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
+
+                     if (scanFilter.MSOrder == MSOrderType.Ms2)
+                     {
+                        // Check to see if the scan has centroid data or profile data.  Depending upon the
+                        // type of data, different methods will be used to read the data.
+                        if (scanStatistics.IsCentroidScan)
+                        {
+                           // Get the centroid (label) data from the RAW file for this scan
+                           var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
+                           iNumPeaks = centroidStream.Length;
+                           pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
+                           pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
+                           pdMass = centroidStream.Masses;
+                           pdInten = centroidStream.Intensities;
+                        }
+                        else
+                        {
+                           // Get the segmented (low res and profile) scan data
+                           var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
+                           iNumPeaks = segmentedScan.Positions.Length;
+                           pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
+                           pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
+                           pdMass = segmentedScan.Positions;
+                           pdInten = segmentedScan.Intensities;
+                        }
+
+                        iPrecursorCharge = 0;
+                        dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
+
+                        var trailerData = rawFile.GetTrailerExtraInformation(iScanNumber);
+                        for (int i = 0; i < trailerData.Length; i++)
+                        {
+                           if (trailerData.Labels[i] == "Monoisotopic M/Z:")
+                              dPrecursorMZ = double.Parse(trailerData.Values[i]);
+                           else if (trailerData.Labels[i] == "Charge State:")
+                              iPrecursorCharge = (int)double.Parse(trailerData.Values[i]);
+                        }
+
+                        // skip analysis of spectrum if ion is outside of indexed db mass range
+                        double dExpPepMass = (iPrecursorCharge * dPrecursorMZ) - (iPrecursorCharge - 1) * 1.00727646688;
+                        if (dExpPepMass < dPeptideMassLow || dExpPepMass > dPeptideMassHigh)
+                           continue;
+
+                        // now run the search on scan
+
+                        // these next variables store return value from search
+                        sbyte[] szPeptide = new sbyte[512];  // size must be at least WIDTH_REFERENCE in CometDataInternal.h
+                        sbyte[] szProtein = new sbyte[512];  // size must be at least WIDTH_REFERENCE in CometDataInternal.h
+                        int iNumFragIons = 10;               // return 10 most intense matched b- and y-ions
+                        double[] pdYions = new double[iNumFragIons];
+                        double[] pdBions = new double[iNumFragIons];
+                        double[] pdScores = new double[2];   // dScores[0] = xcorr, dScores[1] = E-value
+
+                        watch.Start();
+                        SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks, szPeptide, szProtein, pdYions, pdBions, iNumFragIons, pdScores);
+                        watch.Stop();
+
+                        string peptide = Encoding.UTF8.GetString(szPeptide.Select(b => (byte)b).ToArray());
+                        string protein = Encoding.UTF8.GetString(szProtein.Select(b => (byte)b).ToArray());
+
+                        int index = peptide.IndexOf('\0');
+                        if (index >= 0)
+                           peptide = peptide.Remove(index);
+                        index = protein.IndexOf('\0');
+                        if (index >= 0)
+                           protein = protein.Remove(index);
+
+                        double xcorr = pdScores[0];
+                        //double expect = pdScores[1];  // not calculated, too expensive
+
+                        double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
+
+                        // error check to see if any fragment ions are greater than peptide mass
+                        for (int i = 0; i < iNumFragIons; i++)
+                        {
+                           if (pdBions[i] > dPepMass || pdYions[i] > dPepMass)
+                           {
+                              for (i = 0; i < iNumFragIons; i++)
+                              {
+                                 Console.WriteLine("{0}\t{1:0.000}\t{2:0.000}", i, pdBions[i], pdYions[i]);
+                              }
+                              Console.WriteLine("FAIL: scan {0}/{1}, z {2}, mz {3:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}, pepmass {9}",
+                                 iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
+
+                              return 1;
+                           }
+                        }
+
+                        if ((iScanNumber % 5000) == 0 || iScanNumber==13987 || iScanNumber==16907 || iScanNumber == 1044)
+                        {
+                           Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
+                               iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
+                        }
+
+                        int iTime = (int)watch.ElapsedMilliseconds;
+                        if (iTime >= 50)
+                           iTime = 49;
+                        if (iTime > 0)
+                           piElapsedTime[iTime] += 1;
+
+                        watch.Reset();
+                     }
+                  }
+
+                  for (int i = 0; i < 50; i++)
+                     Console.WriteLine("{0}\t{1}", i, piElapsedTime[i]);
+
+                  rawFile.Dispose();
+               }
+
+               catch (Exception rawSearchEx)
+               {
+                  Console.WriteLine(" Error opening raw file: " + rawSearchEx.Message);
+               }
             }
-            for (int i = 0; i < iNumFragIons; i++)
+            else
             {
-               if (pdYions[i] > 0.0)
-                  Console.WriteLine("matched y-ion {0}", pdYions[i]);
-               else
-                  break;
+               Console.WriteLine("No raw file exists at that path.");
             }
+
          }
-         else
-         {
-            Console.WriteLine("no match");
+
+         Console.WriteLine("{0} Done.{1}", Environment.NewLine, Environment.NewLine);
+         return 0;
+      }
+
+      class SearchSettings
+      {
+         public bool ConfigureInputSettings(CometSearchManagerWrapper SearchMgr)
+         {  
+            String sTmp;
+            int iTmp;
+            double dTmp;
+
+            dTmp = 20.0; //ppm window
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("peptide_mass_tolerance", sTmp, dTmp);
+
+            iTmp = 2; // 0=Da, 2=ppm
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
+
+            iTmp = 1; // m/z tolerance
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
+
+            iTmp = 5; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("isotope_error", sTmp, iTmp);
+
+            dTmp = 0.02; // fragment bin width
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
+
+            dTmp = 0.0; // fragment bin offset
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
+
+            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
+
+            iTmp = 3;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("max_fragment_charge", sTmp, iTmp);
+
+            iTmp = 6;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("max_precursor_charge", sTmp, iTmp);
+
+            return true;
          }
-      }
-   }
-
-   public class IntRange
-   {
-      public int Start { get; set; }
-      public int End { get; set; }
-
-      public IntRange()
-      {
-         Start = 0;
-         End = 0;
-      }
-
-      public IntRange(int start, int end)
-      {
-         Start = start;
-         End = end;
-      }
-   }
-
-   public class DoubleRange
-   {
-      public double Start { get; set; }
-      public double End { get; set; }
-
-      public DoubleRange()
-      {
-         Start = 0;
-         End = 0;
-      }
-
-      public DoubleRange(double start, double end)
-      {
-         Start = start;
-         End = end;
       }
    }
 }
