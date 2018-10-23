@@ -187,7 +187,7 @@ private:
                        int iLenPeptide,
                        struct sDBEntry *dbe,
                        long *lNumIterations);
-   bool IndexSearch(FILE *fptr);
+   bool IndexSearch(void);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool bNtermPeptideOnly,

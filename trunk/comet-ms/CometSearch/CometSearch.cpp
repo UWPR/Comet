@@ -107,23 +107,9 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    if (g_staticParams.bIndexDb)
    {
-      FILE *fp;
-
-      if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
-      {
-         char szErrorMsg[1024];
-         sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\" %s.\n", g_staticParams.databaseInfo.szDatabase, strerror(errno));
-         string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
-         return false;
-      }
-
       // worry about threading later
       CometSearch sqSearch;
-      sqSearch.IndexSearch(fp);
-
-      fclose(fp);
+      sqSearch.IndexSearch();
    }
    else
    {
@@ -1027,10 +1013,21 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 }
 
 
-bool CometSearch::IndexSearch(FILE *fp)
+bool CometSearch::IndexSearch(void)
 {
    long lEndOfStruct;
    char szBuf[SIZE_BUF];
+   FILE *fp;
+
+   if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+   {
+      char szErrorMsg[1024];
+      sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\" %s.\n", g_staticParams.databaseInfo.szDatabase, strerror(errno));
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
 
    // ignore any static masses in params file; only valid ones
    // are those in database index
@@ -1100,6 +1097,7 @@ bool CometSearch::IndexSearch(FILE *fp)
       char szErr[256];
       sprintf(szErr, " Error with index database format. Mods not parsed.");
       logerr(szErr);
+      fclose(fp);
       return false;
    }
 
@@ -1131,6 +1129,7 @@ bool CometSearch::IndexSearch(FILE *fp)
    if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass || iStart > iMaxMass)
    {
       delete [] lReadIndex;
+      fclose(fp);
       return true;
    }
 
@@ -1220,7 +1219,7 @@ bool CometSearch::IndexSearch(FILE *fp)
    }
 
    delete [] lReadIndex;
-
+   fclose(fp);
    return true;
 }
 
