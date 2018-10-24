@@ -2456,8 +2456,6 @@ cleanup_results:
 
    delete[] pdTmpSpectrum;
 
-   FinalizeSingleSpectrumSearch();
-
    return bSucceeded;
 }
 

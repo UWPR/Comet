@@ -109,8 +109,12 @@ namespace RealTimeSearch
                   for (int i = 0; i < 50; i++)
                      piElapsedTime[i] = 0;
 
+                  SearchMgr.InitializeSingleSpectrumSearch();
+
                   for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
                   {
+                     if (iScanNumber == iLastScan)
+                        iScanNumber = iFirstScan;
                      var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
                      //double dRT = rawFile.RetentionTimeFromScanNumber(iScanNumber);
 
@@ -220,6 +224,8 @@ namespace RealTimeSearch
                      }
                   }
 
+                  SearchMgr.FinalizeSingleSpectrumSearch();
+
                   for (int i = 0; i < 50; i++)
                      Console.WriteLine("{0}\t{1}", i, piElapsedTime[i]);
 
@@ -262,7 +268,7 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-            iTmp = 5; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
+            iTmp = 2; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
