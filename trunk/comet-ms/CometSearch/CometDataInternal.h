@@ -331,7 +331,7 @@ struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];
-   int    piVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
+   char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
    long   lProteinFilePosition;              // file position index to protein reference
    double dPepMass;                          // mono neutral pep mass
 
@@ -349,7 +349,7 @@ struct DBIndex
          bool bSame = true;
          for (unsigned int i=0; i<strlen(szPeptide)+2; i++)
          {
-            if (piVarModSites[i] != rhs.piVarModSites[i])
+            if (pcVarModSites[i] != rhs.pcVarModSites[i])
             {
                bSame = false;
                break;

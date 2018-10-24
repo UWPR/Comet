@@ -2479,10 +2479,10 @@ bool CometSearchManager::CompareByPeptide(const DBIndex &lhs,
       // same sequences and masses here so next look at mod state
       for (unsigned int i=0; i<strlen(lhs.szPeptide)+2; i++)
       {
-         if (lhs.piVarModSites[i] != rhs.piVarModSites[i])
+         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
          {
             // different mod state
-            if (lhs.piVarModSites[i] > rhs.piVarModSites[i])
+            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
                return true;
             else
                return false;
@@ -2524,9 +2524,9 @@ bool CometSearchManager::CompareByMass(const DBIndex &lhs,
       // same sequences and masses here so next look at mod state
       for (unsigned int i=0; i<strlen(lhs.szPeptide)+2; i++)
       {
-         if (lhs.piVarModSites[i] != rhs.piVarModSites[i])
+         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
          {
-            if (lhs.piVarModSites[i] > rhs.piVarModSites[i])
+            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
                return true;
             else
                return false;
