@@ -2320,26 +2320,78 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    if (iSize > 0 && pQuery->_pResults[0].fXcorr>0.0 && pQuery->_pResults[0].iLenPeptide>0)
    {
+      Results *pOutput = pQuery->_pResults;
+
       // Set return values for peptide sequence, protein, xcorr and E-value
-      sprintf(szReturnPeptide, "%c.", pQuery->_pResults[0].szPrevNextAA[0]);
-      for (int i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
+      sprintf(szReturnPeptide, "%c.", pOutput[0].szPrevNextAA[0]);
+      for (int i=0; i< pOutput[0].iLenPeptide; i++)
       {
-         sprintf(szReturnPeptide+strlen(szReturnPeptide), "%c", pQuery->_pResults[0].szPeptide[i]);
-         if (pQuery->_pResults[0].piVarModSites[i] != 0)
-            sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]", pQuery->_pResults[0].pdVarModSites[i]);
+         sprintf(szReturnPeptide+strlen(szReturnPeptide), "%c", pOutput[0].szPeptide[i]);
+         if (pOutput[0].piVarModSites[i] != 0)
+            sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]", pOutput[0].pdVarModSites[i]);
       }
-      sprintf(szReturnPeptide+strlen(szReturnPeptide), ".%c", pQuery->_pResults[0].szPrevNextAA[1]);
+      sprintf(szReturnPeptide+strlen(szReturnPeptide), ".%c", pOutput[0].szPrevNextAA[1]);
 
-      strncpy(szReturnProtein, pQuery->_pResults[0].szSingleProtein, WIDTH_REFERENCE-1);  //protein
+      strncpy(szReturnProtein, pOutput[0].szSingleProtein, WIDTH_REFERENCE-1);  //protein
 
-      pdReturnScores[0] = pQuery->_pResults[0].fXcorr;                // xcorr
-      pdReturnScores[1] = pQuery->_pResults[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
-      pdReturnScores[2] = pQuery->_pResults[0].iMatchedIons;          // ions matched
-      pdReturnScores[3] = pQuery->_pResults[0].iTotalIons;            // ions tot
-      if (pQuery->_pResults[0].fXcorr > 0)
-         pdReturnScores[4] = (pQuery->_pResults[0].fXcorr - pQuery->_pResults[1].fXcorr)/pQuery->_pResults[0].fXcorr;   // dCn
-      else
-         pdReturnScores[4] = 0;
+      pdReturnScores[0] = pOutput[0].fXcorr;                        // xcorr
+      pdReturnScores[1] = pOutput[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
+      pdReturnScores[2] = pOutput[0].iMatchedIons;                  // ions matched
+      pdReturnScores[3] = pOutput[0].iTotalIons;                    // ions tot
+
+      int iNumPrintLines = pQuery->iMatchPeptideCount;
+      if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
+         iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
+
+      int iMinLength = MAX_PEPTIDE_LEN;
+      for (int x = 0; x < iNumPrintLines; x++)
+      {
+         int iLen = (int)strlen(pOutput[x].szPeptide);
+         if (iLen == 0)
+            break;
+         if (iLen < iMinLength)
+            iMinLength = iLen;
+      }
+
+      double dDeltaCn = 1.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
+      double dDeltaCnStar = 0.0;   // if reported deltaCn is for dissimilar peptide, the value stored here is the
+                                   // explicit deltaCn between top hit and peptide in list
+
+      // go one past iNumPrintLines to calculate deltaCn value
+      for (int j = 1; j < iNumPrintLines + 1; j++)
+      {
+         // very poor way of calculating peptide similarity but it's what we have for now
+         int iDiffCt = 0;
+
+         for (int k = 0; k < iMinLength; k++)
+         {
+            // I-L and Q-K are same for purposes here
+            if (pOutput[0].szPeptide[k] != pOutput[j].szPeptide[k])
+            {
+               if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
+                  && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                  && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
+                     && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+               {
+                  iDiffCt++;
+               }
+            }
+         }
+
+         // calculate deltaCn only if sequences are less than 0.75 similar
+         if (((double)(iMinLength - iDiffCt) / iMinLength) < 0.75)
+         {
+            if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+               dDeltaCn = 1.0 - pOutput[j].fXcorr / pOutput[0].fXcorr;
+            else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+               dDeltaCn = 1.0;
+            else
+               dDeltaCn = 0.0;
+            break;
+         }
+      }
+
+      pdReturnBions[4] = dDeltaCn;  // dCn is calculated from first dis-similar peptide
 
       // now deal with calculating b- and y-ions and returning most intense matches
       double dBion = g_staticParams.precalcMasses.dNtermProton;
