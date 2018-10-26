@@ -113,8 +113,6 @@ namespace RealTimeSearch
 
                   for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
                   {
-                     if (iScanNumber == iLastScan)
-                        iScanNumber = iFirstScan;
                      var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
                      //double dRT = rawFile.RetentionTimeFromScanNumber(iScanNumber);
 
@@ -177,41 +175,50 @@ namespace RealTimeSearch
                         SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks, szPeptide, szProtein, pdYions, pdBions, iNumFragIons, pdScores);
                         watch.Stop();
 
-                        string peptide = Encoding.UTF8.GetString(szPeptide.Select(b => (byte)b).ToArray());
-                        string protein = Encoding.UTF8.GetString(szProtein.Select(b => (byte)b).ToArray());
-
-                        int index = peptide.IndexOf('\0');
-                        if (index >= 0)
-                           peptide = peptide.Remove(index);
-                        index = protein.IndexOf('\0');
-                        if (index >= 0)
-                           protein = protein.Remove(index);
-
                         double xcorr = pdScores[0];
                         //double expect = pdScores[1];  // not calculated, too expensive
 
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
-                        // error check to see if any fragment ions are greater than peptide mass
-                        for (int i = 0; i < iNumFragIons; i++)
+                        string peptide;
+                        string protein;
+
+                        // do not decode peptide/proteins strings unless xcorr>0
+                        if (xcorr > 0)
                         {
-                           if (pdBions[i] > dPepMass || pdYions[i] > dPepMass)
+                           peptide = Encoding.UTF8.GetString(szPeptide.Select(b => (byte)b).ToArray());
+                           protein = Encoding.UTF8.GetString(szProtein.Select(b => (byte)b).ToArray());
+
+                           int index = peptide.IndexOf('\0');
+                           if (index >= 0)
+                              peptide = peptide.Remove(index);
+
+                           index = protein.IndexOf('\0');
+                           if (index >= 0)
+                              protein = protein.Remove(index);
+
+                           // error check to see if any fragment ions are greater than peptide mass
+                           for (int i = 0; i < iNumFragIons; i++)
                            {
-                              for (i = 0; i < iNumFragIons; i++)
+                              if (pdBions[i] > dPepMass || pdYions[i] > dPepMass)
                               {
-                                 Console.WriteLine("{0}\t{1:0.000}\t{2:0.000}", i, pdBions[i], pdYions[i]);
+                                 for (i = 0; i < iNumFragIons; i++)
+                                 {
+                                    Console.WriteLine("{0}\t{1:0.000}\t{2:0.000}", i, pdBions[i], pdYions[i]);
+                                 }
+                                 Console.WriteLine("FAIL: scan {0}/{1}, z {2}, mz {3:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}, pepmass {9}",
+                                    iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
+
+                                 return 1;
                               }
-                              Console.WriteLine("FAIL: scan {0}/{1}, z {2}, mz {3:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}, pepmass {9}",
-                                 iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
-
-                              return 1;
                            }
-                        }
 
-                        if ((iScanNumber % 5000) == 0 || iScanNumber==13987 || iScanNumber==16907 || iScanNumber == 1044)
-                        {
-                           Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
-                               iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
+
+                           if ((iScanNumber % 1000))
+                           {
+                              Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
+                                  iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
+                           }
                         }
 
                         int iTime = (int)watch.ElapsedMilliseconds;
@@ -222,6 +229,11 @@ namespace RealTimeSearch
 
                         watch.Reset();
                      }
+
+
+                     // continuous loop through raw file
+                     if (iScanNumber == iLastScan)
+                        iScanNumber = 1;
                   }
 
                   SearchMgr.FinalizeSingleSpectrumSearch();
