@@ -341,25 +341,22 @@ struct DBIndex
       {
          // peptides are same here
 
-         if (dPepMass != rhs.dPepMass)
+         // different masses should equate to different mod state
+         if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
             return false;
 
          // masses are the same at this point
          // next compare modification states
-         bool bSame = true;
          for (unsigned int i=0; i<strlen(szPeptide)+2; i++)
          {
             if (pcVarModSites[i] != rhs.pcVarModSites[i])
             {
-               bSame = false;
-               break;
+               return false;
             }
          }
 
-         if (bSame)  // if same peptide with same mods
-            return true;
-         else
-            return false;
+         // if it gets here, same peptide, same mass, same mod state
+         return true;
       }
 
       // peptides are different
