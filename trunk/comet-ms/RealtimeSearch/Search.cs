@@ -34,46 +34,12 @@ namespace RealTimeSearch
          CometSearchManagerWrapper SearchMgr = new CometSearchManagerWrapper();
          SearchSettings searchParams = new SearchSettings();
 
-         // Validate that indexed database is readable. Get MassRange from header.
-         int iLineCount = 0;
-         bool bFoundMassRange = false;
          double  dPeptideMassLow = 0;
          double  dPeptideMassHigh = 0;
 
-         string strLine;
-         string sDB = "YEAST.fasta.20180814.idx";  // database must be set here early on
-         System.IO.StreamReader dbFile = new System.IO.StreamReader(@sDB);
-
-         while ((strLine = dbFile.ReadLine()) != null)
-         {
-            string[] strParsed = strLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (strParsed[0].Equals("MassRange:"))
-            {
-               dPeptideMassLow = double.Parse(strParsed[1]);
-               dPeptideMassHigh = double.Parse(strParsed[2]);
-
-               var digestMassRange = new DoubleRangeWrapper(dPeptideMassLow, dPeptideMassHigh);
-               string digestMassRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
-               SearchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange);
-
-               bFoundMassRange = true;
-            }
-            iLineCount++;
-
-            if (iLineCount > 6)  // header information should only be in first few lines
-               break;
-         }
-         dbFile.Close();
-
-         if (!bFoundMassRange)
-         {
-            Console.WriteLine(" Error with indexed database format; missing MassRange header.\n");
-            System.Environment.Exit(1);
-         }
-
-         // Configure parameters
-         searchParams.ConfigureInputSettings(SearchMgr);
-         SearchMgr.SetParam("database_name", sDB, sDB);
+         // Configure search parameters here
+         // Will also read the index database and return dPeptideMassLow/dPeptideMassHigh mass range
+         searchParams.ConfigureInputSettings(SearchMgr, ref dPeptideMassLow, ref dPeptideMassHigh);
 
          for (int ctInput = 0; ctInput < args.Length; ctInput++)
          {
@@ -213,8 +179,7 @@ namespace RealTimeSearch
                               }
                            }
 
-
-                           if ((iScanNumber % 1000))
+                           if ((iScanNumber % 1000) == 0)
                            {
                               Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
                                   iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
@@ -262,11 +227,14 @@ namespace RealTimeSearch
 
       class SearchSettings
       {
-         public bool ConfigureInputSettings(CometSearchManagerWrapper SearchMgr)
+         public bool ConfigureInputSettings(CometSearchManagerWrapper SearchMgr, ref double dPeptideMassLow, ref double dPeptideMassHigh)
          {  
             String sTmp;
             int iTmp;
             double dTmp;
+
+            string sDB = "YEAST.fasta.20180814.idx";  // database must be set here early on
+            SearchMgr.SetParam("database_name", sDB, sDB);
 
             dTmp = 20.0; //ppm window
             sTmp = dTmp.ToString();
@@ -296,13 +264,50 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
-            iTmp = 3;
+            iTmp = 3; // maximum fragment charge
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_fragment_charge", sTmp, iTmp);
 
-            iTmp = 6;
+            iTmp = 6; // maximum precursor charge
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_precursor_charge", sTmp, iTmp);
+
+            iTmp = 0; // 0=I and L are different, 1=I and L are same
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("equal_I_and_L", sTmp, iTmp);
+
+            // Now actually open the .idx database to read mass range from it
+            int iLineCount = 0;
+            bool bFoundMassRange = false;
+            string strLine;
+            System.IO.StreamReader dbFile = new System.IO.StreamReader(@sDB);
+
+            while ((strLine = dbFile.ReadLine()) != null)
+            {
+               string[] strParsed = strLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+               if (strParsed[0].Equals("MassRange:"))
+               {
+                  dPeptideMassLow = double.Parse(strParsed[1]);
+                  dPeptideMassHigh = double.Parse(strParsed[2]);
+
+                  var digestMassRange = new DoubleRangeWrapper(dPeptideMassLow, dPeptideMassHigh);
+                  string digestMassRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
+                  SearchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange);
+
+                  bFoundMassRange = true;
+               }
+               iLineCount++;
+
+               if (iLineCount > 6)  // header information should only be in first few lines
+                  break;
+            }
+            dbFile.Close();
+
+            if (!bFoundMassRange)
+            {
+               Console.WriteLine(" Error with indexed database format; missing MassRange header.\n");
+               System.Environment.Exit(1);
+            }
 
             return true;
          }
