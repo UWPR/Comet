@@ -2248,6 +2248,9 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 int iNumFragIons,
                                                 double* pdReturnScores)
 {
+   int iPercentStart = 0;
+   int iPercentEnd = 0;
+
    if (dMZ * iPrecursorCharge - (iPrecursorCharge - 1)*PROTON_MASS > g_staticParams.options.dPeptideMassHigh)
    {
       // this assumes dPeptideMassHigh is set correctly in the calling program
@@ -2289,9 +2292,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
-
-   int iPercentStart = 0;
-   int iPercentEnd = 0;
 
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
@@ -2354,8 +2354,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       }
 
       double dDeltaCn = 1.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
-      double dDeltaCnStar = 0.0;   // if reported deltaCn is for dissimilar peptide, the value stored here is the
-                                   // explicit deltaCn between top hit and peptide in list
 
       // go one past iNumPrintLines to calculate deltaCn value
       for (int j = 1; j < iNumPrintLines + 1; j++)
