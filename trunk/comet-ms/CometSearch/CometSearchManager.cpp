@@ -2485,8 +2485,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    }
    else
    {
-      strcpy(szReturnPeptide, "");  // peptide
-      strcpy(szReturnProtein, "");  // protein
+      strcpy(szReturnPeptide, "x");  // peptide
+      strcpy(szReturnProtein, "x");  // protein
       pdReturnScores[0] = -1;       // xcorr
       pdReturnScores[1] = 0;        // calc neutral pep mass
       pdReturnScores[2] = 0;        // ions matched
@@ -2655,27 +2655,28 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // keep unique entries only; sort by peptide/modification state and protein
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByPeptide);
    g_pvDBIndex.erase(unique(g_pvDBIndex.begin(), g_pvDBIndex.end()), g_pvDBIndex.end());
+
+   // sort by mass;
+   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByMass);
+
 /*
    for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
    {
       printf("OK after unique ");
-      if ( (*it).piVarModSites[strlen((*it).szPeptide)] != 0)
+      if ((*it).pcVarModSites[strlen((*it).szPeptide)] != 0)
          printf("n*");
-      for (unsigned int x=0; x < strlen((*it).szPeptide); x++)
+      for (unsigned int x = 0; x < strlen((*it).szPeptide); x++)
       {
          printf("%c", (*it).szPeptide[x]);
-         if ( (*it).piVarModSites[x] != 0)
+         if ((*it).pcVarModSites[x] != 0)
             printf("*");
       }
-      if ( (*it).piVarModSites[strlen((*it).szPeptide)+1] != 0)
+      if ((*it).pcVarModSites[strlen((*it).szPeptide) + 1] != 0)
          printf("c*");
       printf("   %f   %ld\n", (*it).dPepMass, (*it).lProteinFilePosition);
    }
    printf("\n");
 */
-
-   // sort by mass;
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByMass);
 
    sprintf(szOut, " - writing file\n");
    logout(szOut);
@@ -2736,23 +2737,12 @@ bool CometSearchManager::WriteIndexedDatabase(void)
             lIndex[iPrevMass] = ftell(fptr);
       }
 
+      // find protein by matching g_pvDBindex.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
       auto result = g_pvProteinNames.find((*it).lProteinFilePosition);
       if (result != g_pvProteinNames.end())
       {
          iWhichProtein = result->second.iWhichProtein;
       }
-
-      // find protein by matching g_pvDBindex.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
-/*
-      for (std::vector<IndexProteinStruct>::iterator it2=g_pvProteinNames.begin(); it2 != g_pvProteinNames.end(); ++it2)
-      {
-         if ( (*it2).lProteinFilePosition == (*it).lProteinFilePosition)
-         {
-            iWhichProtein = (*it2).iWhichProtein;
-            break;
-         }
-      }
-*/
 
       (*it).lProteinFilePosition = lProteinIndex[iWhichProtein];
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);

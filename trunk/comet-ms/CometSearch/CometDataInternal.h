@@ -333,7 +333,7 @@ struct DBIndex
    char   szPrevNextAA[2];
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
    long   lProteinFilePosition;              // file position index to protein reference
-   double dPepMass;                          // mono neutral pep mass
+   double dPepMass;                          // MH+ pep mass
 
    bool operator==(const DBIndex &rhs) const
    {
