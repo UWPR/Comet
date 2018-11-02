@@ -2312,7 +2312,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       iSize = g_staticParams.options.iNumStored;
 
    // simply take top xcorr peptide as E-value calculation too expensive
-   if (iSize > 0)
+   if (iSize > 1)
       qsort(g_pvQuery.at(0)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
 
    Query* pQuery;
@@ -2333,6 +2333,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       sprintf(szReturnPeptide+strlen(szReturnPeptide), ".%c", pOutput[0].szPrevNextAA[1]);
 
       strncpy(szReturnProtein, pOutput[0].szSingleProtein, WIDTH_REFERENCE-1);  //protein
+      szReturnProtein[WIDTH_REFERENCE - 1] = '\0';
 
       pdReturnScores[0] = pOutput[0].fXcorr;                        // xcorr
       pdReturnScores[1] = pOutput[0].dPepMass - PROTON_MASS;        // calc neutral pep mass

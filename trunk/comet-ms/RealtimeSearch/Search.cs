@@ -77,6 +77,7 @@ namespace RealTimeSearch
 
                   SearchMgr.InitializeSingleSpectrumSearch();
 
+                  int iLoopCount = 1;
                   for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
                   {
                      var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
@@ -135,7 +136,7 @@ namespace RealTimeSearch
                         int iNumFragIons = 10;               // return 10 most intense matched b- and y-ions
                         double[] pdYions = new double[iNumFragIons];
                         double[] pdBions = new double[iNumFragIons];
-                        double[] pdScores = new double[2];   // dScores[0] = xcorr, dScores[1] = E-value
+                        double[] pdScores = new double[5];   // dScores[0] = xcorr, dScores[1] = E-value
 
                         watch.Start();
                         SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks, szPeptide, szProtein, pdYions, pdBions, iNumFragIons, pdScores);
@@ -143,6 +144,9 @@ namespace RealTimeSearch
 
                         double xcorr = pdScores[0];
                         //double expect = pdScores[1];  // not calculated, too expensive
+                        int iIonsMatch = (int)pdScores[2];
+                        int iIonsTotal = (int)pdScores[3];
+                        double dCn = pdScores[4];
 
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
@@ -163,22 +167,6 @@ namespace RealTimeSearch
                            if (index >= 0)
                               protein = protein.Remove(index);
 
-                           // error check to see if any fragment ions are greater than peptide mass
-                           for (int i = 0; i < iNumFragIons; i++)
-                           {
-                              if (pdBions[i] > dPepMass || pdYions[i] > dPepMass)
-                              {
-                                 for (i = 0; i < iNumFragIons; i++)
-                                 {
-                                    Console.WriteLine("{0}\t{1:0.000}\t{2:0.000}", i, pdBions[i], pdYions[i]);
-                                 }
-                                 Console.WriteLine("FAIL: scan {0}/{1}, z {2}, mz {3:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}, pepmass {9}",
-                                    iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
-
-                                 return 1;
-                              }
-                           }
-
                            if ((iScanNumber % 1000) == 0)
                            {
                               Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
@@ -195,10 +183,15 @@ namespace RealTimeSearch
                         watch.Reset();
                      }
 
-
+/*
                      // continuous loop through raw file
                      if (iScanNumber == iLastScan)
+                     {
                         iScanNumber = 1;
+                        Console.WriteLine("done with scans {0}", iLoopCount);
+                        iLoopCount++;
+                     }
+*/
                   }
 
                   SearchMgr.FinalizeSingleSpectrumSearch();

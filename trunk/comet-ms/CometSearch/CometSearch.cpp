@@ -2762,7 +2762,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    {
       if (dXcorr > pQuery->fLowestXcorrScore)
       {
-         if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
+         // no need to check duplicates if indexed database search
+         if (g_staticParams.bIndexDb
+            || !CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, bFoundVariableMod, dCalcPepMass,
                   szProteinSeq, bDecoyPep, piVarModSites, dbe))
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, bFoundVariableMod, szProteinSeq,
@@ -3082,7 +3084,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
-
    }
 }
 
