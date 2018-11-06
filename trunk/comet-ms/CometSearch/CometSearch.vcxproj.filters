@@ -72,9 +72,6 @@
     <ClInclude Include="CometDecoys.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CometCheckForUpdates.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CometMassSpecUtils.cpp">
@@ -111,9 +108,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CometWritePercolator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CometCheckForUpdates.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
