@@ -2251,6 +2251,9 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    int iPercentStart = 0;
    int iPercentEnd = 0;
 
+   if (iNumPeaks == 0)
+      return false;
+
    if (dMZ * iPrecursorCharge - (iPrecursorCharge - 1)*PROTON_MASS > g_staticParams.options.dPeptideMassHigh)
    {
       // this assumes dPeptideMassHigh is set correctly in the calling program

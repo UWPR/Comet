@@ -1064,6 +1064,19 @@ bool CometSearch::IndexSearch(void)
          g_staticParams.staticModifications.dAddCterminusPeptide = g_staticParams.staticModifications.pdStaticMods[92];
          g_staticParams.staticModifications.dAddNterminusProtein = g_staticParams.staticModifications.pdStaticMods[93];
          g_staticParams.staticModifications.dAddCterminusProtein = g_staticParams.staticModifications.pdStaticMods[94];
+
+         // have to set these here again once static mods are read
+         g_staticParams.precalcMasses.dNtermProton = g_staticParams.staticModifications.dAddNterminusPeptide
+            + PROTON_MASS;
+
+         g_staticParams.precalcMasses.dCtermOH2Proton = g_staticParams.staticModifications.dAddCterminusPeptide
+            + g_staticParams.massUtility.dOH2fragment
+            + PROTON_MASS;
+
+         g_staticParams.precalcMasses.dOH2ProtonCtermNterm = g_staticParams.massUtility.dOH2parent
+            + PROTON_MASS
+            + g_staticParams.staticModifications.dAddCterminusPeptide
+            + g_staticParams.staticModifications.dAddNterminusPeptide;
       }
 
       if (!strncmp(szBuf, "VariableMod:", 12))
