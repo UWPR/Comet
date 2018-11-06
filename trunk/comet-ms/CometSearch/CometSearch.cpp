@@ -233,8 +233,8 @@ bool CometSearch::RunSearch(int minNumThreads,
       else
          strcpy(szPeffAttributeProcessed, "");
 
-      int  iLenAttributeVariant = strlen(szPeffAttributeVariant);
-      int  iLenAttributeMod = strlen(szPeffAttributeMod);
+      int  iLenAttributeVariant = (int)strlen(szPeffAttributeVariant);
+      int  iLenAttributeMod = (int)strlen(szPeffAttributeMod);
       int  iNumBadChars = 0; // count # of bad (non-printing) characters in header 
 
       bool bHeadOfFasta = true;
@@ -1104,7 +1104,16 @@ bool CometSearch::IndexSearch(void)
    g_staticParams.variableModParameters.bVarModSearch = true;
  
    // read fp of index
+#ifdef _WIN32
+#ifdef _WIN64
    fseek(fp, -(sizeof(long)), SEEK_END);
+#else
+   fseek(fp, -((long long) sizeof(long)), SEEK_END);
+#endif
+#else
+   fseek(fp, -(sizeof(long)), SEEK_END);
+#endif
+
    fread(&lEndOfStruct, sizeof(long), 1, fp);
 
    // read index
@@ -1115,6 +1124,14 @@ bool CometSearch::IndexSearch(void)
    fread(&iMinMass, sizeof(int), 1, fp);
    fread(&iMaxMass, sizeof(int), 1, fp);
    fread(&iNumPeptides, sizeof(int), 1, fp);
+
+   // sanity checks
+   if (iMinMass < 0 || iMinMass > 20000 || iMaxMass < 0 || iMaxMass > 20000)
+   {
+      printf(" Error reading .idx database:  min mass %d, max mass %d, num peptides %d\n", iMinMass, iMaxMass, iNumPeptides);
+      getchar();
+      return false;
+   }
 
    long *lReadIndex = new long[iMaxMass+1];
    for (int i=0; i<iMaxMass+1; i++)
@@ -1692,7 +1709,6 @@ void CometSearch::AnalyzeIndexPep(int iWhichQuery,
       // Mass tolerance check for particular query against this candidate peptide mass.
       if (CheckMassMatch(iWhichQuery, sDBI.dPepMass))
       {
-         char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];  // Allow for prev/next AA in string.
          bool bIsVarModPep = false;
 
          // Calculate ion series just once to compare against all relevant query spectra.
