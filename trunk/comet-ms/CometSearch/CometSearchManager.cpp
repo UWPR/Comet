@@ -2390,7 +2390,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          }
       }
 
-      pdReturnBions[4] = dDeltaCn;  // dCn is calculated from first dis-similar peptide
+      pdReturnScores[4] = dDeltaCn;  // dCn is calculated from first dis-similar peptide
 
       // now deal with calculating b- and y-ions and returning most intense matches
       double dBion = g_staticParams.precalcMasses.dNtermProton;
