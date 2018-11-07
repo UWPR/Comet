@@ -19,6 +19,7 @@
 #include "ThreadPool.h"
 #include "CometStatus.h"
 #include "CometPostAnalysis.h"
+#include "CometMassSpecUtils.h"
 
 #include <stdio.h>
 #include <sstream>
@@ -1049,11 +1050,17 @@ bool CometSearch::IndexSearch(void)
          char delims[] = " ";
          int x=65;
 
+         // FIX:  hack here for setting static mods; need to reset masses ... fix later
+         CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
+            g_staticParams.massUtility.bMonoMassesFragment,
+            &g_staticParams.massUtility.dOH2fragment);
+
          bFoundStatic = true;
          tok=strtok(szBuf+11, delims);
          while (tok != NULL)
          {
             sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
+            g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
             tok = strtok (NULL, delims);
             x++;
             if (x==95)  // 65-90 stores A-Z then next 4 (ascii 91-94) are n/c term peptide, n/c term protein
