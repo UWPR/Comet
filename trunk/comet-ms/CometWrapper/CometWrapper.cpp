@@ -93,8 +93,8 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                        cli::array<double>^ pdMass,
                                                        cli::array<double>^ pdInten,
                                                        int iNumPeaks,
-                                                       cli::array<char>^ szPeptide,
-                                                       cli::array<char>^ szProtein,
+                                                       [Out] System::String^% szPeptide,
+                                                       [Out] System::String^% szProtein,
                                                        cli::array<double>^ pdYions,
                                                        cli::array<double>^ pdBions,
                                                        int iNumFragIons,
@@ -109,11 +109,15 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
     pin_ptr<double> ptrScores = &pdScores[0];
     pin_ptr<double> ptrYions = &pdYions[0];
     pin_ptr<double> ptrBions = &pdBions[0];
-    pin_ptr<char> ptrPeptide = &szPeptide[0];
-    pin_ptr<char> ptrProtein = &szProtein[0];
+    std::string stdStringszPeptide;
+    std::string stdStringszProtein;
 
-    return _pSearchMgr->DoSingleSpectrumSearch(iPrecursorCharge, dMZ, ptrMasses, ptrInten, iNumPeaks,
-       ptrPeptide, ptrProtein, ptrYions, ptrBions, iNumFragIons, ptrScores);
+    bool isSuccess = _pSearchMgr->DoSingleSpectrumSearch(iPrecursorCharge, dMZ, ptrMasses, ptrInten, iNumPeaks,
+        stdStringszPeptide, stdStringszProtein, ptrYions, ptrBions, iNumFragIons, ptrScores);
+    szPeptide = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStringszPeptide.c_str()))));
+    szProtein = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStringszProtein.c_str()))));
+
+    return isSuccess;
 }
 
 bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList)

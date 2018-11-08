@@ -30,6 +30,7 @@
 #include "CometSearchManager.h"
 #include "CometStatus.h"
 #include "CometCheckForUpdates.h"
+#include <sstream>
 
 #undef PERF_DEBUG
 
@@ -2241,8 +2242,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 double* pdMass,
                                                 double* pdInten,
                                                 int iNumPeaks,
-                                                char* szReturnPeptide,
-                                                char* szReturnProtein,
+                                                string& szReturnPeptide,
+                                                string& szReturnProtein,
                                                 double* pdReturnYions,
                                                 double* pdReturnBions,
                                                 int iNumFragIons,
@@ -2326,18 +2327,24 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       Results *pOutput = pQuery->_pResults;
 
       // Set return values for peptide sequence, protein, xcorr and E-value
-      sprintf(szReturnPeptide, "%c.", pOutput[0].szPrevNextAA[0]);
+      szReturnPeptide = std::string(1, pOutput[0].szPrevNextAA[0]) + ".";
       for (int i=0; i< pOutput[0].iLenPeptide; i++)
       {
-         sprintf(szReturnPeptide+strlen(szReturnPeptide), "%c", pOutput[0].szPeptide[i]);
-         if (pOutput[0].piVarModSites[i] != 0)
-            sprintf(szReturnPeptide+strlen(szReturnPeptide), "[%0.4lf]", pOutput[0].pdVarModSites[i]);
+          szReturnPeptide += pOutput[0].szPeptide[i];
+
+          if (pOutput[0].piVarModSites[i] != 0)
+          {
+              std::stringstream ss;
+              ss << "[" << std::fixed << std::setprecision(4) << pOutput[0].pdVarModSites[i] << "]";
+              szReturnPeptide += ss.str();
+          }
       }
-      sprintf(szReturnPeptide+strlen(szReturnPeptide), ".%c", pOutput[0].szPrevNextAA[1]);
+      szReturnPeptide += "." + std::string(1, pOutput[0].szPrevNextAA[1]);
 
-      strncpy(szReturnProtein, pOutput[0].szSingleProtein, WIDTH_REFERENCE-1);  //protein
-      szReturnProtein[WIDTH_REFERENCE - 1] = '\0';
-
+      szReturnProtein = pOutput[0].szSingleProtein;  //protein
+      //todo: Below are original code. Should I consider the case when length of szReturnProtein (now a std::string) to be beyond WIDTH_REFERENCE?
+      //strncpy(szReturnProtein, pOutput[0].szSingleProtein, WIDTH_REFERENCE-1);  //protein
+      //szReturnProtein[WIDTH_REFERENCE - 1] = '\0';
       pdReturnScores[0] = pOutput[0].fXcorr;                        // xcorr
       pdReturnScores[1] = pOutput[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
       pdReturnScores[2] = pOutput[0].iMatchedIons;                  // ions matched
@@ -2487,8 +2494,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    }
    else
    {
-      strcpy(szReturnPeptide, "x");  // peptide
-      strcpy(szReturnProtein, "x");  // protein
+      szReturnPeptide = "";  // peptide
+      szReturnProtein = "";  // protein
       pdReturnScores[0] = -1;       // xcorr
       pdReturnScores[1] = 0;        // calc neutral pep mass
       pdReturnScores[2] = 0;        // ions matched
