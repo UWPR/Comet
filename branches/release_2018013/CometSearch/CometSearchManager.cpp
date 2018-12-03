@@ -331,6 +331,10 @@ static bool compareByMangoIndex(Query const* a, Query const* b)
 
 static bool compareByScanNumber(Query const* a, Query const* b)
 {
+   // sort by charge state if same scan number
+   if (a->_spectrumInfoInternal.iScanNumber == b->_spectrumInfoInternal.iScanNumber)
+      return (a->_spectrumInfoInternal.iChargeState < b->_spectrumInfoInternal.iChargeState);
+
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }
 
@@ -791,7 +795,7 @@ bool CometSearchManager::InitializeStaticParams()
    iIntData = 0;
    if (GetParamValue("minimum_peaks", iIntData))
    {
-      if (iIntData > 0)
+      if (iIntData >= 0)
          g_staticParams.options.iMinPeaks = iIntData;
    }
 

@@ -812,7 +812,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
             fprintf(fpout, "     <mod_aminoacid_mass position=\"%d\" mass=\"%0.6f\"",
                   i+1,
                   g_staticParams.massUtility.pdAAMassFragment[iResidue] + pOutput[iWhichResult].pdVarModSites[i]);
-            
+
             if (!isEqual(dStaticMass, 0.0))
                fprintf(fpout, " static=\"%0.6f\"", dStaticMass);
 

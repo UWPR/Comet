@@ -312,7 +312,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         else if (*pStr2 == ')')
                            iTmp--;
 
-                        *pStr2++;
+                        pStr2++;
                      }
                      
                      iLen = pStr2 - pStr;
@@ -451,7 +451,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         else if (*pStr2 == ')')
                            iTmp--;
 
-                        *pStr2++;
+                        pStr2++;
                      }
 
                      iLen = pStr2 - pStr;
@@ -805,7 +805,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 
       if (g_staticParams.options.bClipNtermMet && dbe.strSeq[0]=='M')
       {
-         if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str(), true, pbDuplFragment))
+         if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str()+1, true, pbDuplFragment))
             return false;
       }
 
@@ -968,8 +968,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    if (bNtermPeptideOnly)  // we're skipping the leading M
    {
       iLenProtein -= 1;
-      iStartPos = 1;
-      iFirstResiduePosition = 1;
+//    iStartPos = 1;
+//    iFirstResiduePosition = 1;
    }
 
    if (dbe.vectorPeffMod.size() > 0) // sort vectorPeffMod by iPosition
@@ -1517,7 +1517,7 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + iOneMinusEnzymeOffSet])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
 
-      bEndCleavage = (iEndPos==(int)(_proteinInfo.iProteinSeqLength-1)
+      bEndCleavage = (iEndPos==(int)(strlen(szProteinSeq)-1)
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
@@ -1603,7 +1603,7 @@ bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
       int iOneMinusEnzymeOffSet = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
       int iTwoMinusEnzymeOffSet = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
 
-      bEndCleavage = (iEndPos==(int)(_proteinInfo.iProteinSeqLength-1)
+      bEndCleavage = (iEndPos==(int)(strlen(szProteinSeq)-1)
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
@@ -2352,7 +2352,13 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
 
       if (iStartPos == 0)
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = '-';
+      {
+         // check if clip n-term met
+         if (dbe->strSeq.c_str()[0]=='M' && !strcmp(dbe->strSeq.c_str()+1, szProteinSeq))
+            pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = 'M';
+         else
+            pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = '-';
+      }
       else
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
@@ -2417,6 +2423,11 @@ void CometSearch::StorePeptide(int iWhichQuery,
             }
          }
       }
+      else
+      {
+         memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+         memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+      }
 
       // Get new lowest score.
       pQuery->fLowestDecoyXcorrScore = pQuery->_pDecoys[0].fXcorr;
@@ -2461,7 +2472,13 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
 
       if (iStartPos == 0)
-         pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
+      {
+         // check if clip n-term met
+         if (dbe->strSeq.c_str()[0]=='M' && !strcmp(dbe->strSeq.c_str()+1, szProteinSeq))
+            pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = 'M';
+         else
+            pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
+      }
       else
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
@@ -2542,6 +2559,11 @@ void CometSearch::StorePeptide(int iWhichQuery,
                   pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = 0.0;
             }
          }
+      }
+      else
+      {
+         memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+         memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
       }
 
       // Get new lowest score.
