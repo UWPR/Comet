@@ -998,7 +998,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
          dMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iStartPos]];
       }
 
-      if (bNtermPeptideOnly && iStartPos != 1)  // Variant outside of first peptide caused my clipping Met
+      if (bNtermPeptideOnly && iStartPos != 0)  // Variant outside of first peptide caused my clipping Met
          return true;
    }
 
