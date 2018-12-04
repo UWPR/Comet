@@ -131,15 +131,16 @@ namespace RealTimeSearch
                         // now run the search on scan
 
                         // these next variables store return value from search
-                        sbyte[] szPeptide = new sbyte[512];  // size must be at least WIDTH_REFERENCE in CometDataInternal.h
-                        sbyte[] szProtein = new sbyte[512];  // size must be at least WIDTH_REFERENCE in CometDataInternal.h
                         int iNumFragIons = 10;               // return 10 most intense matched b- and y-ions
                         double[] pdYions = new double[iNumFragIons];
                         double[] pdBions = new double[iNumFragIons];
                         double[] pdScores = new double[5];   // dScores[0] = xcorr, dScores[1] = E-value
 
+                        string peptide;
+                        string protein;
+
                         watch.Start();
-                        SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks, szPeptide, szProtein, pdYions, pdBions, iNumFragIons, pdScores);
+                        SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks, out peptide, out protein, pdYions, pdBions, iNumFragIons, pdScores);
                         watch.Stop();
 
                         double xcorr = pdScores[0];
@@ -150,23 +151,9 @@ namespace RealTimeSearch
 
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
-                        string peptide;
-                        string protein;
-
                         // do not decode peptide/proteins strings unless xcorr>0
                         if (xcorr > 0)
                         {
-                           peptide = Encoding.UTF8.GetString(szPeptide.Select(b => (byte)b).ToArray());
-                           protein = Encoding.UTF8.GetString(szProtein.Select(b => (byte)b).ToArray());
-
-                           int index = peptide.IndexOf('\0');
-                           if (index >= 0)
-                              peptide = peptide.Remove(index);
-
-                           index = protein.IndexOf('\0');
-                           if (index >= 0)
-                              protein = protein.Remove(index);
-
                            if ((iScanNumber % 1000) == 0)
                            {
                               Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
