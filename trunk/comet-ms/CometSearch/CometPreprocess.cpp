@@ -1897,7 +1897,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
           dIntensity=0;
 
    int iTmpArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
-   memset(pdTmpSpectrum, 0, iTmpArraySize);
+   memset(pdTmpSpectrum, 0, iTmpArraySize*sizeof(double));
 
    for (i=0; i<iNumPeaks; i++)
    {

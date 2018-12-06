@@ -1,116 +1,113 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-//using System.Threading.Tasks;
-
-using CometWrapper;
-
-using ThermoFisher.CommonCore.Data.Business;
-using ThermoFisher.CommonCore.Data.FilterEnums;
-using ThermoFisher.CommonCore.Data.Interfaces;
-using ThermoFisher.CommonCore.RawFileReader;
-
-namespace RealTimeSearch
+﻿namespace RealTimeSearch
 {
+   using System;
+   using System.Diagnostics;
+   using System.IO;
+   using System.Linq;
+   using System.Text;
+   //using System.Threading.Tasks;
+
+   using CometWrapper;
+
+   using ThermoFisher.CommonCore.Data.Business;
+   using ThermoFisher.CommonCore.Data.FilterEnums;
+   using ThermoFisher.CommonCore.Data.Interfaces;
+   using ThermoFisher.CommonCore.RawFileReader;
+   
    /// <summary>
    /// Call CometWrapper to run searches, looping through scans in a Thermo RAW file
    /// </summary>
    class realTimeSearch
    {
-      static int Main(string[] args)
+      static void Main(string[] args)
       {
-         string version = "1.0.2";
-
-         if (args.Length == 0)
+         if (args.Length < 2)
          {
-            Console.WriteLine("{1} RealTimeSearch version {0}:  enter raw files on command line.{1}", version, Environment.NewLine, Environment.NewLine);
-            return 1;
+            Console.WriteLine("{1} RealTimeSearch:  enter raw file and index db on command line\n");
+            return;
          }
 
-         Console.WriteLine("{1} RealTimeSearch version {0}{2}", version, Environment.NewLine, Environment.NewLine);
+         Console.WriteLine("\n RealTimeSearch\n");
 
          CometSearchManagerWrapper SearchMgr = new CometSearchManagerWrapper();
          SearchSettings searchParams = new SearchSettings();
-
+                 
+         string rawFileName = args[0];
+         string sDB = args[1];
          double  dPeptideMassLow = 0;
          double  dPeptideMassHigh = 0;
 
          // Configure search parameters here
          // Will also read the index database and return dPeptideMassLow/dPeptideMassHigh mass range
-         searchParams.ConfigureInputSettings(SearchMgr, ref dPeptideMassLow, ref dPeptideMassHigh);
+         searchParams.ConfigureInputSettings(SearchMgr, ref dPeptideMassLow, ref dPeptideMassHigh, ref sDB);
 
-         for (int ctInput = 0; ctInput < args.Length; ctInput++)
+         if (File.Exists(rawFileName) && File.Exists(sDB))
          {
-            string rawFileName = args[ctInput];
+            Console.Write(" input: {0}  \n", rawFileName);
 
-            if (File.Exists(rawFileName) && !string.IsNullOrEmpty(rawFileName))
+            try
             {
-               Console.Write(" input: {0}  \n", rawFileName);
-
-               try
+               IRawDataPlus rawFile = RawFileReaderAdapter.FileFactory(rawFileName);
+               if (!rawFile.IsOpen || rawFile.IsError)
                {
-                  IRawDataPlus rawFile = RawFileReaderAdapter.FileFactory(rawFileName);
-                  if (!rawFile.IsOpen || rawFile.IsError)
+                  Console.WriteLine(" Error: unable to access the RAW file using the RawFileReader class.");
+                  return;
+               }
+
+               rawFile.SelectInstrument(Device.MS, 1);
+
+               // Get the first and last scan from the RAW file
+               int iFirstScan = rawFile.RunHeaderEx.FirstSpectrum;
+               int iLastScan = rawFile.RunHeaderEx.LastSpectrum;
+
+               int iNumPeaks;
+               int iPrecursorCharge;
+               double dPrecursorMZ = 0;
+               double[] pdMass;
+               double[] pdInten;
+               Stopwatch watch = new Stopwatch();
+
+               int[] piElapsedTime = new int[50];  // histogram of search times
+               for (int i = 0; i < 50; i++)
+                  piElapsedTime[i] = 0;
+
+               SearchMgr.InitializeSingleSpectrumSearch();
+
+               for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
+               {
+                  var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
+                  //double dRT = rawFile.RetentionTimeFromScanNumber(iScanNumber);
+
+                  // Get the scan filter for this scan number
+                  var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
+
+                  if (scanFilter.MSOrder == MSOrderType.Ms2)
                   {
-                     Console.WriteLine(" Error: unable to access the RAW file using the RawFileReader class.");
-                     continue;
-                  }
-
-                  rawFile.SelectInstrument(Device.MS, 1);
-
-                  // Get the first and last scan from the RAW file
-                  int iFirstScan = rawFile.RunHeaderEx.FirstSpectrum;
-                  int iLastScan = rawFile.RunHeaderEx.LastSpectrum;
-
-                  int iNumPeaks;
-                  int iPrecursorCharge;
-                  double dPrecursorMZ = 0;
-                  double[] pdMass;
-                  double[] pdInten;
-                  Stopwatch watch = new Stopwatch();
-
-                  int[] piElapsedTime = new int[50];  // histogram of search times
-                  for (int i = 0; i < 50; i++)
-                     piElapsedTime[i] = 0;
-
-                  SearchMgr.InitializeSingleSpectrumSearch();
-
-                  int iLoopCount = 1;
-                  for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
-                  {
-                     var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
-                     //double dRT = rawFile.RetentionTimeFromScanNumber(iScanNumber);
-
-                     // Get the scan filter for this scan number
-                     var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
-
-                     if (scanFilter.MSOrder == MSOrderType.Ms2)
+                     // Check to see if the scan has centroid data or profile data.  Depending upon the
+                     // type of data, different methods will be used to read the data.
+                     if (scanStatistics.IsCentroidScan && (scanStatistics.SpectrumPacketType == SpectrumPacketType.FtCentroid))
                      {
-                        // Check to see if the scan has centroid data or profile data.  Depending upon the
-                        // type of data, different methods will be used to read the data.
-                        if (scanStatistics.IsCentroidScan)
-                        {
-                           // Get the centroid (label) data from the RAW file for this scan
-                           var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
-                           iNumPeaks = centroidStream.Length;
-                           pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
-                           pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
-                           pdMass = centroidStream.Masses;
-                           pdInten = centroidStream.Intensities;
-                        }
-                        else
-                        {
-                           // Get the segmented (low res and profile) scan data
-                           var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
-                           iNumPeaks = segmentedScan.Positions.Length;
-                           pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
-                           pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
-                           pdMass = segmentedScan.Positions;
-                           pdInten = segmentedScan.Intensities;
-                        }
+                        // Get the centroid (label) data from the RAW file for this scan
+                        var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
+                        iNumPeaks = centroidStream.Length;
+                        pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
+                        pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
+                        pdMass = centroidStream.Masses;
+                        pdInten = centroidStream.Intensities;
+                     }
+                     else
+                     {
+                        // Get the segmented (low res and profile) scan data
+                        var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
+                        iNumPeaks = segmentedScan.Positions.Length;
+                        pdMass = new double[iNumPeaks];   // stores mass of spectral peaks
+                        pdInten = new double[iNumPeaks];  // stores inten of spectral peaks
+                        pdMass = segmentedScan.Positions;
+                        pdInten = segmentedScan.Intensities;
+                     }
 
+                     if (iNumPeaks > 0)
+                     {
                         iPrecursorCharge = 0;
                         dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
 
@@ -139,8 +136,12 @@ namespace RealTimeSearch
                         string peptide;
                         string protein;
 
+                        if ((iScanNumber % 1000) == 0)
+                           Console.WriteLine("searching scan {0}, mass {1}, charge {2}, numpeaks {3}", iScanNumber, dExpPepMass, iPrecursorCharge, iNumPeaks);
+
                         watch.Start();
-                        SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks, out peptide, out protein, pdYions, pdBions, iNumFragIons, pdScores);
+                        SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
+                           out peptide, out protein, pdYions, pdBions, iNumFragIons, pdScores);
                         watch.Stop();
 
                         double xcorr = pdScores[0];
@@ -157,7 +158,12 @@ namespace RealTimeSearch
                            if ((iScanNumber % 1000) == 0)
                            {
                               Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
-                                  iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
+                                 iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
+
+                              for (int i = 0; i < iNumFragIons; i++)
+                              {
+                                 Console.Write("{0} {1}\n", pdBions[i], pdYions[i]);
+                              }
                            }
                         }
 
@@ -169,51 +175,44 @@ namespace RealTimeSearch
 
                         watch.Reset();
                      }
-
-/*
-                     // continuous loop through raw file
-                     if (iScanNumber == iLastScan)
-                     {
-                        iScanNumber = 1;
-                        Console.WriteLine("done with scans {0}", iLoopCount);
-                        iLoopCount++;
-                     }
-*/
                   }
-
-                  SearchMgr.FinalizeSingleSpectrumSearch();
-
-                  for (int i = 0; i < 50; i++)
-                     Console.WriteLine("{0}\t{1}", i, piElapsedTime[i]);
-
-                  rawFile.Dispose();
                }
 
-               catch (Exception rawSearchEx)
-               {
-                  Console.WriteLine(" Error opening raw file: " + rawSearchEx.Message);
-               }
+               SearchMgr.FinalizeSingleSpectrumSearch();
+
+               // write out histogram of spectrum search times
+//               for (int i = 0; i < 50; i++)
+//                  Console.WriteLine("{0}\t{1}", i, piElapsedTime[i]);
+
+               rawFile.Dispose();
             }
-            else
+
+            catch (Exception rawSearchEx)
             {
-               Console.WriteLine("No raw file exists at that path.");
+               Console.WriteLine(" Error: " + rawSearchEx.Message);
             }
-
+         }
+         else
+         {
+            Console.WriteLine("No raw file exists at that path.");
          }
 
+
          Console.WriteLine("{0} Done.{1}", Environment.NewLine, Environment.NewLine);
-         return 0;
+         return;
       }
 
       class SearchSettings
       {
-         public bool ConfigureInputSettings(CometSearchManagerWrapper SearchMgr, ref double dPeptideMassLow, ref double dPeptideMassHigh)
+         public bool ConfigureInputSettings(CometSearchManagerWrapper SearchMgr,
+            ref double dPeptideMassLow,
+            ref double dPeptideMassHigh,
+            ref string sDB)
          {  
             String sTmp;
             int iTmp;
             double dTmp;
 
-            string sDB = "YEAST.fasta.20180814.idx";  // database must be set here early on
             SearchMgr.SetParam("database_name", sDB, sDB);
 
             dTmp = 20.0; //ppm window
@@ -228,15 +227,15 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-            iTmp = 2; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
+            iTmp = 5; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
-            dTmp = 0.02; // fragment bin width
+            dTmp = 1.0005; // fragment bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.0; // fragment bin offset
+            dTmp = 0.4; // fragment bin offset
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 

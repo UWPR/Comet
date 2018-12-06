@@ -192,6 +192,7 @@ Global
 		{581E4213-1629-49E9-958B-070F106A07E9}.Release|Mixed Platforms.Build.0 = Release|x86
 		{581E4213-1629-49E9-958B-070F106A07E9}.Release|Win32.ActiveCfg = Release|x86
 		{581E4213-1629-49E9-958B-070F106A07E9}.Release|x64.ActiveCfg = Release|x86
+		{581E4213-1629-49E9-958B-070F106A07E9}.Release|x64.Build.0 = Release|x86
 		{581E4213-1629-49E9-958B-070F106A07E9}.Release|x86.ActiveCfg = Release|x86
 		{581E4213-1629-49E9-958B-070F106A07E9}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
