@@ -128,8 +128,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    if ( (fp=fopen(g_staticParams.inputFile.szFileName, "r"))==NULL)
    {
       char szErrorMsg[1024];
-      sprintf(szErrorMsg,  " Error - cannot read input file \"%s\".\n",
-            g_staticParams.inputFile.szFileName);
+      sprintf(szErrorMsg,  " Error - cannot read input file \"%s\".\n", g_staticParams.inputFile.szFileName);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
@@ -465,6 +464,8 @@ static bool ValidateSequenceDatabaseFile()
       return false;
    }
 
+   fclose(fpcheck);
+
    // At this point, check extension to set whether index database or not
    if (!strcmp(g_staticParams.databaseInfo.szDatabase+strlen(g_staticParams.databaseInfo.szDatabase)-4, ".idx"))
       g_staticParams.bIndexDb = 1;
@@ -479,7 +480,6 @@ static bool ValidateSequenceDatabaseFile()
       return false;
    }
 
-   fclose(fpcheck);
    return true;
 }
 
@@ -2612,14 +2612,14 @@ bool CometSearchManager::CompareByMass(const DBIndex &lhs,
 
 bool CometSearchManager::WriteIndexedDatabase(void)
 {
-   FILE *fptr;
+   comet_filehandle_t *fptr;
    bool bSucceeded;
    char szOut[256];
 
    char szIndexFile[SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
-   if ((fptr = fopen(szIndexFile, "wb")) == NULL)
+   if ((fptr = cometOpenFile(szIndexFile, "w")) == NULL)
    {
       printf(" Error - cannot open index file %s to write\n", szIndexFile);
       exit(1);
@@ -2692,45 +2692,66 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fflush(stdout);
 
    // write out index header
-   fprintf(fptr, "Comet indexed database.\n");
-   fprintf(fptr, "Input db:  %s\n", g_staticParams.databaseInfo.szDatabase);
-   fprintf(fptr, "MassRange: %f %f\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
-   fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
-   fprintf(fptr, "Enzyme: %s\n", g_staticParams.enzymeInformation.szSearchEnzymeName);
+   char szTmp[1024];
+
+   sprintf(szTmp, "Comet indexed database.\n");
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   sprintf(szTmp, "Input db:  %s\n", g_staticParams.databaseInfo.szDatabase);
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   sprintf(szTmp, "MassRange: %f %f\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   sprintf(szTmp, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   sprintf(szTmp, "Enzyme: %s\n", g_staticParams.enzymeInformation.szSearchEnzymeName);
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
 
    // write out static mod params A to Z is ascii 65 to 90 then terminal mods
-   fprintf(fptr, "StaticMod:");
+   sprintf(szTmp, "StaticMod:");
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+
    for (int x = 65; x <= 90; x++)
-   fprintf(fptr, " %f", g_staticParams.staticModifications.pdStaticMods[x]);
-   fprintf(fptr, " %f", g_staticParams.staticModifications.dAddNterminusPeptide);
-   fprintf(fptr, " %f", g_staticParams.staticModifications.dAddCterminusPeptide);
-   fprintf(fptr, " %f", g_staticParams.staticModifications.dAddNterminusProtein);
-   fprintf(fptr, " %f\n", g_staticParams.staticModifications.dAddCterminusProtein);
+   {
+      sprintf(szTmp, " %f", g_staticParams.staticModifications.pdStaticMods[x]);
+      CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   }
+   sprintf(szTmp, " %f", g_staticParams.staticModifications.dAddNterminusPeptide);
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   sprintf(szTmp, " %f", g_staticParams.staticModifications.dAddCterminusPeptide);
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   sprintf(szTmp, " %f", g_staticParams.staticModifications.dAddNterminusProtein);
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   sprintf(szTmp, " %f\n", g_staticParams.staticModifications.dAddCterminusProtein);
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
 
    // write out variable mod params
-   fprintf(fptr, "VariableMod:");
+   sprintf(szTmp, "VariableMod:");
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
    for (int x = 0; x < VMODS; x++)
-      fprintf(fptr, " %s %f", g_staticParams.variableModParameters.varModList[x].szVarModChar, g_staticParams.variableModParameters.varModList[x].dVarModMass);
-   fprintf(fptr, "\n\n");
+   {
+      sprintf(szTmp, " %s %f", g_staticParams.variableModParameters.varModList[x].szVarModChar, g_staticParams.variableModParameters.varModList[x].dVarModMass);
+      CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
+   }
+   sprintf(szTmp, "\n\n");
+   CometSearchManager::cometWriteFile(szTmp, strlen(szTmp), *fptr);
 
    int iTmp = (int)g_pvProteinNames.size();
-   long *lProteinIndex = new long[iTmp];
+   comet_fileoffset_t *clProteinIndex = new comet_fileoffset_t[iTmp];
    for (int i = 0; i < iTmp; i++)
-      lProteinIndex[i] = -1;
+      clProteinIndex[i] = -1;
 
    // first just write out protein names. Track file position of each protein name
    int ctProteinNames = 0;
    for (auto it = g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
    {
-      lProteinIndex[ctProteinNames] = ftell(fptr);
-      fwrite(it->second.szProt, sizeof(char)*WIDTH_REFERENCE, 1, fptr);
+      clProteinIndex[ctProteinNames] = comet_ftell(*fptr);
+      CometSearchManager::cometWriteFile(it->second.szProt, sizeof(char)*WIDTH_REFERENCE, *fptr);
       it->second.iWhichProtein = ctProteinNames;
       ctProteinNames++;
    }
 
    // next write out the peptides and track peptide mass index
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
-   long *lIndex = new long[iMaxPeptideMass];
+   comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass];
    for (int x = 0; x < iMaxPeptideMass; x++)
       lIndex[x] = -1;
 
@@ -2743,7 +2764,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       {
          iPrevMass = (int)((*it).dPepMass);
          if (iPrevMass < iMaxPeptideMass)
-            lIndex[iPrevMass] = ftell(fptr);
+            lIndex[iPrevMass] = comet_ftell(*fptr);
       }
 
       // find protein by matching g_pvDBindex.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
@@ -2753,21 +2774,21 @@ bool CometSearchManager::WriteIndexedDatabase(void)
          iWhichProtein = result->second.iWhichProtein;
       }
 
-      (*it).lProteinFilePosition = lProteinIndex[iWhichProtein];
-      fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
+      (*it).lProteinFilePosition = clProteinIndex[iWhichProtein];
+      CometSearchManager::cometWriteFile(&(*it), sizeof(struct DBIndex), *fptr);
    }
 
-   long lEndOfPeptides = ftell(fptr);
+   comet_fileoffset_t lEndOfPeptides = comet_ftell(*fptr);
 
    int iTmpCh = (int)(g_staticParams.options.dPeptideMassLow);
-   fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
-   fwrite(&iMaxPeptideMass, sizeof(int), 1, fptr);  // write max mass
+   CometSearchManager::cometWriteFile(&iTmpCh, sizeof(int), *fptr);  // write min mass
+   CometSearchManager::cometWriteFile(&iMaxPeptideMass, sizeof(int), *fptr);  // write max mass
    iTmpCh = g_pvDBIndex.size();
-   fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write # of peptides
-   fwrite(lIndex, sizeof(long), iMaxPeptideMass, fptr); // write index
-   fwrite(&lEndOfPeptides, sizeof(long), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
+   CometSearchManager::cometWriteFile(&iTmpCh, sizeof(int), *fptr);  // write # of peptides
+   CometSearchManager::cometWriteFile(lIndex, sizeof(long)*iMaxPeptideMass, *fptr); // write index
+   CometSearchManager::cometWriteFile(&lEndOfPeptides, sizeof(comet_fileoffset_t), *fptr);  // write ftell position of min/max mass, # peptides, peptide index
 
-   fclose(fptr);
+   CometSearchManager::cometCloseFile(*fptr);
 
    sprintf(szOut, " - done\n");
    logout(szOut);
@@ -2777,8 +2798,70 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    g_pvDBIndex.clear();
    g_pvProteinNames.clear();
-   delete[] lProteinIndex;
+   delete[] clProteinIndex;
    delete[] lIndex;
 
    return bSucceeded;
+}
+
+comet_filehandle_t * CometSearchManager::cometOpenFile(const char * filename, const char * cReadWrite)
+{
+   comet_filehandle_t fp;
+
+#ifdef _WIN32
+   if (cReadWrite[0] == 'r')
+   {
+      struct stat pFileStat;
+      if (!filename || !((!stat(filename, &pFileStat)) && S_ISREG(pFileStat.st_mode)))
+      {
+         return NULL;
+      }
+      fp = _open(filename, _O_BINARY | _O_RDONLY);
+   }
+   else
+   {
+      fp = _open(filename, _O_BINARY | _O_WRONLY | _O_CREAT);
+   }
+#else
+   if (cReadWrite[0] == 'r')
+      fp = fopen(filename, "rb");
+   else
+      fp = fopen(filename, "wb");
+#endif
+
+   return &fp;
+}
+
+int CometSearchManager::cometCloseFile(comet_filehandle_t fp)
+{
+#ifdef _WIN32
+   return(_close(fp));
+#else
+   return(fclose(fp));
+#endif
+}
+
+int CometSearchManager::cometReadFile(void *ptr, int iLen, comet_filehandle_t fp)
+{
+   int iReadLen = 0;
+#ifdef _WIN32
+   iReadLen = _read(fp, ptr, iLen);
+#else
+   iReadLen = fread(ptr, iLen, 1, szBuf);
+#endif
+
+   return iReadLen;
+}
+
+int CometSearchManager::cometWriteFile(void *ptr, int iLen, comet_filehandle_t fp)
+{
+   int iReturn = 0;
+#ifdef _WIN32
+   iReturn = _write(fp, ptr, iLen);
+#else
+   iNumElementsWrite = fwrite(ptr, iLen, 1, fp);  // write min mass
+#endif
+
+   return iReturn;
+
 }

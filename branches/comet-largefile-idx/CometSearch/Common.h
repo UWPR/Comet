@@ -29,6 +29,11 @@
 #include <direct.h>
 #include <errno.h>
 #define STRCMP_IGNORE_CASE(a,b) _strcmpi(a,b)
+#include <io.h>
+typedef __int64 comet_fileoffset_t;
+typedef int comet_filehandle_t;
+#define comet_fseek(handle,offset,whence) _lseeki64(handle,offset,whence)
+#define comet_ftell(handle) _lseeki64(handle,0,SEEK_CUR)
 #else
 #include <unistd.h>
 #include <sys/stat.h>
@@ -36,6 +41,10 @@
 #include <errno.h>
 #include <pthread.h>
 #define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
+typedef off64_t comet_fileoffset_t;
+typdef FILE * comet_filehandle_t;
+#define comet_fseek(handle,offset,whence) fseeko64(handle,offset,whence)
+#define comet_ftell(handle) ftello64(handle)
 #endif
 
 using namespace std;
@@ -51,7 +60,7 @@ using namespace std;
 #include <iostream>
 #endif
 
-#define comet_version   "2018.01 rev. X"
+#define comet_version   "2018.02 rev. X"
 #define copyright "(c) University of Washington"
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is

@@ -20,6 +20,12 @@
 #include "CometData.h"
 #include "CometDataInternal.h"
 #include "CometInterfaces.h"
+#include <fcntl.h>
+#include <sys/stat.h>
+
+#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#endif
 
 using namespace CometInterfaces;
 
@@ -47,6 +53,11 @@ public:
                                        double* pdReturnBions,
                                        int iNumFragIons,
                                        double* pdScores);
+   static comet_filehandle_t *cometOpenFile(const char *filename, const char *cReadWrite);
+   static int cometCloseFile(comet_filehandle_t fp);
+   static int cometReadFile(void *ptr, int len, comet_filehandle_t fp);
+   static int cometWriteFile(void *ptr, int iLen, comet_filehandle_t fp);
+
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);

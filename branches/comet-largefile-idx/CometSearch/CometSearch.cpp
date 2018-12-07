@@ -20,6 +20,7 @@
 #include "CometStatus.h"
 #include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
+#include "CometSearchManager.h"
 
 #include <stdio.h>
 #include <sstream>
@@ -116,8 +117,8 @@ bool CometSearch::RunSearch(int minNumThreads,
       sDBEntry dbe;
       FILE *fp;
       int iTmpCh = 0;
-      long lEndPos = 0;
-      long lCurrPos = 0;
+      f_off lEndPos = 0;
+      f_off lCurrPos = 0;
       bool bTrimDescr = false;
       string strPeffHeader;
       char *szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
@@ -151,7 +152,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       }
 
       fseek(fp, 0, SEEK_END);
-      lEndPos=ftell(fp);
+      lEndPos = ftell(fp);
       rewind(fp);
 
       // Load database entry header.
@@ -594,6 +595,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
                      // exit out of this as end of line grabbed
                      break;
+                     break;
                   }
                } // done with PEFF
             }
@@ -641,7 +643,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                lCurrPos = ftell(fp);
                if (g_staticParams.options.bCreateIndex)
                   sprintf(szTmp, "%3d%%", (int)(100.0*(0.005 + (double)lCurrPos/(double)lEndPos)));
-               else // go from iPercentStart to iPercentEnd, scaled by lCurrPos/iEndPos
+               else // go from iPercentStart to iPercentEnd, scaled by lCurrPos/lEndPos
                   sprintf(szTmp, "%3d%%", (int)(((double)(iPercentStart + (iPercentEnd-iPercentStart)*(double)lCurrPos/(double)lEndPos) )));
                logout(szTmp);
                fflush(stdout);
@@ -1013,13 +1015,14 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 }
 
 
+// .idx file can be >2GB to need to handle correctly on both Windows and linux
 bool CometSearch::IndexSearch(void)
 {
-   long lEndOfStruct;
+   comet_fileoffset_t clEndOfStruct;
+   comet_filehandle_t *fp;
    char szBuf[SIZE_BUF];
-   FILE *fp;
 
-   if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+   if ((fp = CometSearchManager::cometOpenFile(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
       char szErrorMsg[1024];
       sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\" %s.\n", g_staticParams.databaseInfo.szDatabase, strerror(errno));
@@ -1037,7 +1040,7 @@ bool CometSearch::IndexSearch(void)
    bool bFoundVariable = false;
 
    // read in static and variable mods
-   while (fgets(szBuf, sizeof(szBuf), fp))
+   while (CometSearchManager::cometReadFile(szBuf, sizeof(szBuf), *fp))
    {
       if (!strncmp(szBuf, "MassType:", 9))
       {
@@ -1116,7 +1119,7 @@ bool CometSearch::IndexSearch(void)
       char szErr[256];
       sprintf(szErr, " Error with index database format. Mods not parsed.");
       logerr(szErr);
-      fclose(fp);
+      CometSearchManager::cometCloseFile(*fp);
       return false;
    }
 
@@ -1124,26 +1127,30 @@ bool CometSearch::IndexSearch(void)
    g_staticParams.variableModParameters.bVarModSearch = true;
  
    // read fp of index
+/*
 #ifdef _WIN32
 #ifdef _WIN64
-   fseek(fp, -(sizeof(long)), SEEK_END);
+   comet_fseek(fp, -(sizeof(long)), SEEK_END);
 #else
-   fseek(fp, -((long long) sizeof(long)), SEEK_END);
+   comet_fseek(fp, -((long long) sizeof(long)), SEEK_END);
 #endif
 #else
-   fseek(fp, -(sizeof(long)), SEEK_END);
+   comet_fseek(fp, -(sizeof(long)), SEEK_END);
 #endif
+*/
+   comet_fileoffset_t clTmp = -(sizeof(comet_fileoffset_t));
+   comet_fseek(*fp, clTmp, SEEK_END);
 
-   fread(&lEndOfStruct, sizeof(long), 1, fp);
+   CometSearchManager::cometReadFile(&clEndOfStruct, sizeof(long), *fp);
 
    // read index
    int iMinMass=0;
    int iMaxMass=0;
    int iNumPeptides=0;
-   fseek(fp, lEndOfStruct, SEEK_SET);
-   fread(&iMinMass, sizeof(int), 1, fp);
-   fread(&iMaxMass, sizeof(int), 1, fp);
-   fread(&iNumPeptides, sizeof(int), 1, fp);
+   comet_fseek(*fp, clEndOfStruct, SEEK_SET);
+   CometSearchManager::cometReadFile(&iMinMass, sizeof(int),*fp);
+   CometSearchManager::cometReadFile(&iMaxMass, sizeof(int), *fp);
+   CometSearchManager::cometReadFile(&iNumPeptides, sizeof(int), *fp);
 
    // sanity checks
    if (iMinMass < 0 || iMinMass > 20000 || iMaxMass < 0 || iMaxMass > 20000)
@@ -1157,7 +1164,7 @@ bool CometSearch::IndexSearch(void)
    for (int i=0; i<iMaxMass+1; i++)
       lReadIndex[i] = -1;
 
-   fread(lReadIndex, sizeof(long), iMaxMass+1, fp);
+   CometSearchManager::cometReadFile(lReadIndex, sizeof(long)*(iMaxMass+1), *fp);
 
    int iStart = (int)(g_massRange.dMinMass - 0.5);  // smallest mass/index start
    int iEnd = (int)(g_massRange.dMaxMass + 0.5);  // largest mass/index end
@@ -1165,7 +1172,7 @@ bool CometSearch::IndexSearch(void)
    if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass || iStart > iMaxMass)
    {
       delete [] lReadIndex;
-      fclose(fp);
+      CometSearchManager::cometCloseFile(*fp);
       return true;
    }
 
@@ -1179,14 +1186,15 @@ bool CometSearch::IndexSearch(void)
 
    while (lReadIndex[iStart] == -1 && iStart<iEnd)
       iStart++;
-   fseek(fp, lReadIndex[iStart], SEEK_SET);
-   fread(&sDBI, sizeof(struct DBIndex), 1, fp);
+   comet_fseek(*fp, lReadIndex[iStart], SEEK_SET);
+   CometSearchManager::cometReadFile(&sDBI, sizeof(struct DBIndex), *fp);
 
    _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition = sDBI.lProteinFilePosition;
    _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
    _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
    dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1];  // make string including prev/next AA
-
+   
+   int iReturn;
    while ((int)sDBI.dPepMass <= iEnd)
    {
 /*
@@ -1210,13 +1218,19 @@ bool CometSearch::IndexSearch(void)
       if (iWhichQuery != -1)
          AnalyzeIndexPep(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
 
-      if (ftell(fp)>=lEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
+      if (comet_ftell(*fp)>=clEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
          break;
 
-      fread(&sDBI, sizeof(struct DBIndex), 1, fp);
+      iReturn = CometSearchManager::cometReadFile(&sDBI, sizeof(struct DBIndex), *fp);
 
       // read past last entry in indexed db, need to break out of loop
-      if (feof(fp))
+      if (iReturn == -1)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg, " Error reading index database:  errno %d.\n", errno);
+         logout(szErrorMsg);
+      }
+      else if (iReturn == 0)
          break;
 
       _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
@@ -1241,8 +1255,8 @@ bool CometSearch::IndexSearch(void)
          // Retrieve protein name
          if ((*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
          {
-            fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
-            fread((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+            comet_fseek(*fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
+            CometSearchManager::cometReadFile((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, *fp);
          }
 /*
          printf("OK  scan %d, pep %s, prot %s, xcorr %f, matchcount %d\n",
@@ -1256,7 +1270,7 @@ bool CometSearch::IndexSearch(void)
    }
 
    delete [] lReadIndex;
-   fclose(fp);
+   CometSearchManager::cometCloseFile(*fp);
    return true;
 }
 
