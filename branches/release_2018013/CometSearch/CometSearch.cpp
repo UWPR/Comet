@@ -2235,7 +2235,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          iTmp = HISTO_SIZE - 1;
 
       pQuery->iXcorrHistogram[iTmp] += 1;
-      pQuery->iHistogramCount += 1;
+      if (pQuery->iHistogramCount < DECOY_SIZE)
+         pQuery->iHistogramCount += 1;
    }
 
    if (bDecoyPep && g_staticParams.options.iDecoySearch==2)

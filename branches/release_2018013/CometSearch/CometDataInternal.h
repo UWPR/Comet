@@ -33,6 +33,7 @@ class CometSearchManager;
 #define SIZE_NATIVEID               256      // max length of nativeID string
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
+#define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
 
 #define WIDTH_REFERENCE             512      // size of the protein accession field to store
 
