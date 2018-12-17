@@ -56,7 +56,7 @@ private:
                          const void *b);
    static bool CalculateEValue(int iWhichQuery);
    static bool GenerateXcorrDecoys(int iWhichQuery);
-   static void LinearRegression(int *pHistogram,
+   static void LinearRegression(unsigned long *pulHistogram,
                                 double *dSlope,
                                 double *dIntercept,
                                 int *iMaxCorr,

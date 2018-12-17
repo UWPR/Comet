@@ -53,7 +53,7 @@ public:
                                        double* pdReturnBions,
                                        int iNumFragIons,
                                        double* pdScores);
-   static comet_filehandle_t *cometOpenFile(const char *filename, const char *cReadWrite);
+   static comet_filehandle_t cometOpenFile(const char *filename, const char *cReadWrite);
    static int cometCloseFile(comet_filehandle_t fp);
    static int cometReadFile(void *ptr, int len, comet_filehandle_t fp);
    static int cometWriteFile(void *ptr, int iLen, comet_filehandle_t fp);

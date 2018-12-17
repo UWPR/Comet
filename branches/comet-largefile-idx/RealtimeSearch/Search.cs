@@ -73,6 +73,7 @@
 
                SearchMgr.InitializeSingleSpectrumSearch();
 
+               iFirstScan = iLastScan = 12;
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
                {
                   var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
@@ -155,7 +156,7 @@
                         // do not decode peptide/proteins strings unless xcorr>0
                         if (xcorr > 0)
                         {
-                           if ((iScanNumber % 1000) == 0)
+                           if ((iScanNumber % 1) == 0)
                            {
                               Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
                                  iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
@@ -215,11 +216,11 @@
 
             SearchMgr.SetParam("database_name", sDB, sDB);
 
-            dTmp = 20.0; //ppm window
+            dTmp = 3.0; //ppm window
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("peptide_mass_tolerance", sTmp, dTmp);
 
-            iTmp = 2; // 0=Da, 2=ppm
+            iTmp = 0; // 0=Da, 2=ppm
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
 

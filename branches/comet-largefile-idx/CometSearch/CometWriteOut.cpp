@@ -337,10 +337,10 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
             (int)pQuery->fPar[2],
             (int)pQuery->fPar[3]);
 
-      // iXcorrHistogram is already cummulative here.
+      // ulXcorrHistogram is already cummulative here.
       for (i=0; i<=pQuery->siMaxXcorr; i++)
       {
-         if (pQuery->iXcorrHistogram[i]> 0)
+         if (pQuery->ulXcorrHistogram[i]> 0)
          {
             dVal = pQuery->fPar[0] + pQuery->fPar[1] * i;
             dExpect = pow(10.0, dVal);
@@ -348,10 +348,10 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
             if (dExpect > 999.0)
                dExpect = 999.0;
 
-            fprintf(fpout, "HIST:\t%0.1f\t%d\t%0.3f\t%0.3f\t%0.3f\n",
+            fprintf(fpout, "HIST:\t%0.1f\t%ld\t%0.3f\t%0.3f\t%0.3f\n",
                   i*0.1,
-                  pQuery->iXcorrHistogram[i],
-                  log10((float)pQuery->iXcorrHistogram[i]),
+                  pQuery->ulXcorrHistogram[i],
+                  log10((float)pQuery->ulXcorrHistogram[i]),
                   dVal,
                   dExpect);
          }

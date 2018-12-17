@@ -465,7 +465,7 @@ int CometPostAnalysis::QSortFnMod(const void *a,
 bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
 {
    int i;
-   int *piHistogram;
+   unsigned long *pulHistogram;
    int iMaxCorr;
    int iStartCorr;
    int iNextCorr;
@@ -474,7 +474,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   piHistogram = pQuery->iXcorrHistogram;
+   pulHistogram = pQuery->ulXcorrHistogram;
 
    if (pQuery->iHistogramCount < DECOY_SIZE)
    {
@@ -484,7 +484,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
       }
    }
 
-   LinearRegression(piHistogram, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
+   LinearRegression(pulHistogram, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
 
    pQuery->fPar[0] = (float)dIntercept;  // b
    pQuery->fPar[1] = (float)dSlope    ;  // m
@@ -536,7 +536,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
 }
 
 
-void CometPostAnalysis::LinearRegression(int *piHistogram,
+void CometPostAnalysis::LinearRegression(unsigned long *pulHistogram,
                                          double *slope,
                                          double *intercept,
                                          int *iMaxXcorr,
@@ -559,7 +559,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    // Find maximum correlation score index.
    for (i=HISTO_SIZE-2; i>=0; i--)
    {
-      if (piHistogram[i] > 0)
+      if (pulHistogram[i] > 0)
          break;
    }
    iMaxCorr = i;
@@ -567,10 +567,10 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    iNextCorr =0;
    for (i=0; i<iMaxCorr; i++)
    {
-      if (piHistogram[i]==0)
+      if (pulHistogram[i]==0)
       {
          // register iNextCorr if there's a histo value of 0 consecutively
-         if (piHistogram[i+1]==0 || i+1 == iMaxCorr)
+         if (pulHistogram[i+1]==0 || i+1 == iMaxCorr)
          {
             if (i>0)
                iNextCorr = i-1;
@@ -587,18 +587,18 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    }
 
    // Create cummulative distribution function from iNextCorr down, skipping the outliers.
-   dCummulative[iNextCorr] = piHistogram[iNextCorr];
+   dCummulative[iNextCorr] = pulHistogram[iNextCorr];
    for (i=iNextCorr-1; i>=0; i--)
    {
-      dCummulative[i] = dCummulative[i+1] + piHistogram[i];
-      if (piHistogram[i+1] == 0)
+      dCummulative[i] = dCummulative[i+1] + pulHistogram[i];
+      if (pulHistogram[i+1] == 0)
          dCummulative[i+1] = 0.0;
    }
 
    // log10
    for (i=iNextCorr; i>=0; i--)
    {
-      piHistogram[i] = (int)dCummulative[i];  // First store cummulative in histogram.
+      pulHistogram[i] = (int)dCummulative[i];  // First store cummulative in histogram.
       dCummulative[i] = log10(dCummulative[i]);
    }
 
@@ -618,7 +618,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       // Calculate means.
       for (i=iStartCorr; i<=iNextCorr; i++)
       {
-         if (piHistogram[i] > 0)
+         if (pulHistogram[i] > 0)
          {
             SumY += (float)dCummulative[i];
             SumX += i;
@@ -686,13 +686,13 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
    double dFastXcorr;
    double dFragmentIonMass = 0.0;
 
-   int *piHistogram;
+   unsigned long *pulHistogram;
 
    int iFragmentIonMass;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   piHistogram = pQuery->iXcorrHistogram;
+   pulHistogram = pQuery->ulXcorrHistogram;
 
    iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
 
@@ -799,7 +799,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
       else if (k >= HISTO_SIZE)
          k = HISTO_SIZE-1;
 
-      piHistogram[k] += 1;
+      pulHistogram[k] += 1;
    }
 
    return true;

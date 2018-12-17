@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <sstream>
 
+
 bool *CometSearch::_pbSearchMemoryPool;
 bool **CometSearch::_ppbDuplFragmentArr;
 
@@ -1019,7 +1020,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 bool CometSearch::IndexSearch(void)
 {
    comet_fileoffset_t clEndOfStruct;
-   comet_filehandle_t *fp;
+   comet_filehandle_t fp;
    char szBuf[SIZE_BUF];
 
    if ((fp = CometSearchManager::cometOpenFile(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
@@ -1038,88 +1039,117 @@ bool CometSearch::IndexSearch(void)
 
    bool bFoundStatic = false;
    bool bFoundVariable = false;
+   bool bFoundMassType = false;
 
    // read in static and variable mods
-   while (CometSearchManager::cometReadFile(szBuf, sizeof(szBuf), *fp))
+   // Expectation is that sizeof(szBuf) is big enough to store entire header of idx file
+   CometSearchManager::cometReadFile(szBuf, sizeof(szBuf), fp);
+
+   char *pStr;
+
+   if ((pStr = strstr(szBuf, "MassType: ")) != NULL)
    {
-      if (!strncmp(szBuf, "MassType:", 9))
-      {
-         sscanf(szBuf, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
-      }
-
-      if (!strncmp(szBuf, "StaticMod:", 10))
-      {
-         char *tok;
-         char delims[] = " ";
-         int x=65;
-
-         // FIX:  hack here for setting static mods; need to reset masses ... fix later
-         CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
-            g_staticParams.massUtility.bMonoMassesFragment,
-            &g_staticParams.massUtility.dOH2fragment);
-
-         bFoundStatic = true;
-         tok=strtok(szBuf+11, delims);
-         while (tok != NULL)
-         {
-            sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
-            g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
-            tok = strtok (NULL, delims);
-            x++;
-            if (x==95)  // 65-90 stores A-Z then next 4 (ascii 91-94) are n/c term peptide, n/c term protein
-               break;
-         }
-
-         g_staticParams.staticModifications.dAddNterminusPeptide = g_staticParams.staticModifications.pdStaticMods[91];
-         g_staticParams.staticModifications.dAddCterminusPeptide = g_staticParams.staticModifications.pdStaticMods[92];
-         g_staticParams.staticModifications.dAddNterminusProtein = g_staticParams.staticModifications.pdStaticMods[93];
-         g_staticParams.staticModifications.dAddCterminusProtein = g_staticParams.staticModifications.pdStaticMods[94];
-
-         // have to set these here again once static mods are read
-         g_staticParams.precalcMasses.dNtermProton = g_staticParams.staticModifications.dAddNterminusPeptide
-            + PROTON_MASS;
-
-         g_staticParams.precalcMasses.dCtermOH2Proton = g_staticParams.staticModifications.dAddCterminusPeptide
-            + g_staticParams.massUtility.dOH2fragment
-            + PROTON_MASS;
-
-         g_staticParams.precalcMasses.dOH2ProtonCtermNterm = g_staticParams.massUtility.dOH2parent
-            + PROTON_MASS
-            + g_staticParams.staticModifications.dAddCterminusPeptide
-            + g_staticParams.staticModifications.dAddNterminusPeptide;
-      }
-
-      if (!strncmp(szBuf, "VariableMod:", 12))
-      {
-         char *tok;
-         char delims[] = " ";
-         int x=0;
-
-         tok=strtok(szBuf+13, delims);
-         while (tok != NULL)
-         {
-            tok = strtok (NULL, delims); // skip list of var mod residues
-            // for index search, storing variable mods 0-9 in pdStaticMods array 0-9
-            sscanf(tok, "%lf", &(g_staticParams.variableModParameters.varModList[x].dVarModMass));
-
-            if (g_staticParams.variableModParameters.varModList[x].dVarModMass != 0.0)
-               bFoundVariable = true;
-
-            tok = strtok (NULL, delims);
-            x++;
-            if (x==VMODS)
-               break;
-         }
-         break;
-      }
+      bFoundMassType = true;
+      sscanf(szBuf + 10, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
    }
 
-   if (!(bFoundStatic && bFoundVariable))
+   if ((pStr = strstr(szBuf, "StaticMod: ")) != NULL)
    {
+      bFoundStatic = true;
+
+      // FIX:  hack here for setting static mods; need to reset masses ... fix later
+      CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
+         g_staticParams.massUtility.bMonoMassesFragment,
+         &g_staticParams.massUtility.dOH2fragment);
+
+      sscanf(szBuf + 11, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+         &(g_staticParams.staticModifications.pdStaticMods[65]), /*A*/
+         &(g_staticParams.staticModifications.pdStaticMods[66]),
+         &(g_staticParams.staticModifications.pdStaticMods[67]),
+         &(g_staticParams.staticModifications.pdStaticMods[68]),
+         &(g_staticParams.staticModifications.pdStaticMods[69]),
+         &(g_staticParams.staticModifications.pdStaticMods[70]),
+         &(g_staticParams.staticModifications.pdStaticMods[71]),
+         &(g_staticParams.staticModifications.pdStaticMods[72]),
+         &(g_staticParams.staticModifications.pdStaticMods[73]),
+         &(g_staticParams.staticModifications.pdStaticMods[74]),
+         &(g_staticParams.staticModifications.pdStaticMods[75]),
+         &(g_staticParams.staticModifications.pdStaticMods[76]),
+         &(g_staticParams.staticModifications.pdStaticMods[77]),
+         &(g_staticParams.staticModifications.pdStaticMods[78]),
+         &(g_staticParams.staticModifications.pdStaticMods[79]),
+         &(g_staticParams.staticModifications.pdStaticMods[80]),
+         &(g_staticParams.staticModifications.pdStaticMods[81]),
+         &(g_staticParams.staticModifications.pdStaticMods[82]),
+         &(g_staticParams.staticModifications.pdStaticMods[83]),
+         &(g_staticParams.staticModifications.pdStaticMods[84]),
+         &(g_staticParams.staticModifications.pdStaticMods[85]),
+         &(g_staticParams.staticModifications.pdStaticMods[86]),
+         &(g_staticParams.staticModifications.pdStaticMods[87]),
+         &(g_staticParams.staticModifications.pdStaticMods[88]),
+         &(g_staticParams.staticModifications.pdStaticMods[89]),
+         &(g_staticParams.staticModifications.pdStaticMods[90]), /*Z*/
+         &(g_staticParams.staticModifications.pdStaticMods[91]), /*n-term pep*/
+         &(g_staticParams.staticModifications.pdStaticMods[92]), /*c-tern pep*/
+         &(g_staticParams.staticModifications.pdStaticMods[93]), /*n-term prot*/
+         &(g_staticParams.staticModifications.pdStaticMods[94])); /*c-term prot*/
+
+      for (int x = 65; x <= 90; x++)
+         g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
+
+      g_staticParams.staticModifications.dAddNterminusPeptide = g_staticParams.staticModifications.pdStaticMods[91];
+      g_staticParams.staticModifications.dAddCterminusPeptide = g_staticParams.staticModifications.pdStaticMods[92];
+      g_staticParams.staticModifications.dAddNterminusProtein = g_staticParams.staticModifications.pdStaticMods[93];
+      g_staticParams.staticModifications.dAddCterminusProtein = g_staticParams.staticModifications.pdStaticMods[94];
+
+      // have to set these here again once static mods are read
+      g_staticParams.precalcMasses.dNtermProton = g_staticParams.staticModifications.dAddNterminusPeptide
+         + PROTON_MASS;
+
+      g_staticParams.precalcMasses.dCtermOH2Proton = g_staticParams.staticModifications.dAddCterminusPeptide
+         + g_staticParams.massUtility.dOH2fragment
+         + PROTON_MASS;
+
+      g_staticParams.precalcMasses.dOH2ProtonCtermNterm = g_staticParams.massUtility.dOH2parent
+         + PROTON_MASS
+         + g_staticParams.staticModifications.dAddCterminusPeptide
+         + g_staticParams.staticModifications.dAddNterminusPeptide;
+   }
+
+   if ((pStr = strstr(szBuf, "VariableMod: ")) != NULL)
+   {
+      bFoundVariable = true;
+
+      sscanf(pStr + 13, "%s %lf %s %lf %s %lf %s %lf %s %lf %s %lf %s %lf %s %lf %s %lf",
+           g_staticParams.variableModParameters.varModList[0].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[0].dVarModMass),
+           g_staticParams.variableModParameters.varModList[1].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[1].dVarModMass),
+           g_staticParams.variableModParameters.varModList[2].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[2].dVarModMass),
+           g_staticParams.variableModParameters.varModList[3].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[3].dVarModMass),
+           g_staticParams.variableModParameters.varModList[4].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[4].dVarModMass),
+           g_staticParams.variableModParameters.varModList[5].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[5].dVarModMass),
+           g_staticParams.variableModParameters.varModList[6].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[6].dVarModMass),
+           g_staticParams.variableModParameters.varModList[7].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[7].dVarModMass),
+           g_staticParams.variableModParameters.varModList[8].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[8].dVarModMass),
+           g_staticParams.variableModParameters.varModList[9].szVarModChar,
+         &(g_staticParams.variableModParameters.varModList[9].dVarModMass));
+   }
+
+   if (!bFoundMassType || !bFoundStatic || !bFoundVariable)
+   {
+      CometSearchManager::cometCloseFile(fp);
       char szErr[256];
-      sprintf(szErr, " Error with index database format. Mods not parsed.");
+      sprintf(szErr, " Error with index database format. Mods not parsed (%d %d %d).", bFoundMassType, bFoundStatic, bFoundVariable);
       logerr(szErr);
-      CometSearchManager::cometCloseFile(*fp);
+      CometSearchManager::cometCloseFile(fp);
       return false;
    }
 
@@ -1139,18 +1169,18 @@ bool CometSearch::IndexSearch(void)
 #endif
 */
    comet_fileoffset_t clTmp = -(sizeof(comet_fileoffset_t));
-   comet_fseek(*fp, clTmp, SEEK_END);
+   comet_fseek(fp, clTmp, SEEK_END);
 
-   CometSearchManager::cometReadFile(&clEndOfStruct, sizeof(long), *fp);
+   CometSearchManager::cometReadFile(&clEndOfStruct, sizeof(long), fp);
 
    // read index
    int iMinMass=0;
    int iMaxMass=0;
    int iNumPeptides=0;
-   comet_fseek(*fp, clEndOfStruct, SEEK_SET);
-   CometSearchManager::cometReadFile(&iMinMass, sizeof(int),*fp);
-   CometSearchManager::cometReadFile(&iMaxMass, sizeof(int), *fp);
-   CometSearchManager::cometReadFile(&iNumPeptides, sizeof(int), *fp);
+   comet_fseek(fp, clEndOfStruct, SEEK_SET);
+   CometSearchManager::cometReadFile(&iMinMass, sizeof(int),fp);
+   CometSearchManager::cometReadFile(&iMaxMass, sizeof(int), fp);
+   CometSearchManager::cometReadFile(&iNumPeptides, sizeof(int), fp);
 
    // sanity checks
    if (iMinMass < 0 || iMinMass > 20000 || iMaxMass < 0 || iMaxMass > 20000)
@@ -1164,7 +1194,7 @@ bool CometSearch::IndexSearch(void)
    for (int i=0; i<iMaxMass+1; i++)
       lReadIndex[i] = -1;
 
-   CometSearchManager::cometReadFile(lReadIndex, sizeof(long)*(iMaxMass+1), *fp);
+   CometSearchManager::cometReadFile(lReadIndex, sizeof(long)*(iMaxMass+1), fp);
 
    int iStart = (int)(g_massRange.dMinMass - 0.5);  // smallest mass/index start
    int iEnd = (int)(g_massRange.dMaxMass + 0.5);  // largest mass/index end
@@ -1172,7 +1202,7 @@ bool CometSearch::IndexSearch(void)
    if ((int)g_pvQuery.at(0)->_pepMassInfo.dExpPepMass > iMaxMass || iStart > iMaxMass)
    {
       delete [] lReadIndex;
-      CometSearchManager::cometCloseFile(*fp);
+      CometSearchManager::cometCloseFile(fp);
       return true;
    }
 
@@ -1186,8 +1216,8 @@ bool CometSearch::IndexSearch(void)
 
    while (lReadIndex[iStart] == -1 && iStart<iEnd)
       iStart++;
-   comet_fseek(*fp, lReadIndex[iStart], SEEK_SET);
-   CometSearchManager::cometReadFile(&sDBI, sizeof(struct DBIndex), *fp);
+   comet_fseek(fp, lReadIndex[iStart], SEEK_SET);
+   CometSearchManager::cometReadFile(&sDBI, sizeof(struct DBIndex), fp);
 
    _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition = sDBI.lProteinFilePosition;
    _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
@@ -1197,7 +1227,7 @@ bool CometSearch::IndexSearch(void)
    int iReturn;
    while ((int)sDBI.dPepMass <= iEnd)
    {
-/*
+
       printf("OK  index pep ");
       for (unsigned int x=0; x<strlen(sDBI.szPeptide); x++)
       {
@@ -1206,7 +1236,7 @@ bool CometSearch::IndexSearch(void)
             printf("[%0.3f]", g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[x]-1].dVarModMass);
       }
       printf(", mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition); fflush(stdout);
-*/
+
       if (sDBI.dPepMass > g_massRange.dMaxMass)
          break;
 
@@ -1216,12 +1246,24 @@ bool CometSearch::IndexSearch(void)
          iWhichQuery--;
 
       if (iWhichQuery != -1)
+      {
+/*
+printf("OK  index pep ");
+for (unsigned int x = 0; x < strlen(sDBI.szPeptide); x++)
+{
+   printf("%c", sDBI.szPeptide[x]);
+   if (sDBI.pcVarModSites[x] != 0)
+      printf("[%0.3f]", g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[x] - 1].dVarModMass);
+}
+printf(", mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition); fflush(stdout);
+*/
          AnalyzeIndexPep(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
+      }
 
-      if (comet_ftell(*fp)>=clEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
+      if (comet_ftell(fp)>=clEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
          break;
 
-      iReturn = CometSearchManager::cometReadFile(&sDBI, sizeof(struct DBIndex), *fp);
+      iReturn = CometSearchManager::cometReadFile(&sDBI, sizeof(struct DBIndex), fp);
 
       // read past last entry in indexed db, need to break out of loop
       if (iReturn == -1)
@@ -1255,8 +1297,8 @@ bool CometSearch::IndexSearch(void)
          // Retrieve protein name
          if ((*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
          {
-            comet_fseek(*fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
-            CometSearchManager::cometReadFile((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, *fp);
+            comet_fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
+            CometSearchManager::cometReadFile((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, fp);
          }
 /*
          printf("OK  scan %d, pep %s, prot %s, xcorr %f, matchcount %d\n",
@@ -1270,7 +1312,7 @@ bool CometSearch::IndexSearch(void)
    }
 
    delete [] lReadIndex;
-   CometSearchManager::cometCloseFile(*fp);
+   CometSearchManager::cometCloseFile(fp);
    return true;
 }
 
@@ -2792,8 +2834,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       if (iTmp >= HISTO_SIZE)
          iTmp = HISTO_SIZE - 1;
 
-      pQuery->iXcorrHistogram[iTmp] += 1;
-      pQuery->iHistogramCount += 1;
+      pQuery->ulXcorrHistogram[iTmp] += 1;
+      if (pQuery->iHistogramCount < DECOY_SIZE)
+         pQuery->iHistogramCount += 1;
    }
 
    if (bDecoyPep && g_staticParams.options.iDecoySearch==2)

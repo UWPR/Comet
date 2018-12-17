@@ -33,6 +33,7 @@ class CometSearchManager;
 #define SIZE_NATIVEID               256      // max length of nativeID string
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
+#define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
 
 #define WIDTH_REFERENCE             512      // size of the protein accession field to store
 
@@ -776,14 +777,14 @@ extern vector<DBIndex> g_pvDBIndex;
 // This struct is allocated for each spectrum/charge combination
 struct Query
 {
-   int   iXcorrHistogram[HISTO_SIZE];
+   unsigned long   ulXcorrHistogram[HISTO_SIZE];
    int   iHistogramCount;   // # of entries in histogram
    float fPar[4];           // parameters of LMA regression
 
    int iMatchPeptideCount;        // # of peptides that get stored (i.e. are greater than lowest score)
    int iDecoyMatchPeptideCount;   // # of decoy peptides that get stored (i.e. are greater than lowest score)
 
-   short siMaxXcorr;        // index of maximum correlation score in iXcorrHistogram
+   short siMaxXcorr;        // index of maximum correlation score in ulXcorrHistogram
 
    short siLowestSpScoreIndex;
    short siLowestDecoySpScoreIndex;
@@ -822,7 +823,7 @@ struct Query
    Query()
    {
       for (int i=0; i < HISTO_SIZE; i++)
-         iXcorrHistogram[i] = 0;
+         ulXcorrHistogram[i] = 0;
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
@@ -833,7 +834,7 @@ struct Query
       fPar[2]=0.0;
       fPar[3]=0.0;
 
-      siMaxXcorr = 0;                        // index of maximum correlation score in iXcorrHistogram
+      siMaxXcorr = 0;                        // index of maximum correlation score in ulXcorrHistogram
       siLowestSpScoreIndex = 0;
       siLowestDecoySpScoreIndex = 0;
 
@@ -931,6 +932,8 @@ extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
 extern Mutex                   g_searchMemoryPoolMutex;
 extern Mutex                   g_dbIndexMutex;
+
+extern comet_filehandle_t      g_cometfp;  // temporary file handle used in cometOpenFile
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {
