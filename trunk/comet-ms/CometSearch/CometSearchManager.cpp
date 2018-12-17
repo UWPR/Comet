@@ -335,6 +335,9 @@ static bool compareByMangoIndex(Query const* a, Query const* b)
 
 static bool compareByScanNumber(Query const* a, Query const* b)
 {
+   // sort by charge state if same scan number
+   if (a->_spectrumInfoInternal.iScanNumber == b->_spectrumInfoInternal.iScanNumber)
+      return (a->_spectrumInfoInternal.iChargeState < b->_spectrumInfoInternal.iChargeState);
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }
 
@@ -813,7 +816,7 @@ bool CometSearchManager::InitializeStaticParams()
    iIntData = 0;
    if (GetParamValue("minimum_peaks", iIntData))
    {
-      if (iIntData > 0)
+      if (iIntData >= 0)
          g_staticParams.options.iMinPeaks = iIntData;
    }
 
@@ -1932,6 +1935,10 @@ bool CometSearchManager::DoSearch()
 
             g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
             g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
+            if(g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
+               g_massRange.bNarrowMassRange = true;
+            else
+               g_massRange.bNarrowMassRange = false;
 
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
@@ -2297,6 +2304,11 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
+   if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
+      g_massRange.bNarrowMassRange = true;  // unused in this context but setting here anyways
+   else
+      g_massRange.bNarrowMassRange = false;
+
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
 
@@ -2634,8 +2646,13 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
+   if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
+      g_massRange.bNarrowMassRange = true;
+   else
+      g_massRange.bNarrowMassRange = false;
+
    if (bSucceeded)
-   bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, 0, 0);
+       bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, 0, 0);
 
    if (!bSucceeded)
    {
@@ -2693,7 +2710,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    // write out index header
    fprintf(fptr, "Comet indexed database.\n");
-   fprintf(fptr, "Input db:  %s\n", g_staticParams.databaseInfo.szDatabase);
+   fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
    fprintf(fptr, "MassRange: %f %f\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
    fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
    fprintf(fptr, "Enzyme: %s\n", g_staticParams.enzymeInformation.szSearchEnzymeName);

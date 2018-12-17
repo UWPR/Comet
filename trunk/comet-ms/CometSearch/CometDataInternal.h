@@ -33,6 +33,7 @@ class CometSearchManager;
 #define SIZE_NATIVEID               256      // max length of nativeID string
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
+#define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
 
 #define WIDTH_REFERENCE             512      // size of the protein accession field to store
 
@@ -213,6 +214,7 @@ struct MassRange
    double dMinMass;
    double dMaxMass;
    int    iMaxFragmentCharge;  // global maximum fragment charge
+   bool   bNarrowMassRange;    // used to determine how to parse peptides in SearchForPeptides
 };
 
 extern MassRange g_massRange;
@@ -573,7 +575,7 @@ struct StaticParams
    PeaksInfo       peaksInformation;
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
-   int             bIndexDb;                 // 0 = normal fasta; 1 = indexed database
+   int             bIndexDb;            // 0 = normal fasta; 1 = indexed database
    vector<double>  vectorMassOffsets;
    char            szDIAWindowsFile[SIZE_FILE];
 

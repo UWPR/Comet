@@ -1,5 +1,4 @@
 #define MAX_DECOY_PEP_LEN 40
-#define DECOY_SIZE        3000
 
 struct DecoysStruct
 {

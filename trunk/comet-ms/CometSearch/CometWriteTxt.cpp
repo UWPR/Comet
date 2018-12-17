@@ -364,6 +364,30 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             iRankXcorr++;
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
+
+         // Print spectrum_query element.
+         if (g_staticParams.options.bMango)   // Mango specific
+         {
+            char *pStr;
+
+            // look for either \ or / separator so valid for Windows or Linux
+            if ((pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL
+               && (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
+            {
+               pStr = g_staticParams.inputFile.szBaseName;
+
+            }
+            else
+               pStr++;  // skip separation character
+
+            fprintf(fpout, "%s_%s.%05d.%05d.%d\t",
+                  pStr,
+                  pQuery->_spectrumInfoInternal.szMango,
+                  pQuery->_spectrumInfoInternal.iScanNumber,
+                  pQuery->_spectrumInfoInternal.iScanNumber,
+                  pQuery->_spectrumInfoInternal.iChargeState);
+         }
+
          fprintf(fpout, "%d\t", iRankXcorr);
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iChargeState);
          fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
@@ -518,6 +542,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
                                        int iWhichResult)
 {
    bool bFirst = true;
+   bool bPrintMod = false;
 
    // static N-terminus protein
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)
@@ -529,6 +554,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          bFirst=false;
 
       fprintf(fpout, "1_S_%0.6f_N", g_staticParams.staticModifications.dAddNterminusProtein);
+      bPrintMod = true;
    }
 
    // static N-terminus peptide
@@ -540,6 +566,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          bFirst=false;
 
       fprintf(fpout, "1_S_%0.6f_n", g_staticParams.staticModifications.dAddNterminusPeptide);
+      bPrintMod = true;
    }
 
    // variable N-terminus peptide and protein
@@ -558,6 +585,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          fprintf(fpout, "_N");
       else
          fprintf(fpout, "_n");
+      bPrintMod = true;
    }
 
    for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
@@ -573,6 +601,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          fprintf(fpout, "%d_S_%0.6f",
                i+1,
                g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]]);
+         bPrintMod = true;
       }
 
       // variable modification
@@ -587,6 +616,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
             fprintf(fpout, "%d_V_%0.6f", i+1, pOutput[iWhichResult].pdVarModSites[i]);  // variable mod
          else
             fprintf(fpout, "%d_P_%0.6f", i+1, pOutput[iWhichResult].pdVarModSites[i]);  // PEFF mod
+         bPrintMod = true;
       }
    }
 
@@ -600,6 +630,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          bFirst=false;
 
       fprintf(fpout, "1_S_%0.6f_C", g_staticParams.staticModifications.dAddCterminusProtein);
+      bPrintMod = true;
    }
 
    // static C-terminus peptide
@@ -611,6 +642,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          bFirst=false;
 
       fprintf(fpout, "1_S_%0.6f_c", g_staticParams.staticModifications.dAddCterminusPeptide);
+      bPrintMod = true;
    }
 
    // variable C-terminus peptide and protein
@@ -630,6 +662,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          fprintf(fpout, "_C");
       else
          fprintf(fpout, "_c");
+      bPrintMod = true;
    }
 
    // PEFF amino acid substitution
@@ -641,9 +674,11 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
          bFirst=false;
 
       fprintf(fpout, "%d_p_%c", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+      bPrintMod = true;
    }
 
-
-   fprintf(fpout, "\t");
-
+   if (bPrintMod)
+      fprintf(fpout, "\t");
+   else
+      fprintf(fpout, "-\t");
 }
