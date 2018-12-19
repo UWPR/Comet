@@ -2731,7 +2731,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fprintf(fptr, "\n\n");
 
    int iTmp = (int)g_pvProteinNames.size();
-   long *lProteinIndex = new long[iTmp];
+   comet_fileoffset_t *lProteinIndex = new comet_fileoffset_t[iTmp];
    for (int i = 0; i < iTmp; i++)
       lProteinIndex[i] = -1;
 
@@ -2739,7 +2739,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    int ctProteinNames = 0;
    for (auto it = g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
    {
-      lProteinIndex[ctProteinNames] = ftell(fptr);
+      lProteinIndex[ctProteinNames] = comet_ftell(fptr);
       fwrite(it->second.szProt, sizeof(char)*WIDTH_REFERENCE, 1, fptr);
       it->second.iWhichProtein = ctProteinNames;
       ctProteinNames++;
@@ -2747,7 +2747,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    // next write out the peptides and track peptide mass index
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
-   long *lIndex = new long[iMaxPeptideMass];
+   comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass];
    for (int x = 0; x < iMaxPeptideMass; x++)
       lIndex[x] = -1;
 
@@ -2760,7 +2760,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       {
          iPrevMass = (int)((*it).dPepMass);
          if (iPrevMass < iMaxPeptideMass)
-            lIndex[iPrevMass] = ftell(fptr);
+            lIndex[iPrevMass] = comet_ftell(fptr);
       }
 
       // find protein by matching g_pvDBindex.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
@@ -2774,15 +2774,15 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
    }
 
-   long lEndOfPeptides = ftell(fptr);
+   comet_fileoffset_t lEndOfPeptides = comet_ftell(fptr);
 
    int iTmpCh = (int)(g_staticParams.options.dPeptideMassLow);
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
    fwrite(&iMaxPeptideMass, sizeof(int), 1, fptr);  // write max mass
    iTmpCh = g_pvDBIndex.size();
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write # of peptides
-   fwrite(lIndex, sizeof(long), iMaxPeptideMass, fptr); // write index
-   fwrite(&lEndOfPeptides, sizeof(long), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
+   fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass, fptr); // write index
+   fwrite(&lEndOfPeptides, sizeof(comet_fileoffset_t), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
 
    fclose(fptr);
 

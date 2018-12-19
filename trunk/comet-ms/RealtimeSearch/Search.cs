@@ -73,6 +73,7 @@
 
                SearchMgr.InitializeSingleSpectrumSearch();
 
+               iFirstScan = iLastScan = 32522;
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
                {
                   var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
@@ -136,9 +137,6 @@
                         string peptide;
                         string protein;
 
-                        if ((iScanNumber % 1000) == 0)
-                           Console.WriteLine("searching scan {0}, mass {1}, charge {2}, numpeaks {3}", iScanNumber, dExpPepMass, iPrecursorCharge, iNumPeaks);
-
                         watch.Start();
                         SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
                            out peptide, out protein, pdYions, pdBions, iNumFragIons, pdScores);
@@ -155,7 +153,7 @@
                         // do not decode peptide/proteins strings unless xcorr>0
                         if (xcorr > 0)
                         {
-                           if ((iScanNumber % 1000) == 0)
+                           if ((iScanNumber % 1) == 0)
                            {
                               Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
                                  iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
@@ -239,7 +237,7 @@
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            iTmp = 1; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 

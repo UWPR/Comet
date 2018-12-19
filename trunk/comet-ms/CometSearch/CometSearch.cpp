@@ -1015,7 +1015,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 
 bool CometSearch::IndexSearch(void)
 {
-   long lEndOfStruct;
+   comet_fileoffset_t lEndOfStruct;
    char szBuf[SIZE_BUF];
    FILE *fp;
 
@@ -1124,23 +1124,25 @@ bool CometSearch::IndexSearch(void)
    g_staticParams.variableModParameters.bVarModSearch = true;
  
    // read fp of index
+   comet_fileoffset_t clTmp;
 #ifdef _WIN32
 #ifdef _WIN64
-   fseek(fp, -(sizeof(long)), SEEK_END);
+   clTmp = -(sizeof(comet_fileoffset_t));              //win64
 #else
-   fseek(fp, -((long long) sizeof(long)), SEEK_END);
+   clTmp = -((long long)sizeof(comet_fileoffset_t));   //win32
 #endif
 #else
-   fseek(fp, -(sizeof(long)), SEEK_END);
+   clTmp = -(sizeof(comet_fileoffset_t));              //linux
 #endif
 
-   fread(&lEndOfStruct, sizeof(long), 1, fp);
+   comet_fseek(fp, clTmp, SEEK_END);
+   fread(&lEndOfStruct, sizeof(comet_fileoffset_t), 1, fp);
 
    // read index
    int iMinMass=0;
    int iMaxMass=0;
    int iNumPeptides=0;
-   fseek(fp, lEndOfStruct, SEEK_SET);
+   comet_fseek(fp, lEndOfStruct, SEEK_SET);
    fread(&iMinMass, sizeof(int), 1, fp);
    fread(&iMaxMass, sizeof(int), 1, fp);
    fread(&iNumPeptides, sizeof(int), 1, fp);
@@ -1153,11 +1155,11 @@ bool CometSearch::IndexSearch(void)
       return false;
    }
 
-   long *lReadIndex = new long[iMaxMass+1];
+   comet_fileoffset_t *lReadIndex = new comet_fileoffset_t[iMaxMass+1];
    for (int i=0; i<iMaxMass+1; i++)
       lReadIndex[i] = -1;
 
-   fread(lReadIndex, sizeof(long), iMaxMass+1, fp);
+   fread(lReadIndex, sizeof(comet_fileoffset_t), iMaxMass+1, fp);
 
    int iStart = (int)(g_massRange.dMinMass - 0.5);  // smallest mass/index start
    int iEnd = (int)(g_massRange.dMaxMass + 0.5);  // largest mass/index end
@@ -1179,7 +1181,7 @@ bool CometSearch::IndexSearch(void)
 
    while (lReadIndex[iStart] == -1 && iStart<iEnd)
       iStart++;
-   fseek(fp, lReadIndex[iStart], SEEK_SET);
+   comet_fseek(fp, lReadIndex[iStart], SEEK_SET);
    fread(&sDBI, sizeof(struct DBIndex), 1, fp);
 
    _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition = sDBI.lProteinFilePosition;
@@ -1210,7 +1212,7 @@ bool CometSearch::IndexSearch(void)
       if (iWhichQuery != -1)
          AnalyzeIndexPep(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
 
-      if (ftell(fp)>=lEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
+      if (comet_ftell(fp)>=lEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
          break;
 
       fread(&sDBI, sizeof(struct DBIndex), 1, fp);
@@ -1241,7 +1243,7 @@ bool CometSearch::IndexSearch(void)
          // Retrieve protein name
          if ((*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
          {
-            fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
+            comet_fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
             fread((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
          }
 /*

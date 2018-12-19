@@ -29,6 +29,10 @@
 #include <direct.h>
 #include <errno.h>
 #define STRCMP_IGNORE_CASE(a,b) _strcmpi(a,b)
+#include <io.h>
+typedef __int64 comet_fileoffset_t;
+#define comet_fseek(handle, offset, whence) _fseeki64(handle, offset, whence)
+#define comet_ftell(handle) _ftelli64(handle)
 #else
 #include <unistd.h>
 #include <sys/stat.h>
@@ -36,6 +40,9 @@
 #include <errno.h>
 #include <pthread.h>
 #define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
+typedef off64_t comet_fileoffset_t;
+#define comet_fseek(handle, offset, whence) fseeko64(handle, offset, whence)
+#define comet_ftell(handle) ftello64(handle)
 #endif
 
 using namespace std;
