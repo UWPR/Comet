@@ -862,7 +862,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
-      _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
+      _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = dbe.strSeq.size();
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       _proteinInfo.cPeffOrigResidue = '\0';
       _proteinInfo.iPeffOrigResiduePosition = -9;
@@ -873,8 +873,12 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 
       if (g_staticParams.options.bClipNtermMet && dbe.strSeq[0]=='M')
       {
+         _proteinInfo.iTmpProteinSeqLength -= 1;   // remove 1 for M, used in checking termini
+
          if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str()+1, true, pbDuplFragment))
             return false;
+
+         _proteinInfo.iTmpProteinSeqLength += 1;
       }
 
       // Plug in an AA substitution and do a search, requiring that AA be present
@@ -889,7 +893,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    {
       int ii;
 
-      _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
+      _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = dbe.strSeq.size();
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       _proteinInfo.cPeffOrigResidue = '\0';
       _proteinInfo.iPeffOrigResiduePosition = -9;
@@ -2036,7 +2040,7 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + iOneMinusEnzymeOffSet])
                && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
 
-      bEndCleavage = (iEndPos==(int)(strlen(szProteinSeq)-1)
+      bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
                && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
@@ -2121,7 +2125,7 @@ bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
       int iOneMinusEnzymeOffSet = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
       int iTwoMinusEnzymeOffSet = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
 
-      bEndCleavage = (iEndPos==(int)(strlen(szProteinSeq)-1)
+      bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
