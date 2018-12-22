@@ -1287,7 +1287,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
 
-   iLenProtein = _proteinInfo.iProteinSeqLength;  // FIX: need to confirm this is always same as strlen(szProteinSeq)
+   iLenProtein = _proteinInfo.iProteinSeqLength;
 
    int iFirstResiduePosition = 0;
    if (bNtermPeptideOnly)  // we're skipping the leading M
@@ -1353,93 +1353,90 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       // Check to see if peptide is within global min/mass range for all queries.
       iLenPeptide = iEndPos-iStartPos+1;
 
-      if (iLenPeptide<MAX_PEPTIDE_LEN)
+      if (iLenPeptide<MAX_PEPTIDE_LEN-1)  // account for terminating char
       {
-         int iWhichQuery = WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos);
-
-         // If PEFF variant analysis, see if peptide is results of amino acid swap
-         if (iPeffRequiredVariantPosition>=0 && iWhichQuery != -1)
-         {
-            bool bPass = false;;
-
-            if ( (iStartPos <= iPeffRequiredVariantPosition && iPeffRequiredVariantPosition <= iEndPos))
-            {
-               // all is good here, continue to next "if" loop below
-               bPass = true;
-            }
-            else
-            {
-               // iSearchEnZymeOffset == 1
-               // K.DLRST  where K is iPeffRequiredVariantPosition and D is iStart ... must check for this
-               //
-               // iSearchEnZymeOffset == 0
-               // S.DLRST  where D is iPeffRequiredVariantPosition and D is iStart; already accounted for in if() above
-               //
-               // iSearchEnZymeOffset == 1
-               // SESTEQR.S   where R is iPeffRequiredVariantPositon and R is iEnd; already accounted for in if() above
-               //
-               // iSearchEnZymeOffset == 0
-               // SESTEQL.D   where D is iPeffRequiredVariantPosition and L is iEnd ... must check for this
-
-
-               // At this point, only case need to check for is if variant is position before iStartPos
-               // and causes enzyme digest.  Or if variant is position after iEndPos and causes enzyme
-               // digest. All other cases are ok as variant is in peptide.
-               if (iPeffRequiredVariantPosition == iStartPos - 1)
-               {
-                  if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet==1 && CheckEnzymeStartTermini(szProteinSeq, iStartPos))
-                     bPass = true;
-                  else
-                     bPass = false;
-               }
-
-               else if (iPeffRequiredVariantPosition == iEndPos + 1)
-               {
-                  if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet==0 && CheckEnzymeEndTermini(szProteinSeq, iEndPos))
-                     bPass = true;
-                  else
-                     bPass = false;
-               }
-            }
-
-            if (bPass == false)
-               iWhichQuery = -1;
-         }
-
          if (g_staticParams.options.bCreateIndex)
          {
-            if (iEndPos - iStartPos + 1 < MAX_PEPTIDE_LEN-1) // account for terminating char
+            if (WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos) == 1)
             {
-               if (WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos) == 1)
-               {
-                  Threading::LockMutex(g_pvQueryMutex);
+               Threading::LockMutex(g_pvQueryMutex);
 
-                  // add to DBIndex vector
-                  DBIndex sEntry;
-                  sEntry.dPepMass = dCalcPepMass;  //MH+ mass
-                  strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iEndPos - iStartPos + 1);
-                  sEntry.szPeptide[iEndPos - iStartPos + 1]='\0';
+               // add to DBIndex vector
+               DBIndex sEntry;
+               sEntry.dPepMass = dCalcPepMass;  //MH+ mass
+               strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iLenPeptide);
+               sEntry.szPeptide[iLenPeptide]='\0';
          
-                  if (iStartPos == 0)
-                     sEntry.szPrevNextAA[0] = '-';
-                  else
-                     sEntry.szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
-                  if (iEndPos == _proteinInfo.iProteinSeqLength - 1)         //FIX why _proteinInfo.iProteinSeqLength vs. dbe.strSeq.length()?
-                     sEntry.szPrevNextAA[1] = '-';
-                  else
-                     sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+               if (iStartPos == 0)
+                  sEntry.szPrevNextAA[0] = '-';
+               else
+                  sEntry.szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+               if (iEndPos == iProteinSeqLengthMinus1)
+                  sEntry.szPrevNextAA[1] = '-';
+               else
+                  sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
          
-                  sEntry.lProteinFilePosition = _proteinInfo.lProteinFilePosition;
-                  memset(sEntry.pcVarModSites, 0, sizeof(sEntry.pcVarModSites));
+               sEntry.lProteinFilePosition = _proteinInfo.lProteinFilePosition;
+               memset(sEntry.pcVarModSites, 0, sizeof(sEntry.pcVarModSites));
 
-                  g_pvDBIndex.push_back(sEntry);
+               g_pvDBIndex.push_back(sEntry);
 
-                  Threading::UnlockMutex(g_pvQueryMutex);
-               }
+               Threading::UnlockMutex(g_pvQueryMutex);
             }
          }
          else
          {
+            int iWhichQuery = WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos);
+
+            // If PEFF variant analysis, see if peptide is results of amino acid swap
+            if (iPeffRequiredVariantPosition >= 0 && iWhichQuery != -1)
+            {
+               bool bPass = false;;
+
+               if ((iStartPos <= iPeffRequiredVariantPosition && iPeffRequiredVariantPosition <= iEndPos))
+               {
+                  // all is good here, continue to next "if" loop below
+                  bPass = true;
+               }
+               else
+               {
+                  // iSearchEnZymeOffset == 1
+                  // K.DLRST  where K is iPeffRequiredVariantPosition and D is iStart ... must check for this
+                  //
+                  // iSearchEnZymeOffset == 0
+                  // S.DLRST  where D is iPeffRequiredVariantPosition and D is iStart; already accounted for in if() above
+                  //
+                  // iSearchEnZymeOffset == 1
+                  // SESTEQR.S   where R is iPeffRequiredVariantPositon and R is iEnd; already accounted for in if() above
+                  //
+                  // iSearchEnZymeOffset == 0
+                  // SESTEQL.D   where D is iPeffRequiredVariantPosition and L is iEnd ... must check for this
+
+
+                  // At this point, only case need to check for is if variant is position before iStartPos
+                  // and causes enzyme digest.  Or if variant is position after iEndPos and causes enzyme
+                  // digest. All other cases are ok as variant is in peptide.
+                  if (iPeffRequiredVariantPosition == iStartPos - 1)
+                  {
+                     if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1 && CheckEnzymeStartTermini(szProteinSeq, iStartPos))
+                        bPass = true;
+                     else
+                        bPass = false;
+                  }
+
+                  else if (iPeffRequiredVariantPosition == iEndPos + 1)
+                  {
+                     if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 0 && CheckEnzymeEndTermini(szProteinSeq, iEndPos))
+                        bPass = true;
+                     else
+                        bPass = false;
+                  }
+               }
+
+               if (bPass == false)
+                  iWhichQuery = -1;
+            }
+
             if (iWhichQuery != -1)
             {
                bool bFirstTimeThroughLoopForPeptide = true;
@@ -2031,19 +2028,17 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
       bool bBeginCleavage=0;
       bool bEndCleavage=0;
       bool bBreakPoint;
-      int iOneMinusEnzymeOffSet = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
-      int iTwoMinusEnzymeOffSet = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
       int iCountInternalCleavageSites=0;
 
       bBeginCleavage = (iStartPos==0
             || szProteinSeq[iStartPos-1]=='*'
-            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + iOneMinusEnzymeOffSet])
-               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
+            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iOneMinusOffset])
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iTwoMinusOffset])));
 
       bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
             || szProteinSeq[iEndPos+1]=='*'
-            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
-               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
+            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset])
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset])));
 
       if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)      // Check full enzyme search.
       {
@@ -2070,20 +2065,20 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
       int i;
       for (i=iStartPos; i<=iEndPos; i++)
       {
-         bBreakPoint = strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[i+iOneMinusEnzymeOffSet])
-            && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[i+iTwoMinusEnzymeOffSet]);
+         bBreakPoint = strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[i+ g_staticParams.enzymeInformation.iOneMinusOffset])
+            && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[i+ g_staticParams.enzymeInformation.iTwoMinusOffset]);
 
          if (bBreakPoint)
          {
-            if ((iOneMinusEnzymeOffSet == 0 && i!=iEndPos)  // Ignore last residue.
-                  || (iOneMinusEnzymeOffSet == 1 && i!= iStartPos))  // Ignore first residue.
+            if ((g_staticParams.enzymeInformation.iOneMinusOffset == 0 && i != iEndPos)  // Ignore last residue.
+                  || (g_staticParams.enzymeInformation.iOneMinusOffset == 1 && i != iStartPos))  // Ignore first residue.
             {
                iCountInternalCleavageSites++;
 
                // Need to include -iOneMinusEnzymeOffSet in if statement below because for
                // AspN cleavage, the very last residue, if followed by a D, will be counted
                // as an internal cleavage site.
-               if (iCountInternalCleavageSites-iOneMinusEnzymeOffSet > g_staticParams.enzymeInformation.iAllowedMissedCleavage)
+               if (iCountInternalCleavageSites - g_staticParams.enzymeInformation.iOneMinusOffset > g_staticParams.enzymeInformation.iAllowedMissedCleavage)
                   return false;
             }
          }
@@ -2100,13 +2095,11 @@ bool CometSearch::CheckEnzymeStartTermini(char *szProteinSeq,
    if (!g_staticParams.options.bNoEnzymeSelected)
    {
       bool bBeginCleavage=0;
-      int iOneMinusEnzymeOffSet = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
-      int iTwoMinusEnzymeOffSet = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
 
       bBeginCleavage = (iStartPos==0
             || szProteinSeq[iStartPos-1]=='*'
-            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + iOneMinusEnzymeOffSet])
-          && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
+            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iOneMinusOffset])
+          && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iTwoMinusOffset])));
             
 
       return bBeginCleavage;
@@ -2122,13 +2115,11 @@ bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
    if (!g_staticParams.options.bNoEnzymeSelected)
    {
       bool bEndCleavage=0;
-      int iOneMinusEnzymeOffSet = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
-      int iTwoMinusEnzymeOffSet = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
 
       bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
             || szProteinSeq[iEndPos+1]=='*'
-            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
-          && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
+            || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset])
+          && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset])));
 
       return bEndCleavage;
    }
@@ -2915,8 +2906,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1)
-               * g_staticParams.ionInformation.iNumIonSeriesUsed;
+            = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1) * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {

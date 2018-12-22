@@ -26,7 +26,7 @@ class CometSearchManager;
 #define C13_DIFF                    1.00335483
 
 #define FLOAT_ZERO                  1e-6     // 0.000001
-#define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide
+#define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide; one less to account for terminating char
 #define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size

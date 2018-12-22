@@ -67,13 +67,13 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int[] piElapsedTime = new int[50];  // histogram of search times
-               for (int i = 0; i < 50; i++)
+               int iMaxElapsedTime = 300;
+               int[] piElapsedTime = new int[iMaxElapsedTime];  // histogram of search times
+               for (int i = 0; i < iMaxElapsedTime; i++)
                   piElapsedTime[i] = 0;
 
                SearchMgr.InitializeSingleSpectrumSearch();
 
-               iFirstScan = iLastScan = 32522;
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
                {
                   var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
@@ -155,19 +155,17 @@
                         {
                            if ((iScanNumber % 1) == 0)
                            {
-                              Console.WriteLine(" *** scan {0}/{1}, z {2}, mz {3:0.000}, mass {9:0.000}, peaks {4}, pep {5}, prot {6}, xcorr {7:0.00}, time {8}",
+                              Console.WriteLine("{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.00}\t{8}",
                                  iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
 
-                              for (int i = 0; i < iNumFragIons; i++)
-                              {
-                                 Console.Write("{0} {1}\n", pdBions[i], pdYions[i]);
-                              }
+//                              for (int i = 0; i < iNumFragIons; i++)
+//                                 Console.Write("{0} {1}\n", pdBions[i], pdYions[i]);
                            }
                         }
 
                         int iTime = (int)watch.ElapsedMilliseconds;
-                        if (iTime >= 50)
-                           iTime = 49;
+                        if (iTime >= iMaxElapsedTime)
+                           iTime = iMaxElapsedTime-1;
                         if (iTime > 0)
                            piElapsedTime[iTime] += 1;
 
@@ -179,8 +177,8 @@
                SearchMgr.FinalizeSingleSpectrumSearch();
 
                // write out histogram of spectrum search times
-//               for (int i = 0; i < 50; i++)
-//                  Console.WriteLine("{0}\t{1}", i, piElapsedTime[i]);
+               for (int i = 0; i < iMaxElapsedTime; i++)
+                  Console.WriteLine("{0}\t{1}", i, piElapsedTime[i]);
 
                rawFile.Dispose();
             }

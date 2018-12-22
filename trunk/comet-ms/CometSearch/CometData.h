@@ -156,6 +156,9 @@ struct EnzymeInfo
    char szSampleEnzymeBreakAA[MAX_ENZYME_AA];
    char szSampleEnzymeNoBreakAA[MAX_ENZYME_AA];
 
+   int iOneMinusOffset;  // used in CheckEnzymeTermini
+   int iTwoMinusOffset;  // used in CheckEnzymeTermini
+
    EnzymeInfo()
    {
       iAllowedMissedCleavage = 0;

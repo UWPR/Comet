@@ -1058,7 +1058,6 @@ bool CometSearchManager::InitializeStaticParams()
 
          if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
             g_staticParams.variableModParameters.bRequireVarMod = true;
-
       }
    }
 
@@ -1159,6 +1158,9 @@ bool CometSearchManager::InitializeStaticParams()
       + PROTON_MASS
       + g_staticParams.staticModifications.dAddCterminusPeptide
       + g_staticParams.staticModifications.dAddNterminusPeptide;
+
+   g_staticParams.enzymeInformation.iOneMinusOffset = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
+   g_staticParams.enzymeInformation.iTwoMinusOffset = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
 
    return true;
 }
