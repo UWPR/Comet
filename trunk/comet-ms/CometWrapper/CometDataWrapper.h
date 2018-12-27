@@ -88,10 +88,10 @@ namespace CometWrapper {
             }
         }
         
-        int get_dStart() {return _pDoubleRange->dStart;}
+        int get_dStart() {return (int)_pDoubleRange->dStart;}
         void set_dStart(double dStart) {_pDoubleRange->dStart = dStart;}
 
-        int get_dEnd() {return _pDoubleRange->dEnd;}
+        int get_dEnd() {return (int)_pDoubleRange->dEnd;}
         void set_dEnd(double dEnd) {_pDoubleRange->dEnd = dEnd;}
 
         DoubleRange* get_DoubleRangePtr() {return _pDoubleRange;}
@@ -129,7 +129,7 @@ namespace CometWrapper {
         int get_WhichTerm() {return _pVarMods->iWhichTerm;}
         void set_WhichTerm(int iWhichTerm) {_pVarMods->iWhichTerm = iWhichTerm;}
 
-        int get_VarModMass() {return _pVarMods->dVarModMass;}
+        int get_VarModMass() {return (int)_pVarMods->dVarModMass;}
         void set_VarModMass(double dVarModMass) {_pVarMods->dVarModMass = dVarModMass;}
 
         System::String^% get_VarModChar() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pVarMods->szVarModChar))));}

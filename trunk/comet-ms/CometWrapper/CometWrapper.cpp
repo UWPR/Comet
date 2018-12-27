@@ -437,7 +437,7 @@ bool CometSearchManagerWrapper::GetParamValue(String^ name, List<double>^% value
         return false;
     }
 
-    int numItems = vectorMassOffsets.size();
+    int numItems = (int)vectorMassOffsets.size();
     for (int i = 0; i < numItems; i++)
     {
         value->Add(vectorMassOffsets[i]);

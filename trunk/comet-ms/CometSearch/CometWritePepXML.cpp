@@ -525,8 +525,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       double dDeltaCnStar = 0.0;   // if reported deltaCn is for dissimilar peptide, the value stored here is the
                                    // explicit deltaCn between top hit and peptide in list
 
-      // go one past iNumPrintLines to calculate deltaCn value
-      for (j=i+1; j<iNumPrintLines+1; j++)
+      for (j=i+1; j<iNumPrintLines; j++)
       {
          if (j<g_staticParams.options.iNumStored)
          {

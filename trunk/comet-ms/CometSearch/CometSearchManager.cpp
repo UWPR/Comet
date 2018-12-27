@@ -2363,12 +2363,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       score.matchedIons   = pOutput[0].iMatchedIons;                  // ions matched
       score.totalIons     = pOutput[0].iTotalIons;                    // ions tot
 
-      int iNumPrintLines = pQuery->iMatchPeptideCount;
-      if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
-         iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
-
       int iMinLength = MAX_PEPTIDE_LEN;
-      for (int x = 0; x < iNumPrintLines; x++)
+      for (int x = 0; x < iSize; x++)
       {
          int iLen = (int)strlen(pOutput[x].szPeptide);
          if (iLen == 0)
@@ -2379,37 +2375,39 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
       double dDeltaCn = 1.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
 
-      // go one past iNumPrintLines to calculate deltaCn value
-      for (int j = 1; j < iNumPrintLines + 1; j++)
+      if (iSize > 1)
       {
-         // very poor way of calculating peptide similarity but it's what we have for now
-         int iDiffCt = 0;
-
-         for (int k = 0; k < iMinLength; k++)
+         for (int j = 1; j < iSize; j++)
          {
-            // I-L and Q-K are same for purposes here
-            if (pOutput[0].szPeptide[k] != pOutput[j].szPeptide[k])
+            // very poor way of calculating peptide similarity but it's what we have for now
+            int iDiffCt = 0;
+
+            for (int k = 0; k < iMinLength; k++)
             {
-               if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
-                  && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                  && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
-                  && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+               // I-L and Q-K are same for purposes here
+               if (pOutput[0].szPeptide[k] != pOutput[j].szPeptide[k])
                {
-                  iDiffCt++;
+                  if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
+                     && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                     && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
+                        && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                  {
+                     iDiffCt++;
+                  }
                }
             }
-         }
 
-         // calculate deltaCn only if sequences are less than 0.75 similar
-         if (((double)(iMinLength - iDiffCt) / iMinLength) < 0.75)
-         {
-            if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-               dDeltaCn = 1.0 - pOutput[j].fXcorr / pOutput[0].fXcorr;
-            else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-               dDeltaCn = 1.0;
-            else
-               dDeltaCn = 0.0;
-            break;
+            // calculate deltaCn only if sequences are less than 0.75 similar
+            if (((double)(iMinLength - iDiffCt) / iMinLength) < 0.75)
+            {
+               if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                  dDeltaCn = 1.0 - pOutput[j].fXcorr / pOutput[0].fXcorr;
+               else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+                  dDeltaCn = 1.0;
+               else
+                  dDeltaCn = 0.0;
+               break;
+            }
          }
       }
 
