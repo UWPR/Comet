@@ -116,15 +116,15 @@ bool CometSearch::RunSearch(int minNumThreads,
       sDBEntry dbe;
       FILE *fp;
       int iTmpCh = 0;
-      long lEndPos = 0;
-      long lCurrPos = 0;
+      comet_fileoffset_t lEndPos = 0;
+      comet_fileoffset_t lCurrPos = 0;
       bool bTrimDescr = false;
       string strPeffHeader;
       char *szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
       char *szPeffLine = 0;         // store description line starting with first \ to parse above
       int iLenAllocMods = 0;
       int iLenSzLine = 0;
-      int iLen = 0;
+      comet_fileoffset_t iLen = 0;
 
       vector<OBOStruct> vectorPeffOBO;
 

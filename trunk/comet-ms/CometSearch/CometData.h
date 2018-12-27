@@ -96,6 +96,97 @@ struct IntRange
    }
 };
 
+struct Scores
+{
+    double xCorr;
+    double dCn;
+    double mass;
+    int matchedIons;
+    int totalIons;
+
+    Scores() :
+        xCorr(0),
+        dCn(0),
+        mass(0),
+        matchedIons(0),
+        totalIons(0)
+    { }
+
+    Scores(double xCorr, double dCn, double mass, int matchedIons, int totalIons) :
+        xCorr(xCorr),
+        dCn(dCn),
+        mass(mass),
+        matchedIons(matchedIons),
+        totalIons(totalIons)
+    { }
+
+    Scores(const Scores& a) :
+        xCorr(a.xCorr),
+        dCn(a.dCn),
+        mass(a.mass),
+        matchedIons(a.matchedIons),
+        totalIons(a.totalIons)
+    { }
+
+    Scores& operator=(Scores& a)
+    {
+        xCorr = a.xCorr;
+        dCn = a.dCn;
+        mass = a.mass;
+        matchedIons = a.matchedIons;
+        totalIons = a.totalIons;
+        return *this;
+    }
+};
+
+struct Fragment
+{
+    double mass;
+    double intensity;
+    int type;
+    int number;
+    int charge;
+
+    Fragment() :
+        mass(0),
+        intensity(0),
+        type(0),
+        number(0),
+        charge(0)
+    { }
+
+    Fragment(double mass, double intensity, int type, int number, int charge) :
+        mass(mass),
+        intensity(intensity),
+        type(type),
+        number(number),
+        charge(charge)
+    { }
+
+    Fragment(const Fragment& a) :
+        mass(a.mass),
+        intensity(a.intensity),
+        type(a.type),
+        number(a.number),
+        charge(a.charge)
+    { }
+
+    Fragment& operator=(Fragment& a)
+    {
+        mass = a.mass;
+        intensity = a.intensity;
+        type = a.type;
+        number = a.number;
+        charge = a.charge;
+        return *this;
+    }
+
+    double ToMz()
+    {
+        return (mass + (charge - 1)*1.00727646688) / charge;
+    }
+};
+
 struct VarMods
 {
    double dVarModMass;
@@ -164,6 +255,8 @@ struct EnzymeInfo
       iAllowedMissedCleavage = 0;
       iSearchEnzymeOffSet = 0;
       iSampleEnzymeOffSet = 0;
+      iOneMinusOffset = 0;
+      iTwoMinusOffset = 0;
 
       szSearchEnzymeName[0] = '\0';
       szSearchEnzymeBreakAA[0] = '\0';

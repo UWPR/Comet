@@ -249,7 +249,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 //       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
 //             pOutput[i].pWhichProtein.end());
 
-         long lPrev=0;
+         comet_fileoffset_t lPrev=0;
          for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
          {
             if ( (*it).lWhichProtein == lPrev)
@@ -265,7 +265,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
       {
          sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
 
-         long lPrev=0;
+         comet_fileoffset_t lPrev=0;
          for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichDecoyProtein.begin(); it != pOutput[i].pWhichDecoyProtein.end(); )
          {
             if ( (*it).lWhichProtein == lPrev)

@@ -172,7 +172,7 @@ struct Results
    int    iRankSp;
    int    iMatchedIons;
    int    iTotalIons;
-   long   lProteinFilePosition;
+   comet_fileoffset_t   lProteinFilePosition;
    int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
@@ -243,7 +243,7 @@ struct OBOStruct           // stores info read from OBO file
 
 struct ProteinEntryStruct
 {
-   long   lWhichProtein;     // file pointer to protein
+    comet_fileoffset_t   lWhichProtein;     // file pointer to protein
    int    iStartResidue;      // start residue position in protein (1-based)
    char   cPrevAA;
    char   cNextAA;
@@ -305,7 +305,7 @@ typedef struct sDBEntry
 {
    string strName;           // might be able to delete this here
    string strSeq;
-   long lProteinFilePosition;
+   comet_fileoffset_t lProteinFilePosition;
    vector<PeffModStruct> vectorPeffMod;
    vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
    vector<PeffProcessedStruct> vectorPeffProcessed;
@@ -334,7 +334,7 @@ struct DBIndex
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
-   long   lProteinFilePosition;              // file position index to protein reference
+   comet_fileoffset_t   lProteinFilePosition;              // file position index to protein reference
    double dPepMass;                          // MH+ pep mass
 
    bool operator==(const DBIndex &rhs) const
@@ -369,7 +369,7 @@ struct DBIndex
 struct IndexProteinStruct  // for indexed database
 {
    char szProt[WIDTH_REFERENCE];
-   long lProteinFilePosition;
+   comet_fileoffset_t lProteinFilePosition;
    int  iWhichProtein;
 };
 

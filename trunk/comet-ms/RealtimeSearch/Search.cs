@@ -1,7 +1,8 @@
 ﻿namespace RealTimeSearch
 {
    using System;
-   using System.Diagnostics;
+    using System.Collections.Generic;
+    using System.Diagnostics;
    using System.IO;
    using System.Linq;
    using System.Text;
@@ -129,24 +130,21 @@
                         // now run the search on scan
 
                         // these next variables store return value from search
-                        int iNumFragIons = 10;               // return 10 most intense matched b- and y-ions
-                        double[] pdYions = new double[iNumFragIons];
-                        double[] pdBions = new double[iNumFragIons];
-                        double[] pdScores = new double[5];   // dScores[0] = xcorr, dScores[1] = E-value
-
+                        ScoreWrapper score;
+                        List<FragmentWrapper> matchingFragments;
                         string peptide;
                         string protein;
 
                         watch.Start();
                         SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
-                           out peptide, out protein, pdYions, pdBions, iNumFragIons, pdScores);
+                           out peptide, out protein, out matchingFragments, out score);
                         watch.Stop();
 
-                        double xcorr = pdScores[0];
+                        double xcorr = score.xCorr;
                         //double expect = pdScores[1];  // not calculated, too expensive
-                        int iIonsMatch = (int)pdScores[2];
-                        int iIonsTotal = (int)pdScores[3];
-                        double dCn = pdScores[4];
+                        int iIonsMatch = score.MatchedIons;
+                        int iIonsTotal = score.TotalIons;
+                        double dCn = score.dCn;
 
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 

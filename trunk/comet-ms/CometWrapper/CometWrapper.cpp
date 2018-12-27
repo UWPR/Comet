@@ -95,10 +95,8 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                        int iNumPeaks,
                                                        [Out] System::String^% szPeptide,
                                                        [Out] System::String^% szProtein,
-                                                       cli::array<double>^ pdYions,
-                                                       cli::array<double>^ pdBions,
-                                                       int iNumFragIons,
-                                                       cli::array<double>^ pdScores)
+                                                       [Out] List<FragmentWrapper^>^% matchingFragments,
+                                                       [Out] ScoreWrapper^% score)
 {
     if (!_pSearchMgr)
     {
@@ -106,16 +104,26 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
     }
     pin_ptr<double> ptrMasses = &pdMass[0];
     pin_ptr<double> ptrInten = &pdInten[0];
-    pin_ptr<double> ptrScores = &pdScores[0];
-    pin_ptr<double> ptrYions = &pdYions[0];
-    pin_ptr<double> ptrBions = &pdBions[0];
     std::string stdStringszPeptide;
     std::string stdStringszProtein;
 
+    Scores scores;
+    vector<Fragment> matchedFragments;
+
+    // perform the search
     bool isSuccess = _pSearchMgr->DoSingleSpectrumSearch(iPrecursorCharge, dMZ, ptrMasses, ptrInten, iNumPeaks,
-        stdStringszPeptide, stdStringszProtein, ptrYions, ptrBions, iNumFragIons, ptrScores);
+        stdStringszPeptide, stdStringszProtein, matchedFragments, scores);
+
+    // Convert data back to the managed world
     szPeptide = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStringszPeptide.c_str()))));
     szProtein = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStringszProtein.c_str()))));
+
+    score = gcnew ScoreWrapper(scores);
+    matchingFragments = gcnew List<FragmentWrapper^>();
+    for (auto frag : matchedFragments)
+    {
+        matchingFragments->Add(gcnew FragmentWrapper(frag));
+    }
 
     return isSuccess;
 }

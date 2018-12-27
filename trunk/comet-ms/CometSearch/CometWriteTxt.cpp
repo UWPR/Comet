@@ -468,7 +468,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          bool bPrintDecoyPrefix = false;
          std::vector<ProteinEntryStruct>::iterator it;
 
-         int iNumTotProteins = 0;
+         size_t iNumTotProteins = 0;
 
          if (bDecoy)
          {  
@@ -522,7 +522,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             }
          }
 
-         fprintf(fpout, "\t%d\t", iNumTotProteins);
+         fprintf(fpout, "\t%zu\t", iNumTotProteins);
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);

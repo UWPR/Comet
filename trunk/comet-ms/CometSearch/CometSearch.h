@@ -270,7 +270,7 @@ private:
        int  iTmpProteinSeqLength;                 // either length of sequence or 1 less for skip N-term M
        int  iAllocatedProtSeqLength;              // used in nucleotide to AA translation
        int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
-       long lProteinFilePosition;
+       comet_fileoffset_t lProteinFilePosition;
        char szProteinName[WIDTH_REFERENCE];
        char *pszProteinSeq;
        char cPeffOrigResidue;                     // original residue of a PEFF variant

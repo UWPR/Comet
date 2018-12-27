@@ -21,6 +21,10 @@
 #ifndef _COMETMASSSPECUTILS_H_
 #define _COMETMASSSPECUTILS_H_
 
+const double Hydrogen_Mono = 1.007825035;
+const double Oxygen_Mono = 15.99491463;
+const double Carbon_Mono = 12.00000000;
+const double Nitrogen_Mono = 14.0030740;
 
 class CometMassSpecUtils
 {
@@ -35,7 +39,7 @@ public:
                           double *dOH2);
 
    static void GetProteinName(FILE *fpdb,
-                              long lFilePosition,
+                              comet_fileoffset_t lFilePosition,
                               char *szProteinName);
 };
 

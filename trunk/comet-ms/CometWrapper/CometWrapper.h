@@ -46,10 +46,8 @@ namespace CometWrapper {
                                     const int iVal1,
                                     [Out] String^% szPeptide,
                                     [Out] String^% szProtein,
-                                    cli::array<double>^ pdYions,
-                                    cli::array<double>^ pdBions,
-                                    int iNumFragIons,
-                                    cli::array<double>^ pdScores);
+                                    [Out] List<FragmentWrapper^>^% matchingFragments,
+                                    [Out] ScoreWrapper^% score);
 
         // Need to convert vector to List and back
         bool AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList);

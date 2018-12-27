@@ -261,4 +261,95 @@ namespace CometWrapper {
     private:
         InputFileInfo *_pInputFileInfo;
     };
+
+    public ref class ScoreWrapper
+    {
+    public:
+        ScoreWrapper(Scores & score)
+        {
+            pScores = new Scores(score);
+        }
+      
+        ~ScoreWrapper()
+        {
+            delete pScores;
+        }
+
+        property double xCorr
+        { 
+            double get() { return pScores->xCorr; }
+        }
+
+        property double dCn 
+        {
+            double get() { return pScores->dCn; }
+        }
+
+        property double mass
+        {
+            double get() { return pScores->mass; }
+        }
+
+        property int MatchedIons
+        {
+            int get() { return (int)pScores->matchedIons; }
+        }
+
+        property int TotalIons
+        {
+            int get() { return (int)pScores->totalIons; }
+        }       
+
+    private:
+        Scores * pScores;
+    };
+
+    public enum class IonSeries : int { a, b, c, x, y, z };
+
+    public ref class FragmentWrapper
+    {
+    public:
+        FragmentWrapper(Fragment & fragment)
+        {
+            pFragment = new Fragment(fragment);
+        }
+
+        ~FragmentWrapper()
+        {
+            delete pFragment;
+        }
+
+        property double Mass
+        {
+            double get() { return pFragment->mass; }
+        }
+
+        property double MZ
+        {
+            double get() { return pFragment->ToMz(); }
+        }
+
+        property double Intensity
+        {
+            double get() { return pFragment->intensity; }
+        }
+
+        property int Number
+        {
+            int get() { return pFragment->number; }
+        }
+
+        property IonSeries Type
+        {
+            IonSeries get() { return (IonSeries)pFragment->type; }
+        }
+
+        property int Charge
+        {
+            int get() { return pFragment->charge; }
+        }
+
+    private:
+        Fragment * pFragment;
+    };
 }

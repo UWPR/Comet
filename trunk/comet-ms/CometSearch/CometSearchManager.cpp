@@ -2253,10 +2253,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 int iNumPeaks,
                                                 string& szReturnPeptide,
                                                 string& szReturnProtein,
-                                                double* pdReturnYions,
-                                                double* pdReturnBions,
-                                                int iNumFragIons,
-                                                double* pdReturnScores)
+                                                vector<Fragment> & matchedFragments,
+                                                Scores & score)
 {
    int iPercentStart = 0;
    int iPercentEnd = 0;
@@ -2359,10 +2357,11 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       //todo: Below are original code. Should I consider the case when length of szReturnProtein (now a std::string) to be beyond WIDTH_REFERENCE?
       //strncpy(szReturnProtein, pOutput[0].szSingleProtein, WIDTH_REFERENCE-1);  //protein
       //szReturnProtein[WIDTH_REFERENCE - 1] = '\0';
-      pdReturnScores[0] = pOutput[0].fXcorr;                        // xcorr
-      pdReturnScores[1] = pOutput[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
-      pdReturnScores[2] = pOutput[0].iMatchedIons;                  // ions matched
-      pdReturnScores[3] = pOutput[0].iTotalIons;                    // ions tot
+      
+      score.xCorr         = pOutput[0].fXcorr;                        // xcorr
+      score.mass          = pOutput[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
+      score.matchedIons   = pOutput[0].iMatchedIons;                  // ions matched
+      score.totalIons     = pOutput[0].iTotalIons;                    // ions tot
 
       int iNumPrintLines = pQuery->iMatchPeptideCount;
       if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
@@ -2414,16 +2413,37 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          }
       }
 
-      pdReturnScores[4] = dDeltaCn;  // dCn is calculated from first dis-similar peptide
+      score.dCn = dDeltaCn;  // dCn is calculated from first dis-similar peptide
+
+      // Conversion table from b/y ions to the other types (a,c,x,z)
+      const double ionMassesRelative[NUM_ION_SERIES] =
+      {
+          // N term relative
+          -(Carbon_Mono + Oxygen_Mono), // a (CO difference from b)
+          0, // b
+          (Nitrogen_Mono + (3 * Hydrogen_Mono)), // c (NH3 difference from b)
+
+          // C Term relative
+          (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)), // x (CO-2H difference from y)
+          0, // y
+          -(Nitrogen_Mono + (2 * Hydrogen_Mono)), // z (NH2 difference from y)
+
+          // Not Used
+          0, // not used
+          0, // not used
+          0  // not used
+      };
 
       // now deal with calculating b- and y-ions and returning most intense matches
       double dBion = g_staticParams.precalcMasses.dNtermProton;
       double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
-      if (pQuery->_pResults[0].szPrevNextAA[0] == '-')
-         dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-      if (pQuery->_pResults[0].szPrevNextAA[1] == '-')
-         dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+      if (pQuery->_pResults[0].szPrevNextAA[0] == '-') {
+          dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+      }
+      if (pQuery->_pResults[0].szPrevNextAA[1] == '-') {        
+          dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+      }
 
       // mods at peptide length +1 and +2 are for n- and c-terminus
       if (g_staticParams.variableModParameters.bVarModSearch
@@ -2438,31 +2458,68 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] - 1].dVarModMass;
       }
 
-      vector<MatchedIonsStruct> vMatchedYions;
-      vector<MatchedIonsStruct> vMatchedBions;
+      //vector<MatchedIonsStruct> vMatchedYions;
+      //vector<MatchedIonsStruct> vMatchedBions;
 
       int iTmp;
 
       // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
       for (int i = 0; i < pQuery->_pResults[0].iLenPeptide - 1; i++)
       {
-         int iPos = pQuery->_pResults[0].iLenPeptide - i - 1;
+          int iPos = pQuery->_pResults[0].iLenPeptide - i - 1;
 
-         dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[i]];
-         dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[iPos]];
+          dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[i]];
+          dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[0].szPeptide[iPos]];
 
-         if (g_staticParams.variableModParameters.bVarModSearch)
-         {
-            if (pQuery->_pResults[0].piVarModSites[i] != 0)
-               dBion += pQuery->_pResults[0].pdVarModSites[i];
+          if (g_staticParams.variableModParameters.bVarModSearch)
+          {
+              if (pQuery->_pResults[0].piVarModSites[i] != 0)
+                  dBion += pQuery->_pResults[0].pdVarModSites[i];
 
-            if (pQuery->_pResults[0].piVarModSites[iPos] != 0)
-               dYion += pQuery->_pResults[0].pdVarModSites[iPos];
-         }
+              if (pQuery->_pResults[0].piVarModSites[iPos] != 0)
+                  dYion += pQuery->_pResults[0].pdVarModSites[iPos];
+          }
 
-         for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
-         {
-            MatchedIonsStruct pTmp;
+          for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+          {
+              // calculate every ion series the user specified
+              for (int ionSeries = 0; ionSeries <= ION_SERIES_Z; ionSeries++)
+              {
+                  // skip ion series that are not enabled.
+                  if (!g_staticParams.ionInformation.iIonVal[ionSeries])
+                  {
+                      continue;
+                  }
+
+                  bool isNTerm = ionSeries <= ION_SERIES_C;
+
+                  // get the fragment mass if it is n- or c-terimnus
+                  double mass = (isNTerm) ? dBion : dYion;
+                  int fragNumber = (isNTerm) ? i + 1 : iPos;
+
+                  // Add any conversion factor from differnt ion series (e.g. b -> a, or y -> z)
+                  mass += ionMassesRelative[ionSeries];
+
+                  double mz = (mass + (ctCharge - 1)*PROTON_MASS) / ctCharge;
+
+                  iTmp = BIN(mz);
+                  if (iTmp<iArraySize && pdTmpSpectrum[iTmp] > 0.0)
+                  {
+                      Fragment frag;
+                      frag.intensity = pdTmpSpectrum[iTmp];
+                      frag.mass = mass;
+                      frag.type = ionSeries;
+                      frag.number = fragNumber;
+                      frag.charge = ctCharge;
+                      matchedFragments.push_back(frag);
+                  }
+              }
+          }
+      }
+
+
+
+          /*  MatchedIonsStruct pTmp;
 
             double dTmpIon = (dBion + (ctCharge - 1)*PROTON_MASS) / ctCharge;
             iTmp = BIN(dTmpIon);
@@ -2504,17 +2561,17 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       }
 
       vMatchedBions.clear();
-      vMatchedYions.clear();
+      vMatchedYions.clear();*/
    }
    else
    {
       szReturnPeptide = "";  // peptide
       szReturnProtein = "";  // protein
-      pdReturnScores[0] = -1;       // xcorr
-      pdReturnScores[1] = 0;        // calc neutral pep mass
-      pdReturnScores[2] = 0;        // ions matched
-      pdReturnScores[3] = 0;        // ions tot
-      pdReturnScores[4] = 0;        // dCn
+      score.xCorr         = -1;       // xcorr
+      score.mass          = 0;        // calc neutral pep mass
+      score.matchedIons   = 0;        // ions matched
+      score.totalIons     = 0;        // ions tot
+      score.dCn           = 0;        // dCn
    }
 
 cleanup_results:

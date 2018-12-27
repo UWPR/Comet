@@ -23,6 +23,8 @@
 #include "CometSearchManager.h"
 #include "CometMassSpecUtils.h"
 
+
+
 double CometMassSpecUtils::GetFragmentIonMass(int iWhichIonSeries,
                                               int i,
                                               int ctCharge,
@@ -61,7 +63,6 @@ double CometMassSpecUtils::GetFragmentIonMass(int iWhichIonSeries,
    return (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
 }
 
-
 void CometMassSpecUtils::AssignMass(double *pdAAMass,
                                     int bMonoMasses,
                                     double *dOH2)
@@ -70,10 +71,10 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
 
    if (bMonoMasses) // monoisotopic masses
    {
-      H = pdAAMass['h'] =  1.007825035; // hydrogen
-      O = pdAAMass['o'] = 15.99491463;  // oxygen
-      C = pdAAMass['c'] = 12.0000000;   // carbon
-      N = pdAAMass['n'] = 14.0030740;   // nitrogen
+       H = pdAAMass['h'] = Hydrogen_Mono; // hydrogen
+      O = pdAAMass['o'] = Oxygen_Mono;  // oxygen
+      C = pdAAMass['c'] = Carbon_Mono;   // carbon
+      N = pdAAMass['n'] = Nitrogen_Mono;   // nitrogen
 //    P = pdAAMass['p'] = 30.973762;    // phosphorus
       S = pdAAMass['s'] = 31.9720707;   // sulphur
       Se = pdAAMass['e'] = 79.9165196;  // selenium
@@ -123,10 +124,10 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
 
 
 void CometMassSpecUtils::GetProteinName(FILE *fpdb,
-                                        long lFilePosition,
+                                        comet_fileoffset_t lFilePosition,
                                         char *szProteinName)
 {
-   fseek(fpdb, lFilePosition, SEEK_SET);
+   comet_fseek(fpdb, lFilePosition, SEEK_SET);
    fscanf(fpdb, "%99s", szProteinName);
    szProteinName[99]='\0';
 }

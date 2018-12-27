@@ -43,10 +43,8 @@ public:
                                        const int iNumPeaks,
                                        string& szReturnPeptide,
                                        string& szReturnProtein,
-                                       double* pdReturnYions,
-                                       double* pdReturnBions,
-                                       int iNumFragIons,
-                                       double* pdScores);
+                                       vector<Fragment> & matchedFragments,
+                                       Scores & pScores);
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);

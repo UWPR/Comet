@@ -2088,6 +2088,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    StairStep(pTmpSpData);
 
    pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+   memset(pScoring->pfSpScoreData, 0, sizeof(float) * pScoring->_spectrumInfoInternal.iArraySize);
 
    // note that pTmpSpData[].dIon values are already BIN'd
    for (i=0; i<NUM_SP_IONS; i++)
@@ -2106,9 +2107,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
          if (pScoring->ppfSparseSpScoreData[x]==NULL)
          {
             pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
-
-            for (y=0; y<SPARSE_MATRIX_SIZE; y++)
-               pScoring->ppfSparseSpScoreData[x][y]=0;
+            memset(pScoring->ppfSparseSpScoreData[x], 0, sizeof(float) * SPARSE_MATRIX_SIZE);
          }
          y=i-(x*SPARSE_MATRIX_SIZE);
          pScoring->ppfSparseSpScoreData[x][y] = pScoring->pfSpScoreData[i];
