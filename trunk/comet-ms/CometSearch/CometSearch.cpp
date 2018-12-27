@@ -122,7 +122,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       string strPeffHeader;
       char *szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
       char *szPeffLine = 0;         // store description line starting with first \ to parse above
-      int iLenAllocMods = 0;
+      comet_fileoffset_t iLenAllocMods = 0;
       int iLenSzLine = 0;
       comet_fileoffset_t iLen = 0;
 
@@ -327,7 +327,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            return false;
                         }
                         szPeffLine = pTmp;
-                        fgets(szPeffLine+strlen(szPeffLine), iLenSzLine - strlen(szPeffLine), fp);
+                        fgets(szPeffLine+(int)strlen(szPeffLine), iLenSzLine - (int)strlen(szPeffLine), fp);
                      }
 
                      // grab from \ModResPsi or \ModResUnimod and \VariantSimple to end of line
@@ -364,7 +364,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            if (pTmp == NULL)
                            {
                               char szErrorMsg[512];
-                              sprintf(szErrorMsg,  " Error realloc(szMods[%d])\n", iLenAllocMods);
+                              sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
                               string strErrorMsg(szErrorMsg);
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(szErrorMsg);
@@ -506,7 +506,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            if (pTmp == NULL)
                            {
                               char szErrorMsg[512];
-                              sprintf(szErrorMsg,  " Error realloc(szMods[%d])\n", iLenAllocMods);
+                              sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
                               string strErrorMsg(szErrorMsg);
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(szErrorMsg);
@@ -789,7 +789,7 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
 
    // find match of strMod in vectorPeffOBO and store diff masses in pData
 
-   iPos=BinarySearchPeffStrMod(0, (*vectorPeffOBO).size(), strMod, *vectorPeffOBO);
+   iPos=BinarySearchPeffStrMod(0, (int)(*vectorPeffOBO).size(), strMod, *vectorPeffOBO);
 
    if (iPos != -1 && iPos< (int)(*vectorPeffOBO).size() )
    {
@@ -862,7 +862,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
-      _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = dbe.strSeq.size();
+      _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = (int)dbe.strSeq.size();
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       _proteinInfo.cPeffOrigResidue = '\0';
       _proteinInfo.iPeffOrigResiduePosition = -9;
@@ -893,7 +893,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    {
       int ii;
 
-      _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = dbe.strSeq.size();
+      _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = (int)dbe.strSeq.size();
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       _proteinInfo.cPeffOrigResidue = '\0';
       _proteinInfo.iPeffOrigResiduePosition = -9;
@@ -938,7 +938,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          int seqSize;
 
          // Generate complimentary strand.
-         seqSize = dbe.strSeq.size()+1;
+         seqSize = (int)dbe.strSeq.size()+1;
          try
          {
             pszTemp= new char[seqSize];
@@ -1131,15 +1131,15 @@ bool CometSearch::IndexSearch(void)
    comet_fileoffset_t clTmp;
 #ifdef _WIN32
 #ifdef _WIN64
-   clTmp = -(sizeof(comet_fileoffset_t));              //win64
+   clTmp = sizeof(comet_fileoffset_t);              //win64
 #else
-   clTmp = -((long long)sizeof(comet_fileoffset_t));   //win32
+   clTmp = (long long)sizeof(comet_fileoffset_t);   //win32
 #endif
 #else
-   clTmp = -(sizeof(comet_fileoffset_t));              //linux
+   clTmp = sizeof(comet_fileoffset_t);              //linux
 #endif
 
-   comet_fseek(fp, clTmp, SEEK_END);
+   comet_fseek(fp, -clTmp, SEEK_END);
    fread(&lEndOfStruct, sizeof(comet_fileoffset_t), 1, fp);
 
    // read index
@@ -1208,7 +1208,7 @@ bool CometSearch::IndexSearch(void)
       if (sDBI.dPepMass > g_massRange.dMaxMass)
          break;
 
-      int iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), sDBI.dPepMass);
+      int iWhichQuery = BinarySearchMass(0, (int)g_pvQuery.size(), sDBI.dPepMass);
 
       while (iWhichQuery>0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sDBI.dPepMass)
          iWhichQuery--;
@@ -1570,7 +1570,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                            int iTmp;
 
                            iDecoyStartPos = 1;
-                           iDecoyEndPos = strlen(szDecoyPeptide)-2;
+                           iDecoyEndPos = (int)strlen(szDecoyPeptide)-2;
 
                            for (i=iDecoyStartPos; i<iDecoyEndPos; i++)
                            {
@@ -1737,8 +1737,8 @@ void CometSearch::AnalyzeIndexPep(int iWhichQuery,
    int ctLen;
    int ctCharge;
    int iStartPos = 0;
-   int iEndPos = strlen(sDBI.szPeptide)-1;
-   int iLenPeptide = strlen(sDBI.szPeptide);
+   int iEndPos = (int)strlen(sDBI.szPeptide)-1;
+   int iLenPeptide = (int)strlen(sDBI.szPeptide);
    bool bFirstTimeThroughLoopForPeptide = true;
 
    // Compare calculated fragment ions against all matching query spectra.
@@ -1869,7 +1869,7 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
                                     bool *pbDuplFragment)
 
 {
-   int iLen = strlen(szProteinSeq);
+   int iLen = (int)strlen(szProteinSeq);
 
    // Walk through each variant
    for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
@@ -1939,7 +1939,7 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
       int iPos;
 
       // Do a binary search on list of input queries to find matching mass.
-      iPos=BinarySearchMass(0, g_pvQuery.size(), dCalcPepMass);
+      iPos=BinarySearchMass(0, (int)g_pvQuery.size(), dCalcPepMass);
 
       // Seek back to first peptide entry that matches mass tolerance in case binary
       // search doesn't hit the first entry.
@@ -2001,7 +2001,7 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
             // of any entry.  If so, simply return true here and will repeat the PEFF permutations later.
 
             // Do a binary search on list of input queries to find matching mass.
-            int iPos=BinarySearchMass(0, g_pvQuery.size(), dCalcPepMass + dMassAddition);
+            int iPos=BinarySearchMass(0, (int)g_pvQuery.size(), dCalcPepMass + dMassAddition);
 
             // Seek back to first peptide entry that matches mass tolerance in case binary
             // search doesn't hit the first entry.
@@ -2195,7 +2195,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
 
    if (g_pvDIAWindows.size() == 0)
    {
-      int iMassOffsetsSize = g_staticParams.vectorMassOffsets.size();
+      int iMassOffsetsSize = (int)g_staticParams.vectorMassOffsets.size();
 
       if ((dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus)
             && (dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus))
@@ -2509,7 +2509,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
                                  char *szDNASequence)
 {
    int i, ii=0;
-   int iSeqLength = strlen(szDNASequence);
+   int iSeqLength = (int)strlen(szDNASequence);
 
    if (iDirection == 1)  // Forward reading frame.
    {
@@ -3649,7 +3649,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
    vector<PeffPositionStruct> vPeffArray;
 
    if (_proteinInfo.iPeffOrigResiduePosition >=0)
-      iLenProteinMinus1 = strlen(szProteinSeq) - 1;
+      iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
    else
       iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
 
@@ -4617,7 +4617,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    int iLenProteinMinus1;
 
    if (_proteinInfo.iPeffOrigResiduePosition>=0)
-      iLenProteinMinus1 = strlen(szProteinSeq) - 1;
+      iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
    else
       iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
 
@@ -4864,7 +4864,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                      // Need to check if mass is ok
          
                      // Do a binary search on list of input queries to find matching mass.
-                     iWhichQuery = BinarySearchMass(0, g_pvQuery.size(), dTmpCalcPepMass);
+                     iWhichQuery = BinarySearchMass(0, (int)g_pvQuery.size(), dTmpCalcPepMass);
 
                      // Seek back to first peptide entry that matches mass tolerance in case binary
                      // search doesn't hit the first entry.
@@ -5151,7 +5151,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   dYion += g_staticParams.variableModParameters.varModList[piVarModSitesDecoy[iLenPeptide+1]-1].dVarModMass;
 
                int iDecoyStartPos = 1;  // This is start/end for newly created decoy peptide
-               int iDecoyEndPos = strlen(szDecoyPeptide)-2;
+               int iDecoyEndPos = (int)strlen(szDecoyPeptide)-2;
 
                int iTmp1;
                int iTmp2;

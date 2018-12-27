@@ -286,7 +286,7 @@ void LoadParameters(char *pszParamsFile,
                // includes spaces in the path.
 
                // Remove white spaces at beginning/end of szParamVal
-               int iLen = strlen(szParamVal);
+               int iLen = (int)strlen(szParamVal);
                char *szTrimmed = szParamVal;
 
                while (isspace(szTrimmed[iLen -1]))  // trim end
@@ -307,7 +307,7 @@ void LoadParameters(char *pszParamsFile,
                char szFile[SIZE_FILE];
 
                // Remove white spaces at beginning/end of szParamVal
-               int iLen = strlen(szParamVal);
+               int iLen = (int)strlen(szParamVal);
                char *szTrimmed = szParamVal;
 
                while (isspace(szTrimmed[iLen -1]))  // trim end
@@ -328,7 +328,7 @@ void LoadParameters(char *pszParamsFile,
                char szFile[SIZE_FILE];
 
                // Remove white spaces at beginning/end of szParamVal
-               int iLen = strlen(szParamVal);
+               int iLen = (int)strlen(szParamVal);
                char *szTrimmed = szParamVal;
 
                while (isspace(szTrimmed[iLen -1]))  // trim end
@@ -362,7 +362,7 @@ void LoadParameters(char *pszParamsFile,
             else if (!strcmp(szParamName, "mass_offsets"))
             {
                // Remove white spaces at beginning/end of szParamVal
-               int iLen = strlen(szParamVal);
+               int iLen = (int)strlen(szParamVal);
                char *szTrimmed = szParamVal;
 
                while (isspace(szTrimmed[iLen -1]))  // trim end
@@ -1158,7 +1158,7 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
    // Get the file name. Because Windows can have ":" in the file path,
    // we can't just use "strtok" to grab the filename.
    int i;
-   int iCmdLen = strlen(cmd);
+   int iCmdLen = (int)strlen(cmd);
    for (i=0; i < iCmdLen; i++)
    {
       if (cmd[i] == ':')

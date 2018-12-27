@@ -235,7 +235,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
             CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
             bPrintDecoyPrefix = true;
          }
-         iNumTotProteins = pOutput[i].pWhichDecoyProtein.size();
+         iNumTotProteins = (int)pOutput[i].pWhichDecoyProtein.size();
       }
       else
       {
@@ -243,13 +243,13 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          {
             it = pOutput[i].pWhichProtein.begin();
             CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-            iNumTotProteins = pOutput[i].pWhichProtein.size() + pOutput[i].pWhichDecoyProtein.size();
+            iNumTotProteins = (int)(pOutput[i].pWhichProtein.size() + pOutput[i].pWhichDecoyProtein.size());
          }
          else //if ( (int)pOutput[i].pWhichDecoyProtein.size() > 0)
          {
             it = pOutput[i].pWhichDecoyProtein.begin();
             CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-            iNumTotProteins = pOutput[i].pWhichDecoyProtein.size();
+            iNumTotProteins = (int)pOutput[i].pWhichDecoyProtein.size();
             bPrintDecoyPrefix = true;
 
          }
@@ -264,14 +264,14 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          iMaxWidthReference = (int)strlen(szProteinName);
    }
    if (bPrintDecoyPrefix)
-      iMaxWidthReference += strlen(g_staticParams.szDecoyPrefix);
+      iMaxWidthReference += (int)strlen(g_staticParams.szDecoyPrefix);
 
    if (iLenMaxDuplicates > 0)
    {
       char szTempStr[10];
 
       sprintf(szTempStr, " %+d", iLenMaxDuplicates);
-      iLenMaxDuplicates = strlen(szTempStr);
+      iLenMaxDuplicates = (int)strlen(szTempStr);
    }
 
    if (g_staticParams.options.bPrintExpectScore)
@@ -433,7 +433,7 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    if (bDecoySearch)
    {
       it = pOutput[iWhichResult].pWhichDecoyProtein.begin();
-      iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
+      iNumTotProteins = (int)pOutput[iWhichResult].pWhichDecoyProtein.size();
       bPrintDecoyPrefix = true;
    }
    else
@@ -441,12 +441,12 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
       if ((int)pOutput[iWhichResult].pWhichProtein.size() > 0)
       {
          it = pOutput[iWhichResult].pWhichProtein.begin();
-         iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
+         iNumTotProteins = (int)(pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size());
       }
       else
       {
          it = pOutput[iWhichResult].pWhichDecoyProtein.begin();
-         iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
+         iNumTotProteins = (int)pOutput[iWhichResult].pWhichDecoyProtein.size();
          bPrintDecoyPrefix = true;
       }
    }
@@ -489,7 +489,7 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
       sprintf(szTemp, "+%d", iNumTotProteins);
       sprintf(szBuf+strlen(szBuf), " +%d", iNumTotProteins);
 
-      iEnd = iLenMaxDuplicates - strlen(szTemp) - 1;
+      iEnd = iLenMaxDuplicates - (int)strlen(szTemp) - 1;
 
       for (i=0; i<iEnd; i++)
          sprintf(szBuf+strlen(szBuf), " ");

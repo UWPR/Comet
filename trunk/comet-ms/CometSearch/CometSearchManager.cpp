@@ -73,7 +73,7 @@ static void GetHostName()
 
 static InputType GetInputType(const char *pszFileName)
 {
-   int iLen = strlen(pszFileName);
+   int iLen = (int)strlen(pszFileName);
 
    if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 6, ".mzXML")
          || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".mzML")
@@ -120,7 +120,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    {
        return false;
    }
-   int iLen = strlen(g_staticParams.inputFile.szFileName);
+   int iLen = (int)strlen(g_staticParams.inputFile.szFileName);
 
    // per request, perform quick check to validate file still exists
    // to avoid creating stub output files in these cases.
@@ -1167,7 +1167,7 @@ bool CometSearchManager::InitializeStaticParams()
 
 void CometSearchManager::AddInputFiles(vector<InputFileInfo*> &pvInputFiles)
 {
-   int numInputFiles = pvInputFiles.size();
+   int numInputFiles = (int)pvInputFiles.size();
 
    for (int i = 0; i < numInputFiles; i++)
       g_pvInputFiles.push_back(pvInputFiles.at(i));
@@ -1874,7 +1874,7 @@ bool CometSearchManager::DoSearch()
                             // possible no spectrum in batch passes filters; do not want to break in that case;
  //              break; // no search to run
             else
-               iTotalSpectraSearched += g_pvQuery.size();
+               iTotalSpectraSearched += (int)g_pvQuery.size();
 
             bSucceeded = AllocateResultsMem();
 
@@ -2838,7 +2838,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    int iTmpCh = (int)(g_staticParams.options.dPeptideMassLow);
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
    fwrite(&iMaxPeptideMass, sizeof(int), 1, fptr);  // write max mass
-   iTmpCh = g_pvDBIndex.size();
+   iTmpCh = (int)g_pvDBIndex.size();       // FIX change this to a unsigned long
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write # of peptides
    fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass, fptr); // write index
    fwrite(&lEndOfPeptides, sizeof(comet_fileoffset_t), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index

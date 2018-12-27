@@ -95,7 +95,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
       {
-         int iLen = strlen(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+         int iLen = (int)strlen(g_staticParams.variableModParameters.varModList[i].szVarModChar);
 
          for (int ii=0; ii<iLen; ii++)
          {

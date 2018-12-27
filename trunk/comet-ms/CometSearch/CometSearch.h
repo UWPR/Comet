@@ -83,9 +83,9 @@ private:
                vector<OBOStruct> *vectorPeffOBO,
                struct PeffModStruct *pData);
    int BinarySearchPeffStrMod(int start,
-                          int end,
-                          string strMod,
-                          vector<OBOStruct>& vectorPeffOBO);
+                              int end,
+                              string strMod,
+                              vector<OBOStruct>& vectorPeffOBO);
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);

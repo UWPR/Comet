@@ -80,7 +80,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    char *pStr;
    char szRunSummaryBaseName[PATH_MAX];          // base name of szInputFile
    char szRunSummaryResolvedPath[PATH_MAX];      // resolved path of szInputFile
-   int  iLen = strlen(g_staticParams.inputFile.szFileName);
+   int  iLen = (int)strlen(g_staticParams.inputFile.szFileName);
    strcpy(szRunSummaryBaseName, g_staticParams.inputFile.szFileName);
    if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
       *pStr = '\0';
@@ -627,7 +627,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    if (bDecoy)
    {
       it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-      iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
+      iNumTotProteins = (int)pOutput[iWhichResult].pWhichDecoyProtein.size();
       bPrintDecoyPrefix = true;
    }
    else
@@ -637,12 +637,12 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       if (pOutput[iWhichResult].pWhichProtein.size() > 0)
       {
          it=pOutput[iWhichResult].pWhichProtein.begin();
-         iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
+         iNumTotProteins = (int)(pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size());
       }
       else
       {
          it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-         iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
+         iNumTotProteins = (int)(pOutput[iWhichResult].pWhichDecoyProtein.size());
          bPrintDecoyPrefix = true;
       }
    }
