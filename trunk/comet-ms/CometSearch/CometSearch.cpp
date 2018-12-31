@@ -281,8 +281,7 @@ bool CometSearch::RunSearch(int minNumThreads,
             bTrimDescr = false;
             while (((iTmpCh = getc(fp)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF))
             {
-               // Don't bother storing description text past first blank.
-               if (!bTrimDescr && (isspace(iTmpCh) || iscntrl(iTmpCh)))
+               if (!bTrimDescr && iscntrl(iTmpCh))
                   bTrimDescr = true;
 
                if (!bTrimDescr && dbe.strName.size() < (WIDTH_REFERENCE-1))

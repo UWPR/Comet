@@ -2493,7 +2493,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
                   // get the fragment mass if it is n- or c-terimnus
                   double mass = (isNTerm) ? dBion : dYion;
-                  int fragNumber = (isNTerm) ? i + 1 : iPos;
+                  int fragNumber = i + 1;
 
                   // Add any conversion factor from differnt ion series (e.g. b -> a, or y -> z)
                   mass += ionMassesRelative[ionSeries];
