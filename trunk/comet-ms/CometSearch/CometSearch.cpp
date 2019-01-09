@@ -1187,7 +1187,16 @@ bool CometSearch::IndexSearch(void)
    comet_fseek(fp, lReadIndex[iStart], SEEK_SET);
    fread(&sDBI, sizeof(struct DBIndex), 1, fp);
 
-   _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition = sDBI.lProteinFilePosition;
+   // Now read in the protein file positions here; not used yet
+   _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition = comet_ftell(fp);
+   long lSize;
+   fread(&lSize, sizeof(long), 1, fp);
+   for (long x = 0; x < lSize; x++)
+   {
+      comet_fileoffset_t tmpoffset;
+      fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fp);
+   }
+
    _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
    _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
    dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1];  // make string including prev/next AA
@@ -1202,7 +1211,7 @@ bool CometSearch::IndexSearch(void)
          if (sDBI.pcVarModSites[x] != 0)
             printf("[%0.3f]", g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[x]-1].dVarModMass);
       }
-      printf(", mass %f, prot %ld\n", sDBI.dPepMass, sDBI.lProteinFilePosition); fflush(stdout);
+      printf(", mass %f\n", sDBI.dPepMass); fflush(stdout);
 */
       if (sDBI.dPepMass > g_massRange.dMaxMass)
          break;
@@ -1219,6 +1228,14 @@ bool CometSearch::IndexSearch(void)
          break;
 
       fread(&sDBI, sizeof(struct DBIndex), 1, fp);
+      // Now read in the protein file positions here; not used yet
+      _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition = comet_ftell(fp);
+      fread(&lSize, sizeof(long), 1, fp);
+      for (long x = 0; x < lSize; x++)
+      {
+         comet_fileoffset_t tmpoffset;
+         fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fp);
+      }
 
       // read past last entry in indexed db, need to break out of loop
       if (feof(fp))
@@ -1226,7 +1243,6 @@ bool CometSearch::IndexSearch(void)
 
       _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
       _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
-      dbe.lProteinFilePosition = sDBI.lProteinFilePosition;
       dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1]; 
    }
 
@@ -1247,13 +1263,29 @@ bool CometSearch::IndexSearch(void)
          if ((*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
          {
             comet_fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
-            fread((*it)->_pResults[0].szSingleProtein, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+            fread(&lSize, sizeof(long), 1, fp);
+            vector<comet_fileoffset_t> vOffsets;
+            for (long x = 0; x < lSize; x++)
+            {
+               comet_fileoffset_t tmpoffset;
+               fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fp);
+               vOffsets.push_back(tmpoffset);
+            }
+            for (long x = 0; x < lSize; x++)
+            {
+               char szTmp[WIDTH_REFERENCE];
+               comet_fseek(fp, vOffsets.at(x), SEEK_SET);
+               fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+               (*it)->_pResults[0].strSingleSearchProtein += szTmp;
+               if (x < lSize - 1)
+                  (*it)->_pResults[0].strSingleSearchProtein += " : ";
+            }
          }
 /*
          printf("OK  scan %d, pep %s, prot %s, xcorr %f, matchcount %d\n",
             (*it)->_spectrumInfoInternal.iScanNumber,
             (*it)->_pResults[0].szPeptide,
-            (*it)->_pResults[0].szSingleProtein,
+            (*it)->_pResults[0].strSingleSearchProtein.c_str(),
             (*it)->_pResults[0].fXcorr,
             (*it)->iMatchPeptideCount); fflush(stdout);
 */
@@ -1375,7 +1407,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                else
                   sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
          
-               sEntry.lProteinFilePosition = _proteinInfo.lProteinFilePosition;
+               sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                memset(sEntry.pcVarModSites, 0, sizeof(sEntry.pcVarModSites));
 
                g_pvDBIndex.push_back(sEntry);
@@ -4931,7 +4963,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             else
                sDBTmp.szPrevNextAA[1] = szProteinSeq[_varModInfo.iEndPos + 1];
          
-            sDBTmp.lProteinFilePosition = _proteinInfo.lProteinFilePosition;
+            sDBTmp.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
 
             memset(sDBTmp.pcVarModSites, 0, sizeof(sDBTmp.pcVarModSites));
 

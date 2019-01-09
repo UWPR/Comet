@@ -638,7 +638,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          it=pOutput[iWhichResult].pWhichProtein.begin();
          iNumTotProteins = (int)(pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size());
       }
-      else
+      else  // only decoy matches in this search
       {
          it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
          iNumTotProteins = (int)(pOutput[iWhichResult].pWhichDecoyProtein.size());

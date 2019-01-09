@@ -178,7 +178,7 @@ struct Results
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
-   char   szSingleProtein[WIDTH_REFERENCE];   // used only in single spectrum search to return protein name from index file
+   string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    char   cPeffOrigResidue;                   // original residue of a PEFF variant
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
    vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
@@ -334,7 +334,7 @@ struct DBIndex
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
-   comet_fileoffset_t   lProteinFilePosition;              // file position index to protein reference
+   comet_fileoffset_t   lIndexProteinFilePosition;         // file position index to protein reference
    double dPepMass;                          // MH+ pep mass
 
    bool operator==(const DBIndex &rhs) const
@@ -774,6 +774,8 @@ extern map<long long, IndexProteinStruct>  g_pvProteinNames;
 
 extern vector<DBIndex> g_pvDBIndex;
 
+extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
 struct Query
@@ -914,7 +916,6 @@ struct Query
          _pResults->pWhichDecoyProtein.clear();
       delete[] _pResults;
       _pResults = NULL;
-
 
       if (g_staticParams.options.iDecoySearch == 2)
       {

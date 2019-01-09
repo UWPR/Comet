@@ -41,8 +41,8 @@ public:
                                        double* dMass,
                                        double* dInten,
                                        const int iNumPeaks,
-                                       string& szReturnPeptide,
-                                       string& szReturnProtein,
+                                       string& strReturnPeptide,
+                                       string& strReturnProtein,
                                        vector<Fragment> & matchedFragments,
                                        Scores & pScores);
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
