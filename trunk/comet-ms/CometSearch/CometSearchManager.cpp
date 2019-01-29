@@ -2693,7 +2693,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    long lProtCount = 0;
    vector<vector<comet_fileoffset_t>> g_pvProteinsList;
    g_pvProteinsList.clear();
-   for (int i = 0; i < g_pvDBIndex.size(); i++)
+   for (size_t i = 0; i < g_pvDBIndex.size(); i++)
    {
       if (i == 0)
       {

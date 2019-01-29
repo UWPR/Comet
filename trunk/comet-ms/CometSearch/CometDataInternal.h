@@ -578,6 +578,7 @@ struct StaticParams
    int             bIndexDb;            // 0 = normal fasta; 1 = indexed database
    vector<double>  vectorMassOffsets;
    char            szDIAWindowsFile[SIZE_FILE];
+   bool            bSkipToStartScan;
 
    StaticParams()
    {
@@ -760,6 +761,8 @@ struct StaticParams
       tolerances.dFragmentBinSize = 1.0005;
       tolerances.dFragmentBinStartOffset = 0.4;
       tolerances.dMatchPeakTolerance = 0.5;
+
+      bSkipToStartScan = true;
    }
 
   
