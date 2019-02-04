@@ -1095,6 +1095,8 @@ bool CometSearch::IndexSearch(void)
          char delims[] = " ";
          int x=0;
 
+         bFoundVariable = true;
+
          tok=strtok(szBuf+13, delims);
          while (tok != NULL)
          {
@@ -1102,12 +1104,9 @@ bool CometSearch::IndexSearch(void)
             // for index search, storing variable mods 0-9 in pdStaticMods array 0-9
             sscanf(tok, "%lf", &(g_staticParams.variableModParameters.varModList[x].dVarModMass));
 
-            if (g_staticParams.variableModParameters.varModList[x].dVarModMass != 0.0)
-               bFoundVariable = true;
-
             tok = strtok (NULL, delims);
             x++;
-            if (x==VMODS)
+            if (x == VMODS)
                break;
          }
          break;
