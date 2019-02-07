@@ -35,10 +35,12 @@ namespace CometWrapper {
         CometSearchManagerWrapper();
         virtual ~CometSearchManagerWrapper();
 
-		bool CreateIndex();
+        bool CreateIndex();
         bool DoSearch();
         bool InitializeSingleSpectrumSearch();
         void FinalizeSingleSpectrumSearch();
+        int CheckIdxPrecursorMatch(int intValue,
+                                    double value);
         bool DoSingleSpectrumSearch(int intValue,
                                     double value,
                                     cli::array<double>^ dVal1,

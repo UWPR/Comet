@@ -1,8 +1,8 @@
 ﻿namespace RealTimeSearch
 {
    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
+   using System.Collections.Generic;
+   using System.Diagnostics;
    using System.IO;
    using System.Linq;
    using System.Text;
@@ -18,7 +18,7 @@
    /// <summary>
    /// Call CometWrapper to run searches, looping through scans in a Thermo RAW file
    /// </summary>
-   class realTimeSearch
+   class RealTimeSearch
    {
       static void Main(string[] args)
       {
@@ -68,10 +68,11 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int iMaxElapsedTime = 300;
+               int iMaxElapsedTime = 10;
                int[] piElapsedTime = new int[iMaxElapsedTime];  // histogram of search times
                for (int i = 0; i < iMaxElapsedTime; i++)
                   piElapsedTime[i] = 0;
+               int iPass = 1;  // count number of passes/loops through raw file
 
                SearchMgr.InitializeSingleSpectrumSearch();
 
@@ -134,42 +135,68 @@
                         List<FragmentWrapper> matchingFragments;
                         string peptide;
                         string protein;
+                        int iMatch = 0;
 
-                        watch.Start();
-                        SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
-                           out peptide, out protein, out matchingFragments, out score);
-                        watch.Stop();
+                        // return:  iMatch==1 means there is a match to peptide in index
+                        // Does not make sense to call CheckIdxPrecursorMatch unless database is small
+                        iMatch = SearchMgr.CheckIdxPrecursorMatch(iPrecursorCharge, dPrecursorMZ);
 
-                        double xcorr = score.xCorr;
-                        //double expect = pdScores[1];  // not calculated, too expensive
-                        int iIonsMatch = score.MatchedIons;
-                        int iIonsTotal = score.TotalIons;
-                        double dCn = score.dCn;
-
-                        double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
-
-                        // do not decode peptide/proteins strings unless xcorr>0
-                        if (xcorr > 0)
+                        if (iMatch == 1)  // only search if there is a precursor match in database
                         {
-                           if ((iScanNumber % 1) == 0)
-                           {
-                              Console.WriteLine("{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.00}\t{8}",
-                                 iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein, xcorr, watch.ElapsedMilliseconds, dPepMass);
+                           watch.Start();
+                           SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
+                              out peptide, out protein, out matchingFragments, out score);
+                           watch.Stop();
 
-//                              for (int i = 0; i < iNumFragIons; i++)
-//                                 Console.Write("{0} {1}\n", pdBions[i], pdYions[i]);
+                           double xcorr = score.xCorr;
+                           int iIonsMatch = score.MatchedIons;
+                           int iIonsTotal = score.TotalIons;
+                           double dCn = score.dCn;
+
+                           double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
+
+                           // do not decode peptide/proteins strings unless xcorr>0
+                           if (true) //xcorr > 0)
+                           {
+                              if ((iScanNumber % 1000) == 0)
+                              {
+                                 if (protein.Length > 10)
+                                    protein = protein.Substring(0, 10);  // trim to avoid printing long protein description string
+
+                                 Console.WriteLine("pass {12}, iMatch {13}\t{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.00}\t{8}\t{10}/{11}",
+                                    iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein,
+                                    xcorr, watch.ElapsedMilliseconds, dPepMass, iIonsMatch, iIonsTotal, iPass, iMatch);
+
+                                 foreach (var myFragment in matchingFragments)
+                                 {
+                                    Console.WriteLine("{0:0000.0000} {1:0.0} {2} {3}",
+                                       myFragment.Mass,
+                                       myFragment.Intensity,
+                                       myFragment.Charge,
+                                       myFragment.Type);
+                                 }
+                              }
                            }
                         }
+
 
                         int iTime = (int)watch.ElapsedMilliseconds;
                         if (iTime >= iMaxElapsedTime)
                            iTime = iMaxElapsedTime-1;
-                        if (iTime > 0)
+                        if (iTime >= 0)
                            piElapsedTime[iTime] += 1;
 
                         watch.Reset();
                      }
                   }
+/*
+                  if (iScanNumber == iLastScan)
+                  {
+                     iScanNumber = 0;
+                     Console.WriteLine("pass {0}", iPass);
+                     iPass++;
+                  }
+*/
                }
 
                SearchMgr.FinalizeSingleSpectrumSearch();
@@ -221,7 +248,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-            iTmp = 5; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
+            iTmp = 2; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 

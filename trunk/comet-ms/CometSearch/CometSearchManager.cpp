@@ -330,7 +330,7 @@ static bool compareByPeptideMass(Query const* a, Query const* b)
 
 static bool compareByMangoIndex(Query const* a, Query const* b)
 {
-      return (a->dMangoIndex < b->dMangoIndex);
+   return (a->dMangoIndex < b->dMangoIndex);
 }
 
 static bool compareByScanNumber(Query const* a, Query const* b)
@@ -2245,6 +2245,19 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
    }
 }
 
+
+int CometSearchManager::CheckIdxPrecursorMatch(const int iPrecursorCharge,
+                                               const double dMZ)
+{
+   // Now that spectra are loaded to memory and sorted, do search.
+   int iReturn;
+
+   CometSearch::CheckIdxPrecursorMatch(iPrecursorCharge, dMZ, &iReturn);
+
+   // if iReturn == 1, the mz/charge is found in the index database
+
+   return iReturn;
+}
 
 bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 double dMZ,
