@@ -1,0 +1,32 @@
+Coding style guidelines for the Comet project:
+
+
+A. Use Allman brace style (credited to Eric Allman).  Code brace blocks are placed
+   one line below their respective structures and at the same identation level.
+
+   if (condition_variable==condition1)
+   {
+      //Some code.
+      condition_variable=condition2;
+   }
+   else if (condition_variable==condition2)
+   {
+      //Some code.
+      condition_variable=condition1;
+   }
+   else
+   {
+      //Some code
+      condition_variable=false;
+   }
+
+B. Use spaces for indentation, not tab characters.
+
+C. The normal indentation is 3 spaces per logical level.
+
+D. Avoid trailing whitespace.
+
+E. Use Unix-style carriage returns ("\n") rather than Windows ones ("\r\n").
+
+F. Use '//' for comments.  This allows one to comment out large blocks of code,
+   including these local comments, using /* */.
