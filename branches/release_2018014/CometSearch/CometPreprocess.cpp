@@ -98,6 +98,24 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
       iScanNumber = mstSpectrum.getScanNumber();
 
+      if (g_staticParams.bSkipToStartScan && iScanNumber < iFirstScan)
+      {
+         g_staticParams.bSkipToStartScan = false;
+
+         PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+         iScanNumber = mstSpectrum.getScanNumber();
+
+         // iScanNumber will equal 0 if iFirstScan is not the right scan level
+         // So need to keep reading the next scan until we get a non-zero scan number
+         while (iScanNumber == 0 && iFirstScan < iLastScan)
+         {
+            iFirstScan++;
+            PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+            iScanNumber = mstSpectrum.getScanNumber();
+         }
+      
+      }
+
       if (iScanNumber != 0)
       {
          int iNumClearedPeaks = 0;

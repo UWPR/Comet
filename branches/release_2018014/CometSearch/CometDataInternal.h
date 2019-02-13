@@ -519,6 +519,7 @@ struct StaticParams
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
    vector<double>  vectorMassOffsets;
+   bool            bSkipToStartScan;
 
    StaticParams()
    {
@@ -660,6 +661,8 @@ struct StaticParams
       tolerances.dFragmentBinSize = 1.0005;
       tolerances.dFragmentBinStartOffset = 0.4;
       tolerances.dMatchPeakTolerance = 0.5;
+
+      bSkipToStartScan = true;
    }
 
    StaticParams& operator=(StaticParams& a)

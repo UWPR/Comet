@@ -794,7 +794,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
-      _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
+      _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = dbe.strSeq.size();
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       _proteinInfo.cPeffOrigResidue = '\0';
       _proteinInfo.iPeffOrigResiduePosition = -9;
@@ -805,8 +805,10 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 
       if (g_staticParams.options.bClipNtermMet && dbe.strSeq[0]=='M')
       {
+         _proteinInfo.iTmpProteinSeqLength -= 1;   // remove 1 for M, used in checking termini
          if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str()+1, true, pbDuplFragment))
             return false;
+         _proteinInfo.iTmpProteinSeqLength += 1;
       }
 
       // Plug in an AA substitution and do a search, requiring that AA be present
@@ -818,7 +820,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    {
       int ii;
 
-      _proteinInfo.iProteinSeqLength = dbe.strSeq.size();
+      _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = dbe.strSeq.size();
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       _proteinInfo.cPeffOrigResidue = '\0';
       _proteinInfo.iPeffOrigResiduePosition = -9;
@@ -962,15 +964,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
 
-   iLenProtein = _proteinInfo.iProteinSeqLength;  // FIX: need to confirm this is always same as strlen(szProteinSeq)
-
-   int iFirstResiduePosition = 0;
-   if (bNtermPeptideOnly)  // we're skipping the leading M
-   {
-      iLenProtein -= 1;
-//    iStartPos = 1;
-//    iFirstResiduePosition = 1;
-   }
+   iLenProtein = _proteinInfo.iTmpProteinSeqLength;
 
    if (dbe.vectorPeffMod.size() > 0) // sort vectorPeffMod by iPosition
       sort(dbe.vectorPeffMod.begin(), dbe.vectorPeffMod.end());
@@ -991,7 +985,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
       while (dMass < g_massRange.dMaxMass)
       {
-         if ((iStartPos == iFirstResiduePosition) || (iPeffRequiredVariantPosition - iStartPos >= MAX_PEPTIDE_LEN))
+         if ((iStartPos == 0) || (iPeffRequiredVariantPosition - iStartPos >= MAX_PEPTIDE_LEN))
             break;
 
          iStartPos--;
@@ -1017,7 +1011,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    else
       return true;
 
-   if (iStartPos == iFirstResiduePosition)
+   if (iStartPos == 0)
       dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
    if (iEndPos == iProteinSeqLengthMinus1)
       dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
@@ -1322,7 +1316,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             return true;
 
          dCalcPepMass -= (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iStartPos]];
-         if (iStartPos == iFirstResiduePosition)
+         if (iStartPos == 0)
             dCalcPepMass -= g_staticParams.staticModifications.dAddNterminusProtein;
          iStartPos++;          // Increment start of peptide.
 
@@ -1357,12 +1351,10 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
                                     bool *pbDuplFragment)
 
 {
-   int iLen = strlen(szProteinSeq);
-
    // Walk through each variant
    for (int i=0; i<(int)dbe.vectorPeffVariantSimple.size(); i++)
    {
-      if (dbe.vectorPeffVariantSimple.at(i).iPosition < iLen)
+      if (dbe.vectorPeffVariantSimple.at(i).iPosition < _proteinInfo.iProteinSeqLength)
       {
          int iPosition = dbe.vectorPeffVariantSimple.at(i).iPosition;
          char cResidue = dbe.vectorPeffVariantSimple.at(i).cResidue;
@@ -1394,7 +1386,11 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
             SearchForPeptides(dbe, szProteinSeq, false, pbDuplFragment);
 
             if (g_staticParams.options.bClipNtermMet && iPosition == 0 && cResidue == 'M')
-               SearchForPeptides(dbe, szProteinSeq, true, pbDuplFragment);
+            {
+               _proteinInfo.iTmpProteinSeqLength -= 1;   // remove 1 for M, used in checking termini
+               SearchForPeptides(dbe, szProteinSeq+1, true, pbDuplFragment);
+               _proteinInfo.iTmpProteinSeqLength += 1;
+            }
 
             // Return protein sequence to back to normal
             szProteinSeq[iPosition] = cOrigResidue;
@@ -1517,7 +1513,7 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + iOneMinusEnzymeOffSet])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + iTwoMinusEnzymeOffSet])));
 
-      bEndCleavage = (iEndPos==(int)(strlen(szProteinSeq)-1)
+      bEndCleavage = (iEndPos == (int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term 
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
@@ -1603,7 +1599,7 @@ bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
       int iOneMinusEnzymeOffSet = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
       int iTwoMinusEnzymeOffSet = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
 
-      bEndCleavage = (iEndPos==(int)(strlen(szProteinSeq)-1)
+      bEndCleavage = (iEndPos == (int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term 
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + iOneMinusEnzymeOffSet])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + iTwoMinusEnzymeOffSet])));
@@ -2363,7 +2359,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       else
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
-      if (iEndPos == _proteinInfo.iProteinSeqLength-1)
+      if (iEndPos == _proteinInfo.iTmpProteinSeqLength - 1)
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = '-';
       else
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
@@ -2483,7 +2479,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
       else
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
-      if (iEndPos == _proteinInfo.iProteinSeqLength-1)
+
+      if (iEndPos == _proteinInfo.iTmpProteinSeqLength - 1)
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = '-';
       else
          pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
@@ -4368,8 +4365,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
    int iLenProteinMinus1;
 
-   // FIX:  any case when strlen(szProtein) not be the same as _proteinInfo.iProteinSeqLength??
-   iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
+   iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
    // Compare calculated fragment ions against all matching query spectra
 
@@ -4479,8 +4475,13 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                // is next AA).
 
                // Store flanking residues from original sequence.
-               if (_varModInfo.iStartPos==0)
-                  szDecoyPeptide[0]='-';
+               if (_varModInfo.iStartPos == 0)
+               {
+                  if (dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
+                     szDecoyPeptide[0] = 'M';  // from clipped N-term M
+                  else
+                     szDecoyPeptide[0] = '-';
+               }
                else
                   szDecoyPeptide[0]=szProteinSeq[_varModInfo.iStartPos-1];
 

@@ -257,8 +257,9 @@ private:
 
    struct ProteinInfo
    {
-       int  iProteinSeqLength;
-       int  iAllocatedProtSeqLength;
+       int  iProteinSeqLength;                    // length of sequence
+       int  iTmpProteinSeqLength;                 // either length of sequence or 1 less for skip N-term M
+       int  iAllocatedProtSeqLength;              // used in nucleotide to AA translation
        int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
        long lProteinFilePosition;
        char szProteinName[WIDTH_REFERENCE];
