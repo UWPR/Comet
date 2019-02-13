@@ -112,7 +112,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    // Target search
    CalculateSP(pQuery->_pResults, i, iSize);
 
-   qsort(pQuery->_pResults, iSize, sizeof(struct Results), QSortFnSp);
+   std::sort(pQuery->_pResults, pQuery->_pResults + iSize, QSortFnSp);
    pQuery->_pResults[0].iRankSp = 1;
 
    for (int ii=1; ii<iSize; ii++)
@@ -125,23 +125,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    }
 
    // Then sort each entry by xcorr
-   qsort(pQuery->_pResults, iSize, sizeof(struct Results), QSortFnXcorr);
-
-   // Need to sort by peptide sequence now for those entries that have same xcorr value.
-   // This will address peptides with I/L differences but same xcorr showing up
-   // differently in search results.  Or simply different peptides with same xcorr.
-   for (int ii=0; ii<iSize; ii++)
-   {
-      int j=ii+1;
-
-      while (j<iSize && (pQuery->_pResults[j].fXcorr == pQuery->_pResults[ii].fXcorr))
-         j++;
-
-      if (j>ii+1)
-         qsort(pQuery->_pResults + ii, j-ii, sizeof(struct Results), QSortFnPep);
-
-      ii=j-1;
-   }
+   std::sort(pQuery->_pResults, pQuery->_pResults + iSize, QSortFnXcorr);
 
    // if mod search, now sort peptides with same score but different mod locations
    if (g_staticParams.variableModParameters.bVarModSearch)
@@ -159,7 +143,9 @@ void CometPostAnalysis::AnalyzeSP(int i)
          }
 
          if (j>ii+1)
-            qsort(pQuery->_pResults + ii, j-ii, sizeof(struct Results), QSortFnMod);
+         {
+            std::sort(pQuery->_pResults + ii, pQuery->_pResults + j, QSortFnMod);
+         }
 
          ii=j-1;
       }
@@ -175,7 +161,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
       CalculateSP(pQuery->_pDecoys, i, iSize);
 
-      qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), QSortFnSp);
+      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, QSortFnSp);
       pQuery->_pDecoys[0].iRankSp = 1;
 
       for (int ii=1; ii<iSize; ii++)
@@ -188,21 +174,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
       }
 
       // Then sort each entry by xcorr
-      qsort(pQuery->_pDecoys, iSize, sizeof(struct Results), QSortFnXcorr);
-
-      // Need to sort by peptide sequence now for those entries that have same xcorr value
-      for (int ii=0; ii<iSize; ii++)
-      {
-         int j=ii+1;
-
-         while (j<iSize && (pQuery->_pDecoys[j].fXcorr == pQuery->_pDecoys[ii].fXcorr))
-            j++;
-
-         if (j>ii+1)
-            qsort(pQuery->_pDecoys + ii, j-ii, sizeof(struct Results), QSortFnPep);
-
-         ii=j-1;
-      }
+      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, QSortFnXcorr);
 
       // if mod search, now sort peptides with same score but different mod locations
       if (g_staticParams.variableModParameters.bVarModSearch)
@@ -218,7 +190,9 @@ void CometPostAnalysis::AnalyzeSP(int i)
             }
 
             if (j>ii+1)
-               qsort(pQuery->_pDecoys + ii, j-ii, sizeof(struct Results), QSortFnMod);
+            {
+               std::sort(pQuery->_pDecoys + ii, pQuery->_pDecoys + j, QSortFnMod);
+            }
 
             ii=j-1;
          }
@@ -402,63 +376,44 @@ bool CometPostAnalysis::ProteinEntryCmp(const struct ProteinEntryStruct &a,
 }
 
 
-int CometPostAnalysis::QSortFnSp(const void *a,
-                                 const void *b)
+int CometPostAnalysis::QSortFnSp(const Results &a,
+                                 const Results &b)
 {
-   struct Results *ia = (struct Results *)a;
-   struct Results *ib = (struct Results *)b;
-
-   if (ia->fScoreSp < ib->fScoreSp)
-      return 1;
-   else if (ia->fScoreSp > ib->fScoreSp)
-      return -1;
-   else
-      return 0;
+   if (a.fScoreSp > b.fScoreSp)
+      return true;
+   return false;
 }
 
 
-int CometPostAnalysis::QSortFnXcorr(const void *a,
-                                    const void *b)
+int CometPostAnalysis::QSortFnXcorr(const Results &a,
+                                    const Results &b)
 {
-   struct Results *ia = (struct Results *)a;
-   struct Results *ib = (struct Results *)b;
-
-   if (ia->fXcorr < ib->fXcorr)
-      return 1;
-   else if (ia->fXcorr > ib->fXcorr)
-      return -1;
-   else
-      return 0;
+   if (a.fXcorr > b.fXcorr)
+   {
+      return true;
+   }
+   else if (a.fXcorr == b.fXcorr && strcmp(a.szPeptide, b.szPeptide) < 0)
+   {
+      return true;
+   }
+   return false;
 }
 
 
-int CometPostAnalysis::QSortFnPep(const void *a,
-                                  const void *b)
+int CometPostAnalysis::QSortFnMod(const Results &a,
+                                  const Results &b)
 {
-   struct Results *ia = (struct Results *)a;
-   struct Results *ib = (struct Results *)b;
-
-   return (strcmp(ia->szPeptide, ib->szPeptide));
-}
-
-
-int CometPostAnalysis::QSortFnMod(const void *a,
-                                  const void *b)
-{
-   struct Results *ia = (struct Results *)a;
-   struct Results *ib = (struct Results *)b;
-
    // must compare character at a time
    // actually not sure why strcmp doesn't work
    // as piVarModSites is a char array
    for (int i=0; i<MAX_PEPTIDE_LEN_P2; i++)
    {
-      if (ia->piVarModSites[i] < ib->piVarModSites[i])
-         return -1;
-      else if (ia->piVarModSites[i] > ib->piVarModSites[i])
-         return 1;
+      if (a.piVarModSites[i] < b.piVarModSites[i])
+         return true;
+      else if (a.piVarModSites[i] > b.piVarModSites[i])
+         return false;
    }
-   return 0;
+   return false;
 }
 
 

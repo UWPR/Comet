@@ -1426,7 +1426,7 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
       if ((*it)->iMatchPeptideCount > 0)
       {
          // simply take top xcorr peptide as E-value calculation too expensive
-         qsort((*it)->_pResults, iSize, sizeof(struct Results), CometPostAnalysis::QSortFnXcorr);
+         std::sort((*it)->_pResults, (*it)->_pResults + iSize, CometPostAnalysis::QSortFnXcorr);
 
          // Retrieve protein name
          if ((*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
