@@ -2339,7 +2339,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    // simply take top xcorr peptide as E-value calculation too expensive
    if (iSize > 1) {
-      std::sort(g_pvQuery.at(0)->_pResults, g_pvQuery.at(0)->_pResults + iSize, CometPostAnalysis::QSortFnXcorr);
+      std::sort(g_pvQuery.at(0)->_pResults, g_pvQuery.at(0)->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
 
    Query* pQuery;

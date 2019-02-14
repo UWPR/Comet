@@ -41,16 +41,16 @@ public:
    static bool PostAnalysis(int minNumThreads, int maxNumThreads);
    static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData);
    static void AnalyzeSP(int i);
-   static int QSortFnXcorr(const Results &a,
+   static bool SortFnXcorr(const Results &a,
                            const Results &b);
 private:
    static void CalculateSP(Results *pOutput,
                            int iWhichQuery,
                            int iSize);
-   static int QSortFnSp(const Results &a,
+   static bool SortFnSp(const Results &a,
                         const Results &b);
 
-   static int QSortFnMod(const Results &a,
+   static bool SortFnMod(const Results &a,
                          const Results &b);
    static bool CalculateEValue(int iWhichQuery);
    static bool GenerateXcorrDecoys(int iWhichQuery);

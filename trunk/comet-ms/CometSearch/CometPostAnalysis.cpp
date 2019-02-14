@@ -112,7 +112,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    // Target search
    CalculateSP(pQuery->_pResults, i, iSize);
 
-   std::sort(pQuery->_pResults, pQuery->_pResults + iSize, QSortFnSp);
+   std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnSp);
    pQuery->_pResults[0].iRankSp = 1;
 
    for (int ii=1; ii<iSize; ii++)
@@ -125,7 +125,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    }
 
    // Then sort each entry by xcorr
-   std::sort(pQuery->_pResults, pQuery->_pResults + iSize, QSortFnXcorr);
+   std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnXcorr);
 
    // if mod search, now sort peptides with same score but different mod locations
    if (g_staticParams.variableModParameters.bVarModSearch)
@@ -144,7 +144,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
          if (j>ii+1)
          {
-            std::sort(pQuery->_pResults + ii, pQuery->_pResults + j, QSortFnMod);
+            std::sort(pQuery->_pResults + ii, pQuery->_pResults + j, SortFnMod);
          }
 
          ii=j-1;
@@ -161,7 +161,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
       CalculateSP(pQuery->_pDecoys, i, iSize);
 
-      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, QSortFnSp);
+      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, SortFnSp);
       pQuery->_pDecoys[0].iRankSp = 1;
 
       for (int ii=1; ii<iSize; ii++)
@@ -174,7 +174,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
       }
 
       // Then sort each entry by xcorr
-      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, QSortFnXcorr);
+      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, SortFnXcorr);
 
       // if mod search, now sort peptides with same score but different mod locations
       if (g_staticParams.variableModParameters.bVarModSearch)
@@ -191,7 +191,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
             if (j>ii+1)
             {
-               std::sort(pQuery->_pDecoys + ii, pQuery->_pDecoys + j, QSortFnMod);
+               std::sort(pQuery->_pDecoys + ii, pQuery->_pDecoys + j, SortFnMod);
             }
 
             ii=j-1;
@@ -376,7 +376,7 @@ bool CometPostAnalysis::ProteinEntryCmp(const struct ProteinEntryStruct &a,
 }
 
 
-int CometPostAnalysis::QSortFnSp(const Results &a,
+bool CometPostAnalysis::SortFnSp(const Results &a,
                                  const Results &b)
 {
    if (a.fScoreSp > b.fScoreSp)
@@ -385,7 +385,7 @@ int CometPostAnalysis::QSortFnSp(const Results &a,
 }
 
 
-int CometPostAnalysis::QSortFnXcorr(const Results &a,
+bool CometPostAnalysis::SortFnXcorr(const Results &a,
                                     const Results &b)
 {
    if (a.fXcorr > b.fXcorr)
@@ -400,7 +400,7 @@ int CometPostAnalysis::QSortFnXcorr(const Results &a,
 }
 
 
-int CometPostAnalysis::QSortFnMod(const Results &a,
+bool CometPostAnalysis::SortFnMod(const Results &a,
                                   const Results &b)
 {
    // must compare character at a time

@@ -502,7 +502,11 @@ bool CometSearch::RunSearch(int minNumThreads,
                            if (pTmp == NULL)
                            {
                               char szErrorMsg[512];
+#ifdef WIN32
                               sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
+#else
+                              sprintf(szErrorMsg,  " Error realloc(szMods[%ld])\n", iLenAllocMods);
+#endif
                               string strErrorMsg(szErrorMsg);
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(szErrorMsg);
@@ -644,7 +648,11 @@ bool CometSearch::RunSearch(int minNumThreads,
                            if (pTmp == NULL)
                            {
                               char szErrorMsg[512];
+#ifdef WIN32
                               sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
+#else
+                              sprintf(szErrorMsg,  " Error realloc(szMods[%ld])\n", iLenAllocMods);
+#endif
                               string strErrorMsg(szErrorMsg);
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(szErrorMsg);
@@ -1426,7 +1434,7 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
       if ((*it)->iMatchPeptideCount > 0)
       {
          // simply take top xcorr peptide as E-value calculation too expensive
-         std::sort((*it)->_pResults, (*it)->_pResults + iSize, CometPostAnalysis::QSortFnXcorr);
+         std::sort((*it)->_pResults, (*it)->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
 
          // Retrieve protein name
          if ((*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)

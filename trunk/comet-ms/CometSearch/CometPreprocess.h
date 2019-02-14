@@ -131,8 +131,8 @@ private:
    static void GetTopIons(double *pdTmpRawData,
                           struct msdata *pTmpSpData,
                           int iArraySize);
-   static int QsortByIon(const void *p0,
-                         const void *p1);
+   static bool SortByIon(const struct msdata &a,
+                         const struct msdata &b);
    static void StairStep(struct msdata *pTmpSpData);
    static bool IsValidInputType(int inputType);
 

@@ -569,14 +569,10 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    if (g_staticParams.tolerances.dFragmentBinSize >= 0.10)
    {
       if (!Smooth(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpSmoothedSpectrum))
-      {
          return false;
-      }
 
       if (!PeakExtract(pdTmpRawData, pScoring->_spectrumInfoInternal.iArraySize, pdTmpPeakExtracted))
-      {
          return false;
-      }
    }
 
    for (i=0; i<NUM_SP_IONS; i++)
@@ -587,7 +583,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
 
-   qsort(pTmpSpData, NUM_SP_IONS, sizeof(struct msdata), QsortByIon);
+   std::sort(pTmpSpData, pTmpSpData + NUM_SP_IONS, SortByIon);
 
    // Modify for Sp data.
    StairStep(pTmpSpData);
@@ -1593,14 +1589,13 @@ void CometPreprocess::GetTopIons(double *pdTmpRawData,
 }
 
 
-int CometPreprocess::QsortByIon(const void *p0, const void *p1)
+bool CometPreprocess::SortByIon(const struct msdata &a,
+                                const struct msdata &b)
 {
-   if ( ((struct msdata *) p1)->dIon < ((struct msdata *) p0)->dIon )
-      return (1);
-   else if ( ((struct msdata *) p1)->dIon > ((struct msdata *) p0)->dIon )
-      return (-1);
+   if (a.dIon < b.dIon)
+      return true;
    else
-      return (0);
+      return false;
 }
 
 
@@ -2099,7 +2094,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
 
-   qsort(pTmpSpData, NUM_SP_IONS, sizeof(struct msdata), QsortByIon);
+   std::sort(pTmpSpData, pTmpSpData + NUM_SP_IONS, SortByIon);
 
    // Modify for Sp data.
    StairStep(pTmpSpData);
