@@ -2131,8 +2131,12 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
                                      int iStartPos,
                                      int iEndPos)
 {
+   int iPepLen = iEndPos - iStartPos + 1;
+
    if (dCalcPepMass >= g_massRange.dMinMass
          && dCalcPepMass <= g_massRange.dMaxMass
+         && iPepLen >= g_staticParams.options.peptideLengthRange.iStart
+         && iPepLen <= g_staticParams.options.peptideLengthRange.iEnd
          && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
    {
       // if creating indexed database, only care of peptide is within global mass range

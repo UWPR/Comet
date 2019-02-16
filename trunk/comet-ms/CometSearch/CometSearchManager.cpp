@@ -503,6 +503,23 @@ static bool ValidateScanRange()
    return true;
 }
 
+static bool ValidatePeptideLengthRange()
+{
+   if (g_staticParams.options.peptideLengthRange.iEnd < g_staticParams.options.peptideLengthRange.iStart && g_staticParams.options.peptideLengthRange.iEnd != 0)
+   {
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, " Error - peptide length range set as %d to %d.\n The maximum length must be >= to the minimum length.\n",
+            g_staticParams.options.peptideLengthRange.iStart,
+            g_staticParams.options.peptideLengthRange.iEnd);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+
+   return true;
+}
+
 /******************************************************************************
 *
 * CometSearchManager class implementation.
@@ -804,6 +821,15 @@ bool CometSearchManager::InitializeStaticParams()
       {
          g_staticParams.options.scanRange.iStart = intRangeData.iStart;
          g_staticParams.options.scanRange.iEnd = intRangeData.iEnd;
+      }
+   }
+
+   if (GetParamValue("peptide_length_range", intRangeData))
+   {
+      if ((intRangeData.iEnd >= intRangeData.iStart) && (intRangeData.iStart > 0))
+      {
+         g_staticParams.options.peptideLengthRange.iStart = intRangeData.iStart;
+         g_staticParams.options.peptideLengthRange.iEnd = intRangeData.iEnd;
       }
    }
 
@@ -1448,6 +1474,9 @@ bool CometSearchManager::DoSearch()
       return false;
 
    if (!ValidateScanRange())
+      return false;
+
+   if (!ValidatePeptideLengthRange())
       return false;
 
    bool bSucceeded = true;

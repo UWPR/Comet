@@ -26,6 +26,7 @@ class CometSearchManager;
 #define C13_DIFF                    1.00335483
 
 #define FLOAT_ZERO                  1e-6     // 0.000001
+#define MIN_PEPTIDE_LEN             1        // min # of AA for a petpide
 #define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide; one less to account for terminating char
 #define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
 #define MAX_PEFFMOD_LEN             16
@@ -115,6 +116,7 @@ struct Options             // output parameters
    double dPeptideMassHigh;      // MH+ mass
 
    IntRange scanRange;
+   IntRange peptideLengthRange;
    DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
 
@@ -126,6 +128,7 @@ struct Options             // output parameters
       iEnzymeTermini = a.iEnzymeTermini;
       iNumStored = a.iNumStored;
       scanRange = a.scanRange;
+      peptideLengthRange = a.peptideLengthRange;
       iSpectrumBatchSize = a.iSpectrumBatchSize;
       iStartCharge = a.iStartCharge;
       iEndCharge = a.iEndCharge;
@@ -748,6 +751,9 @@ struct StaticParams
 
       options.clearMzRange.dStart = 0.0;
       options.clearMzRange.dEnd = 0.0;
+
+      options.peptideLengthRange.iStart = MIN_PEPTIDE_LEN;
+      options.peptideLengthRange.iEnd = MAX_PEPTIDE_LEN-1;  // -1 accounts for terminating char
 
       staticModifications.dAddCterminusPeptide = 0.0;
       staticModifications.dAddNterminusPeptide = 0.0;

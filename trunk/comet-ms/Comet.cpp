@@ -921,6 +921,15 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iAllowedMissedCleavages);
                pSearchMgr->SetParam("allowed_missed_cleavage", szParamStringVal, iAllowedMissedCleavages);
             }
+            else if (!strcmp(szParamName, "peptide_length_range"))
+            {
+               intRangeParam.iStart = 0;
+               intRangeParam.iEnd = 0;
+               sscanf(szParamVal, "%d %d", &intRangeParam.iStart, &intRangeParam.iEnd);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d %d", intRangeParam.iStart, intRangeParam.iEnd);
+               pSearchMgr->SetParam("peptide_length_range", szParamStringVal, intRangeParam);
+            }
             else if (!strcmp(szParamName, "scan_range"))
             {
                intRangeParam.iStart = 0;
@@ -1425,10 +1434,13 @@ activation_method = ALL                # activation method; used if activation m
 # misc parameters\n\
 #\n\
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
+peptide_length_range = 5 63            # minimum and maximum peptide length to analyze (default %d %d)\n\
 num_results = 100                      # number of search hits to store internally\n\
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
+      1,
+      63, /*MAX_PEPTIDE_LENGTH-1*/
       MAX_FRAGMENT_CHARGE,
       MAX_PRECURSOR_CHARGE);
 
