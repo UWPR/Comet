@@ -642,7 +642,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("max_variable_mods_in_peptide", iIntData))
    {
-      if (iIntData > 0)
+      if (iIntData >= 0)
          g_staticParams.variableModParameters.iMaxVarModPerPeptide = iIntData;
    }
 
@@ -2803,7 +2803,11 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
    fprintf(fptr, "MassRange: %f %f\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
    fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
-   fprintf(fptr, "Enzyme: %s\n", g_staticParams.enzymeInformation.szSearchEnzymeName);
+   fprintf(fptr, "Enzyme: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzymeName,
+      g_staticParams.enzymeInformation.iSearchEnzymeOffSet, 
+      g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, 
+      g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+   fprintf(fptr, "NumPeptides: %ld\n", (long)g_pvDBIndex.size());
 
    // write out static mod params A to Z is ascii 65 to 90 then terminal mods
    fprintf(fptr, "StaticMod:");
@@ -2879,8 +2883,8 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    int iTmpCh = (int)(g_staticParams.options.dPeptideMassLow);
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
    fwrite(&iMaxPeptideMass, sizeof(int), 1, fptr);  // write max mass
-   iTmpCh = (int)g_pvDBIndex.size();       // FIX change this to a unsigned long
-   fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write # of peptides
+   size_t tNumPeptides = g_pvDBIndex.size();
+   fwrite(&tNumPeptides, sizeof(size_t), 1, fptr);  // write # of peptides
    fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass, fptr); // write index
    fwrite(&lEndOfPeptides, sizeof(comet_fileoffset_t), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
 

@@ -1292,17 +1292,19 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
    // read index
    int iMinMass=0;
    int iMaxMass=0;
-   int iNumPeptides=0;
+   size_t tNumPeptides=0;
    comet_fseek(fp, lEndOfStruct, SEEK_SET);
    fread(&iMinMass, sizeof(int), 1, fp);
    fread(&iMaxMass, sizeof(int), 1, fp);
-   fread(&iNumPeptides, sizeof(int), 1, fp);
+   fread(&tNumPeptides, sizeof(size_t), 1, fp);
 
    // sanity checks
    if (iMinMass < 0 || iMinMass > 20000 || iMaxMass < 0 || iMaxMass > 20000)
    {
-      printf(" Error reading .idx database:  min mass %d, max mass %d, num peptides %d\n", iMinMass, iMaxMass, iNumPeptides);
-      getchar();
+      char szErr[256];
+      sprintf(szErr, " Error reading .idx database:  min mass %d, max mass %d, num peptides %zu\n", iMinMass, iMaxMass, tNumPeptides);
+      logerr(szErr);
+      fclose(fp);
       return false;
    }
 
