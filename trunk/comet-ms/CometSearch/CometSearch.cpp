@@ -4086,8 +4086,8 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                               int piTmpVarModCounts[] = {i1, i2, i3, i4, i5, i6, i7, i8, i9};
 
 
-                              if (g_staticParams.options.lMaxIterations > 0 && lNumIterations >= g_staticParams.options.lMaxIterations)
-                                 break;
+//                            if (g_staticParams.options.lMaxIterations > 0 && lNumIterations >= g_staticParams.options.lMaxIterations)
+//                               break;
 
                               if (i1>0 || i2>0 || i3>0 || i4>0 || i5>0 || i6>0 || i7>0 || i8>0 || i9>0 || bPeffMod)
                               {
@@ -4562,8 +4562,8 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 {
    int iModIndex;
 
-   if (g_staticParams.options.lMaxIterations > 0 && *lNumIterations >= g_staticParams.options.lMaxIterations)
-      return false;
+// if (g_staticParams.options.lMaxIterations > 0 && *lNumIterations >= g_staticParams.options.lMaxIterations)
+//    return false;
 
    switch (iWhichMod)
    {
@@ -4816,8 +4816,8 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    int i;
    int j;
 
-   if (g_staticParams.options.lMaxIterations > 0 && *lNumIterations >= g_staticParams.options.lMaxIterations)
-      return false;  // this will stop all further permutations of peptide
+// if (g_staticParams.options.lMaxIterations > 0 && *lNumIterations >= g_staticParams.options.lMaxIterations)
+//    return false;  // this will stop all further permutations of peptide
 
    // at this point, need to compare current modified peptide
    // against all relevant entries
@@ -5190,7 +5190,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
    int iLenProteinMinus1;
 
-   *lNumIterations += 1;
+// *lNumIterations += 1;
 
    iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
 
