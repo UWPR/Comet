@@ -1292,11 +1292,11 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
    // read index
    int iMinMass=0;
    int iMaxMass=0;
-   size_t tNumPeptides=0;
+   uint64_t tNumPeptides=0;
    comet_fseek(fp, lEndOfStruct, SEEK_SET);
    fread(&iMinMass, sizeof(int), 1, fp);
    fread(&iMaxMass, sizeof(int), 1, fp);
-   fread(&tNumPeptides, sizeof(size_t), 1, fp);
+   fread(&tNumPeptides, sizeof(uint64_t), 1, fp);
 
    // sanity checks
    if (iMinMass < 0 || iMinMass > 20000 || iMaxMass < 0 || iMaxMass > 20000)
@@ -1576,7 +1576,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                sEntry.dPepMass = dCalcPepMass;  //MH+ mass
                strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iLenPeptide);
                sEntry.szPeptide[iLenPeptide]='\0';
-         
+
                if (iStartPos == 0)
                   sEntry.szPrevNextAA[0] = '-';
                else

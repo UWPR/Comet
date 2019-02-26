@@ -2883,8 +2883,8 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    int iTmpCh = (int)(g_staticParams.options.dPeptideMassLow);
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
    fwrite(&iMaxPeptideMass, sizeof(int), 1, fptr);  // write max mass
-   size_t tNumPeptides = g_pvDBIndex.size();
-   fwrite(&tNumPeptides, sizeof(size_t), 1, fptr);  // write # of peptides
+   uint64_t tNumPeptides = g_pvDBIndex.size();
+   fwrite(&tNumPeptides, sizeof(uint64_t), 1, fptr);  // write # of peptides
    fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass, fptr); // write index
    fwrite(&lEndOfPeptides, sizeof(comet_fileoffset_t), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
 
