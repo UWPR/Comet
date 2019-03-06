@@ -2279,7 +2279,7 @@ int CometSearchManager::CheckIdxPrecursorMatch(const int iPrecursorCharge,
                                                const double dMZ)
 {
    // Now that spectra are loaded to memory and sorted, do search.
-   int iReturn;
+   int iReturn = 0;
 
    CometSearch::CheckIdxPrecursorMatch(iPrecursorCharge, dMZ, &iReturn);
 
@@ -2300,6 +2300,11 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 {
    int iPercentStart = 0;
    int iPercentEnd = 0;
+
+   score.dCn = 0;
+   score.xCorr = 0;
+   score.matchedIons = 0;
+   score.totalIons = 0;
 
    if (iNumPeaks == 0)
       return false;
@@ -2841,21 +2846,22 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    // next write out the peptides and track peptide mass index
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
-   comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass];
-   for (int x = 0; x < iMaxPeptideMass; x++)
+   int iMaxPeptideMass10 = iMaxPeptideMass * 10;  // make mass index at resolution of 0.1 Da
+   comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass10];
+   for (int x = 0; x < iMaxPeptideMass10; x++)
       lIndex[x] = -1;
 
    // write out struct data
-   int iPrevMass = 0;
+   int iPrevMass10 = 0;
    int iWhichProtein = 0;
    long lNumMatchedProteins = 0;
    for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
    {
-      if ((int)((*it).dPepMass) > iPrevMass)
+      if ((int)((*it).dPepMass * 10.0) > iPrevMass10)
       {
-         iPrevMass = (int)((*it).dPepMass);
-         if (iPrevMass < iMaxPeptideMass)
-            lIndex[iPrevMass] = comet_ftell(fptr);
+         iPrevMass10 = (int)((*it).dPepMass * 10.0);
+         if (iPrevMass10 < iMaxPeptideMass10)
+            lIndex[iPrevMass10] = comet_ftell(fptr);
       }
 
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
@@ -2885,7 +2891,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fwrite(&iMaxPeptideMass, sizeof(int), 1, fptr);  // write max mass
    uint64_t tNumPeptides = g_pvDBIndex.size();
    fwrite(&tNumPeptides, sizeof(uint64_t), 1, fptr);  // write # of peptides
-   fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass, fptr); // write index
+   fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fptr); // write index
    fwrite(&lEndOfPeptides, sizeof(comet_fileoffset_t), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
 
    fclose(fptr);

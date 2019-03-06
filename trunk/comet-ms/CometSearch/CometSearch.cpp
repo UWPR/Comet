@@ -105,14 +105,9 @@ void CometSearch::CheckIdxPrecursorMatch(int iPrecursorCharge,
                                          double dMZ,
                                          int* iPrecursorMatch)
 {
-   double dMH;
-
    Query *pScoring = new Query();
 
-
-   dMH = (dMZ * iPrecursorCharge) - (iPrecursorCharge - 1)*PROTON_MASS;
-
-   pScoring->_pepMassInfo.dExpPepMass = dMH;
+   pScoring->_pepMassInfo.dExpPepMass = (dMZ * iPrecursorCharge) - (iPrecursorCharge - 1)*PROTON_MASS;;
    pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
    pScoring->iSpScoreData = 0;
    pScoring->iFastXcorrData = 0;
@@ -216,8 +211,8 @@ void CometSearch::CheckIdxPrecursorMatch(int iPrecursorCharge,
       logerr(szErrorMsg);
       return;
    }
-   
-   pScoring->_pResults = new Results[0];
+
+   pScoring->_pResults = new Results[1];
 
    g_pvQuery.push_back(pScoring);
 
@@ -1273,7 +1268,7 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
 
    // indexed searches will always set this to true
    g_staticParams.variableModParameters.bVarModSearch = true;
- 
+
    // read fp of index
    comet_fileoffset_t clTmp;
 #ifdef _WIN32
@@ -1308,11 +1303,12 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
       return false;
    }
 
-   comet_fileoffset_t *lReadIndex = new comet_fileoffset_t[iMaxMass+1];
-   for (int i=0; i<iMaxMass+1; i++)
+   int iMaxPeptideMass10 = iMaxMass * 10;
+   comet_fileoffset_t *lReadIndex = new comet_fileoffset_t[iMaxPeptideMass10];
+   for (int i=0; i< iMaxPeptideMass10; i++)
       lReadIndex[i] = -1;
 
-   fread(lReadIndex, sizeof(comet_fileoffset_t), iMaxMass+1, fp);
+   fread(lReadIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fp);
 
    int iStart = (int)(g_massRange.dMinMass - 0.5);  // smallest mass/index start
    int iEnd = (int)(g_massRange.dMaxMass + 0.5);  // largest mass/index end
@@ -1329,12 +1325,21 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
    if (iEnd > iMaxMass)
       iEnd = iMaxMass;
 
+   int iStart10 = (int)(g_massRange.dMinMass*10.0 - 0.5);  // lReadIndex is at 0.1 resolution for index value so scale iStart/iEnd to be same
+   int iEnd10 = (int)(g_massRange.dMaxMass*10.0 + 0.5);
+
+   if (iStart10 < iMinMass*10)
+      iStart10 = iMinMass*10;
+   if (iEnd10 > iMaxMass*10)
+      iEnd10 = iMaxMass*10;
+
    struct DBIndex sDBI;
    sDBEntry dbe;
 
-   while (lReadIndex[iStart] == -1 && iStart<iEnd)
-      iStart++;
-   comet_fseek(fp, lReadIndex[iStart], SEEK_SET);
+   while (lReadIndex[iStart10] == -1 && iStart < iEnd10)
+      iStart10++;
+
+   comet_fseek(fp, lReadIndex[iStart10], SEEK_SET);
    fread(&sDBI, sizeof(struct DBIndex), 1, fp);
 
    // Now read in the protein file positions here; not used yet
@@ -1351,7 +1356,7 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
    _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
    dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1];  // make string including prev/next AA
 
-   while ((int)sDBI.dPepMass <= iEnd)
+   while ((int)(sDBI.dPepMass * 10) <= iEnd10)
    {
 /*
       printf("OK  index pep ");
@@ -1400,7 +1405,7 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
          break;
 
       fread(&sDBI, sizeof(struct DBIndex), 1, fp);
-      // Now read in the protein file positions here; not used yet
+      // Now read in the protein file positions for this sDBI peptide entry; not used yet
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition = comet_ftell(fp);
       fread(&lSize, sizeof(long), 1, fp);
       for (long x = 0; x < lSize; x++)

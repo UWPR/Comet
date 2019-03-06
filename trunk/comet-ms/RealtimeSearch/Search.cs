@@ -68,11 +68,20 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int iMaxElapsedTime = 10;
-               int[] piElapsedTime = new int[iMaxElapsedTime];  // histogram of search times
+               int iMaxElapsedTime = 30;
+               int[] piTimeSearch = new int[iMaxElapsedTime];  // histogram of search times
+               int[] piTimeMatch = new int[iMaxElapsedTime];  // histogram of search times
                for (int i = 0; i < iMaxElapsedTime; i++)
-                  piElapsedTime[i] = 0;
+               {
+                  piTimeSearch[i] = 0;
+                  piTimeMatch[i] = 0;
+               }
                int iPass = 1;  // count number of passes/loops through raw file
+
+               int iPositive = 0; // number of entries with a match in db
+               int iNegative = 0; // number of entries without a match in db
+
+               int iTime = 0;
 
                SearchMgr.InitializeSingleSpectrumSearch();
 
@@ -139,7 +148,18 @@
 
                         // return:  iMatch==1 means there is a match to peptide in index
                         // Does not make sense to call CheckIdxPrecursorMatch unless database is small
+
+                        watch.Start();
                         iMatch = SearchMgr.CheckIdxPrecursorMatch(iPrecursorCharge, dPrecursorMZ);
+                        watch.Stop();
+
+                        iTime = (int)watch.ElapsedMilliseconds;
+                        if (iTime >= iMaxElapsedTime)
+                           iTime = iMaxElapsedTime - 1;
+                        if (iTime >= 0)
+                           piTimeMatch[iTime] += 1;
+
+                        watch.Reset();
 
                         if (iMatch == 1)  // only search if there is a precursor match in database
                         {
@@ -156,17 +176,17 @@
                            double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
                            // do not decode peptide/proteins strings unless xcorr>0
-                           if (true) //xcorr > 0)
+                           if (xcorr >= 0)
                            {
-                              if ((iScanNumber % 1000) == 0)
+                              if ((iScanNumber % 10000) == 0)
                               {
                                  if (protein.Length > 10)
                                     protein = protein.Substring(0, 10);  // trim to avoid printing long protein description string
 
-                                 Console.WriteLine("pass {12}, iMatch {13}\t{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.00}\t{8}\t{10}/{11}",
+                                 Console.WriteLine("pass {12}\t{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.00}\t{8}\t{10}/{11}",
                                     iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein,
-                                    xcorr, watch.ElapsedMilliseconds, dPepMass, iIonsMatch, iIonsTotal, iPass, iMatch);
-
+                                    xcorr, watch.ElapsedMilliseconds, dPepMass, iIonsMatch, iIonsTotal, iPass);
+/*
                                  foreach (var myFragment in matchingFragments)
                                  {
                                     Console.WriteLine("{0:0000.0000} {1:0.0} {2} {3}",
@@ -175,18 +195,23 @@
                                        myFragment.Charge,
                                        myFragment.Type);
                                  }
+*/
                               }
                            }
                         }
 
-
-                        int iTime = (int)watch.ElapsedMilliseconds;
+                        iTime = (int)watch.ElapsedMilliseconds;
                         if (iTime >= iMaxElapsedTime)
                            iTime = iMaxElapsedTime-1;
                         if (iTime >= 0)
-                           piElapsedTime[iTime] += 1;
+                           piTimeSearch[iTime] += 1;
 
                         watch.Reset();
+
+                        if (iMatch == 1)
+                           iPositive += 1;
+                        else
+                           iNegative += 1;
                      }
                   }
 /*
@@ -203,7 +228,9 @@
 
                // write out histogram of spectrum search times
                for (int i = 0; i < iMaxElapsedTime; i++)
-                  Console.WriteLine("{0}\t{1}", i, piElapsedTime[i]);
+                  Console.WriteLine("{0}\t{1}\t{2}", i, piTimeSearch[i], piTimeMatch[i]);
+
+               Console.WriteLine("positive {0}\tnegative {1}", iPositive, iNegative);
 
                rawFile.Dispose();
             }
@@ -220,6 +247,7 @@
 
 
          Console.WriteLine("{0} Done.{1}", Environment.NewLine, Environment.NewLine);
+         //Console.ReadLine();
          return;
       }
 
@@ -236,7 +264,7 @@
 
             SearchMgr.SetParam("database_name", sDB, sDB);
 
-            dTmp = 20.0; //ppm window
+            dTmp = 2.0; //ppm window
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("peptide_mass_tolerance", sTmp, dTmp);
 
