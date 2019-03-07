@@ -20,6 +20,7 @@
                   <li><tt>comet.exe input.mzML</tt>
                   <li><tt>comet.exe input.mgf</tt>
                   <li><tt>comet.exe input.ms2</tt>
+                  <li><tt>comet.exe *.ms2</tt>   <i>multiple inputs supported</i>
                </ul>
             </div>
             <div class="post hr">

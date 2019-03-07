@@ -3,7 +3,46 @@
       <div class="post hr">
          <h1>Comet release 2018.01</h1>
             <ul>
+               <b>release 2018.01 rev. 4 (2018.01.4), release date 2019/02/13</b>
+               <li>Bug fix: the flanking/next amino acid is not reported correctly as a dash "-"
+                   character when the last residue in the peptide is the last residue in the protein.
+                   This appears to occur in short sequence entries where the identified peptide is the
+                   full length sequence entry with a clipped/skipped N-term methionine residue
+                   ("<a href="/parameters/parameters_201801/clip_nterm_methionine.php">clip_nterm_methionine</a>").
+                   Thanks to F. Yu for reporting this.
+               <li>Performance fix: in release 2018.01.3, a protein string length function call was
+                   added to a termini check that gets called many times. This had a significant impact
+                   on performance and has been addressed. For example, a search taking 7m:42s on version
+                   2018.01.3 search was reduced back to 2m:33s with version 2018.01.4.
+               <li>Performance fix: if the
+                   "<a href="/parameters/parameters_201801/scan_range.php">scan_range</a>"
+                   parameter is specified, Comet would sequentially read each scan header starting from
+                   scan 1 in order to reach the first scan in the
+                   "<a href="/parameters/parameters_201801/scan_range.php">scan_range</a>"
+                   parameter. Comet will now jump to that first scan directly, saving on unnecessary
+                   file parsing.
+               <li>The Windows version of this release is now compiled with Microsoft Visual Studio 2017.
+                   Previous Windows releases were compiled with VS 2010.
+               <li>Known bug:  
+                   "<a href="/parameters/parameters_201801/max_variable_mods_in_peptide.php">max_variable_mods_in_peptide</a>"
+                   does not support "0". Until this is addressed, do not specify any variable mods
+                   if you do not want to search with variable mods.
+            </ul>
+            <ul>
+               <b>release 2018.01 rev. 3 (2018.01.3), release date 2018/12/05</b>
+               <li>Bug fix: the
+                   "<a href="/parameters/parameters_201801/clip_nterm_methionine.php">clip_nterm_methionine</a>"
+                   parameter has been broken since the 2017.01 release; it works again.  Thanks to
+                   A.T.Guler for reporting the bug.
+               <li>Bug fix: add a missing tab in Crux-compiled text output.
+            </ul>
+            <ul>
                <b>release 2018.01 rev. 2 (2018.01.2), release date 2018/06/13</b>
+               <li>Known bug: if no variable mod is specified, the static modification
+                   mass reported in the "mod_aminoacid_mass" element of the pepXML output
+                   can be corrupted. This bug is present as far back as the Comet 2017.01
+                   release and only manifests itself when at least one static modification
+                   is specified and no variable modifications are specified.
                <li>Bug fix: remove version update check. In some instances, timeout and
                    host access issues were causing Comet to abort searches. The
                    "<a href="/parameters/parameters_201801/skip_updatecheck.php">skip_updatecheck</a>"
