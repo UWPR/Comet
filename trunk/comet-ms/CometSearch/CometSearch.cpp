@@ -1336,7 +1336,7 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
    struct DBIndex sDBI;
    sDBEntry dbe;
 
-   while (lReadIndex[iStart10] == -1 && iStart < iEnd10)
+   while (lReadIndex[iStart10] == -1 && iStart10 < iEnd10)
       iStart10++;
 
    comet_fseek(fp, lReadIndex[iStart10], SEEK_SET);

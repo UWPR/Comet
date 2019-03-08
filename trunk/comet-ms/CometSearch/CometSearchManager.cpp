@@ -2847,8 +2847,8 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // next write out the peptides and track peptide mass index
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
    int iMaxPeptideMass10 = iMaxPeptideMass * 10;  // make mass index at resolution of 0.1 Da
-   comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass10];
-   for (int x = 0; x < iMaxPeptideMass10; x++)
+   comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass10 + 1];
+   for (int x = 0; x <= iMaxPeptideMass10; x++)
       lIndex[x] = -1;
 
    // write out struct data
