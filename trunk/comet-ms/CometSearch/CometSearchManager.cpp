@@ -1189,6 +1189,9 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.enzymeInformation.iOneMinusOffset = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
    g_staticParams.enzymeInformation.iTwoMinusOffset = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
 
+   if (g_staticParams.options.iMaxDuplicateProteins == -1)
+      g_staticParams.options.iMaxDuplicateProteins = INT_MAX;
+
    return true;
 }
 
