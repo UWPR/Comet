@@ -336,6 +336,8 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
 
    // Print protein reference/accession.
    char szProteinName[100];
+   int iPrintDuplicateProteinCt = 0;
+
    for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
    {
       CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
@@ -353,20 +355,28 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
          if (g_staticParams.options.bOutputSqtFile)
             fprintf(fpout,  "L\t%s\t%d\n", szProteinName, (*it).iStartResidue);
       }
+
+      iPrintDuplicateProteinCt++;
+      if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
+         break;
    }
 
    // If combined search printed out target proteins above, now print out decoy proteins if necessary
-   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
+         && iPrintDuplicateProteinCt <= g_staticParams.options.iMaxDuplicateProteins)
    {
       for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
       {
          CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-         {
-            if (g_staticParams.options.bOutputSqtStream)
-               fprintf(stdout, "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
-            if (g_staticParams.options.bOutputSqtFile)
-               fprintf(fpout,  "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
-         }
+
+         if (g_staticParams.options.bOutputSqtStream)
+            fprintf(stdout, "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
+         if (g_staticParams.options.bOutputSqtFile)
+            fprintf(fpout,  "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
+
+         iPrintDuplicateProteinCt++;
+         if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
+            break;
       }
    }
 }

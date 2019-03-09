@@ -680,6 +680,7 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("num_output_lines", g_staticParams.options.iNumPeptideOutputLines);
 
    GetParamValue("num_results", g_staticParams.options.iNumStored);
+   GetParamValue("max_duplicate_proteins", g_staticParams.options.iMaxDuplicateProteins);
 
    GetParamValue("remove_precursor_peak", g_staticParams.options.iRemovePrecursor);
 
@@ -2734,6 +2735,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fflush(stdout);
 
    // keep unique entries only; sort by peptide/modification state and protein
+   // first sort by peptide, then mod state, then protein file position
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByPeptide);
 
    // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
@@ -2754,13 +2756,15 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       }
       else
       {
-         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide))
+         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide)
+            && !memcmp(g_pvDBIndex.at(i).pcVarModSites, g_pvDBIndex.at(i-1).pcVarModSites,
+                          strlen(g_pvDBIndex.at(i).szPeptide)*sizeof(char)))
          {
             // peptide is same as previous, add in the current protein offset if not same as prev
             if (g_pvDBIndex.at(i).lIndexProteinFilePosition != g_pvDBIndex.at(i-1).lIndexProteinFilePosition)
             {
                g_pvProteinsList.at(g_pvProteinsList.size()-1).push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-               g_pvDBIndex.at(i).lIndexProteinFilePosition = g_pvDBIndex.at(i-1).lIndexProteinFilePosition;
+  //             g_pvDBIndex.at(i).lIndexProteinFilePosition = g_pvDBIndex.at(i-1).lIndexProteinFilePosition;
             }
          }
          else
@@ -2868,8 +2872,14 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
       // now write out all duplicate proteins file positions
       long lSize = (long)g_pvProteinsList.at((*it).lIndexProteinFilePosition).size();
+
       lNumMatchedProteins = lSize;
+      if (lNumMatchedProteins > g_staticParams.options.iMaxDuplicateProteins)
+         lNumMatchedProteins = g_staticParams.options.iMaxDuplicateProteins;
+
       fwrite(&lNumMatchedProteins, sizeof(long), 1, fptr);
+
+      int iPrintProteinCt = 0;
       for (long x = 0; x < lSize; x++)
       {
          // find protein by matching g_pvProteinNames.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
@@ -2880,6 +2890,10 @@ bool CometSearchManager::WriteIndexedDatabase(void)
          }
 
          fwrite(&(lProteinIndex[iWhichProtein]), sizeof(comet_fileoffset_t), 1, fptr);
+
+         iPrintProteinCt++;
+         if (iPrintProteinCt > g_staticParams.options.iMaxDuplicateProteins)  // allow 1 more than iMaxDuplicateProteins as this is duplicate protein limit
+            break;
       }
 
    }

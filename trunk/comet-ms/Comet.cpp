@@ -586,6 +586,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("num_results", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "max_duplicate_proteins"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("max_duplicate_proteins", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "remove_precursor_peak"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1436,6 +1443,7 @@ activation_method = ALL                # activation method; used if activation m
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
 peptide_length_range = 5 63            # minimum and maximum peptide length to analyze (default %d %d)\n\
 num_results = 100                      # number of search hits to store internally\n\
+max_duplicate_proteins = 20            # maximum number of protein names to report for each peptide identification\n\
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",

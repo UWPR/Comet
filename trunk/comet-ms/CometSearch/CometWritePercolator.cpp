@@ -364,7 +364,9 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
    else
       fprintf(fpout, "%s", szProteinName);
-         ++it;
+         
+   ++it;
+   int iPrintDuplicateProteinCt = 0;
 
    for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
    {
@@ -373,15 +375,24 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
          fprintf(fpout, "\t%s%s", g_staticParams.szDecoyPrefix, szProteinName);
       else
          fprintf(fpout, "\t%s", szProteinName);
+
+      iPrintDuplicateProteinCt++;
+      if (iPrintDuplicateProteinCt == g_staticParams.options.iMaxDuplicateProteins)
+         break;
    }
 
    // If combined search printed out target proteins above, now print out decoy proteins if necessary
-   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
+         && iPrintDuplicateProteinCt < g_staticParams.options.iMaxDuplicateProteins)
    {
       for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
       {
          CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
          fprintf(fpout, "\t%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+
+         iPrintDuplicateProteinCt++;
+         if (iPrintDuplicateProteinCt == g_staticParams.options.iMaxDuplicateProteins)
+            break;
       }
    }
 

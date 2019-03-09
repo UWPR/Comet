@@ -81,6 +81,7 @@ struct Options             // output parameters
    int iWhichReadingFrame;
    int iEnzymeTermini;
    int iNumStored;               // # of search results to store for xcorr analysis
+   int iMaxDuplicateProteins;    // maximum number of duplicate proteins to report or store in idx file
    int iSpectrumBatchSize;       // # of spectra to search at a time within the scan range
    int iStartCharge;
    int iEndCharge;
@@ -127,6 +128,7 @@ struct Options             // output parameters
       lMaxIterations = a.lMaxIterations;
       iEnzymeTermini = a.iEnzymeTermini;
       iNumStored = a.iNumStored;
+      iMaxDuplicateProteins = a.iMaxDuplicateProteins;
       scanRange = a.scanRange;
       peptideLengthRange = a.peptideLengthRange;
       iSpectrumBatchSize = a.iSpectrumBatchSize;
@@ -705,6 +707,7 @@ struct StaticParams
       options.iWhichReadingFrame = 0;
       options.iEnzymeTermini = 2;
       options.iNumStored = 100;                         // default # of search results to store for xcorr analysis.
+      options.iMaxDuplicateProteins = 20;               // maximum number of duplicate proteins to report or store in idx file
 
       options.bNoEnzymeSelected = 1;
       options.bShowFragmentIons = 0;
