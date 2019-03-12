@@ -2874,16 +2874,15 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
 
       // now write out all duplicate proteins file positions
-      long lSize = (long)g_pvProteinsList.at((*it).lIndexProteinFilePosition).size();
+      lNumMatchedProteins = (long)g_pvProteinsList.at((*it).lIndexProteinFilePosition).size();
 
-      lNumMatchedProteins = lSize;
       if (lNumMatchedProteins > g_staticParams.options.iMaxDuplicateProteins)
          lNumMatchedProteins = g_staticParams.options.iMaxDuplicateProteins;
 
       fwrite(&lNumMatchedProteins, sizeof(long), 1, fptr);
 
       int iPrintProteinCt = 0;
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lNumMatchedProteins; x++)
       {
          // find protein by matching g_pvProteinNames.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
          auto result = g_pvProteinNames.find((g_pvProteinsList.at((*it).lIndexProteinFilePosition)).at(x));
