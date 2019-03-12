@@ -1,7 +1,14 @@
 CXX = g++
 MSTOOLKIT = MSToolkit
 COMETSEARCH = CometSearch
-override CXXFLAGS += -O3 -fpermissive -static -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+   override CXXFLAGS += -O3 -headerpad_max_install_names -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
+else
+   override CXXFLAGS += -O3 -static -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
+endif
+
 EXECNAME = comet.exe
 OBJS = Comet.o
 DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/CometPreprocess.h CometSearch/CometWriteOut.h CometSearch/CometWriteSqt.h CometSearch/OSSpecificThreading.h CometSearch/CometMassSpecUtils.h CometSearch/CometSearch.h CometSearch/CometWritePepXML.h CometSearch/CometWriteTxt.h CometSearch/Threading.h CometSearch/CometPostAnalysis.h CometSearch/CometSearchManager.h CometSearch/CometWritePercolator.h CometSearch/CometCheckForUpdates.h CometSearch/Common.h CometSearch/ThreadPool.h CometSearch/CometMassSpecUtils.cpp CometSearch/CometSearch.cpp CometSearch/CometWritePepXML.cpp CometSearch/CometWriteTxt.cpp CometSearch/CometPostAnalysis.cpp CometSearch/CometSearchManager.cpp CometSearch/CometWritePercolator.cpp CometSearch/Threading.cpp CometSearch/CometPreprocess.cpp CometSearch/CometWriteOut.cpp CometSearch/CometWriteSqt.cpp CometSearch/CometCheckForUpdates.cpp
