@@ -50,7 +50,7 @@ all:
 objects: $(ZLIB) $(MZPARSER) $(MZPARSERLITE) $(MZIMLTOOLS) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT)
 
 arlib: CFLAGS = $(AR_CFLAGS)
-arlib: clean_objects objects
+arlib: objects
 	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZIMLTOOLS) $(MZPARSERLITE) $(MSTOOLKIT) $(READERLITE)
 #	ar rcs libmstoolkit.a $(ZLIB) $(EXPAT) $(MZIMLTOOLS) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE)
 #	$(CC) $(CFLAGS) MSTDemo.cpp -L. -lmstoolkitlite -o MSTDemo
