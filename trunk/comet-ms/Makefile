@@ -4,7 +4,7 @@ COMETSEARCH = CometSearch
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-   override CXXFLAGS += -O3 -headerpad_max_install_names -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
+   override CXXFLAGS += -O3 -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
 else
    override CXXFLAGS += -O3 -static -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
 endif
@@ -21,7 +21,12 @@ endif
 
 comet.exe: $(OBJS)
 	cd $(MSTOOLKIT) ; make arlib; cd ../CometSearch ; make
+
+ifeq ($(UNAME_S),Darwin)
+	${CXX} $(OBJS) -headerpad_max_install_names -o ${EXECNAME} $(CXXFLAGS) $(LIBPATHS) $(LIBS)
+else
 	${CXX} $(OBJS) -o ${EXECNAME} $(CXXFLAGS) $(LIBPATHS) $(LIBS)
+endif
 
 Comet.o: Comet.cpp $(DEPS)
 	${CXX} ${CXXFLAGS} Comet.cpp -c
