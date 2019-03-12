@@ -23,12 +23,10 @@ limitations under the License.
 #include "Spectrum.h"
 #include "mzParser.h"
 
-using namespace std;
-
 namespace MSToolkit {
 
 typedef struct sMzMLIndex{
-  string id;
+  std::string id;
   f_off offset;
 } sMzMLIndex;
 
@@ -66,7 +64,7 @@ private:
   bool exportContact();
   bool exportCv();
   bool exportCvList();
-  bool exportCvParam(string ac, string ref, string name, string unitAc="", string unitRef="", string unitName="", string value="", int tabs=0);
+  bool exportCvParam(std::string ac, std::string ref, std::string name, std::string unitAc = "", std::string unitRef = "", std::string unitName = "", std::string value = "", int tabs = 0);
   bool exportDataProcessing();
   bool exportDataProcessingList();
   bool exportFileContent();
@@ -76,7 +74,7 @@ private:
   bool exportIsolationWindow(BasicChromatogram& c, bool bPre, int tabs = 0);
   bool exportIsolationWindow(Spectrum& s, int tabs=0);
   bool exportMzML();
-  bool exportOffset(string idRef, f_off offset, int tabs=0);
+  bool exportOffset(std::string idRef, f_off offset, int tabs = 0);
   bool exportPrecursor(BasicChromatogram& c, int tabs = 0);
   bool exportPrecursor(Spectrum& s, int tabs=0);
   bool exportPrecursorList(Spectrum& s, int tabs=0);
@@ -93,7 +91,8 @@ private:
   bool exportScanList(Spectrum& s, int tabs=0);
   bool exportScanSettings();
   bool exportScanSettingsList();
-  bool exportScanWindowList();
+  bool exportScanWindow(Spectrum& s, int tabs = 0);
+  bool exportScanWindowList(Spectrum& s, int tabs = 0);
   bool exportSelectedIon(BasicChromatogram& c, int tabs = 0);
   bool exportSelectedIon(Spectrum& s, int tabs=0);
   bool exportSelectedIonList(BasicChromatogram& c, int tabs = 0);
@@ -108,6 +107,7 @@ private:
   bool exportSourceFileRefList();
   bool exportSpectrum(Spectrum& s, int tabs=0);
   bool exportSpectrumList();
+  void exportTabs(int tabs);
   bool exportTarget();
   bool exportTargetList();
   bool exportDetector();
@@ -126,8 +126,8 @@ private:
   bool bZlib;
   bool bNumpress;
 
-  vector<sMzMLIndex> vIndex;
-  vector<sMzMLIndex> vChromIndex;
+  std::vector<sMzMLIndex> vIndex;
+  std::vector<sMzMLIndex> vChromIndex;
 
 };
 }

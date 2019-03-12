@@ -29,8 +29,6 @@ limitations under the License.
 
 #import "libid:F0C5F3E3-4F2A-443E-A74D-0AABE3237494" rename_namespace("XRawfile")
 //#import "libid:5FE970A2-29C3-11D3-811D-00104B304896" rename_namespace("XRawfile")
-using namespace XRawfile;
-using namespace std;
 
 namespace MSToolkit {
 
@@ -70,7 +68,7 @@ public:
 	bool readRawFile(const char* c, Spectrum& s, int scNum=0);
   void setAverageRaw(bool b, int width=1, long cutoff=1000);
   void setLabel(bool b);  //label data contains all centroids (including noise and excluded peaks)
-	void setMSLevelFilter(vector<MSSpectrumType>* v);
+  void setMSLevelFilter(std::vector<MSSpectrumType>* v);
   void setRawFilter(char* c);
   void setRawFilterExact(bool b);
 	
@@ -95,14 +93,14 @@ private:
 	long rawCurSpec;
 	long rawTotSpec;
   
-  IXRawfilePtr m_Raw;
+  XRawfile::IXRawfilePtr m_Raw;
 
-	vector<MSSpectrumType>* msLevelFilter;
+  std::vector<MSSpectrumType>* msLevelFilter;
 
 	//Private Functions
   int							calcChargeState(double precursormz, double highmass, VARIANT* varMassList, long nArraySize);
   double					calcPepMass(int chargestate, double precursormz);
-  MSSpectrumType	evaluateFilter(long scan, char* chFilter, vector<double>& MZs, bool& bCentroid, double& cv, MSActivation& act);
+  MSSpectrumType	evaluateFilter(long scan, char* chFilter, std::vector<double>& MZs, bool& bCentroid, double& cv, MSActivation& act);
   double          evaluateTrailerDouble(const char* id);
   int             evaluateTrailerInt(const char* id);
 	bool						initRaw();

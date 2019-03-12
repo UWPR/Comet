@@ -16,6 +16,8 @@ limitations under the License.
 #ifndef _NO_THERMORAW
 #include "RAWReader.h"
 
+using namespace std;
+using namespace XRawfile;
 using namespace MSToolkit;
 
 // ==========================

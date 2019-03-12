@@ -1,3 +1,8 @@
+/* Source code obtained from X!Tandem
+   Copyright, The Global Proteome Machine Organization
+   Under the Artistic License: http://opensource.org/licenses/artistic-license-1.0
+*/
+
 /* downloaded from web */
 //#include <cmath>
 //#include <stdio.h>

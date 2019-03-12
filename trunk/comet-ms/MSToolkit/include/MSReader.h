@@ -32,7 +32,7 @@ limitations under the License.
 #ifndef _NO_THERMORAW
 #import "libid:F0C5F3E3-4F2A-443E-A74D-0AABE3237494" rename_namespace("XRawfile")
 //#import "libid:5FE970A2-29C3-11D3-811D-00104B304896" rename_namespace("XRawfile")
-using namespace XRawfile;
+//using namespace XRawfile;
 #endif
 #endif
 
@@ -60,9 +60,6 @@ typedef off_t f_off;
 
 #endif /* end _MSC_VER */ 
 
-
-using namespace std;
-
 namespace MSToolkit {
 class MSReader {
  public:
@@ -79,7 +76,7 @@ class MSReader {
   
   MSFileFormat checkFileFormat(const char *fn);
 
-  string          getCurrentFile();
+  std::string          getCurrentFile();
   MSSpectrumType  getFileType();
   MSHeader&       getHeader();
   void            getInstrument(char* str);
@@ -93,14 +90,17 @@ class MSReader {
   void setPrecisionInt(int i);
   void setPrecisionMZ(int i);
   void writeFile(const char* c, bool text, MSObject& m);
-  void writeFile(const char* c, MSFileFormat ff, MSObject& m, char* sha1Report='\0');
+  void writeFile(const char* c, MSFileFormat ff, MSObject& m, const char* sha1Report=NULL);
 
   bool readMGFFile(const char* c, Spectrum& s); //Note, no random-access of MGF files.
   bool readMSTFile(const char* c, bool text, Spectrum& s, int scNum=0);
   bool readMZPFile(const char* c, Spectrum& s, int scNum=0);
   bool readFile(const char* c, Spectrum& s, int scNum=0);
+
+  bool nextSpectrum(Spectrum& s);
+  bool prevSpectrum(Spectrum& s);
   
-  void setFilter(vector<MSSpectrumType>& m);
+  void setFilter(std::vector<MSSpectrumType>& m);
   void setFilter(MSSpectrumType m);
 
   //For RAW files
@@ -137,9 +137,9 @@ class MSReader {
   int iFType;
   int lastReadScanNum;
   MSFileFormat lastFileFormat;
-  string sCurrentFile;
-  string sInstrument;
-  string sManufacturer;
+  std::string sCurrentFile;
+  std::string sInstrument;
+  std::string sManufacturer;
 
   //File compression
   bool compressMe;
@@ -150,7 +150,7 @@ class MSReader {
   bool rampFileOpen;
   int rampLastScan;
   int rampIndex;
-  vector<MSSpectrumType> filter;
+  std::vector<MSSpectrumType> filter;
 
   //for RAW file support (even if not on windows)
   bool rawFileOpen;
@@ -161,7 +161,7 @@ class MSReader {
   bool highResMGF;
   bool mgfOnePlus;
   int mgfIndex;
-  vector<int> mgfGlobalCharge;
+  std::vector<int> mgfGlobalCharge;
 
   //Functions
   void closeFile();
@@ -193,9 +193,9 @@ class MSReader {
   void sql_stmt(const char* stmt);
   bool executeSqlStmt(Spectrum& s, char* zSql);
   void appendFile(Spectrum& s);
-  void writeSqlite(const char* c, MSObject& m, char* sha1Report);
+  void writeSqlite(const char* c, MSObject& m, const char* sha1Report);
   void readChargeTable(int scanID, Spectrum& s);
-  vector<int> estimateCharge(Spectrum& s);
+  std::vector<int> estimateCharge(Spectrum& s);
   #endif 
 
 };

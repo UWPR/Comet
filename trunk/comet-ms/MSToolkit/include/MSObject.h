@@ -21,8 +21,6 @@ limitations under the License.
 
 #include <string>
 
-using namespace std;
-
 namespace MSToolkit {
 class MSObject {
  public:
@@ -37,7 +35,7 @@ class MSObject {
   //Functions
   void add(Spectrum&);
   bool addToHeader(char*);
-  bool addToHeader(string);
+  bool addToHeader(std::string);
   Spectrum& at(unsigned int);
   Peak_T& at(unsigned int, unsigned int);
   void clear();
@@ -49,8 +47,8 @@ class MSObject {
   
  protected:
  private:
-  vector<Spectrum> *vSpectrum;
-  string fileName;
+  std::vector<Spectrum> *vSpectrum;
+  std::string fileName;
 	MSHeader header;
   MSSpectrumType fileType;
   

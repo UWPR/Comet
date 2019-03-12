@@ -426,6 +426,14 @@ int Spectrum::getScanNumber(bool second){
   else return scanNumber;
 }
 
+double Spectrum::getScanWindowLower(){
+  return scanWinLower;
+}
+
+double Spectrum::getScanWindowUpper(){
+  return scanWinUpper;
+}
+
 double Spectrum::getSelWindowLower(){
   return selectionWinLower;
 }
@@ -514,6 +522,11 @@ void Spectrum::setRTime(float d){
 void Spectrum::setScanNumber(int i, bool second){
   if(second)scanNumber2=i;
   else scanNumber=i;
+}
+
+void Spectrum::setScanWindow(double lower, double upper){
+  scanWinLower = lower;
+  scanWinUpper = upper;
 }
 
 void Spectrum::setSelWindow(double lower, double upper){

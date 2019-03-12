@@ -23,30 +23,55 @@ limitations under the License.
 #include <iostream>
 #include <vector>
 
-using namespace std;
-
 //Some simple data structures for PepXMLWriter (pxw)
 typedef struct pxwBasicXMLTag {
-  string name;
-  string value;
+  std::string name;
+  std::string value;
 } pxwBasicXMLTag;
+
+typedef struct pxwAminoAcidModification{
+  bool variable;
+  char aminoacid;
+  double massdiff;
+  double mass;
+} pxwAminoAcidModification;
+
+typedef struct pxwTerminalModification{
+  bool variable;
+  bool protein;  //true=to protein, false=to peptide
+  bool terminus; //true=n, false=c
+  double massdiff;
+  double mass;
+} pxwTerminalModification;
 
 typedef struct pxwModAA{
   int position;
   double mass;
+  double modMass;
+  bool modMassType; //true = variable, false=static
+  std::string source;
+  pxwModAA(){
+    position=0;
+    mass=0;
+    modMass=0;
+    modMassType=false;
+    source.clear();
+  }
 } pxwModAA;
 
 typedef struct pxwMSMSRunSummary {
-  string base_name;
-  string raw_data_type;
-  string raw_data;
-  string search_engine;
+  std::string base_name;
+  std::string raw_data_type;
+  std::string raw_data;
+  std::string search_engine;
 } pxwMSMSRunSummary;
 
 typedef struct pxwProtein {
-  string protein;
+  std::string protein;
   char peptide_next_aa;
   char peptide_prev_aa;
+  int protein_link_pos_a;
+  int protein_link_pos_b;
 } pxwProtein;
 
 //Use classes for more complicated structures with dynamic arrays
@@ -55,19 +80,19 @@ class PXWModInfo{
 public:
   double mod_cterm_mass;
   double mod_nterm_mass;
-  string modified_peptide;
+  std::string modified_peptide;
   
   PXWModInfo(){
     mod_cterm_mass=0;
     mod_nterm_mass=0;
     modified_peptide.clear();
-    mods=new vector<pxwModAA>;
+    mods = new std::vector<pxwModAA>;
   }
   PXWModInfo(const PXWModInfo& s){
-    mod_cterm_mass=0;
-    mod_nterm_mass=0;
-    modified_peptide.clear();
-    mods=new vector<pxwModAA>;
+    mod_cterm_mass=s.mod_cterm_mass;
+    mod_nterm_mass=s.mod_nterm_mass;
+    modified_peptide = s.modified_peptide;
+    mods = new std::vector<pxwModAA>;
     for(size_t i=0;i<s.mods->size();i++) mods->push_back(s.mods->at(i));
   }
   ~PXWModInfo(){
@@ -75,11 +100,11 @@ public:
   }
   PXWModInfo& operator=(const PXWModInfo& s){
     if(this!=&s){
-      mod_cterm_mass=0;
-      mod_nterm_mass=0;
-      modified_peptide.clear();
+      mod_cterm_mass = s.mod_cterm_mass;
+      mod_nterm_mass = s.mod_nterm_mass;
+      modified_peptide = s.modified_peptide;
       delete mods;
-      mods=new vector<pxwModAA>;
+      mods = new std::vector<pxwModAA>;
       for(size_t i=0;i<s.mods->size();i++) mods->push_back(s.mods->at(i));
     }
     return *this;
@@ -88,10 +113,13 @@ public:
   void addMod(pxwModAA& p){
     mods->push_back(p);
   }
-  void addMod(int pos, double mass){
+  void addMod(int pos, double mass, double modMass=0, bool variable=false, std::string source=""){
     pxwModAA p;
     p.position=pos;
     p.mass=mass;
+    p.modMass=modMass;
+    p.modMassType=variable;
+    p.source=source;
     addMod(p);
   }
   void clear(){
@@ -111,18 +139,20 @@ public:
   }
 
 private:
-  vector<pxwModAA>* mods;
+  std::vector<pxwModAA>* mods;
 };
 
 class PXWSearchSummary {
 public:
-  string base_name;
-  string search_database;
-  string search_engine;
-  string search_engine_version;
+  std::string base_name;
+  std::string search_database;
+  std::string search_engine;
+  std::string search_engine_version;
   int precursor_mass_type; //0=monoisotopic, 1=average
   int fragment_mass_type; //0=monoisotopic, 1=average
-  vector<pxwBasicXMLTag>* parameters;
+  std::vector<pxwAminoAcidModification>* aminoAcidMods;
+  std::vector<pxwBasicXMLTag>* parameters;
+  std::vector<pxwTerminalModification>* terminalMods;
 
   PXWSearchSummary(){
     base_name.clear();
@@ -131,32 +161,48 @@ public:
     search_engine_version.clear();
     precursor_mass_type=0;
     fragment_mass_type=0;
-    parameters=new vector<pxwBasicXMLTag>;
+    aminoAcidMods = new std::vector<pxwAminoAcidModification>;
+    parameters = new std::vector<pxwBasicXMLTag>;
+    terminalMods = new std::vector<pxwTerminalModification>;
   }
   PXWSearchSummary(const PXWSearchSummary& s){
+    size_t i;
     base_name=s.base_name;
     search_database=s.search_database;
     search_engine=s.search_engine;
     search_engine_version=s.search_engine_version;
     precursor_mass_type=s.precursor_mass_type;
     fragment_mass_type=s.fragment_mass_type;
-    parameters=new vector<pxwBasicXMLTag>;
-    for(size_t i=0;i<s.parameters->size();i++) parameters->push_back(s.parameters->at(i));
+    aminoAcidMods = new std::vector<pxwAminoAcidModification>;
+    for (i = 0; i<s.aminoAcidMods->size(); i++) aminoAcidMods->push_back(s.aminoAcidMods->at(i));
+    parameters = new std::vector<pxwBasicXMLTag>;
+    for(i=0;i<s.parameters->size();i++) parameters->push_back(s.parameters->at(i));
+    terminalMods = new std::vector<pxwTerminalModification>;
+    for (i = 0; i<s.terminalMods->size(); i++) terminalMods->push_back(s.terminalMods->at(i));
   }
   ~PXWSearchSummary(){
+    delete aminoAcidMods;
     delete parameters;
+    delete terminalMods;
   }
   PXWSearchSummary& operator=(const PXWSearchSummary& s){
     if(this!=&s){
+      size_t i;
       base_name=s.base_name;
       search_database = s.search_database;
       search_engine=s.search_engine;
       search_engine_version=s.search_engine_version;
       precursor_mass_type=s.precursor_mass_type;
       fragment_mass_type=s.fragment_mass_type;
+      delete aminoAcidMods;
       delete parameters;
-      parameters=new vector<pxwBasicXMLTag>;
-      for(size_t i=0;i<s.parameters->size();i++) parameters->push_back(s.parameters->at(i));
+      delete terminalMods;
+      aminoAcidMods = new std::vector<pxwAminoAcidModification>;
+      for (i = 0; i<s.aminoAcidMods->size(); i++) aminoAcidMods->push_back(s.aminoAcidMods->at(i));
+      parameters = new std::vector<pxwBasicXMLTag>;
+      for (i = 0; i<s.parameters->size(); i++) parameters->push_back(s.parameters->at(i));
+      terminalMods = new std::vector<pxwTerminalModification>;
+      for (i = 0; i<s.terminalMods->size(); i++) terminalMods->push_back(s.terminalMods->at(i));
     }
     return *this;
   }
@@ -165,14 +211,14 @@ public:
 class PXWSearchHit {
 public:
   int hit_rank;
-  string peptide;
+  std::string peptide;
   int num_tot_proteins;
   double calc_neutral_pep_mass;
   double calc_neutral_xl_mass;
   double massdiff;
   double xl_massdiff;
   PXWModInfo modInfo;
-  string xlink_type; //na,loop,xl
+  std::string xlink_type; //na,loop,xl
 
   PXWSearchHit(){
     hit_rank=0;
@@ -184,9 +230,9 @@ public:
     xl_massdiff=0;
     modInfo.clear();
     xlink_type="na";
-    proteins=new vector<pxwProtein>;
-    searchScores=new vector<pxwBasicXMLTag>;
-    xlScores=new vector<pxwBasicXMLTag>;
+    proteins = new std::vector<pxwProtein>;
+    searchScores = new std::vector<pxwBasicXMLTag>;
+    xlScores = new std::vector<pxwBasicXMLTag>;
   }
   PXWSearchHit(const PXWSearchHit& s){
     size_t i;
@@ -199,9 +245,9 @@ public:
     xl_massdiff=s.xl_massdiff;
     modInfo=s.modInfo;
     xlink_type=s.xlink_type;
-    proteins=new vector<pxwProtein>;
-    searchScores=new vector<pxwBasicXMLTag>;
-    xlScores=new vector<pxwBasicXMLTag>;
+    proteins = new std::vector<pxwProtein>;
+    searchScores = new std::vector<pxwBasicXMLTag>;
+    xlScores = new std::vector<pxwBasicXMLTag>;
     for(i=0;i<s.proteins->size();i++) proteins->push_back(s.proteins->at(i));
     for(i=0;i<s.searchScores->size();i++) searchScores->push_back(s.searchScores->at(i));
     for(i=0;i<s.xlScores->size();i++) xlScores->push_back(s.xlScores->at(i));
@@ -226,9 +272,9 @@ public:
       delete proteins;
       delete searchScores;
       delete xlScores;
-      proteins=new vector<pxwProtein>;
-      searchScores=new vector<pxwBasicXMLTag>;
-      xlScores=new vector<pxwBasicXMLTag>;
+      proteins = new std::vector<pxwProtein>;
+      searchScores = new std::vector<pxwBasicXMLTag>;
+      xlScores = new std::vector<pxwBasicXMLTag>;
       for(i=0;i<s.proteins->size();i++) proteins->push_back(s.proteins->at(i));
       for(i=0;i<s.searchScores->size();i++) searchScores->push_back(s.searchScores->at(i));
       for(i=0;i<s.xlScores->size();i++) xlScores->push_back(s.xlScores->at(i));
@@ -239,18 +285,22 @@ public:
   void addProtein(pxwProtein& p){
     proteins->push_back(p);
   }
-  void addProtein(char* protein, char peptide_next_aa, char peptide_prev_aa){
+  void addProtein(char* protein, char peptide_next_aa, char peptide_prev_aa, int protein_link_pos_a = 0, int protein_link_pos_b = 0){
     pxwProtein p;
     p.protein=protein;
     p.peptide_next_aa=peptide_next_aa;
     p.peptide_prev_aa=peptide_prev_aa;
+    p.protein_link_pos_a = protein_link_pos_a;
+    p.protein_link_pos_b = protein_link_pos_b;
     addProtein(p);
   }
-  void addProtein(string& protein, char peptide_next_aa, char peptide_prev_aa){
+  void addProtein(std::string& protein, char peptide_next_aa, char peptide_prev_aa, int protein_link_pos_a = 0, int protein_link_pos_b = 0){
     pxwProtein p;
     p.protein=protein;
     p.peptide_next_aa=peptide_next_aa;
     p.peptide_prev_aa=peptide_prev_aa;
+    p.protein_link_pos_a=protein_link_pos_a;
+    p.protein_link_pos_b=protein_link_pos_b;
     addProtein(p);
   }
   void addScore(pxwBasicXMLTag& s){
@@ -262,7 +312,7 @@ public:
     x.value=value;
     addScore(x);
   }
-  void addScore(string& name, string& value){
+  void addScore(std::string& name, std::string& value){
     pxwBasicXMLTag x;
     x.name=name;
     x.value=value;
@@ -277,7 +327,7 @@ public:
     x.value=value;
     addXLScore(x);
   }
-  void addXLScore(string& name, string& value){
+  void addXLScore(std::string& name, std::string& value){
     pxwBasicXMLTag x;
     x.name=name;
     x.value=value;
@@ -326,15 +376,15 @@ public:
   }
 
 private:
-  vector<pxwProtein>* proteins;
-  vector<pxwBasicXMLTag>* searchScores;
-  vector<pxwBasicXMLTag>* xlScores;
+  std::vector<pxwProtein>* proteins;
+  std::vector<pxwBasicXMLTag>* searchScores;
+  std::vector<pxwBasicXMLTag>* xlScores;
 };
 
 typedef struct pxwSearchHitPair{
   PXWSearchHit* a;
   PXWSearchHit* b;
-  string identifier;
+  std::string identifier;
   double mass;
   pxwSearchHitPair(){
     a=NULL;
@@ -382,17 +432,17 @@ typedef struct pxwSearchHitPair{
 } pxwSearchHitPair;
 
 typedef struct pxwSampleEnzyme{
-  string name;
-  string cut;
-  string no_cut;
-  string sense;
+  std::string name;
+  std::string cut;
+  std::string no_cut;
+  std::string sense;
   int maxNumInternalCleavages;
   int minNumTermini;
 } pxwSampleEnzyme;
 
 class PXWSpectrumQuery {
 public:
-  string spectrum;
+  std::string spectrum;
   int start_scan;
   int end_scan;
   double retention_time_sec;
@@ -406,7 +456,7 @@ public:
     retention_time_sec=0;
     precursor_neutral_mass=0;
     assumed_charge=0;
-    searchHits=new vector<pxwSearchHitPair>;
+    searchHits = new std::vector<pxwSearchHitPair>;
   }
   PXWSpectrumQuery(const PXWSpectrumQuery& s){
     spectrum=s.spectrum;
@@ -415,7 +465,7 @@ public:
     retention_time_sec=s.retention_time_sec;
     precursor_neutral_mass=s.precursor_neutral_mass;
     assumed_charge=s.assumed_charge;
-    searchHits=new vector<pxwSearchHitPair>;
+    searchHits = new std::vector<pxwSearchHitPair>;
     for(size_t i=0;i<s.searchHits->size();i++) searchHits->push_back(s.searchHits->at(i));
   }
   ~PXWSpectrumQuery(){
@@ -430,13 +480,13 @@ public:
       precursor_neutral_mass=s.precursor_neutral_mass;
       assumed_charge=s.assumed_charge;
       delete searchHits;
-      searchHits=new vector<pxwSearchHitPair>;
+      searchHits = new std::vector<pxwSearchHitPair>;
       for(size_t i=0;i<s.searchHits->size();i++) searchHits->push_back(s.searchHits->at(i));
     }
     return *this;
   }
 
-  void addSearchHit(PXWSearchHit* s, PXWSearchHit* s2=NULL, string* xl=NULL, double* xlMass=NULL){
+  void addSearchHit(PXWSearchHit* s, PXWSearchHit* s2 = NULL, std::string* xl = NULL, double* xlMass = NULL){
     pxwSearchHitPair p;
     p.a = new PXWSearchHit(*s);
     if(s2!=NULL) {
@@ -464,7 +514,7 @@ public:
   }
 
 private:
-  vector<pxwSearchHitPair>* searchHits;
+  std::vector<pxwSearchHitPair>* searchHits;
 };
 
 class PepXMLWriter {
@@ -498,7 +548,7 @@ private:
   bool bFileOpen;
   char strTabs[128];
 
-  vector<string> vTagState;
+  std::vector<std::string> vTagState;
 
 };
 

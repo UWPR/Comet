@@ -109,6 +109,6 @@ void MSObject::setHeader(const MSHeader& h){
 };
 
 int MSObject::size(){
-  return vSpectrum->size();
+  return (int)vSpectrum->size();
 };
 

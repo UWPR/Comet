@@ -15,6 +15,8 @@ limitations under the License.
 */
 #include "pepXMLWriter.h"
 
+using namespace std;
+
 PepXMLWriter::PepXMLWriter(){
   index=0;
   iTabs=0;
@@ -139,6 +141,36 @@ bool PepXMLWriter::createPepXML(char* fn, pxwMSMSRunSummary& run, pxwSampleEnzym
       st += "\"/>\n";
       writeLine(&st[0]);
     }
+    for (i = 0; i<search->aminoAcidMods->size(); i++){
+      st = " <aminoacid_modification aminoacid=\"";
+      st += search->aminoAcidMods->at(i).aminoacid;
+      st += "\" massdiff=\"";
+      sprintf(str, "%.6lf", search->aminoAcidMods->at(i).massdiff);
+      st += str;
+      st += "\" mass=\"";
+      sprintf(str, "%.6lf", search->aminoAcidMods->at(i).mass);
+      st += str;
+      if(search->aminoAcidMods->at(i).variable) st += "\" variable=\"Y\"/>\n";
+      else st += "\" variable=\"N\"/>\n";
+      writeLine(&st[0]);
+    }
+    for (i = 0; i<search->terminalMods->size(); i++){
+      st = " <terminal_modification terminus=\"";
+      if(search->terminalMods->at(i).terminus) st+="n";
+      else st+="c";
+      st += "\" massdiff=\"";
+      sprintf(str, "%.6lf", search->terminalMods->at(i).massdiff);
+      st += str;
+      st += "\" mass=\"";
+      sprintf(str, "%.6lf", search->terminalMods->at(i).mass);
+      st += str;
+      st += "\" protein_terminus=\"";
+      if (search->terminalMods->at(i).protein) st += "Y";
+      else st += "N";
+      if (search->terminalMods->at(i).variable) st += "\" variable=\"Y\"/>\n";
+      else st += "\" variable=\"N\"/>\n";
+      writeLine(&st[0]);
+    }
     for(i=0;i<search->parameters->size();i++){
       st=" <parameter name=\"";
       st+=search->parameters->at(i).name;
@@ -167,6 +199,7 @@ void PepXMLWriter::resetTabs(){
 
 void PepXMLWriter::writeAltProtein(pxwProtein& s){
   string st;
+  char nStr[32];
 
   st="<alternative_protein protein=\"";
   st+=s.protein;
@@ -174,6 +207,16 @@ void PepXMLWriter::writeAltProtein(pxwProtein& s){
   st+=s.peptide_prev_aa;
   st+="\" peptide_next_aa=\"";
   st+=s.peptide_next_aa;
+  if (s.protein_link_pos_a>0){
+    st += "\" protein_link_pos_a=\"";
+    sprintf(nStr, "%d", s.protein_link_pos_a);
+    st += nStr;
+  }
+  if (s.protein_link_pos_b>0){
+    st += "\" protein_link_pos_b=\"";
+    sprintf(nStr, "%d", s.protein_link_pos_b);
+    st += nStr;
+  }
   st+="\"/>\n";
   writeLine(&st[0]);
 }
@@ -188,6 +231,16 @@ void PepXMLWriter::writeModAAMass(pxwModAA& s){
   st+="\" mass=\"";
   sprintf(nStr,"%.6lf",s.mass);
   st+=nStr;
+  if(s.modMass!=0){
+    if(s.modMassType) st += "\" variable=\"";
+    else st+="\" static=\"";
+    sprintf(nStr, "%.6lf", s.modMass);
+    st += nStr;
+  }
+  if(s.source.size()>0){
+    st += "\" source=\"";
+    st +=s.source;
+  }
   st+="\"/>\n";
   writeLine(&st[0]);
 
@@ -204,11 +257,11 @@ void PepXMLWriter::writeModInfo(PXWModInfo& s){
     st+=s.modified_peptide;
     st+="\"";
   }
-  if(s.mod_nterm_mass>0){
+  if(s.mod_nterm_mass!=0){
     sprintf(nStr," mod_nterm_mass=\"%.4lf\"",s.mod_nterm_mass);
     st+=nStr;
   }
-  if(s.mod_cterm_mass>0){
+  if(s.mod_cterm_mass!=0){
     sprintf(nStr," mod_cterm_mass=\"%.4lf\"",s.mod_cterm_mass);
     st+=nStr;
   }
@@ -246,6 +299,16 @@ void PepXMLWriter::writeLinkedPeptide(PXWSearchHit& s, bool alpha){
   st+="\" protein=\"";
   if(s.sizeProteins()>0) st+=s.getProtein(0).protein;
   else st+="unknown";
+  if (s.sizeProteins()>0 && s.getProtein(0).protein_link_pos_a>0){
+    st += "\" protein_link_pos_a=\"";
+    sprintf(nStr, "%d", s.getProtein(0).protein_link_pos_a);
+    st += nStr;
+  }
+  if (s.sizeProteins()>0 && s.getProtein(0).protein_link_pos_b>0){
+    st += "\" protein_link_pos_b=\"";
+    sprintf(nStr, "%d", s.getProtein(0).protein_link_pos_b);
+    st += nStr;
+  }
   st+="\" num_tot_proteins=\"";
   sprintf(nStr,"%d",s.num_tot_proteins);
   st+=nStr;
@@ -264,7 +327,7 @@ void PepXMLWriter::writeLinkedPeptide(PXWSearchHit& s, bool alpha){
     writeAltProtein(s.getProtein(i));
   }
 
-  if(s.modInfo.sizeMods()>0 || s.modInfo.mod_cterm_mass>0 || s.modInfo.mod_nterm_mass>0){
+  if(s.modInfo.sizeMods()>0 || s.modInfo.mod_cterm_mass!=0 || s.modInfo.mod_nterm_mass!=0){
     writeModInfo(s.modInfo);
   }
 
@@ -305,6 +368,16 @@ void PepXMLWriter::writeSearchHit(pxwSearchHitPair& s) {
   st+="\" protein=\"";
   if(s.a->sizeProteins()>0 && !bCross) st+=s.a->getProtein(0).protein;
   else st+="-";
+  if(s.a->sizeProteins()>0 && !bCross && s.a->getProtein(0).protein_link_pos_a>0){
+    st += "\" protein_link_pos_a=\"";
+    sprintf(nStr, "%d", s.a->getProtein(0).protein_link_pos_a);
+    st += nStr;
+  }
+  if (s.a->sizeProteins()>0 && !bCross && s.a->getProtein(0).protein_link_pos_b>0){
+    st += "\" protein_link_pos_b=\"";
+    sprintf(nStr, "%d", s.a->getProtein(0).protein_link_pos_b);
+    st += nStr;
+  }
   st+="\" num_tot_proteins=\"";
   sprintf(nStr,"%d",s.a->num_tot_proteins);
   st+=nStr;
@@ -327,7 +400,7 @@ void PepXMLWriter::writeSearchHit(pxwSearchHitPair& s) {
       writeAltProtein(s.a->getProtein(i));
     }
 
-    if(s.a->modInfo.sizeMods()>0 || s.a->modInfo.mod_cterm_mass>0 || s.a->modInfo.mod_nterm_mass>0){
+    if(s.a->modInfo.sizeMods()>0 || s.a->modInfo.mod_cterm_mass!=0 || s.a->modInfo.mod_nterm_mass!=0){
       writeModInfo(s.a->modInfo);
     }
   }
