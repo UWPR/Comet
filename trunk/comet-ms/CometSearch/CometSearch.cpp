@@ -1570,7 +1570,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
       if (iLenPeptide<MAX_PEPTIDE_LEN-1)  // account for terminating char
       {
-         if (g_staticParams.options.bCreateIndex)
+         if (g_staticParams.options.bCreateIndex && !g_staticParams.variableModParameters.bRequireVarMod)
          {
             if (WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos) == 1)
             {
@@ -1956,6 +1956,8 @@ void CometSearch::AnalyzeIndexPep(int iWhichQuery,
    int iLenPeptide = (int)strlen(sDBI.szPeptide);
    bool bFirstTimeThroughLoopForPeptide = true;
 
+   bool bIsVarModPep = false;
+
    // Compare calculated fragment ions against all matching query spectra.
    while (iWhichQuery < (int)g_pvQuery.size())
    {
@@ -1968,8 +1970,6 @@ void CometSearch::AnalyzeIndexPep(int iWhichQuery,
       // Mass tolerance check for particular query against this candidate peptide mass.
       if (CheckMassMatch(iWhichQuery, sDBI.dPepMass))
       {
-         bool bIsVarModPep = false;
-
          // Calculate ion series just once to compare against all relevant query spectra.
          if (bFirstTimeThroughLoopForPeptide)
          {
