@@ -1063,7 +1063,7 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.szMod[0] = '\0';
    g_staticParams.variableModParameters.bVarModSearch = false;
    g_staticParams.variableModParameters.bBinaryModSearch = false;
-   g_staticParams.variableModParameters.bRequireVarMod = false;
+// g_staticParams.variableModParameters.bRequireVarMod = false;  // this is initialized above with require_var_mod parameter
 
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
