@@ -323,6 +323,18 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
          }
 
+         bool bAlreadyContainsPhosphateB = false; // as loop through b-ions, does fragment already contain phosphate?
+         bool bAlreadyContainsPhosphateY = false; // as loop through y-ions, does fragment already contain phosphate?
+
+         int iContainsPhosphateB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain phosphate mod
+         int iContainsPhosphateY[MAX_PEPTIDE_LEN];   // track ilst of y-ion fragments that contain phosphate mod
+
+         if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss)
+         {
+            memset(iContainsPhosphateB, 0, pOutput[i].iLenPeptide*sizeof(int));
+            memset(iContainsPhosphateY, 0, pOutput[i].iLenPeptide*sizeof(int));
+         }
+
          // Generate pdAAforward for _pResults[0].szPeptide.
          for (ii=0; ii<pOutput[i].iLenPeptide; ii++)
          {
@@ -334,14 +346,38 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             if (g_staticParams.variableModParameters.bVarModSearch)
             {
                if (pOutput[i].piVarModSites[ii] != 0)
+               {
                   dBion += pOutput[i].pdVarModSites[ii];
 
+                  if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss
+                        && (fabs(pOutput[i].pdVarModSites[ii] - 79.966331) < 0.001
+                           || fabs(pOutput[i].pdVarModSites[ii] - 79.9799) < 0.001))
+                  {
+                     bAlreadyContainsPhosphateB = true;
+                  }
+               }
+
                if (pOutput[i].piVarModSites[iPos] != 0)
+               {
                   dYion += pOutput[i].pdVarModSites[iPos];
+
+                  if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss
+                        && (fabs(pOutput[i].pdVarModSites[iPos] - 79.966331) < 0.001
+                           || fabs(pOutput[i].pdVarModSites[iPos] - 79.9799) < 0.001))
+                  {
+                     bAlreadyContainsPhosphateY = true;
+                  }
+               }
             }
 
             pdAAforward[ii] = dBion;
             pdAAreverse[ii] = dYion;
+
+            if (bAlreadyContainsPhosphateB)
+               iContainsPhosphateB[ii] = 1;
+
+            if ( bAlreadyContainsPhosphateY)
+               iContainsPhosphateY[ii] = 1;
          }
 
          for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
@@ -361,12 +397,14 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   {
                      int iFragmentIonMass = BIN(dFragmentIonMass);
                      float fSpScore;
+                     bool bFoundFragmentMatch = false;
 
                      fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
 
                      if (fSpScore > FLOAT_ZERO)
                      {
                         iMatchedFragmentIonCt++;
+                        bFoundFragmentMatch = true;
 
                         // Simple sum intensity.
                         dTmpIntenMatch += fSpScore;
@@ -381,6 +419,23 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                      {
                         ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
                      }
+
+                     if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss)
+                     {
+                        if ((iWhichIonSeries == 1 && iContainsPhosphateB[iii])  // b-ions
+                              || (iWhichIonSeries == 4 && iContainsPhosphateY[iii])) // y-ions
+                        {
+                           iFragmentIonMass = BIN(dFragmentIonMass - 97.9768957/ctCharge);
+                           fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
+
+                           // count fragment match if NL peak is matched but only if primary peak is
+                           // not already found as to not count twice
+                           if (fSpScore > FLOAT_ZERO && !bFoundFragmentMatch)
+                              iMatchedFragmentIonCt++;
+
+                        }
+                     }
+
                   }
                }
             }

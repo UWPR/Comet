@@ -379,6 +379,8 @@ struct VarModParams
    VarModParams& operator=(VarModParams& a)
    {
       bVarModSearch = a.bVarModSearch;
+      bBinaryModSearch = a.bBinaryModSearch;
+      bRequireVarMod = a.bRequireVarMod;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;
 
@@ -470,7 +472,8 @@ struct IonInfo
 {
    int iNumIonSeriesUsed;
    int piSelectedIonSeries[NUM_ION_SERIES];
-   int bUseNeutralLoss;
+   int bUseNeutralLoss;    // ammonia, water loss
+   int bUsePhosphateNeutralLoss;  // phospho neutral loss; applied only to 1+ and 2+ fragments that contain phospho mod
    int iTheoreticalFragmentIons;
    int iIonVal[NUM_ION_SERIES];
 
@@ -478,6 +481,7 @@ struct IonInfo
    {
       iNumIonSeriesUsed = a.iNumIonSeriesUsed;
       bUseNeutralLoss = a.bUseNeutralLoss;
+      bUsePhosphateNeutralLoss = a.bUsePhosphateNeutralLoss;
       iTheoreticalFragmentIons = a.iTheoreticalFragmentIons;
 
       for (int i = 0; i < NUM_ION_SERIES; i++)
@@ -564,7 +568,7 @@ struct StaticParams
       {
          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 3;
          variableModParameters.varModList[i].iBinaryMod = 0;
-         variableModParameters.varModList[i].bRequireThisMod = 0;
+         variableModParameters.varModList[i].bRequireThisMod = false;
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
          variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
          variableModParameters.varModList[i].dVarModMass = 0.0;
@@ -593,6 +597,7 @@ struct StaticParams
       variableModParameters.iMaxPermutations = MAX_PERMUTATIONS;
 
       ionInformation.bUseNeutralLoss = 0;
+      ionInformation.bUsePhosphateNeutralLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
       ionInformation.iIonVal[ION_SERIES_A] = 0;
       ionInformation.iIonVal[ION_SERIES_B] = 1;

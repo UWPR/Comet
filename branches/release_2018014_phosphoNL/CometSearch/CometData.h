@@ -105,16 +105,18 @@ struct VarMods
    int    iVarModTermDistance;
    int    iWhichTerm;
    char   szVarModChar[MAX_VARMOD_AA];
+   bool   bIsPhosphoMod;       // simple true/false whether dVarModMass represents a phospho mod to avoid repeated mass comparisons later
 
    VarMods()
    {
       iBinaryMod = 0;
-      bRequireThisMod = 0;
+      bRequireThisMod = false;
       iMaxNumVarModAAPerMod = 0;
       iVarModTermDistance = -1;
       iWhichTerm = 0;
       dVarModMass = 0.0;
       szVarModChar[0] = '\0';
+      bIsPhosphoMod = false;
    }
 
    VarMods(const VarMods& a)
@@ -126,6 +128,7 @@ struct VarMods
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
       strcpy(szVarModChar, a.szVarModChar);
+      bIsPhosphoMod = a.bIsPhosphoMod;
    }
 
    VarMods& operator=(VarMods& a)
@@ -137,6 +140,7 @@ struct VarMods
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
       strcpy(szVarModChar, a.szVarModChar);
+      bIsPhosphoMod = a.bIsPhosphoMod;
 
       return *this;
    }

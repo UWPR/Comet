@@ -109,10 +109,10 @@ private:
                                 int iEndPos);
    void XcorrScore(char *szProteinSeq,
                    int iStartResidue,
-				   int iEndResidue,
+                   int iEndResidue,
                    int iStartPos,
                    int iEndPos,
-                   bool bFoundVariableMod,
+                   int iFoundVariableMod,
                    double dCalcPepMass,
                    bool bDecoyPep,
                    int iWhichQuery,
@@ -135,10 +135,10 @@ private:
                              double *pdAAreverse);
    int CheckDuplicate(int iWhichQuery,
                       int iStartResidue,
-					  int iEndResidue,
+                      int iEndResidue,
                       int iStartPos,
                       int iEndPos,
-                      bool bFoundVariableMod,
+                      int iFoundVariableMod,
                       double dCalcPepMass,
                       char *szProteinSeq,
                       bool bDecoyResults,
@@ -148,7 +148,7 @@ private:
                      int iStartResidue,
                      int iStartPos,
                      int iEndPos,
-                     bool bFoundVariableMod,
+                     int iFoundVariableMod,
                      char *szProteinSeq,
                      double dCalcPepMass,
                      double dScoreSp,
@@ -287,8 +287,8 @@ private:
    VarModInfo         _varModInfo;
    ProteinInfo        _proteinInfo;
 
-   unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
-   unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN];
+   unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][2];
+   unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][2];
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;      // Number of arrays equals number of threads

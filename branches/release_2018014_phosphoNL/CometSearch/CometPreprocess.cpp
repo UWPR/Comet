@@ -460,7 +460,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
-      pScoring->iFastXcorrDataNL=pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE+1;
+      pScoring->iFastXcorrDataNL = (pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE) + 1;
 
       try
       {
@@ -482,7 +482,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       {
          if (pScoring->pfFastXcorrDataNL[i]>FLOAT_ZERO || pScoring->pfFastXcorrDataNL[i]<-FLOAT_ZERO)
          {
-            x=i/SPARSE_MATRIX_SIZE;
+            x = i / SPARSE_MATRIX_SIZE;
             if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
             {
                try
@@ -503,7 +503,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                for (y=0; y<SPARSE_MATRIX_SIZE; y++)
                   pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
             }
-            y=i-(x*SPARSE_MATRIX_SIZE);
+            y = i - (x * SPARSE_MATRIX_SIZE);
             pScoring->ppfSparseFastXcorrDataNL[x][y] = pScoring->pfFastXcorrDataNL[i];
          }
       }
@@ -513,7 +513,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    }
 
-   pScoring->iFastXcorrData = pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
+   pScoring->iFastXcorrData = (pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE) + 1;
 
    //MH: Fill sparse matrix
    try
@@ -536,7 +536,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    {
       if (pScoring->pfFastXcorrData[i]>FLOAT_ZERO || pScoring->pfFastXcorrData[i]<-FLOAT_ZERO)
       {
-         x=i/SPARSE_MATRIX_SIZE;
+         x = i / SPARSE_MATRIX_SIZE;
          if (pScoring->ppfSparseFastXcorrData[x]==NULL)
          {
             try
@@ -557,7 +557,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             for (y=0; y<SPARSE_MATRIX_SIZE; y++)
                pScoring->ppfSparseFastXcorrData[x][y]=0;
          }
-         y=i-(x*SPARSE_MATRIX_SIZE);
+         y = i - (x * SPARSE_MATRIX_SIZE);
          pScoring->ppfSparseFastXcorrData[x][y] = pScoring->pfFastXcorrData[i];
       }
    }

@@ -588,6 +588,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("use_NL_ions", g_staticParams.ionInformation.bUseNeutralLoss);
 
+   GetParamValue("use_phosphateNL_ions", g_staticParams.ionInformation.bUsePhosphateNeutralLoss);
+
    GetParamValue("variable_mod01", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
 
    GetParamValue("variable_mod02", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
@@ -1021,6 +1023,8 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
 
+   bool bHasPhosphoMod = false;
+
    for (int i=0; i<VMODS; i++)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
@@ -1039,8 +1043,19 @@ bool CometSearchManager::InitializeStaticParams()
          if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
             g_staticParams.variableModParameters.bRequireVarMod = true;
 
+         // used for phospho NL
+         if (fabs(g_staticParams.variableModParameters.varModList[i].dVarModMass - 79.966331) < 0.001
+               || fabs(g_staticParams.variableModParameters.varModList[i].dVarModMass - 79.9799) < 0.001)
+         {
+            g_staticParams.variableModParameters.varModList[i].bIsPhosphoMod = true;
+            bHasPhosphoMod = true;
+         }
       }
    }
+
+   // if phospho mod is not specified, turn off neutral loss option
+   if (!bHasPhosphoMod)
+      g_staticParams.ionInformation.bUsePhosphateNeutralLoss = false;
 
    // Do Sp scoring after search based on how many lines to print out.
    if (g_staticParams.options.iNumStored < 1)
