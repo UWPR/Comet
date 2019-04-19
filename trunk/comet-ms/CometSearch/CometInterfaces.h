@@ -32,8 +32,6 @@ public:
       virtual bool DoSearch() = 0;
       virtual bool InitializeSingleSpectrumSearch() = 0;
       virtual void FinalizeSingleSpectrumSearch() = 0;
-      virtual int CheckIdxPrecursorMatch(const int iPrecursorCharge,
-                                         const double dMZ) = 0;
       virtual bool DoSingleSpectrumSearch(const int iPrecursorCharge,
                                           const double dMZ,
                                           double* dMass,

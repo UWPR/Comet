@@ -99,139 +99,6 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 }
 
 
-// See if any peptides in indexed database matches dMZ/iPrecursorCharge.
-// Return iPrecursorMatch=1 if there's a match, iPrecursorMatch=0 for no match
-void CometSearch::CheckIdxPrecursorMatch(int iPrecursorCharge,
-                                         double dMZ,
-                                         int* iPrecursorMatch)
-{
-   Query *pScoring = new Query();
-
-   pScoring->_pepMassInfo.dExpPepMass = (dMZ * iPrecursorCharge) - (iPrecursorCharge - 1)*PROTON_MASS;;
-   pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
-   pScoring->iSpScoreData = 0;
-   pScoring->iFastXcorrData = 0;
-   pScoring->iFastXcorrDataNL = 0;
-   g_staticParams.options.iDecoySearch = 0;
-
-   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
-   {
-      pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {
-         pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
-      }
-   }
-   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
-   {
-      pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance * 0.001;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {
-         pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
-      }
-   }
-   else // ppm
-   {
-      pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance
-         * pScoring->_pepMassInfo.dExpPepMass / 1000000.0;
-   }
-
-   if (g_staticParams.tolerances.iIsotopeError == 0)
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 1) // search 0, +1 isotope windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - C13_DIFF * PROTON_MASS;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 2) // search 0, +1, +2 isotope windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - 2.0 * C13_DIFF * PROTON_MASS;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 3) // search 0, +1, +2, +3 isotope windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 4) // search -8, -4, 0, 4, 8 windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - 8.1;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance + 8.1;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 5) // search -1, 0, +1, +2, +3 isotope windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance + 1.0 * C13_DIFF * PROTON_MASS;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 6) // search -3, -2, -1, 0, +1, +2, +3 isotope windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance + 3.0 * C13_DIFF * PROTON_MASS;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 7) // search -1, 0, +1 isotope windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-         - pScoring->_pepMassInfo.dPeptideMassTolerance - C13_DIFF * PROTON_MASS;
-
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-         + pScoring->_pepMassInfo.dPeptideMassTolerance + C13_DIFF * PROTON_MASS;
-   }
-   else  // Should not get here.
-   {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - iIsotopeError=%d\n", g_staticParams.tolerances.iIsotopeError);
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return;
-   }
-
-   pScoring->_pResults = new Results[1];
-
-   g_pvQuery.push_back(pScoring);
-
-   g_massRange.dMinMass = pScoring->_pepMassInfo.dPeptideMassToleranceMinus;
-   g_massRange.dMaxMass = pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
-
-   *iPrecursorMatch = 0;
-
-   CometSearch sqSearch;
-   sqSearch.IndexSearch(iPrecursorMatch);
-
-   // Deleting each Query object in the vector calls its destructor, which
-   // frees the spectral memory (see definition for Query in CometData.h)
-   for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
-      delete *it;
-
-   g_pvQuery.clear();
-}
-
 bool CometSearch::RunSearch(int minNumThreads,
                             int maxNumThreads,
                             int iPercentStart,
@@ -241,9 +108,8 @@ bool CometSearch::RunSearch(int minNumThreads,
 
    if (g_staticParams.bIndexDb)
    {
-      int iPrecursorMatch = -1;
       CometSearch sqSearch;
-      sqSearch.IndexSearch(&iPrecursorMatch);
+      sqSearch.IndexSearch();
    }
    else
    {
@@ -1158,9 +1024,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 }
 
 
-// iPrecursorMatch=0 will do a simple mass lookup, called from CheckIdxPrecursorMatch
-// iPrecursorMatch=-1 will perform index search
-bool CometSearch::IndexSearch(int *iPrecursorMatch)
+bool CometSearch::IndexSearch(void)
 {
    comet_fileoffset_t lEndOfStruct;
    char szBuf[SIZE_BUF];
@@ -1339,6 +1203,13 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
    while (lReadIndex[iStart10] == -1 && iStart10 < iEnd10)
       iStart10++;
 
+   if (lReadIndex[iStart10] == -1)  // no match found within tolerance
+   {
+      delete[] lReadIndex;
+      fclose(fp);
+      return true;
+   }
+
    comet_fseek(fp, lReadIndex[iStart10], SEEK_SET);
    fread(&sDBI, sizeof(struct DBIndex), 1, fp);
 
@@ -1369,37 +1240,15 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
       printf(", mass %f\n", sDBI.dPepMass); fflush(stdout);
 */
       if (sDBI.dPepMass > g_massRange.dMaxMass)
-      {
-         if (*iPrecursorMatch == 0)
-         {
-            delete[] lReadIndex;
-            fclose(fp);
-            return true;
-         }
-         else
-            break;
-      }
+         break;
 
-      if (*iPrecursorMatch == 0)  //CheckIdxPrecursorMatch
-      {
-         if (CheckMassMatch(0, sDBI.dPepMass))
-         {
-            *iPrecursorMatch = 1;   // found mass match index
-            delete[] lReadIndex;
-            fclose(fp);
-            return true;
-         }
-      }
-      else
-      {
-         int iWhichQuery = BinarySearchMass(0, (int)g_pvQuery.size(), sDBI.dPepMass);
+      int iWhichQuery = BinarySearchMass(0, (int)g_pvQuery.size(), sDBI.dPepMass);
 
-         while (iWhichQuery > 0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sDBI.dPepMass)
-            iWhichQuery--;
+      while (iWhichQuery > 0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sDBI.dPepMass)
+         iWhichQuery--;
 
-         if (iWhichQuery != -1)
-            AnalyzeIndexPep(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
-      }
+      if (iWhichQuery != -1)
+         AnalyzeIndexPep(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
 
       if (comet_ftell(fp)>=lEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
          break;
@@ -1421,13 +1270,15 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
       _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
       _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
       dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1]; 
-   }
-
-   if (*iPrecursorMatch != -1)  // if here, no mass match for CheckIdxPrecursorMatch
-   {
-      delete[] lReadIndex;
-      fclose(fp);
-      return true;
+      
+      if (g_staticParams.options.iMaxIndexRunTime > 0)
+      {
+         // now check search run time
+         std::chrono::high_resolution_clock::time_point tNow = std::chrono::high_resolution_clock::now();
+         auto tElapsedTime = std::chrono::duration_cast<chrono::milliseconds>(tNow - g_staticParams.tRealTimeStart).count();
+         if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+            break;
+      }
    }
 
    for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)

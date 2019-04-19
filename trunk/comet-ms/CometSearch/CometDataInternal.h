@@ -19,6 +19,7 @@
 
 #include "CometData.h"
 #include "Threading.h"
+#include <chrono>
 
 class CometSearchManager;
 
@@ -110,12 +111,12 @@ struct Options             // output parameters
    int bOverrideCharge;
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
+   int iMaxIndexRunTime;         // max run time of index search in milliseconds
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
    double dPeptideMassHigh;      // MH+ mass
-
    IntRange scanRange;
    IntRange peptideLengthRange;
    DoubleRange clearMzRange;
@@ -125,20 +126,16 @@ struct Options             // output parameters
    {
       iNumPeptideOutputLines = a.iNumPeptideOutputLines;
       iWhichReadingFrame = a.iWhichReadingFrame;
-      lMaxIterations = a.lMaxIterations;
       iEnzymeTermini = a.iEnzymeTermini;
       iNumStored = a.iNumStored;
       iMaxDuplicateProteins = a.iMaxDuplicateProteins;
-      scanRange = a.scanRange;
-      peptideLengthRange = a.peptideLengthRange;
       iSpectrumBatchSize = a.iSpectrumBatchSize;
       iStartCharge = a.iStartCharge;
       iEndCharge = a.iEndCharge;
       iMaxFragmentCharge = a.iMaxFragmentCharge;
-      iMaxPrecursorCharge = a.iMaxPrecursorCharge;
+      iMaxPrecursorCharge = a.iMaxPrecursorCharge ;
       iMSLevel = a.iMSLevel;
       iMinPeaks = a.iMinPeaks;
-      dMinIntensity = a.dMinIntensity;
       iRemovePrecursor = a.iRemovePrecursor;
       iDecoySearch = a.iDecoySearch;
       iNumThreads = a.iNumThreads;
@@ -157,10 +154,18 @@ struct Options             // output parameters
       bNoEnzymeSelected = a.bNoEnzymeSelected;
       bShowFragmentIons = a.bShowFragmentIons;
       bPrintExpectScore = a.bPrintExpectScore;
+      bOverrideCharge = a.bOverrideCharge;
+      bCorrectMass = a.bCorrectMass;
+      bTreatSameIL = a.bTreatSameIL;
+      iMaxIndexRunTime = a.iMaxIndexRunTime;
+      lMaxIterations = a.lMaxIterations;
+      dMinIntensity = a.dMinIntensity;
       dRemovePrecursorTol = a.dRemovePrecursorTol;
-      clearMzRange = a.clearMzRange;
       dPeptideMassLow = a.dPeptideMassLow;
       dPeptideMassHigh = a.dPeptideMassHigh;
+      scanRange = a.scanRange;
+      peptideLengthRange = a.peptideLengthRange;
+      clearMzRange = a.clearMzRange;
       strcpy(szActivationMethod, a.szActivationMethod);
 
       return *this;
@@ -584,6 +589,7 @@ struct StaticParams
    vector<double>  vectorMassOffsets;
    char            szDIAWindowsFile[SIZE_FILE];
    bool            bSkipToStartScan;
+   std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
 
    StaticParams()
    {
@@ -715,6 +721,7 @@ struct StaticParams
       options.bOverrideCharge = 0;
       options.bCorrectMass = 0;
       options.bTreatSameIL = 1;
+      options.iMaxIndexRunTime = 0;                     // index run time limit in milliseconds; 0=no time limit
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;
 

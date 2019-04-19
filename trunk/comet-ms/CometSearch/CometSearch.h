@@ -67,9 +67,6 @@ public:
    // Manages memory in the search memory pool
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
-   static void CheckIdxPrecursorMatch(int iPrecursorCharge,
-                                   double dMZ,
-                                   int *iPrecursorMatch);
    static bool RunSearch(int minNumThreads,
                          int maxNumThreads,
                          int iPercentStart,
@@ -190,7 +187,7 @@ private:
                        int iLenPeptide,
                        struct sDBEntry *dbe,
                        long *lNumIterations);
-   bool IndexSearch(int *iPrecursorMatch);
+   bool IndexSearch(void);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool bNtermPeptideOnly,

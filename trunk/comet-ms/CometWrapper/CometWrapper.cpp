@@ -88,16 +88,6 @@ bool CometSearchManagerWrapper::DoSearch()
     return _pSearchMgr->DoSearch();
 }
 
-int CometSearchManagerWrapper::CheckIdxPrecursorMatch(int iPrecursorCharge,
-                                                      double dMZ)
-{
-   if (_pSearchMgr)
-   {
-      int myIntValue = _pSearchMgr->CheckIdxPrecursorMatch(iPrecursorCharge, dMZ);
-      return myIntValue;
-   }
-   return 0;
-}
 
 bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                        double dMZ,

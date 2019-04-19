@@ -680,6 +680,7 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("num_output_lines", g_staticParams.options.iNumPeptideOutputLines);
 
    GetParamValue("num_results", g_staticParams.options.iNumStored);
+
    GetParamValue("max_duplicate_proteins", g_staticParams.options.iMaxDuplicateProteins);
 
    GetParamValue("remove_precursor_peak", g_staticParams.options.iRemovePrecursor);
@@ -694,7 +695,6 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.clearMzRange.dEnd = doubleRangeData.dEnd;
       }
    }
-
 
    GetParamValue("print_expect_score", g_staticParams.options.bPrintExpectScore);
 
@@ -719,6 +719,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("create_index", g_staticParams.options.bCreateIndex);
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
+
+   GetParamValue("max_index_runtime", g_staticParams.options.iMaxIndexRunTime);
 
    GetParamValue("peff_verbose_output", g_staticParams.options.bVerboseOutput);
 
@@ -862,6 +864,11 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("equal_I_and_L", iIntData))
    {
       g_staticParams.options.bTreatSameIL = iIntData;
+   }
+
+   if (GetParamValue("max_index_runtime", iIntData))
+   {
+      g_staticParams.options.iMaxIndexRunTime = iIntData;
    }
 
    if (GetParamValue("precursor_charge", intRangeData))
@@ -2279,19 +2286,6 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
 }
 
 
-int CometSearchManager::CheckIdxPrecursorMatch(const int iPrecursorCharge,
-                                               const double dMZ)
-{
-   // Now that spectra are loaded to memory and sorted, do search.
-   int iReturn = 0;
-
-   CometSearch::CheckIdxPrecursorMatch(iPrecursorCharge, dMZ, &iReturn);
-
-   // if iReturn == 1, the mz/charge is found in the index database
-
-   return iReturn;
-}
-
 bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 double dMZ,
                                                 double* pdMass,
@@ -2323,6 +2317,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    {
       return false;
    }
+
+   g_staticParams.tRealTimeStart = std::chrono::high_resolution_clock::now();
 
    // We need to reset some of the static variables in-between input files
    CometPreprocess::Reset();
