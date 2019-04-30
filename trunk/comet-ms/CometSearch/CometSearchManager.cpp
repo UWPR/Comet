@@ -2539,7 +2539,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                double mass = (isNTerm) ? dBion : dYion;
                int fragNumber = i + 1;
 
-               // Add any conversion factor from differnt ion series (e.g. b -> a, or y -> z)
+               // Add any conversion factor from different ion series (e.g. b -> a, or y -> z)
                mass += ionMassesRelative[ionSeries];
 
                double mz = (mass + (ctCharge - 1)*PROTON_MASS) / ctCharge;

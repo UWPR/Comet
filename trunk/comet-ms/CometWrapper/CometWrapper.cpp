@@ -120,14 +120,18 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
     szProtein = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStringszProtein.c_str()))));
 
     score = gcnew ScoreWrapper(scores);
+
     matchingFragments = gcnew List<FragmentWrapper^>();
     for (auto frag : matchedFragments)
     {
-        matchingFragments->Add(gcnew FragmentWrapper(frag));
+        auto pNew = gcnew FragmentWrapper(frag);
+        matchingFragments->Add(pNew);
+        delete pNew;
     }
 
     return isSuccess;
 }
+
 
 bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList)
 {
