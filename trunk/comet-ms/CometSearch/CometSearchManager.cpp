@@ -2549,7 +2549,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                {
                   Fragment frag;
                   frag.intensity = pdTmpSpectrum[iTmp];
-                  frag.mass = mass;
+                  frag.mass = mz;
                   frag.type = ionSeries;
                   frag.number = fragNumber;
                   frag.charge = ctCharge;

@@ -124,9 +124,7 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
     matchingFragments = gcnew List<FragmentWrapper^>();
     for (auto frag : matchedFragments)
     {
-        auto pNew = gcnew FragmentWrapper(frag);
-        matchingFragments->Add(pNew);
-        delete pNew;
+        matchingFragments->Add(gcnew FragmentWrapper(frag));
     }
 
     return isSuccess;
