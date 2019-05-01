@@ -269,8 +269,13 @@ namespace CometWrapper {
         {
             pScores = new Scores(score);
         }
-      
+
         ~ScoreWrapper()
+        {
+            this->!ScoreWrapper();
+        }
+
+        !ScoreWrapper()
         {
             delete pScores;
         }
@@ -315,6 +320,11 @@ namespace CometWrapper {
         }
 
         ~FragmentWrapper()
+        {
+            this->!FragmentWrapper();
+        }
+        
+        !FragmentWrapper()
         {
             delete pFragment;
         }
