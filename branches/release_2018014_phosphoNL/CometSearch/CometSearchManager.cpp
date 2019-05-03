@@ -616,6 +616,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("require_variable_mod", g_staticParams.variableModParameters.bRequireVarMod);
 
+   GetParamValue("silac_pair_fragments", g_staticParams.variableModParameters.bSilacPair);
+
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
    if (g_staticParams.tolerances.dFragmentBinSize < 0.01)
       g_staticParams.tolerances.dFragmentBinSize = 0.01;
@@ -1019,6 +1021,7 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.variableModParameters.bVarModSearch = false;
    g_staticParams.variableModParameters.bBinaryModSearch = false;
    g_staticParams.variableModParameters.bRequireVarMod = false;
+   g_staticParams.variableModParameters.bSilacPair = false;
    
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;

@@ -113,6 +113,7 @@ private:
                    int iStartPos,
                    int iEndPos,
                    int iFoundVariableMod,
+                   bool bIsSilacPair,
                    double dCalcPepMass,
                    bool bDecoyPep,
                    int iWhichQuery,
@@ -287,8 +288,9 @@ private:
    VarModInfo         _varModInfo;
    ProteinInfo        _proteinInfo;
 
-   unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][2];
-   unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][2];
+   //[charge][ionseries][peptide][normal/phosphoNL/silacpair]
+   unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][3];
+   unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][3];
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;      // Number of arrays equals number of threads

@@ -371,6 +371,7 @@ struct VarModParams
    bool    bVarModSearch;            // set to true if variable mods are specified
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    int     bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
+   int     bSilacPair;               // any identified peptide, search with both heavy and light fragments
    int     iMaxVarModPerPeptide;
    int     iMaxPermutations;
    VarMods varModList[VMODS];
@@ -381,6 +382,7 @@ struct VarModParams
       bVarModSearch = a.bVarModSearch;
       bBinaryModSearch = a.bBinaryModSearch;
       bRequireVarMod = a.bRequireVarMod;
+      bSilacPair = a.bSilacPair;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;
 

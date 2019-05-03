@@ -966,6 +966,10 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
 
+   int iFoundVariableMod = 0;
+   int iFoundVariableModDecoy = 0;
+   bool bIsSilacPair = false;
+
    iLenProtein = _proteinInfo.iTmpProteinSeqLength;
 
    if (dbe.vectorPeffMod.size() > 0) // sort vectorPeffMod by iPosition
@@ -1052,7 +1056,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                // iSearchEnZymeOffset == 0
                // SESTEQL.D   where D is iPeffRequiredVariantPosition and L is iEnd ... must check for this
 
-
                // At this point, only case need to check for is if variant is position before iStartPos
                // and causes enzyme digest.  Or if variant is position after iEndPos and causes enzyme
                // digest. All other cases are ok as variant is in peptide.
@@ -1102,22 +1105,53 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                      double dBion = g_staticParams.precalcMasses.dNtermProton;
                      double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
+                     int iContainsKB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain lyisne
+                     int iContainsKY[MAX_PEPTIDE_LEN];   // track list of y-ion fragments that contain lysine, increasing order from end of peptide
+
+                     int iCountKB = 0;   // current count of lysine residues b-ions
+                     int iCountKY = 0;   // current count of lysine residues y ions
+
+                     if (g_staticParams.variableModParameters.bSilacPair)
+                     {
+                        memset(iContainsKB, 0, iLenPeptide * sizeof(int));
+                        memset(iContainsKY, 0, iLenPeptide * sizeof(int));
+                     }
+
+                     iFoundVariableMod = 0;  // reset this here for every new peptide analyzed
+                     bIsSilacPair = false;
+
                      if (iStartPos == 0)
                         dBion += g_staticParams.staticModifications.dAddNterminusProtein;
                      if (iEndPos == iProteinSeqLengthMinus1)
                         dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
                      int iPosForward;  // increment up from 0
+                     int iPosReverse;  // increment up from 0 from c-term
                      for (i=iStartPos; i<iEndPos; i++)
                      {
-                        iPosForward = i-iStartPos;
+                        iPosForward = i - iStartPos;
+                        iPosReverse = iEndPos - iPosForward;
 
                         dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
                         _pdAAforward[iPosForward] = dBion;
 
-                        dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iEndPos-iPosForward]];
+                        dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iPosReverse]];
                         _pdAAreverse[iPosForward] = dYion;
+                        
+                        if (g_staticParams.variableModParameters.bSilacPair)
+                        {
+                           if (szProteinSeq[i] == 'K')
+                              iCountKB++;
+                           if (szProteinSeq[iPosReverse] == 'K')
+                              iCountKY++;
+
+                           iContainsKB[iPosForward] = iCountKB;
+                           iContainsKY[iPosForward] = iCountKY;
+                        }
                      }
+
+                     if (iCountKB > 0)  // must have lysine to score pairs together
+                        bIsSilacPair = true;
 
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
                      for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
@@ -1128,7 +1162,30 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                            for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                            {
-                              pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
+                              double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse);
+                              pbDuplFragment[BIN(dFragMass)] = false;
+
+                              if (bIsSilacPair)
+                              {
+                                 if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
+                                    || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
+                                 {
+                                    int iCountK = 0;
+
+                                    if (iWhichIonSeries == 1 && iContainsKB[ctLen])
+                                       iCountK = iContainsKB[ctLen];
+                                    else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
+                                       iCountK = iContainsKY[ctLen];
+
+                                    double dNewMass = dFragMass + 8.014199*iCountK/ctCharge;
+
+printf("OK  mass %f, pair %f\n", dFragMass, dNewMass);
+                                    if (dNewMass >= 0.0)
+                                    {
+                                       pbDuplFragment[BIN(dNewMass)] = false;
+                                    }
+                                 }
+                              }
                            }
                         }
                      }
@@ -1143,22 +1200,46 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                            // iLenPeptide-1 to complete set of internal fragment ions.
                            for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                            {
-                              int iVal = BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse));
+                              double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse);
+                              int iVal = BIN(dFragMass);
 
                               if (pbDuplFragment[iVal] == false)
                               {
                                  _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = iVal;
                                  pbDuplFragment[iVal] = true;
                               }
-                              else
-                                 _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
+
+                              if (bIsSilacPair)
+                              {
+                                 if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
+                                    || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
+                                 {
+                                    int iCountK = 0;
+
+                                    if (iWhichIonSeries == 1 && iContainsKB[ctLen])
+                                       iCountK = iContainsKB[ctLen];
+                                    else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
+                                       iCountK = iContainsKY[ctLen];
+
+                                    double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+
+                                    iVal = BIN(dNewMass);
+
+                                    if (pbDuplFragment[iVal] == false)
+                                    {
+                                       _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = iVal;
+                                       pbDuplFragment[iVal] = true;
+                                    }
+                                 }
+                              }
+
                            }
                         }
                      }
                   }
 
-                  XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, 0,
-                        dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
+                  XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, iFoundVariableMod,
+                        bIsSilacPair, dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
 
                   if (bFirstTimeThroughLoopForPeptide)
                   {
@@ -1174,6 +1255,18 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
                         double dBion = g_staticParams.precalcMasses.dNtermProton;
                         double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+                        int iContainsKB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain lyisne
+                        int iContainsKY[MAX_PEPTIDE_LEN];   // track list of y-ion fragments that contain lysine, increasing order from end of peptide
+
+                        int iCountKB = 0;   // current count of lysine residues b-ions
+                        int iCountKY = 0;   // current count of lysine residues y ions
+
+                        if (g_staticParams.variableModParameters.bSilacPair)
+                        {
+                           memset(iContainsKB, 0, iLenPeptide * sizeof(int));
+                           memset(iContainsKY, 0, iLenPeptide * sizeof(int));
+                        }
 
                         // Store flanking residues from original sequence.
                         if (iStartPos==0)
@@ -1215,20 +1308,33 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                         int iDecoyStartPos;       // This is start/end for newly created decoy peptide
                         int iDecoyEndPos;
-                        int iTmp;
+                        int iPosForward;
+                        int iPosReverse;
 
                         iDecoyStartPos = 1;
                         iDecoyEndPos = strlen(szDecoyPeptide)-2;
 
                         for (i=iDecoyStartPos; i<iDecoyEndPos; i++)
                         {
-                           iTmp = i-iDecoyStartPos;
+                           iPosForward = i - iDecoyStartPos;
+                           iPosReverse = iDecoyEndPos - iPosForward;
 
                            dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
-                           _pdAAforwardDecoy[iTmp] = dBion;
+                           _pdAAforwardDecoy[iPosForward] = dBion;
 
-                           dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iDecoyEndPos - iTmp]];
-                           _pdAAreverseDecoy[iTmp] = dYion;
+                           dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iPosReverse]];
+                           _pdAAreverseDecoy[iPosReverse] = dYion;
+
+                           if (g_staticParams.variableModParameters.bSilacPair)
+                           {
+                              if (szDecoyPeptide[i] == 'K')
+                                 iCountKB++;
+                              if (szDecoyPeptide[iPosReverse] == 'K')
+                                 iCountKY++;
+
+                              iContainsKB[iPosForward] = iCountKB;
+                              iContainsKY[iPosForward] = iCountKY;
+                           }
                         }
 
                         for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
@@ -1242,6 +1348,28 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                  double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy);
 
                                  pbDuplFragment[BIN(dFragMass)] = false;
+
+                                 if (bIsSilacPair)
+                                 {
+                                    if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
+                                       || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
+                                    {
+                                       int iCountK = 0;
+
+                                       if (iWhichIonSeries == 1 && iContainsKB[ctLen])
+                                          iCountK = iContainsKB[ctLen];
+                                       else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
+                                          iCountK = iContainsKY[ctLen];
+
+                                       double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+
+                                       if (dNewMass >= 0.0)
+                                       {
+                                          pbDuplFragment[BIN(dNewMass)] = false;
+                                       }
+                                    }
+                                 }
+
                               }
                            }
                         }
@@ -1257,15 +1385,38 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                               // iLenPeptide-1 to complete set of internal fragment ions.
                               for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                               {
-                                 int iVal = BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy));
+                                 double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy);
+                                 int iVal = BIN(dFragMass);
 
                                  if (pbDuplFragment[iVal] == false)
                                  {
                                     _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = iVal;
                                     pbDuplFragment[iVal] = true;
                                  }
-                                 else
-                                    _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = 0;
+                                 
+                                 if (bIsSilacPair)
+                                 {
+                                    if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
+                                       || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
+                                    {
+                                       int iCountK = 0;
+
+                                       if (iWhichIonSeries == 1 && iContainsKB[ctLen])
+                                          iCountK = iContainsKB[ctLen];
+                                       else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
+                                          iCountK = iContainsKY[ctLen];
+
+                                       double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+
+                                       iVal = BIN(dNewMass);
+
+                                       if (pbDuplFragment[iVal] == false)
+                                       {
+                                          _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = iVal;
+                                          pbDuplFragment[iVal] = true;
+                                       }
+                                    }
+                                 }
                               }
                            }
                         }
@@ -1274,8 +1425,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                   if (g_staticParams.options.iDecoySearch)
                   {
-                     XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, 0,
-                           dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
+                     XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, iFoundVariableModDecoy,
+                           dCalcPepMass, bIsSilacPair, true, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
                   }
                }
                iWhichQuery++;
@@ -2137,7 +2288,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                              int iEndResidue,
                              int iStartPos,
                              int iEndPos,
-                             int iFoundVariableMod,    // 0=no mods, >=1 has variable mod, 2=phospho mod
+                             int iFoundVariableMod,    // 0=no mods,1 has variable mod, 2=phospho mod use NL peaks
+                             bool bIsSilacPair,
                              double dCalcPepMass,
                              bool bDecoyPep,
                              int iWhichQuery,
@@ -2152,7 +2304,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    int iLenPeptideMinus1 = iLenPeptide - 1;
 
    // Pointer to either regular or decoy uiBinnedIonMasses[][][].
-   unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][2];
+   unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][3];
 
    // Point to right set of arrays depending on target or decoy search.
    if (bDecoyPep)
@@ -2205,7 +2357,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
             dXcorr += ppSparseFastXcorrData[x][y];
 
-            if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss && iFoundVariableMod==2 && ctCharge<3)  // consider phospho NL peaks here
+            // consider phospho NL peaks here
+            if ((g_staticParams.ionInformation.bUsePhosphateNeutralLoss && iFoundVariableMod==2 && ctCharge<3))
             {
                bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries) + ctLen) + 1);
                x = bin / SPARSE_MATRIX_SIZE;
@@ -2215,9 +2368,21 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
                dXcorr += ppSparseFastXcorrData[x][y];
             }
+
+            // consider SILAC light and heavy peaks together here
+            if (bIsSilacPair)
+            {
+               bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries) + ctLen) + 2);
+               x = bin / SPARSE_MATRIX_SIZE;
+               if (x > iMax || bin == 0 || ppSparseFastXcorrData[x] == NULL) // x should never be > iMax so this is just a safety check
+                  continue;
+               y = bin - (x*SPARSE_MATRIX_SIZE);
+
+               dXcorr += ppSparseFastXcorrData[x][y];
+            }
          }
 
-         // *(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)+phosNL) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][phosNL].
+         // *(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)+phosNL) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][phosNL/silacpair].
       }
    }
 
@@ -4382,8 +4547,9 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
    bool bFirstTimeThroughLoopForPeptide = true;
 
    int iLenProteinMinus1;
-   int iFoundVariableMod = 1;  // 1=found variable mod, 2=found phospho mod
-   int iFoundVariableModDecoy = 1;  // 1=found variable mod, 2=found phospho mod
+   int iFoundVariableMod = 1;  // 1=found variable mod, 2=found phospho mod, 3=silac pair analysis
+   int iFoundVariableModDecoy = 1;  // 1=found variable mod, 2=found phospho mod, 3=silac pair analysis
+   int bIsSilacPair = false;
 
    iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
@@ -4407,11 +4573,24 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             double dBion = g_staticParams.precalcMasses.dNtermProton;
             double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
+            // for g_staticParams.variableModParameters.bSilacPair
+            bIsSilacPair = false;
+            int iCountKB = 0;   // current count of lysine residues b-ions
+            int iCountKY = 0;   // current count of lysine residues y ions
+            int iContainsKB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain lyisne
+            int iContainsKY[MAX_PEPTIDE_LEN];   // track list of y-ion fragments that contain lysine, increasing order from end of peptide
+            if (g_staticParams.variableModParameters.bSilacPair)
+            {
+               memset(iContainsKB, 0, iLenPeptide * sizeof(int));
+               memset(iContainsKY, 0, iLenPeptide * sizeof(int));
+            }
+            // end for g_staticParams.variableModParameters.bSilacPair
+
             bool bAlreadyContainsPhosphateB = false; // as loop through b-ions, does fragment already contain phosphate?
             bool bAlreadyContainsPhosphateY = false; // as loop through y-ions, does fragment already contain phosphate?
 
             int iContainsPhosphateB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain phosphate mod
-            int iContainsPhosphateY[MAX_PEPTIDE_LEN];   // track ilst of y-ion fragments that contain phosphate mod
+            int iContainsPhosphateY[MAX_PEPTIDE_LEN];   // track list of y-ion fragments that contain phosphate mod
 
             if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss)
             {
@@ -4436,6 +4615,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             for (i=_varModInfo.iStartPos; i<_varModInfo.iEndPos; i++)
             {
                int iPosForward = i - _varModInfo.iStartPos; // increment up from 0
+               int iPosReverse = _varModInfo.iEndPos - iPosForward;
+               int iPosReverseMinus1 = iPosReverse - 1;
 
                dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
 
@@ -4460,31 +4641,44 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                _pdAAforward[iPosForward] = dBion;
 
-               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[_varModInfo.iEndPos - i +_varModInfo.iStartPos]];
+               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iPosReverse]];
 
-               int iPosReverse = _varModInfo.iEndPos - i;
-
-               if (piVarModSites[iPosReverse] > 0)
+               if (piVarModSites[iPosReverseMinus1] > 0)
                {
-                  dYion += g_staticParams.variableModParameters.varModList[piVarModSites[iPosReverse]-1].dVarModMass;
+                  dYion += g_staticParams.variableModParameters.varModList[piVarModSites[iPosReverseMinus1]-1].dVarModMass;
 
                   if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss
-                        && g_staticParams.variableModParameters.varModList[piVarModSites[iPosReverse]-1].bIsPhosphoMod)
+                        && g_staticParams.variableModParameters.varModList[piVarModSites[iPosReverseMinus1]-1].bIsPhosphoMod)
                   {
                      bAlreadyContainsPhosphateY = true;
                      iFoundVariableMod = 2;
                   }
                }
-               else if (piVarModSites[iPosReverse] < 0)
+               else if (piVarModSites[iPosReverseMinus1] < 0)
                {
-                  dYion += (dbe->vectorPeffMod.at(-piVarModSites[iPosReverse]-1)).dMassDiffMono;
+                  dYion += (dbe->vectorPeffMod.at(-piVarModSites[iPosReverseMinus1]-1)).dMassDiffMono;
                }
 
                if ( bAlreadyContainsPhosphateY)
                   iContainsPhosphateY[iPosForward] = 1;
 
                _pdAAreverse[iPosForward] = dYion;
+printf("OK  really need to check variable mod  %d.  b: %f   y: %f\n", iPosForward, dBion, dYion);
+
+               if (g_staticParams.variableModParameters.bSilacPair)
+               {
+                  if (szProteinSeq[i] == 'K')
+                     iCountKB++;
+                  if (szProteinSeq[iPosReverse] == 'K')
+                     iCountKY++;
+
+                  iContainsKB[iPosForward] = iCountKB;
+                  iContainsKY[iPosForward] = iCountKY;
+               }
             }
+
+            if (iCountKB > 0)  // must have lysine to score pairs together
+               bIsSilacPair = true;
 
             // now get the set of binned fragment ions once for all matching peptides
 
@@ -4515,9 +4709,34 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                         }
                      }
 
+                     // bSilacPair assumes only light (unmodified) SILAC peptides are being analyzed.
+                     // OK to have other modifications such as OxMet.
+                     if (bIsSilacPair)
+                     {
+                        if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
+                           || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
+                        {
+                           int iCountK = 0;
+
+                           if (iWhichIonSeries == 1 && iContainsKB[ctLen])
+                              iCountK = iContainsKB[ctLen];
+                           else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
+                              iCountK = iContainsKY[ctLen];
+
+                           double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+
+                           if (dNewMass >= 0.0)
+                           {
+                              pbDuplFragment[BIN(dNewMass)] = false;
+                           }
+                        }
+                     }
+
                      _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
                      if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss)
                         _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][1] = 0;
+                     if (g_staticParams.variableModParameters.bSilacPair)
+                        _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = 0;
                   }
                }
             }
@@ -4561,13 +4780,38 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                            }
                         }
                      }
+
+                     if (bIsSilacPair)
+                     {
+                        if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
+                           || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
+                        {
+                           int iCountK = 0;
+
+                           if (iWhichIonSeries == 1 && iContainsKB[ctLen])
+                              iCountK = iContainsKB[ctLen];
+                           else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
+                              iCountK = iContainsKY[ctLen];
+
+                           double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+
+                           iVal = BIN(dNewMass);
+
+                           if (pbDuplFragment[iVal] == false)
+                           {
+                              _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = iVal;
+                              pbDuplFragment[iVal] = true;
+                           }
+                        }
+                     }
+
                   }
                }
             }
          }
 
          XcorrScore(szProteinSeq, _varModInfo.iStartPos, _varModInfo.iEndPos, _varModInfo.iStartPos, _varModInfo.iEndPos,
-               iFoundVariableMod, dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
+               iFoundVariableMod, dCalcPepMass, bIsSilacPair, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
 
          if (bFirstTimeThroughLoopForPeptide)
          {
@@ -4579,11 +4823,24 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                double dBion = g_staticParams.precalcMasses.dNtermProton;
                double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
+               // for g_staticParams.variableModParameters.bSilacPair
+               bIsSilacPair = false;
+               int iCountKB = 0;   // current count of lysine residues b-ions
+               int iCountKY = 0;   // current count of lysine residues y ions
+               int iContainsKB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain lyisne
+               int iContainsKY[MAX_PEPTIDE_LEN];   // track list of y-ion fragments that contain lysine, increasing order from end of peptide
+               if (g_staticParams.variableModParameters.bSilacPair)
+               {
+                  memset(iContainsKB, 0, iLenPeptide * sizeof(int));
+                  memset(iContainsKY, 0, iLenPeptide * sizeof(int));
+               }
+               // end for g_staticParams.variableModParameters.bSilacPair
+
                bool bAlreadyContainsPhosphateB = false; // as loop through b-ions, does fragment already contain phosphate?
                bool bAlreadyContainsPhosphateY = false; // as loop through y-ions, does fragment already contain phosphate?
 
                int iContainsPhosphateB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain phosphate mod
-               int iContainsPhosphateY[MAX_PEPTIDE_LEN];   // track ilst of y-ion fragments that contain phosphate mod
+               int iContainsPhosphateY[MAX_PEPTIDE_LEN];   // track list of y-ion fragments that contain phosphate mod
 
                int piTmpVarModSearchSites[MAX_PEPTIDE_LEN_P2];  // placeholder to reverse variable mods
 
@@ -4661,8 +4918,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                int iDecoyEndPos = strlen(szDecoyPeptide)-2;
 
                int iPosForward;  // count forward in peptide from 0
-               int iPosReverse;  // count reverse in peptide
-               int iPosRevPlus1;
+               int iPosReverse;  // count reverse in peptide from last position (zero indexed) down to 0
 
                if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss)
                {
@@ -4675,7 +4931,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                {
                   iPosForward = i - iDecoyStartPos;
                   iPosReverse = iDecoyEndPos - i;
-                  iPosRevPlus1 = iPosReverse + 1;
 
                   dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
                   if (piVarModSitesDecoy[iPosForward] > 0)
@@ -4699,9 +4954,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                   _pdAAforwardDecoy[iPosForward] = dBion;
 
-                  dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iPosRevPlus1]];
+                  dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iDecoyEndPos - iPosForward]];
 
-//FIX: check if piVarModSites index is correct
                   if (piVarModSitesDecoy[iPosReverse] > 0)
                   {
                      dYion += g_staticParams.variableModParameters.varModList[piVarModSitesDecoy[iPosReverse]-1].dVarModMass;
@@ -4713,7 +4967,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                         iFoundVariableModDecoy = 2;
                      }
                   }
-                  else if (piVarModSitesDecoy[iPosRevPlus1-iDecoyStartPos] < 0)
+                  else if (piVarModSitesDecoy[iPosReverse] < 0)
                   {
                      dYion += (dbe->vectorPeffMod.at(-piVarModSitesDecoy[iPosReverse]-1)).dMassDiffMono;
                   }
@@ -4722,6 +4976,18 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                      iContainsPhosphateY[iPosForward] = 1;
 
                   _pdAAreverseDecoy[iPosForward] = dYion;
+printf("OK check modified decoy:  %d.  b %f   y %f\n", iPosForward, dBion, dYion);
+
+                  if (g_staticParams.variableModParameters.bSilacPair)
+                  {
+                     if (szProteinSeq[i] == 'K')
+                        iCountKB++;
+                     if (szProteinSeq[iPosReverse] == 'K')
+                        iCountKY++;
+
+                     iContainsKB[iPosForward] = iCountKB;
+                     iContainsKY[iPosForward] = iCountKY;
+                  }
                }
 
                // now get the set of binned fragment ions once for all matching decoy peptides
@@ -4753,9 +5019,34 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                            }
                         }
 
+                        // bSilacPair assumes only light (unmodified) SILAC peptides are being analyzed.
+                        // OK to have other modifications such as OxMet.
+                        if (bIsSilacPair)
+                        {
+                           if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
+                              || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
+                           {
+                              int iCountK = 0;
+
+                              if (iWhichIonSeries == 1 && iContainsKB[ctLen])
+                                 iCountK = iContainsKB[ctLen];
+                              else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
+                                 iCountK = iContainsKY[ctLen];
+
+                              double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+
+                              if (dNewMass >= 0.0)
+                              {
+                                 pbDuplFragment[BIN(dNewMass)] = false;
+                              }
+                           }
+                        }
+
                         _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = 0;
                         if (g_staticParams.ionInformation.bUsePhosphateNeutralLoss)
                            _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][1] = 0;
+                        if (g_staticParams.variableModParameters.bSilacPair)
+                           _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][2] = 0;
                      }
                   }
                }
@@ -4799,8 +5090,32 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                                  }
                               }
                            }
-
                         }
+
+                        if (bIsSilacPair)
+                        {
+                           if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
+                              || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
+                           {
+                              int iCountK = 0;
+
+                              if (iWhichIonSeries == 1 && iContainsKB[ctLen])
+                                 iCountK = iContainsKB[ctLen];
+                              else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
+                                 iCountK = iContainsKY[ctLen];
+
+                              double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+
+                              iVal = BIN(dNewMass);
+
+                              if (pbDuplFragment[iVal] == false)
+                              {
+                                 _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = iVal;
+                                 pbDuplFragment[iVal] = true;
+                              }
+                           }
+                        }
+
                      }
                   }
                }
@@ -4810,7 +5125,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
          if (g_staticParams.options.iDecoySearch)
          {
             XcorrScore(szDecoyPeptide, _varModInfo.iStartPos, _varModInfo.iEndPos, 1, iLenPeptide,
-                  iFoundVariableModDecoy, dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
+                  iFoundVariableModDecoy, dCalcPepMass, bIsSilacPair, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
          }
       }
 
