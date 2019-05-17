@@ -508,6 +508,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("require_variable_mod", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "silac_pair_fragments"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("silac_pair_fragments", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "fragment_bin_tol"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
