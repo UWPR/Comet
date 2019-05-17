@@ -664,7 +664,6 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-
    GetParamValue("print_expect_score", g_staticParams.options.bPrintExpectScore);
 
    GetParamValue("output_sqtstream", g_staticParams.options.bOutputSqtStream);
@@ -963,35 +962,6 @@ bool CometSearchManager::InitializeStaticParams()
          logout(szOut);
       }
    }
-
-   // Set masses to either average or monoisotopic.
-   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,
-                                  g_staticParams.massUtility.bMonoMassesParent,
-                                  &g_staticParams.massUtility.dOH2parent);
-
-   CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
-                                  g_staticParams.massUtility.bMonoMassesFragment,
-                                  &g_staticParams.massUtility.dOH2fragment);
-
-   g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment[(int)'c']
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
-
-   g_staticParams.massUtility.dH2O = g_staticParams.massUtility.pdAAMassFragment[(int)'h']
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
-
-   g_staticParams.massUtility.dNH3 = g_staticParams.massUtility.pdAAMassFragment[(int)'n']
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
-
-   g_staticParams.massUtility.dNH2 = g_staticParams.massUtility.pdAAMassFragment[(int)'n']
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h']
-            + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
-
-   g_staticParams.massUtility.dCOminusH2 = g_staticParams.massUtility.dCO
-            - g_staticParams.massUtility.pdAAMassFragment[(int)'h']
-            - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    GetParamValue("[COMET_ENZYME_INFO]", g_staticParams.enzymeInformation);
    if (!strncmp(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, "-", 1)
