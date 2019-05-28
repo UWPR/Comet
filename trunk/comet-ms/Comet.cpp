@@ -112,22 +112,28 @@ void SetOptions(char *arg,
    switch (arg[1])
    {
       case 'D':   // Alternate sequence database.
-         if (sscanf(arg+2, "%512s", szTmp) == 0)
-         {
-            sprintf(szErrorMsg, "Cannot read command line database: '%s'.  Ignored.\n", szTmp);
-            logerr(szErrorMsg);
-         }
+         strncpy(szTmp, arg+2, 512);
+         szTmp[511]='\0';
+
+         if (strlen(szTmp) == 0 )
+            logerr("Missing text for parameter option -D<database>.  Ignored.\n");
          else
             pSearchMgr->SetParam("database_name", szTmp, szTmp);
          break;
       case 'P':   // Alternate parameters file.
-         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         strncpy(szTmp, arg+2, 512);
+         szTmp[511]='\0';
+
+         if (strlen(szTmp) == 0 )
             logerr("Missing text for parameter option -P<params>.  Ignored.\n");
          else
             strcpy(szParamsFile, szTmp);
          break;
       case 'N':   // Set basename of output file (for .out, SQT, and pepXML)
-         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         strncpy(szTmp, arg+2, 512);
+         szTmp[511]='\0';
+
+         if (strlen(szTmp) == 0 )
             logerr("Missing text for parameter option -N<basename>.  Ignored.\n");
          else
             pSearchMgr->SetOutputFileBaseName(szTmp);
