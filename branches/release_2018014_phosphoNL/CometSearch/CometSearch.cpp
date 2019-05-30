@@ -1153,7 +1153,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         }
                      }
 
-                     if (iCountKBion > 0)  // must have lysine to score pairs together
+                     if (iCountKBion > 0 || iCountKYion > 0)  // must have lysine to score pairs together
                         bIsSilacPair = true;
 
                      // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
@@ -2315,7 +2315,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    // Pointer to either regular or decoy uiBinnedIonMasses[][][].
    unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][3];
-
 
    // Point to right set of arrays depending on target or decoy search.
    if (bDecoyPep)
@@ -4561,7 +4560,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
    int iLenProteinMinus1;
    int iFoundVariableMod = 1;  // 1=found variable mod, 2=found phospho mod, 3=silac pair analysis
    int iFoundVariableModDecoy = 1;  // 1=found variable mod, 2=found phospho mod, 3=silac pair analysis
-   int bIsSilacPair = false;
+   int bIsSilacPair;
 
    iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
@@ -4625,6 +4624,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
             // Generate pdAAforward for _pResults[0].szPeptide
  
+            int iSign = 1;  // used for bSilacPair; set to 1 if light peptide; -1 if heavy peptide
             for (i=_varModInfo.iStartPos; i<_varModInfo.iEndPos; i++)
             {
                int iPosForward = i - _varModInfo.iStartPos; // increment up from 0
@@ -4643,6 +4643,9 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                      bAlreadyContainsPhosphateB = true;
                      iFoundVariableMod = 2;
                   }
+
+                  if (g_staticParams.variableModParameters.bSilacPair && szProteinSeq[i]=='K') // K has variable mod so must be heavy
+                     iSign = -1;
                }
                else if (piVarModSites[iPosForward] < 0)
                {
@@ -4666,6 +4669,9 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                      bAlreadyContainsPhosphateY = true;
                      iFoundVariableMod = 2;
                   }
+
+                  if (g_staticParams.variableModParameters.bSilacPair && szProteinSeq[iPosReverse]=='K') // K has variable mod so must be heavy
+                     iSign = -1;
                }
                else if (piVarModSites[iPosReverseModSite] < 0)
                {
@@ -4689,7 +4695,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
             }
 
-            if (iCountKBion > 0)  // must have lysine to score pairs together
+            if (iCountKBion > 0 || iCountKYion > 0)  // must have lysine to score pairs together
                bIsSilacPair = true;
 
             // now get the set of binned fragment ions once for all matching peptides
@@ -4721,8 +4727,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                         }
                      }
 
-                     // bSilacPair assumes only light (unmodified) SILAC peptides are being analyzed.
-                     // Fine to have other modifications such as OxMet.
+                     // bSilacPair assumes all light or all heavy SILAC (binary modification search)
                      if (bIsSilacPair)
                      {
                         if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
@@ -4735,7 +4740,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                            else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                               iCountK = iContainsKY[ctLen];
 
-                           double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+                           double dNewMass = dFragMass + iSign*8.014199*iCountK / ctCharge;
 
                            if (dNewMass >= 0.0)
                            {
@@ -4809,7 +4814,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                            else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                               iCountK = iContainsKY[ctLen];
 
-                           double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+                           double dNewMass = dFragMass + iSign*8.014199*iCountK / ctCharge;
 
                            iVal = BIN(dNewMass);
 

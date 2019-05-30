@@ -106,27 +106,32 @@ void SetOptions(char *arg,
       ICometSearchManager *pSearchMgr)
 {
    char szTmp[512];
-   char szErrorMsg[512];
 
    switch (arg[1])
    {
       case 'D':   // Alternate sequence database.
-         if (sscanf(arg+2, "%512s", szTmp) == 0)
-         {
-            sprintf(szErrorMsg, "Cannot read command line database: '%s'.  Ignored.\n", szTmp);
-            logerr(szErrorMsg);
-         }
+         strncpy(szTmp, arg+2, 512);
+         szTmp[511]='\0';
+ 
+         if (strlen(szTmp) == 0 )
+            logerr("Missing text for parameter option -D<database>.  Ignored.\n");
          else
             pSearchMgr->SetParam("database_name", szTmp, szTmp);
          break;
       case 'P':   // Alternate parameters file.
-         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         strncpy(szTmp, arg+2, 512);
+         szTmp[511]='\0';
+
+         if (strlen(szTmp) == 0 )
             logerr("Missing text for parameter option -P<params>.  Ignored.\n");
          else
             strcpy(szParamsFile, szTmp);
          break;
       case 'N':   // Set basename of output file (for .out, SQT, and pepXML)
-         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         strncpy(szTmp, arg+2, 512);
+         szTmp[511]='\0';
+
+         if (strlen(szTmp) == 0 )
             logerr("Missing text for parameter option -N<basename>.  Ignored.\n");
          else
             pSearchMgr->SetOutputFileBaseName(szTmp);
@@ -1357,6 +1362,7 @@ variable_mod08 = 0.0 X 0 3 -1 0 0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0\n\
 max_variable_mods_in_peptide = 5\n\
 require_variable_mod = 0\n\
+silac_pair_fragments = 0\n\
 \n\
 #\n\
 # fragment ions\n\
