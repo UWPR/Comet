@@ -4578,6 +4578,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
       // check mass of peptide again; required for terminal mods that may or may not get applied??
       if (CheckMassMatch(iWhichQuery, dCalcPepMass))
       {
+         int iSign = 1;  // used for bSilacPair; set to 1 if light peptide; -1 if heavy peptide
+
          // Calculate ion series just once to compare against all relevant query spectra
          if (bFirstTimeThroughLoopForPeptide)
          {
@@ -4624,7 +4626,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
             // Generate pdAAforward for _pResults[0].szPeptide
  
-            int iSign = 1;  // used for bSilacPair; set to 1 if light peptide; -1 if heavy peptide
             for (i=_varModInfo.iStartPos; i<_varModInfo.iEndPos; i++)
             {
                int iPosForward = i - _varModInfo.iStartPos; // increment up from 0
@@ -4847,7 +4848,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
                // for g_staticParams.variableModParameters.bSilacPair
-               bIsSilacPair = false;
                int iCountKBion = 0;   // current count of lysine residues b-ions
                int iCountKYion = 0;   // current count of lysine residues y ions
                int iContainsKB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain lyisne
@@ -5004,9 +5004,9 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                   if (g_staticParams.variableModParameters.bSilacPair)
                   {
-                     if (szProteinSeq[i] == 'K')
+                     if (szDecoyPeptide[i] == 'K')
                         iCountKBion++;
-                     if (szProteinSeq[iPosReverse] == 'K')
+                     if (szDecoyPeptide[iPosReverse] == 'K')
                         iCountKYion++;
 
                      iContainsKB[iPosForward] = iCountKBion;
@@ -5057,7 +5057,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                               else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                                  iCountK = iContainsKY[ctLen];
 
-                              double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+                              double dNewMass = dFragMass + iSign*8.014199*iCountK / ctCharge;
 
                               if (dNewMass >= 0.0)
                               {
@@ -5130,17 +5130,17 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                               else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                                  iCountK = iContainsKY[ctLen];
 
-                              double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+                              double dNewMass = dFragMass + iSign*8.014199*iCountK / ctCharge;
 
                               iVal = BIN(dNewMass);
 
                               if (pbDuplFragment[iVal] == false)
                               {
-                                 _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = iVal;
+                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][2] = iVal;
                                  pbDuplFragment[iVal] = true;
                               }
                               else
-                                 _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = 0;
+                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][2] = 0;
                            }
                         }
 
