@@ -105,7 +105,6 @@ struct Options             // output parameters
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
    int bCreateIndex;             // 0=normal search; 1=create peptide index file
    int bVerboseOutput;
-   int bNoEnzymeSelected;
    int bShowFragmentIons;
    int bPrintExpectScore;
    int bOverrideCharge;
@@ -151,7 +150,6 @@ struct Options             // output parameters
       bMango = a.bMango;
       bCreateIndex = a.bCreateIndex;
       bVerboseOutput = a.bVerboseOutput;
-      bNoEnzymeSelected = a.bNoEnzymeSelected;
       bShowFragmentIons = a.bShowFragmentIons;
       bPrintExpectScore = a.bPrintExpectScore;
       bOverrideCharge = a.bOverrideCharge;
@@ -715,7 +713,6 @@ struct StaticParams
       options.iNumStored = 100;                         // default # of search results to store for xcorr analysis.
       options.iMaxDuplicateProteins = 20;               // maximum number of duplicate proteins to report or store in idx file
 
-      options.bNoEnzymeSelected = 1;
       options.bShowFragmentIons = 0;
       options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;

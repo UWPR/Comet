@@ -107,7 +107,6 @@ void SetOptions(char *arg,
       ICometSearchManager *pSearchMgr)
 {
    char szTmp[512];
-   char szErrorMsg[512];
 
    switch (arg[1])
    {
@@ -199,6 +198,7 @@ void LoadParameters(char *pszParamsFile,
    double dTempMass,
           dDoubleParam;
    int   iSearchEnzymeNumber = 1,
+         iSearchEnzyme2Number = 0,
          iSampleEnzymeNumber = 1,
          iIntParam,
          iAllowedMissedCleavages = 2;
@@ -913,6 +913,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iSearchEnzymeNumber);
                pSearchMgr->SetParam("search_enzyme_number", szParamStringVal, iSearchEnzymeNumber);
             }
+            else if (!strcmp(szParamName, "search_enzyme2_number"))
+            {
+               sscanf(szParamVal, "%d", &iSearchEnzyme2Number);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iSearchEnzyme2Number);
+               pSearchMgr->SetParam("search_enzyme2_number", szParamStringVal, iSearchEnzyme2Number);
+            }
             else if (!strcmp(szParamName, "sample_enzyme_number"))
             {
                sscanf(szParamVal, "%d", &iSampleEnzymeNumber);
@@ -1096,12 +1103,15 @@ void LoadParameters(char *pszParamsFile,
 
    // Get enzyme specificity.
    char szSearchEnzymeName[ENZYME_NAME_LEN];
-   szSearchEnzymeName[0] = '\0';
+   char szSearchEnzyme2Name[ENZYME_NAME_LEN];
    char szSampleEnzymeName[ENZYME_NAME_LEN];
+   szSearchEnzymeName[0] = '\0';
+   szSearchEnzyme2Name[0] = '\0';
    szSampleEnzymeName[0] = '\0';
    EnzymeInfo enzymeInformation;
 
    strcpy(szSearchEnzymeName, "-");
+   strcpy(szSearchEnzyme2Name, "-");
    strcpy(szSampleEnzymeName, "-");
 
    string enzymeInfoStrVal;
@@ -1120,6 +1130,16 @@ void LoadParameters(char *pszParamsFile,
                &enzymeInformation.iSearchEnzymeOffSet,
                enzymeInformation.szSearchEnzymeBreakAA,
                enzymeInformation.szSearchEnzymeNoBreakAA);
+      }
+
+      if (iCurrentEnzymeNumber == iSearchEnzyme2Number)
+      {
+         sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
+               &dTempMass,
+               enzymeInformation.szSearchEnzyme2Name,
+               &enzymeInformation.iSearchEnzyme2OffSet,
+               enzymeInformation.szSearchEnzyme2BreakAA,
+               enzymeInformation.szSearchEnzyme2NoBreakAA);
       }
 
       if (iCurrentEnzymeNumber == iSampleEnzymeNumber)
@@ -1149,7 +1169,16 @@ void LoadParameters(char *pszParamsFile,
    {
       char szErrorMsg[256];
       sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
-      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - search enzyme number %d is missing definition in params file.\n", iSearchEnzymeNumber);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - search_enzyme_number %d is missing definition in params file.\n", iSearchEnzymeNumber);
+      logerr(szErrorMsg);
+      exit(1);
+   }
+
+   if (!strcmp(enzymeInformation.szSearchEnzyme2Name, "-"))
+   {
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - search_enzyme2_number %d is missing definition in params file.\n", iSearchEnzyme2Number);
       logerr(szErrorMsg);
       exit(1);
    }
@@ -1158,7 +1187,7 @@ void LoadParameters(char *pszParamsFile,
    {
       char szErrorMsg[256];
       sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
-      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - sample enzyme number %d is missing definition in params file.\n", iSampleEnzymeNumber);
+      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - sample_enzyme_number %d is missing definition in params file.\n", iSampleEnzymeNumber);
       logerr(szErrorMsg);
       exit(1);
    }
@@ -1382,6 +1411,7 @@ isotope_error = 3                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/
 # search enzyme\n\
 #\n\
 search_enzyme_number = 1               # choose from list at end of this params file\n\
+search_enzyme2_number = 0              # second enzyme; set to 0 if no second enzyme\n\
 num_enzyme_termini = 2                 # 1 (semi-digested), 2 (fully digested, default), 8 C-term unspecific , 9 N-term unspecific\n\
 allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n\
 \n\
@@ -1461,7 +1491,7 @@ max_precursor_charge = 6               # set maximum precursor charge state to a
 fprintf(fp,
 "nucleotide_reading_frame = 0           # 0=proteinDB, 1-6, 7=forward three, 8=reverse three, 9=all six\n\
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
-spectrum_batch_size = 0                # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
+spectrum_batch_size = 10000            # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
 equal_I_and_L = 1                      # 0=treat I and L as different; 1=treat I and L as same\n\
 output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\

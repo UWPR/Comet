@@ -2093,7 +2093,7 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
                                      int iStartPos,
                                      int iEndPos)
 {
-   if (!g_staticParams.options.bNoEnzymeSelected)
+   if (!g_staticParams.enzymeInformation.bNoEnzymeSelected || !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
       bool bBeginCleavage=0;
       bool bEndCleavage=0;
@@ -2109,6 +2109,22 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset])
                && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset])));
+
+      if (!bBeginCleavage && !g_staticParams.enzymeInformation.bNoEnzyme2Selected) // check second enzyme
+      {
+         bBeginCleavage = (iStartPos==0
+               || szProteinSeq[iStartPos-1]=='*'
+               || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iOneMinusOffset2])
+                  && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
+      }
+      if (!bEndCleavage && !g_staticParams.enzymeInformation.bNoEnzyme2Selected) // check second enzyme
+      {
+         bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
+               || szProteinSeq[iEndPos+1]=='*'
+               || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset2])
+                  && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
+      }
+
 
       if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)      // Check full enzyme search.
       {
@@ -2138,6 +2154,12 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
          bBreakPoint = strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[i+ g_staticParams.enzymeInformation.iOneMinusOffset])
             && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[i+ g_staticParams.enzymeInformation.iTwoMinusOffset]);
 
+         if (!bBreakPoint && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
+         {
+            bBreakPoint = strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[i+ g_staticParams.enzymeInformation.iOneMinusOffset2])
+               && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[i+ g_staticParams.enzymeInformation.iTwoMinusOffset2]);
+         }
+
          if (bBreakPoint)
          {
             if ((g_staticParams.enzymeInformation.iOneMinusOffset == 0 && i != iEndPos)  // Ignore last residue.
@@ -2162,7 +2184,7 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
 bool CometSearch::CheckEnzymeStartTermini(char *szProteinSeq,
                                           int iStartPos)
 {
-   if (!g_staticParams.options.bNoEnzymeSelected)
+   if (!g_staticParams.enzymeInformation.bNoEnzymeSelected && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
       bool bBeginCleavage=0;
 
@@ -2170,6 +2192,14 @@ bool CometSearch::CheckEnzymeStartTermini(char *szProteinSeq,
             || szProteinSeq[iStartPos-1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iOneMinusOffset])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iTwoMinusOffset])));
+
+      if (!bBeginCleavage && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
+      {
+         bBeginCleavage = (iStartPos==0
+               || szProteinSeq[iStartPos-1]=='*'
+               || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iOneMinusOffset2])
+             && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
+      }
             
 
       return bBeginCleavage;
@@ -2182,7 +2212,7 @@ bool CometSearch::CheckEnzymeStartTermini(char *szProteinSeq,
 bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
                                         int iEndPos)
 {
-   if (!g_staticParams.options.bNoEnzymeSelected)
+   if (!g_staticParams.enzymeInformation.bNoEnzymeSelected && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
       bool bEndCleavage=0;
 
@@ -2190,6 +2220,14 @@ bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset])));
+
+      if (!bEndCleavage && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
+      {
+         bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
+               || szProteinSeq[iEndPos+1]=='*'
+               || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset2])
+             && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
+      }
 
       return bEndCleavage;
    }

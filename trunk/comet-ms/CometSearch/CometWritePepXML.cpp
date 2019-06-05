@@ -154,7 +154,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, " type=\"%s\"/>\n", g_staticParams.options.iWhichReadingFrame==0?"AA":"NA");
 
    fprintf(fpout, "  <enzymatic_search_constraint enzyme=\"%s\" max_num_internal_cleavages=\"%d\" min_number_termini=\"%d\"/>\n",
-         (g_staticParams.options.bNoEnzymeSelected?"nonspecific":g_staticParams.enzymeInformation.szSearchEnzymeName),
+         (g_staticParams.enzymeInformation.bNoEnzymeSelected?"nonspecific":g_staticParams.enzymeInformation.szSearchEnzymeName),
          g_staticParams.enzymeInformation.iAllowedMissedCleavage,
          (g_staticParams.options.iEnzymeTermini==ENZYME_DOUBLE_TERMINI)?2:
          ((g_staticParams.options.iEnzymeTermini == ENZYME_SINGLE_TERMINI)

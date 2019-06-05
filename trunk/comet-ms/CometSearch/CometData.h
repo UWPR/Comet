@@ -235,12 +235,20 @@ struct VarMods
 
 struct EnzymeInfo
 {
+   bool bNoEnzymeSelected;   // set to true if enzyme is no-enzyme
+   bool bNoEnzyme2Selected;  // set to true if 2nd enzyme is no-enzyme
+
    int  iAllowedMissedCleavage;
 
    int  iSearchEnzymeOffSet;
    char szSearchEnzymeName[ENZYME_NAME_LEN];
    char szSearchEnzymeBreakAA[MAX_ENZYME_AA];
    char szSearchEnzymeNoBreakAA[MAX_ENZYME_AA];
+
+   int  iSearchEnzyme2OffSet;   // 2nd enzyme; this will be set to -9 if second enzyme is not used
+   char szSearchEnzyme2Name[ENZYME_NAME_LEN];
+   char szSearchEnzyme2BreakAA[MAX_ENZYME_AA];
+   char szSearchEnzyme2NoBreakAA[MAX_ENZYME_AA];
 
    int  iSampleEnzymeOffSet;
    char szSampleEnzymeName[ENZYME_NAME_LEN];
@@ -250,17 +258,29 @@ struct EnzymeInfo
    int iOneMinusOffset;  // used in CheckEnzymeTermini
    int iTwoMinusOffset;  // used in CheckEnzymeTermini
 
+   int iOneMinusOffset2;  // used in CheckEnzymeTermini for 2nd enzyme
+   int iTwoMinusOffset2;  // used in CheckEnzymeTermini for 2nd enzyme
+
    EnzymeInfo()
    {
+      bNoEnzymeSelected = 1;
+      bNoEnzyme2Selected = 1;
       iAllowedMissedCleavage = 0;
       iSearchEnzymeOffSet = 0;
+      iSearchEnzyme2OffSet = 0;
       iSampleEnzymeOffSet = 0;
       iOneMinusOffset = 0;
       iTwoMinusOffset = 0;
+      iOneMinusOffset2 = 0;
+      iTwoMinusOffset2 = 0;
 
       szSearchEnzymeName[0] = '\0';
       szSearchEnzymeBreakAA[0] = '\0';
       szSearchEnzymeNoBreakAA[0] = '\0';
+
+      szSearchEnzyme2Name[0] = '\0';
+      szSearchEnzyme2BreakAA[0] = '\0';
+      szSearchEnzyme2NoBreakAA[0] = '\0';
 
       szSampleEnzymeName[0] = '\0';
       szSampleEnzymeBreakAA[0] = '\0';
@@ -269,8 +289,11 @@ struct EnzymeInfo
 
    EnzymeInfo(const EnzymeInfo& a)
    {
+      bNoEnzymeSelected = a.bNoEnzymeSelected;
+      bNoEnzyme2Selected = a.bNoEnzyme2Selected;
       iAllowedMissedCleavage = a.iAllowedMissedCleavage;
       iSearchEnzymeOffSet = a.iSearchEnzymeOffSet;
+      iSearchEnzyme2OffSet = a.iSearchEnzyme2OffSet;
       iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
 
       int i;
@@ -278,6 +301,7 @@ struct EnzymeInfo
       for (i = 0; i < ENZYME_NAME_LEN; i++)
       {
          szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
+         szSearchEnzyme2Name[i] = a.szSearchEnzyme2Name[i];
          szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
       }
 
@@ -285,6 +309,8 @@ struct EnzymeInfo
       {
          szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
          szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
+         szSearchEnzyme2BreakAA[i] = a.szSearchEnzyme2BreakAA[i];
+         szSearchEnzyme2NoBreakAA[i] = a.szSearchEnzyme2NoBreakAA[i];
          szSampleEnzymeBreakAA[i] = a.szSampleEnzymeBreakAA[i];
          szSampleEnzymeNoBreakAA[i] = a.szSampleEnzymeNoBreakAA[i];
       }
@@ -292,8 +318,11 @@ struct EnzymeInfo
 
    EnzymeInfo& operator=(EnzymeInfo& a)
    {
+      bNoEnzymeSelected = a.bNoEnzymeSelected;
+      bNoEnzyme2Selected = a.bNoEnzyme2Selected;
       iAllowedMissedCleavage = a.iAllowedMissedCleavage;
       iSearchEnzymeOffSet = a.iSearchEnzymeOffSet;
+      iSearchEnzyme2OffSet = a.iSearchEnzyme2OffSet;
       iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
 
       int i;
@@ -301,6 +330,7 @@ struct EnzymeInfo
       for (i = 0; i < ENZYME_NAME_LEN; i++)
       {
          szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
+         szSearchEnzyme2Name[i] = a.szSearchEnzyme2Name[i];
          szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
       }
 
@@ -308,6 +338,8 @@ struct EnzymeInfo
       {
          szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
          szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
+         szSearchEnzyme2BreakAA[i] = a.szSearchEnzyme2BreakAA[i];
+         szSearchEnzyme2NoBreakAA[i] = a.szSearchEnzyme2NoBreakAA[i];
          szSampleEnzymeBreakAA[i] = a.szSampleEnzymeBreakAA[i];
          szSampleEnzymeNoBreakAA[i] = a.szSampleEnzymeNoBreakAA[i];
       }

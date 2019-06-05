@@ -1044,14 +1044,25 @@ bool CometSearchManager::InitializeStaticParams()
             - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
    GetParamValue("[COMET_ENZYME_INFO]", g_staticParams.enzymeInformation);
+
    if (!strncmp(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, "-", 1)
          && !strncmp(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, "-", 1))
    {
-      g_staticParams.options.bNoEnzymeSelected = 1;
+      g_staticParams.enzymeInformation.bNoEnzymeSelected = 1;
    }
    else
    {
-      g_staticParams.options.bNoEnzymeSelected = 0;
+      g_staticParams.enzymeInformation.bNoEnzymeSelected = 0;
+   }
+
+   if (!strncmp(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, "-", 1)
+         && !strncmp(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, "-", 1))
+   {
+      g_staticParams.enzymeInformation.bNoEnzyme2Selected = 1;
+   }
+   else
+   {
+      g_staticParams.enzymeInformation.bNoEnzyme2Selected = 0;
    }
 
    GetParamValue("allowed_missed_cleavage", g_staticParams.enzymeInformation.iAllowedMissedCleavage);
@@ -1147,7 +1158,7 @@ bool CometSearchManager::InitializeStaticParams()
    }
 
    // Print out enzyme name to g_staticParams.szMod.
-   if (!g_staticParams.options.bNoEnzymeSelected)
+   if (!g_staticParams.enzymeInformation.bNoEnzymeSelected)
    {
       char szTmp[4];
 
@@ -1195,6 +1206,9 @@ bool CometSearchManager::InitializeStaticParams()
 
    g_staticParams.enzymeInformation.iOneMinusOffset = 1 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
    g_staticParams.enzymeInformation.iTwoMinusOffset = 2 - g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
+
+   g_staticParams.enzymeInformation.iOneMinusOffset2 = 1 - g_staticParams.enzymeInformation.iSearchEnzyme2OffSet;
+   g_staticParams.enzymeInformation.iTwoMinusOffset2 = 2 - g_staticParams.enzymeInformation.iSearchEnzyme2OffSet;
 
    if (g_staticParams.options.iMaxDuplicateProteins == -1)
       g_staticParams.options.iMaxDuplicateProteins = INT_MAX;
@@ -2815,6 +2829,10 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       g_staticParams.enzymeInformation.iSearchEnzymeOffSet, 
       g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, 
       g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+   fprintf(fptr, "Enzyme2: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzyme2Name,
+      g_staticParams.enzymeInformation.iSearchEnzyme2OffSet, 
+      g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, 
+      g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
    fprintf(fptr, "NumPeptides: %ld\n", (long)g_pvDBIndex.size());
 
    // write out static mod params A to Z is ascii 65 to 90 then terminal mods
