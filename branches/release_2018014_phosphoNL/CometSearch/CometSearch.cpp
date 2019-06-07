@@ -1420,11 +1420,11 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                                        if (pbDuplFragment[iVal] == false)
                                        {
-                                          _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = iVal;
+                                          _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][2] = iVal;
                                           pbDuplFragment[iVal] = true;
                                        }
                                        else
-                                          _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][2] = 0;
+                                          _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][2] = 0;
                                     }
                                  }
                               }
