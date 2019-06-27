@@ -190,6 +190,7 @@ struct Fragment
 struct VarMods
 {
    double dVarModMass;
+   double dNeutralLoss;
    int    iBinaryMod;
    int    bRequireThisMod;
    int    iMaxNumVarModAAPerMod;
@@ -205,6 +206,7 @@ struct VarMods
       iVarModTermDistance = -1;
       iWhichTerm = 0;
       dVarModMass = 0.0;
+      dNeutralLoss = 0.0;
       szVarModChar[0] = '\0';
    }
 
@@ -216,6 +218,7 @@ struct VarMods
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
+      dNeutralLoss = a.dNeutralLoss;
       strcpy(szVarModChar, a.szVarModChar);
    }
 
@@ -227,6 +230,7 @@ struct VarMods
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
+      dNeutralLoss = a.dNeutralLoss;
       strcpy(szVarModChar, a.szVarModChar);
 
       return *this;
@@ -447,6 +451,7 @@ struct SingleSpectrumStruct
 enum CometParamType
 {
    CometParamType_Unknown = 0,
+   CometParamType_Bool,
    CometParamType_Int,
    CometParamType_Long,
    CometParamType_Double,

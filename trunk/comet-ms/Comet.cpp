@@ -381,7 +381,7 @@ void LoadParameters(char *pszParamsFile,
 
                memmove(szParamVal, szTrimmed, iLen+1);
 
-               char szMassOffsets[256];
+               char szMassOffsets[512];
                vector<double> vectorSetMassOffsets;
 
                char *tok;
@@ -402,6 +402,44 @@ void LoadParameters(char *pszParamsFile,
                sort(vectorSetMassOffsets.begin(), vectorSetMassOffsets.end());
 
                pSearchMgr->SetParam("mass_offsets", szMassOffsets, vectorSetMassOffsets);
+            }
+            else if (!strcmp(szParamName, "precursor_NL_ions"))
+            {
+               // Remove white spaces at beginning/end of szParamVal
+               int iLen = (int)strlen(szParamVal);
+               char *szTrimmed = szParamVal;
+
+               while (isspace(szTrimmed[iLen -1]))  // trim end
+                  szTrimmed[--iLen] = 0;
+               while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
+               {
+                  ++szTrimmed;
+                  --iLen;
+               }
+
+               memmove(szParamVal, szTrimmed, iLen+1);
+
+               char szMassOffsets[512];
+               vector<double> vectorPrecursorNLIons;
+
+               char *tok;
+               char delims[] = " \t";  // tokenize by space and tab
+               double dMass;
+
+               strcpy(szMassOffsets, szParamVal);  // need to copy as strtok below destroys szParamVal
+
+               tok = strtok(szParamVal, delims);
+               while (tok != NULL)
+               {
+                  sscanf(tok, "%lf", &dMass);
+                  if (dMass >= 0.0)
+                     vectorPrecursorNLIons.push_back(dMass);
+                  tok = strtok(NULL, delims);
+               }
+
+               sort(vectorPrecursorNLIons.begin(), vectorPrecursorNLIons.end());
+
+               pSearchMgr->SetParam("precursor_NL_ions", szMassOffsets, vectorPrecursorNLIons);
             }
             else if (!strcmp(szParamName, "nucleotide_reading_frame"))
             {
@@ -504,22 +542,24 @@ void LoadParameters(char *pszParamsFile,
             else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
             {
                varModsParam.szVarModChar[0] = '\0';
-               sscanf(szParamVal, "%lf %20s %d %d %d %d %d",
+               sscanf(szParamVal, "%lf %20s %d %d %d %d %d %lf",
                      &varModsParam.dVarModMass,
                      varModsParam.szVarModChar,
                      &varModsParam.iBinaryMod,
                      &varModsParam.iMaxNumVarModAAPerMod,
                      &varModsParam.iVarModTermDistance,
                      &varModsParam.iWhichTerm,
-                     &varModsParam.bRequireThisMod);
-               sprintf(szParamStringVal, "%lf %s %d %d %d %d %d",
+                     &varModsParam.bRequireThisMod,
+                     &varModsParam.dNeutralLoss);
+               sprintf(szParamStringVal, "%lf %s %d %d %d %d %d %lf",
                      varModsParam.dVarModMass,
                      varModsParam.szVarModChar,
                      varModsParam.iBinaryMod,
                      varModsParam.iMaxNumVarModAAPerMod,
                      varModsParam.iVarModTermDistance,
                      varModsParam.iWhichTerm,
-                     varModsParam.bRequireThisMod);
+                     varModsParam.bRequireThisMod,
+                     varModsParam.dNeutralLoss);
                pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
             }
             else if (!strcmp(szParamName, "max_variable_mods_in_peptide"))
@@ -1496,6 +1536,7 @@ decoy_prefix = DECOY_                  # decoy entries are denoted by this strin
 equal_I_and_L = 1                      # 0=treat I and L as different; 1=treat I and L as same\n\
 output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\
 mass_offsets =                         # one or more mass offsets to search (values substracted from deconvoluted precursor mass)\n\
+precursor_NL_ions =                    # one or more precursor neutral loss masses, will be added to xcorr analysis\n\
 \n\
 #\n\
 # spectral processing\n\

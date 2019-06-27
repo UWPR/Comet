@@ -383,7 +383,7 @@ static void PrintOutfileHeader()
          g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
          g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
          g_staticParams.ionInformation.iIonVal[ION_SERIES_Z],
-         g_staticParams.ionInformation.bUseNeutralLoss);
+         g_staticParams.ionInformation.bUseWaterAmmoniaLoss);
 
    char szUnits[8];
    char szDecoy[20];
@@ -587,6 +587,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("mass_offsets", g_staticParams.vectorMassOffsets);
 
+   GetParamValue("precursor_NL_ions", g_staticParams.precursorNLIons);
+
    GetParamValue("xcorr_processing_offset", g_staticParams.iXcorrProcessingOffset);
 
    GetParamValue("nucleotide_reading_frame", g_staticParams.options.iWhichReadingFrame);
@@ -620,7 +622,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("use_Z_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]);
 
-   GetParamValue("use_NL_ions", g_staticParams.ionInformation.bUseNeutralLoss);
+   GetParamValue("use_NL_ions", g_staticParams.ionInformation.bUseWaterAmmoniaLoss);
 
    GetParamValue("variable_mod01", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
 
@@ -1089,7 +1091,7 @@ bool CometSearchManager::InitializeStaticParams()
    for (int i=0; i<VMODS; i++)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
-            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='\0'))
+            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
          sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(%s%c %+0.6f) ",
                g_staticParams.variableModParameters.varModList[i].szVarModChar,
@@ -1103,6 +1105,9 @@ bool CometSearchManager::InitializeStaticParams()
 
          if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
             g_staticParams.variableModParameters.bRequireVarMod = true;
+
+         if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
+            g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
       }
    }
 
@@ -1253,6 +1258,29 @@ bool CometSearchManager::GetParamValue(const string &name, string& value)
       return false;
 
    TypedCometParam<string> *pParam = static_cast<TypedCometParam<string>*>(it->second);
+   value = pParam->GetValue();
+   return true;
+}
+
+void CometSearchManager::SetParam(const std::string &name, const string &strValue, const bool &value)
+{
+   CometParam *pParam = new TypedCometParam<int>(CometParamType_Bool, strValue, value);
+   pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+   if (false == ret.second)
+   {
+      _mapStaticParams.erase(name);
+      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+   }
+}
+
+bool CometSearchManager::GetParamValue(const string &name, bool& value)
+{
+   std::map<string, CometParam*>::iterator it;
+   it = _mapStaticParams.find(name);
+   if (it == _mapStaticParams.end())
+      return false;
+
+   TypedCometParam<int> *pParam = static_cast<TypedCometParam<int>*>(it->second);
    value = pParam->GetValue();
    return true;
 }
@@ -2174,6 +2202,7 @@ bool CometSearchManager::DoSearch()
 
       // Clean up the input files vector
       g_staticParams.vectorMassOffsets.clear();
+      g_staticParams.precursorNLIons.clear();
 
       //MH: Deallocate spectral processing memory.
       CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
@@ -2595,6 +2624,7 @@ cleanup_results:
 
    // Clean up the input files vector
    g_staticParams.vectorMassOffsets.clear();
+   g_staticParams.precursorNLIons.clear();
 
    delete[] pdTmpSpectrum;
 

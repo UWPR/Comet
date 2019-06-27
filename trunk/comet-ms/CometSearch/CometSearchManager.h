@@ -49,6 +49,8 @@ public:
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);
    virtual bool GetParamValue(const string &name, string &value);
+   virtual void SetParam(const string &name, const string &strValue, const bool &value);
+   virtual bool GetParamValue(const string &name, bool &value);
    virtual void SetParam(const string &name, const string &strValue, const int &value);
    virtual bool GetParamValue(const string &name, int &value);
    virtual void SetParam(const string &name, const string &strValue, const long &value);

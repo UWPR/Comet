@@ -364,7 +364,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       return false;
    }
 
-   if (g_staticParams.ionInformation.bUseNeutralLoss
+   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
@@ -428,7 +428,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       }
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
-      if (g_staticParams.ionInformation.bUseNeutralLoss
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
             && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
@@ -454,7 +454,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
    // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
-   if (g_staticParams.ionInformation.bUseNeutralLoss
+   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
@@ -1945,7 +1945,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
 
-   if (g_staticParams.ionInformation.bUseNeutralLoss
+   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
@@ -1995,7 +1995,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       }
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
-      if (g_staticParams.ionInformation.bUseNeutralLoss
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
             && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
@@ -2020,7 +2020,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
    // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
-   if (g_staticParams.ionInformation.bUseNeutralLoss
+   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))

@@ -36,6 +36,7 @@ class CometSearchManager;
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
+#define BIN_MOD_COUNT               11       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9), precNL (10)
 
 #define WIDTH_REFERENCE             512      // size of the protein accession field to store
 
@@ -435,7 +436,8 @@ struct VarModParams
 {
    bool    bVarModSearch;            // set to true if variable mods are specified
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
-   int     bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
+   bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
+   bool    bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
    int     iMaxVarModPerPeptide;
    int     iMaxPermutations;
    VarMods varModList[VMODS];
@@ -446,6 +448,7 @@ struct VarModParams
       bVarModSearch = a.bVarModSearch;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;
+      bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
 
       for (int i = 0; i < VMODS; i++)
       {
@@ -535,14 +538,14 @@ struct IonInfo
 {
    int iNumIonSeriesUsed;
    int piSelectedIonSeries[NUM_ION_SERIES];
-   int bUseNeutralLoss;
+   int bUseWaterAmmoniaLoss;    // ammonia, water loss
    int iTheoreticalFragmentIons;
    int iIonVal[NUM_ION_SERIES];
 
    IonInfo& operator=(IonInfo& a)
    {
       iNumIonSeriesUsed = a.iNumIonSeriesUsed;
-      bUseNeutralLoss = a.bUseNeutralLoss;
+      bUseWaterAmmoniaLoss = a.bUseWaterAmmoniaLoss;
       iTheoreticalFragmentIons = a.iTheoreticalFragmentIons;
 
       for (int i = 0; i < NUM_ION_SERIES; i++)
@@ -585,6 +588,7 @@ struct StaticParams
    int             iXcorrProcessingOffset;
    int             bIndexDb;            // 0 = normal fasta; 1 = indexed database
    vector<double>  vectorMassOffsets;
+   vector<double>  precursorNLIons;
    char            szDIAWindowsFile[SIZE_FILE];
    bool            bSkipToStartScan;
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
@@ -604,6 +608,7 @@ struct StaticParams
        strcpy(szDecoyPrefix, a.szDecoyPrefix);
        strcpy(szOutputSuffix, a.szOutputSuffix);
        vectorMassOffsets = a.vectorMassOffsets;
+       precursorNLIons= a.precursorNLIons;
        iElapseTime = a.iElapseTime;
        strcpy(szDate, a.szDate);
        options = a.options;
@@ -670,10 +675,11 @@ struct StaticParams
       {
          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 3;
          variableModParameters.varModList[i].iBinaryMod = 0;
-         variableModParameters.varModList[i].bRequireThisMod = 0;
+         variableModParameters.varModList[i].bRequireThisMod = false;
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
          variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
          variableModParameters.varModList[i].dVarModMass = 0.0;
+         variableModParameters.varModList[i].dNeutralLoss = 0.0;
          strcpy(variableModParameters.varModList[i].szVarModChar, "X");
 
 #ifdef CRUX
@@ -697,8 +703,9 @@ struct StaticParams
 
       variableModParameters.iMaxVarModPerPeptide = 5;
       variableModParameters.iMaxPermutations = MAX_PERMUTATIONS;
+      variableModParameters.bUseFragmentNeutralLoss = false;
 
-      ionInformation.bUseNeutralLoss = 0;
+      ionInformation.bUseWaterAmmoniaLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
       ionInformation.iIonVal[ION_SERIES_A] = 0;
       ionInformation.iIonVal[ION_SERIES_B] = 1;
@@ -913,7 +920,7 @@ struct Query
       delete[] ppfSparseFastXcorrData;
       ppfSparseFastXcorrData = NULL;
 
-      if (g_staticParams.ionInformation.bUseNeutralLoss
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
             && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
