@@ -1356,7 +1356,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    int iFoundVariableMod = 0;
    int iFoundVariableModDecoy = 0;
 
-
    int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
 
    iLenProtein = _proteinInfo.iProteinSeqLength;
@@ -1574,6 +1573,20 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                               }
                            }
                         }
+
+
+/*
+FIX implement precursor NL
+                        for (ctCharge=1; ctCharge<=precursor_charge; ctCharge++)
+                        {
+                           // precursor NL
+                           for (int i=0; i<g_staticParams.iPrecursorNLSize; i++)
+                           {
+                              double dNLMass = (dCalcPepMass - g_staticParams.precursorNLIons[i])/ctCharge;
+                              printf("OK NLL ions %f (%d/%d)\n", g_staticParams.precursorNLIons[i], i, g_staticParams.iPrecursorNLSize);
+                           }
+                        }
+*/
 
                         for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
                         {
@@ -2890,7 +2903,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
             dXcorr += ppSparseFastXcorrData[x][y];
 
-            if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss && iFoundVariableMod==2 && ctCharge<3)
+            if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss && iFoundVariableMod==2)
             {
                for (int ii = 0; ii < VMODS; ii++)
                {

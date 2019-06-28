@@ -1457,18 +1457,18 @@ allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n
 \n\
 #\n\
 # Up to 9 variable modifications are supported\n\
-# format:  <mass> <residues> <0=variable/else binary> <max_mods_per_peptide> <term_distance> <n/c-term> <required>\n\
-#     e.g. 79.966331 STY 0 3 -1 0 0\n\
+# format:  <mass> <residues> <0=variable/else binary> <max_mods_per_peptide> <term_distance> <n/c-term> <required> <neutral_loss>\n\
+#     e.g. 79.966331 STY 0 3 -1 0 0 97.976896\n\
 #\n\
-variable_mod01 = 15.9949 M 0 3 -1 0 0\n\
-variable_mod02 = 0.0 X 0 3 -1 0 0\n\
-variable_mod03 = 0.0 X 0 3 -1 0 0\n\
-variable_mod04 = 0.0 X 0 3 -1 0 0\n\
-variable_mod05 = 0.0 X 0 3 -1 0 0\n\
-variable_mod06 = 0.0 X 0 3 -1 0 0\n\
-variable_mod07 = 0.0 X 0 3 -1 0 0\n\
-variable_mod08 = 0.0 X 0 3 -1 0 0\n\
-variable_mod09 = 0.0 X 0 3 -1 0 0\n\
+variable_mod01 = 15.9949 M 0 3 -1 0 0 0.0\n\
+variable_mod02 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod03 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod04 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod05 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod06 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod07 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod08 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod09 = 0.0 X 0 3 -1 0 0 0.0\n\
 max_variable_mods_in_peptide = 5\n\
 require_variable_mod = 0\n\
 \n\
@@ -1517,7 +1517,7 @@ activation_method = ALL                # activation method; used if activation m
 # misc parameters\n\
 #\n\
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
-peptide_length_range = 5 63            # minimum and maximum peptide length to analyze (default %d %d)\n\
+peptide_length_range = 5 63            # minimum and maximum peptide length to analyze (default %d %d; max length 63)\n\
 num_results = 100                      # number of search hits to store internally\n\
 max_duplicate_proteins = 20            # maximum number of protein names to report for each peptide identification; -1 reports all duplicates\n\
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
