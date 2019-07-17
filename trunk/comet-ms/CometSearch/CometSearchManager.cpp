@@ -2300,6 +2300,9 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    singleSearchThreadCount = 1;
    g_staticParams.options.iNumThreads = singleSearchThreadCount;
 
+   g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
+   g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
+
    bool bSucceeded;
    //MH: Allocate memory shared by threads during spectral processing.
    bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
