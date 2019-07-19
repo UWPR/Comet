@@ -1219,6 +1219,8 @@ bool CometSearchManager::InitializeStaticParams()
       g_staticParams.options.iMaxDuplicateProteins = INT_MAX;
 
    g_staticParams.iPrecursorNLSize = g_staticParams.precursorNLIons.size();
+   if (g_staticParams.iPrecursorNLSize > MAX_PRECURSOR_NL_SIZE)
+      g_staticParams.iPrecursorNLSize = MAX_PRECURSOR_NL_SIZE;
 
    return true;
 }

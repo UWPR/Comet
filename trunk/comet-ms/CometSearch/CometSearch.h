@@ -234,7 +234,7 @@ private:
        int iTotVarModCt;                     // # mod positions in peptide
        int iTotBinaryModCt;                  // # mod positions of all binary mods in group in the peptide
        int iMatchVarModCt;
-       int iVarModSites[MAX_PEPTIDE_LEN+2];  // last 2 positions are for n- and c-term
+       int iVarModSites[MAX_PEPTIDE_LEN_P2]; // last 2 positions are for n- and c-term
    };
 
    struct VarModInfo
@@ -300,6 +300,8 @@ private:
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
+   unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
+   unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;      // Number of arrays equals number of threads
