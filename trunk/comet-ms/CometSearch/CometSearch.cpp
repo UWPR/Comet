@@ -1452,8 +1452,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                for (int x=0; x<VMODS; x++)
                {
-                  memset(sDBTmp.bContainsNLB[x], 0, sizeof(bool)*iLenPeptide);
-                  memset(sDBTmp.bContainsNLY[x], 0, sizeof(bool)*iLenPeptide);
+                  memset(sEntry.bContainsNLB[x], 0, sizeof(bool)*iLenPeptide);
+                  memset(sEntry.bContainsNLY[x], 0, sizeof(bool)*iLenPeptide);
                }
 
                g_pvDBIndex.push_back(sEntry);
@@ -5251,18 +5251,13 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
                   if (piVarModSites[y] == x)
                      bContainsModFor = true;
- 
                   sDBTmp.bContainsNLB[x][y] = bContainsModFor;
 
                   if (piVarModSites[iReverse] == x)
                      bContainsModRev = true;
-
-// FIX: confirm bContainsNLY is meant to increase like this
-
                   sDBTmp.bContainsNLY[x][y] = bContainsModRev;
                }
             }
-
 
             g_pvDBIndex.push_back(sDBTmp);
 
