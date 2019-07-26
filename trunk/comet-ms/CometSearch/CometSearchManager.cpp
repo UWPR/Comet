@@ -2743,7 +2743,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       exit(1);
    }
 
-   sprintf(szOut, " Creating peptide index file ");
+   sprintf(szOut, " Creating peptide index file: ");
    logout(szOut);
    fflush(stdout);
 
@@ -2814,7 +2814,6 @@ bool CometSearchManager::WriteIndexedDatabase(void)
             if (g_pvDBIndex.at(i).lIndexProteinFilePosition != g_pvDBIndex.at(i-1).lIndexProteinFilePosition)
             {
                g_pvProteinsList.at(g_pvProteinsList.size()-1).push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-  //             g_pvDBIndex.at(i).lIndexProteinFilePosition = g_pvDBIndex.at(i-1).lIndexProteinFilePosition;
             }
          }
          else
