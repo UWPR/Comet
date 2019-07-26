@@ -1953,6 +1953,30 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
    }
 
+   g_staticParams.ionInformation.bUseWaterAmmoniaLoss = true;
+
+   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+   {
+      try
+      {
+         pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+      }
+      catch (std::bad_alloc& ba)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg,  " Error - new(pfFastXcorrDataNL[%d]). bad_alloc: %s.\n", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(szErrorMsg);
+         return false;
+      }
+   }
+
    // Create data for correlation analysis.
    // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
    MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
@@ -2027,7 +2051,21 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    {
       pScoring->iFastXcorrDataNL=pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE+1;
 
-      pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataNL]();
+      try
+      {
+         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataNL]();
+      }
+      catch (std::bad_alloc& ba)
+      {
+         char szErrorMsg[256];
+         sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
+         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
+         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr( szErrorMsg);
+         return false;
+      }
 
       for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
       {
@@ -2036,8 +2074,21 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
             x=i/SPARSE_MATRIX_SIZE;
             if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
             {
-               pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
-
+               try
+               {
+                  pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
+               }
+               catch (std::bad_alloc& ba)
+               {
+                  char szErrorMsg[256];
+                  sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
+                  sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
+                  sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+                  string strErrorMsg(szErrorMsg);
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(szErrorMsg);
+                  return false;
+               }
                for (y=0; y<SPARSE_MATRIX_SIZE; y++)
                   pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
             }

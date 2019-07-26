@@ -345,9 +345,6 @@ struct DBIndex
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
    comet_fileoffset_t   lIndexProteinFilePosition;         // file position index to protein reference
    double dPepMass;                          // MH+ pep mass
-   bool bContainsNLB[VMODS][MAX_PEPTIDE_LEN];   // track list of n-term (b-ion) fragments that contain NL mod
-   bool bContainsNLY[VMODS][MAX_PEPTIDE_LEN];   // track list of c-term (y-ion) fragments that contain NL mod
-
 
    bool operator==(const DBIndex &rhs) const
    {
