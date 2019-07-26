@@ -1109,10 +1109,16 @@ bool CometSearch::IndexSearch(void)
          while (tok != NULL)
          {
             tok = strtok (NULL, delims); // skip list of var mod residues
+
             // for index search, storing variable mods 0-9 in pdStaticMods array 0-9
-            sscanf(tok, "%lf", &(g_staticParams.variableModParameters.varModList[x].dVarModMass));
+            sscanf(tok, "%lf:%lf", &(g_staticParams.variableModParameters.varModList[x].dVarModMass),
+                  &(g_staticParams.variableModParameters.varModList[x].dNeutralLoss));
+
+            if (g_staticParams.variableModParameters.varModList[x].dNeutralLoss != 0.0)
+               g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
 
             tok = strtok (NULL, delims);
+
             x++;
             if (x == VMODS)
                break;

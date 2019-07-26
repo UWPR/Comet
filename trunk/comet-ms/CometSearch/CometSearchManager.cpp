@@ -2884,7 +2884,11 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // write out variable mod params
    fprintf(fptr, "VariableMod:");
    for (int x = 0; x < VMODS; x++)
-      fprintf(fptr, " %s %f", g_staticParams.variableModParameters.varModList[x].szVarModChar, g_staticParams.variableModParameters.varModList[x].dVarModMass);
+   {
+      fprintf(fptr, " %s %f:%f", g_staticParams.variableModParameters.varModList[x].szVarModChar,
+            g_staticParams.variableModParameters.varModList[x].dVarModMass,
+            g_staticParams.variableModParameters.varModList[x].dNeutralLoss);
+   }
    fprintf(fptr, "\n\n");
 
    int iTmp = (int)g_pvProteinNames.size();
