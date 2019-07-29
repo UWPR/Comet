@@ -1579,6 +1579,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                               }
                            }
                         }
+
                         for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
                         {
                            for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
@@ -2033,6 +2034,7 @@ n/c-term protein mods not supported yet
                   }
                }
             }
+
             for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
             {
                for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
@@ -3040,6 +3042,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    int iMax = pQuery->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
 
+   int bin,x,y;
+
    for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
    {
       for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
@@ -3063,7 +3067,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
          }
 
-         int bin,x,y;
          for (ctLen=0; ctLen<iLenPeptideMinus1; ctLen++)
          {
             //MH: newer sparse matrix converts bin to sparse matrix bin
@@ -3099,25 +3102,24 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                   }
                }
             }
-
-            for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
-            {
-               for (int ctZ=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ>=1; ctZ--)
-               {
-                  bin = *(*(*p_uiBinnedPrecursorNL + ctNL) + ctZ);
-
-                  x = bin / SPARSE_MATRIX_SIZE;
-
-                  if (x>iMax || ppSparseFastXcorrData[x]==NULL || bin==0) // x should never be > iMax so this is just a safety check
-                     continue;
-
-                  y = bin - (x*SPARSE_MATRIX_SIZE);
-
-                  dXcorr += ppSparseFastXcorrData[x][y];
-               }
-            }
-
          }
+      }
+   }
+
+   for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
+   {
+      for (int ctZ=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ>=1; ctZ--)
+      {
+         bin = *(*(*p_uiBinnedPrecursorNL + ctNL) + ctZ);
+
+         x = bin / SPARSE_MATRIX_SIZE;
+
+         if (x>iMax || ppSparseFastXcorrData[x]==NULL || bin==0) // x should never be > iMax so this is just a safety check
+            continue;
+
+         y = bin - (x*SPARSE_MATRIX_SIZE);
+
+         dXcorr += ppSparseFastXcorrData[x][y];
       }
    }
 
@@ -5761,6 +5763,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                      }
                   }
                }
+
                // initialize precursorNL
                for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
                {

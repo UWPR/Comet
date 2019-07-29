@@ -2515,7 +2515,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
          // C Term relative
          (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)), // x (CO-2H difference from y)
-          0, // y
+         0, // y
          -(Nitrogen_Mono + (2 * Hydrogen_Mono)), // z (NH2 difference from y)
 
          // Not Used
