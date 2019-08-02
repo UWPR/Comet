@@ -3106,9 +3106,18 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       }
    }
 
-   for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
+   for (int ctZ=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ>=1; ctZ--)
    {
-      for (int ctZ=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ>=1; ctZ--)
+      if (ctZ == 1 && bUseWaterAmmoniaNLPeaks)
+      {
+         ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrDataNL;
+      }
+      else
+      {
+         ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
+      }
+
+      for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
       {
          bin = *(*(*p_uiBinnedPrecursorNL + ctNL) + ctZ);
 

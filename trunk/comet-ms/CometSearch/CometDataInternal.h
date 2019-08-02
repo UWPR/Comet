@@ -498,7 +498,7 @@ struct MassUtil
 
 struct ToleranceParams
 {
-   int    iMassToleranceUnits;    // 0=ppm, 1=da (default)
+   int    iMassToleranceUnits;    // 0=amu, 1=mmu, else ppm (2)
    int    iMassToleranceType;     // 0=MH+ (default), 1=precursor m/z; only valid if iMassToleranceUnits > 0
    int    iIsotopeError;
    double dInputTolerance;        // tolerance from param file
