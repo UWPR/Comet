@@ -1950,16 +1950,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
-      pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-   }
-
-   g_staticParams.ionInformation.bUseWaterAmmoniaLoss = true;
-
-   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-   {
       try
       {
          pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
