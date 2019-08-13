@@ -93,8 +93,8 @@
                <li>This version of Comet will run with comet.params files from version 2017.01.
             </ul>
 
-            <p>Documentation for parameters for release 2017.01
-            <a href="/parameters/parameters_201701/">can be found here</a>.
+            <p>Documentation for parameters for release 2018.01
+            <a href="/parameters/parameters_201801/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 

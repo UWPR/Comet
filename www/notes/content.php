@@ -25,6 +25,7 @@
             </div>
             <div class="post hr">
                <ul>
+               <li>2019/03/14:  <a href="20190314_decoys.php">Misc. notes on Comet's decoy peptides</a>
                <li>2017/10/05:  <a href="20171005_isotopiclabeling.php">Parameter settings for isotopic/isobaric labeling (iTRAQ, TMT, SILAC)</a>
                <li>2017/09/06:  <a href="20170906_n15params.php">Parameter settings for N15 heavy search</a>
                <li>2016/06/13:  <a href="20160613_reporting_issues.php">Information I will need when you report a problem/bug</a>

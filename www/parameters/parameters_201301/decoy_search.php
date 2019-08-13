@@ -12,6 +12,12 @@
 
          <ul>
          <li>This parameter controls whether or not an internal decoy search is performed.
+         <li>If your database already has decoy sequences, you should not instruct Comet
+             to generate its own internal decoy peptides.  In this case, set this parameter to 0.
+             This parameter is intended to be applied only when a database composed of target
+             sequences is searched.
+         <li>For every target peptide that is scored, Comet will generate a corresponding
+             decoy peptide to score. This guarantees an exact 1:1 target to decoy ratio.
          <li>Comet generates decoys by reversing each target peptide sequence, keeping the
              N-terminal or C-terminal amino acid in place (depending on the "sense" value of the
              digestion enzyme specified by <a href="search_enzyme_number.php">search_enzyme_number</a>).
@@ -25,6 +31,7 @@
             <li>2 = separate decoy search.  Target and decoy entries will be scored separately
             and separate target and decoy search results will be reported.
             </ul>
+         <li>The default value is "0" if this parameter is missing.
          </ul>
 
          <p>Example:
