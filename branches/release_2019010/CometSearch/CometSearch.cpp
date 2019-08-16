@@ -1449,6 +1449,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   sEntry.szPrevNextAA[0] = '-';
                else
                   sEntry.szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+
                if (iEndPos == iProteinSeqLengthMinus1)
                   sEntry.szPrevNextAA[1] = '-';
                else
@@ -3318,7 +3319,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
          else
             pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
-         if (iEndPos == _proteinInfo.iProteinSeqLength-1)
+         if (iEndPos == _proteinInfo.iTmpProteinSeqLength-1)
             pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = '-';
          else
             pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
@@ -3445,7 +3446,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
          else
             pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
-         if (iEndPos == _proteinInfo.iProteinSeqLength-1)
+         if (iEndPos == _proteinInfo.iTmpProteinSeqLength-1)
             pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = '-';
          else
             pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
@@ -3672,7 +3673,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   else
                      pQuery->_pDecoys[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
                
-                  if (iEndPos == (int)strlen(szProteinSeq) - 1)
+                  if (iEndPos == (int)strlen(szProteinSeq) - 1)      //FIX: get rid of strlen() here
                      pQuery->_pDecoys[i].szPrevNextAA[1] = '-';
                   else
                      pQuery->_pDecoys[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
@@ -3794,7 +3795,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   else
                      pQuery->_pResults[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
-                  if (iEndPos == (int)strlen(szProteinSeq)-1)
+                  if (iEndPos == (int)strlen(szProteinSeq) - 1)      //FIX: get rid of strlen() here
                      pQuery->_pResults[i].szPrevNextAA[1] = '-';
                   else
                      pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
@@ -5309,7 +5310,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                sDBTmp.szPrevNextAA[0] = '-';
             else
                sDBTmp.szPrevNextAA[0] = szProteinSeq[_varModInfo.iStartPos - 1];
-            if (_varModInfo.iEndPos == _proteinInfo.iProteinSeqLength - 1)         //FIX why this vs. dbe.strSeq.length()?
+            if (_varModInfo.iEndPos == _proteinInfo.iTmpProteinSeqLength - 1)
                sDBTmp.szPrevNextAA[1] = '-';
             else
                sDBTmp.szPrevNextAA[1] = szProteinSeq[_varModInfo.iEndPos + 1];
