@@ -1585,8 +1585,13 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                            for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                              pbDuplFragment[BIN(dNLMass)] = false;
-                              _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
+                              int iVal = BIN(dNLMass);
+
+                              if (iVal > 0)
+                              {
+                                 pbDuplFragment[iVal] = false;
+                                 _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
+                              }
                            }
                         }
 
@@ -1622,7 +1627,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                               int iVal = BIN(dNLMass);
 
-                              if (pbDuplFragment[iVal] == false)
+                              if (iVal > 0 && pbDuplFragment[iVal] == false)
                               {
                                  _uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
                                  pbDuplFragment[iVal] = true;
@@ -1726,8 +1731,13 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                               for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
                               {
                                  double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                                 pbDuplFragment[BIN(dNLMass)] = false;
-                                 _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
+                                 int iVal = BIN(dNLMass);
+
+                                 if (iVal > 0)
+                                 {
+                                    pbDuplFragment[iVal] = false;
+                                    _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = 0;
+                                 }
                               }
                            }
 
@@ -1764,9 +1774,9 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                  double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                                  int iVal = BIN(dNLMass);
 
-                                 if (pbDuplFragment[iVal] == false)
+                                 if (iVal > 0 && pbDuplFragment[iVal] == false)
                                  {
-                                    _uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
+                                    _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = iVal;
                                     pbDuplFragment[iVal] = true;
                                  }
                               }
@@ -2040,8 +2050,13 @@ n/c-term protein mods not supported yet
                for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
                {
                   double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                  pbDuplFragment[BIN(dNLMass)] = false;
-                  _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
+                  int iVal = BIN(dNLMass);
+
+                  if (iVal > 0)
+                  {
+                     pbDuplFragment[iVal] = false;
+                     _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
+                  }
                }
             }
 
@@ -2073,15 +2088,12 @@ n/c-term protein mods not supported yet
                            {
                               double dNewMass = dFragMass - g_staticParams.variableModParameters.varModList[x].dNeutralLoss/ctCharge;
 
-                              if (dNewMass >= 0.0)
-                              {
-                                 iVal = BIN(dNewMass);
+                              iVal = BIN(dNewMass);
 
-                                 if (pbDuplFragment[iVal] == false)
-                                 {
-                                    _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][x+1] = iVal;
-                                    pbDuplFragment[iVal] = true;
-                                 }
+                              if (iVal > 0 && pbDuplFragment[iVal] == false)
+                              {
+                                 _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][x+1] = iVal;
+                                 pbDuplFragment[iVal] = true;
                               }
                            }
                         }
@@ -2098,7 +2110,7 @@ n/c-term protein mods not supported yet
                   double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                   int iVal = BIN(dNLMass);
 
-                  if (pbDuplFragment[iVal] == false)
+                  if (iVal > 0 && pbDuplFragment[iVal] == false)
                   {
                      _uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
                      pbDuplFragment[iVal] = true;
@@ -5499,8 +5511,13 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
                {
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                  pbDuplFragment[BIN(dNLMass)] = false;
-                  _uiBinnedPrecursorNLDecoy[ctNL][g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState - ctCharge] = 0;  //FIX
+                  int iVal = BIN(dNLMass);
+
+                  if (iVal > 0)
+                  {
+                     pbDuplFragment[BIN(dNLMass)] = false;
+                     _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
+                  }
                }
             }
 
@@ -5537,7 +5554,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                               {
                                  iVal = BIN(dNewMass);
 
-                                 if (pbDuplFragment[iVal] == false)
+                                 if (iVal > 0 && pbDuplFragment[iVal] == false)
                                  {
                                     _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][x+1] = iVal;
                                     pbDuplFragment[iVal] = true;
@@ -5550,7 +5567,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
             }
 
-            // Precursor NL peaks added here; stays the same for the decoy peptide if used
+            // Precursor NL peaks added here
             for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
             {
                for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
@@ -5558,10 +5575,10 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                   int iVal = BIN(dNLMass);
 
-                  if (pbDuplFragment[iVal] == false)
+                  if (iVal > 0 && pbDuplFragment[iVal] == false)
                   {
                      // increment 2nd charge dimension up from 0
-                     _uiBinnedPrecursorNLDecoy[ctNL][g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState - ctCharge] = iVal;
+                     _uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
                      pbDuplFragment[iVal] = true;
                   }
                }
@@ -5773,14 +5790,19 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   }
                }
 
-               // initialize precursorNL
+               // initialize precursorNL for decoy
                for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
                {
                   for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
                   {
                      double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                     pbDuplFragment[BIN(dNLMass)] = false;
-                     _uiBinnedPrecursorNLDecoy[ctNL][g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState - ctCharge] = 0;
+                     int iVal = BIN(dNLMass);
+
+                     if (iVal > 0)
+                     {
+                        pbDuplFragment[iVal] = false;
+                        _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = 0;
+                     }
                   }
                }
 
@@ -5813,15 +5835,12 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                               {
                                  double dNewMass = dFragMass - g_staticParams.variableModParameters.varModList[x].dNeutralLoss/ctCharge;
 
-                                 if (dNewMass >= 0.0)
-                                 {
-                                    iVal = BIN(dNewMass);
+                                 iVal = BIN(dNewMass);
 
-                                    if (pbDuplFragment[iVal] == false)
-                                    {
-                                       _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][x+1] = iVal;
-                                       pbDuplFragment[iVal] = true;
-                                    }
+                                 if (iVal > 0 && pbDuplFragment[iVal] == false)
+                                 {
+                                    _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][x+1] = iVal;
+                                    pbDuplFragment[iVal] = true;
                                  }
                               }
                            }
@@ -5830,7 +5849,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   }
                }
 
-               // Precursor NL peaks added here; stays the same for the decoy peptide if used
+               // Precursor NL peaks added here
                for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
                {
                   for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
@@ -5838,10 +5857,10 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                      double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                      int iVal = BIN(dNLMass);
 
-                     if (pbDuplFragment[iVal] == false)
+                     if (iVal > 0 && pbDuplFragment[iVal] == false)
                      {
                         // increment 2nd charge dimension up from 0
-                        _uiBinnedPrecursorNLDecoy[ctNL][g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState - ctCharge] = iVal;
+                        _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = iVal;
                         pbDuplFragment[iVal] = true;
                      }
                   }

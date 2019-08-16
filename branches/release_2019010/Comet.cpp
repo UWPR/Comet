@@ -242,8 +242,7 @@ void LoadParameters(char *pszParamsFile,
             sscanf(szParamBuf, "%*s %*s %128s %12s %12s", szVersion, szRev1, szRev2);
 
 
-            if (pSearchMgr->IsValidCometVersion(string(szVersion))
-                  || strstr(szVersion, "2017.01"))  // also compatible with 2017.01 params
+            if (pSearchMgr->IsValidCometVersion(string(szVersion)))
             {
                bValidParamsFile = true;
                sprintf(szVersion, "%s %s %s", szVersion, szRev1, szRev2);
