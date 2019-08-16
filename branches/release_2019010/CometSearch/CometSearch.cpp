@@ -638,6 +638,10 @@ bool CometSearch::RunSearch(int minNumThreads,
                   dbe.strSeq += iTmpCh;
                   g_staticParams.databaseInfo.uliTotAACount++;
                }
+               else if (iTmpCh == '*')  // stop codon
+               {
+                  dbe.strSeq += iTmpCh;
+               }
             }
 
             g_staticParams.databaseInfo.iTotalNumProteins++;
