@@ -161,7 +161,7 @@
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
                         // do not decode peptide/proteins strings unless xcorr>0
-                        if (xcorr >= 0)
+                        if (xcorr > 0)
                         {
                            if ((iScanNumber % 100) == 0)
                            {
