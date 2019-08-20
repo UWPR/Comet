@@ -1641,12 +1641,13 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         }
                      }
 
-                     XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, iFoundVariableMod,
-                           dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
-
                      if (bFirstTimeThroughLoopForPeptide)
-                     {
                          bFirstTimeThroughLoopForPeptide = false;
+
+                     if (!g_staticParams.variableModParameters.bRequireVarMod)
+                     {
+                        XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, iFoundVariableMod,
+                              dCalcPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
 
                         // Also take care of decoy here.
                         if (g_staticParams.options.iDecoySearch)
@@ -1786,13 +1787,10 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                  }
                               }
                            }
-                        }
-                     }
 
-                     if (g_staticParams.options.iDecoySearch)
-                     {
-                        XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, iFoundVariableModDecoy,
-                              dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
+                           XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, iFoundVariableModDecoy,
+                                 dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSites, &dbe);
+                        }
                      }
                   }
                   iWhichQuery++;
