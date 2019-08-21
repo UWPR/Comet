@@ -19,19 +19,17 @@
          <li>Note, there is a direct correlation between the value selected for
          the fragment_bin_tol and the memory used in a search.  The lower the
          fragment_bin_tol setting, the more memory a search will use.  A test of
-         4,515 query spectra used ~700MB RAM with a 0.4 fragment_bin_tol value,
-         ~1.5GB RAM with a 0.10 value, and ~9GB RAM with a 0.01 value.  For small
-         fragment_bin_tol values where computer memory becomes an issue, either
-         set <a href="use_sparse_matrix.php">use_sparse_matrix</a> to true and/or
-         make use of the <a href="spectrum_batch_size.php">spectrum_batch_size</a>
-         parameter
+         loading ~40K query spectra used roughly 8GB RAM with a 1.0005 fragment_bin_tol value,
+         12GB RAM with a 0.02 value, and 14 GB RAM with a 0.01 value.  For small
+         fragment_bin_tol values where computer memory becomes an issue, 
+         set a non-zero value in the <a href="spectrum_batch_size.php">spectrum_batch_size</a>
+         parameter.
          <li>The minimum allowed value is 0.01.
          <li>The default value is "1.0005" if the parameter is missing.
          </ul>
 
          <p>Example:
          <br><tt>fragment_bin_tol = 1.0005</tt>
-         <br><tt>fragment_bin_tol = 0.4</tt>
          <br><tt>fragment_bin_tol = 0.02</tt>
 
       </div>

@@ -27,7 +27,7 @@
             <ul>
             <li>0 = no decoy search (default)
             <li>1 = concatenated decoy search.  Target and decoy entries will be scored against
-            each other and a single result is performed for each spectrum query.
+            each other and a single result is returned for each spectrum query.
             <li>2 = separate decoy search.  Target and decoy entries will be scored separately
             and separate target and decoy search results will be reported.
             </ul>

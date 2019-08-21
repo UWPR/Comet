@@ -14,10 +14,12 @@
          <li>Controls whether or not precursor neutral loss peaks are considered in the xcorr scoring.
          <li>If left blank, this parameter is ignored.
          <li>To consider precursor neutral loss peaks, add one or more neutral loss mass value separated by a space.
+         <li>Each entered mass value will be subtracted from the experimentral precursor mass and resulting
+         neutral loss m/z values for all charge states (from 1 to precursor charge) will be analyzed.
          <li>As these neutral loss peaks are analyzed along side fragment ion peaks,
          the fragment tolerance settings (fragment_bin_tol, fragment_bin_offset, theoretical_fragment_ion)
-         apply, I THINK!!
-         <li>The default value is unused if this parameter is missing.
+         apply to the precursor neutral loss peaks.
+         <li>The default value is blank/unused if this parameter is missing.
          </ul>
 
          <p>Example:

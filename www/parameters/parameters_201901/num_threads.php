@@ -25,6 +25,8 @@
          <li>If the environment variable NSLOTS is defined, the value of that environment variable
              will override this parameter setting and will be the number of threads used in the search.
              This environment variable is typically set in cluster/grid engine software environments.
+         <li>For an indexed database search, this parameter is ignored and only 1 thread is used in
+             those searches.
          </ul>
 
          <p>Example:
