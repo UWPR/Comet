@@ -528,7 +528,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                && iPrintDuplicateProteinCt < g_staticParams.options.iMaxDuplicateProteins)
          {
             it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-            fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
+            fprintf(fpout, ",%s%s", g_staticParams.szDecoyPrefix, szProteinName);
             ++it;
 
             for (; it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)

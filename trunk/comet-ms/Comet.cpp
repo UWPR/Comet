@@ -242,8 +242,7 @@ void LoadParameters(char *pszParamsFile,
             sscanf(szParamBuf, "%*s %*s %128s %12s %12s", szVersion, szRev1, szRev2);
 
 
-            if (pSearchMgr->IsValidCometVersion(string(szVersion))
-                  || strstr(szVersion, "2017.01"))  // also compatible with 2017.01 params
+            if (pSearchMgr->IsValidCometVersion(string(szVersion)))
             {
                bValidParamsFile = true;
                sprintf(szVersion, "%s %s %s", szVersion, szRev1, szRev2);
@@ -1476,7 +1475,7 @@ require_variable_mod = 0\n\
 # fragment ions\n\
 #\n\
 # ion trap ms/ms:  1.0005 tolerance, 0.4 offset (mono masses), theoretical_fragment_ions = 1\n\
-# high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0, spectrum_batch_size = 10000\n\
+# high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0, spectrum_batch_size = 15000\n\
 #\n\
 fragment_bin_tol = 1.0005              # binning to use on fragment ions\n\
 fragment_bin_offset = 0.4              # offset position to start the binning (0.0 to 1.0)\n\
@@ -1531,7 +1530,7 @@ max_precursor_charge = 6               # set maximum precursor charge state to a
 fprintf(fp,
 "nucleotide_reading_frame = 0           # 0=proteinDB, 1-6, 7=forward three, 8=reverse three, 9=all six\n\
 clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
-spectrum_batch_size = 10000            # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
+spectrum_batch_size = 15000            # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
 equal_I_and_L = 1                      # 0=treat I and L as different; 1=treat I and L as same\n\
 output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\

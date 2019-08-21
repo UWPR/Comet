@@ -1487,7 +1487,7 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
-    if (strstr(comet_version, version.c_str()))  //|| strstr("2018.01", version.c_str()) || strstr("2017.01", version.c_str()))
+    if (strstr(comet_version, version.c_str()))
        return true;
     else
        return false;
