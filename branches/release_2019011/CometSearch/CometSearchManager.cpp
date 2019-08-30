@@ -2435,6 +2435,15 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
       // Set return values for peptide sequence, protein, xcorr and E-value
       strReturnPeptide = std::string(1, pOutput[0].szPrevNextAA[0]) + ".";
+
+      // n-term variable mod
+      if (pOutput[0].piVarModSites[pOutput[0].iLenPeptide] != 0)
+      {
+         std::stringstream ss;
+         ss << "n[" << std::fixed << std::setprecision(4) << pOutput[0].pdVarModSites[pOutput[0].iLenPeptide] << "]";
+         strReturnPeptide += ss.str();
+      }
+
       for (int i=0; i< pOutput[0].iLenPeptide; i++)
       {
          strReturnPeptide += pOutput[0].szPeptide[i];
@@ -2446,6 +2455,15 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
             strReturnPeptide += ss.str();
          }
       }
+
+      // c-term variable mod
+      if (pOutput[0].piVarModSites[pOutput[0].iLenPeptide + 1] != 0)
+      {
+         std::stringstream ss;
+         ss << "c[" << std::fixed << std::setprecision(4) << pOutput[0].pdVarModSites[pOutput[0].iLenPeptide + 1] << "]";
+         strReturnPeptide += ss.str();
+      }
+
       strReturnPeptide += "." + std::string(1, pOutput[0].szPrevNextAA[1]);
 
       strReturnProtein = pOutput[0].strSingleSearchProtein;            //protein
@@ -2539,13 +2557,13 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
       // mods at peptide length +1 and +2 are for n- and c-terminus
       if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
+         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] != 0))
       {
          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] - 1].dVarModMass;
       }
 
       if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
+         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] != 0))
       {
          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] - 1].dVarModMass;
       }
