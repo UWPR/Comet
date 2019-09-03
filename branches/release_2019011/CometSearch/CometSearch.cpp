@@ -1969,11 +1969,17 @@ n/c-term protein mods not supported yet
 
             // variable N-term peptide mod
             if (sDBI.pcVarModSites[iLenPeptide] > 0)
-               dBion += g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[iLenPeptide]-1].dVarModMass;
+            {
+               dBion += g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[iLenPeptide] - 1].dVarModMass;
+               iFoundVariableMod = 1;
+            }
 
             // variable C-term peptide mod
             if (sDBI.pcVarModSites[iLenPeptide + 1] > 0)
-               dYion += g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[iLenPeptide+1]-1].dVarModMass;
+            {
+               dYion += g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[iLenPeptide + 1] - 1].dVarModMass;
+               iFoundVariableMod = 1;
+            }
 
             // Generate pdAAforward for _pResults[0].szPeptide
             for (int i=0; i<iEndPos; i++)
