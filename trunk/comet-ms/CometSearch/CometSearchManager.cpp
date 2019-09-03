@@ -2788,11 +2788,11 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // first sort by peptide, then mod state, then protein file position
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByPeptide);
 
-   // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
+   // At this point, need to create pvProteinsList protein file position vector of vectors to map each peptide
    // to every protein. g_pvDBIndex.at().lProteinFilePosition is now reference to protein vector entry
    long lProtCount = 0;
-   vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-   g_pvProteinsList.clear();
+   vector<vector<comet_fileoffset_t>> pvProteinsList;
+   pvProteinsList.clear();
    for (size_t i = 0; i < g_pvDBIndex.size(); i++)
    {
       if (i == 0)
@@ -2800,7 +2800,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
          //store new protein offset containing first protein file position
          vector<comet_fileoffset_t> temp;
          temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-         g_pvProteinsList.push_back(temp);
+         pvProteinsList.push_back(temp);
          g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
          lProtCount++;
       }
@@ -2813,7 +2813,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
             // peptide is same as previous, add in the current protein offset if not same as prev
             if (g_pvDBIndex.at(i).lIndexProteinFilePosition != g_pvDBIndex.at(i-1).lIndexProteinFilePosition)
             {
-               g_pvProteinsList.at(g_pvProteinsList.size()-1).push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
+               pvProteinsList.at(pvProteinsList.size()-1).push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
             }
          }
          else
@@ -2821,7 +2821,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
             // store new protein offset
             vector<comet_fileoffset_t> temp;
             temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-            g_pvProteinsList.push_back(temp);
+            pvProteinsList.push_back(temp);
             g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
             lProtCount++;
          }
@@ -2928,7 +2928,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
 
       // now write out all duplicate proteins file positions
-      lNumMatchedProteins = (long)g_pvProteinsList.at((*it).lIndexProteinFilePosition).size();
+      lNumMatchedProteins = (long)pvProteinsList.at((*it).lIndexProteinFilePosition).size();
 
       if (lNumMatchedProteins > g_staticParams.options.iMaxDuplicateProteins)
          lNumMatchedProteins = g_staticParams.options.iMaxDuplicateProteins;
@@ -2939,7 +2939,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       for (long x = 0; x < lNumMatchedProteins; x++)
       {
          // find protein by matching g_pvProteinNames.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
-         auto result = g_pvProteinNames.find((g_pvProteinsList.at((*it).lIndexProteinFilePosition)).at(x));
+         auto result = g_pvProteinNames.find((pvProteinsList.at((*it).lIndexProteinFilePosition)).at(x));
          if (result != g_pvProteinNames.end())
          {
             iWhichProtein = result->second.iWhichProtein;
