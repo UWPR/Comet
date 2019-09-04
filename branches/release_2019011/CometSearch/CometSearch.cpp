@@ -3366,7 +3366,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
             memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
 
             int iVal;
-            for (i=0; i<iLenPeptide; i++)
+            for (i=0; i<iLenPeptide + 2; i++)
             {
                iVal = pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites[i];
 
