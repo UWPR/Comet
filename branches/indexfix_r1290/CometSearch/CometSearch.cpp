@@ -772,6 +772,10 @@ bool CometSearch::RunSearch(int minNumThreads,
                   dbe.strSeq += iTmpCh;
                   g_staticParams.databaseInfo.uliTotAACount++;
                }
+               else if (iTmpCh == '*')  // stop codon
+               {
+                  dbe.strSeq += iTmpCh;
+               }
             }
 
             g_staticParams.databaseInfo.iTotalNumProteins++;
@@ -3195,7 +3199,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
             memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
 
             int iVal;
-            for (i=0; i<iLenPeptide; i++)
+            for (i=0; i<iLenPeptide + 2; i++)
             {
                iVal = pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites[i];
 

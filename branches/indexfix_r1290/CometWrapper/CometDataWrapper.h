@@ -272,6 +272,11 @@ namespace CometWrapper {
       
         ~ScoreWrapper()
         {
+            this->!ScoreWrapper();
+        }
+
+        !ScoreWrapper()
+        {
             delete pScores;
         }
 

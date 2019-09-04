@@ -2248,6 +2248,9 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    singleSearchThreadCount = 1;
    g_staticParams.options.iNumThreads = singleSearchThreadCount;
 
+   g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
+   g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
+
    bool bSucceeded;
    //MH: Allocate memory shared by threads during spectral processing.
    bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
@@ -2389,6 +2392,15 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
       // Set return values for peptide sequence, protein, xcorr and E-value
       strReturnPeptide = std::string(1, pOutput[0].szPrevNextAA[0]) + ".";
+
+      // n-term variable mod
+      if (pOutput[0].piVarModSites[pOutput[0].iLenPeptide] != 0)
+      {
+         std::stringstream ss;
+         ss << "n[" << std::fixed << std::setprecision(4) << pOutput[0].pdVarModSites[pOutput[0].iLenPeptide] << "]";
+         strReturnPeptide += ss.str();
+      }
+
       for (int i=0; i< pOutput[0].iLenPeptide; i++)
       {
          strReturnPeptide += pOutput[0].szPeptide[i];
@@ -2400,6 +2412,15 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
             strReturnPeptide += ss.str();
          }
       }
+
+      // c-term variable mod
+      if (pOutput[0].piVarModSites[pOutput[0].iLenPeptide + 1] != 0)
+      {
+         std::stringstream ss;
+         ss << "c[" << std::fixed << std::setprecision(4) << pOutput[0].pdVarModSites[pOutput[0].iLenPeptide + 1] << "]";
+         strReturnPeptide += ss.str();
+      }
+
       strReturnPeptide += "." + std::string(1, pOutput[0].szPrevNextAA[1]);
 
       strReturnProtein = pOutput[0].strSingleSearchProtein;            //protein
@@ -2493,13 +2514,13 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
       // mods at peptide length +1 and +2 are for n- and c-terminus
       if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] == 1))
+         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] != 0))
       {
          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide] - 1].dVarModMass;
       }
 
       if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] == 1))
+         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] != 0))
       {
          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] - 1].dVarModMass;
       }
@@ -2553,7 +2574,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                {
                   Fragment frag;
                   frag.intensity = pdTmpSpectrum[iTmp];
-                  frag.mass = mass;
+                  frag.mass = mz;
                   frag.type = ionSeries;
                   frag.number = fragNumber;
                   frag.charge = ctCharge;
@@ -2743,44 +2764,46 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
    // to every protein. g_pvDBIndex.at().lProteinFilePosition is now reference to protein vector entry
-   long lProtCount = 0;
    vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-   g_pvProteinsList.clear();
+   vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to g_pvProteinsList
+
+   long lProtCount = 0;
    for (size_t i = 0; i < g_pvDBIndex.size(); i++)
    {
       if (i == 0)
       {
-         //store new protein offset containing first protein file position
-         vector<comet_fileoffset_t> temp;
          temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-         g_pvProteinsList.push_back(temp);
          g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-         lProtCount++;
       }
       else
       {
-         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide)
-            && !memcmp(g_pvDBIndex.at(i).pcVarModSites, g_pvDBIndex.at(i-1).pcVarModSites,
-                          strlen(g_pvDBIndex.at(i).szPeptide)*sizeof(char)))
+         // each unique peptide, irregardless of mod state, will have the same list
+         // of matched proteins
+         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide))
          {
-            // peptide is same as previous, add in the current protein offset if not same as prev
-            if (g_pvDBIndex.at(i).lIndexProteinFilePosition != g_pvDBIndex.at(i-1).lIndexProteinFilePosition)
-            {
-               g_pvProteinsList.at(g_pvProteinsList.size()-1).push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-  //             g_pvDBIndex.at(i).lIndexProteinFilePosition = g_pvDBIndex.at(i-1).lIndexProteinFilePosition;
-            }
+            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
+            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
          }
          else
          {
-            // store new protein offset
-            vector<comet_fileoffset_t> temp;
-            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
+            // different peptide + mod state so go ahead and push temp onto g_pvProteinsList
+            // and store current protein reference into new temp
+            // temp can have duplicates due to mod forms of peptide so make unique here
+            sort(temp.begin(), temp.end());
+            temp.erase(unique(temp.begin(), temp.end()), temp.end() );
             g_pvProteinsList.push_back(temp);
+
+            lProtCount++; // start new row in g_pvProteinsList
+            temp.clear();
+            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
             g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-            lProtCount++;
          }
       }
    }
+   // now at end of loop, push last temp onto g_pvProteinsList
+   sort(temp.begin(), temp.end());
+   temp.erase(unique(temp.begin(), temp.end()), temp.end() );
+   g_pvProteinsList.push_back(temp);
 
    g_pvDBIndex.erase(unique(g_pvDBIndex.begin(), g_pvDBIndex.end()), g_pvDBIndex.end());
 
