@@ -1343,6 +1343,13 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
    while (lReadIndex[iStart10] == -1 && iStart10 < iEnd10)
       iStart10++;
 
+   if (lReadIndex[iStart10] == -1)  // no match found within tolerance
+   {
+      delete[] lReadIndex;
+      fclose(fp);
+      return true;
+   }
+
    comet_fseek(fp, lReadIndex[iStart10], SEEK_SET);
    fread(&sDBI, sizeof(struct DBIndex), 1, fp);
 
@@ -1425,13 +1432,6 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
       _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
       _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
       dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1]; 
-   }
-
-   if (*iPrecursorMatch != -1)  // if here, no mass match for CheckIdxPrecursorMatch
-   {
-      delete[] lReadIndex;
-      fclose(fp);
-      return true;
    }
 
    for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)

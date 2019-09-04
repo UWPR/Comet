@@ -321,6 +321,11 @@ namespace CometWrapper {
 
         ~FragmentWrapper()
         {
+            this->!FragmentWrapper();
+        }
+
+        !FragmentWrapper()
+        {
             delete pFragment;
         }
 
