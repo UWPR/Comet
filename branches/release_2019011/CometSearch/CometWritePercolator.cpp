@@ -169,8 +169,8 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          fprintf(fpout, "1\t");   // target label
 
       fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
-      fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);  //ExpMass
-      fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);  //CalcMass
+      fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass);  //ExpMass
+      fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass);  //CalcMass
 
       iMinLength = 999;
       for (i=0; i<iNumPrintLines; i++)
