@@ -1365,7 +1365,6 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
 
    _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
    _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
-   dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1];  // make string including prev/next AA
 
    while ((int)(sDBI.dPepMass * 10) <= iEnd10)
    {
@@ -1431,7 +1430,6 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
 
       _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
       _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
-      dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1]; 
    }
 
    for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
