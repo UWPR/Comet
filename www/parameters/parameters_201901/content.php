@@ -3,7 +3,7 @@
       <div class="post hr">
          <h1>Search parameters (2019.01)</h1>
          <p><strong>Comet</strong> search parameters are defined here.  These are valid for
-         Comet version 2019.01.x.</p>
+         Comet version 2019.01.0.</p>
          
          <p>Parameters for all versions of Comet <a href="http://comet-ms.sourceforge.net/parameters">can be found here</a>.
          <br>Entries marked with an <font color="red">*</font> are new parameters.
@@ -35,12 +35,13 @@
          <li><a href="mass_type_parent.php">mass_type_parent</a></li>
          <li><a href="mass_type_fragment.php">mass_type_fragment</a></li>
          <li><a href="precursor_tolerance_type.php">precursor_tolerance_type</a></li>
-         <li><a href="isotope_error.php">isotope_error</a> <font color="red">**</font></li>
+         <li><a href="isotope_error.php">isotope_error</a>
          </ul>
 
          <h3>Search enzyme</h3>
          <ul>
          <li><a href="search_enzyme_number.php">search_enzyme_number</a></li>
+         <li><a href="search_enzyme2_number.php">search_enzyme2_number</a> <font color="red">*</font></li>
          <li><a href="num_enzyme_termini.php">num_enzyme_termini</a></li>
          <li><a href="allowed_missed_cleavage.php">allowed_missed_cleavage</a></li>
          </ul>
@@ -83,20 +84,23 @@
 
          <h3>Misc. parameters</h3>
          <ul>
-         <li><a href="digest_mass_range.php">digest_mass_range</a></li>
-         <li><a href="num_results.php">num_results</a></li>
-         <li><a href="skip_researching.php">skip_researching</a></li>
-         <li><a href="skip_updatecheck.php">skip_updatecheck</a> <font color="red">*</font></li>
-         <li><a href="max_fragment_charge.php">max_fragment_charge</a></li>
-         <li><a href="max_precursor_charge.php">max_precursor_charge</a></li>
-         <li><a href="nucleotide_reading_frame.php">nucleotide_reading_frame</a></li>
          <li><a href="clip_nterm_methionine.php">clip_nterm_methionine</a></li>
-         <li><a href="spectrum_batch_size.php">spectrum_batch_size</a></li>
          <li><a href="decoy_prefix.php">decoy_prefix</a></li>
-         <li><a href="output_suffix.php">output_suffix</a></li>
-         <li><a href="mass_offsets.php">mass_offsets</a></li>
+         <li><a href="digest_mass_range.php">digest_mass_range</a></li>
          <li><a href="equal_I_and_L.php">equal_I_and_L</a></li>
+         <li><a href="mass_offsets.php">mass_offsets</a></li>
+         <li><a href="max_duplicate_proteins.php">max_duplicate_proteins</a> <font color="red">*</font></li>
+         <li><a href="max_fragment_charge.php">max_fragment_charge</a></li>
+         <li><a href="max_index_runtime.php">max_index_runtime</a> <font color="red">*</font></li>
+         <li><a href="max_precursor_charge.php">max_precursor_charge</a></li>
+         <li><a href="num_results.php">num_results</a></li>
+         <li><a href="nucleotide_reading_frame.php">nucleotide_reading_frame</a></li>
+         <li><a href="output_suffix.php">output_suffix</a></li>
          <li><a href="peff_verbose_output.php">peff_verbose_output</a>
+         <li><a href="peptide_length_range.php">peptide_length_range</a> <font color="red">*</font></li>
+         <li><a href="precursor_NL_ions.php">precursor_NL_ions</a> <font color="red">*</font></li>
+         <li><a href="skip_researching.php">skip_researching</a></li>
+         <li><a href="spectrum_batch_size.php">spectrum_batch_size</a></li>
          </ul>
 
          <h3>Spectral processing</h3>
@@ -110,15 +114,15 @@
                         
          <h3>Variable modifications</h3>
          <ul>
-         <li><a href="variable_mod01.php">variable_mod01</a>
-         <li><a href="variable_mod02.php">variable_mod02</a>
-         <li><a href="variable_mod03.php">variable_mod03</a>
-         <li><a href="variable_mod04.php">variable_mod04</a>
-         <li><a href="variable_mod05.php">variable_mod05</a>
-         <li><a href="variable_mod06.php">variable_mod06</a>
-         <li><a href="variable_mod07.php">variable_mod07</a>
-         <li><a href="variable_mod08.php">variable_mod08</a>
-         <li><a href="variable_mod09.php">variable_mod09</a>
+         <li><a href="variable_mod01.php">variable_mod01</a> <font color="red">**</font></li>
+         <li><a href="variable_mod02.php">variable_mod02</a> <font color="red">**</font></li>
+         <li><a href="variable_mod03.php">variable_mod03</a> <font color="red">**</font></li>
+         <li><a href="variable_mod04.php">variable_mod04</a> <font color="red">**</font></li>
+         <li><a href="variable_mod05.php">variable_mod05</a> <font color="red">**</font></li>
+         <li><a href="variable_mod06.php">variable_mod06</a> <font color="red">**</font></li>
+         <li><a href="variable_mod07.php">variable_mod07</a> <font color="red">**</font></li>
+         <li><a href="variable_mod08.php">variable_mod08</a> <font color="red">**</font></li>
+         <li><a href="variable_mod09.php">variable_mod09</a> <font color="red">**</font></li>
          <li><a href="max_variable_mods_in_peptide.php">max_variable_mods_in_peptide</a></li>
          <li><a href="require_variable_mod.php">require_variable_mod</a></li>
          </ul>
