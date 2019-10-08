@@ -800,6 +800,7 @@ extern map<long long, IndexProteinStruct>  g_pvProteinNames;
 
 extern vector<DBIndex> g_pvDBIndex;
 
+extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

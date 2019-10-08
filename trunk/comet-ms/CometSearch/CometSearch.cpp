@@ -1235,7 +1235,7 @@ bool CometSearch::IndexSearch(void)
 
    _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
    _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
-   dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1];  // make string including prev/next AA
+//   dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1];  // make string including prev/next AA
 
    while ((int)(sDBI.dPepMass * 10) <= iEnd10)
    {
@@ -1280,7 +1280,7 @@ bool CometSearch::IndexSearch(void)
 
       _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
       _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
-      dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1]; 
+//    dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1]; 
       
       if (g_staticParams.options.iMaxIndexRunTime > 0)
       {
@@ -1969,11 +1969,17 @@ n/c-term protein mods not supported yet
 
             // variable N-term peptide mod
             if (sDBI.pcVarModSites[iLenPeptide] > 0)
-               dBion += g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[iLenPeptide]-1].dVarModMass;
+            {
+               dBion += g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[iLenPeptide] - 1].dVarModMass;
+               iFoundVariableMod = 1;
+            }
 
             // variable C-term peptide mod
             if (sDBI.pcVarModSites[iLenPeptide + 1] > 0)
-               dYion += g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[iLenPeptide+1]-1].dVarModMass;
+            {
+               dYion += g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[iLenPeptide + 1] - 1].dVarModMass;
+               iFoundVariableMod = 1;
+            }
 
             // Generate pdAAforward for _pResults[0].szPeptide
             for (int i=0; i<iEndPos; i++)
@@ -2002,8 +2008,6 @@ n/c-term protein mods not supported yet
 
                _pdAAreverse[i] = dYion;
             }
-
-//FIX add fragment and precursor NL support here
 
             // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
             // First initialize pbDuplFragment and _uiBinnedIonMasses
@@ -3360,7 +3364,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
             memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
 
             int iVal;
-            for (i=0; i<iLenPeptide; i++)
+            for (i=0; i<iLenPeptide + 2; i++)
             {
                iVal = pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites[i];
 
@@ -3507,7 +3511,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
             memcpy(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
 
             int iVal;
-            for (i=0; i<iLenPeptide; i++)
+            for (i=0; i<iLenPeptide + 2; i++)
             {
                iVal = pQuery->_pResults[siLowestSpScoreIndex].piVarModSites[i];
 
@@ -3565,9 +3569,11 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
    int i,
        iLenMinus1,
        bIsDuplicate=0;
+   int iLenProteinSeqMinus1;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    iLenMinus1 = iEndPos-iStartPos+1;
+   iLenProteinSeqMinus1 = strlen(szProteinSeq) - 1;
 
    if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
    {
@@ -3672,7 +3678,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   else
                      pQuery->_pDecoys[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
                
-                  if (iEndPos == (int)strlen(szProteinSeq) - 1)      //FIX: get rid of strlen() here
+                  if (iEndPos == iLenProteinSeqMinus1)
                      pQuery->_pDecoys[i].szPrevNextAA[1] = '-';
                   else
                      pQuery->_pDecoys[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
@@ -3794,7 +3800,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   else
                      pQuery->_pResults[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
-                  if (iEndPos == (int)strlen(szProteinSeq) - 1)      //FIX: get rid of strlen() here
+                  if (iEndPos == iLenProteinSeqMinus1)
                      pQuery->_pResults[i].szPrevNextAA[1] = '-';
                   else
                      pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
