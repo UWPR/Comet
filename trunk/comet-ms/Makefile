@@ -1,6 +1,6 @@
-CXX = g++
-MSTOOLKIT = MSToolkit
-COMETSEARCH = CometSearch
+include Makefile.common
+
+COMETSEARCH =  CometSearch
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -20,7 +20,8 @@ ifdef MSYSTEM
 endif
 
 comet.exe: $(OBJS)
-	cd $(MSTOOLKIT) ; make arlib; cd ../CometSearch ; make
+	cd $(MSTOOLKIT) && make arlib
+	cd $(COMETSEARCH) && make
 
 ifeq ($(UNAME_S),Darwin)
 	${CXX} $(OBJS) -headerpad_max_install_names -o ${EXECNAME} $(CXXFLAGS) $(LIBPATHS) $(LIBS)

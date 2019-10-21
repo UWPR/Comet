@@ -1,7 +1,19 @@
-CXX = g++
-GCC = gcc
-MSTOOLKIT = ../MSToolkit
-override CXXFLAGS += -O3 -fpermissive -Wall -Wextra -Wno-write-strings -static -std=c++11 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTOOLKIT)/include
+include ../Makefile.common
+
+# Need to handle whether $(MSTOOLKIT) is defined as absolute or relative path
+# from parent directory and set MSTPATH accordingly
+IS_ROOT    := $(if $(patsubst /%,,$(MSTOOLKIT)),,yes)
+IS_HOME    := $(if $(patsubst ~%,,$(MSTOOLKIT)),,yes)
+IS_NETWORK := $(if $(patsubst \\\\%,,$(MSTOOLKIT)),,yes)
+IS_DRIVE   := $(foreach d,A B C D E F G H I J K L M N O P Q R S T U V Q X Y Z,$(if $(patsubst $(d):/%,,$(MSTOOLKIT)),,yes))
+ifeq ($(strip $(IS_ROOT)$(IS_HOME)$(IS_NETWORK)$(IS_DRIVE)),yes)
+MSTPATH = $(MSTOOLKIT)
+else
+MSTPATH = ../$(MSTOOLKIT)
+endif
+
+
+override CXXFLAGS += -O3 -fpermissive -Wall -Wextra -Wno-write-strings -static -std=c++11 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTPATH)/include
 
 COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o CometWriteSqt.o CometWritePepXML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o CometCheckForUpdates.o
 
@@ -15,7 +27,7 @@ Threading.o:          Threading.cpp Threading.h
 	${CXX} ${CXXFLAGS} Threading.cpp -c
 CometSearch.o:        CometSearch.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
 	${CXX} ${CXXFLAGS} CometSearch.cpp -c
-CometPreprocess.o:    CometPreprocess.cpp Common.h CometData.h CometDataInternal.h CometPreprocess.h CometInterfaces.h $(MSTOOLKIT)
+CometPreprocess.o:    CometPreprocess.cpp Common.h CometData.h CometDataInternal.h CometPreprocess.h CometInterfaces.h $(MSTPATH)
 	${CXX} ${CXXFLAGS} CometPreprocess.cpp -c
 CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometMassSpecUtils.cpp -c
