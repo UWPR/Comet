@@ -25,7 +25,7 @@ struct PreprocessThreadData
    Spectrum mstSpectrum;
    int iAnalysisType;
    int iFileLastScan;
-   bool *pbMemoryPool;  //MH: Manages active memory pool
+// bool *pbMemoryPool;  //MH: Manages active memory pool
 
    PreprocessThreadData()
    {
@@ -42,21 +42,8 @@ struct PreprocessThreadData
 
    ~PreprocessThreadData()
    {
-      //MH: Mark that the memory is no longer in use.
-      //DO NOT FREE MEMORY HERE. Just release pointer.
-      Threading::LockMutex(g_preprocessMemoryPoolMutex);
-
-      if(pbMemoryPool!=NULL)
-         *pbMemoryPool=false;
-      pbMemoryPool=NULL;
-
-      Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
    }
 
-   void SetMemory(bool *pbMemoryPool_in)
-   {
-      pbMemoryPool = pbMemoryPool_in;
-   }
 };
 
 
@@ -75,24 +62,17 @@ public:
                                         int maxNumThreads);
    static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData);
    static bool DoneProcessingAllSpectra();
-   static bool AllocateMemory(int maxNumThreads);
-   static bool DeallocateMemory(int maxNumThreads);
    static bool PreprocessSingleSpectrum(int iPrecursorCharge,
                                         double dMZ,
                                         double *pdMass,
                                         double *pdInten,
                                         int iNumPeaks,
-                                        double *pdTmpSpectrum);
+                                        map<int, double> &mapRawSpectrum);
 
 private:
 
    // Private static methods
-   static bool PreprocessSpectrum(Spectrum &spec,
-                                  double *pdTmpRawData,
-                                  double *pdTmpFastXcorrData,
-                                  double *pdTmpCorrelationData,
-                                  double *pdTmpSmoothedSpectrum,
-                                  double *pdTmpPeakExtracted);
+   static bool PreprocessSpectrum(Spectrum &spec);
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
@@ -108,32 +88,19 @@ private:
                          int iReaderLastScan,
                          int iNumSpectraLoaded);
    static bool Preprocess(struct Query *pScoring,
-                          Spectrum mstSpectrum,
-                          double *pdTmpRawData,
-                          double *pdTmpFastXcorrData,
-                          double *pdTmpCorrelationData,
-                          double *pdSmoothedSpectrum,
-                          double *pdTmpPeakExtracted);
+                          Spectrum mstSpectrum);
    static bool LoadIons(struct Query *pScoring,
-                        double *pdTmpRawData,
+                        map<int, double> *mapSpectrum,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
-   static void MakeCorrData(double *pdTmpRawData,
-                            double *pdTmpCorrelationData,
-                            struct Query *pScoring,
-                            struct PreprocessStruct *pPre);
-   static bool Smooth(double *data,
-                      int iArraySize,
-                      double *pdSmoothedSpectrum);
-   static bool PeakExtract(double *data,
-                           int iArraySize,
-                           double *pdTmpPeakExtracted);
-   static void GetTopIons(double *pdTmpRawData,
-                          struct msdata *pTmpSpData,
-                          int iArraySize);
-   static bool SortByIon(const struct msdata &a,
-                         const struct msdata &b);
-   static void StairStep(struct msdata *pTmpSpData);
+   static void NormalizeIntensities(map<int, double> *mapSpectrum,
+                                    struct PreprocessStruct *pPre);
+   static bool SortVectorByInverseIntensity(const pair<int,double> &a,
+                                    const pair<int,double> &b);
+   static bool SortVectorByIndex(const pair<int,double> &a,
+                                 const pair<int,double> &b);
+   static void StairStep(vector< pair<int, double>> &vBinnedSpectrumSP);
+
    static bool IsValidInputType(int inputType);
 
 
@@ -143,12 +110,14 @@ private:
    static bool _bDoneProcessingAllSpectra;
 
    //MH: Common memory to be shared by all threads during spectral processing
-   static bool *pbMemoryPool;                 //MH: Regulator of memory use
+// static bool *pbMemoryPool;                 //MH: Regulator of memory use
+/*
    static double **ppdTmpRawDataArr;          //MH: Number of arrays equals threads
    static double **ppdTmpFastXcorrDataArr;    //MH: Ditto
    static double **ppdTmpCorrelationDataArr;  //MH: Ditto
    static double **ppdTmpSmoothedSpectrumArr; //MH: Ditto
    static double **ppdTmpPeakExtractedArr;    //MH: Ditto
+*/
 };
 
 #endif // _COMETPREPROCESS_H_

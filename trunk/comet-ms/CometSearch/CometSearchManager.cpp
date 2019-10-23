@@ -416,7 +416,7 @@ static void PrintOutfileHeader()
       sprintf(szIsotope, "ISOTOPE%d", g_staticParams.tolerances.iIsotopeError);
 
    szPeak[0]='\0';
-   if (g_staticParams.ionInformation.iTheoreticalFragmentIons==1)
+   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 1)
       strcpy(szPeak, "PEAK1");
 
    sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
@@ -1870,11 +1870,6 @@ bool CometSearchManager::DoSearch()
       int iTotalSpectraSearched = 0;
       if (bSucceeded)
       {
-         //MH: Allocate memory shared by threads during spectral processing.
-         bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
-         if (!bSucceeded)
-            break;
-
          // Allocate memory shared by threads during search
          bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
          if (!bSucceeded)
@@ -2209,7 +2204,7 @@ bool CometSearchManager::DoSearch()
       g_staticParams.precursorNLIons.clear();
 
       //MH: Deallocate spectral processing memory.
-      CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
+//    CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
 
       // Deallocate search memory
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
@@ -2305,14 +2300,8 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
    g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
 
-   bool bSucceeded;
-   //MH: Allocate memory shared by threads during spectral processing.
-   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
-   if (!bSucceeded)
-       return bSucceeded;
-
     // Allocate memory shared by threads during search
-   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+   bool bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
    if (!bSucceeded)
       return bSucceeded;
 
@@ -2326,7 +2315,7 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
    if (singleSearchInitializationComplete)
    {
       //MH: Deallocate spectral processing memory.
-      CometPreprocess::DeallocateMemory(singleSearchThreadCount);
+//    CometPreprocess::DeallocateMemory(singleSearchThreadCount);
 
       // Deallocate search memory
       CometSearch::DeallocateMemory(singleSearchThreadCount);
@@ -2377,16 +2366,17 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
 
-   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
-   double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
-   bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
+// int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
+// double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
+   map<int, double> mapRawSpectrum;
+   bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, mapRawSpectrum);
 
    if (!bSucceeded)
       goto cleanup_results;
 
    if (g_pvQuery.empty())
    {
-      delete[] pdTmpSpectrum;
+//    delete[] pdTmpSpectrum;
       return false; // no search to run
    }
 
@@ -2590,6 +2580,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                dYion += pQuery->_pResults[0].pdVarModSites[iPos];
          }
 
+         map<int, double>::iterator it;
          for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
          {
             // calculate every ion series the user specified
@@ -2613,10 +2604,11 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                double mz = (mass + (ctCharge - 1)*PROTON_MASS) / ctCharge;
 
                iTmp = BIN(mz);
-               if (iTmp<iArraySize && pdTmpSpectrum[iTmp] > 0.0)
+               it = mapRawSpectrum.find(iTmp);
+               if (it != mapRawSpectrum.end())
                {
                   Fragment frag;
-                  frag.intensity = pdTmpSpectrum[iTmp];
+                  frag.intensity = it->second;
                   frag.mass = mz;
                   frag.type = ionSeries;
                   frag.number = fragNumber;
@@ -2650,8 +2642,6 @@ cleanup_results:
    // Clean up the input files vector
    g_staticParams.vectorMassOffsets.clear();
    g_staticParams.precursorNLIons.clear();
-
-   delete[] pdTmpSpectrum;
 
    return bSucceeded;
 }
