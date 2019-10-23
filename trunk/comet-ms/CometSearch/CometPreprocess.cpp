@@ -1329,18 +1329,17 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    return true;
 }
 
+#define WINDOWCOUNT 10
 
 // mapSpectrum now holds raw data, pdTmpCorrelationData is windowed data after this function
 void CometPreprocess::NormalizeIntensities(map<int, double> *mapSpectrum,
                                            struct PreprocessStruct *pPre)
 {
-   int  iNumWindows=10;
-
    map<int, double>::iterator it;
 
-   double dWindowWidth = 1.0001 + (int)((pPre->iHighestIon) / (double)iNumWindows);  // # bins per window
+   double dWindowWidth = 1.0001 + (int)((pPre->iHighestIon) / (double)WINDOWCOUNT);  // # bins per window
 
-   double pdMaxInten[iNumWindows] = {};  // maximum intensity for each window initialied to 0
+   double pdMaxInten[WINDOWCOUNT] = {};  // maximum intensity for each window initialied to 0
 
    // find max intensity in each window
    int iWhichWindow;
