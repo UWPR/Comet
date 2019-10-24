@@ -393,7 +393,6 @@ for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
                itCurr->second - (1.0/(2.0*g_staticParams.iXcorrProcessingOffset) * (dSum - itCurr->second))));
    }
 
-
    // Add flanking peaks to vBinnedSpectrumXcorrFlank
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
    {
@@ -1798,7 +1797,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
             catch (std::bad_alloc& ba)
             {
                char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
+               sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseSpScoreData[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
                sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
                sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
                string strErrorMsg(szErrorMsg);
@@ -1807,12 +1806,15 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
                return false;
             }
             for (y=0; y<SPARSE_MATRIX_SIZE; y++)
-               pScoring->ppfSparseFastXcorrData[x][y]=0;
+               pScoring->ppfSparseSpScoreData[x][y]=0;
          }
          y = vBinnedSpectrumSP[iii].first - (x * SPARSE_MATRIX_SIZE);
          pScoring->ppfSparseSpScoreData[x][y] = vBinnedSpectrumSP[iii].second;
       }
    }
+
+   vBinnedSpectrumSP.clear();
+   g_pvQuery.push_back(pScoring);
 
    return true;
 }
