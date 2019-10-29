@@ -1339,6 +1339,7 @@ void CometPreprocess::NormalizeIntensities(map<int, double> *mapSpectrum,
    double dWindowWidth = 1.0 + (int)((pPre->iHighestIon) / (double)WINDOWCOUNT);  // # bins per window
 
    double pdMaxInten[WINDOWCOUNT] = {};  // maximum intensity for each window initialied to 0
+   double dIntensityCutoff = 0.05 * pPre->dHighestIntensity;  // must be withn 5% of sqrt(highest intensity)
 
    // find max intensity in each window
    int iWhichWindow;
@@ -1353,7 +1354,10 @@ void CometPreprocess::NormalizeIntensities(map<int, double> *mapSpectrum,
    for (it = mapSpectrum->begin(); it != mapSpectrum->end(); ++it)
    {
       iWhichWindow = (int)(it->first / dWindowWidth);
-      it->second *= 50.0/pdMaxInten[iWhichWindow];
+      if (it->second > dIntensityCutoff)
+         it->second *= 50.0/pdMaxInten[iWhichWindow];
+      else
+         it->second = 0.0;
    }
 }
 
