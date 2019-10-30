@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 
 void Usage(char *pszCmd)
 {
-   char szErrorMsg[128];
+   char szErrorMsg[1024];
 
    logout("\n");
    sprintf(szErrorMsg, " Comet version \"%s\"\n %s\n", comet_version, copyright);
