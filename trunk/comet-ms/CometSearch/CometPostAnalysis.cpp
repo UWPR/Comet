@@ -728,7 +728,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   }
                   else if (iFragmentIonMass > pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
-                     char szErrorMsg[256];
+                     char szErrorMsg[SIZE_ERROR];
                      sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
                            dFragmentIonMass,
                            iFragmentIonMass,

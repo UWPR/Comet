@@ -260,32 +260,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
 
-   //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
-   // very wide mass tolerance searches (i.e. 500 Da).
-   double dCushion = 0.0;
-   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerance;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {
-        dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-      }
-   }
-   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {
-         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-      }
-   }
-   else // ppm
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dPeptideMassHigh / 1000000.0;
-   }
-
    // HiXCorr preprocessing
    map<int, double> mapSpectrum;
    if (!LoadIons(pScoring, &mapSpectrum, mstSpectrum, &pPre))
@@ -300,28 +274,27 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    else
       pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
 
+   bool bSuccess = FillSparseMatrixMap(pScoring, &mapSpectrum, &pPre);
+
+   return bSuccess;
+}
+
+
+bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
+                                          map<int, double> *mapSpectrum,
+                                          struct PreprocessStruct *pPre)
+{
+
    // Make fast xcorr spectrum
    vector< pair<int, double> > vBinnedSpectrumXcorr, vBinnedSpectrumSP;
    pScoring->iFastXcorrData = 1;
    pScoring->iFastXcorrDataNL = 1;
 
    double dSum;   // sum of intensities within iXcorrProcessingOffset
-   map<int, double>::iterator itStart = mapSpectrum.begin();
-   map<int, double>::iterator itEnd = mapSpectrum.begin();
-   map<int, double>::iterator itCurr;
+   map<int, double>::iterator itStart, itEnd, itCurr;
 
-   // duplicate raw spectrum for SP score before xcorr processing
-   for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
-      vBinnedSpectrumSP.push_back(make_pair(itCurr->first, itCurr->second));
-
-   // normalize intensities across spectrum
-   NormalizeIntensities(&mapSpectrum, &pPre);
-
-/*
-for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
-   if (itCurr->second > 0.0)
-      printf("OK0  %d  %0.4f\n", itCurr->first, itCurr->second);
-*/
+   // normalize intensities across spectrum and duplicate raw data to vBinnedSpectrumSP
+   NormalizeIntensities(mapSpectrum, &vBinnedSpectrumSP, pPre);
 
    // vBinnedSpectrumXcorr stores the fast xcorr data as a vector of pairs
    // Add in zero points within iXcorrProcessingOffset
@@ -329,62 +302,47 @@ for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
    int iAddFlank = 0;
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
       iAddFlank = 1;
+
    vector <int> vAddOffsets;  // this stores the offsets that need to be added to mapSpectrum
-   for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
+
+   // Also walk through all peaks once, tracking local sum
+   dSum = 0.0;
+   itStart = mapSpectrum->begin();
+   itEnd = mapSpectrum->begin();
+
+   for (itCurr = mapSpectrum->begin(); itCurr != mapSpectrum->end(); ++itCurr)
    {
+      // this for loop adds the +- iXcorrProcessingOffset points to each data point
       for (int i=1; i<=g_staticParams.iXcorrProcessingOffset+iAddFlank; i++)
       {
          int ii = itCurr->first - i;
          if (ii > 0)
-         {
-            itStart = mapSpectrum.find(ii);
-            if (itStart== mapSpectrum.end())
-            {
-               vAddOffsets.push_back(ii);
-            }
-         }
+            vAddOffsets.push_back(ii);
 
          ii = itCurr->first + i;
          if (ii < pScoring->_spectrumInfoInternal.iArraySize)
-         {
-            itStart = mapSpectrum.find(ii);
-            if (itStart== mapSpectrum.end())
-            {
-               vAddOffsets.push_back(ii);
-            }
-         }
+            vAddOffsets.push_back(ii);
       }
-   }
 
-   // add offsets to mapSpectrum such at xcorr processing will fill these in
-   for (unsigned int ii=0; ii<vAddOffsets.size(); ii++)
-      mapSpectrum.insert(make_pair(vAddOffsets.at(ii), 0.0));
-
-   // Walk through all peaks once, tracking local sum
-   dSum = 0.0;
-   itStart = mapSpectrum.begin();
-   itEnd = mapSpectrum.begin();
-   for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
-   {
-      if (itEnd != mapSpectrum.end())
+      if (itEnd != mapSpectrum->end())
       {
          // this sums all intensities up to iXcorrProcessingOffset from current position
          while (itEnd->first - itCurr->first <= g_staticParams.iXcorrProcessingOffset)
          {
             dSum += itEnd->second;
             itEnd++;
-            if (itEnd == mapSpectrum.end())
+            if (itEnd == mapSpectrum->end())
                break;
          }
       }
-      if (itStart != mapSpectrum.end())
+      if (itStart != mapSpectrum->end())
       {
          // this deletes all intensities of offsets less than iXcorrProcessingOffset from current position
          while (itCurr->first - itStart->first > g_staticParams.iXcorrProcessingOffset)
          {
             dSum -= itStart->second;
             itStart++;
-            if (itStart == mapSpectrum.end())
+            if (itStart == mapSpectrum->end())
                break;
          }
       }
@@ -392,6 +350,10 @@ for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
       vBinnedSpectrumXcorr.push_back(make_pair(itCurr->first,
                itCurr->second - (1.0/(2.0*g_staticParams.iXcorrProcessingOffset) * (dSum - itCurr->second))));
    }
+
+   // add offsets to mapSpectrum; will be filled in during xcorr processing
+   for (unsigned int ii=0; ii<vAddOffsets.size(); ii++)
+      mapSpectrum->insert(make_pair(vAddOffsets.at(ii), 0.0));
 
    // Add flanking peaks to vBinnedSpectrumXcorrFlank
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
@@ -419,15 +381,9 @@ for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
          vBinnedSpectrumXcorrFlank.push_back(make_pair(it->first, dNewInten));
       }
 
+      vBinnedSpectrumXcorr.clear();
       vBinnedSpectrumXcorr = vBinnedSpectrumXcorrFlank;
    }
-
-/*
-vector< pair<int, double> >::iterator iTmp;
-for (iTmp = vBinnedSpectrumXcorr.begin(); iTmp != vBinnedSpectrumXcorr.end(); ++iTmp)
-   if (iTmp->second > FLOAT_ZERO || iTmp->second < -FLOAT_ZERO)
-      printf("OK1  after %d  %0.4f\n", iTmp->first, iTmp->second);
-*/
 
    vector< pair<int, double> > vBinnedSpectrumXcorrNL;
    // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
@@ -445,7 +401,7 @@ for (iTmp = vBinnedSpectrumXcorr.begin(); iTmp != vBinnedSpectrumXcorr.end(); ++
       }
       catch (std::bad_alloc& ba)
       {
-         char szErrorMsg[256];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
@@ -470,7 +426,7 @@ for (iTmp = vBinnedSpectrumXcorr.begin(); iTmp != vBinnedSpectrumXcorr.end(); ++
                }
                catch (std::bad_alloc& ba)
                {
-                  char szErrorMsg[256];
+                  char szErrorMsg[SIZE_ERROR];
                   sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
                   sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
                   sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
@@ -497,7 +453,7 @@ for (iTmp = vBinnedSpectrumXcorr.begin(); iTmp != vBinnedSpectrumXcorr.end(); ++
    }
    catch (std::bad_alloc& ba)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d]). bad_alloc: %s.\n", pScoring->iFastXcorrData, ba.what());
       sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
       sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
@@ -522,7 +478,7 @@ for (iTmp = vBinnedSpectrumXcorr.begin(); iTmp != vBinnedSpectrumXcorr.end(); ++
             }
             catch (std::bad_alloc& ba)
             {
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
                sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
                sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
@@ -563,7 +519,7 @@ for (iTmp = vBinnedSpectrumXcorr.begin(); iTmp != vBinnedSpectrumXcorr.end(); ++
    }
    catch (std::bad_alloc& ba)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseSpScoreData[%d]). bad_alloc: %s.\n", pScoring->iSpScoreData, ba.what());
       sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
       sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
@@ -588,7 +544,7 @@ for (iTmp = vBinnedSpectrumXcorr.begin(); iTmp != vBinnedSpectrumXcorr.end(); ++
             }
             catch (std::bad_alloc& ba)
             {
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
                sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
                sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
@@ -849,8 +805,8 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec)
    }
    else if (iAddCharge == -1)  // should never get here
    {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - iAddCharge=%d\n", iAddCharge);
+      char szErrorMsg[SIZE_ERROR];
+      sprintf(szErrorMsg,  " Error - iAddCharge=%d in charge state rule\n", iAddCharge);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
@@ -1123,7 +1079,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
 	  }
       else  // Should not get here.
       {
-         char szErrorMsg[256];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg,  " Error - iIsotopeError=%d\n",  g_staticParams.tolerances.iIsotopeError);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1331,7 +1287,9 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 #define WINDOWCOUNT 10
 
 // mapSpectrum now holds raw data, pdTmpCorrelationData is windowed data after this function
+// Also duplicate raw data to vBinnedSpectrumSP
 void CometPreprocess::NormalizeIntensities(map<int, double> *mapSpectrum,
+                                           vector<pair<int, double> > *vBinnedSpectrumSP, 
                                            struct PreprocessStruct *pPre)
 {
    map<int, double>::iterator it;
@@ -1348,14 +1306,19 @@ void CometPreprocess::NormalizeIntensities(map<int, double> *mapSpectrum,
       iWhichWindow = (int)(it->first / dWindowWidth);
       if (pdMaxInten[iWhichWindow] < it->second)
          pdMaxInten[iWhichWindow] = it->second;
+ 
+      // also duplicate raw data in this loop for SP analysis
+      vBinnedSpectrumSP->push_back(make_pair(it->first, it->second));
    }
 
    // normalize intensities within each window
    for (it = mapSpectrum->begin(); it != mapSpectrum->end(); ++it)
    {
-      iWhichWindow = (int)(it->first / dWindowWidth);
       if (it->second > dIntensityCutoff)
+      {
+         iWhichWindow = (int)(it->first / dWindowWidth);
          it->second *= 50.0/pdMaxInten[iWhichWindow];
+      }
       else
          it->second = 0.0;
    }
@@ -1527,298 +1490,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       }
    }
 
-   vector< pair<int, double> > vBinnedSpectrumXcorr, vBinnedSpectrumSP;
-   pScoring->iFastXcorrData = 1;
-   pScoring->iFastXcorrDataNL = 1;
+   bool bSuccess = FillSparseMatrixMap(pScoring, &mapSpectrum, &pPre);
 
-   double dSum;   // sum of intensities within iXcorrProcessingOffset
-   map<int, double>::iterator itStart = mapSpectrum.begin();
-   map<int, double>::iterator itEnd = mapSpectrum.begin();
-   map<int, double>::iterator itCurr;
-
-   // duplicate raw spectrum for SP score before xcorr processing
-   for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
-      vBinnedSpectrumSP.push_back(make_pair(itCurr->first, itCurr->second));
-
-   // normalize intensities across spectrum
-   NormalizeIntensities(&mapSpectrum, &pPre);
-
-   // vBinnedSpectrumXcorr stores the fast xcorr data as a vector of pairs
-   // Add in zero points within iXcorrProcessingOffset
-   // If flanking peaks are used ... add extra zero point for the flanking peaks
-   int iAddFlank = 0;
-   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
-      iAddFlank = 1;
-   vector <int> vAddOffsets;  // this stores the offsets that need to be added to mapSpectrum
-   for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
-   {
-      for (int i=1; i<=g_staticParams.iXcorrProcessingOffset+iAddFlank; i++)
-      {
-         int ii = itCurr->first - i;
-         if (ii >=0)
-         {
-            itStart = mapSpectrum.find(ii);
-            if (itStart== mapSpectrum.end())
-            {
-               vAddOffsets.push_back(ii);
-            }
-         }
-
-         ii = itCurr->first + i;
-         if (ii < pScoring->_spectrumInfoInternal.iArraySize)
-         {
-            itStart = mapSpectrum.find(ii);
-            if (itStart == mapSpectrum.end())
-            {
-               vAddOffsets.push_back(ii);
-            }
-         }
-      }
-   }
-
-   // add offsets to mapSpectrum such at xcorr processing will fill these in
-   for (unsigned int ii=0; ii<vAddOffsets.size(); ii++)
-      mapSpectrum.insert(make_pair(vAddOffsets.at(ii), 0.0));
- 
-   // Walk through all peaks once, tracking local sum
-   dSum = 0.0;
-   itStart = mapSpectrum.begin();
-   itEnd = mapSpectrum.begin();
-   for (itCurr = mapSpectrum.begin(); itCurr != mapSpectrum.end(); ++itCurr)
-   {
-      if (itEnd != mapSpectrum.end())
-      {
-         // this sums all intensities up to iXcorrProcessingOffset from current position
-         while (itEnd->first - itCurr->first <= g_staticParams.iXcorrProcessingOffset)
-         {
-            dSum += itEnd->second;
-            itEnd++;
-            if (itEnd == mapSpectrum.end())
-               break;
-         }
-      }
-      if (itStart != mapSpectrum.end())
-      {
-         // this deletes all intensities of offsets less than iXcorrProcessingOffset from current position
-         while (itCurr->first - itStart->first > g_staticParams.iXcorrProcessingOffset)
-         {
-            dSum -= itStart->second;
-            itStart++;
-            if (itStart == mapSpectrum.end())
-               break;
-         }
-      }
-
-      vBinnedSpectrumXcorr.push_back(make_pair(itCurr->first,
-               itCurr->second - (1.0/(2.0*g_staticParams.iXcorrProcessingOffset) * (dSum - itCurr->second))));
-   }
-
-   // Add flanking peaks to vBinnedSpectrumXcorrFlank
-   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
-   {
-      vector< pair<int, double> > vBinnedSpectrumXcorrFlank;
-      vector< pair<int, double> >::iterator it, it1;
-      double dNewInten;
-
-      for (it = vBinnedSpectrumXcorr.begin(); it != vBinnedSpectrumXcorr.end(); ++it)
-      {
-         dNewInten = it->second;  // get current intensity
-         if (it != vBinnedSpectrumXcorr.begin())
-         {
-            it1 = it - 1;
-            if (it1->first == it->first - 1)
-               dNewInten += 0.5 * it1->second;  // add intensity of lower flank
-         }
-         if (it != vBinnedSpectrumXcorr.end())
-         {
-            it1 = it + 1;
-            if (it1->first == it->first + 1)
-               dNewInten += 0.5 * it1->second;  // add intensity of upper flank
-         }
-
-         vBinnedSpectrumXcorrFlank.push_back(make_pair(it->first, dNewInten));
-      }
-
-      vBinnedSpectrumXcorr = vBinnedSpectrumXcorrFlank;
-   }
-
-   vector< pair<int, double> > vBinnedSpectrumXcorrNL;
-   // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
-   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-   {
-      pScoring->iFastXcorrDataNL = pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
-
-      //MH: Fill NL sparse matrix
-      try
-      {
-         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataNL]();
-      }
-      catch (std::bad_alloc& ba)
-      {
-         char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
-         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-         string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr( szErrorMsg);
-         return false;
-      }
-
-      for (size_t iii = 0; iii < vBinnedSpectrumXcorr.size(); iii++)
-      {
-         if (vBinnedSpectrumXcorr[iii].second > FLOAT_ZERO || vBinnedSpectrumXcorr[iii].second < -FLOAT_ZERO)
-         {
-            int x = vBinnedSpectrumXcorr[iii].first / SPARSE_MATRIX_SIZE;
-            int y;
-
-            if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
-            {
-               try
-               {
-                  pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
-               }
-               catch (std::bad_alloc& ba)
-               {
-                  char szErrorMsg[256];
-                  sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
-                  sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-                  sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-                  string strErrorMsg(szErrorMsg);
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(szErrorMsg);
-                  return false;
-               }
-               for (y=0; y<SPARSE_MATRIX_SIZE; y++)
-                  pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
-            }  
-            y = vBinnedSpectrumXcorrNL[iii].first - (x * SPARSE_MATRIX_SIZE);
-            pScoring->ppfSparseFastXcorrDataNL[x][y] = vBinnedSpectrumXcorrNL[iii].second;
-         }  
-      }  
-   }  
-   
-   pScoring->iFastXcorrData = pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
-
-   //MH: Fill sparse matrix
-   try
-   {
-      pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrData]();
-   }
-   catch (std::bad_alloc& ba)
-   {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d]). bad_alloc: %s.\n", pScoring->iFastXcorrData, ba.what());
-      sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-      sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return false;
-   }
-
-   for (size_t iii = 0; iii < vBinnedSpectrumXcorr.size(); iii++)
-   {
-      if (vBinnedSpectrumXcorr[iii].second > FLOAT_ZERO || vBinnedSpectrumXcorr[iii].second < -FLOAT_ZERO)
-      {
-         int x = vBinnedSpectrumXcorr[iii].first / SPARSE_MATRIX_SIZE;
-         int y;
-
-         if (pScoring->ppfSparseFastXcorrData[x]==NULL)
-         {
-            try
-            {
-               pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
-            }
-            catch (std::bad_alloc& ba)
-            {
-               char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
-               sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-               sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-               string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
-               return false;
-            }
-            for (y=0; y<SPARSE_MATRIX_SIZE; y++)
-               pScoring->ppfSparseFastXcorrData[x][y]=0;
-         }
-         y = vBinnedSpectrumXcorr[iii].first - (x * SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseFastXcorrData[x][y] = vBinnedSpectrumXcorr[iii].second;
-      }
-   }
-   vBinnedSpectrumXcorr.clear();
-
-   if (vBinnedSpectrumSP.size() > NUM_SP_IONS)
-   {
-      // sort map by intensity
-      sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByInverseIntensity);
-      // trim to NUM_SP_IONS entries
-      vBinnedSpectrumSP.resize(NUM_SP_IONS);
-      // sort by index
-      sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByIndex);
-   }
-
-   // Modify for Sp data.
-   StairStep(vBinnedSpectrumSP);
-
-   // MH: Fill sparse matrix for SpScore
-   pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
-
-   try
-   {
-      pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
-   }
-   catch (std::bad_alloc& ba)
-   {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseSpScoreData[%d]). bad_alloc: %s.\n", pScoring->iSpScoreData, ba.what());
-      sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-      sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return false;
-   }
-
-   for (size_t iii = 0; iii < vBinnedSpectrumSP.size(); iii++)
-   {
-      if (vBinnedSpectrumSP[iii].second > FLOAT_ZERO || vBinnedSpectrumSP[iii].second < -FLOAT_ZERO)
-      {
-         int x = vBinnedSpectrumSP[iii].first / SPARSE_MATRIX_SIZE;
-         int y;
-
-         if (pScoring->ppfSparseSpScoreData[x]==NULL)
-         {
-            try
-            {
-               pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
-            }
-            catch (std::bad_alloc& ba)
-            {
-               char szErrorMsg[256];
-               sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseSpScoreData[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
-               sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-               sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-               string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
-               return false;
-            }
-            for (y=0; y<SPARSE_MATRIX_SIZE; y++)
-               pScoring->ppfSparseSpScoreData[x][y]=0;
-         }
-         y = vBinnedSpectrumSP[iii].first - (x * SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseSpScoreData[x][y] = vBinnedSpectrumSP[iii].second;
-      }
-   }
-
-   vBinnedSpectrumSP.clear();
-   g_pvQuery.push_back(pScoring);
-
-   return true;
+   return bSuccess;
 }

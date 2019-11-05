@@ -19,6 +19,7 @@
 
 #define SIZE_BUF                    8192
 #define SIZE_FILE                   512
+#define SIZE_ERROR                  1024
 
 #define MAX_THREADS                 128
 

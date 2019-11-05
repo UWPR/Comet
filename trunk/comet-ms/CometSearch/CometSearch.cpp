@@ -67,7 +67,7 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
       }
       catch (std::bad_alloc& ba)
       {
-         char szErrorMsg[256];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to mitigate memory use.\n");
@@ -142,7 +142,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
       if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
       {
-         char szErrorMsg[1024];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -164,7 +164,7 @@ bool CometSearch::RunSearch(int minNumThreads,
          szPeffLine = (char*)malloc( iLenSzLine* sizeof(char));
          if (szPeffLine == NULL)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg, " Error - malloc szPeffLine\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -177,7 +177,7 @@ bool CometSearch::RunSearch(int minNumThreads,
          szMods = (char*)malloc( iLenAllocMods * sizeof(char));
          if (szMods == NULL)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg, " Error - malloc szMods\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -188,7 +188,7 @@ bool CometSearch::RunSearch(int minNumThreads,
          // if PEFF database, make sure OBO file is specified
          if (strlen(g_staticParams.peffInfo.szPeffOBO)==0)
          {
-            char szErrorMsg[512];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg,  " Error: \"peff_format\" is specified but \"peff_obo\" is not set\n");
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -317,7 +317,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         pTmp = (char *)realloc(szPeffLine, iLenSzLine);
                         if (pTmp == NULL)
                         {
-                           char szErrorMsg[512];
+                           char szErrorMsg[SIZE_ERROR];
                            sprintf(szErrorMsg,  " Error realloc(szPeffLine[%d])\n", iLenSzLine);
                            string strErrorMsg(szErrorMsg);
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -362,7 +362,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            pTmp=(char *)realloc(szMods, iLenAllocMods);
                            if (pTmp == NULL)
                            {
-                              char szErrorMsg[512];
+                              char szErrorMsg[SIZE_ERROR];
 #ifdef WIN32
                               sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
 #else
@@ -387,7 +387,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         }
                         else
                         {
-                           char szErrorMsg[512];
+                           char szErrorMsg[SIZE_ERROR];
                            sprintf(szErrorMsg,  " Error: PEFF entry '%s' missing mod closing parenthesis\n", dbe.strName.c_str()); 
                            string strErrorMsg(szErrorMsg);
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -440,7 +440,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                                  {
                                     if (g_staticParams.options.bVerboseOutput)
                                     {
-                                       char szErrorMsg[512];
+                                       char szErrorMsg[SIZE_ERROR];
                                        sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored; modentry: %s\n",
                                              dbe.strName.c_str(), szPeffAttributeMod, iPos, strModID.c_str(), strModEntry.c_str());
                                        string strErrorMsg(szErrorMsg);
@@ -467,7 +467,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            {
                               if (g_staticParams.options.bVerboseOutput)
                               {
-                                 char szErrorMsg[512];
+                                 char szErrorMsg[SIZE_ERROR];
                                  sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored; modentry: %s\n",
                                        dbe.strName.c_str(), szPeffAttributeMod, iPos, strModID.c_str(), strModEntry.c_str());
                                  string strErrorMsg(szErrorMsg);
@@ -508,7 +508,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            pTmp=(char *)realloc(szMods, iLenAllocMods);
                            if (pTmp == NULL)
                            {
-                              char szErrorMsg[512];
+                              char szErrorMsg[SIZE_ERROR];
 #ifdef WIN32
                               sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
 #else
@@ -533,7 +533,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                         }
                         else
                         {
-                           char szErrorMsg[512];
+                           char szErrorMsg[SIZE_ERROR];
                            sprintf(szErrorMsg,  " Error: PEFF entry '%s' missing variant closing parenthesis\n", dbe.strName.c_str()); 
                            string strErrorMsg(szErrorMsg);
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -580,7 +580,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                               {
                                  if (g_staticParams.options.bVerboseOutput)
                                  {
-                                    char szErrorMsg[512];
+                                    char szErrorMsg[SIZE_ERROR];
                                     sprintf(szErrorMsg,  "Warning:  %s, VariantSimple=(%d|%c) ignored\n", dbe.strName.c_str(), iPos, cVariant);
                                     string strErrorMsg(szErrorMsg);
                                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -607,7 +607,7 @@ bool CometSearch::RunSearch(int minNumThreads,
 
             if (dbe.strName.length() <= 0)
             {
-               char szErrorMsg[512];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  "\n Error - zero length sequence description; wrong database file/format?\n");
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -782,7 +782,7 @@ void CometSearch::ReadOBO(char *szOBO,
    }
    else
    {
-      char szErrorMsg[1024];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg,  " Warning: cannot read PEFF OBO file \"%s\"\n", g_staticParams.peffInfo.szPeffOBO);
       string strErrorMsg(szErrorMsg);
       logout(szErrorMsg);
@@ -821,7 +821,7 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
    {
       if (g_staticParams.options.bVerboseOutput)
       {
-         char szErrorMsg[1024];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg,  " Warning: cannot find \"%s\" in OBO\n", strMod.c_str());
          string strErrorMsg(szErrorMsg);
          logerr(szErrorMsg);
@@ -956,7 +956,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          }
          catch (std::bad_alloc& ba)
          {
-            char szErrorMsg[1024];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.\n", seqSize, ba.what());
             sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
             sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to mitigate memory use.\n");
@@ -1036,7 +1036,7 @@ bool CometSearch::IndexSearch(void)
 
    if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
-      char szErrorMsg[1024];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\" %s.\n", g_staticParams.databaseInfo.szDatabase, strerror(errno));
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -2163,7 +2163,7 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
             if (g_staticParams.options.bVerboseOutput)
             {
                // Log a warning message here that the variant change didn't change the residue?
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg, " Warning: protein %s has variant '%c' at position %d with the same original AA residue.\n", 
                      dbe.strName.c_str(), cResidue, iPosition);
                logout(szErrorMsg);
@@ -2671,7 +2671,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
 			}
             else
             {
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!\n", g_staticParams.tolerances.iIsotopeError);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -2799,7 +2799,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
 			}
             else
             {
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!\n", g_staticParams.tolerances.iIsotopeError);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -2843,7 +2843,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
             pTmp=(char *)realloc(_proteinInfo.pszProteinSeq, ii+100);
             if (pTmp == NULL)
             {
-               char szErrorMsg[512];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
@@ -2878,7 +2878,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
             pTmp=(char *)realloc(_proteinInfo.pszProteinSeq, ii+100);
             if (pTmp == NULL)
             {
-               char szErrorMsg[512];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
@@ -4769,7 +4769,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          iModIndex = VMOD_9_INDEX;
          break;
       default:
-         char szErrorMsg[256];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg,  " Error - in CometSearch::PermuteMods, iWhichIndex=%d (valid range 1 to 9)\n", iWhichMod);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -5280,7 +5280,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       {
          if  (piVarModSites[x] < 0)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg, " Error, piVarModSites[%d]=%d; should not be less than zeros since no PEFF.\n", x, piVarModSites[x]);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);

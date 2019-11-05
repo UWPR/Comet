@@ -147,7 +147,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    if ((fpout = fopen(szOutput, "w")) == NULL)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg,  " Error - cannot write to file %s.\n", szOutput);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);

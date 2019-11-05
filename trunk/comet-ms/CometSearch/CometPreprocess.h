@@ -94,7 +94,11 @@ private:
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
    static void NormalizeIntensities(map<int, double> *mapSpectrum,
+                                    vector<std::pair<int, double> > *vBinnedSpectrumSP, 
                                     struct PreprocessStruct *pPre);
+   static bool FillSparseMatrixMap(struct Query *pScoring,
+                                   map<int, double> *mapSpectrum,
+                                   struct PreprocessStruct *pPre);
    static bool SortVectorByInverseIntensity(const pair<int,double> &a,
                                     const pair<int,double> &b);
    static bool SortVectorByIndex(const pair<int,double> &a,

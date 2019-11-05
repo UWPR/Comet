@@ -127,7 +127,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    FILE *fp;
    if ( (fp=fopen(g_staticParams.inputFile.szFileName, "r"))==NULL)
    {
-      char szErrorMsg[1024];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg,  " Error - cannot read input file \"%s\".\n",
             g_staticParams.inputFile.szFileName);
       string strErrorMsg(szErrorMsg);
@@ -172,7 +172,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
          if (err != EEXIST)
          {
-            char szErrorMsg[1024];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",
                   g_staticParams.inputFile.szBaseName);
             string strErrorMsg(szErrorMsg);
@@ -193,7 +193,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
             if (err != EEXIST)
             {
-               char szErrorMsg[1024];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -205,7 +205,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 #else
       if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
       {
-         char szErrorMsg[1024];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -219,7 +219,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
          {
-            char szErrorMsg[1024];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -258,7 +258,7 @@ static bool AllocateResultsMem()
       }
       catch (std::bad_alloc& ba)
       {
-         char szErrorMsg[256];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg, " Error - new(_pResults[]). bad_alloc: %s.\n", ba.what());
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -274,7 +274,7 @@ static bool AllocateResultsMem()
          }
          catch (std::bad_alloc& ba)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg, " Error - new(_pDecoys[]). bad_alloc: %s.\n", ba.what());
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -459,7 +459,7 @@ static bool ValidateSequenceDatabaseFile()
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      char szErrorMsg[1024];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
             g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
@@ -474,7 +474,7 @@ static bool ValidateSequenceDatabaseFile()
 
    if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
    {
-      char szErrorMsg[1024];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - input database already indexed: \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -490,7 +490,7 @@ static bool ValidateScanRange()
 {
    if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.\n",
             g_staticParams.options.scanRange.iStart,
             g_staticParams.options.scanRange.iEnd);
@@ -507,7 +507,7 @@ static bool ValidatePeptideLengthRange()
 {
    if (g_staticParams.options.peptideLengthRange.iEnd < g_staticParams.options.peptideLengthRange.iStart && g_staticParams.options.peptideLengthRange.iEnd != 0)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - peptide length range set as %d to %d.\n The maximum length must be >= to the minimum length.\n",
             g_staticParams.options.peptideLengthRange.iStart,
             g_staticParams.options.peptideLengthRange.iEnd);
@@ -1185,7 +1185,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.tolerances.dFragmentBinStartOffset < 0.0
          || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg,  " Error - bin offset %f must between 0.0 and 1.0\n",
             g_staticParams.tolerances.dFragmentBinStartOffset);
       string strErrorMsg(szErrorMsg);
@@ -1576,7 +1576,7 @@ bool CometSearchManager::DoSearch()
             sscanf(szTmp, "%lf %lf", &dStartMass, &dEndMass);
             if (dEndMass <= dStartMass)
             {
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error - DIA window file end mass <= start mass:  %f %f.\n",  dStartMass, dEndMass);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1593,7 +1593,7 @@ bool CometSearchManager::DoSearch()
       }
       else
       {
-         char szErrorMsg[256];
+         char szErrorMsg[SIZE_ERROR];
          sprintf(szErrorMsg,  " Error - cannot read DIA window file \"%s\".\n",  g_staticParams.szDIAWindowsFile);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1671,7 +1671,7 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputSQT);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1696,7 +1696,7 @@ bool CometSearchManager::DoSearch()
 
             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
             {
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoySQT);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1733,7 +1733,7 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputTxt);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1759,7 +1759,7 @@ bool CometSearchManager::DoSearch()
 
             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
             {
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyTxt);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1796,7 +1796,7 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputPepXML);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1822,7 +1822,7 @@ bool CometSearchManager::DoSearch()
 
             if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
             {
-               char szErrorMsg[256];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyPepXML);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1850,7 +1850,7 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_percolator = fopen(szOutputPercolator, "w")) == NULL)
          {
-            char szErrorMsg[256];
+            char szErrorMsg[SIZE_ERROR];
             sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputPercolator);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -2108,7 +2108,7 @@ bool CometSearchManager::DoSearch()
             FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
             if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
             {
-               char szErrorMsg[1024];
+               char szErrorMsg[SIZE_ERROR];
                sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
                string strErrorMsg(szErrorMsg);
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -2770,7 +2770,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    if (!bSucceeded)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error performing RunSearch() to create indexed database. \n");
       logerr(szErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
@@ -2780,7 +2780,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // sanity check
    if (g_pvDBIndex.size() == 0)
    {
-      char szErrorMsg[256];
+      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - no peptides in index; check the input database file.\n");
       logerr(szErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
