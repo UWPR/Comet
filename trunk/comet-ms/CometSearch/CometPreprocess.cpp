@@ -284,8 +284,6 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                                           map<int, double> *mapSpectrum,
                                           struct PreprocessStruct *pPre)
 {
-   g_staticParams.iXcorrProcessingOffset = 50;
-
    // Make fast xcorr spectrum
    vector< pair<int, double> > vBinnedSpectrumXcorr, vBinnedSpectrumSP;
    pScoring->iFastXcorrDataSize = 1;
@@ -313,7 +311,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
    for (itCurr = mapSpectrum->begin(); itCurr != mapSpectrum->end(); ++itCurr)
    {
       // this for loop adds the +- iXcorrProcessingOffset points to each data point
-      for (int i=1; i<=g_staticParams.iXcorrProcessingOffset+iAddFlank; i++)
+      for (int i = 1; i <= g_staticParams.iXcorrProcessingOffset + iAddFlank; i++)
       {
          int ii = itCurr->first - i;
          if (ii > 0)
@@ -323,7 +321,14 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
          if (ii < pScoring->_spectrumInfoInternal.iArraySize)
             vAddOffsets.push_back(ii);
       }
+   }
 
+   // add offsets to mapSpectrum; will be filled in during xcorr processing
+   for (unsigned int ii = 0; ii < vAddOffsets.size(); ii++)
+      mapSpectrum->insert(make_pair(vAddOffsets.at(ii), 0.0));
+
+   for (itCurr = mapSpectrum->begin(); itCurr != mapSpectrum->end(); ++itCurr)
+   {
       if (itEnd != mapSpectrum->end())
       {
          // this sums all intensities up to iXcorrProcessingOffset from current position
@@ -350,10 +355,6 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       vBinnedSpectrumXcorr.push_back(make_pair(itCurr->first,
                itCurr->second - (1.0/(2.0*g_staticParams.iXcorrProcessingOffset) * (dSum - itCurr->second))));
    }
-
-   // add offsets to mapSpectrum; will be filled in during xcorr processing
-   for (unsigned int ii=0; ii<vAddOffsets.size(); ii++)
-      mapSpectrum->insert(make_pair(vAddOffsets.at(ii), 0.0));
 
    // Add flanking peaks to vBinnedSpectrumXcorrFlank
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
@@ -1447,5 +1448,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    bool bSuccess = FillSparseMatrixMap(pScoring, &mapSpectrum, &pPre);
 
+   g_pvQuery.push_back(pScoring);
    return bSuccess;
 }
