@@ -284,11 +284,11 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                                           map<int, double> *mapSpectrum,
                                           struct PreprocessStruct *pPre)
 {
+   g_staticParams.iXcorrProcessingOffset = 50;
 
    // Make fast xcorr spectrum
    vector< pair<int, double> > vBinnedSpectrumXcorr, vBinnedSpectrumSP;
-   pScoring->iFastXcorrData = 1;
-   pScoring->iFastXcorrDataNL = 1;
+   pScoring->iFastXcorrDataSize = 1;
 
    double dSum;   // sum of intensities within iXcorrProcessingOffset
    map<int, double>::iterator itStart, itEnd, itCurr;
@@ -385,6 +385,8 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       vBinnedSpectrumXcorr = vBinnedSpectrumXcorrFlank;
    }
 
+   pScoring->iFastXcorrDataSize =  pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
+
    vector< pair<int, double> > vBinnedSpectrumXcorrNL;
    // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
    if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
@@ -392,17 +394,15 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
-      pScoring->iFastXcorrDataNL=pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE+1;
-
       //MH: Fill NL sparse matrix
       try
       {
-         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataNL]();
+         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataNL, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataSize, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
@@ -444,17 +444,15 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       }
    }
 
-   pScoring->iFastXcorrData = pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
-
    //MH: Fill sparse matrix
    try
    {
-      pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrData]();
+      pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
    }
    catch (std::bad_alloc& ba)
    {
       char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d]). bad_alloc: %s.\n", pScoring->iFastXcorrData, ba.what());
+      sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrData[%d]). bad_alloc: %s.\n", pScoring->iFastXcorrDataSize, ba.what());
       sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
       sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
       string strErrorMsg(szErrorMsg);
@@ -503,12 +501,9 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByInverseIntensity);
       // trim to NUM_SP_IONS entries
       vBinnedSpectrumSP.resize(NUM_SP_IONS);
-      // sort by index
-      sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByIndex);
+      // sort by index; unnecessary to do now
+//    sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByIndex);
    }
-
-   // Modify for Sp data.
-   StairStep(vBinnedSpectrumSP);
 
    // MH: Fill sparse matrix for SpScore
    pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
@@ -1336,46 +1331,6 @@ bool CometPreprocess::SortVectorByIndex(const pair<int,double> &a,
                                         const pair<int,double> &b) 
 {
    return (a.first < b.first);
-}
-
-
-// Works on Sp data.
-void CometPreprocess::StairStep(vector< pair<int, double>> &vBinnedSpectrumSP)
-{
-   double dMaxInten;
-
-   vector< pair<int, double> >::iterator it, it1;
-
-   double dGlobalMaxInten = 0.0;
-
-   size_t i, ii, iii;
-   for (i = 0; i < vBinnedSpectrumSP.size(); i++)
-   {
-      dMaxInten = 0.0;
-
-      dMaxInten = vBinnedSpectrumSP.at(i).second;
-
-      ii = i;
-      while (ii+1 < vBinnedSpectrumSP.size() && vBinnedSpectrumSP.at(ii).first == vBinnedSpectrumSP.at(ii+1).first - 1)
-      {
-         if (dMaxInten < vBinnedSpectrumSP.at(ii+1).second)
-            dMaxInten = vBinnedSpectrumSP.at(ii+1).second;
-
-         ii++;
-      }
-
-      // Sets the adjacent points to the dMaxInten.
-      for (iii=i; iii<=ii; iii++)
-         vBinnedSpectrumSP.at(iii).second = dMaxInten;
-
-      if (dMaxInten > dGlobalMaxInten)
-         dGlobalMaxInten = dMaxInten;
-
-      i = ii;
-   }
-
-   for (i = 0; i < vBinnedSpectrumSP.size(); i++)
-      vBinnedSpectrumSP.at(i).second *= 100.0/dGlobalMaxInten;
 }
 
 

@@ -103,8 +103,6 @@ private:
                                     const pair<int,double> &b);
    static bool SortVectorByIndex(const pair<int,double> &a,
                                  const pair<int,double> &b);
-   static void StairStep(vector< pair<int, double>> &vBinnedSpectrumSP);
-
    static bool IsValidInputType(int inputType);
 
 

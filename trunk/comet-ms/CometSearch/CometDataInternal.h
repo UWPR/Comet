@@ -831,8 +831,7 @@ struct Query
 
    // Sparse matrix representation of data
    int iSpScoreData;    //size of sparse matrix
-   int iFastXcorrData;  //MH: I believe these are all the same size now.
-   int iFastXcorrDataNL;
+   int iFastXcorrDataSize;
    float **ppfSparseSpScoreData;
    float **ppfSparseFastXcorrData;
    float **ppfSparseFastXcorrDataNL;
@@ -915,7 +914,7 @@ struct Query
       delete[] ppfSparseSpScoreData;
       ppfSparseSpScoreData = NULL;
 
-      for (i=0;i<iFastXcorrData;i++)
+      for (i=0;i<iFastXcorrDataSize;i++)
       {
          if (ppfSparseFastXcorrData[i] != NULL)
             delete[] ppfSparseFastXcorrData[i];
@@ -928,7 +927,7 @@ struct Query
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         for (i=0;i<iFastXcorrDataNL;i++)
+         for (i=0;i<iFastXcorrDataSize;i++)
          {
             if (ppfSparseFastXcorrDataNL[i]!=NULL)
                delete[] ppfSparseFastXcorrDataNL[i];
