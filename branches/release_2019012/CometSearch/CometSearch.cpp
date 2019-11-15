@@ -1369,7 +1369,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
 
-   iLenProtein = _proteinInfo.iProteinSeqLength;
+   iLenProtein = _proteinInfo.iTmpProteinSeqLength;
 
    int iFirstResiduePosition = 0;
    if (bNtermPeptideOnly)  // we're skipping the leading M
@@ -2317,7 +2317,7 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iOneMinusOffset])
                && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iTwoMinusOffset])));
 
-      bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
+      bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset])
                && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset])));
@@ -2331,7 +2331,7 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
       }
       if (!bEndCleavage && !g_staticParams.enzymeInformation.bNoEnzyme2Selected) // check second enzyme
       {
-         bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
+         bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)
                || szProteinSeq[iEndPos+1]=='*'
                || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset2])
                   && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
@@ -2428,14 +2428,14 @@ bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
    {
       bool bEndCleavage=0;
 
-      bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
+      bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)
             || szProteinSeq[iEndPos+1]=='*'
             || (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset])
           && !strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset])));
 
       if (!bEndCleavage && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
       {
-         bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)    // either _proteinInfo.iProteinSeqLength or 1 less for clip N-term M
+         bEndCleavage = (iEndPos==(int)(_proteinInfo.iTmpProteinSeqLength - 1)
                || szProteinSeq[iEndPos+1]=='*'
                || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset2])
              && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
@@ -3841,7 +3841,7 @@ void CometSearch::SubtractVarMods(int *piVarModCounts,
             }
             else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
             {
-               if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+               if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iTmpProteinSeqLength-1)
                   piVarModCounts[i]--;
             }
             // Do we just let possible mod residue simply drop off here and
@@ -3878,7 +3878,7 @@ void CometSearch::CountVarMods(int *piVarModCounts,
             }
             else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
             {
-              if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+              if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iTmpProteinSeqLength-1)
                   piVarModCounts[i]++;
             }
             // deal with peptide terminal distance constraint elsewhere
@@ -3947,12 +3947,12 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
             {
                // a distance contraint limiting terminal mod to c-terminus
                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
-                     && iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+                     && iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iTmpProteinSeqLength-1)
                {
                   return true;
                }
                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
-                     && iEndPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+                     && iEndPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iTmpProteinSeqLength-1)
                {
                   return true;
                }
@@ -4038,7 +4038,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
    if (_proteinInfo.iPeffOrigResiduePosition >=0)
       iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
    else
-      iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
+      iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
    long lNumIterations = 0;
 
@@ -4444,7 +4444,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                                && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
                                                             || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
                                                                   &&  iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
-                                                                  >= _proteinInfo.iProteinSeqLength-1)
+                                                                  >= _proteinInfo.iTmpProteinSeqLength-1)
                                                             || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)))
                                                    {
                                                       _varModInfo.varModStatList[i].iTotBinaryModCt++;
@@ -5007,7 +5007,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    if (_proteinInfo.iPeffOrigResiduePosition>=0)
       iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
    else
-      iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
+      iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
    // contains positional coding of a variable mod at each index which equals an AA residue
    memset(piVarModSites, 0, _iSizepiVarModSites);
@@ -5368,7 +5368,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
 // *lNumIterations += 1;
 
-   iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
+   iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
    // Compare calculated fragment ions against all matching query spectra
 
