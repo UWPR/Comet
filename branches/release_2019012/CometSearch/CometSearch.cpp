@@ -1235,7 +1235,6 @@ bool CometSearch::IndexSearch(void)
 
    _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
    _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
-//   dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1];  // make string including prev/next AA
 
    while ((int)(sDBI.dPepMass * 10) <= iEnd10)
    {
@@ -1458,7 +1457,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   sEntry.szPrevNextAA[1] = '-';
                else
                   sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
-         
+
                sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                memset(sEntry.pcVarModSites, 0, sizeof(sEntry.pcVarModSites));
 
@@ -5876,7 +5875,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
          if (g_staticParams.options.iDecoySearch)
          {
-            XcorrScore(szDecoyPeptide, _varModInfo.iStartPos, _varModInfo.iEndPos, 1, iLenPeptide,
+            XcorrScore(szDecoyPeptide, 1, strlen(szDecoyPeptide)-2, 1, iLenPeptide,
                   iFoundVariableModDecoy, dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
          }
       }
