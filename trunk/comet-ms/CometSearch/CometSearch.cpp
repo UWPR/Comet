@@ -1281,7 +1281,7 @@ bool CometSearch::IndexSearch(void)
       _proteinInfo.cPrevAA = sDBI.szPrevNextAA[0];
       _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
 //    dbe.strSeq = sDBI.szPrevNextAA[0] + sDBI.szPeptide + sDBI.szPrevNextAA[1]; 
-      
+
       if (g_staticParams.options.iMaxIndexRunTime > 0)
       {
          // now check search run time
@@ -1369,7 +1369,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
 
-   iLenProtein = _proteinInfo.iProteinSeqLength;
+   iLenProtein = _proteinInfo.iTmpProteinSeqLength;
 
    int iFirstResiduePosition = 0;
    if (bNtermPeptideOnly)  // we're skipping the leading M
@@ -1458,7 +1458,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   sEntry.szPrevNextAA[1] = '-';
                else
                   sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
-         
+
                sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                memset(sEntry.pcVarModSites, 0, sizeof(sEntry.pcVarModSites));
 
@@ -1653,7 +1653,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.
                         // So actual reverse peptide starts at position 1 and ends at len-2 (as len-1
                         // is next AA).
- 
+
                         int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
                         double dBion = g_staticParams.precalcMasses.dNtermProton;
                         double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
@@ -1985,7 +1985,7 @@ n/c-term protein mods not supported yet
             for (int i=0; i<iEndPos; i++)
             {
                int iPos;
-              
+
                iPos = i;
                dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.szPeptide[i]];
 
@@ -2412,7 +2412,6 @@ bool CometSearch::CheckEnzymeStartTermini(char *szProteinSeq,
                || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iOneMinusOffset2])
              && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iStartPos -1 + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
       }
-            
 
       return bBeginCleavage;
    }
@@ -3613,7 +3612,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   for (int ii=0; ii<=pQuery->_pDecoys[i].iLenPeptide; ii++)
                   {
                      iVal = pQuery->_pDecoys[i].piVarModSites[ii];
-      
+
                      if ( (iVal>0 && piVarModSites[ii]<=0) || (iVal<0 && piVarModSites[ii]>=0) )
                      {
                         bIsDuplicate = 0;
@@ -3677,7 +3676,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                      pQuery->_pDecoys[i].szPrevNextAA[0] = '-';
                   else
                      pQuery->_pDecoys[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
-               
+
                   if (iEndPos == iLenProteinSeqMinus1)
                      pQuery->_pDecoys[i].szPrevNextAA[1] = '-';
                   else
@@ -3731,7 +3730,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   for (int ii=0; ii<=pQuery->_pResults[i].iLenPeptide; ii++)
                   {
                      iVal = pQuery->_pResults[i].piVarModSites[ii];
-      
+
                      if ((iVal > 0 && piVarModSites[ii] <= 0) || (iVal < 0 && piVarModSites[ii] >= 0))
                      {
                         bIsDuplicate = 0;
@@ -3788,7 +3787,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   pQuery->_pResults[i].pWhichProtein.push_back(pTmp);
 
                // FIX:  figure out what to do with lProteinFilePosition and bDecoyPep
- 
+
                // if duplicate, check to see if need to replace stored protein info
                // with protein that's earlier in database
                if (pQuery->_pResults[i].lProteinFilePosition > dbe->lProteinFilePosition)
@@ -3841,7 +3840,7 @@ void CometSearch::SubtractVarMods(int *piVarModCounts,
             }
             else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
             {
-               if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+               if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iTmpProteinSeqLength-1)
                   piVarModCounts[i]--;
             }
             // Do we just let possible mod residue simply drop off here and
@@ -3878,7 +3877,7 @@ void CometSearch::CountVarMods(int *piVarModCounts,
             }
             else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
             {
-              if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+              if (iResiduePosition + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iTmpProteinSeqLength-1)
                   piVarModCounts[i]++;
             }
             // deal with peptide terminal distance constraint elsewhere
@@ -3947,12 +3946,12 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
             {
                // a distance contraint limiting terminal mod to c-terminus
                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
-                     && iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+                     && iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iTmpProteinSeqLength-1)
                {
                   return true;
                }
                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
-                     && iEndPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iProteinSeqLength-1)
+                     && iEndPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= _proteinInfo.iTmpProteinSeqLength-1)
                {
                   return true;
                }
@@ -4038,7 +4037,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
    if (_proteinInfo.iPeffOrigResiduePosition >=0)
       iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
    else
-      iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
+      iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
    long lNumIterations = 0;
 
@@ -4267,7 +4266,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                  double dCalcPepMass;
                                  int iTmpEnd;
                                  char cResidue;
- 
+
                                  dCalcPepMass = dTmpMass + TotalVarModMass(piTmpVarModCounts);
 
                                  for (i=0; i<VMODS; i++)
@@ -4444,7 +4443,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                                && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
                                                             || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
                                                                   &&  iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
-                                                                  >= _proteinInfo.iProteinSeqLength-1)
+                                                                  >= _proteinInfo.iTmpProteinSeqLength-1)
                                                             || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)))
                                                    {
                                                       _varModInfo.varModStatList[i].iTotBinaryModCt++;
@@ -5007,7 +5006,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    if (_proteinInfo.iPeffOrigResiduePosition>=0)
       iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
    else
-      iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
+      iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
    // contains positional coding of a variable mod at each index which equals an AA residue
    memset(piVarModSites, 0, _iSizepiVarModSites);
@@ -5250,7 +5249,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                   if  (bValidPeffPosition)
                   {
                      // Need to check if mass is ok
-         
+
                      // Do a binary search on list of input queries to find matching mass.
                      iWhichQuery = BinarySearchMass(0, (int)g_pvQuery.size(), dTmpCalcPepMass);
 
@@ -5310,7 +5309,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             sDBTmp.dPepMass = dCalcPepMass;  //MH+ mass
             strncpy(sDBTmp.szPeptide, szProteinSeq + _varModInfo.iStartPos, _varModInfo.iEndPos - _varModInfo.iStartPos + 1);
             sDBTmp.szPeptide[_varModInfo.iEndPos - _varModInfo.iStartPos + 1]='\0';
-         
+
             if (_varModInfo.iStartPos == 0)
                sDBTmp.szPrevNextAA[0] = '-';
             else
@@ -5319,7 +5318,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                sDBTmp.szPrevNextAA[1] = '-';
             else
                sDBTmp.szPrevNextAA[1] = szProteinSeq[_varModInfo.iEndPos + 1];
-         
+
             sDBTmp.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
 
             memset(sDBTmp.pcVarModSites, 0, sizeof(sDBTmp.pcVarModSites));
@@ -5368,7 +5367,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
 // *lNumIterations += 1;
 
-   iLenProteinMinus1 = _proteinInfo.iProteinSeqLength - 1;
+   iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
    // Compare calculated fragment ions against all matching query spectra
 
@@ -5487,7 +5486,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                      pbDuplFragment[BIN(dFragMass)] = false;
                      _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
- 
+
                      // initialize fragmentNL
                      if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
                      {
@@ -5876,7 +5875,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
          if (g_staticParams.options.iDecoySearch)
          {
-            XcorrScore(szDecoyPeptide, _varModInfo.iStartPos, _varModInfo.iEndPos, 1, iLenPeptide,
+            XcorrScore(szDecoyPeptide, iDecoyStartPos, iDecoyEndPos, 1, iLenPeptide,
                   iFoundVariableModDecoy, dCalcPepMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
          }
       }
