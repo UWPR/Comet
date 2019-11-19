@@ -5383,6 +5383,9 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
       // check mass of peptide again; required for terminal mods that may or may not get applied??
       if (CheckMassMatch(iWhichQuery, dCalcPepMass))
       {
+         int iDecoyStartPos;
+         int iDecoyEndPos;
+
          // Calculate ion series just once to compare against all relevant query spectra
          if (bFirstTimeThroughLoopForPeptide)
          {
@@ -5687,8 +5690,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                if (piVarModSitesDecoy[iLenPeptide + 1] > 0)
                   dYion += g_staticParams.variableModParameters.varModList[piVarModSitesDecoy[iLenPeptide+1]-1].dVarModMass;
 
-               int iDecoyStartPos = 1;  // This is start/end for newly created decoy peptide
-               int iDecoyEndPos = strlen(szDecoyPeptide)-2;
+               iDecoyStartPos = 1;  // This is start/end for newly created decoy peptide
+               iDecoyEndPos = strlen(szDecoyPeptide)-2;
 
                int iPosForward;  // count forward in peptide from 0
                int iPosReverse;  // point to residue in reverse order
