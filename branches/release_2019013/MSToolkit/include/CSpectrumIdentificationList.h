@@ -31,7 +31,7 @@ public:
   //Data members
   std::string id;
   std::string name;
-  long numSequencesSearched;
+  int numSequencesSearched;
   CFragmentationTable fragmentationTable;
   std::vector<CSpectrumIdentificationResult>* spectrumIdentificationResult;
   std::vector<sCvParam>* cvParam;

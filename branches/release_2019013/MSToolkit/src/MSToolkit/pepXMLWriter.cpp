@@ -42,7 +42,7 @@ void PepXMLWriter::closePepXML(){
   fclose(fptr);
 }
 
-bool PepXMLWriter::createPepXML(char* fn, pxwMSMSRunSummary& run, pxwSampleEnzyme* enzyme, PXWSearchSummary* search){
+bool PepXMLWriter::createPepXML(const char* fn, pxwMSMSRunSummary& run, pxwSampleEnzyme* enzyme, PXWSearchSummary* search){
 
   size_t i;
   time_t timeNow;
@@ -130,7 +130,7 @@ bool PepXMLWriter::createPepXML(char* fn, pxwMSMSRunSummary& run, pxwSampleEnzym
       writeLine(&st[0]);
     }
     if (enzyme != NULL){
-      st = " <enzymatic_search_contstraint enzyme=\"";
+      st = " <enzymatic_search_constraint enzyme=\"";
       st+=enzyme->name;
       st += "\" max_num_internal_cleavages=\"";
       sprintf(str,"%d",enzyme->maxNumInternalCleavages);
@@ -207,6 +207,11 @@ void PepXMLWriter::writeAltProtein(pxwProtein& s){
   st+=s.peptide_prev_aa;
   st+="\" peptide_next_aa=\"";
   st+=s.peptide_next_aa;
+  if(s.peptide_start_pos>0){
+    st += "\" peptide_start_pos=\"";
+    sprintf(nStr, "%d", s.peptide_start_pos);
+    st += nStr;
+  }
   if (s.protein_link_pos_a>0){
     st += "\" protein_link_pos_a=\"";
     sprintf(nStr, "%d", s.protein_link_pos_a);
@@ -299,6 +304,11 @@ void PepXMLWriter::writeLinkedPeptide(PXWSearchHit& s, bool alpha){
   st+="\" protein=\"";
   if(s.sizeProteins()>0) st+=s.getProtein(0).protein;
   else st+="unknown";
+  if (s.sizeProteins()>0 && s.getProtein(0).peptide_start_pos>0){
+    st += "\" peptide_start_pos=\"";
+    sprintf(nStr, "%d", s.getProtein(0).peptide_start_pos);
+    st += nStr;
+  }
   if (s.sizeProteins()>0 && s.getProtein(0).protein_link_pos_a>0){
     st += "\" protein_link_pos_a=\"";
     sprintf(nStr, "%d", s.getProtein(0).protein_link_pos_a);
@@ -368,6 +378,11 @@ void PepXMLWriter::writeSearchHit(pxwSearchHitPair& s) {
   st+="\" protein=\"";
   if(s.a->sizeProteins()>0 && !bCross) st+=s.a->getProtein(0).protein;
   else st+="-";
+  if (s.a->sizeProteins()>0 && !bCross && s.a->getProtein(0).peptide_start_pos>0){
+    st += "\" peptide_start_pos=\"";
+    sprintf(nStr, "%d", s.a->getProtein(0).peptide_start_pos);
+    st += nStr;
+  }
   if(s.a->sizeProteins()>0 && !bCross && s.a->getProtein(0).protein_link_pos_a>0){
     st += "\" protein_link_pos_a=\"";
     sprintf(nStr, "%d", s.a->getProtein(0).protein_link_pos_a);

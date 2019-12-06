@@ -39,7 +39,7 @@ string CAnalysisProtocolCollection::addSpectrumIdentificationProtocol(string ana
   sip.analysisSoftwareRef=analysisSoftwareRef;
 
   char cID[32];
-  sprintf(cID, "SIP%d", spectrumIdentificationProtocol->size());
+  sprintf(cID, "SIP%zu", spectrumIdentificationProtocol->size());
   sip.id = cID;
 
   //TODO: add optional information
@@ -55,7 +55,7 @@ string CAnalysisProtocolCollection::addSpectrumIdentificationProtocol(CSpectrumI
 
   if (c.id.compare("null") == 0){
     char cID[32];
-    sprintf(cID, "SIP%d", spectrumIdentificationProtocol->size());
+    sprintf(cID, "SIP%zu", spectrumIdentificationProtocol->size());
     c.id = cID;
   }
   spectrumIdentificationProtocol->push_back(c);

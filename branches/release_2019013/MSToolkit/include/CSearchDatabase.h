@@ -32,8 +32,8 @@ public:
   std::string id;
   std::string location;
   std::string name;
-  long numDatabaseSequences;
-  long numResidues;
+  int numDatabaseSequences;
+  int numResidues;
   std::string releaseDate;
   std::string version;
   sExternalFormatDocumentation externalFormatDocumentation;

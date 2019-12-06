@@ -192,8 +192,10 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
       spec->setScanNum(atoi(strstr(&s[0],"scanId=")+7));
     } else if(strstr(&s[0],"S")!=NULL) {
       spec->setScanNum(atoi(strstr(&s[0],"S")+1));
+    } else if(m_scanNumOverride>-1){ //if a scan index was set (usually obtained from the calling class), use that instead.
+      spec->setScanNum(m_scanNumOverride);
     } else {
-      spec->setScanNum(++m_scanSPECCount);
+      spec->setScanNum(++m_scanSPECCount); //This is a bad deal...it will count iteratively when file is read random-access.
       //Suppressing warning.
       //cout << "WARNING: Cannot extract scan number spectrum line: " << &s[0] << "\tDefaulting to " << m_scanSPECCount << endl;
     }
@@ -413,12 +415,24 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if( !strcmp(name, "MS-Numpress short logged float compression") || !strcmp(accession,"MS:1002314") ){
     m_bNumpressSlof = true;
 
+  } else if (!strcmp(name, "MS-Numpress linear prediction compression followed by zlib compression") || !strcmp(accession, "MS:1002746")){
+    m_bZlib = true;
+    m_bNumpressLinear = true;
+
+  } else if (!strcmp(name, "MS-Numpress short logged float compression followed by zlib compression") || !strcmp(accession, "MS:1002748")){
+    m_bZlib = true;
+    m_bNumpressSlof = true;
+
   } else if(!strcmp(name, "m/z array") || !strcmp(accession,"MS:1000514"))  {
     m_bInmzArrayBinary = true;
     m_bInintenArrayBinary = false;
 
   } else if(!strcmp(name,"nanoelectrospray") || !strcmp(accession,"MS:1000398")) {
     m_instrument.ionization=name;
+
+  } else if (!strcmp(name, "non-standard data array") || !strcmp(accession, "MS:1000786"))  {
+    m_bInmzArrayBinary = false;
+    m_bInintenArrayBinary = false;
 
   } else if(!strcmp(name,"orbitrap") || !strcmp(accession,"MS:1000484")) {
     m_instrument.analyzer=name;
@@ -556,8 +570,9 @@ bool mzpSAXMzmlHandler::readHeader(int num){
 
 }
 
-bool mzpSAXMzmlHandler::readHeaderFromOffset(f_off offset){
+bool mzpSAXMzmlHandler::readHeaderFromOffset(f_off offset, int scNm){
   spec->clear();
+  m_scanNumOverride=scNm;
 
   //index must be positive.
   if (offset<0) return false;
@@ -618,8 +633,9 @@ bool mzpSAXMzmlHandler::readSpectrum(int num){
 }
 
 //somewhat dangerous as it allows reading anywhere in the file
-bool mzpSAXMzmlHandler::readSpectrumFromOffset(f_off offset){
+bool mzpSAXMzmlHandler::readSpectrumFromOffset(f_off offset, int scNm){
   spec->clear();
+  m_scanNumOverride=scNm;
 
   //index must be positive.
   if (offset<0) return false;
@@ -674,7 +690,7 @@ void mzpSAXMzmlHandler::decode(vector<double>& d){
 
   char* decoded = new char[m_encodedLen];  //array for decoded base64 string
   int decodeLen;
-  Bytef* unzipped;
+  Bytef* unzipped = NULL;
   uLong unzippedLen;
 
   int i;

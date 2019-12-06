@@ -126,7 +126,7 @@ CSpectrumIdentificationResult* CSpectrumIdentificationList::addSpectrumIdentific
   //add new result
   CSpectrumIdentificationResult sir;
   char dbid[32];
-  sprintf(dbid, "%s_%d", &sdRef[0], spectrumIdentificationResult->size());
+  sprintf(dbid, "%s_%zu", &sdRef[0], spectrumIdentificationResult->size());
   sir.id = dbid;
   sir.spectrumID=specID;
   sir.spectraDataRef=sdRef;

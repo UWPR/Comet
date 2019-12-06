@@ -326,7 +326,7 @@ bool MzMLWriter::exportBinaryDataArray(BasicChromatogram& c, bool bRT, int tabs)
   }
 
   //convert to base64
-  int sz64;
+  size_t sz64;
   char* arr64 = NULL;
   if (bNumpress){
     if (bZlib) sz64 = zLen;
@@ -345,12 +345,12 @@ bool MzMLWriter::exportBinaryDataArray(BasicChromatogram& c, bool bRT, int tabs)
   arr64 = new char[sz64];
   if (bNumpress){
     if (bZlib) i = b64_encode(arr64, (char*)zCompr, zLen);
-    else i = b64_encode(arr64, (char*)numpr, numprLen);
+    else i = b64_encode(arr64, (char*)numpr, (int)numprLen);
   } else {
     if (bZlib) i = b64_encode(arr64, (char*)zCompr, zLen);
     else {
-      if (bRT) i = b64_encode(arr64, (char*)&d[0], d.size()*sizeof(double));
-      else i = b64_encode(arr64, (char*)&f[0], f.size()*sizeof(float));
+      if (bRT) i = b64_encode(arr64, (char*)&d[0], (int)(d.size()*sizeof(double)));
+      else i = b64_encode(arr64, (char*)&f[0], (int)(f.size()*sizeof(float)));
     }
   }
 
@@ -435,7 +435,7 @@ bool MzMLWriter::exportBinaryDataArray(Spectrum& s, bool bMZ, int tabs){
   }
 
   //convert to base64
-  int sz64;
+  size_t sz64;
   char* arr64=NULL;
   if(bNumpress){
     if(bZlib) sz64=zLen;
@@ -454,12 +454,12 @@ bool MzMLWriter::exportBinaryDataArray(Spectrum& s, bool bMZ, int tabs){
   arr64=new char[sz64];
   if(bNumpress){
     if(bZlib) i=b64_encode(arr64,(char*)zCompr,zLen);
-    else i=b64_encode(arr64,(char*)numpr,numprLen);
+    else i=b64_encode(arr64,(char*)numpr,(int)numprLen);
   } else {
     if(bZlib) i=b64_encode(arr64,(char*)zCompr,zLen);
     else {
-      if(bMZ) i=b64_encode(arr64,(char*)&d[0],d.size()*sizeof(double));
-      else i=b64_encode(arr64,(char*)&f[0],f.size()*sizeof(float));
+      if(bMZ) i=b64_encode(arr64,(char*)&d[0],(int)(d.size()*sizeof(double)));
+      else i=b64_encode(arr64,(char*)&f[0],(int)(f.size()*sizeof(float)));
     }
   }
 

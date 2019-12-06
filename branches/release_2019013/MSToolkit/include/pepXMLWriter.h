@@ -70,6 +70,7 @@ typedef struct pxwProtein {
   std::string protein;
   char peptide_next_aa;
   char peptide_prev_aa;
+  int peptide_start_pos;
   int protein_link_pos_a;
   int protein_link_pos_b;
 } pxwProtein;
@@ -285,20 +286,22 @@ public:
   void addProtein(pxwProtein& p){
     proteins->push_back(p);
   }
-  void addProtein(char* protein, char peptide_next_aa, char peptide_prev_aa, int protein_link_pos_a = 0, int protein_link_pos_b = 0){
+  void addProtein(char* protein, char peptide_next_aa, char peptide_prev_aa, int peptide_start_pos = 0, int protein_link_pos_a = 0, int protein_link_pos_b = 0){
     pxwProtein p;
     p.protein=protein;
     p.peptide_next_aa=peptide_next_aa;
     p.peptide_prev_aa=peptide_prev_aa;
+    p.peptide_start_pos=peptide_start_pos;
     p.protein_link_pos_a = protein_link_pos_a;
     p.protein_link_pos_b = protein_link_pos_b;
     addProtein(p);
   }
-  void addProtein(std::string& protein, char peptide_next_aa, char peptide_prev_aa, int protein_link_pos_a = 0, int protein_link_pos_b = 0){
+  void addProtein(std::string& protein, char peptide_next_aa, char peptide_prev_aa, int peptide_start_pos = 0, int protein_link_pos_a = 0, int protein_link_pos_b = 0){
     pxwProtein p;
     p.protein=protein;
     p.peptide_next_aa=peptide_next_aa;
     p.peptide_prev_aa=peptide_prev_aa;
+    p.peptide_start_pos=peptide_start_pos;
     p.protein_link_pos_a=protein_link_pos_a;
     p.protein_link_pos_b=protein_link_pos_b;
     addProtein(p);
@@ -524,7 +527,7 @@ public:
   ~PepXMLWriter();
 
   void  closePepXML         ();
-  bool  createPepXML        (char* fn, pxwMSMSRunSummary& run, pxwSampleEnzyme* enzyme=NULL, PXWSearchSummary* search=NULL);
+  bool  createPepXML        (const char* fn, pxwMSMSRunSummary& run, pxwSampleEnzyme* enzyme=NULL, PXWSearchSummary* search=NULL);
   void  writeSpectrumQuery  (PXWSpectrumQuery& s);
 
 private:

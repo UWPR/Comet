@@ -173,7 +173,7 @@ void BasicSpectrum::setPrecursorIon(sPrecursorIon& p){ vPrecursor->push_back(p);
 void BasicSpectrum::setPrecursorScanNum(int i){ precursorScanNum=i;}
 void BasicSpectrum::setRTime(float f){ rTime=f;}
 void BasicSpectrum::setScanIndex(int num) { scanIndex=num;}
-void BasicSpectrum::setScanNum(int num){ scanNum=num;}
+void BasicSpectrum::setScanNum(int num){scanNum=num;}
 void BasicSpectrum::setTotalIonCurrent(double d){ totalIonCurrent=d;}
 
 //------------------------------------------

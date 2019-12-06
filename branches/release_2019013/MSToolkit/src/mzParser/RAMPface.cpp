@@ -317,6 +317,7 @@ RAMPFILE* rampOpenFile(const char* filename){
     return NULL;
   } else {
     RAMPFILE* r=new RAMPFILE();
+    r->fileName=filename;
     r->bs = new BasicSpectrum();
     r->fileType=i;
     switch(i){
@@ -405,11 +406,7 @@ char* rampValidFileType(const char *buf){
 
 //MH: Read header is redundant with readPeaks, which automatically reads the header.
 //But due to legacy issues, this function must exist.
-void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader){
-    return readHeader(pFI, lScanIndex, scanHeader, 0);
-}
-
-void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader, size_t scanI){
+void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader, int iIndex){
 
   vector<cindex>* v;
   sPrecursorIon p;
@@ -457,58 +454,25 @@ void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderSt
   switch(pFI->fileType){
     case 1:
     case 3:
-      if(!scanI){
-        if (!pFI->mzML->readHeaderFromOffset((f_off)lScanIndex)){
-          v = NULL;
-          return;
-        }
-      } else {
-        v=pFI->mzML->getSpecIndex();
-        if (v->at(scanI).offset == -1) {
-          cout << "Warning readHeader(): scanI requested a null spectrum (spectrum not in file)." << endl;
-          v = NULL;
-          return;
-        }
-        if(!pFI->mzML->readHeader(v->at(scanI).scanNum)){
-          v=NULL;
-          return;
-        }
+      if (!pFI->mzML->readHeaderFromOffset((f_off)lScanIndex,iIndex)){
+        v = NULL;
+        return;
       }
       break;
     case 2:
     case 4:
-      if(!scanI){
-        if (!pFI->mzXML->readHeaderFromOffset((f_off)lScanIndex)){
-          v = NULL;
-          return;
-        }
-      } else {
-        v = pFI->mzXML->getIndex();
-        if(v->at(scanI).offset==(f_off)lScanIndex){
-          if (!pFI->mzXML->readHeader(v->at(scanI).scanNum)){
-            v = NULL;
-            return;
-          }
-        }
+      if (!pFI->mzXML->readHeaderFromOffset((f_off)lScanIndex)){
+        v = NULL;
+        return;
       }
       break;
 #ifdef MZP_MZ5
     case 5:
       v2=pFI->mz5->getSpecIndex();
-      if(!scanI){
-        for(i=0;i<v2->size();i++) {
-          if(v2->at(i).offset==(f_off)lScanIndex) {
-            if(!pFI->mz5->readHeader(v2->at(i).scanNum)){
-              v2=NULL;
-              return;
-            }
-            break;
-          }
-        }
-      } else {
-        if (v2->at(scanI).offset == (f_off)lScanIndex) {
-          if (!pFI->mz5->readHeader(v2->at(scanI).scanNum)){
-            v2 = NULL;
+      for(i=0;i<v2->size();i++) {
+        if(v2->at(i).offset==(f_off)lScanIndex) {
+          if(!pFI->mz5->readHeader(v2->at(i).scanNum)){
+            v2=NULL;
             return;
           }
           break;
@@ -766,11 +730,7 @@ void readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 
 //MH: Matching the index is very indirect, but requires less code,
 //making this wrapper much easier to read
-RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
-  return  readPeaks(pFI, lScanIndex, 0);
-}
-
-RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, size_t scanI) {
+RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, int iIndex){
   vector<cindex>* v;
 #ifdef MZP_MZ5
   vector<cMz5Index>* v2;
@@ -784,62 +744,21 @@ RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, size_t scanI) {
   switch(pFI->fileType){
     case 1:
     case 3:
-      if(!scanI){
-        //scNum=getScanNumberFromOffset(pFI,lScanIndex);
-        //if (scNum>-1) pFI->mzML->readSpectrum(scNum);
-        //else pFI->bs->clear();
-        pFI->mzML->readSpectrumFromOffset((f_off)lScanIndex);
-      } else {
-        v=pFI->mzML->getSpecIndex();
-        if(scanI>=v->size()){
-          cout << "Error readPeaks(): scanI out of bounds." << endl;
-          return pPeaks;
-        }
-        if (v->at(scanI).offset == -1) {
-          cout << "Warning readPeaks(): scanI requested a null spectrum (spectrum not in file)." << endl;
-          return pPeaks; //scan has no data
-        }
-        pFI->mzML->readSpectrum(v->at(scanI).scanNum);
-      }
+      pFI->mzML->readSpectrumFromOffset((f_off)lScanIndex,iIndex);
       break;
     case 2:
     case 4:
-      if (!scanI){
-        //scNum = getScanNumberFromOffset(pFI, lScanIndex);
-        //if (scNum>-1) pFI->mzXML->readSpectrum(scNum);
-        //else pFI->bs->clear();
-        pFI->mzXML->readSpectrumFromOffset((f_off)lScanIndex);
-      } else {
-        v = pFI->mzXML->getIndex();
-        if (scanI >= v->size()){
-          cout << "Error readPeaks(): scanI out of bounds." << endl;
-          return pPeaks;
-        }
-        if (v->at(scanI).offset == -1) {
-          cout << "Warning readPeaks(): scanI requested a null spectrum (spectrum not in file)." << endl;
-          return pPeaks; //scan has no data
-        }
-        pFI->mzXML->readSpectrum(v->at(scanI).scanNum);
-      }
+      pFI->mzXML->readSpectrumFromOffset((f_off)lScanIndex);
       break;
 #ifdef MZP_MZ5
     case 5:
-      if(!scanI){
-        scNum=getScanNumberFromOffset(pFI,lScanIndex);
-        if (scNum>-1) pFI->mzML->readSpectrum(scNum);
-        else pFI->bs->clear();
-      } else {
-        v2=pFI->mz5->getSpecIndex();
-        if(scanI>=v->size()){
-          cout << "Error readPeaks(): scanI out of bounds." << endl;
-          return pPeaks;
+      v2=pFI->mz5->getSpecIndex();
+      for(i=0;i<v2->size();i++) {
+        if(v2->at(i).offset==(f_off)lScanIndex) {
+          pFI->mz5->readSpectrum(v2->at(i).scanNum);
+          break;
         }
-        if (v2->at(scanI).offset == -1) {
-          cout << "Warning readPeaks(): scanI requested a null spectrum (spectrum not in file)." << endl;
-          return pPeaks; //scan has no data
       }
-        pFI->mzML->readSpectrum(v->at(scanI).scanNum);
-      } 
       break;
 #endif
     default:
@@ -867,12 +786,8 @@ RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, size_t scanI) {
 }
 
 int readPeaksCount(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
-  return readPeaksCount(pFI, lScanIndex, 0);
-}
-
-int readPeaksCount(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, size_t scanI){
   ScanHeaderStruct s;
-  readHeader(pFI, lScanIndex, &s, scanI);
+  readHeader(pFI, lScanIndex, &s);
   return s.peaksCount;
 }
 

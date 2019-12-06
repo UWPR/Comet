@@ -39,7 +39,7 @@ string CInputs::addSearchDatabase(string& s){
 
   CSearchDatabase sdb;
   char cID[32];
-  sprintf(cID, "SDB%d", spectraData->size());
+  sprintf(cID, "SDB%zu", spectraData->size());
   sdb.id = cID;
   sdb.location = s;
   i = s.find_last_of("\\/");
@@ -73,7 +73,7 @@ string CInputs::addSpectraData(string& s){
 
   CSpectraData sd;
   char cID[32];
-  sprintf(cID, "SF%d", spectraData->size());
+  sprintf(cID, "SF%zu", spectraData->size());
   sd.id = cID;
   sd.location = s;
 
@@ -91,7 +91,7 @@ string CInputs::addSpectraData(CSpectraData& c){
 
   if (c.id.compare("null") == 0){
     char cID[32];
-    sprintf(cID, "SF%d", spectraData->size());
+    sprintf(cID, "SF%zu", spectraData->size());
     c.id = cID;
   }
 

@@ -38,8 +38,10 @@ public:
   std::string addPeptide(CPeptide& p);
   sPeptideEvidenceRef addPeptideEvidence(CPeptideEvidence& p);
   bool addXLPeptides(std::string ID, CPeptide& p1, CPeptide& p2, std::string& ref1, std::string& ref2, std::string& value);
-  CDBSequence* getDBSequence(std::string acc);
+  CDBSequence  getDBSequence(std::string id);
+  CDBSequence* getDBSequenceByAcc(std::string acc);
   CPeptide* getPeptide(std::string peptideRef);
+  CPeptideEvidence  getPeptideEvidence(std::string& id);
   std::string getPeptideEvidenceFromPeptideAndProtein(CPeptide& p, std::string dbSequenceRef);
   std::string getProtein(sPeptideEvidenceRef& s);
   void writeOut(FILE* f, int tabs = -1);
