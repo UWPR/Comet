@@ -16,7 +16,7 @@
                   compares the high res versus low res fragment ion settings above.  FDR/q-values
                   are calculated based on Comet's E-value scores.  This plot demonstrates the
                   advantages of high res search settings for high res MS/MS data.
-               <p><img src="params.png">
+               <p><img src="20160309_highres.png">
 
             </div>
       </div>
