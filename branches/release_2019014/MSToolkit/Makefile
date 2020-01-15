@@ -50,7 +50,7 @@ all:
 	make solib
 
 .PHONY: objects
-objects: $(ZLIB) $(MZPARSER) $(MZPARSERLITE) $(MZIMLTOOLS) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) $(SQLITE)
+objects: $(ZLIB) $(MZPARSER) $(MZPARSERLITE) $(MZIMLTOOLS) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT)
 
 arlib: CFLAGS = $(AR_CFLAGS)
 arlib: objects
