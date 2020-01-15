@@ -53,11 +53,11 @@ all:
 objects: $(ZLIB) $(MZPARSER) $(MZPARSERLITE) $(MZIMLTOOLS) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT) $(SQLITE)
 
 arlib: CFLAGS = $(AR_CFLAGS)
-arlib: clean_objects objects
+arlib: objects
 	ar rcs libmstoolkitlite.a $(ZLIB) $(EXPAT) $(MZIMLTOOLS) $(MZPARSERLITE) $(MSTOOLKIT) $(READERLITE)
-	ar rcs libmstoolkit.a $(ZLIB) $(EXPAT) $(MZIMLTOOLS) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE)
+#	ar rcs libmstoolkit.a $(ZLIB) $(EXPAT) $(MZIMLTOOLS) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE)
 #	$(CC) $(CFLAGS) MSTDemo.cpp -L. -lmstoolkitlite -o MSTDemo
-	$(CC) $(CFLAGS) -I./include MSSingleScan/MSSingleScan.cpp -L. -lmstoolkitlite -o msSingleScan
+#	$(CC) $(CFLAGS) -I./include MSSingleScan/MSSingleScan.cpp -L. -lmstoolkitlite -o msSingleScan
 #	$(CC) $(CFLAGS) MSConvertFile.cpp -L. -lmstoolkitlite -o MSConvertFile
 
 solib: CFLAGS = $(SO_CFLAGS)

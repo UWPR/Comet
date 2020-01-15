@@ -876,7 +876,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
       _proteinInfo.iProteinSeqLength = _proteinInfo.iTmpProteinSeqLength = (int)dbe.strSeq.size();
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       _proteinInfo.cPeffOrigResidue = '\0';
-      _proteinInfo.iPeffOrigResiduePosition = -9;
+      _proteinInfo.iPeffOrigResiduePosition = -9;  // used for PEFF variant (SAAV);  -9 set to off
 
       // have to pass sequence as it can be modified per below
       if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str(), false, pbDuplFragment))
@@ -1498,20 +1498,94 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   // At this point, only case need to check for is if variant is position before iStartPos
                   // and causes enzyme digest.  Or if variant is position after iEndPos and causes enzyme
                   // digest. All other cases are ok as variant is in peptide.
+                  bPass = false;
                   if (iPeffRequiredVariantPosition == iStartPos - 1)
                   {
-                     if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1 && CheckEnzymeStartTermini(szProteinSeq, iStartPos))
-                        bPass = true;
-                     else
-                        bPass = false;
-                  }
+                     if (CheckEnzymeStartTermini(szProteinSeq, iStartPos))
+                     {
+                        if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1)
+                        {
+                           // With trypsin as example, preceding residue changed to '*':  S.LSTR.C to *.LSTR.C
+                           // Know new end termini is already cleavage site so see if orig residue was K or R (not followed by P)
+                           // Just want to make sure change to * will generate a new cleavage site that wouldn't otherwise exist
+                           if (szProteinSeq[iStartPos-1] == '*')
+                           {
+                              if (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, _proteinInfo.cPeffOrigResidue))
+                              {
+                                 if (strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iStartPos]))
+                                    bPass = true;
+                              }
+                              else
+                                 bPass = true;
+                           }
+                           // L to K:  L.SLSTR to K.SLSTR ... make sure not R to K substitution i.e. R.SLSTR to K.SLSTR
+                           else if (!strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, _proteinInfo.cPeffOrigResidue))
+                           {
+                              bPass = true;
+                           }
+                        }
+                        else if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 0)
+                        {
+                           // AspN:  X.DLSTR to *.DLSTR
+                           // Original sequence will always cleave as long as flanking residue is not on NoBreakAA list
+                           // so in order to report, just need to check if original preceding residue is in NoBreakAA.
+                           // No such enzyme exists (with n-term no-cleave resides) but handle case anyways.
+                           if (strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, _proteinInfo.cPeffOrigResidue))
+                           {
+                              bPass = true;
+                           }
 
+                        }
+                     }
+                  }
                   else if (iPeffRequiredVariantPosition == iEndPos + 1)
                   {
-                     if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 0 && CheckEnzymeEndTermini(szProteinSeq, iEndPos))
-                        bPass = true;
-                     else
-                        bPass = false;
+                     if (CheckEnzymeEndTermini(szProteinSeq, iEndPos))
+                     {
+                        if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1)
+                        {
+                           // With trypsin as example, change P to anything including '*':  K.LSTR.P to K.LSTR.C
+                           // Know new end termini is already cleavage site so see if orig residue was on NoBreakAA list
+                           // If so, this is new cleavage site due to substitution of trailing flanking residue
+                           if (strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, _proteinInfo.cPeffOrigResidue))
+                           {
+                              bPass = true;
+                           }
+                        
+                           // A substitution to '*' at iEndPos+1 will always create a cleavage site. Just need to confirm
+                           // original sequence wasn't already cleavage site before this substitution in order to report.
+                           // K.LSTY.* should be reported but not K.LSTK.* unless orig flanking residue was a P
+                           else if (szProteinSeq[iEndPos+1] == '*')
+                           {
+                              if (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, szProteinSeq[iEndPos]))
+                              {
+                                 if (strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, _proteinInfo.cPeffOrigResidue))
+                                    bPass = true;
+                              }
+                              else
+                                 bPass = true;
+                           }
+                        }
+                        else if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 0)
+                        {
+                           // Asp-N example: change anything to D e.g. L.DSTC.S to L.DSTC.D
+                           if (!strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, _proteinInfo.cPeffOrigResidue))
+                           {
+                              bPass = true;
+                           }
+                           // Do not want L.DSTC.D to L.DSTC.* to be reported unless last residue in pep is NoBreakAA
+                           else if (szProteinSeq[iEndPos+1] == '*')
+                           {
+                              if (strchr(g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, _proteinInfo.cPeffOrigResidue))
+                              {
+                                 if (strchr(g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA, szProteinSeq[iEndPos]))
+                                    bPass = true;
+                              }
+                              else
+                                 bPass = true;
+                           }
+                        }
+                     }
                   }
                }
 
