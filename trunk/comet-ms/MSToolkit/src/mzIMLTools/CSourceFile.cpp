@@ -66,7 +66,7 @@ CSourceFile& CSourceFile::operator=(const CSourceFile& s){
 void CSourceFile::writeOut(FILE* f, int tabs){
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
-  fprintf(f, "<SourceFile location=\"%s\" id=\"%s\">\n");
+  fprintf(f, "<SourceFile location=\"%s\" id=\"%s\">\n",location.c_str(),id.c_str());
   if (tabs>-1) fileFormat.writeOut(f,tabs+1);
   else fileFormat.writeOut(f);
   for (i = 0; i<tabs; i++) fprintf(f, " ");

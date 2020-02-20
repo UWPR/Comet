@@ -15,6 +15,8 @@ limitations under the License.
 #define _CSPECTRUMIDENTIFICATIONPROTOCOL_H
 
 #include "CAdditionalSearchParams.h"
+#include "CEnzymes.h"
+#include "CMassTable.h"
 #include "CModificationParams.h"
 #include "CSearchType.h"
 #include "CThreshold.h"
@@ -25,7 +27,7 @@ class CSpectrumIdentificationProtocol{
 public:
   //Constructors & Destructor
   CSpectrumIdentificationProtocol();
-  //CSpectrumIdentificationProtocol(const CSpectrumIdentificationProtocol& c);
+  CSpectrumIdentificationProtocol(const CSpectrumIdentificationProtocol& c);
   ~CSpectrumIdentificationProtocol();
 
   //Data members
@@ -35,8 +37,8 @@ public:
   CSearchType searchType;
   CAdditionalSearchParams additionalSearchParams;
   CModificationParams modificationParams;
-  //CEnzymes enzymes;
-  //vector<CMassTable>* massTable;
+  CEnzymes enzymes;
+  std::vector<CMassTable>* massTable;
   //CFragmentTolerance fragmentTolerance;
   //CParentTolerance parentTolerance;
   CThreshold threshold;
@@ -44,7 +46,7 @@ public:
   //CDatabaseTranslation databaseTranslation;
 
   //operators
-  //CSpectrumIdentificationProtocol& operator=(const CSpectrumIdentificationProtocol& c);
+  CSpectrumIdentificationProtocol& operator=(const CSpectrumIdentificationProtocol& c);
   bool operator==(const CSpectrumIdentificationProtocol& c);
 
   //Functions

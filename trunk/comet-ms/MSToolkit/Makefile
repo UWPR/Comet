@@ -16,10 +16,13 @@ MZPARSERLITE = mzp.MSNumpress.o mzp.mzp_base64_lite.o mzp.BasicSpectrum_lite.o m
   mzp.saxmzxmlhandler_lite.o mzp.Czran_lite.o mzp.mz5handler_lite.o mzp.mzpMz5Config_lite.o mzp.mzpMz5Structs_lite.o mzp.BasicChromatogram_lite.o mzp.PWIZface_lite.o
 MZIMLTOOLS = mzid.CAdditionalSearchParams.o mzid.CAnalysisCollection.o mzid.CAnalysisData.o mzid.CAnalysisParams.o mzid.CAnalysisProtocolCollection.o \
              mzid.CAnalysisSoftware.o mzid.CAnalysisSoftwareList.o mzid.CContactRole.o mzid.CCvList.o mzid.CDatabaseName.o mzid.CDataCollection.o mzid.CDBSequence.o \
-             mzid.CFileFormat.o mzid.CFragmentArray.o mzid.CFragmentation.o mzid.CFragmentationTable.o mzid.CInputs.o mzid.CIonType.o mzid.CMeasure.o \
+			 mzid.CEnzyme.o mzid.CEnzymeName.o mzid.CEnzymes.o \
+             mzid.CFileFormat.o mzid.CFragmentArray.o mzid.CFragmentation.o mzid.CFragmentationTable.o mzid.CInputs.o mzid.CIonType.o \
+             mzid.CMassTable.o mzid.CMeasure.o \
              mzid.CModification.o mzid.CModificationParams.o mzid.CMzIdentML.o mzid.CPeptide.o mzid.CPeptideEvidence.o mzid.CPeptideHypothesis.o \
              mzid.CProteinAmbiguityGroup.o mzid.CProteinDetection.o mzid.CProteinDetectionHypothesis.o  mzid.CProteinDetectionList.o mzid.CProteinDetectionProtocol.o \
-             mzid.CPSM.o mzid.CRole.o mzid.CSearchDatabase.o mzid.CSearchModification.o mzid.CSearchType.o mzid.CSequenceCollection.o mzid.CSoftwareName.o \
+             mzid.CPSM.o mzid.CResidue.o mzid.CRole.o \
+			 mzid.CSearchDatabase.o mzid.CSearchModification.o mzid.CSearchType.o mzid.CSequenceCollection.o mzid.CSoftwareName.o \
              mzid.CSourceFile.o mzid.CSpecificityRules.o mzid.CSpectraData.o mzid.CSpectrumIdentification.o mzid.CSpectrumIdentificationItem.o \
              mzid.CSpectrumIdentificationList.o mzid.CSpectrumIdentificationProtocol.o mzid.CSpectrumIdentificationResult.o mzid.CSpectrumIDFormat.o \
              mzid.CThreshold.o

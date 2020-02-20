@@ -192,8 +192,10 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
       spec->setScanNum(atoi(strstr(&s[0],"scanId=")+7));
     } else if(strstr(&s[0],"S")!=NULL) {
       spec->setScanNum(atoi(strstr(&s[0],"S")+1));
+    } else if(m_scanNumOverride>-1){ //if a scan index was set (usually obtained from the calling class), use that instead.
+      spec->setScanNum(m_scanNumOverride);
     } else {
-      spec->setScanNum(++m_scanSPECCount);
+      spec->setScanNum(++m_scanSPECCount); //This is a bad deal...it will count iteratively when file is read random-access.
       //Suppressing warning.
       //cout << "WARNING: Cannot extract scan number spectrum line: " << &s[0] << "\tDefaulting to " << m_scanSPECCount << endl;
     }
@@ -413,12 +415,24 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if( !strcmp(name, "MS-Numpress short logged float compression") || !strcmp(accession,"MS:1002314") ){
     m_bNumpressSlof = true;
 
+  } else if (!strcmp(name, "MS-Numpress linear prediction compression followed by zlib compression") || !strcmp(accession, "MS:1002746")){
+    m_bZlib = true;
+    m_bNumpressLinear = true;
+
+  } else if (!strcmp(name, "MS-Numpress short logged float compression followed by zlib compression") || !strcmp(accession, "MS:1002748")){
+    m_bZlib = true;
+    m_bNumpressSlof = true;
+
   } else if(!strcmp(name, "m/z array") || !strcmp(accession,"MS:1000514"))  {
     m_bInmzArrayBinary = true;
     m_bInintenArrayBinary = false;
 
   } else if(!strcmp(name,"nanoelectrospray") || !strcmp(accession,"MS:1000398")) {
     m_instrument.ionization=name;
+
+  } else if (!strcmp(name, "non-standard data array") || !strcmp(accession, "MS:1000786"))  {
+    m_bInmzArrayBinary = false;
+    m_bInintenArrayBinary = false;
 
   } else if(!strcmp(name,"orbitrap") || !strcmp(accession,"MS:1000484")) {
     m_instrument.analyzer=name;
@@ -556,8 +570,9 @@ bool mzpSAXMzmlHandler::readHeader(int num){
 
 }
 
-bool mzpSAXMzmlHandler::readHeaderFromOffset(f_off offset){
+bool mzpSAXMzmlHandler::readHeaderFromOffset(f_off offset, int scNm){
   spec->clear();
+  m_scanNumOverride=scNm;
 
   //index must be positive.
   if (offset<0) return false;
@@ -618,8 +633,9 @@ bool mzpSAXMzmlHandler::readSpectrum(int num){
 }
 
 //somewhat dangerous as it allows reading anywhere in the file
-bool mzpSAXMzmlHandler::readSpectrumFromOffset(f_off offset){
+bool mzpSAXMzmlHandler::readSpectrumFromOffset(f_off offset, int scNm){
   spec->clear();
+  m_scanNumOverride=scNm;
 
   //index must be positive.
   if (offset<0) return false;
@@ -674,7 +690,7 @@ void mzpSAXMzmlHandler::decode(vector<double>& d){
 
   char* decoded = new char[m_encodedLen];  //array for decoded base64 string
   int decodeLen;
-  Bytef* unzipped;
+  Bytef* unzipped = NULL;
   uLong unzippedLen;
 
   int i;
@@ -829,7 +845,7 @@ f_off mzpSAXMzmlHandler::readIndexOffset() {
   }
 
   if(start==NULL || stop==NULL) {
-    cerr << "No index list offset found. File will not be read." << endl;
+//  cerr << "No index list offset found." << endl;
     return 0;
   }
 
@@ -849,17 +865,80 @@ bool mzpSAXMzmlHandler::load(const char* fileName){
   parseOffset(0);
   indexOffset = readIndexOffset();
   if(indexOffset==0){
-    m_bNoIndex=true;
-    return false;
+    m_bNoIndex=false;
+    generateIndexOffset();
   } else {
     m_bNoIndex=false;
     if(!parseOffset(indexOffset)){ //Note: after reading index, should we check for order? assumes it is in file offset order.
-      cerr << "Cannot parse index. Make sure index offset is correct or rebuild index." << endl;
-      return false;
+      generateIndexOffset();
     }
     posIndex=-1;
     posChromatIndex=-1;
   }
+  return true;
+}
+
+//Parse file from top to bottom to generate index offset if not present.
+//If scan is present in native ID string, use it. Otherwise report spectrum index as scan number.
+bool mzpSAXMzmlHandler::generateIndexOffset() {
+
+  char chunk[CHUNK];
+  int readBytes;
+  long lOffset = 0;
+
+  if(!m_bGZCompression){
+    FILE* f=fopen(&m_strFileName[0],"r");
+    char *pStr;
+
+    if (f==NULL){
+      cout << "Error cannot open file " << m_strFileName[0] << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    bool bReadingFirstSpectrum = true;
+    bool bThermoFile = false;
+
+    while (fgets(chunk, CHUNK, f)){
+
+      // Treat thermo files differently. Always report scan 'index' value which start at 0
+      // except for Thermo files where historically we're used to starting at scan 1.
+      if (strstr(chunk, "MS:1000768"))
+         bThermoFile = true;
+
+      if (strstr(chunk, "<spectrum ")){
+        long scanNum;
+        bool bSuccessfullyReadScan = false;
+        do{
+          // now need to look for "index="
+          if ((pStr = strstr(chunk, "index=\"")) != NULL){
+            sscanf(pStr+7, "%ld", &scanNum);
+            bSuccessfullyReadScan = true;
+          }
+
+          if ((pStr = strstr(chunk, "</spectrum>")) != NULL){
+            if (bSuccessfullyReadScan){  // not that we've reached the next spectrum, store index offset
+              if (bThermoFile)  // start scan count at 1 instead of 0
+                 scanNum += 1;
+              curIndex.scanNum = scanNum;
+              curIndex.idRef = "";
+              curIndex.offset = lOffset;
+              m_vIndex.push_back(curIndex);
+              break;
+            }
+            else{
+              printf(" error, found \"<spectrum\" line before parsing index attribute of previous scan:  %s\n", pStr);
+              return false;
+            }
+          }
+          bReadingFirstSpectrum = false;
+        } while (fgets(chunk, CHUNK, f));
+      }
+      lOffset = ftell(f);  // position of file pointer before fgets in loop
+    }
+  } else {
+    readBytes = gzObj.extract(fptr, gzObj.getfilesize()-200, (unsigned char*)chunk, CHUNK);
+  }
+
   return true;
 }
 

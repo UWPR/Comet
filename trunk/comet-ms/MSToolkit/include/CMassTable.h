@@ -11,38 +11,35 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef _CSPECTRUMIDENTIFICATIONLIST_H
-#define _CSPECTRUMIDENTIFICATIONLIST_H
+#ifndef _CMASSTABLE_H
+#define _CMASSTABLE_H
 
-#include "CFragmentationTable.h"
-#include "CSpectrumIdentificationResult.h"
 #include "mzIMLStructs.h"
+#include "CResidue.h"
 #include <string>
 #include <vector>
 
-class CSpectrumIdentificationList {
+class CMassTable {
 public:
 
   //Constructors & Destructor
-  CSpectrumIdentificationList();
-  CSpectrumIdentificationList(const CSpectrumIdentificationList& s);
-  ~CSpectrumIdentificationList();
+  CMassTable();
+  CMassTable(const CMassTable& m);
+  ~CMassTable();
 
   //Data members
-  std::string id;
-  std::string name;
-  int numSequencesSearched;
-  CFragmentationTable fragmentationTable;
-  std::vector<CSpectrumIdentificationResult>* spectrumIdentificationResult;
+  //std::vector<CAmbiguousResidue>* ambiguousResidue;
   std::vector<sCvParam>* cvParam;
+  std::string id;
+  std::vector<int>* msLevel;
+  std::string name;
+  std::vector<CResidue>* residue;
   std::vector<sUserParam>* userParam;
 
   //operators
-  CSpectrumIdentificationList& operator=(const CSpectrumIdentificationList& s);
+  CMassTable& operator=(const CMassTable& c);
 
   //Functions
-  CSpectrumIdentificationResult* addSpectrumIdentificationResult(std::string specID, std::string& sdRef);
-  CSpectrumIdentificationResult* addSpectrumIdentificationResult(CSpectrumIdentificationResult& c);
   void writeOut(FILE* f, int tabs = -1);
 
 private:

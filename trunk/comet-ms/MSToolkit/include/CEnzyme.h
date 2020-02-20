@@ -11,38 +11,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef _CSEARCHDATABASE_H
-#define _CSEARCHDATABASE_H
+#ifndef _CENZYME_H
+#define _CENZYME_H
 
-#include "CDatabaseName.h"
-#include "CFileFormat.h"
+#include "CEnzymeName.h"
 #include "mzIMLStructs.h"
 #include <string>
 #include <vector>
 
-class CSearchDatabase {
+class CEnzyme {
 public:
 
-  //Constructors & Destructor
-  CSearchDatabase();
-  CSearchDatabase(const CSearchDatabase& c);
-  ~CSearchDatabase();
+  //Constructor
+  CEnzyme();
 
   //Data members
+  std::string cTermGain;
   std::string id;
-  std::string location;
+  int minDistance;
+  int missedCleavages;
+  std::string nTermGain;
   std::string name;
-  int numDatabaseSequences;
-  int numResidues;
-  std::string releaseDate;
-  std::string version;
-  sExternalFormatDocumentation externalFormatDocumentation;
-  CFileFormat fileFormat;
-  CDatabaseName databaseName;
-  std::vector<sCvParam>* cvParam;
-
-  //operators
-  CSearchDatabase& operator=(const CSearchDatabase& c);
+  bool semiSpecific;
+  
+  //CSiteRegexp siteRegexp;
+  CEnzymeName enzymeName;
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

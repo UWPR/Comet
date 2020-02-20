@@ -49,7 +49,7 @@ void CAnalysisCollection::addSpectrumIdentification(CSpectrumIdentification& c){
 
   if (c.id.compare("null") == 0){
     char cID[32];
-    sprintf(cID, "SI%d", spectrumIdentification->size());
+    sprintf(cID, "SI%zu", spectrumIdentification->size());
     c.id = cID;
   }
   spectrumIdentification->push_back(c);

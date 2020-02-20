@@ -22,7 +22,9 @@ CSpectraData::CSpectraData(){
 void CSpectraData::writeOut(FILE* f, int tabs){
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
-  fprintf(f, "<SpectraData location=\"%s\" id=\"%s\">\n", &location[0], &id[0]);
+  fprintf(f, "<SpectraData location=\"%s\" id=\"%s\"", location.c_str(), id.c_str());
+  if(name.size()>0) fprintf(f," name=\"%s\"",name.c_str());
+  fprintf(f,">\n");
   if (tabs>-1){
     fileFormat.writeOut(f,tabs+1);
     spectrumIDFormat.writeOut(f,tabs+1);

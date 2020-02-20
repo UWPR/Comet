@@ -11,38 +11,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef _CSEARCHDATABASE_H
-#define _CSEARCHDATABASE_H
+#ifndef _CRESIDUE_H
+#define _CRESIDUE_H
 
-#include "CDatabaseName.h"
-#include "CFileFormat.h"
 #include "mzIMLStructs.h"
 #include <string>
 #include <vector>
 
-class CSearchDatabase {
+class CResidue {
 public:
 
-  //Constructors & Destructor
-  CSearchDatabase();
-  CSearchDatabase(const CSearchDatabase& c);
-  ~CSearchDatabase();
+  //Constructor
+  CResidue();
 
   //Data members
-  std::string id;
-  std::string location;
-  std::string name;
-  int numDatabaseSequences;
-  int numResidues;
-  std::string releaseDate;
-  std::string version;
-  sExternalFormatDocumentation externalFormatDocumentation;
-  CFileFormat fileFormat;
-  CDatabaseName databaseName;
-  std::vector<sCvParam>* cvParam;
-
-  //operators
-  CSearchDatabase& operator=(const CSearchDatabase& c);
+  char code;
+  float mass;
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

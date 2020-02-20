@@ -118,7 +118,7 @@ CSpectrumIdentificationItem* CSpectrumIdentificationResult::addSpectrumIdentific
   //add new result
   CSpectrumIdentificationItem sii;
   char dbid[32];
-  sprintf(dbid, "%s_%d", &id[0], spectrumIdentificationItem->size());
+  sprintf(dbid, "%s_%zu", &id[0], spectrumIdentificationItem->size());
   sii.id = dbid;
   sii.chargeState=z;
   sii.experimentalMassToCharge=expMZ;
@@ -141,7 +141,7 @@ CSpectrumIdentificationItem* CSpectrumIdentificationResult::addSpectrumIdentific
   //add new result
   if (s.id.compare("null") == 0){
     char dbid[32];
-    sprintf(dbid, "%s_%d", &id[0], spectrumIdentificationItem->size());
+    sprintf(dbid, "%s_%zu", &id[0], spectrumIdentificationItem->size());
     s.id = dbid;
   }
   spectrumIdentificationItem->push_back(s);

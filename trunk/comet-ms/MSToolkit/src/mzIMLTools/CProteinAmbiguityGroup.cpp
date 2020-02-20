@@ -118,7 +118,7 @@ CProteinDetectionHypothesis* CProteinAmbiguityGroup::addProteinDetectionHypothes
   //add new
   CProteinDetectionHypothesis p;
   char dbid[32];
-  sprintf(dbid, "%s_%d", baseRef.c_str(), proteinDetectionHypothesis->size());
+  sprintf(dbid, "%s_%zu", baseRef.c_str(), proteinDetectionHypothesis->size());
   p.id = dbid;
   p.dbSequenceRef = dbSequenceRef;
   proteinDetectionHypothesis->push_back(p);

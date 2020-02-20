@@ -13,14 +13,47 @@ limitations under the License.
 
 #include "CSpectrumIdentificationProtocol.h"
 
+using namespace std;
+
 CSpectrumIdentificationProtocol::CSpectrumIdentificationProtocol(){
   analysisSoftwareRef = "null";
   id = "null";
   name.clear();
+  massTable = new vector<CMassTable>;
+}
+
+CSpectrumIdentificationProtocol::CSpectrumIdentificationProtocol(const CSpectrumIdentificationProtocol& c){
+  analysisSoftwareRef = c.analysisSoftwareRef;
+  id = c.id;
+  name=c.name;
+
+  massTable = new vector<CMassTable>(*c.massTable);
+
+  searchType=c.searchType;
+  additionalSearchParams=c.additionalSearchParams;
+  modificationParams=c.modificationParams;
+  threshold=c.threshold;
 }
 
 CSpectrumIdentificationProtocol::~CSpectrumIdentificationProtocol(){
+  delete massTable;
+}
 
+CSpectrumIdentificationProtocol& CSpectrumIdentificationProtocol::operator=(const CSpectrumIdentificationProtocol& c){
+  if(this!=&c){
+    analysisSoftwareRef = c.analysisSoftwareRef;
+    id = c.id;
+    name = c.name;
+
+    delete massTable;
+    massTable = new vector<CMassTable>(*c.massTable);
+
+    searchType = c.searchType;
+    additionalSearchParams = c.additionalSearchParams;
+    modificationParams = c.modificationParams;
+    threshold = c.threshold;
+  }
+  return *this;
 }
 
 bool CSpectrumIdentificationProtocol::operator==(const CSpectrumIdentificationProtocol& c){
@@ -48,11 +81,13 @@ void CSpectrumIdentificationProtocol::writeOut(FILE* f, int tabs){
     searchType.writeOut(f,tabs+1);
     additionalSearchParams.writeOut(f,tabs+1);
     modificationParams.writeOut(f,tabs+1);
+    enzymes.writeOut(f,tabs+1);
     threshold.writeOut(f,tabs+1);
   } else {
     searchType.writeOut(f);
     additionalSearchParams.writeOut(f);
     modificationParams.writeOut(f);
+    enzymes.writeOut(f);
     threshold.writeOut(f);
   }
 

@@ -502,8 +502,6 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByInverseIntensity);
       // trim to NUM_SP_IONS entries
       vBinnedSpectrumSP.resize(NUM_SP_IONS);
-      // sort by index; unnecessary to do now
-//    sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByIndex);
    }
 
    // MH: Fill sparse matrix for SpScore
@@ -1328,13 +1326,6 @@ bool CometPreprocess::SortVectorByInverseIntensity(const pair<int,double> &a,
 }
 
 
-bool CometPreprocess::SortVectorByIndex(const pair<int,double> &a,  
-                                        const pair<int,double> &b) 
-{
-   return (a.first < b.first);
-}
-
-
 bool CometPreprocess::IsValidInputType(int inputType)
 {
    return (inputType == InputType_MZXML || inputType == InputType_RAW);
@@ -1426,7 +1417,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
             // mapRawSpectrum simply stores the binned spectrum to return matched ions
             if (mapRawSpectrum[iBinIon] < dIntensity)  // used in DoSingleSpectrumSearch to return matched ions
-                mapRawSpectrum[iBinIon] = dIntensity;
+               mapRawSpectrum[iBinIon] = dIntensity;
 
             dIntensity = sqrt(dIntensity);
 

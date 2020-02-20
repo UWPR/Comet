@@ -29,8 +29,12 @@ static void CMzIdentML_charactersCallback(void *data, const XML_Char *s, int len
 }
 
 CMzIdentML::CMzIdentML(){
+  version=2;
   id = "mzIMLTools_mzid";
   name.clear();
+  fileBase.clear();
+  fileFull.clear();
+  filePath.clear();
   parser = XML_ParserCreate(NULL);
   XML_SetUserData(parser, this);
   XML_SetElementHandler(parser, CMzIdentML_startElementCallback, CMzIdentML_endElementCallback);
@@ -99,12 +103,28 @@ void CMzIdentML::endElement(const XML_Char *el) {
     if (activeEl.back() != DatabaseName) cout << "Error in activeEl" << endl;
     else activeEl.pop_back();
 
+  } else if (isElement("Enzyme", el)){
+    if (activeEl.back() != Enzyme) cout << "Error in activeEl" << endl;
+    else activeEl.pop_back();
+
+  } else if (isElement("EnzymeName", el)){
+    if (activeEl.back() != EnzymeName) cout << "Error in activeEl" << endl;
+    else activeEl.pop_back();
+
+  } else if (isElement("Enzymes", el)){
+    if (activeEl.back() != Enzymes) cout << "Error in activeEl" << endl;
+    else activeEl.pop_back();
+
   } else if (isElement("FileFormat", el)){
     if (activeEl.back() != FileFormat) cout << "Error in activeEl" << endl;
     else activeEl.pop_back();
     
   } else if (isElement("Inputs", el)){
     if (activeEl.back() != Inputs) cout << "Error in activeEl" << endl;
+    else activeEl.pop_back();
+
+  } else if (isElement("MassTable", el)){
+    if (activeEl.back() != MassTable) cout << "Error in activeEl" << endl;
     else activeEl.pop_back();
 
   } else if (isElement("Modification", el)){
@@ -153,6 +173,10 @@ void CMzIdentML::endElement(const XML_Char *el) {
 
   } else if (isElement("ProteinDetectionProtocol", el)){
     if (activeEl.back() != ProteinDetectionProtocol) cout << "Error in activeEl" << endl;
+    else activeEl.pop_back();
+
+  } else if (isElement("Residue", el)){
+    if (activeEl.back() != Residue) cout << "Error in activeEl" << endl;
     else activeEl.pop_back();
 
   } else if (isElement("SearchDatabase", el)){
@@ -223,7 +247,7 @@ void CMzIdentML::startElement(const XML_Char *el, const XML_Char **attr){
   string s;
 
   if (isElement("AdditionalSearchParams", el)){
-    activeEl.push_back(AdditionalSearchParams); 
+    activeEl.push_back(AdditionalSearchParams);
     
   } else if (isElement("AnalysisCollection", el)){
     activeEl.push_back(AnalysisCollection);
@@ -261,6 +285,35 @@ void CMzIdentML::startElement(const XML_Char *el, const XML_Char **attr){
   } else if (isElement("DatabaseName", el)){
     activeEl.push_back(DatabaseName);
 
+  } else if(isElement("Enzyme",el)){
+    activeEl.push_back(Enzyme);
+    CEnzyme c;
+    c.cTermGain=getAttrValue("cTermGain",attr);
+    c.id=getAttrValue("id",attr);
+    c.minDistance=atoi(getAttrValue("minDistance",attr));
+    s = getAttrValue("missedCleavages", attr);
+    if(s.size()>0) c.missedCleavages=atoi(s.c_str());
+    c.nTermGain=getAttrValue("nTermGain",attr);
+    c.name=getAttrValue("name",attr);
+    s = getAttrValue("semiSpecific", attr);
+    if (s.compare("true") == 0) c.semiSpecific = true;
+    else c.semiSpecific = false;
+    if (analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->at(0).id.compare("null") == 0){
+      analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->clear();
+    }
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->push_back(c);
+
+  } else if(isElement("EnzymeName",el)){
+    activeEl.push_back(EnzymeName);
+    CEnzymeName c;
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->back().enzymeName=c;
+
+  } else if (isElement("Enzymes",el)){
+    activeEl.push_back(Enzymes);
+    s = getAttrValue("isDecoy", attr);
+    if (s.compare("true") == 0) analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.independent = true;
+    else analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.independent = false;
+
   } else if (isElement("FileFormat", el)){
     activeEl.push_back(FileFormat);
 
@@ -279,6 +332,20 @@ void CMzIdentML::startElement(const XML_Char *el, const XML_Char **attr){
     sInputSpectrumIdentifications isi;
     isi.spectrumIdentificationListRef = getAttrValue("spectrumIdentificationList_ref", attr);
     analysisCollection.proteinDetection.inputSpectrumidentifications->push_back(isi);
+
+  } else if (isElement("MassTable", el)){
+    activeEl.push_back(MassTable);
+    CMassTable m;
+    m.id=getAttrValue("id",attr);
+    m.name=getAttrValue("name",attr);
+    s = getAttrValue("msLevel", attr);
+    for(size_t i=0;i<s.size();i++){
+      if(s[i]==' ') continue;
+      string tmp;
+      tmp+=s[i];
+      m.msLevel->push_back(atoi(tmp.c_str()));
+    }
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().massTable->push_back(m);
 
   } else if (isElement("Modification", el)){
     activeEl.push_back(Modification);
@@ -299,6 +366,7 @@ void CMzIdentML::startElement(const XML_Char *el, const XML_Char **attr){
     activeEl.push_back(MzIdentML);
     s = getAttrValue("version", attr);
     if (s.size() == 0)  killRead=true;
+    creationDate.parseDateTime(getAttrValue("creationDate",attr));
 
   } else if (isElement("Peptide", el)){
     activeEl.push_back(Peptide);
@@ -378,6 +446,13 @@ void CMzIdentML::startElement(const XML_Char *el, const XML_Char **attr){
     pdp.analysisSoftwareRef = getAttrValue("analysisSoftware_ref", attr);
     analysisProtocolCollection.proteinDetectionProtocol = pdp;
 
+  } else if (isElement("Residue", el)){
+    activeEl.push_back(Residue);
+    CResidue m;
+    m.code = getAttrValue("code", attr)[0];
+    m.mass = (float)atof(getAttrValue("mass", attr));
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().massTable->back().residue->push_back(m);
+
   } else if (isElement("SearchDatabase", el)){
     activeEl.push_back(SearchDatabase);
     CSearchDatabase db;
@@ -388,6 +463,9 @@ void CMzIdentML::startElement(const XML_Char *el, const XML_Char **attr){
   } else if (isElement("SearchDatabaseRef", el)){
     sSearchDatabaseRef sdr;
     sdr.searchDatabaseRef = getAttrValue("searchDatabase_ref", attr);
+    if (analysisCollection.spectrumIdentification->back().searchDatabaseRef->at(0).searchDatabaseRef.compare("null")==0){
+      analysisCollection.spectrumIdentification->back().searchDatabaseRef->clear();
+    }
     analysisCollection.spectrumIdentification->back().searchDatabaseRef->push_back(sdr);
 
   } else if (isElement("SearchModification", el)){
@@ -537,7 +615,7 @@ string CMzIdentML::addAnalysisSoftware(string software, string version){
   }
 
   char cID[32];
-  sprintf(cID, "AS%d", analysisSoftwareList.analysisSoftware->size());
+  sprintf(cID, "AS%zu", analysisSoftwareList.analysisSoftware->size());
   as.id = cID;
 
   if (software.compare("Comet") == 0){
@@ -629,12 +707,22 @@ string CMzIdentML::addPeptide(string seq, vector<CModification>& mods){
   return idRef;
 }
 
-sPeptideEvidenceRef CMzIdentML::addPeptideEvidence(string dbRef, string pepRef){
+sPeptideEvidenceRef CMzIdentML::addPeptideEvidence(string dbRef, string pepRef, int start, int end, char pre, char post, bool isDecoy){
   CPeptideEvidence p;
   p.dbSequenceRef = dbRef;
   p.peptideRef = pepRef;
 
   //TODO: add optional information
+  p.start=start;
+  p.end=end;
+  p.pre=pre;
+  p.post=post;
+  p.isDecoy=isDecoy;
+
+  //a common disallowed character in pepXML. if there are more of these characters,
+  //a more elegant elegant solution should be found.
+  if(p.pre=='*') p.pre='?';
+  if(p.post=='*') p.post='?';
 
   sPeptideEvidenceRef peRef = sequenceCollection.addPeptideEvidence(p);
   return peRef;
@@ -644,7 +732,7 @@ CProteinAmbiguityGroup* CMzIdentML::addProteinAmbiguityGroup(){
   CProteinAmbiguityGroup p;
   char str[32];
   
-  sprintf(str, "PAG_%d", dataCollection.analysisData.proteinDetectionList.proteinAmbiguityGroup->size());
+  sprintf(str, "PAG_%zu", dataCollection.analysisData.proteinDetectionList.proteinAmbiguityGroup->size());
   p.id=str;
 
   dataCollection.analysisData.proteinDetectionList.proteinAmbiguityGroup->push_back(p);
@@ -671,7 +759,7 @@ CSpectrumIdentification* CMzIdentML::addSpectrumIdentification(string& spectraDa
   }
 
   char cID[32];
-  sprintf(cID, "SI%d", analysisCollection.spectrumIdentification->size());
+  sprintf(cID, "SI%zu", analysisCollection.spectrumIdentification->size());
   si.id=cID;
   si.spectrumIdentificationListRef = dataCollection.analysisData.addSpectrumIdentificationList();
   si.spectrumIdentificationProtocolRef = analysisProtocolCollection.addSpectrumIdentificationProtocol(string("null"));
@@ -740,12 +828,20 @@ void CMzIdentML::consolidateSpectrumIdentificationProtocol(){
   }
 }
 
-CDBSequence CMzIdentML::getDBSequence(string acc){
-  return *sequenceCollection.getDBSequence(acc);
+CDBSequence CMzIdentML::getDBSequence(string& dBSequence_ref){
+  return sequenceCollection.getDBSequence(dBSequence_ref);
+}
+
+CDBSequence CMzIdentML::getDBSequenceByAcc(string acc){
+  return *sequenceCollection.getDBSequenceByAcc(acc);
 }
 
 CPeptide CMzIdentML::getPeptide(string peptide_ref){
   return *sequenceCollection.getPeptide(peptide_ref);
+}
+
+CPeptideEvidence CMzIdentML::getPeptideEvidence(string& peptideEvidence_ref){
+  return sequenceCollection.getPeptideEvidence(peptideEvidence_ref);
 }
 
 CPSM CMzIdentML::getPSM(int index, int rank){
@@ -871,6 +967,17 @@ int CMzIdentML::getPSMCount(){
   return (int)count;
 }
 
+CSpectraData CMzIdentML::getSpectraData(string& spectraData_ref){
+  size_t i;
+  for (i = 0; i < dataCollection.inputs.spectraData->size(); i++){
+    if (dataCollection.inputs.spectraData->at(i).id.compare(spectraData_ref) == 0){
+      return dataCollection.inputs.spectraData->at(i);
+    }
+  }
+  CSpectraData blank;
+  return blank;
+}
+
 //Gets the pointer to the requested list, or returns null if bad reference is requested.
 CSpectrumIdentificationList* CMzIdentML::getSpectrumIdentificationList(string& spectrumIdentificationList_ref){
   size_t i;
@@ -893,14 +1000,28 @@ CSpectrumIdentificationProtocol* CMzIdentML::getSpectrumIdentificationProtocol(s
   return NULL;
 }
 
+int CMzIdentML::getVersion(){
+  return version;
+}
+
 void CMzIdentML::processCvParam(sCvParam& cv){
   mzidElement e = AnalysisCollection;
   if(activeEl.size()>1) e=activeEl.at(activeEl.size()-2);
   switch (activeEl.back()){
   case AdditionalSearchParams:
+    if (analysisProtocolCollection.spectrumIdentificationProtocol->back().additionalSearchParams.cvParam->at(0).accession.compare("null")==0) {
+      analysisProtocolCollection.spectrumIdentificationProtocol->back().additionalSearchParams.cvParam->clear();
+    }
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().additionalSearchParams.cvParam->push_back(cv);
     break;
   case DBSequence:
     sequenceCollection.dbSequence->back().cvParam->push_back(cv);
+    break;
+  case EnzymeName:
+    if (analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->back().enzymeName.cvParam->at(0).accession.compare("null")==0){
+      analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->back().enzymeName.cvParam->clear();
+    }
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->back().enzymeName.cvParam->push_back(cv);
     break;
   case FileFormat:
     if (e == SpectraData){
@@ -908,6 +1029,9 @@ void CMzIdentML::processCvParam(sCvParam& cv){
     } else if (e == SearchDatabase){
       dataCollection.inputs.searchDatabase->back().fileFormat.cvParam=cv;
     }
+    break;
+  case MassTable:
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().massTable->back().cvParam->push_back(cv);
     break;
   case Modification:
     sequenceCollection.peptide->back().modification->back().cvParam->push_back(cv);
@@ -920,6 +1044,9 @@ void CMzIdentML::processCvParam(sCvParam& cv){
     break;
   case ProteinDetectionList:
     dataCollection.analysisData.proteinDetectionList.cvParam->push_back(cv);
+    break;
+  case SearchDatabase:
+    dataCollection.inputs.searchDatabase->back().cvParam->push_back(cv);
     break;
   case SearchModification:
     if (analysisProtocolCollection.spectrumIdentificationProtocol->back().modificationParams.searchModification->back().cvParam->at(0).accession.compare("null") == 0){
@@ -966,8 +1093,23 @@ void CMzIdentML::processCvParam(sCvParam& cv){
 
 void CMzIdentML::processUserParam(sUserParam& u){
   switch (activeEl.back()){
+  case AdditionalSearchParams:
+    if (analysisProtocolCollection.spectrumIdentificationProtocol->back().additionalSearchParams.userParam->at(0).name.compare("null") == 0) {
+      analysisProtocolCollection.spectrumIdentificationProtocol->back().additionalSearchParams.userParam->clear();
+    }
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().additionalSearchParams.userParam->push_back(u);
+    break;
   case DatabaseName:
     dataCollection.inputs.searchDatabase->back().databaseName.userParam=u;
+    break;
+  case EnzymeName:
+    if (analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->back().enzymeName.userParam->at(0).name.compare("null") == 0){
+      analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->back().enzymeName.userParam->clear();
+    }
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().enzymes.enzyme->back().enzymeName.userParam->push_back(u);
+    break;
+  case MassTable:
+    analysisProtocolCollection.spectrumIdentificationProtocol->back().massTable->back().userParam->push_back(u);
     break;
   case ProteinAmbiguityGroup:
     dataCollection.analysisData.proteinDetectionList.proteinAmbiguityGroup->back().userParam->push_back(u);
@@ -1046,7 +1188,27 @@ bool CMzIdentML::readFile(const char* fn) {
   }
 
   fclose(fptr);
+
+  fileFull=fn;
+  filePath=fileFull;
+  if(filePath.find_last_of("\\")!=string::npos) filePath=filePath.substr(0,filePath.find_last_of("\\"));
+  else if (filePath.find_last_of("/") != string::npos) filePath = filePath.substr(0, filePath.find_last_of("/"));
+  else filePath.clear();
+  fileBase=fileFull;
+  if (fileBase.find_last_of("\\") != string::npos) fileBase = fileBase.substr(fileBase.find_last_of("\\")+1,fileBase.size());
+  else if (fileBase.find_last_of("/") != string::npos) fileBase = fileBase.substr(fileBase.find_last_of("/")+1,fileBase.size());
+  if (fileBase.find_last_of(".")!=string::npos) fileBase = fileBase.substr(0,fileBase.find_last_of("."));
+
   return true;
+}
+
+void CMzIdentML::setVersion(int ver){
+  if(ver<1 || ver>2){
+    cerr << "CMzIdentML::setVersion(): invalid version number. Defaulting to 2 (1.2.0)" << endl;
+    version=2;
+  } else {
+    version=ver;
+  }
 }
 
 bool CMzIdentML::writeFile(const char* fn){
@@ -1059,8 +1221,10 @@ bool CMzIdentML::writeFile(const char* fn){
   strftime(timebuf, 80, "%Y-%m-%dT%H:%M:%S", localtime(&timeNow));
 
   fprintf(f, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-  fprintf(f, "<MzIdentML id=\"%s\" version=\"%s\"", &id[0], mziVersion);
-  fprintf(f, " xsi:schemaLocation=\"http://psidev.info/psi/pi/mzIdentML/1.2 mzIdentML1.2.0.xsd\" xmlns = \"http://psidev.info/psi/pi/mzIdentML/1.2\" xmlns:xsi = \"http://www.w3.org/2001/XMLSchema-instance\" creationDate = \"%s\">\n",timebuf);
+  fprintf(f, "<MzIdentML id=\"%s\"",id.c_str());
+  if (version == 1) fprintf(f, " version=\"%s\"  xsi:schemaLocation=\"%s\" xmlns = \"%s\"", mzIdentMLv1, mzIdentMLv1schema, mzIdentMLv1xmlns);
+  else fprintf(f, " version=\"%s\"  xsi:schemaLocation=\"%s\" xmlns = \"%s\"", mzIdentMLv2, mzIdentMLv2schema, mzIdentMLv2xmlns);
+  fprintf(f, " xmlns:xsi = \"http://www.w3.org/2001/XMLSchema-instance\" creationDate = \"%s\">\n",timebuf);
 
   cvList.writeOut(f,1);
   analysisSoftwareList.writeOut(f,1);

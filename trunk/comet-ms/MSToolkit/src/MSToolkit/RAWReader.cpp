@@ -404,8 +404,10 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   if(c==NULL){
 		//continue reading current file
     if(!rawFileOpen) return false;
-    if(scNum>0) rawCurSpec=scNum;
+    if(scNum<0) rawCurSpec--;
+    else if(scNum>0) rawCurSpec=scNum;
     else rawCurSpec++;
+    if(rawCurSpec<1) return false;
     if(rawCurSpec>rawTotSpec) return false;
     bNewFile=false;
   } else {
@@ -413,8 +415,10 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     //check if requested file is already open
     if(rawFileOpen) {
       if(strcmp(c,rawCurrentFile)==0){
-        if(scNum>0) rawCurSpec=scNum;
+        if (scNum<0) rawCurSpec--;
+        else if(scNum>0) rawCurSpec=scNum;
         else rawCurSpec++;
+        if (rawCurSpec<1) return false;
         if(rawCurSpec>rawTotSpec) return false;
         bNewFile=false;
       } else {
@@ -445,6 +449,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
       strcpy(rawCurrentFile,c);
 
 		  //if scan number is requested, grab it
+      if(scNum<0) return false;
       if(scNum>0) rawCurSpec=scNum;
       else rawCurSpec=1;
       if(rawCurSpec>rawTotSpec) return false;
@@ -476,8 +481,10 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
       //if string doesn't match, get next scan until it does match or EOF
       if(bCheckNext){
-        if(scNum>0) return false;
-        rawCurSpec++;
+        if(scNum<0) rawCurSpec--;
+        else if(scNum>0) return false;
+        else rawCurSpec++;
+        if(rawCurSpec<1) return false;
         if(rawCurSpec>rawTotSpec) return false;
         continue;
       }
@@ -485,8 +492,10 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
     //check for msLevel filter
     if(msLevelFilter->size()>0 && find(msLevelFilter->begin(), msLevelFilter->end(), MSn) == msLevelFilter->end()) {
-      if(scNum>0) return false;
-      rawCurSpec++;
+      if (scNum<0) rawCurSpec--;
+      else if(scNum>0) return false;
+      else rawCurSpec++;
+      if (rawCurSpec<1) return false;
       if(rawCurSpec>rawTotSpec) return false;
     } else {
       break;

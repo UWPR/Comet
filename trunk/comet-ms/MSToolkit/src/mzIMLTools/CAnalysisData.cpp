@@ -34,7 +34,7 @@ string CAnalysisData::addSpectrumIdentificationList(){
 
   CSpectrumIdentificationList sil;
   char cID[32];
-  sprintf(cID, "SIL%d", spectrumIdentificationList->size());
+  sprintf(cID, "SIL%zu", spectrumIdentificationList->size());
   sil.id = cID;
 
   //TODO: add optional information
@@ -49,7 +49,7 @@ string CAnalysisData::addSpectrumIdentificationList(CSpectrumIdentificationList&
 
   if (c.id.compare("null") == 0){
     char cID[32];
-    sprintf(cID, "SIL%d", spectrumIdentificationList->size());
+    sprintf(cID, "SIL%zu", spectrumIdentificationList->size());
     c.id = cID;
   }
 
