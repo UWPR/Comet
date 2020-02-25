@@ -125,6 +125,12 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       logerr(szErrorMsg);
       return false;
    }
+   // MH: Check if the extension is gz, and if so, extend it back to the full file type.
+   if( !strcmp(pStr,".gz"))
+   {
+      pStr--;
+      while(*pStr!='.') pStr--;
+   }
 
    fprintf(fpout, "raw_data_type=\"raw\" ");
    fprintf(fpout, "raw_data=\"%s\">\n", pStr);
