@@ -672,11 +672,11 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 float CometWriteOut::FindSpScore(Query *pQuery,
                                  int bin)
 {
-   int x = bin / 10;
+   int x = bin/SPARSE_MATRIX_SIZE;
 
    if (pQuery->ppfSparseSpScoreData[x] == NULL)
       return 0.0f;
 
-   int y = bin - (x*10);
+   int y = bin - (x*SPARSE_MATRIX_SIZE);
    return pQuery->ppfSparseSpScoreData[x][y];
 }
