@@ -1944,8 +1944,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             {
                for (int x = 0; x < VMODS; x++)  //reset variable mod counts
                   piVarModCounts[x] = 0;
-               if (g_staticParams.variableModParameters.bVarModSearch)
-                  CountVarMods(piVarModCounts, szProteinSeq[iEndPos], iEndPos);
+               CountVarMods(piVarModCounts, szProteinSeq[iEndPos], iEndPos);
             }
          }
       }
