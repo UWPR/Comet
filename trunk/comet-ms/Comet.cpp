@@ -696,6 +696,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("output_pepxmlfile", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "output_mzidentmlfile"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("output_mzidentmlfile", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "output_percolatorfile"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1491,11 +1498,11 @@ use_NL_ions = 0                        # 0=no, 1=yes to consider NH3/H2O neutral
 #\n\
 # output\n\
 #\n\
-output_sqtstream = 0                   # 0=no, 1=yes  write sqt to standard output\n\
 output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
 output_txtfile = 0                     # 0=no, 1=yes  write tab-delimited txt file\n\
-output_pepxmlfile = 1                  # 0=no, 1=yes  write pep.xml file\n\
-output_percolatorfile = 0              # 0=no, 1=yes  write Percolator tab-delimited input file\n\
+output_pepxmlfile = 1                  # 0=no, 1=yes  write pepXML file\n\
+output_mzidentml = 0                   # 0=no, 1=yes  write mzIdentML file\n\
+output_percolatorfile = 0              # 0=no, 1=yes  write Percolator pin file\n\
 print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
 num_output_lines = 5                   # num peptide results to show\n\
 \n\

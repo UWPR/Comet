@@ -23,6 +23,7 @@
 #include "CometWriteSqt.h"
 #include "CometWriteTxt.h"
 #include "CometWritePepXML.h"
+#include "CometWriteMzIdentML.h"
 #include "CometWritePercolator.h"
 #include "Threading.h"
 #include "ThreadPool.h"
@@ -437,6 +438,7 @@ static bool ValidateOutputFormat()
          && !g_staticParams.options.bOutputSqtFile
          && !g_staticParams.options.bOutputTxtFile
          && !g_staticParams.options.bOutputPepXMLFile
+         && !g_staticParams.options.bOutputMzIdentMLFile
          && !g_staticParams.options.bOutputPercolatorFile
          && !g_staticParams.options.bOutputOutFiles)
    {
@@ -707,6 +709,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("output_txtfile", g_staticParams.options.bOutputTxtFile);
 
    GetParamValue("output_pepxmlfile", g_staticParams.options.bOutputPepXMLFile);
+
+   GetParamValue("output_mzidentmlfile", g_staticParams.options.bOutputMzIdentMLFile);
 
    GetParamValue("output_percolatorfile", g_staticParams.options.bOutputPercolatorFile);
 
@@ -1634,6 +1638,8 @@ bool CometSearchManager::DoSearch()
       FILE *fpoutd_sqt=NULL;
       FILE *fpout_pepxml=NULL;
       FILE *fpoutd_pepxml=NULL;
+      FILE *fpout_mzidentml=NULL;
+      FILE *fpoutd_mzidentml=NULL;
       FILE *fpout_percolator=NULL;
       FILE *fpout_txt=NULL;
       FILE *fpoutd_txt=NULL;
@@ -1642,6 +1648,8 @@ bool CometSearchManager::DoSearch()
       char szOutputDecoySQT[1024];
       char szOutputPepXML[1024];
       char szOutputDecoyPepXML[1024];
+      char szOutputMzIdentML[1024];
+      char szOutputDecoyMzIdentML[1024];
       char szOutputPercolator[1024];
       char szOutputTxt[1024];
       char szOutputDecoyTxt[1024];
@@ -1832,6 +1840,60 @@ bool CometSearchManager::DoSearch()
 
             if (bSucceeded)
                bSucceeded = CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, *this);
+         }
+      }
+
+      if (bSucceeded && g_staticParams.options.bOutputMzIdentMLFile)
+      {
+         if (iAnalysisType == AnalysisType_EntireFile)
+         {
+            sprintf(szOutputMzIdentML, "%s%s.mzid",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+         }
+         else
+         {
+            sprintf(szOutputMzIdentML, "%s%s.%d-%d.mzid",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+         }
+
+         if ((fpout_mzidentml = fopen(szOutputMzIdentML, "w")) == NULL)
+         {
+            char szErrorMsg[SIZE_ERROR];
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputMzIdentML);
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            bSucceeded = false;
+         }
+
+         if (bSucceeded)
+            bSucceeded = CometWriteMzIdentML::WriteMzIdentMLHeader(fpout_mzidentml, *this);
+
+         if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
+         {
+            if (iAnalysisType == AnalysisType_EntireFile)
+            {
+               sprintf(szOutputDecoyMzIdentML, "%s%s.decoy.mzid",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            }
+            else
+            {
+               sprintf(szOutputDecoyMzIdentML, "%s%s.%d-%d.decoy.mzid",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            }
+
+            if ((fpoutd_mzidentml = fopen(szOutputDecoyMzIdentML, "w")) == NULL)
+            {
+               char szErrorMsg[SIZE_ERROR];
+               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyMzIdentML);
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(szErrorMsg);
+               bSucceeded = false;
+            }
+
+            if (bSucceeded)
+               bSucceeded = CometWriteMzIdentML::WriteMzIdentMLHeader(fpoutd_mzidentml, *this);
          }
       }
 
@@ -2132,6 +2194,9 @@ bool CometSearchManager::DoSearch()
             if (g_staticParams.options.bOutputPepXMLFile)
                CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb);
 
+            if (g_staticParams.options.bOutputMzIdentMLFile)
+               CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpoutd_mzidentml, fpdb);
+
             if (g_staticParams.options.bOutputPercolatorFile)
             {
                bSucceeded = CometWritePercolator::WritePercolator(fpout_percolator, fpdb);
@@ -2196,6 +2261,12 @@ bool CometSearchManager::DoSearch()
 
             if (NULL != fpoutd_pepxml)
                CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
+
+            if (NULL != fpout_mzidentml)
+               CometWriteMzIdentML::WriteMzIdentMLEndTags(fpout_mzidentml);
+
+            if (NULL != fpoutd_mzidentml)
+               CometWriteMzIdentML::WriteMzIdentMLEndTags(fpoutd_mzidentml);
          }
       }
 
@@ -2223,6 +2294,22 @@ bool CometSearchManager::DoSearch()
          fpoutd_pepxml = NULL;
          if (iTotalSpectraSearched == 0)
             unlink(szOutputDecoyPepXML);
+      }
+
+      if (NULL != fpout_mzidentml)
+      {
+         fclose(fpout_mzidentml);
+         fpout_mzidentml= NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputMzIdentML);
+      }
+
+      if (NULL != fpoutd_mzidentml)
+      {
+         fclose(fpoutd_mzidentml);
+         fpoutd_mzidentml = NULL;
+         if (iTotalSpectraSearched == 0)
+            unlink(szOutputDecoyMzIdentML);
       }
 
       if (NULL != fpout_percolator)
@@ -2801,6 +2888,12 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    vector<vector<comet_fileoffset_t>> g_pvProteinsList;
    vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to g_pvProteinsList
 
+   // Create g_pvProteinsList.  This is a vector of vectors.  Each element is vector list
+   // of duplicate proteins (generated as "temp") ... these are generated by looping
+   // through g_pvDBIndex and looking for consecutive, same peptides.  Once the "temp"
+   // vector is assigned the lIndexProteinFilePosition offset, the g_pvDBIndex entry is
+   // is assigned lProtCount to lIndexProteinFilePosition.  This is used later to look up
+   // the right vector element of duplicate proteins later.
    long lProtCount = 0;
    for (size_t i = 0; i < g_pvDBIndex.size(); i++)
    {

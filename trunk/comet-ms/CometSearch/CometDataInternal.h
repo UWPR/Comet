@@ -33,7 +33,7 @@ class CometSearchManager;
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
 #define SIZE_NATIVEID               256      // max length of nativeID string
-#define NUM_SP_IONS                 200      // num ions for preliminary scoring
+#define NUM_SP_IONS                 1000     // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
 #define BIN_MOD_COUNT               11       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9), precNL (10)
@@ -98,6 +98,7 @@ struct Options             // output parameters
    int bOutputSqtFile;
    int bOutputTxtFile;
    int bOutputPepXMLFile;
+   int bOutputMzIdentMLFile;
    int bOutputPercolatorFile;
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
@@ -143,6 +144,7 @@ struct Options             // output parameters
       bOutputSqtFile = a.bOutputSqtFile;
       bOutputTxtFile = a.bOutputTxtFile;
       bOutputPepXMLFile = a.bOutputPepXMLFile;
+      bOutputMzIdentMLFile = a.bOutputMzIdentMLFile;
       bOutputPercolatorFile = a.bOutputPercolatorFile;
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
@@ -736,6 +738,7 @@ struct StaticParams
       options.bOutputSqtFile = 0;
       options.bOutputTxtFile = 0;
       options.bOutputPepXMLFile = 1;
+      options.bOutputMzIdentMLFile = 0;
       options.bOutputPercolatorFile = 0;
       options.bOutputOutFiles = 0;
 
