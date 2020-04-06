@@ -704,6 +704,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
       bModified = 1;
 
+   if (pOutput[iWhichResult].dDeltaXcorrMass != 0.0)
+      bModified = 1;
+
    if (!bModified)
    {
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
@@ -779,16 +782,22 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
       // generate modified_peptide string
       if (bNtermVariable)
-         sprintf(szModPep+strlen(szModPep), "n[%0.0f]", dNterm);
+         sprintf(szModPep+strlen(szModPep), "n[%0.2f]", dNterm);
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
       {
          sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
 
          if (pOutput[iWhichResult].piVarModSites[i] != 0)
          {
-            sprintf(szModPep+strlen(szModPep), "[%0.0f]",
+            sprintf(szModPep+strlen(szModPep), "[%0.2f]",
                   pOutput[iWhichResult].pdVarModSites[i] + g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]);
          }
+         else if (pOutput[iWhichResult].dDeltaXcorrMass != 0.0)
+         {
+            sprintf(szModPep+strlen(szModPep), "[%0.2f]",
+                  pOutput[iWhichResult].dDeltaXcorrMass + g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[iWhichResult].szPeptide[i]]);
+         }
+
       }
       if (bCtermVariable)
          sprintf(szModPep+strlen(szModPep), "c[%0.0f]", dCterm);
