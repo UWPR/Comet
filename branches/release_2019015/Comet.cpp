@@ -120,7 +120,7 @@ void SetOptions(char *arg,
             pSearchMgr->SetParam("database_name", szTmp, szTmp);
          break;
       case 'P':   // Alternate parameters file.
-         strncpy(szTmp, arg+2, 512);
+         strncpy(szTmp, arg+2, 511);
          szTmp[511]='\0';
 
          if (strlen(szTmp) == 0 )
@@ -129,7 +129,7 @@ void SetOptions(char *arg,
             strcpy(szParamsFile, szTmp);
          break;
       case 'N':   // Set basename of output file (for .out, SQT, and pepXML)
-         strncpy(szTmp, arg+2, 512);
+         strncpy(szTmp, arg+2, 511);
          szTmp[511]='\0';
 
          if (strlen(szTmp) == 0 )
@@ -138,7 +138,7 @@ void SetOptions(char *arg,
             pSearchMgr->SetOutputFileBaseName(szTmp);
          break;
       case 'F':
-         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         if (sscanf(arg+2, "%511s", szTmp) == 0 )
             logerr("Missing text for parameter option -F<num>.  Ignored.\n");
          else
          {
@@ -152,7 +152,7 @@ void SetOptions(char *arg,
          }
          break;
       case 'L':
-         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         if (sscanf(arg+2, "%511s", szTmp) == 0 )
             logerr("Missing text for parameter option -L<num>.  Ignored.\n");
          else
          {
@@ -166,7 +166,7 @@ void SetOptions(char *arg,
          }
          break;
       case 'B':
-         if (sscanf(arg+2, "%512s", szTmp) == 0 )
+         if (sscanf(arg+2, "%511s", szTmp) == 0 )
             logerr("Missing text for parameter option -B<num>.  Ignored.\n");
          else
          {
@@ -239,13 +239,15 @@ void LoadParameters(char *pszParamsFile,
             char szRev1[12],
                  szRev2[12];
 
-            sscanf(szParamBuf, "%*s %*s %128s %12s %12s", szVersion, szRev1, szRev2);
+            sscanf(szParamBuf, "%*s %*s %127s %11s %11s", szVersion, szRev1, szRev2);
 
 
             if (pSearchMgr->IsValidCometVersion(string(szVersion)))
             {
                bValidParamsFile = true;
-               sprintf(szVersion, "%s %s %s", szVersion, szRev1, szRev2);
+               char szVersion2[128];
+               sprintf(szVersion2, "%.100s %.11s %.11s", szVersion, szRev1, szRev2);
+               strcpy(szVersion, szVersion2);
                pSearchMgr->SetParam("# comet_version ", szVersion, szVersion);
                break;
             }
@@ -281,7 +283,7 @@ void LoadParameters(char *pszParamsFile,
             strcpy(szParamVal, pStr + 1);  // Copy over value.
             *pStr = 0;                     // Null rest of szParamName at equal char.
 
-            sscanf(szParamBuf, "%128s", szParamName);
+            sscanf(szParamBuf, "%127s", szParamName);
 
             if (!strcmp(szParamName, "database_name"))
             {
@@ -353,7 +355,7 @@ void LoadParameters(char *pszParamsFile,
             {
                char szDecoyPrefix[256];
                szDecoyPrefix[0] = '\0';
-               sscanf(szParamVal, "%256s", szDecoyPrefix);
+               sscanf(szParamVal, "%255s", szDecoyPrefix);
                pSearchMgr->SetParam("decoy_prefix", szDecoyPrefix, szDecoyPrefix);
 
             }
@@ -361,7 +363,7 @@ void LoadParameters(char *pszParamsFile,
             {
                char szOutputSuffix[256];
                szOutputSuffix[0] = '\0';
-               sscanf(szParamVal, "%256s", szOutputSuffix);
+               sscanf(szParamVal, "%255s", szOutputSuffix);
                pSearchMgr->SetParam("output_suffix", szOutputSuffix, szOutputSuffix);
             }
             else if (!strcmp(szParamName, "mass_offsets"))
@@ -541,7 +543,7 @@ void LoadParameters(char *pszParamsFile,
             else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
             {
                varModsParam.szVarModChar[0] = '\0';
-               sscanf(szParamVal, "%lf %20s %d %d %d %d %d %lf",
+               sscanf(szParamVal, "%lf %19s %d %d %d %d %d %lf",
                      &varModsParam.dVarModMass,
                      varModsParam.szVarModChar,
                      &varModsParam.iBinaryMod,
@@ -1083,16 +1085,16 @@ void LoadParameters(char *pszParamsFile,
             {
                char szActivationMethod[24];
                szActivationMethod[0] = '\0';
-               sscanf(szParamVal, "%24s", szActivationMethod);
+               sscanf(szParamVal, "%23s", szActivationMethod);
                szActivationMethod[23] = '\0';
                pSearchMgr->SetParam("activation_method", szActivationMethod, szActivationMethod);
             }
             else if (!strcmp(szParamName, "minimum_intensity"))
             {
-               sscanf(szParamVal, "%d", &iIntParam);
+               sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%d", iIntParam);
-               pSearchMgr->SetParam("minimum_intensity", szParamStringVal, iIntParam);
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("minimum_intensity", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "decoy_search"))
             {
@@ -1163,7 +1165,7 @@ void LoadParameters(char *pszParamsFile,
 
       if (iCurrentEnzymeNumber == iSearchEnzymeNumber)
       {
-         sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
+         sscanf(szParamBuf, "%lf %47s %d %19s %19s\n",
                &dTempMass,
                enzymeInformation.szSearchEnzymeName,
                &enzymeInformation.iSearchEnzymeOffSet,
@@ -1173,7 +1175,7 @@ void LoadParameters(char *pszParamsFile,
 
       if (iCurrentEnzymeNumber == iSearchEnzyme2Number)
       {
-         sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
+         sscanf(szParamBuf, "%lf %47s %d %19s %19s\n",
                &dTempMass,
                enzymeInformation.szSearchEnzyme2Name,
                &enzymeInformation.iSearchEnzyme2OffSet,
@@ -1183,7 +1185,7 @@ void LoadParameters(char *pszParamsFile,
 
       if (iCurrentEnzymeNumber == iSampleEnzymeNumber)
       {
-         sscanf(szParamBuf, "%lf %48s %d %20s %20s\n",
+         sscanf(szParamBuf, "%lf %47s %d %19s %19s\n",
                &dTempMass,
                enzymeInformation.szSampleEnzymeName,
                &enzymeInformation.iSampleEnzymeOffSet,

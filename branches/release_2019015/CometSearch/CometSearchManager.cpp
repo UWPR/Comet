@@ -1307,7 +1307,7 @@ bool CometSearchManager::GetParamValue(const string &name, int& value)
    if (it == _mapStaticParams.end())
       return false;
 
-   TypedCometParam<int> *pParam = static_cast<TypedCometParam<int>*>(it->second);
+   TypedCometParam<int> *pParam = dynamic_cast<TypedCometParam<int>*>(it->second);
    value = pParam->GetValue();
    return true;
 }
@@ -1330,7 +1330,7 @@ bool CometSearchManager::GetParamValue(const string &name, long& value)
    if (it == _mapStaticParams.end())
       return false;
 
-   TypedCometParam<long> *pParam = static_cast<TypedCometParam<long>*>(it->second);
+   TypedCometParam<long> *pParam = dynamic_cast<TypedCometParam<long>*>(it->second);
    value = pParam->GetValue();
    return true;
 }
@@ -1353,7 +1353,7 @@ bool CometSearchManager::GetParamValue(const string &name, double& value)
    if (it == _mapStaticParams.end())
       return false;
 
-   TypedCometParam<double> *pParam = static_cast<TypedCometParam<double>*>(it->second);
+   TypedCometParam<double> *pParam = dynamic_cast<TypedCometParam<double>*>(it->second);
    value = pParam->GetValue();
    return true;
 }
@@ -1376,7 +1376,7 @@ bool CometSearchManager::GetParamValue(const string &name, VarMods & value)
    if (it == _mapStaticParams.end())
       return false;
 
-   TypedCometParam<VarMods> *pParam = static_cast<TypedCometParam<VarMods>*>(it->second);
+   TypedCometParam<VarMods> *pParam = dynamic_cast<TypedCometParam<VarMods>*>(it->second);
    value = pParam->GetValue();
    return true;
 }
@@ -1399,7 +1399,7 @@ bool CometSearchManager::GetParamValue(const string &name, DoubleRange &value)
    if (it == _mapStaticParams.end())
       return false;
 
-   TypedCometParam<DoubleRange> *pParam = static_cast<TypedCometParam<DoubleRange>*>(it->second);
+   TypedCometParam<DoubleRange> *pParam = dynamic_cast<TypedCometParam<DoubleRange>*>(it->second);
    value = pParam->GetValue();
    return true;
 }
@@ -1422,7 +1422,7 @@ bool CometSearchManager::GetParamValue(const string &name, IntRange &value)
    if (it == _mapStaticParams.end())
       return false;
 
-   TypedCometParam<IntRange> *pParam = static_cast<TypedCometParam<IntRange>*>(it->second);
+   TypedCometParam<IntRange> *pParam = dynamic_cast<TypedCometParam<IntRange>*>(it->second);
    value = pParam->GetValue();
    return true;
 }
@@ -1445,7 +1445,7 @@ bool CometSearchManager::GetParamValue(const string &name, EnzymeInfo &value)
    if (it == _mapStaticParams.end())
       return false;
 
-   TypedCometParam<EnzymeInfo> *pParam = static_cast<TypedCometParam<EnzymeInfo>*>(it->second);
+   TypedCometParam<EnzymeInfo> *pParam = dynamic_cast<TypedCometParam<EnzymeInfo>*>(it->second);
    value = pParam->GetValue();
    return true;
 }
@@ -1468,7 +1468,7 @@ bool CometSearchManager::GetParamValue(const string &name,  vector<double> &valu
    if (it == _mapStaticParams.end())
       return false;
 
-   TypedCometParam< vector<double> > *pParam = static_cast<TypedCometParam< vector<double> >*>(it->second);
+   TypedCometParam< vector<double> > *pParam = dynamic_cast<TypedCometParam< vector<double> >*>(it->second);
    value = pParam->GetValue();
 
    return true;

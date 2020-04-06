@@ -5422,7 +5422,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                                  double dCalcPepMass,
                                  int iLenPeptide,
                                  struct sDBEntry *dbe,
-                                 long *lNumIterations)
+                                 long * /*lNumIterations*/)
 {
    int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
    char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];  // allow for prev/next AA in string
