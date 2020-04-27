@@ -146,13 +146,13 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
          char szTmp[WIDTH_REFERENCE];
          comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
          fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
-         sscanf(szTmp, "%99s", szProteinName);
+         sscanf(szTmp, "%511s", szProteinName);  // WIDTH_REFERENCE-1
          break;  //break here to only get first protein reference (out of lSize)
       }
    }
    else  //regular fasta database
    {
-      fscanf(fpdb, "%99s", szProteinName);
+      fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
       szProteinName[99] = '\0';
    }
 }
