@@ -2974,6 +2974,8 @@ bool CometSearch::TranslateNA2AA(int *frame,
 
    _proteinInfo.cPeffOrigResidue = '\0';
    _proteinInfo.iPeffOrigResiduePosition = -9;
+   _proteinInfo.iTmpProteinSeqLength = _proteinInfo.iProteinSeqLength;
+
    return true;
 }
 
