@@ -1432,49 +1432,51 @@ bool CometSearch::IndexSearch(int *iPrecursorMatch)
       _proteinInfo.cNextAA = sDBI.szPrevNextAA[1];
    }
 
-   for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+   for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it) // g_pvQuery is always size 1 here; for loop is useless
    {
-      int iSize;
+      int iNumMatchedPeptides;
 
-      iSize  = (*it)->iMatchPeptideCount;
-      if (iSize > g_staticParams.options.iNumStored)
-         iSize = g_staticParams.options.iNumStored;
+      iNumMatchedPeptides = (*it)->iMatchPeptideCount;
+      if (iNumMatchedPeptides > g_staticParams.options.iNumStored)
+         iNumMatchedPeptides = g_staticParams.options.iNumStored;
 
-      if ((*it)->iMatchPeptideCount > 0)
+      if (iNumMatchedPeptides > 0)  // will retrieve protein names here if there is one or more matched peptides
       {
          // simply take top xcorr peptide as E-value calculation too expensive
-         std::sort((*it)->_pResults, (*it)->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
+         std::sort((*it)->_pResults, (*it)->_pResults + iNumMatchedPeptides, CometPostAnalysis::SortFnXcorr);
 
-         // Retrieve protein name
-         if ((*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein > -1)
+         for (int ii = 0; ii < iNumMatchedPeptides; ii++)  // loop through all hits to this one spectrum query
          {
-            comet_fseek(fp, (*it)->_pResults[0].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
-            fread(&lSize, sizeof(long), 1, fp);
-            vector<comet_fileoffset_t> vOffsets;
-            for (long x = 0; x < lSize; x++)
+            if ((*it)->_pResults[ii].pWhichProtein.at(0).lWhichProtein > -1)
             {
-               comet_fileoffset_t tmpoffset;
-               fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fp);
-               vOffsets.push_back(tmpoffset);
+               comet_fseek(fp, (*it)->_pResults[ii].pWhichProtein.at(0).lWhichProtein, SEEK_SET);
+               fread(&lSize, sizeof(long), 1, fp);  // read count of protein offsets that this peptide matches to
+               vector<comet_fileoffset_t> vOffsets;
+               for (long x = 0; x < lSize; x++)  // loop through this count and read each file offset for each protein name
+               {
+                  comet_fileoffset_t tmpoffset;
+                  fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fp);
+                  vOffsets.push_back(tmpoffset);
+               }
+               for (long x = 0; x < lSize; x++)  // now given each protein name offset, seek to that position and read protein name
+               {
+                  char szTmp[WIDTH_REFERENCE];
+                  comet_fseek(fp, vOffsets.at(x), SEEK_SET);
+                  fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+                  (*it)->_pResults[ii].strSingleSearchProtein += szTmp;
+                  if (x < lSize - 1)
+                     (*it)->_pResults[ii].strSingleSearchProtein += " : ";
+               }
             }
-            for (long x = 0; x < lSize; x++)
-            {
-               char szTmp[WIDTH_REFERENCE];
-               comet_fseek(fp, vOffsets.at(x), SEEK_SET);
-               fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fp);
-               (*it)->_pResults[0].strSingleSearchProtein += szTmp;
-               if (x < lSize - 1)
-                  (*it)->_pResults[0].strSingleSearchProtein += " : ";
-            }
-         }
 /*
-         printf("OK  scan %d, pep %s, prot %s, xcorr %f, matchcount %d\n",
-            (*it)->_spectrumInfoInternal.iScanNumber,
-            (*it)->_pResults[0].szPeptide,
-            (*it)->_pResults[0].strSingleSearchProtein.c_str(),
-            (*it)->_pResults[0].fXcorr,
-            (*it)->iMatchPeptideCount); fflush(stdout);
+                     printf("OK  scan %d, pep %s, xcorr %f, matchcount %d, prot %s\n",
+                        (*it)->_spectrumInfoInternal.iScanNumber,
+                        (*it)->_pResults[ii].szPeptide,
+                        (*it)->_pResults[ii].fXcorr,
+                        (*it)->iMatchPeptideCount,
+                        (*it)->_pResults[ii].strSingleSearchProtein.c_str()); fflush(stdout);
 */
+         }
       }
    }
 
