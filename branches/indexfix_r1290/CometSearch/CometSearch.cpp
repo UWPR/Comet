@@ -112,7 +112,6 @@ void CometSearch::CheckIdxPrecursorMatch(int iPrecursorCharge,
    pScoring->iSpScoreData = 0;
    pScoring->iFastXcorrData = 0;
    pScoring->iFastXcorrDataNL = 0;
-   g_staticParams.options.iDecoySearch = 0;
 
    if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
    {

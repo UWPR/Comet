@@ -178,7 +178,7 @@
                            // do not decode peptide/proteins strings unless xcorr>0
                            if (xcorr >= 0)
                            {
-                              if ((iScanNumber % 10000) == 0)
+                              if ((iScanNumber % 1) == 0)
                               {
                                  if (protein.Length > 10)
                                     protein = protein.Substring(0, 10);  // trim to avoid printing long protein description string
@@ -263,6 +263,13 @@
             double dTmp;
 
             SearchMgr.SetParam("database_name", sDB, sDB);
+
+            sTmp = "DECOY_";
+            SearchMgr.SetParam("decoy_prefix", sTmp, sTmp);
+
+            iTmp = 1; // 0=no internal decoys, 1=concatenated target/decoy
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("decoy_search", sTmp, iTmp);
 
             dTmp = 2.0; //ppm window
             sTmp = dTmp.ToString();

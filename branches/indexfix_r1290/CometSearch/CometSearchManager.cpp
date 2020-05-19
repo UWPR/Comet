@@ -680,6 +680,7 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("num_output_lines", g_staticParams.options.iNumPeptideOutputLines);
 
    GetParamValue("num_results", g_staticParams.options.iNumStored);
+
    GetParamValue("max_duplicate_proteins", g_staticParams.options.iMaxDuplicateProteins);
 
    GetParamValue("remove_precursor_peak", g_staticParams.options.iRemovePrecursor);
@@ -694,7 +695,6 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.clearMzRange.dEnd = doubleRangeData.dEnd;
       }
    }
-
 
    GetParamValue("print_expect_score", g_staticParams.options.bPrintExpectScore);
 
