@@ -241,6 +241,13 @@
 
             SearchMgr.SetParam("database_name", sDB, sDB);
 
+            sTmp = "DECOY_";
+            SearchMgr.SetParam("decoy_prefix", sTmp, sTmp);
+
+            iTmp = 1; // 0=no internal decoys, 1=concatenated target/decoy
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("decoy_search", sTmp, iTmp);
+
             dTmp = 20.0; //ppm window
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("peptide_mass_tolerance", sTmp, dTmp);
