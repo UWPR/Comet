@@ -26,6 +26,10 @@
             and separate target and decoy search results will be reported.
             </ul>
          <li>The default value is "0" if this parameter is missing.
+         <li>This parameter is currently not supported by the index database generation and
+             searches against an indexed database. For a target-decoy search against an indexed
+             database, please include decoy sequences in the input FASTA database prior to
+             the index generation.
          </ul>
 
          <p>Example:

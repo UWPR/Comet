@@ -8,7 +8,10 @@
          <br>&#187;&nbsp; an open source tandem mass spectrometry (MS/MS) sequence database search tool</p>
       </div>
       <div class="post hr">
+         <img src="/images/cometlogo.png" alt="cometlogo" style="width: 120px; height: auto; margin: 15px; float: right" />
          <h2>Comet MS/MS</h2>
+
+
          <p>Searching uninterpreted tandem mass spectra of peptides against sequence databases
          is the most common method used to identify peptides and proteins.  Since this method
          was first developed in 1993, many commercial, free, and open source tools have been

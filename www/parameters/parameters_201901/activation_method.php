@@ -17,7 +17,7 @@
          <li>If any other allowed entry is chosen, only spectra with activation
          method matching the specified entry are searched.
          <li>This parameter is valid only for mzXML, mzML and mz5 input.
-         <li>Allowed values are: ALL, CID, ECD, ETD, PQD, HCD, IRMPD
+         <li>Allowed values are: ALL, CID, ECD, ETD, ETD+SA, PQD, HCD, IRMPD
          <li>The default value is "ALL" if this parameter is missing.
          </ul>
 
