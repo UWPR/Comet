@@ -635,7 +635,7 @@ bool mzpSAXMzxmlHandler::generateIndexOffset() {
   long lOffset = 0;
 
   if(!m_bGZCompression){
-    FILE* f=fopen(&m_strFileName[0],"r");
+    FILE* f=fopen(&m_strFileName[0],"rb");
     char *pStr;
 
     if (f==NULL){
