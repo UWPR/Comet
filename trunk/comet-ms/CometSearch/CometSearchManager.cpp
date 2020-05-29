@@ -377,13 +377,14 @@ static void PrintOutfileHeader()
    char szIsotope[16];
    char szPeak[16];
 
-   sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d %d",
+   sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d%d %d",
          g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
          g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
          g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
          g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
          g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
          g_staticParams.ionInformation.iIonVal[ION_SERIES_Z],
+         g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1],
          g_staticParams.ionInformation.bUseWaterAmmoniaLoss);
 
    char szUnits[8];
@@ -623,6 +624,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("use_Y_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]);
 
    GetParamValue("use_Z_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]);
+
+   GetParamValue("use_Z1_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1]);
 
    GetParamValue("use_NL_ions", g_staticParams.ionInformation.bUseWaterAmmoniaLoss);
 
@@ -1077,7 +1080,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    // Load ion series to consider, useA, useB, useY are for neutral losses.
    g_staticParams.ionInformation.iNumIonSeriesUsed = 0;
-   for (int i=0; i<6; i++)
+   for (int i=0; i<NUM_ION_SERIES; i++)
    {
       if (g_staticParams.ionInformation.iIonVal[i] > 0)
          g_staticParams.ionInformation.piSelectedIonSeries[g_staticParams.ionInformation.iNumIonSeriesUsed++] = i;
@@ -2604,19 +2607,15 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       const double ionMassesRelative[NUM_ION_SERIES] =
       {
          // N term relative
-         -(Carbon_Mono + Oxygen_Mono), // a (CO difference from b)
-         0, // b
-         (Nitrogen_Mono + (3 * Hydrogen_Mono)), // c (NH3 difference from b)
+         -(Carbon_Mono + Oxygen_Mono),                       // a (CO difference from b)
+         0,                                                  // b
+         (Nitrogen_Mono + (3 * Hydrogen_Mono)),              // c (NH3 difference from b)
 
          // C Term relative
-         (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)), // x (CO-2H difference from y)
-         0, // y
-         -(Nitrogen_Mono + (2 * Hydrogen_Mono)), // z (NH2 difference from y)
-
-         // Not Used
-         0, // not used
-         0, // not used
-         0  // not used
+         (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)),  // x (CO-2H difference from y)
+         0,                                                  // y
+         -(Nitrogen_Mono + (2 * Hydrogen_Mono)),             // z (NH2 difference from y)
+         -(Nitrogen_Mono + (3 * Hydrogen_Mono))              // z+1
       };
 
       // now deal with calculating b- and y-ions and returning most intense matches
@@ -2671,7 +2670,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
          {
             // calculate every ion series the user specified
-            for (int ionSeries = 0; ionSeries <= ION_SERIES_Z; ionSeries++)
+            for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ionSeries++)
             {
                // skip ion series that are not enabled.
                if (!g_staticParams.ionInformation.iIonVal[ionSeries])

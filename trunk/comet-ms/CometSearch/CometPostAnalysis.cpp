@@ -682,7 +682,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
             // skip any padded 0.0 masses in decoy ions
             if (dBion == 0.0 && (iWhichIonSeries == ION_SERIES_A || iWhichIonSeries == ION_SERIES_B || iWhichIonSeries == ION_SERIES_C))
                continue;
-            else if (dYion == 0.0 && (iWhichIonSeries == ION_SERIES_X || iWhichIonSeries == ION_SERIES_Y || iWhichIonSeries == ION_SERIES_Z))
+            else if (dYion == 0.0 && (iWhichIonSeries == ION_SERIES_X || iWhichIonSeries == ION_SERIES_Y || iWhichIonSeries == ION_SERIES_Z || iWhichIonSeries == ION_SERIES_Z1))
                continue;
 
             dFragmentIonMass =  0.0;
@@ -706,6 +706,9 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   break;
                case ION_SERIES_Z:
                   dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2;
+                  break;
+               case ION_SERIES_Z1:
+                  dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2 + Hydrogen_Mono;
                   break;
             }
 

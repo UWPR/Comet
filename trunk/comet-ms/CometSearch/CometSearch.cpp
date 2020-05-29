@@ -3458,6 +3458,9 @@ double CometSearch::GetFragmentIonMass(int iWhichIonSeries,
       case ION_SERIES_Z:
          dFragmentIonMass = _pdAAreverse[i] - g_staticParams.massUtility.dNH2;
          break;
+      case ION_SERIES_Z1:
+         dFragmentIonMass = _pdAAreverse[i] - g_staticParams.massUtility.dNH2 + Hydrogen_Mono;
+         break;
       case ION_SERIES_X:
          dFragmentIonMass = _pdAAreverse[i] + g_staticParams.massUtility.dCOminusH2;
          break;

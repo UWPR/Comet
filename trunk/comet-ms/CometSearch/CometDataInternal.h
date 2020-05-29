@@ -34,7 +34,7 @@ class CometSearchManager;
 #define SIZE_MASS                   128      // ascii value size
 #define SIZE_NATIVEID               256      // max length of nativeID string
 #define NUM_SP_IONS                 1000     // num ions for preliminary scoring
-#define NUM_ION_SERIES              9
+#define NUM_ION_SERIES              7        // a,b,c,x,y,z,z1
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
 #define BIN_MOD_COUNT               11       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9), precNL (10)
 
@@ -64,6 +64,7 @@ class CometSearchManager;
 #define ION_SERIES_X                3
 #define ION_SERIES_Y                4
 #define ION_SERIES_Z                5
+#define ION_SERIES_Z1               6  //z+1
 
 #ifdef CRUX
 #define XCORR_CUTOFF                -999.0
@@ -718,6 +719,7 @@ struct StaticParams
       ionInformation.iIonVal[ION_SERIES_X] = 0;
       ionInformation.iIonVal[ION_SERIES_Y] = 1;
       ionInformation.iIonVal[ION_SERIES_Z] = 0;
+      ionInformation.iIonVal[ION_SERIES_Z1] = 0;
 
       options.iNumPeptideOutputLines = 5;
       options.iWhichReadingFrame = 0;

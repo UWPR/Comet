@@ -612,17 +612,15 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       {
          int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[i];
 
-         char cAA=(iWhichIonSeries==0?'a':
-                     (iWhichIonSeries==1?'b':
-                        (iWhichIonSeries==2?'c':
-                           (iWhichIonSeries==3?'d':
-                              (iWhichIonSeries==4?'v':
-                                 (iWhichIonSeries==5?'w':
-                                    (iWhichIonSeries==6?'x':
-                                       (iWhichIonSeries==7?'y':'z'))))))));
-         sprintf(szBuf+strlen(szBuf), "    %c      ", cAA);
+              if (iWhichIonSeries == 0) sprintf(szBuf+strlen(szBuf), "    a      ");
+         else if (iWhichIonSeries == 1) sprintf(szBuf+strlen(szBuf), "    b      ");
+         else if (iWhichIonSeries == 2) sprintf(szBuf+strlen(szBuf), "    c      ");
+         else if (iWhichIonSeries == 3) sprintf(szBuf+strlen(szBuf), "    x      ");
+         else if (iWhichIonSeries == 4) sprintf(szBuf+strlen(szBuf), "    y      ");
+         else if (iWhichIonSeries == 5) sprintf(szBuf+strlen(szBuf), "    z      ");
+         else                           sprintf(szBuf+strlen(szBuf), "    z1     ");  /* iWhichIonSeries == 6 */
       }
-      sprintf(szBuf+strlen(szBuf), "(+%d)\n --- --  ", ctCharge-1);
+      sprintf(szBuf+strlen(szBuf), "(%d+)\n --- --  ", ctCharge);
 
       for (i=0; i<g_staticParams.ionInformation.iNumIonSeriesUsed; i++)
       {
