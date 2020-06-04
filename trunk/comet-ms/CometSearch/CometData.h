@@ -272,7 +272,7 @@ struct EnzymeInfo
       bNoEnzymeSelected = 1;
       bNoEnzyme2Selected = 1;
       iAllowedMissedCleavage = 0;
-      iSearchEnzymeOffSet = 0;
+      iSearchEnzymeOffSet = 1;
       iSearchEnzyme2OffSet = 0;
       iSampleEnzymeOffSet = 0;
       iOneMinusOffset = 0;
