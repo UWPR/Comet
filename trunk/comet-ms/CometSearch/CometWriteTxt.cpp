@@ -487,7 +487,7 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
 
             if (bPrintDecoyPrefix)
                fprintf(fpout, "%s", g_staticParams.szDecoyPrefix);
-           fprintf(fpout, "%s", szProteinName);
+            fprintf(fpout, "%s", szProteinName);
             if (x < lSize - 1)
                fprintf(fpout, ",");
          }

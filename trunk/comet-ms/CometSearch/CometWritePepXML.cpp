@@ -675,33 +675,84 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    int iPrintDuplicateProteinCt = 0;
 
-   // Print protein reference/accession.
-   for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
+   
+   if (g_staticParams.bIndexDb)
    {
-      szProteinName[0]='\0';
-      CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-      if (bPrintDecoyPrefix)
-         fprintf(fpout, "    <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
+      std::vector<ProteinEntryStruct>::iterator itProt;
+      bool bPrintDecoyPrefix = false;
+
+      // Note peptides can be from target or internal decoy. If peptide is from a target protein,
+      // Comet will only report target protein matches and not internal decoy protein matches.
+      // Decoy proteins only reported for peptides that are exclusively decoy matches.
+      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+         itProt = pOutput[iWhichResult].pWhichProtein.begin();   // list of target proteins
       else
-         fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", szProteinName);
-
-      iPrintDuplicateProteinCt++;
-      if (iPrintDuplicateProteinCt == g_staticParams.options.iMaxDuplicateProteins)
-         break;
-   }
-
-   // If combined search printed out target proteins above, now print out decoy proteins if necessary
-   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
-         && iPrintDuplicateProteinCt < g_staticParams.options.iMaxDuplicateProteins)
-   {
-      for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
       {
+         itProt = pOutput[iWhichResult].pWhichDecoyProtein.begin();  // list of decoy proteins
+         bPrintDecoyPrefix = true;
+      }
+
+      if (itProt->lWhichProtein > -1)
+      {
+         long lSize;
+         comet_fseek(fpdb, itProt->lWhichProtein, SEEK_SET);
+         fread(&lSize, sizeof(long), 1, fpdb);  // read count of protein offsets that this peptide matches to
+         if (lSize > 1)
+         {
+            vector<comet_fileoffset_t> vOffsets;
+            for (long x = 0; x < lSize; x++)  // loop through this count and read each file offset for each protein name
+            {
+               comet_fileoffset_t tmpoffset;
+               fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
+               vOffsets.push_back(tmpoffset);
+            }
+            for (long x = 1; x < lSize; x++)  // now given each protein name offset, seek to that position and read protein name
+            {
+               char szTmp[WIDTH_REFERENCE];
+               char szProteinName[100];
+   
+               comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
+               fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
+               sscanf(szTmp, "%99s", szProteinName);
+   
+               fprintf(fpout, "    <alternative_protein protein=\"");
+               if (bPrintDecoyPrefix)
+                  fprintf(fpout, "%s", g_staticParams.szDecoyPrefix);
+               fprintf(fpout, "%s\"/>\n", szProteinName);
+            }
+         }
+      }
+   }
+   else
+   {
+      // Print protein reference/accession.
+      for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
+      {
+         szProteinName[0]='\0';
          CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-         fprintf(fpout, "    <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
+         if (bPrintDecoyPrefix)
+            fprintf(fpout, "    <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
+         else
+            fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", szProteinName);
 
          iPrintDuplicateProteinCt++;
          if (iPrintDuplicateProteinCt == g_staticParams.options.iMaxDuplicateProteins)
             break;
+      }
+
+      // If combined search printed out target proteins above, now print out decoy proteins if necessary
+      if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
+            && iPrintDuplicateProteinCt < g_staticParams.options.iMaxDuplicateProteins)
+      {
+         for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+         {
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            fprintf(fpout, "    <alternative_protein protein=\"%s%s\"/>\n", g_staticParams.szDecoyPrefix, szProteinName);
+
+            iPrintDuplicateProteinCt++;
+            if (iPrintDuplicateProteinCt == g_staticParams.options.iMaxDuplicateProteins)
+               break;
+         }
       }
    }
 

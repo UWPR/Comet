@@ -334,49 +334,107 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
    if (g_staticParams.options.bOutputSqtFile)
       fprintf(fpout,  "%s\tU\n", szBuf);
 
-   // Print protein reference/accession.
-   char szProteinName[100];
-   int iPrintDuplicateProteinCt = 0;
-
-   for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
+   if (g_staticParams.bIndexDb)
    {
-      CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-      if (bPrintDecoyPrefix)
-      {
-         if (g_staticParams.options.bOutputSqtStream)
-            fprintf(stdout, "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
-         if (g_staticParams.options.bOutputSqtFile)
-            fprintf(fpout,  "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
-      }
+      std::vector<ProteinEntryStruct>::iterator itProt;
+      bool bPrintDecoyPrefix = false;
+
+      // Note peptides can be from target or internal decoy. If peptide is from a target protein,
+      // Comet will only report target protein matches and not internal decoy protein matches.
+      // Decoy proteins only reported for peptides that are exclusively decoy matches.
+      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+         itProt = pOutput[iWhichResult].pWhichProtein.begin();   // list of target proteins
       else
       {
-         if (g_staticParams.options.bOutputSqtStream)
-            fprintf(stdout, "L\t%s\t%d\n", szProteinName, (*it).iStartResidue);
-         if (g_staticParams.options.bOutputSqtFile)
-            fprintf(fpout,  "L\t%s\t%d\n", szProteinName, (*it).iStartResidue);
+         itProt = pOutput[iWhichResult].pWhichDecoyProtein.begin();  // list of decoy proteins
+         bPrintDecoyPrefix = true;
       }
 
-      iPrintDuplicateProteinCt++;
-      if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
-         break;
-   }
+      if (itProt->lWhichProtein > -1)
+      {
+         long lSize;
+         comet_fseek(fpdb, itProt->lWhichProtein, SEEK_SET);
+         fread(&lSize, sizeof(long), 1, fpdb);  // read count of protein offsets that this peptide matches to
+         vector<comet_fileoffset_t> vOffsets;
+         for (long x = 0; x < lSize; x++)  // loop through this count and read each file offset for each protein name
+         {
+            comet_fileoffset_t tmpoffset;
+            fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
+            vOffsets.push_back(tmpoffset);
+         }
+         for (long x = 0; x < lSize; x++)  // now given each protein name offset, seek to that position and read protein name
+         {
+            char szTmp[WIDTH_REFERENCE];
+            char szProteinName[100];
 
-   // If combined search printed out target proteins above, now print out decoy proteins if necessary
-   if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
-         && iPrintDuplicateProteinCt <= g_staticParams.options.iMaxDuplicateProteins)
+            comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
+            fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
+            sscanf(szTmp, "%99s", szProteinName);
+
+            if (g_staticParams.options.bOutputSqtStream)
+            {
+               fprintf(stdout, "L\t");
+               if (bPrintDecoyPrefix)
+                  fprintf(stdout, "%s", g_staticParams.szDecoyPrefix);
+               fprintf(stdout, "%s\n", szProteinName);  // I'm not sure what the 2 or iStar
+            }
+
+            if (g_staticParams.options.bOutputSqtFile)
+            {
+               fprintf(fpout, "L\t");
+               if (bPrintDecoyPrefix)
+                  fprintf(fpout, "%s", g_staticParams.szDecoyPrefix);
+               fprintf(fpout, "%s\n", szProteinName);  // I'm not sure what the 2 or iStar
+            }
+         }
+      }
+   }
+   else
    {
-      for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+      // Print protein reference/accession.
+      char szProteinName[100];
+      int iPrintDuplicateProteinCt = 0;
+
+      for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
       {
          CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-
-         if (g_staticParams.options.bOutputSqtStream)
-            fprintf(stdout, "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
-         if (g_staticParams.options.bOutputSqtFile)
-            fprintf(fpout,  "L\t%s%s\t%d\n", g_staticParams.szDecoyPrefix, szProteinName, (*it).iStartResidue);
+         if (bPrintDecoyPrefix)
+         {
+            if (g_staticParams.options.bOutputSqtStream)
+               fprintf(stdout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, szProteinName);
+            if (g_staticParams.options.bOutputSqtFile)
+               fprintf(fpout,  "L\t%s%s\n", g_staticParams.szDecoyPrefix, szProteinName);
+         }
+         else
+         {
+            if (g_staticParams.options.bOutputSqtStream)
+               fprintf(stdout, "L\t%s\n", szProteinName);
+            if (g_staticParams.options.bOutputSqtFile)
+               fprintf(fpout,  "L\t%s\n", szProteinName);
+         }
 
          iPrintDuplicateProteinCt++;
          if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
             break;
+      }
+
+      // If combined search printed out target proteins above, now print out decoy proteins if necessary
+      if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
+            && iPrintDuplicateProteinCt <= g_staticParams.options.iMaxDuplicateProteins)
+      {
+         for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+         {
+            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+
+            if (g_staticParams.options.bOutputSqtStream)
+               fprintf(stdout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, szProteinName);
+            if (g_staticParams.options.bOutputSqtFile)
+               fprintf(fpout,  "L\t%s%s\n", g_staticParams.szDecoyPrefix, szProteinName);
+
+            iPrintDuplicateProteinCt++;
+            if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
+               break;
+         }
       }
    }
 }
