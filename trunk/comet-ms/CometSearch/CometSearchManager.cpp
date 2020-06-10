@@ -2750,7 +2750,8 @@ bool CometSearchManager::CompareByPeptide(const DBIndex &lhs,
       }
 
       // same sequences and masses here so next look at mod state
-      for (unsigned int i=0; i<strlen(lhs.szPeptide)+2; i++)
+      int iLen = strlen(lhs.szPeptide)+2;
+      for (int i=0; i<iLen; i++)
       {
          if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
          {
@@ -3015,7 +3016,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    for (int x = 0; x <= iMaxPeptideMass10; x++)
       lIndex[x] = -1;
 
-   // write out struct data
+   // write out peptide entry here
    int iPrevMass10 = 0;
    int iWhichProtein = 0;
    long lNumMatchedProteins = 0;
@@ -3028,7 +3029,39 @@ bool CometSearchManager::WriteIndexedDatabase(void)
             lIndex[iPrevMass10] = comet_ftell(fptr);
       }
 
-      fwrite(&(*it), sizeof(struct DBIndex), 1, fptr);
+      int iLen = strlen((*it).szPeptide);
+      fwrite(&iLen, sizeof(int), 1, fptr);
+      fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
+//    fwrite((*it).szPrevNextAA, sizeof(char), 2, fptr);
+
+      // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod)
+      int iLen2 = iLen + 2;
+      unsigned char cNumMods = 0; 
+      for (unsigned char x=0; x<iLen2; x++)
+      {
+         if ((*it).pcVarModSites[x] != 0)
+            cNumMods++;
+      }
+      fwrite(&cNumMods, sizeof(unsigned char), 1, fptr);
+
+      if (cNumMods > 0)
+      {
+         for (unsigned char x=0; x<iLen2; x++)
+         {
+            if ((*it).pcVarModSites[x] != 0)
+            {
+               char cWhichMod = (*it).pcVarModSites[x];
+               fwrite(&x, sizeof(unsigned char), 1, fptr);
+               fwrite(&cWhichMod , sizeof(char), 1, fptr);
+            }
+         }
+      }
+
+      // done writing out mod sites
+
+      fwrite(&((*it).dPepMass), sizeof(double), 1, fptr);
+      fwrite(&((*it).lIndexProteinFilePosition), sizeof(comet_fileoffset_t), 1, fptr);
+
 
       // now write out all duplicate proteins file positions
       lNumMatchedProteins = (long)g_pvProteinsList.at((*it).lIndexProteinFilePosition).size();

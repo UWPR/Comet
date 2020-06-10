@@ -31,6 +31,11 @@ public:
    static void PrintModifications(FILE *fpout,
                                   Results *pOutput,
                                   int iWhichResult);
+   static void PrintProteins(FILE *fpout,
+                             FILE *fpdb,
+                             Results *pOutput,
+                             int iWhichResult,
+                             bool bDecoy);
 
 private:
    static void PrintResults(int iWhichQuery,
