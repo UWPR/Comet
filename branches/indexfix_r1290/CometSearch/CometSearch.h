@@ -191,6 +191,7 @@ private:
                        struct sDBEntry *dbe,
                        long *lNumIterations);
    bool IndexSearch(int *iPrecursorMatch);
+   void ReadDBIndexEntry(struct DBIndex *sDBI, FILE *fp);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           bool bNtermPeptideOnly,

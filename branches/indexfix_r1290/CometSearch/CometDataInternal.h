@@ -354,7 +354,8 @@ struct DBIndex
 
          // masses are the same at this point
          // next compare modification states
-         for (unsigned int i=0; i<strlen(szPeptide)+2; i++)
+         int iLen = (int)strlen(szPeptide)+2;
+         for (int i=0; i<iLen; i++)
          {
             if (pcVarModSites[i] != rhs.pcVarModSites[i])
             {

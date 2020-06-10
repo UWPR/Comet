@@ -253,7 +253,7 @@ struct EnzymeInfo
    EnzymeInfo()
    {
       iAllowedMissedCleavage = 0;
-      iSearchEnzymeOffSet = 0;
+      iSearchEnzymeOffSet = 1;
       iSampleEnzymeOffSet = 0;
       iOneMinusOffset = 0;
       iTwoMinusOffset = 0;
