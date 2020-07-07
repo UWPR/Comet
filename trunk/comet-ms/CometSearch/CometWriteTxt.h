@@ -33,13 +33,13 @@ public:
                                   int iWhichResult);
    static void PrintProteins(FILE *fpout,
                              FILE *fpdb,
-                             Results *pOutput,
+                             int iWhichQuery,
                              int iWhichResult,
-                             bool bDecoy);
+                             int iPrintTargetDecoy);
 
 private:
    static void PrintResults(int iWhichQuery,
-                            bool bDecoy,
+                            int iPrintTargetDecoy,
                             FILE *fpOut,
                             FILE *fpdb);
 };

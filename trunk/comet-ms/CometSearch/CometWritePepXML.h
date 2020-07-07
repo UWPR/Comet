@@ -36,14 +36,14 @@ public:
 
 private:
    static void PrintResults(int iWhichQuery,
-                            bool bDecoy,
+                            int iPrintTargetDecoy,
                             FILE *fpOut,
                             FILE *fpdb);
 
    static void PrintPepXMLSearchHit(int iWhichQuery,
                                     int iWhichResult,
                                     int iRankXcorr,
-                                    bool bDecoy,
+                                    int iPrintTargetDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
                                     FILE *fpdb,

@@ -71,6 +71,10 @@ private:
                               CometSearchManager &searchMgr,
                               string varModName);
 
+   static void WriteSequenceCollection(FILE *fpout,
+                                       FILE *fpdb);
+
+   static void WriteAnalysisProtocol(FILE *fpout);
 };
 
 #endif

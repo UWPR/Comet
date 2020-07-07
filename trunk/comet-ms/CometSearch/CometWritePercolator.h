@@ -32,15 +32,16 @@ private:
    static bool PrintResults(int iWhichQuery,
                             FILE *fpOut,
                             FILE *fpdb,
-                            bool bDecoy);
+                            int iPrintTargetDecoy);
    static void PrintPercolatorSearchHit(int iWhichQuery,
                                     int iWhichResult,
-                                    bool bDecoy,
+                                    int iPrintTargetDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
-                                    FILE *fpdb,
                                     double dDeltaCn,
-                                    double dLastDeltaCn);
+                                    double dLastDeltaCn,
+                                    vector<string> vProteinTargets,
+                                    vector<string> vProteinDecoys);
    static void CalcNTTNMC(Results *pOutput,
                           int iWhichQuery,
                           int *iNterm,

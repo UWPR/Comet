@@ -33,15 +33,16 @@ public:
 
 private:
    static void PrintResults(int iWhichQuery,
-                            bool bDecoy,
+                            int iPrintTargetDecoy,
                             FILE *fpOut,
                             FILE *fpdb);
    static void PrintSqtLine(int iRankXcorr,
+                            int iWhichQuery,
                             int iWhichResult,
                             Results *pOutput,
                             FILE *fpOut,
                             FILE *fpdb,
-                            bool bDecoy);
+                            int iPrintTargetDecoy);
 };
 
 #endif

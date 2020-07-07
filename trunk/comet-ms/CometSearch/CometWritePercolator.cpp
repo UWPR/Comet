@@ -40,25 +40,14 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      // print out entry only if there's a valid target or decoy search hit
-      if (g_pvQuery.at(i)->_pResults[0].fXcorr > XCORR_CUTOFF
-            || (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
+      if (g_pvQuery.at(i)->_pResults[0].fXcorr > XCORR_CUTOFF)
       {
-         if (g_pvQuery.at(i)->_pResults[0].fXcorr > XCORR_CUTOFF)
-         {
-            if (!PrintResults(i, fpout, fpdb, 0))  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
-            {
-               return false;
-            }
-         }
+         PrintResults(i, fpout, fpdb, 0);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+      }
 
-         if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > XCORR_CUTOFF)
-         {
-            if (!PrintResults(i, fpout, fpdb, 1))  // print decoy hit
-            {
-               return false;
-            }
-         }
+      if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > XCORR_CUTOFF)
+      {
+         PrintResults(i, fpout, fpdb, 2);  // print decoy hit
       }
    }
 
@@ -103,7 +92,7 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
 bool CometWritePercolator::PrintResults(int iWhichQuery,
                                         FILE *fpout,
                                         FILE *fpdb,
-                                        bool bDecoy)
+                                        int iPrintTargetDecoy)
 {
    int  i,
         iNumPrintLines,
@@ -113,12 +102,12 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
    Results *pOutput;
 
-   if (bDecoy)
+   if (iPrintTargetDecoy == 2)  // decoys
    {
       pOutput = pQuery->_pDecoys;
       iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
    }
-   else
+   else // combined or separate targets
    {
       pOutput = pQuery->_pResults;
       iNumPrintLines = pQuery->iMatchPeptideCount;
@@ -126,10 +115,6 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
    if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
       iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
-
-   bool bLabelDecoy;
-   char szProteinName[WIDTH_REFERENCE];
-   std::vector<ProteinEntryStruct>::iterator it;
 
    for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
    {
@@ -142,31 +127,16 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
             pQuery->_spectrumInfoInternal.iChargeState,
             iWhichResult+1);
 
-      if (bDecoy)
-         bLabelDecoy = true;
-      else
-      {
-         bLabelDecoy = true;
+      std::vector<string> vProteinTargets;  // store vector of target protein names
+      std::vector<string> vProteinDecoys;   // store vector of decoy protein names
 
-         it=pOutput[iWhichResult].pWhichProtein.begin();
+      CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
 
-         // If any protein in target protein list does not match decoy prefix then set target label
-         for (; it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
-         {
-            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-
-            if (strncmp(szProteinName, g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)))
-            {
-               bLabelDecoy = false;
-               break;
-            }
-         }
-      }
-
-      if (bLabelDecoy)
-         fprintf(fpout, "-1\t");  // decoy label
-      else
+      if (vProteinTargets.size() > 0)
          fprintf(fpout, "1\t");   // target label
+      else
+         fprintf(fpout, "-1\t");  // decoy label
+
 
       fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
       fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass);  //ExpMass
@@ -237,7 +207,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       if (bNoDeltaCnYet)
          dDeltaCn = 1.0;
 
-      PrintPercolatorSearchHit(iWhichQuery, iWhichResult, bDecoy, pOutput, fpout, fpdb, dDeltaCn, dLastDeltaCn);
+      PrintPercolatorSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn, vProteinTargets, vProteinDecoys);
    }
 
    return true;
@@ -246,12 +216,13 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
 void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
                                                     int iWhichResult,
-                                                    bool bDecoy,
+                                                    int iPrintTargetDecoy,
                                                     Results *pOutput,
                                                     FILE *fpout,
-                                                    FILE *fpdb,
                                                     double dDeltaCn,
-                                                    double dLastDeltaCn)
+                                                    double dLastDeltaCn,
+                                                    vector<string> vProteinTargets,
+                                                    vector<string> vProteinDecoys)
 {
    int iNterm;
    int iCterm;
@@ -292,8 +263,14 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    fprintf(fpout, "%d\t", iCterm); // enzC
    fprintf(fpout, "%d\t", iNMC); // enzInt
 
-   if ((bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides)) > 0)
-      fprintf(fpout, "%0.6f\t", log((double)(bDecoy?(pQuery->_uliNumMatchedDecoyPeptides):(pQuery->_uliNumMatchedPeptides))) ); // lnNumSP
+   unsigned long uliNumMatch;
+   if (iPrintTargetDecoy == 2)
+      uliNumMatch = pQuery->_uliNumMatchedDecoyPeptides;
+   else
+      uliNumMatch = pQuery->_uliNumMatchedPeptides;
+
+   if (uliNumMatch > 0)
+      fprintf(fpout, "%0.6f\t", log((double)(uliNumMatch))); // lnNumSP
    else
       fprintf(fpout, "%0.6f\t", -20.0);
 
@@ -336,111 +313,30 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       fprintf(fpout, "c[%0.4f]", dCterm);
    fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
-   if (g_staticParams.bIndexDb)
+   std::vector<string>::iterator it;
+
+   bool bPrintTab = false;
+   if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
-      std::vector<ProteinEntryStruct>::iterator itProt;
-      bool bPrintDecoyPrefix = false;
-
-      // Note peptides can be from target or internal decoy. If peptide is from a target protein,
-      // Comet will only report target protein matches and not internal decoy protein matches.
-      // Decoy proteins only reported for peptides that are exclusively decoy matches.
-      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
-         itProt = pOutput[iWhichResult].pWhichProtein.begin();   // list of target proteins
-      else
+      for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
       {
-         itProt = pOutput[iWhichResult].pWhichDecoyProtein.begin();  // list of decoy proteins
-         bPrintDecoyPrefix = true;
-      }
+         if (bPrintTab)
+            fprintf(fpout, "\t");
 
-      if (itProt->lWhichProtein > -1)
-      {
-         long lSize;
-         comet_fseek(fpdb, itProt->lWhichProtein, SEEK_SET);
-         fread(&lSize, sizeof(long), 1, fpdb);  // read count of protein offsets that this peptide matches to
-         vector<comet_fileoffset_t> vOffsets;
-         for (long x = 0; x < lSize; x++)  // loop through this count and read each file offset for each protein name
-         {
-            comet_fileoffset_t tmpoffset;
-            fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
-            vOffsets.push_back(tmpoffset);
-         }
-         for (long x = 0; x < lSize; x++)  // now given each protein name offset, seek to that position and read protein name
-         {
-            char szTmp[WIDTH_REFERENCE];
-            char szProteinName[100];
-
-            comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
-            fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
-            sscanf(szTmp, "%99s", szProteinName);
-
-            if (bPrintDecoyPrefix)
-               fprintf(fpout, "%s", g_staticParams.szDecoyPrefix);
-           fprintf(fpout, "%s", szProteinName);
-            if (x < lSize - 1)
-               fprintf(fpout, "\t");
-         }
+         fprintf(fpout, "%s", (*it).c_str());
+         bPrintTab = true;
       }
    }
-   else
+
+   if (iPrintTargetDecoy != 1)  // if not target only, print decoy proteins
    {
-      char szProteinName[WIDTH_REFERENCE];
-      bool bPrintDecoyPrefix = false;
-      std::vector<ProteinEntryStruct>::iterator it;
-
-      if (bDecoy)
-      {  
-         it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-         bPrintDecoyPrefix = true;
-      }
-      else
-      {  
-         // if not reporting separate decoys, it's possible only matches
-         // in combined search are decoy the entries
-         if (pOutput[iWhichResult].pWhichProtein.size() > 0)
-            it=pOutput[iWhichResult].pWhichProtein.begin();
-         else
-         {  
-            it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-            bPrintDecoyPrefix = true;
-         }
-      }
-
-      CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-
-      if (bPrintDecoyPrefix)
-         fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
-      else
-         fprintf(fpout, "%s", szProteinName);
-            
-      ++it;
-      int iPrintDuplicateProteinCt = 0;
-
-      for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
+      for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
       {
-         CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-         if (bPrintDecoyPrefix)
-            fprintf(fpout, "\t%s%s", g_staticParams.szDecoyPrefix, szProteinName);
-         else
-            fprintf(fpout, "\t%s", szProteinName);
+         if (bPrintTab)
+            fprintf(fpout, "\t");
 
-         iPrintDuplicateProteinCt++;
-         if (iPrintDuplicateProteinCt == g_staticParams.options.iMaxDuplicateProteins)
-            break;
-      }
-
-      // If combined search printed out target proteins above, now print out decoy proteins if necessary
-      if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
-            && iPrintDuplicateProteinCt < g_staticParams.options.iMaxDuplicateProteins)
-      {
-         for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
-         {
-            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-            fprintf(fpout, "\t%s%s", g_staticParams.szDecoyPrefix, szProteinName);
-
-            iPrintDuplicateProteinCt++;
-            if (iPrintDuplicateProteinCt == g_staticParams.options.iMaxDuplicateProteins)
-               break;
-         }
+         fprintf(fpout, "%s", (*it).c_str());
+         bPrintTab = true;
       }
    }
 

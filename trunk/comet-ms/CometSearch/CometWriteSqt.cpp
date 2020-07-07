@@ -36,19 +36,18 @@ void CometWriteSqt::WriteSqt(FILE *fpout,
 {
    int i;
 
-   // Print results.
-   for (i=0; i<(int)g_pvQuery.size(); i++)
-   {
-      PrintResults(i, 0, fpout, fpdb);
-   }
-
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
-      {
-         PrintResults(i, 1, fpoutd, fpdb);
-      }
+         PrintResults(i, 1, fpout, fpdb);
+      for (i=0; i<(int)g_pvQuery.size(); i++)
+         PrintResults(i, 2, fpoutd, fpdb);
+   }
+   else
+   {
+      for (i=0; i<(int)g_pvQuery.size(); i++)
+         PrintResults(i, 0, fpout, fpdb);
    }
 }
 
@@ -164,7 +163,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 
 
 void CometWriteSqt::PrintResults(int iWhichQuery,
-                                 bool bDecoy,
+                                 int iPrintTargetDecoy,
                                  FILE *fpout,
                                  FILE *fpdb)
 {
@@ -180,53 +179,45 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
    strcpy(scan1, "0");
    strcpy(scan2, "0");
 
-   if (bDecoy)
+   Results *pOutput;
+
+   float fLowestScore;
+   unsigned long uliNumMatched;
+
+   if (iPrintTargetDecoy == 2)
    {
-      sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState,
-            g_staticParams.iElapseTime,
-            g_staticParams.szHostName,
-            pQuery->_pepMassInfo.dExpPepMass,
-            pQuery->_spectrumInfoInternal.dTotalIntensity,
-            pQuery->fLowestDecoySpScore,
-            pQuery->_uliNumMatchedDecoyPeptides);
+      fLowestScore = pQuery->fLowestDecoySpScore;
+      uliNumMatched = pQuery->_uliNumMatchedDecoyPeptides;
+      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
+      pOutput = pQuery->_pDecoys;
    }
    else
    {
-      sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState,
-            g_staticParams.iElapseTime,
-            g_staticParams.szHostName,
-            pQuery->_pepMassInfo.dExpPepMass,
-            pQuery->_spectrumInfoInternal.dTotalIntensity,
-            pQuery->fLowestSpScore,
-            pQuery->_uliNumMatchedPeptides);
+      fLowestScore = pQuery->fLowestSpScore;
+      uliNumMatched = pQuery->_uliNumMatchedPeptides;
+      iNumPrintLines = pQuery->iMatchPeptideCount;
+      pOutput = pQuery->_pResults;
    }
+
+   sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
+         pQuery->_spectrumInfoInternal.iScanNumber,
+         pQuery->_spectrumInfoInternal.iScanNumber,
+         pQuery->_spectrumInfoInternal.iChargeState,
+         g_staticParams.iElapseTime,
+         g_staticParams.szHostName,
+         pQuery->_pepMassInfo.dExpPepMass,
+         pQuery->_spectrumInfoInternal.dTotalIntensity,
+         fLowestScore,
+         uliNumMatched);
 
    if (g_staticParams.options.bOutputSqtStream)
       fprintf(stdout, "%s", szBuf);
    if (g_staticParams.options.bOutputSqtFile)
       fprintf(fpout, "%s", szBuf);
 
-   if (bDecoy)
-      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
-   else
-      iNumPrintLines = pQuery->iMatchPeptideCount;
-
    // Print out each sequence line.
    if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
       iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
-
-   Results *pOutput;
-
-   if (bDecoy)
-      pOutput = pQuery->_pDecoys;
-   else
-      pOutput = pQuery->_pResults;
 
    iRankXcorr = 1;
 
@@ -236,17 +227,18 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
-         PrintSqtLine(iRankXcorr, i, pOutput, fpout, fpdb, bDecoy);
+         PrintSqtLine(iRankXcorr, iWhichQuery, i, pOutput, fpout, fpdb, iPrintTargetDecoy);
    }
 }
 
 
 void CometWriteSqt::PrintSqtLine(int iRankXcorr,
+                                 int iWhichQuery,
                                  int iWhichResult,
                                  Results *pOutput,
                                  FILE *fpout,
                                  FILE *fpdb,
-                                 bool bDecoy)
+                                 int iPrintTargetDecoy)
 {
    int  i;
    char szBuf[SIZE_BUF];
@@ -310,131 +302,27 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
       sprintf(szBuf+strlen(szBuf), "c[%0.4f]", dCterm);
    sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
 
-   bool bPrintDecoyPrefix = false;
-   std::vector<ProteinEntryStruct>::iterator it;
-
-   if (bDecoy)
-   {
-      it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-      bPrintDecoyPrefix = true;
-   }
-   else
-   {
-      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
-         it=pOutput[iWhichResult].pWhichProtein.begin();
-      else
-      {
-         it=pOutput[iWhichResult].pWhichDecoyProtein.begin();
-         bPrintDecoyPrefix = true;
-      }
-   }
-
    if (g_staticParams.options.bOutputSqtStream)
       fprintf(stdout, "%s\tU\n", szBuf);
    if (g_staticParams.options.bOutputSqtFile)
       fprintf(fpout,  "%s\tU\n", szBuf);
 
-   if (g_staticParams.bIndexDb)
+   // print proteins
+   std::vector<string> vProteinTargets;  // store vector of target protein names
+   std::vector<string> vProteinDecoys;   // store vector of decoy protein names
+   std::vector<string>::iterator it;
+
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
+
+   if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
-      std::vector<ProteinEntryStruct>::iterator itProt;
-      bool bPrintDecoyPrefix = false;
-
-      // Note peptides can be from target or internal decoy. If peptide is from a target protein,
-      // Comet will only report target protein matches and not internal decoy protein matches.
-      // Decoy proteins only reported for peptides that are exclusively decoy matches.
-      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
-         itProt = pOutput[iWhichResult].pWhichProtein.begin();   // list of target proteins
-      else
-      {
-         itProt = pOutput[iWhichResult].pWhichDecoyProtein.begin();  // list of decoy proteins
-         bPrintDecoyPrefix = true;
-      }
-
-      if (itProt->lWhichProtein > -1)
-      {
-         long lSize;
-         comet_fseek(fpdb, itProt->lWhichProtein, SEEK_SET);
-         fread(&lSize, sizeof(long), 1, fpdb);  // read count of protein offsets that this peptide matches to
-         vector<comet_fileoffset_t> vOffsets;
-         for (long x = 0; x < lSize; x++)  // loop through this count and read each file offset for each protein name
-         {
-            comet_fileoffset_t tmpoffset;
-            fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
-            vOffsets.push_back(tmpoffset);
-         }
-         for (long x = 0; x < lSize; x++)  // now given each protein name offset, seek to that position and read protein name
-         {
-            char szTmp[WIDTH_REFERENCE];
-            char szProteinName[100];
-
-            comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
-            fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
-            sscanf(szTmp, "%99s", szProteinName);
-
-            if (g_staticParams.options.bOutputSqtStream)
-            {
-               fprintf(stdout, "L\t");
-               if (bPrintDecoyPrefix)
-                  fprintf(stdout, "%s", g_staticParams.szDecoyPrefix);
-               fprintf(stdout, "%s\n", szProteinName);  // I'm not sure what the 2 or iStar
-            }
-
-            if (g_staticParams.options.bOutputSqtFile)
-            {
-               fprintf(fpout, "L\t");
-               if (bPrintDecoyPrefix)
-                  fprintf(fpout, "%s", g_staticParams.szDecoyPrefix);
-               fprintf(fpout, "%s\n", szProteinName);  // I'm not sure what the 2 or iStar
-            }
-         }
-      }
+      for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
+         fprintf(fpout, "L\t%s\n", (*it).c_str());
    }
-   else
+
+   if (iPrintTargetDecoy != 1)  // if not target only, print decoy proteins
    {
-      // Print protein reference/accession.
-      char szProteinName[100];
-      int iPrintDuplicateProteinCt = 0;
-
-      for (; it!=(bPrintDecoyPrefix?pOutput[iWhichResult].pWhichDecoyProtein.end():pOutput[iWhichResult].pWhichProtein.end()); ++it)
-      {
-         CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-         if (bPrintDecoyPrefix)
-         {
-            if (g_staticParams.options.bOutputSqtStream)
-               fprintf(stdout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, szProteinName);
-            if (g_staticParams.options.bOutputSqtFile)
-               fprintf(fpout,  "L\t%s%s\n", g_staticParams.szDecoyPrefix, szProteinName);
-         }
-         else
-         {
-            if (g_staticParams.options.bOutputSqtStream)
-               fprintf(stdout, "L\t%s\n", szProteinName);
-            if (g_staticParams.options.bOutputSqtFile)
-               fprintf(fpout,  "L\t%s\n", szProteinName);
-         }
-
-         iPrintDuplicateProteinCt++;
-         if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
-            break;
-      }
-
-      // If combined search printed out target proteins above, now print out decoy proteins if necessary
-      if (!bDecoy && pOutput[iWhichResult].pWhichProtein.size() > 0 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
-            && iPrintDuplicateProteinCt <= g_staticParams.options.iMaxDuplicateProteins)
-      {
-         for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
-         {
-            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-
-            if (g_staticParams.options.bOutputSqtStream)
-               fprintf(stdout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, szProteinName);
-            if (g_staticParams.options.bOutputSqtFile)
-               fprintf(fpout,  "L\t%s%s\n", g_staticParams.szDecoyPrefix, szProteinName);
-
-            iPrintDuplicateProteinCt++;
-            if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
-               break;
-         }
-      }
+      for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
+         fprintf(fpout, "L\t%s\n", (*it).c_str());
    }
 }

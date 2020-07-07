@@ -2210,7 +2210,7 @@ bool CometSearchManager::DoSearch()
             if (g_staticParams.options.bOutputTxtFile)
                CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, fpdb);
 
-            //// Write SQT last as I destroy the g_staticParams.szMod string during that process
+            // Write SQT last as I destroy the g_staticParams.szMod string during that process
             if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
                CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, fpdb);
 
@@ -3061,7 +3061,6 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
       fwrite(&((*it).dPepMass), sizeof(double), 1, fptr);
       fwrite(&((*it).lIndexProteinFilePosition), sizeof(comet_fileoffset_t), 1, fptr);
-
 
       // now write out all duplicate proteins file positions
       lNumMatchedProteins = (long)g_pvProteinsList.at((*it).lIndexProteinFilePosition).size();

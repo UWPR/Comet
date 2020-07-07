@@ -41,6 +41,13 @@ public:
    static void GetProteinName(FILE *fpdb,
                               comet_fileoffset_t lFilePosition,
                               char *szProteinName);
+
+   static void GetProteinNameString(FILE *fpdb,
+                                    int iWhichQuery,  // which search
+                                    int iWhichResult, // which peptide within the search
+                                    int iPrintTargetDecoy,
+                                    vector<string>& vProteinTargets,  // the target protein names
+                                    vector<string>& vProteinDecoys);  // the decoy protein names if applicable
 };
 
 #endif // _COMETMASSSPECUTILS_H_

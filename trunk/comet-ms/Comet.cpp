@@ -1511,7 +1511,7 @@ use_NL_ions = 0                        # 0=no, 1=yes to consider NH3/H2O neutral
 output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
 output_txtfile = 0                     # 0=no, 1=yes  write tab-delimited txt file\n\
 output_pepxmlfile = 1                  # 0=no, 1=yes  write pepXML file\n\
-output_mzidentml = 0                   # 0=no, 1=yes  write mzIdentML file\n\
+output_mzidentmlfile = 0               # 0=no, 1=yes  write mzIdentML file\n\
 output_percolatorfile = 0              # 0=no, 1=yes  write Percolator pin file\n\
 print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
 num_output_lines = 5                   # num peptide results to show\n\
@@ -1534,7 +1534,7 @@ activation_method = ALL                # activation method; used if activation m
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
 peptide_length_range = 5 63            # minimum and maximum peptide length to analyze (default %d %d; max length 63)\n\
 num_results = 100                      # number of search hits to store internally\n\
-max_duplicate_proteins = 20            # maximum number of protein names to report for each peptide identification; -1 reports all duplicates\n\
+max_duplicate_proteins = 20            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates\n\
 skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
