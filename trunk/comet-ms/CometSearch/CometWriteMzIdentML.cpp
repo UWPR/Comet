@@ -168,6 +168,33 @@ void CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
       fprintf(fpout, "2 <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB_1\"/>\n", (*it).c_str(), (*it).c_str());
    }
 
+   // now write all Peptide entries: unique peptide + mod states
+/*
+    <Peptide id="PEP_1">
+      <PeptideSequence>MTWMDS</PeptideSequence>
+      <Modification location="0" monoisotopicMassDelta="229.162932">
+        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
+      </Modification>
+      <Modification location="1" residues="M" monoisotopicMassDelta="15.9949146221">
+        <cvParam cvRef="UNIMOD" accession="UNIMOD:35" name="Oxidation"/>
+      </Modification>
+    </Peptide>
+    <Peptide id="PEP_2">
+      <PeptideSequence>IKGKLVMPNFEVIK</PeptideSequence>
+      <Modification location="0" monoisotopicMassDelta="229.162932">
+        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
+      </Modification>
+      <Modification location="2" residues="K" monoisotopicMassDelta="229.162932">
+        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
+      </Modification>
+      <Modification location="4" residues="K" monoisotopicMassDelta="229.162932">
+        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
+      </Modification>
+      <Modification location="14" residues="K" monoisotopicMassDelta="229.162932">
+        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
+      </Modification>
+*/
+
    fprintf(fpout, " </SequenceCollection>\n");
 }
 
@@ -190,211 +217,11 @@ void CometWriteMzIdentML::WriteAnalysisProtocol(FILE *fpout)
    fprintf(fpout, "   <SearchType>\n");
    fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001083\" name=\"ms-ms search\"/>\n");
    fprintf(fpout, "   </SearchType>\n");
-   fprintf(fpout, "   <AdditionalSearchParams>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001211\" name=\"parent mass type mono\"/>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001256\" name=\"fragment mass type mono\"/>\n");
-/*
-      <userParam name="NumTolerableTermini" value="2"/>
-      <userParam name="NumMatchesPerSpec" value="1"/>
-      <userParam name="MaxNumModifications" value="2"/>
-      <userParam name="MinPepLength" value="6"/>
-      <userParam name="MaxPepLength" value="40"/>
-      <userParam name="MinCharge" value="2"/>
-        <userParam name="digest_mass_range" value="600.0000 35000.0000"/>
-        <userParam name="add_Cterm_peptide" value="0.0000"/>
-        <userParam name="add_Cterm_protein" value="0.0000"/>
-        <userParam name="add_Nterm_peptide" value="229.162932"/>
-        <userParam name="add_Nterm_protein" value="0.0000"/>
-        <userParam name="add_G_Glycine" value="0.0000"/>
-        <userParam name="add_A_Alanine" value="0.0000"/>
-        <userParam name="add_S_Serine" value="0.0000"/>
-        <userParam name="add_P_Proline" value="0.0000"/>
-        <userParam name="add_V_Valine" value="0.0000"/>
-        <userParam name="add_T_Threonine" value="0.0000"/>
-      </AdditionalSearchParams>
-      <ModificationParams>
-        <SearchModification fixedMod="false" massDelta="15.9949146221" residues="M">
-          <cvParam cvRef="UNIMOD" accession="UNIMOD:35" name="Oxidation" value=""/>
-        </SearchModification>
-        <SearchModification fixedMod="true" massDelta="229.162932" residues=".">
-          <SpecificityRules>
-            <cvParam cvRef="MS" accession="MS:1001189" name="modification specificity peptide N-term" value=""/>
-          </SpecificityRules>
-          <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex" value=""/>
-        </SearchModification>
-        <SearchModification fixedMod="true" massDelta="57.02146374" residues="C">
-          <cvParam cvRef="UNIMOD" accession="UNIMOD:4" name="Carbamidomethyl" value=""/>
-        </SearchModification>
-        <SearchModification fixedMod="true" massDelta="229.162932" residues="K">
-          <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex" value=""/>
-        </SearchModification>
-      </ModificationParams>
-      <Enzymes independent="false">
-        <Enzyme id="ENZ_1" cTermGain="OH" nTermGain="H" minDistance="1" semiSpecific="false">
-          <SiteRegexp>(?&lt;=[KR])</SiteRegexp>
-        </Enzyme>
-      </Enzymes>
-      <Threshold>
-        <cvParam cvRef="MS" accession="MS:1001494" name="no threshold" value=""/>
-      </Threshold>
-    </SpectrumIdentificationProtocol>
-  </AnalysisProtocolCollection>
-
-  <DataCollection>
-    <Inputs>
-      <SourceFile location="file:///c06306_qy_RTS_3cell_2_A1.mzXML" id="SF">
-        <FileFormat>
-          <cvParam cvRef="MS" accession="MS:1000566" name="ISB mzXML format"/>
-        </FileFormat>
-      </SourceFile>
-      <SearchDatabase id="2018-12-21_REVuniprot_HUMAN_contam_sorted.fasta" location="2018-12-21_REVuniprot_HUMAN_contam_sorted.fasta">
-        <FileFormat>
-          <cvParam cvRef="MS" accession="MS:1001348" name="FASTA format"/>
-        </FileFormat>
-        <DatabaseName>
-          <userParam name="2018-12-21_REVuniprot_HUMAN_contam_sorted.fasta"/>
-        </DatabaseName>
-        <cvParam cvRef="MS" accession="MS:1001073" name="database type amino acid" value=""/>
-      </SearchDatabase>
-      <SpectraData location="file:///c06306_qy_RTS_3cell_2_A1.mzXML" id="SD">
-        <FileFormat>
-          <cvParam cvRef="MS" accession="MS:1000566" name="ISB mzXML format"/>
-        </FileFormat>
-        <SpectrumIDFormat>
-          <cvParam cvRef="MS" accession="MS:1000776" name="scan number only nativeID format"/>
-        </SpectrumIDFormat>
-      </SpectraData>
-    </Inputs>
-    <AnalysisData>
-      <SpectrumIdentificationList id="SIL" numSequencesSearched="0">
-        <SpectrumIdentificationResult id="SIR_1" name="c06306_qy_RTS_3cell_2_A1.3.3" spectrumID="index=2 scan=3" spectraData_ref="SD">
-          <SpectrumIdentificationItem id="SII_1" rank="1" chargeState="2" peptide_ref="PEP_1" experimentalMassToCharge="508.212461" calculatedMassToCharge="508.22495" passThreshold="false">
-            <PeptideEvidenceRef peptideEvidence_ref="sp|Q8N3J3-3|CQ053_HUMAN_PEP_1"/>
-            <cvParam cvRef="MS" accession="MS:1001121" name="number of matched peaks" value="5"/>
-            <cvParam accession="MS:1001155" cvRef="MS" name="SEQUEST:xcorr" value="0.4764"/>
-            <cvParam accession="MS:1001156" cvRef="MS" name="SEQUEST:deltacn" value="0.3059"/>
-            <cvParam accession="MS:1002250" cvRef="MS" name="SEQUEST:deltacnstar" value="0.3059"/>
-            <cvParam accession="MS:1002248" cvRef="MS" name="SEQUEST:spscore" value="119"/>
-            <cvParam accession="MS:1002249" cvRef="MS" name="SEQUEST:sprank" value="1"/>
-          </SpectrumIdentificationItem>
-          <userParam name="search_id" value="1"/>
-          <cvParam cvRef="MS" accession="MS:1001115" name="scan number(s)" value="3"/>
-        </SpectrumIdentificationResult>
-        <SpectrumIdentificationResult id="SIR_2" name="c06306_qy_RTS_3cell_2_A1.5.5" spectrumID="index=4 scan=5" spectraData_ref="SD">
-          <SpectrumIdentificationItem id="SII_2" rank="1" chargeState="2" peptide_ref="PEP_2" experimentalMassToCharge="1266.85547" calculatedMassToCharge="1266.80967" passThreshold="false">
-            <PeptideEvidenceRef peptideEvidence_ref="##sp|Q9H1C3|GL8D2_HUMAN_PEP_2"/>
-            <cvParam cvRef="MS" accession="MS:1001121" name="number of matched peaks" value="5"/>
-            <cvParam accession="MS:1001155" cvRef="MS" name="SEQUEST:xcorr" value="0.539"/>
-            <cvParam accession="MS:1001156" cvRef="MS" name="SEQUEST:deltacn" value="0.379"/>
-            <cvParam accession="MS:1002250" cvRef="MS" name="SEQUEST:deltacnstar" value="0.379"/>
-            <cvParam accession="MS:1002248" cvRef="MS" name="SEQUEST:spscore" value="46"/>
-            <cvParam accession="MS:1002249" cvRef="MS" name="SEQUEST:sprank" value="1"/>
-          </SpectrumIdentificationItem>
-          <userParam name="search_id" value="1"/>
-          <cvParam cvRef="MS" accession="MS:1001115" name="scan number(s)" value="5"/>
-        </SpectrumIdentificationResult>
-      </SpectrumIdentificationList>
-    </AnalysisData>
-  </DataCollection>
-</MzIdentML>
-*/
-
-   fprintf(fpout, "   </AdditionalSearchParams>\n");
-   fprintf(fpout, "   <ModificationParams>\n");
-   fprintf(fpout, "    <SearchModification residues=\"C\" massDelta=\"57.021464\" fixedMod= \"true\" >\n");
-   fprintf(fpout, "     <cvParam cvRef=\"UNIMOD\" accession=\"UNIMOD:4\" name=\"Carbamidomethyl\"/>\n");
-   fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002504\" name=\"modification index\" value=\"0\"/>\n");
-   fprintf(fpout, "    </SearchModification>\n");
-   fprintf(fpout, "    <SearchModification residues=\"M\" massDelta=\"15.994915\" fixedMod= \"false\" >\n");
-   fprintf(fpout, "     <cvParam cvRef=\"UNIMOD\" accession=\"UNIMOD:35\" name=\"Oxidation\"/>\n");
-   fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002504\" name=\"modification index\" value=\"1\"/>\n");
-   fprintf(fpout, "    </SearchModification>\n");
-   fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"42.010565\" fixedMod= \"false\" >\n");
-   fprintf(fpout, "     <SpecificityRules>\n");
-   fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002057\" name=\"modification specificity protein N-term\"/>\n");
-   fprintf(fpout, "     </SpecificityRules>\n");
-   fprintf(fpout, "     <cvParam cvRef=\"UNIMOD\" accession=\"UNIMOD:1\" name=\"Acetyl\"/>\n");
-   fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002504\" name=\"modification index\" value=\"2\"/>\n");
-   fprintf(fpout, "    </SearchModification>\n");
-   fprintf(fpout, "   </ModificationParams>\n");
-   fprintf(fpout, "   <Enzymes independent=\"false\">\n");
-   fprintf(fpout, "    <Enzyme missedCleavages=\"2\" semiSpecific=\"false\" id=\"Enz1\" name=\"Trypsin\">\n");
-   fprintf(fpout, "     <EnzymeName>\n");
-   fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001251\" name=\"Trypsin\"/>\n");
-   fprintf(fpout, "     </EnzymeName>\n");
-   fprintf(fpout, "    </Enzyme>\n");
-   fprintf(fpout, "   </Enzymes>\n");
-   fprintf(fpout, "   <FragmentTolerance>\n");
-   fprintf(fpout, "    <cvParam accession=\"MS:1001412\" cvRef=\"PSI-MS\" unitCvRef=\"UO\" unitName=\"dalton\" unitAccession=\"UO:0000221\" value=\"0.02\" name=\"search tolerance plus value\" />\n");
-   fprintf(fpout, "    <cvParam accession=\"MS:1001413\" cvRef=\"PSI-MS\" unitCvRef=\"UO\" unitName=\"dalton\" unitAccession=\"UO:0000221\" value=\"0.02\" name=\"search tolerance minus value\" />\n");
-   fprintf(fpout, "   </FragmentTolerance>\n");
-   fprintf(fpout, "   <ParentTolerance>\n");
-   fprintf(fpout, "    <cvParam accession=\"MS:1001412\" cvRef=\"PSI-MS\" unitCvRef=\"UO\" unitName=\"parts per million\" unitAccession=\"UO:0000169\" value=\"10.0\" name=\"search tolerance plus value\" />\n");
-   fprintf(fpout, "    <cvParam accession=\"MS:1001413\" cvRef=\"PSI-MS\" unitCvRef=\"UO\" unitName=\"parts per million\" unitAccession=\"UO:0000169\" value=\"10.0\" name=\"search tolerance minus value\" />\n");
-   fprintf(fpout, "   </ParentTolerance>\n");
-   fprintf(fpout, "   <Threshold>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001364\" name=\"peptide sequence-level global FDR\" value=\"1.0\"/>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002350\" name=\"PSM-level global FDR\" value=\"1.0\"/>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002567\" name=\"phosphoRS score threshold\" value=\"95.0\"/>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002557\" name=\"D-Score threshold\" value=\"95.0\"/>\n");
-   fprintf(fpout, "   </Threshold>\n");
    fprintf(fpout, "  </SpectrumIdentificationProtocol>\n");
-   fprintf(fpout, "  <ProteinDetectionProtocol analysisSoftware_ref=\"ID_software\" id=\"PeptideShaker_1\">\n");
-   fprintf(fpout, "   <Threshold>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002369\" name=\"protein group-level global FDR\" value=\"0.01\"/>\n");
-   fprintf(fpout, "   </Threshold>\n");
-   fprintf(fpout, "  </ProteinDetectionProtocol>\n");
    fprintf(fpout, " </AnalysisProtocolCollection>\n");
 
 
    fprintf(fpout, " <ModificationParams>\n");
-/*
-   WriteStaticMod(fpout, searchMgr, "add_G_glycine");
-   WriteStaticMod(fpout, searchMgr, "add_A_alanine");
-   WriteStaticMod(fpout, searchMgr, "add_S_serine");
-   WriteStaticMod(fpout, searchMgr, "add_P_proline");
-   WriteStaticMod(fpout, searchMgr, "add_V_valine");
-   WriteStaticMod(fpout, searchMgr, "add_T_threonine");
-   WriteStaticMod(fpout, searchMgr, "add_C_cysteine");
-   WriteStaticMod(fpout, searchMgr, "add_L_leucine");
-   WriteStaticMod(fpout, searchMgr, "add_I_isoleucine");
-   WriteStaticMod(fpout, searchMgr, "add_N_asparagine");
-   WriteStaticMod(fpout, searchMgr, "add_O_ornithine");
-   WriteStaticMod(fpout, searchMgr, "add_D_aspartic_acid");
-   WriteStaticMod(fpout, searchMgr, "add_Q_glutamine");
-   WriteStaticMod(fpout, searchMgr, "add_K_lysine");
-   WriteStaticMod(fpout, searchMgr, "add_E_glutamic_acid");
-   WriteStaticMod(fpout, searchMgr, "add_M_methionine");
-   WriteStaticMod(fpout, searchMgr, "add_H_histidine");
-   WriteStaticMod(fpout, searchMgr, "add_F_phenylalanine");
-   WriteStaticMod(fpout, searchMgr, "add_R_arginine");
-   WriteStaticMod(fpout, searchMgr, "add_Y_tyrosine");
-   WriteStaticMod(fpout, searchMgr, "add_W_tryptophan");
-   WriteStaticMod(fpout, searchMgr, "add_B_user_amino_acid");
-   WriteStaticMod(fpout, searchMgr, "add_J_user_amino_acid");
-   WriteStaticMod(fpout, searchMgr, "add_U_user_amino_acid");
-   WriteStaticMod(fpout, searchMgr, "add_X_user_amino_acid");
-   WriteStaticMod(fpout, searchMgr, "add_Z_user_amino_acid");
-
-   WriteVariableMod(fpout, searchMgr, "variable_mod01", 0); // this writes aminoacid_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod02", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod03", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod04", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod05", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod06", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod07", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod08", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod09", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod01", 1);  // this writes terminal_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod02", 1);  // which has to come after aminoaicd_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod03", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod04", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod05", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod06", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod07", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod08", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod09", 1);
-*/
    fprintf(fpout, " </ModificationParams>\n");
 }
 
