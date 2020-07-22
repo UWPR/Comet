@@ -99,7 +99,8 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "next_aa\t");
    fprintf(fpout, "protein\t");
    fprintf(fpout, "protein_count\t");
-   fprintf(fpout, "modifications\n");
+   fprintf(fpout, "modifications\t");
+   fprintf(fpout, "retention_time_sec\n");
 
 #endif
 }
@@ -430,6 +431,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
+
+         // retention time seconds
+         fprintf(fpout, "%0.1f", pQuery->_spectrumInfoInternal.dRTime);
 
          fprintf(fpout, "\n");
       }
