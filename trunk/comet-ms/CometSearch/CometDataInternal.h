@@ -572,6 +572,7 @@ struct StaticParams
    char            szMod[512];         // used for .out files
    char            szDecoyPrefix[256]; // used for prefix to indicate decoys
    char            szOutputSuffix[256]; // used for suffix to append to output file base names
+   char            szTxtFileExt[256];  // text file extension; default "txt"
    int             iElapseTime;
    char            szDate[32];
    Options         options;
@@ -612,6 +613,7 @@ struct StaticParams
        strcpy(szMod, a.szMod);
        strcpy(szDecoyPrefix, a.szDecoyPrefix);
        strcpy(szOutputSuffix, a.szOutputSuffix);
+       strcpy(szTxtFileExt, a.szTxtFileExt);
        vectorMassOffsets = a.vectorMassOffsets;
        precursorNLIons= a.precursorNLIons;
        iPrecursorNLSize = a.iPrecursorNLSize;
@@ -649,6 +651,7 @@ struct StaticParams
       databaseInfo.szDatabase[0] = '\0';
 
       strcpy(szDecoyPrefix, "DECOY_");
+      strcpy(szTxtFileExt, "txt");
       szOutputSuffix[0] = '\0';
 
       peffInfo.szPeffOBO[0] = '\0';

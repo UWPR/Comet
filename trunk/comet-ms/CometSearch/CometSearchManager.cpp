@@ -580,6 +580,12 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("output_suffix", strData))
       strcpy(g_staticParams.szOutputSuffix, strData.c_str());
 
+   if (GetParamValue("text_file_extension", strData))
+   {
+      if (strData.length() > 0)
+         strcpy(g_staticParams.szTxtFileExt, strData.c_str());
+   } 
+
    if (GetParamValue("dia_windows_file", strData))
       strcpy(g_staticParams.szDIAWindowsFile, strData.c_str());
 
@@ -1643,6 +1649,8 @@ bool CometSearchManager::DoSearch()
       FILE *fpoutd_pepxml=NULL;
       FILE *fpout_mzidentml=NULL;
       FILE *fpoutd_mzidentml=NULL;
+      FILE *fpout_mzidentmltmp=NULL;
+      FILE *fpoutd_mzidentmltmp=NULL;
       FILE *fpout_percolator=NULL;
       FILE *fpout_txt=NULL;
       FILE *fpoutd_txt=NULL;
@@ -1653,6 +1661,8 @@ bool CometSearchManager::DoSearch()
       char szOutputDecoyPepXML[1024];
       char szOutputMzIdentML[1024];
       char szOutputDecoyMzIdentML[1024];
+      char szOutputMzIdentMLtmp[1024];  // intermediate tmp file
+      char szOutputDecoyMzIdentMLtmp[1024];  // intermediate tmp file
       char szOutputPercolator[1024];
       char szOutputTxt[1024];
       char szOutputDecoyTxt[1024];
@@ -1724,21 +1734,21 @@ bool CometSearchManager::DoSearch()
          if (iAnalysisType == AnalysisType_EntireFile)
          {
 #ifdef CRUX
-            sprintf(szOutputTxt, "%s%s.target.txt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputTxt, "%s%s.target.%s",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, g_staticParams.szTxtFileExt);
 #else
-            sprintf(szOutputTxt, "%s%s.txt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sprintf(szOutputTxt, "%s%s.%s",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, g_staticParams.szTxtFileExt);
 #endif
          }
          else
          {
 #ifdef CRUX
-            sprintf(szOutputTxt, "%s%s.%d-%d.target.txt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputTxt, "%s%s.%d-%d.target.%s",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan, g_staticParams.szTxtFileExt);
 #else
-            sprintf(szOutputTxt, "%s%s.%d-%d.txt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sprintf(szOutputTxt, "%s%s.%d-%d.%s",
+                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan, g_staticParams.szTxtFileExt);
 #endif
          }
 
@@ -1759,13 +1769,13 @@ bool CometSearchManager::DoSearch()
          {
             if (iAnalysisType == AnalysisType_EntireFile)
             {
-               sprintf(szOutputDecoyTxt, "%s%s.decoy.txt",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+               sprintf(szOutputDecoyTxt, "%s%s.decoy.%s",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, g_staticParams.szTxtFileExt);
             }
             else
             {
-               sprintf(szOutputDecoyTxt, "%s%s.%d-%d.decoy.txt",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+               sprintf(szOutputDecoyTxt, "%s%s.%d-%d.decoy.%s",
+                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan, g_staticParams.szTxtFileExt);
             }
 
             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
@@ -1869,8 +1879,18 @@ bool CometSearchManager::DoSearch()
             bSucceeded = false;
          }
 
-         if (bSucceeded)
-            bSucceeded = CometWriteMzIdentML::WriteMzIdentMLHeader(fpout_mzidentml, *this);
+         sprintf(szOutputMzIdentMLtmp, "%s.XXXXXX", szOutputMzIdentML);
+         mkstemp(szOutputMzIdentMLtmp);
+
+         if ((fpout_mzidentmltmp = fopen(szOutputMzIdentMLtmp, "w")) == NULL)
+         {
+            char szErrorMsg[SIZE_ERROR];
+            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputMzIdentMLtmp);
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            bSucceeded = false;
+         }
 
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
@@ -1895,8 +1915,18 @@ bool CometSearchManager::DoSearch()
                bSucceeded = false;
             }
 
-            if (bSucceeded)
-               bSucceeded = CometWriteMzIdentML::WriteMzIdentMLHeader(fpoutd_mzidentml, *this);
+            sprintf(szOutputDecoyMzIdentMLtmp, "%s.XXXXXX",szOutputDecoyMzIdentML);
+
+            if ((fpoutd_mzidentmltmp = fopen(szOutputDecoyMzIdentMLtmp, "w")) == NULL)
+            {
+               char szErrorMsg[SIZE_ERROR];
+               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyMzIdentMLtmp);
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(szErrorMsg);
+               bSucceeded = false;
+            }
+
          }
       }
 
@@ -1948,6 +1978,18 @@ bool CometSearchManager::DoSearch()
 
          // We need to reset some of the static variables in-between input files
          CometPreprocess::Reset();
+
+         FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
+         if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+         {
+            char szErrorMsg[SIZE_ERROR];
+            sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            return false;
+         }
+         rewind(fpdb);
 
          int iBatchNum = 0;
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
@@ -2170,17 +2212,6 @@ bool CometSearchManager::DoSearch()
 
             CalcRunTime(tStartTime);
 
-            FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
-            if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
-            {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
-               string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
-               return false;
-            }
-
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
                logout("  done\n");
@@ -2197,8 +2228,10 @@ bool CometSearchManager::DoSearch()
             if (g_staticParams.options.bOutputPepXMLFile)
                CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb);
 
+            // For mzid output, dump psms as tab-delimited text first then collate results to
+            // mzid file at very end due to requirements of this format.
             if (g_staticParams.options.bOutputMzIdentMLFile)
-               CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpoutd_mzidentml, fpdb);
+               CometWriteMzIdentML::WriteMzIdentMLTmp(fpout_mzidentmltmp, fpoutd_mzidentmltmp);
 
             if (g_staticParams.options.bOutputPercolatorFile)
             {
@@ -2213,8 +2246,6 @@ bool CometSearchManager::DoSearch()
             // Write SQT last as I destroy the g_staticParams.szMod string during that process
             if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
                CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, fpdb);
-
-            fclose(fpdb);
 
    cleanup_results:
             // Deleting each Query object in the vector calls its destructor, which
@@ -2232,6 +2263,54 @@ bool CometSearchManager::DoSearch()
          {
             if (iTotalSpectraSearched == 0)
                logout(" Warning - no spectra searched.\n\n");
+
+            if (NULL != fpout_pepxml)
+               CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
+
+            if (NULL != fpoutd_pepxml)
+               CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
+
+            if (NULL != fpout_mzidentml)
+            {
+               fclose(fpout_mzidentmltmp); // close for writing and re-open for reading
+
+               if ((fpout_mzidentmltmp = fopen(szOutputMzIdentMLtmp, "r")) == NULL)
+               {
+                  char szErrorMsg[SIZE_ERROR];
+                  sprintf(szErrorMsg,  " Error - cannot read temporary file \"%s\".\n",  szOutputMzIdentMLtmp);
+                  string strErrorMsg(szErrorMsg);
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(szErrorMsg);
+                  bSucceeded = false;
+               }
+
+               // now read tmp file and write mzIdentML
+               CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpdb, szOutputMzIdentMLtmp);
+
+               fclose(fpout_mzidentmltmp);
+//             unlink(szOutputMzIdentMLtmp);
+            }
+
+            if (NULL != fpoutd_mzidentml)
+            {
+               fclose(fpoutd_mzidentmltmp); // close for writing and re-open for reading
+
+               if ((fpoutd_mzidentmltmp = fopen(szOutputDecoyMzIdentMLtmp, "r")) == NULL)
+               {
+                  char szErrorMsg[SIZE_ERROR];
+                  sprintf(szErrorMsg,  " Error - cannot read temporary file \"%s\".\n",  szOutputDecoyMzIdentMLtmp);
+                  string strErrorMsg(szErrorMsg);
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(szErrorMsg);
+                  bSucceeded = false;
+               }
+
+               // now read tmp file and write mzIdentML
+               CometWriteMzIdentML::WriteMzIdentML(fpoutd_mzidentml, fpdb, szOutputDecoyMzIdentMLtmp);
+
+               fclose(fpoutd_mzidentmltmp);
+//             unlink(szOutputDecoyMzIdentMLtmp);
+            }
 
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
@@ -2258,19 +2337,9 @@ bool CometSearchManager::DoSearch()
 
                logout(szOut);
             }
-
-            if (NULL != fpout_pepxml)
-               CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
-
-            if (NULL != fpoutd_pepxml)
-               CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
-
-            if (NULL != fpout_mzidentml)
-               CometWriteMzIdentML::WriteMzIdentMLEndTags(fpout_mzidentml);
-
-            if (NULL != fpoutd_mzidentml)
-               CometWriteMzIdentML::WriteMzIdentMLEndTags(fpoutd_mzidentml);
          }
+
+         fclose(fpdb);
       }
 
       // Clean up the input files vector
@@ -2304,7 +2373,10 @@ bool CometSearchManager::DoSearch()
          fclose(fpout_mzidentml);
          fpout_mzidentml= NULL;
          if (iTotalSpectraSearched == 0)
+         {
             unlink(szOutputMzIdentML);
+            unlink(szOutputMzIdentMLtmp);
+         }
       }
 
       if (NULL != fpoutd_mzidentml)
@@ -2312,7 +2384,10 @@ bool CometSearchManager::DoSearch()
          fclose(fpoutd_mzidentml);
          fpoutd_mzidentml = NULL;
          if (iTotalSpectraSearched == 0)
+         {
             unlink(szOutputDecoyMzIdentML);
+            unlink(szOutputDecoyMzIdentMLtmp);
+         }
       }
 
       if (NULL != fpout_percolator)

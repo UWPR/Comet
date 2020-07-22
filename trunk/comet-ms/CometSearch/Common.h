@@ -19,6 +19,8 @@
 
 #include <cmath>
 #include <string>
+#include <fstream>
+#include <sstream>
 #include <ctime>
 
 #ifdef _WIN32

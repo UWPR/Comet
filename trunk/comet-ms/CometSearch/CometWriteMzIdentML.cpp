@@ -38,32 +38,43 @@ CometWriteMzIdentML::~CometWriteMzIdentML()
 }
 
 
-void CometWriteMzIdentML::WriteMzIdentML(FILE *fpout,
-                                         FILE *fpoutd,
-                                         FILE *fpdb)
+void CometWriteMzIdentML::WriteMzIdentMLTmp(FILE *fpout,
+                                            FILE *fpoutd)
 {
    int i;
 
-   WriteSequenceCollection(fpout, fpdb);
-
-   // Print results.
-   for (i=0; i<(int)g_pvQuery.size(); i++)
-      PrintResults(i, 0, fpout, fpdb);
-
-   // Print out the separate decoy hits.
+   // Print temporary results in tab-delimited file
    if (g_staticParams.options.iDecoySearch == 2)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
-      {
-         PrintResults(i, 1, fpoutd, fpdb);
-      }
+         PrintTmpPSM(i, 1, fpout);
+      for (i=0; i<(int)g_pvQuery.size(); i++)
+         PrintTmpPSM(i, 2, fpoutd);
+   }
+   else
+   {
+      for (i=0; i<(int)g_pvQuery.size(); i++)
+         PrintTmpPSM(i, 0, fpout);
    }
 
    fflush(fpout);
 }
 
-bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout,
-                                               CometSearchManager &searchMgr)
+void CometWriteMzIdentML::WriteMzIdentML(FILE *fpout,
+                                         FILE *fpdb,
+                                         char *szTmpFile)
+{
+   WriteMzIdentMLHeader(fpout);
+
+   // now loop through szTmpFile file, wr
+
+   WriteSequenceCollection(fpout, fpdb, szTmpFile);
+
+
+   WriteMzIdentMLEndTags(fpout);
+}
+
+bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
 {
    time_t tTime;
    char szDate[48];
@@ -127,75 +138,276 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout,
 }
 
 
-void CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
-                                                  FILE *fpdb)
+struct MzidTmpStruct
 {
-   std::vector<string> vProteinTargets;  // store vector of target protein names
-   std::vector<string> vProteinDecoys;   // store vector of decoy protein names
-   int iNumPrintLines;
+   int    iScanNumber;
+   int    iXcorrRank;
+   int    iCharge;
+   double dExpMass;   // neutral experimental mass
+   double dCalcMass;  // neutral calculated mass
+   double dExpect;
+   float  fXcorr;
+   float  fCn;
+   float  fSp;
+   string strPeptide;
+   char   cPrevNext[3];
+   string strMods;
+   string strProtsTarget;   // delimited list of file offsets
+   string strProtsDecoy;    // delimited list of file offsets
+};
+
+
+bool CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
+                                                  FILE *fpdb,
+                                                  char *szTmpFile)
+{
+   std::vector<MzidTmpStruct> vMzidTmp; // vector to store entire tmp output
+   std::vector<long> vProteinTargets;   // store vector of target protein file offsets
+   std::vector<long> vProteinDecoys;    // store vector of decoy protein file offsets
+   std::vector<string> vstrPeptides;      // vector of peptides of format "QITQMSNSSDLADGLNFDEGDELLK;2:79.9969;4:15.9949;"
+   std::vector<string> vstrPeptideEvidence;     // vector of peptides + target&decoy prots, space delmited "QITQMSNSSDLADGLNFDEGDELLK 1;38;75;112; 149;185;221;257;"
 
    fprintf(fpout, " <SequenceCollection xmlns=\"http://psidev.info/psi/pi/mzIdentML/1.2\">\n");
 
-   // get all protein names
-   for (int iWhichQuery=0; iWhichQuery<(int)g_pvQuery.size(); iWhichQuery++)
+   // get all protein file positions by parsing through fpout_tmp
+   // column 15 is target proteins, column 16 is decoy proteins
+
+   std::ifstream ifsTmpFile(szTmpFile);
+
+   if (ifsTmpFile.is_open())
    {
-      iNumPrintLines = g_pvQuery.at(iWhichQuery)->iMatchPeptideCount + g_pvQuery.at(iWhichQuery)->iDecoyMatchPeptideCount;
+      std::string strLine;  // line
+      std::string strTmpPep;
+      std::string strLocal;
 
-      if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
-         iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
-
-      for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+      while (std::getline(ifsTmpFile, strLine))
       {
-         CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, 0, vProteinTargets, vProteinDecoys);
+         struct MzidTmpStruct Stmp;
+
+
+         std::string field;
+         std::istringstream isString(strLine);
+
+         int iWhichField = 0;
+         while ( std::getline(isString, field, '\t') )
+         {
+            switch(iWhichField)
+            {
+               case 0:
+                  Stmp.iScanNumber = std::stoi(field);
+                  break;
+               case 1:
+                  Stmp.iXcorrRank = std::stoi(field);
+                  break;
+               case 2:
+                  Stmp.iCharge = std::stoi(field);
+                  break;
+               case 3:
+                  Stmp.dExpMass= std::stod(field);
+                  break;
+               case 4:
+                  Stmp.dCalcMass = std::stod(field);
+                  break;
+               case 5:
+                  Stmp.dExpect = std::stod(field);
+                  break;
+               case 6:
+                  Stmp.fXcorr = std::stof(field);
+                  break;
+               case 7:
+                  Stmp.fCn = std::stof(field);
+                  break;
+               case 8:
+                  Stmp.fSp = std::stof(field);
+                  break;
+               case 9:
+                  break;
+               case 10:
+                  break;
+               case 11:
+                  Stmp.strPeptide = field;
+                  break;
+               case 12:
+                  Stmp.cPrevNext[0] = field.at(0);
+                  Stmp.cPrevNext[1] = field.at(1);
+                  break;
+               case 13:
+                  Stmp.strMods = field;
+                  break;
+               case 14:
+                  Stmp.strProtsTarget = field;
+                  break;
+               case 15:
+                  Stmp.strProtsDecoy = field;
+                  break;
+               default:
+                  char szErrorMsg[SIZE_ERROR];
+                  sprintf(szErrorMsg,  " Error parsing mzid temp file (%d): %s\n", iWhichField, strLine.c_str());
+                  string strErrorMsg(szErrorMsg);
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(szErrorMsg);
+                  ifsTmpFile.close();
+                  return false;
+            }
+            iWhichField++;
+         }
+
+         vMzidTmp.push_back(Stmp);
+
+         // first grab all of the target protein offsets
+         if (Stmp.strProtsTarget.length() > 0)
+         {
+            std::istringstream isString(Stmp.strProtsTarget);
+
+            while ( std::getline(isString, strLocal, ';') )
+            {
+               vProteinTargets.push_back(atol(strLocal.c_str()));
+            }
+         }
+
+         if (Stmp.strProtsDecoy.length() > 0)
+         {
+            std::istringstream isString(Stmp.strProtsDecoy);
+
+            while ( std::getline(isString, strLocal, ';') )
+            {
+               vProteinDecoys.push_back(atol(strLocal.c_str()));
+            }
+         }
+
+         // vstrPeptides contains "peptide;mods" string
+         strTmpPep = Stmp.strPeptide;
+         strTmpPep.append(";");
+         strTmpPep.append(Stmp.strMods);
+         vstrPeptides.push_back(strTmpPep);
+
+         strTmpPep = Stmp.strPeptide;
+         strTmpPep.append(" ");
+         strTmpPep.append(Stmp.strProtsTarget);
+         strTmpPep.append(" ");
+         strTmpPep.append(Stmp.strProtsDecoy);
+         vstrPeptideEvidence.push_back(strTmpPep);
       }
+
+      ifsTmpFile.close();
+
+      // now generate unique lists of file offsets and peptides
+      std::sort(vProteinTargets.begin(), vProteinTargets.end());
+      vProteinTargets.erase(std::unique(vProteinTargets.begin(), vProteinTargets.end()), vProteinTargets.end());
+
+      std::sort(vProteinDecoys.begin(), vProteinDecoys.end());
+      vProteinDecoys.erase(std::unique(vProteinDecoys.begin(), vProteinDecoys.end()), vProteinDecoys.end());
+
+      std::sort(vstrPeptides.begin(), vstrPeptides.end());
+      vstrPeptides.erase(std::unique(vstrPeptides.begin(), vstrPeptides.end()), vstrPeptides.end());
+
+      std::sort(vstrPeptideEvidence.begin(), vstrPeptideEvidence.end());
+      vstrPeptideEvidence.erase(std::unique(vstrPeptideEvidence.begin(), vstrPeptideEvidence.end()), vstrPeptideEvidence.end());
+
+      // print DBSequence element
+      std::vector<long>::iterator it;
+      char szProteinName[100];
+
+      for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
+      {
+         CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         fprintf(fpout, " <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB_1\"/>\n", szProteinName, szProteinName);
+      }
+      for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
+      {
+         CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         fprintf(fpout, " <DBSequence id=\"%s%s\" accession=\"%s%s\" searchDatabase_ref=\"DB_1\"/>\n",
+               g_staticParams.szDecoyPrefix, szProteinName, g_staticParams.szDecoyPrefix, szProteinName);
+      }
+
+      vProteinTargets.clear();
+      vProteinDecoys.clear();
+
+      // print Peptide element
+      std::vector<string>::iterator it2;
+      int iLen;
+      for (it2 = vstrPeptides.begin(); it2 != vstrPeptides.end(); it2++)
+      {
+         std::istringstream isString(*it2);
+
+         fprintf(fpout, " <Peptide id=\"%s\">\n", (*it2).c_str());
+
+         std::getline(isString, strLocal, ';');
+         fprintf(fpout, "  <PeptideSequence>%s</PeptideSequence>\n", strLocal.c_str());
+         iLen = strLocal.length();
+
+         while ( std::getline(isString, strLocal, ';') )
+         {
+            if (strLocal.size() > 0)
+            {
+               int iPosition = 0;
+               double dMass = 0;
+
+               sscanf(strLocal.c_str(), "%d:%lf", &iPosition, &dMass);
+
+               if (iPosition == iLen)  // n-term
+                  iPosition = 0;
+               else if (iPosition == iLen+1)  // c-term
+                  iPosition = iLen;
+               else
+                  iPosition += 1;
+
+               fprintf(fpout, "  <Modification location=\"%d\" monoisotopicMassDelta=\"%f\"></Modification>\n", iPosition, dMass);
+            }
+         }
+
+         fprintf(fpout, " </Peptide>\n");
+      }
+
+
+      // Now write PeptideEvidence to map every peptide to every protein sequence.
+      // Need unique set of peptide+mods and proteins
+      for (it2 = vstrPeptideEvidence.begin(); it2 != vstrPeptideEvidence.end(); it2++)
+      {
+         string strPeptide;
+         string strTargets;
+         string strDecoys;
+         bool bIsDecoy = true;
+
+         std::istringstream isString(*it2);
+
+         int n=0;
+         while ( std::getline(isString, strLocal, ' ') )
+         {
+            switch (n)
+            {
+               case 0:
+                  strPeptide = strLocal;
+                  break;
+               case 1:
+                  if (strLocal.length() > 0)
+                  {
+                     bIsDecoy = false;
+
+//                   Now parse out individual target entries
+                  }
+
+                  break;
+               case 2:
+                  if (strLocal.length() > 0)
+                  {
+//                   Now parse out individual decoy entries
+                  }
+                  break;
+            }
+            vProteinTargets.push_back(atol(strLocal.c_str()));
+
+            n++;
+         }
+
+         fprintf(fpout, " <PeptideEvidence id=\"%s\" isDecoy=\"%s\" DBSequence_Ref=\"%s\" />\n", strPeptide.c_str(), bIsDecoy?"true":"false", "");
+      }
+      
    }
-
-   // now unique sort vProteinTargets and vProteinDecoys
-   std::sort(vProteinTargets.begin(), vProteinTargets.end());
-   vProteinTargets.erase(std::unique(vProteinTargets.begin(), vProteinTargets.end()), vProteinTargets.end());
-
-   std::sort(vProteinDecoys.begin(), vProteinDecoys.end());
-   vProteinDecoys.erase(std::unique(vProteinDecoys.begin(), vProteinDecoys.end()), vProteinDecoys.end());
-
-   std::vector<string>::iterator it;
-
-   for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
-   {
-      fprintf(fpout, "1 <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB_1\"/>\n", (*it).c_str(), (*it).c_str());
-   }
-   for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
-   {
-      fprintf(fpout, "2 <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB_1\"/>\n", (*it).c_str(), (*it).c_str());
-   }
-
-   // now write all Peptide entries: unique peptide + mod states
-/*
-    <Peptide id="PEP_1">
-      <PeptideSequence>MTWMDS</PeptideSequence>
-      <Modification location="0" monoisotopicMassDelta="229.162932">
-        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
-      </Modification>
-      <Modification location="1" residues="M" monoisotopicMassDelta="15.9949146221">
-        <cvParam cvRef="UNIMOD" accession="UNIMOD:35" name="Oxidation"/>
-      </Modification>
-    </Peptide>
-    <Peptide id="PEP_2">
-      <PeptideSequence>IKGKLVMPNFEVIK</PeptideSequence>
-      <Modification location="0" monoisotopicMassDelta="229.162932">
-        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
-      </Modification>
-      <Modification location="2" residues="K" monoisotopicMassDelta="229.162932">
-        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
-      </Modification>
-      <Modification location="4" residues="K" monoisotopicMassDelta="229.162932">
-        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
-      </Modification>
-      <Modification location="14" residues="K" monoisotopicMassDelta="229.162932">
-        <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
-      </Modification>
-*/
 
    fprintf(fpout, " </SequenceCollection>\n");
+
+   return true;
 }
 
 
@@ -369,193 +581,166 @@ void CometWriteMzIdentML::WriteMzIdentMLEndTags(FILE *fpout)
    fflush(fpout);
 }
 
-void CometWriteMzIdentML::PrintResults(int iWhichQuery,
-                                       bool bDecoy,
-                                       FILE *fpout,
-                                       FILE *fpdb)
+void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
+                                      int iPrintTargetDecoy,
+                                      FILE *fpout)
 {
-   int  i,
-        iNumPrintLines,
-        iRankXcorr,
-        iMinLength;
-   char *pStr;
-
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
-
-   // look for either \ or / separator so valid for Windows or Linux
-   if ((pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL
-         && (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
-      pStr = g_staticParams.inputFile.szBaseName;
-   else
-      pStr++;  // skip separation character
-
-   // Print spectrum_query element.
-   if (g_staticParams.options.bMango)   // Mango specific
+   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
+         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
    {
-      fprintf(fpout, " <spectrum_query spectrum=\"%s_%s.%05d.%05d.%d\"",
-            pStr,
-            pQuery->_spectrumInfoInternal.szMango,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState);
-   }
-   else
-   {
-      fprintf(fpout, " <spectrum_query spectrum=\"%s.%05d.%05d.%d\"",
-            pStr,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState);
-   }
+      Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   if (pQuery->_spectrumInfoInternal.szNativeID[0]!='\0')
-   {
-      if (     strchr(pQuery->_spectrumInfoInternal.szNativeID, '&')
-            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '\"')
-            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '\'')
-            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '<')
-            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '>'))
+      Results *pOutput;
+      int iNumPrintLines;
+
+      if (iPrintTargetDecoy == 2)  // decoys
       {
-         fprintf(fpout, " spectrumNativeID=\"");
-         for (i=0; i<(int)strlen(pQuery->_spectrumInfoInternal.szNativeID); i++)
-         {
-            switch(pQuery->_spectrumInfoInternal.szNativeID[i])
-            {
-               case '&':  fprintf(fpout, "&amp;");       break;
-               case '\"': fprintf(fpout, "&quot;");      break;
-               case '\'': fprintf(fpout, "&apos;");      break;
-               case '<':  fprintf(fpout, "&lt;");        break;
-               case '>':  fprintf(fpout, "&gt;");        break;
-               default:   fprintf(fpout, "%c", pQuery->_spectrumInfoInternal.szNativeID[i]); break;
-            }
-         }
-         fprintf(fpout, "\"");
+         pOutput = pQuery->_pDecoys;
+         iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
       }
-      else
-         fprintf(fpout, " spectrumNativeID=\"%s\"", pQuery->_spectrumInfoInternal.szNativeID);
-   }
-
-   fprintf(fpout, " start_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
-   fprintf(fpout, " end_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
-   fprintf(fpout, " precursor_neutral_mass=\"%0.6f\"", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
-   fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.iChargeState);
-   fprintf(fpout, " index=\"%d\"", iWhichQuery+1);
-
-   if (pQuery->_spectrumInfoInternal.dRTime > 0.0)
-      fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", pQuery->_spectrumInfoInternal.dRTime);
-   else
-      fprintf(fpout, ">\n");
-
-   fprintf(fpout, "  <search_result>\n");
-
-   Results *pOutput;
-
-   if (bDecoy)
-   {
-      pOutput = pQuery->_pDecoys;
-      iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
-   }
-   else
-   {
-      pOutput = pQuery->_pResults;
-      iNumPrintLines = pQuery->iMatchPeptideCount;
-   }
-
-   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
-      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
-
-   iMinLength = 999;
-   for (i=0; i<iNumPrintLines; i++)
-   {
-      int iLen = (int)strlen(pOutput[i].szPeptide);
-      if (iLen == 0)
-         break;
-      if (iLen < iMinLength)
-         iMinLength = iLen;
-   }
-
-   iRankXcorr = 1;
-
-   for (i=0; i<iNumPrintLines; i++)
-   {
-      int j;
-      bool bNoDeltaCnYet = true;
-      bool bDeltaCnStar = false;
-      double dDeltaCn = 0.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
-      double dDeltaCnStar = 0.0;   // if reported deltaCn is for dissimilar peptide, the value stored here is the
-                                   // explicit deltaCn between top hit and peptide in list
-
-      for (j=i+1; j<iNumPrintLines; j++)
+      else  // combined or separate targets
       {
-         if (j<g_staticParams.options.iNumStored)
-         {
-            // very poor way of calculating peptide similarity but it's what we have for now
-            int iDiffCt = 0;
+         pOutput = pQuery->_pResults;
+         iNumPrintLines = pQuery->iMatchPeptideCount;
+      }
 
-            for (int k=0; k<iMinLength; k++)
+      if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
+         iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
+
+      int iMinLength = 999;
+      for (int i=0; i<iNumPrintLines; i++)
+      {
+         int iLen = (int)strlen(pOutput[i].szPeptide);
+         if (iLen == 0)
+            break;
+         if (iLen < iMinLength)
+            iMinLength = iLen;
+      }
+
+      int iRankXcorr = 1;
+
+      for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+      {
+         int j;
+         double dDeltaCn = 1.0;
+
+         if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
+            continue;
+
+         // go one past iNumPrintLines to calculate deltaCn value
+         for (j=iWhichResult+1; j<iNumPrintLines+1; j++)
+         {
+            if (j<g_staticParams.options.iNumStored)
             {
-               // I-L and Q-K are same for purposes here
-               if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
+               // very poor way of calculating peptide similarity but it's what we have for now
+               int iDiffCt = 0;
+
+               for (int k=0; k<iMinLength; k++)
                {
-                  if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
-                          && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                        && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
-                           && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                  // I-L and Q-K are same for purposes here
+                  if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
                   {
-                     iDiffCt++;
+                     if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
+                              && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                           && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
+                              && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                     {
+                        iDiffCt++;
+                     }
                   }
                }
-            }
 
-            // calculate deltaCn only if sequences are less than 0.75 similar
-            if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
-            {
-               if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
-               else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-                  dDeltaCn = 1.0;
-               else
-                  dDeltaCn = 0.0;
+               // calculate deltaCn only if sequences are less than 0.75 similar
+               if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
+               {
+                  if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                     dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[iWhichResult].fXcorr;
+                  else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+                     dDeltaCn = 1.0;
+                  else
+                     dDeltaCn = 0.0;
 
-               bNoDeltaCnYet = 0;
-
-               if (j - i > 1)
-                  bDeltaCnStar = true;
-               break;
+                  break;
+               }
             }
          }
-      }
 
-      if (bNoDeltaCnYet)
-         dDeltaCn = 1.0;
+         if (iWhichResult > 0 && !isEqual(pOutput[iWhichResult].fXcorr, pOutput[iWhichResult-1].fXcorr))
+            iRankXcorr++;
 
-      if (i > 0 && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
-         iRankXcorr++;
+         fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
+         fprintf(fpout, "%d\t", iRankXcorr);
+         fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iChargeState);
+         fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
+         fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
+         fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpect);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
+         fprintf(fpout, "%0.4f\t", dDeltaCn);
+         fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].iMatchedIons);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].iTotalIons);
 
-      if (pOutput[i].fXcorr > XCORR_CUTOFF)
-      {
-         if (bDeltaCnStar && i+1<iNumPrintLines)
+         // plain peptide
+         fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
+
+         // prev/next AA
+         fprintf(fpout, "%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
+
+         // modifications:  zero-position:mass; semi-colon delimited; length=nterm, length+1=c-term
+
+         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
          {
-            if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr >= 0.0)
+            fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].iLenPeptide, 
+                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass);
+         }
+
+         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
+         {
+            fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].iLenPeptide + 1, 
+                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass);
+         }
+
+         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+         {
+            if (pOutput[iWhichResult].piVarModSites[i] != 0)
+               fprintf(fpout, "%d:%0.6f;", i, pOutput[iWhichResult].pdVarModSites[i]);
+         }
+
+         fprintf(fpout, "\t");
+
+         // comma separated list of fpdb pointers for target proteins
+         std::vector<ProteinEntryStruct>::iterator it;
+         if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+         {
+            for (it=pOutput[iWhichResult].pWhichProtein.begin(); it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
             {
-               dDeltaCnStar = 1.0 - pOutput[i+1].fXcorr/pOutput[i].fXcorr;
-               if (isEqual(dDeltaCnStar, 0.0)) // note top two xcorrs could be identical so this gives a
-                  dDeltaCnStar = 0.001;        // non-zero deltacnstar value to denote deltaCn is not explicit
+               fprintf(fpout, "%ld;", (*it).lWhichProtein);
             }
-            else if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr < 0.0)
-               dDeltaCnStar = 1.0;
-            else
-               dDeltaCnStar = 0.0;
+            fprintf(fpout, "\t");
          }
          else
-            dDeltaCnStar = 0.0;
+         {
+            fprintf(fpout, "-1\t");
+         }
 
-         PrintMzIdentMLSearchHit(iWhichQuery, i, iRankXcorr, bDecoy, pOutput, fpout, fpdb, dDeltaCn, dDeltaCnStar);
+         // comma separated list of fpdb pointers for decoy proteins
+         if (pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+         {
+            for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+            {
+               fprintf(fpout, "%ld;", (*it).lWhichProtein);
+            }
+            fprintf(fpout, "\t");
+         }
+         else
+         {
+            fprintf(fpout, "-1\t");
+         }
+
+ 
+         fprintf(fpout, "\n");
       }
    }
-
-   fprintf(fpout, "  </search_result>\n");
-   fprintf(fpout, " </spectrum_query>\n");
 }
 
 

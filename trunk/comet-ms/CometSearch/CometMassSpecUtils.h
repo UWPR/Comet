@@ -34,6 +34,7 @@ public:
                                     int ctCharge,
                                     double *pdAAforward,
                                     double *pdAAreverse);
+
    static void AssignMass(double *pdAAMass,
                           int bMonoMasses,
                           double *dOH2);
@@ -48,6 +49,10 @@ public:
                                     int iPrintTargetDecoy,
                                     vector<string>& vProteinTargets,  // the target protein names
                                     vector<string>& vProteinDecoys);  // the decoy protein names if applicable
+
+   static string GetField(std::string *s,
+                          unsigned int n,
+                          char cDelimeter);
 };
 
 #endif // _COMETMASSSPECUTILS_H_

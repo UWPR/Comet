@@ -24,21 +24,24 @@ public:
    CometWriteMzIdentML();
    ~CometWriteMzIdentML();
 
-   static bool WriteMzIdentMLHeader(FILE *fpout,
-                                 CometSearchManager &searchMgr);
+
+   static void WriteMzIdentMLTmp(FILE *fpout,
+                                 FILE *fpoutd);
 
    static void WriteMzIdentML(FILE *fpout,
-                           FILE *fpoutd,
-                           FILE *fpdb);
+                              FILE *fpdb,
+                              char *szTmpFile);
 
-   static void WriteMzIdentMLEndTags(FILE *fpout);
 
 
 private:
-   static void PrintResults(int iWhichQuery,
-                            bool bDecoy,
-                            FILE *fpOut,
-                            FILE *fpdb);
+   static bool WriteMzIdentMLHeader(FILE *fpout);
+
+   static void WriteMzIdentMLEndTags(FILE *fpout);
+
+   static void PrintTmpPSM(int iWhichQuery,
+                           int iPrintTargetDecoy,
+                           FILE *fpOut);
 
    static void PrintMzIdentMLSearchHit(int iWhichQuery,
                                     int iWhichResult,
@@ -71,8 +74,9 @@ private:
                               CometSearchManager &searchMgr,
                               string varModName);
 
-   static void WriteSequenceCollection(FILE *fpout,
-                                       FILE *fpdb);
+   static bool WriteSequenceCollection(FILE *fpout,
+                                       FILE *fpdb,
+                                       char *szTmpFile);
 
    static void WriteAnalysisProtocol(FILE *fpout);
 };

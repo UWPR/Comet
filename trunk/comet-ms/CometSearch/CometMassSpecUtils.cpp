@@ -263,3 +263,24 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       }
    }
 }
+
+
+// return nth entry in string s
+string CometMassSpecUtils::GetField(std::string *s,
+                                    unsigned int n,
+                                    char cDelimeter)
+{
+   std::string field;
+   std::istringstream isString(*s);
+
+   while ( std::getline(isString, field, cDelimeter) )
+   {
+      n--;
+
+      if (n == 0)
+         break;
+   }
+
+   return field;
+}
+
