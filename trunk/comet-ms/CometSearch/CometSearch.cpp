@@ -3302,7 +3302,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    dXcorr = 0.0;
 
-   int iMax = pQuery->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
+   // iMax is largest x-value allowed as iMax+1 is allocated and we're 0-index
+   int iMax = pQuery->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE;
 
    int bin,x,y;
 
