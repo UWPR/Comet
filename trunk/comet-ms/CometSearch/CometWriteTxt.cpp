@@ -573,7 +573,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1_S_%0.6f_C", g_staticParams.staticModifications.dAddCterminusProtein);
+      fprintf(fpout, "%d_S_%0.6f_C", pOutput[iWhichResult].iLenPeptide, g_staticParams.staticModifications.dAddCterminusProtein);
       bPrintMod = true;
    }
 
@@ -585,7 +585,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       else
          bFirst=false;
 
-      fprintf(fpout, "1_S_%0.6f_c", g_staticParams.staticModifications.dAddCterminusPeptide);
+      fprintf(fpout, "%d_S_%0.6f_c", pOutput[iWhichResult].iLenPeptide, g_staticParams.staticModifications.dAddCterminusPeptide);
       bPrintMod = true;
    }
 
