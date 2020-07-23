@@ -3430,7 +3430,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    if (bDecoyPep && g_staticParams.options.iDecoySearch==2)
    {
-      if (dXcorr > pQuery->fLowestDecoyXcorrScore)
+      if (dXcorr > pQuery->dLowestDecoyXcorrScore)
       {
          // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL
          if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL)
@@ -3448,7 +3448,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    }
    else
    {
-      if (dXcorr > pQuery->fLowestXcorrScore)
+      if (dXcorr > pQuery->dLowestXcorrScore)
       {
          // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL
          if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL)
@@ -3642,19 +3642,23 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       // Get new lowest score.
-      pQuery->fLowestDecoyXcorrScore = pQuery->_pDecoys[0].fXcorr;
+      pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[0].fXcorr;
       siLowestDecoySpScoreIndex=0;
 
       for (i=g_staticParams.options.iNumStored-1; i>0; i--)
       {
-         if (pQuery->_pDecoys[i].fXcorr < pQuery->fLowestDecoyXcorrScore || pQuery->_pDecoys[i].iLenPeptide == 0)
+         if (pQuery->_pDecoys[i].fXcorr < pQuery->dLowestDecoyXcorrScore || pQuery->_pDecoys[i].iLenPeptide == 0)
          {
-            pQuery->fLowestDecoyXcorrScore = pQuery->_pDecoys[i].fXcorr;
+            pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[i].fXcorr;
             siLowestDecoySpScoreIndex = i;
          }
       }
 
       pQuery->siLowestDecoySpScoreIndex = siLowestDecoySpScoreIndex;
+
+      // round lowest score to 6 significant digits
+      int iTmp = pQuery->dLowestDecoyXcorrScore * 1000000;
+      pQuery->dLowestDecoyXcorrScore = (double)iTmp / 1000000.0;
    }
    else
    {
@@ -3775,19 +3779,23 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       // Get new lowest score.
-      pQuery->fLowestXcorrScore = pQuery->_pResults[0].fXcorr;
+      pQuery->dLowestXcorrScore = pQuery->_pResults[0].fXcorr;
       siLowestSpScoreIndex=0;
 
       for (i=g_staticParams.options.iNumStored-1; i>0; i--)
       {
-         if (pQuery->_pResults[i].fXcorr < pQuery->fLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
+         if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
          {
-            pQuery->fLowestXcorrScore = pQuery->_pResults[i].fXcorr;
+            pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
             siLowestSpScoreIndex = i;
          }
       }
 
       pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
+
+      // round lowest score to 6 significant digits
+      int iTmp = pQuery->dLowestXcorrScore * 1000000;
+      pQuery->dLowestXcorrScore = (double)iTmp / 1000000.0;
    }
 }
 

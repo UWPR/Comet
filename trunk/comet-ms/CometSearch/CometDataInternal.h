@@ -830,8 +830,8 @@ struct Query
    float fLowestSpScore;
    float fLowestDecoySpScore;
 
-   float fLowestXcorrScore;
-   float fLowestDecoyXcorrScore;
+   double dLowestXcorrScore;
+   double dLowestDecoyXcorrScore;
 
    double dMangoIndex;      // scan number decimal precursor value i.e. 2401.001 for scan 2401, first precursor/z pair
 
@@ -878,8 +878,8 @@ struct Query
       fLowestSpScore = 0.0;
       fLowestDecoySpScore = 0.0;
 
-      fLowestXcorrScore = XCORR_CUTOFF;
-      fLowestDecoyXcorrScore = XCORR_CUTOFF;
+      dLowestXcorrScore = XCORR_CUTOFF;
+      dLowestDecoyXcorrScore = XCORR_CUTOFF;
 
       dMangoIndex = 0.0;
 
