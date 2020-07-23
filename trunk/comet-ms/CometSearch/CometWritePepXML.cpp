@@ -684,14 +684,20 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
-      for (; it != vProteinTargets.end(); it++)
-         fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", (*it).c_str());
+      if (vProteinTargets.size() > 0)
+      {
+         for (; it != vProteinTargets.end(); it++)
+            fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", (*it).c_str());
+      }
    }
 
    if (iPrintTargetDecoy != 1)  // if not target only, print decoy proteins
    {
-      for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
-         fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", (*it).c_str());
+      if (vProteinDecoys.size() > 0)
+      {
+         for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
+            fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", (*it).c_str());
+      }
    }
 
    // check if peptide is modified
