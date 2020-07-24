@@ -2212,6 +2212,23 @@ bool CometSearchManager::DoSearch()
 
             CalcRunTime(tStartTime);
 
+            // Now set szPrevNextAA
+            if (g_staticParams.options.iDecoySearch == 2)
+            {
+               for (int x=0; x<(int)g_pvQuery.size(); x++)
+                  UpdatePrevNextAA(x, 1);
+               for (int x=0; x<(int)g_pvQuery.size(); x++)
+                  UpdatePrevNextAA(x, 2);
+            }
+            else
+            {
+               for (int x=0; x<(int)g_pvQuery.size(); x++)
+               {
+                  UpdatePrevNextAA(x, 0);
+               }
+            }
+            // done setting szPrevNextAA
+
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
                logout("  done\n");
@@ -3182,4 +3199,45 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    delete[] lIndex;
 
    return bSucceeded;
+}
+
+
+// set set prev/next AA as want then from first target protein and
+// if decoy only then from first decoy protein
+void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
+                                          int iPrintTargetDecoy)
+{
+   Results *pOutput;
+   int iNumPrintLines;
+
+   if (iPrintTargetDecoy == 2)
+   {
+      pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+      iNumPrintLines = g_pvQuery.at(iWhichQuery)->iDecoyMatchPeptideCount;
+   }
+   else
+   {
+      pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
+      iNumPrintLines = g_pvQuery.at(iWhichQuery)->iMatchPeptideCount;
+   }
+
+   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
+      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
+
+   for (int i=0; i<iNumPrintLines; i++)
+   {
+      if (pOutput[i].fXcorr > XCORR_CUTOFF)
+      {
+         if (pOutput[i].pWhichProtein.size() != 0)
+         {
+            pOutput[i].szPrevNextAA[0] = pOutput[i].pWhichProtein.at(0).cPrevAA;
+            pOutput[i].szPrevNextAA[1] = pOutput[i].pWhichProtein.at(0).cNextAA;
+         }
+        else
+        {
+            pOutput[i].szPrevNextAA[0] = pOutput[i].pWhichDecoyProtein.at(0).cPrevAA;
+            pOutput[i].szPrevNextAA[1] = pOutput[i].pWhichDecoyProtein.at(0).cNextAA;
+         }
+      }
+   }
 }

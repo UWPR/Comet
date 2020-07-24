@@ -3919,6 +3919,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (pQuery->_pDecoys[i].lProteinFilePosition > dbe->lProteinFilePosition)
                {     
                   pQuery->_pDecoys[i].lProteinFilePosition = dbe->lProteinFilePosition;
+/*
                   if (iStartPos == 0)
                      pQuery->_pDecoys[i].szPrevNextAA[0] = '-';
                   else
@@ -3928,6 +3929,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                      pQuery->_pDecoys[i].szPrevNextAA[1] = '-';
                   else
                      pQuery->_pDecoys[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+*/
 
                   // also if IL equivalence set, go ahead and copy peptide from first sequence
                   memcpy(pQuery->_pDecoys[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pDecoys[i].iLenPeptide*sizeof(char));
@@ -4040,7 +4042,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (pQuery->_pResults[i].lProteinFilePosition > dbe->lProteinFilePosition)
                {
                   pQuery->_pResults[i].lProteinFilePosition = dbe->lProteinFilePosition;
-
+/*
                   if (iStartPos == 0)
                      pQuery->_pResults[i].szPrevNextAA[0] = '-';
                   else
@@ -4050,6 +4052,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                      pQuery->_pResults[i].szPrevNextAA[1] = '-';
                   else
                      pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+*/
 
                   // also if IL equivalence set, go ahead and copy peptide from first sequence
                   memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pResults[i].iLenPeptide*sizeof(char));
