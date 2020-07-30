@@ -235,6 +235,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             }
          }
       }
+
       if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
       {
          sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
@@ -272,7 +273,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
 
-         if (pOutput[i].szPrevNextAA[0] == '-')
+         if (pOutput[i].szPrevNextAA[0] == '-' || pOutput[i].bClippedM)
             dBion += g_staticParams.staticModifications.dAddNterminusProtein;
          if (pOutput[i].szPrevNextAA[1] == '-')
             dYion += g_staticParams.staticModifications.dAddCterminusProtein;
@@ -298,9 +299,10 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          }
 
          // Generate pdAAforward for _pResults[0].szPeptide.
-         for (ii=0; ii<pOutput[i].iLenPeptide; ii++)
+         int iLenMinus1 = pOutput[i].iLenPeptide - 1;
+         for (ii=0; ii<iLenMinus1; ii++)
          {
-            int iPos = pOutput[i].iLenPeptide - ii - 1;
+            int iPos = iLenMinus1 - ii;
 
             dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
             dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
@@ -318,6 +320,8 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             pdAAreverse[ii] = dYion;
          }
 
+         int iMax = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE;
+
          for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
          {
             for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
@@ -331,12 +335,12 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   // Gets fragment ion mass.
                   dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
 
-                  if ( !(dFragmentIonMass <= FLOAT_ZERO))
+                  if ( dFragmentIonMass > FLOAT_ZERO)
                   {
                      int iFragmentIonMass = BIN(dFragmentIonMass);
                      float fSpScore;
 
-                     fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
+                     fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iMax);
 
                      if (fSpScore > FLOAT_ZERO)
                      {
@@ -765,12 +769,15 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
 
 float CometPostAnalysis::FindSpScore(Query *pQuery,
-                                     int bin)
+                                     int bin,
+                                     int iMax)
 {
    int x = bin / SPARSE_MATRIX_SIZE;
-   if (pQuery->ppfSparseSpScoreData[x] == NULL)
+
+   if (x > iMax || pQuery->ppfSparseSpScoreData[x] == NULL || bin == 0) // x should never be > iMax so this is just a safety check
       return 0.0f;
+
    int y = bin - (x*SPARSE_MATRIX_SIZE);
+
    return pQuery->ppfSparseSpScoreData[x][y];
 }
-

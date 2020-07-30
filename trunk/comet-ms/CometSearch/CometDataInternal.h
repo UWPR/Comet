@@ -190,6 +190,7 @@ struct Results
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
+   bool   bClippedM;                          // true if new N-term protein due to clipped methionine
    string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    char   cPeffOrigResidue;                   // original residue of a PEFF variant
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused

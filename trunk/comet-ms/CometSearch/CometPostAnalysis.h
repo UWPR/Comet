@@ -61,7 +61,8 @@ private:
                                 int *iStartCorr,
                                 int *iNextCorr);
    static float FindSpScore(Query *pQuery,
-                            int bin);
+                            int bin,
+                            int iMax);
    static bool ProteinEntryCmp(const struct ProteinEntryStruct &a,
                                const struct ProteinEntryStruct &b);
 };

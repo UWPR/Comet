@@ -3815,11 +3815,9 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
    int i,
        iLenMinus1,
        bIsDuplicate=0;
-   int iLenProteinSeqMinus1;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    iLenMinus1 = iEndPos-iStartPos+1;
-   iLenProteinSeqMinus1 = strlen(szProteinSeq) - 1;
 
    if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
    {
@@ -3919,17 +3917,6 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (pQuery->_pDecoys[i].lProteinFilePosition > dbe->lProteinFilePosition)
                {     
                   pQuery->_pDecoys[i].lProteinFilePosition = dbe->lProteinFilePosition;
-/*
-                  if (iStartPos == 0)
-                     pQuery->_pDecoys[i].szPrevNextAA[0] = '-';
-                  else
-                     pQuery->_pDecoys[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
-
-                  if (iEndPos == iLenProteinSeqMinus1)
-                     pQuery->_pDecoys[i].szPrevNextAA[1] = '-';
-                  else
-                     pQuery->_pDecoys[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
-*/
 
                   // also if IL equivalence set, go ahead and copy peptide from first sequence
                   memcpy(pQuery->_pDecoys[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pDecoys[i].iLenPeptide*sizeof(char));
