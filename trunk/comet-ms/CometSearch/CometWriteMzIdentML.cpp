@@ -138,7 +138,7 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
 }
 
 
-struct MzidTmpStruct
+struct MzidTmpStruct   // stores the info from tab-delimited text file
 {
    int    iScanNumber;
    int    iXcorrRank;
@@ -281,6 +281,7 @@ bool CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
          strTmpPep.append(Stmp.strMods);
          vstrPeptides.push_back(strTmpPep);
 
+         // vstrPeptideEvidence contains "peptide delimtedtargetprots delimiteddecoyprots"
          strTmpPep = Stmp.strPeptide;
          strTmpPep.append(" ");
          strTmpPep.append(Stmp.strProtsTarget);
@@ -382,16 +383,42 @@ bool CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
                case 1:
                   if (strLocal.length() > 0)
                   {
-                     bIsDecoy = false;
+                     std::istringstream isTargets(strLocal);
+                     std::string strOffset;
 
-//                   Now parse out individual target entries
+                     // Now parse out individual target entries (file offsets) delimited by ";"
+                     while ( std::getline(isTargets, strOffset, ';') )
+                     {
+                        CometMassSpecUtils::GetProteinName(fpdb, stol(strOffset), szProteinName);
+
+                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s\" isDecoy=\"%s\" DBSequence_Ref=\"%s\" />\n",
+                              strPeptide.c_str(),
+                              szProteinName,
+                              "false",
+                              szProteinName);
+                     }
                   }
 
                   break;
                case 2:
                   if (strLocal.length() > 0)
                   {
-//                   Now parse out individual decoy entries
+                     std::istringstream isDecoys(strLocal);
+                     std::string strOffset;
+
+                     // Now parse out individual decoy entries (file offsets) delimited by ";"
+                     while ( std::getline(isDecoys, strOffset, ';') )
+                     {
+                        CometMassSpecUtils::GetProteinName(fpdb, stol(strOffset), szProteinName);
+
+                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s%s\" isDecoy=\"%s\" DBSequence_Ref=\"%s%s\" />\n",
+                              strPeptide.c_str(),
+                              g_staticParams.szDecoyPrefix,
+                              szProteinName,
+                              "true",
+                              g_staticParams.szDecoyPrefix,
+                              szProteinName);
+                     }
                   }
                   break;
             }
@@ -400,7 +427,7 @@ bool CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
             n++;
          }
 
-         fprintf(fpout, " <PeptideEvidence id=\"%s\" isDecoy=\"%s\" DBSequence_Ref=\"%s\" />\n", strPeptide.c_str(), bIsDecoy?"true":"false", "");
+//       fprintf(fpout, " <PeptideEvidence id=\"%s\" isDecoy=\"%s\" DBSequence_Ref=\"%s\" />\n", strPeptide.c_str(), bIsDecoy?"true":"false", "");
       }
       
    }
