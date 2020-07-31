@@ -2450,6 +2450,8 @@ bool CometSearchManager::DoSearch()
       if (iTotalSpectraSearched == 0)
          bBlankSearchFile = true;
 
+      g_staticParams.inputFile.szBaseName[0] = '\0';
+
       if (!bSucceeded)
          break;
    }
