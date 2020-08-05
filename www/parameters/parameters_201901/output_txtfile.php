@@ -25,10 +25,14 @@
              PEFF substitutions.  The "code" field can be "S" for a static modification, "V" for a variable modification,
              "P" for a PEFF modification, and "p" for a PEFF substitution.  In the case of a PEFF substitution, the
              original amino acid is listed in the "massdiff" field, e.g. "2_p_L" indicates the 2nd residue was originally
-             a leucine before the PEFF substitution.  The "modifications" string can be appended
-             with a "_N" to denote a N-term protein modification, "_n" to denote a N-term peptide modification,
-             "_C" to denote a C-term protein modification, or a "_c" to denote a C-term peptide modification.  For
-             example "12_K_42.0106_c".  
+             a leucine before the PEFF substitution.
+         <li>The "modifications" string can be appended with:
+             <ul>
+               <li>"_N" to denote a N-term protein modification, e.g. "1_S_-17.0265_N"
+               <li>"_n" to denote a N-term peptide modification, e.g. "1_A_42.0146_n"
+               <li>"_C" to denote a C-term protein modification, e.g. "9_R_356.1882_C"
+               <li>"_c" to denote a C-term peptide modification, e.g. "12_K_42.0106_c"
+             </ul>
          </ul>
 
          <p>Example:

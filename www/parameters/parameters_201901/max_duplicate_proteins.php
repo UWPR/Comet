@@ -12,17 +12,20 @@
 
          <ul>
          <li>This parameter defines the maximum number of proteins (identifiers/accessions)
-         to report.  Some peptides sequences, especially short ones,  are not very specific
-         and can be found in a large number of sequence entries.  In these situations, this
-         parameter can be used to keep the reported protein list short.
+         to report.  If a peptide is present in 6 total protein sequences, there is one
+         (first) reference protein and 5 additional duplicate proteins.  This parameter
+         controls how many of those 5 additional duplicate proteins are reported.
+         <li>If "<a href="decoy_search.php">decoy_search</a> = 2"
+         is set to report separate target and decoy results, this parameter will be
+         applied to the target and decoy outputs separately.
          <li>Valid values are any integer greater than or equal to 0.
-         <li>If set to "0", there will be no limit on the number of reported proteins.
-         <li>The default value is "0" if this parameter is missing.
+         <li>If set to "-1", there will be no limit on the number of reported additional proteins.
+         <li>The default value is "20" if this parameter is missing.
          </ul>
 
          <p>Example:
-         <br><tt>max_duplicate_proteins = 0</tt>
-         <br><tt>max_duplicate_proteins = 20</tt>
+         <br><tt>max_duplicate_proteins = 0&nbsp;&nbsp;&nbsp;</tt>    <i>// one reference protein reported, no additional duplicates</i>
+         <br><tt>max_duplicate_proteins = 10&nbsp;&nbsp;</tt>    <i>// one reference protein reported along with ten additional duplicates</i>
 
       </div>
    </div>
