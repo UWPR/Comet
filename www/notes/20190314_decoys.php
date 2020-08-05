@@ -21,9 +21,7 @@
 
 <li>If a residue is modified, the modification will move with the residue in the decoy peptide e.g. M[15.9949]QEATLSK will generate a
     decoy peptide SLTAEQM[15.9949]K. If there were a distance constraint forcing this modification to only appear on the n-terminal
-    residue of the peptide, this constraint is not enforced for the decoys. As the decoys are used just for their decoy score
-    distribution, it doesn't really matter what their sequence is so it's OK that the decoy peptide modification state may violate
-    target peptide modification rules.
+    residue of the peptide, this constraint is not enforced for the decoys.
 
             </div>
       </div>
