@@ -100,18 +100,19 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "protein\t");
    fprintf(fpout, "protein_count\t");
    fprintf(fpout, "modifications\t");
-   fprintf(fpout, "retention_time_sec\n");
+   fprintf(fpout, "retention_time_sec\t");
+   fprintf(fpout, "sp_rank\n");
 
 #endif
 }
 
 
-#ifdef CRUX
 void CometWriteTxt::PrintResults(int iWhichQuery,
                                  int iPrintTargetDecoy,
                                  FILE *fpout,
-                                 FILE *fpdb)
+                                 FILE *fpdb)  //fpdb is file pointer for either FASTA or .idx file
 {
+#ifdef CRUX
    if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
          || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
    {
@@ -224,14 +225,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%0.2E\n", pOutput[iWhichResult].dExpect);
       }
    }
-}
 
 #else
-void CometWriteTxt::PrintResults(int iWhichQuery,
-                                 int iPrintTargetDecoy,
-                                 FILE *fpout,
-                                 FILE *fpdb)  //fpdb is file pointer for either FASTA or .idx file
-{
    if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
          || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
    {
@@ -433,13 +428,16 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          PrintModifications(fpout, pOutput, iWhichResult);
 
          // retention time seconds
-         fprintf(fpout, "%0.1f", pQuery->_spectrumInfoInternal.dRTime);
+         fprintf(fpout, "%0.1f\t", pQuery->_spectrumInfoInternal.dRTime);
+
+         // Sp rank
+         fprintf(fpout, "%d", pOutput[iWhichResult].iRankSp);
 
          fprintf(fpout, "\n");
       }
    }
-}
 #endif
+}
 
 
 // print out a comma separate list of protein refereces/accessions
