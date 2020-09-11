@@ -30,9 +30,8 @@ public:
 
    static void WriteMzIdentML(FILE *fpout,
                               FILE *fpdb,
-                              char *szTmpFile);
-
-
+                              char *szTmpFile,
+                              CometSearchManager &searchMgr);
 
 private:
    static bool WriteMzIdentMLHeader(FILE *fpout);
@@ -65,6 +64,9 @@ private:
                           int *iNTT,
                           int *iNMC);
 
+   static void WriteMods(FILE *fpout,
+                         CometSearchManager &searchMgr);
+
    static void WriteVariableMod(FILE *fpout,
                                 CometSearchManager &searchMgr,
                                 string varModName,
@@ -74,9 +76,18 @@ private:
                               CometSearchManager &searchMgr,
                               string varModName);
 
-   static bool WriteSequenceCollection(FILE *fpout,
-                                       FILE *fpdb,
-                                       char *szTmpFile);
+   static void GetModificationID(char cResidue,
+                                 double dModMass,
+                                 string *strModID,
+                                 string *strModRef,
+                                 string *strModName);
+ 
+   static void WriteEnzyme(FILE *fpout);
+
+   static bool ParseTmpFile(FILE *fpout,
+                            FILE *fpdb,
+                            char *szTmpFile,
+                            CometSearchManager &searchMgr);
 
    static void WriteAnalysisProtocol(FILE *fpout);
 };

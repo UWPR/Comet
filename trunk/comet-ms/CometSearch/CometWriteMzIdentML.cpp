@@ -62,13 +62,13 @@ void CometWriteMzIdentML::WriteMzIdentMLTmp(FILE *fpout,
 
 void CometWriteMzIdentML::WriteMzIdentML(FILE *fpout,
                                          FILE *fpdb,
-                                         char *szTmpFile)
+                                         char *szTmpFile,
+                                         CometSearchManager &searchMgr)
 {
    WriteMzIdentMLHeader(fpout);
 
    // now loop through szTmpFile file, wr
-
-   WriteSequenceCollection(fpout, fpdb, szTmpFile);
+   ParseTmpFile(fpout, fpdb, szTmpFile, searchMgr);
 
 
    WriteMzIdentMLEndTags(fpout);
@@ -157,9 +157,10 @@ struct MzidTmpStruct   // stores the info from tab-delimited text file
 };
 
 
-bool CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
-                                                  FILE *fpdb,
-                                                  char *szTmpFile)
+bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
+                                       FILE *fpdb,
+                                       char *szTmpFile,
+                                       CometSearchManager &searchMgr)
 {
    std::vector<MzidTmpStruct> vMzidTmp; // vector to store entire tmp output
    std::vector<long> vProteinTargets;   // store vector of target protein file offsets
@@ -368,7 +369,6 @@ bool CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
          string strPeptide;
          string strTargets;
          string strDecoys;
-         bool bIsDecoy = true;
 
          std::istringstream isString(*it2);
 
@@ -426,13 +426,60 @@ bool CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
 
             n++;
          }
-
-//       fprintf(fpout, " <PeptideEvidence id=\"%s\" isDecoy=\"%s\" DBSequence_Ref=\"%s\" />\n", strPeptide.c_str(), bIsDecoy?"true":"false", "");
       }
-      
    }
 
    fprintf(fpout, " </SequenceCollection>\n");
+
+
+   fprintf(fpout, " <AnalysisCollection>\n");
+   fprintf(fpout, "  <SpectrumIdentification spectrumIdentificationList_ref=\"SIL_0\" spectrumIdentificationProtocol_ref=\"SIP_0\" id=\"SI_0\">\n");
+   fprintf(fpout, "   <InputSpectra spectraData_ref=\"SDR_0\"/>\n");
+   fprintf(fpout, "   <SearchDatabaseRef searchDatabase_ref=\"SBR_0\"/>\n");
+   fprintf(fpout, "  </SpectrumIdentification>\n");
+   fprintf(fpout, "  <ProteinDetection proteinDetectionProtocol_ref=\"Comet\" proteinDetectionList_ref=\"PDL_0\" id=\"PD_0\">\n");
+   fprintf(fpout, "   <InputSpectrumIdentifications spectrumIdentificationList_ref=\"SIL_0\"/>\n");
+   fprintf(fpout, "  </ProteinDetection>\n");
+   fprintf(fpout, " </AnalysisCollection>\n");
+
+   fprintf(fpout, " <AnalysisProtocolCollection>\n");
+   fprintf(fpout, "  <SpectrumIdentificationProtocol analysisSoftware_ref=\"Comet\" id=\"SIP_0\">\n");
+   fprintf(fpout, "   <SearchType>\n");
+   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001083\" name=\"ms-ms search\"/>\n");
+   fprintf(fpout, "   </SearchType>\n");
+
+   fprintf(fpout, "   <AdditionalSearchParams>\n");
+   if (g_staticParams.massUtility.bMonoMassesParent)
+      fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001211\" name=\"parent mass type mono\"/>\n");
+   else
+      fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001212\" name=\"parent mass type average\"/>\n");
+
+   if (g_staticParams.massUtility.bMonoMassesFragment)
+      fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001256\" name=\"fragment mass type mono\"/>\n");
+   else
+      fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001255\" name=\"fragment mass type average\"/>\n");
+
+   // write out all Comet parameters
+   std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
+   for (std::map<std::string, CometParam*>::iterator it=mapParams.begin(); it!=mapParams.end(); ++it)
+   {
+      if (it->first != "[COMET_ENZYME_INFO]")
+      {
+         fprintf(fpout, "    <userParam name=\"%s\" value=\"%s\"/>\n", it->first.c_str(), it->second->GetStringValue().c_str());
+      }
+   }
+   fprintf(fpout, "   </AdditionalSearchParams>\n");
+
+   WriteMods(fpout, searchMgr);
+   WriteEnzyme(fpout);
+
+   fprintf(fpout, "  </SpectrumIdentificationProtocol>\n");
+   fprintf(fpout, " </AnalysisProtocolCollection>\n");
+
+
+   fprintf(fpout, " <ModificationParams>\n");
+   fprintf(fpout, " </ModificationParams>\n");
+   WriteAnalysisProtocol(fpout);
 
    return true;
 }
@@ -440,29 +487,289 @@ bool CometWriteMzIdentML::WriteSequenceCollection(FILE *fpout,
 
 void CometWriteMzIdentML::WriteAnalysisProtocol(FILE *fpout)
 {
-   fprintf(fpout, " <AnalysisCollection>\n");
-   fprintf(fpout, "  <SpectrumIdentification spectrumIdentificationList_ref=\"SIL_1\" spectrumIdentificationProtocol_ref=\"SIP_1\" id=\"SpecIdent_1\">\n");
-   fprintf(fpout, "   <InputSpectra spectraData_ref=\"qExactive01819.mgf\"/>\n");
-   fprintf(fpout, "   <SearchDatabaseRef searchDatabase_ref=\"SearchDB_1\"/>\n");
-   fprintf(fpout, "  </SpectrumIdentification>\n");
-   fprintf(fpout, "  <ProteinDetection proteinDetectionProtocol_ref=\"PeptideShaker_1\" proteinDetectionList_ref=\"Protein_groups\" id=\"PD_1\">\n");
-   fprintf(fpout, "   <InputSpectrumIdentifications spectrumIdentificationList_ref=\"SIL_1\"/>\n");
-   fprintf(fpout, "  </ProteinDetection>\n");
-
-   fprintf(fpout, " </AnalysisCollection>\n");
-
-   fprintf(fpout, " <AnalysisProtocolCollection>\n");
-   fprintf(fpout, "  <SpectrumIdentificationProtocol analysisSoftware_ref=\"ID_software\" id=\"SIP_1\">\n");
-   fprintf(fpout, "   <SearchType>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001083\" name=\"ms-ms search\"/>\n");
-   fprintf(fpout, "   </SearchType>\n");
-   fprintf(fpout, "  </SpectrumIdentificationProtocol>\n");
-   fprintf(fpout, " </AnalysisProtocolCollection>\n");
-
-
-   fprintf(fpout, " <ModificationParams>\n");
-   fprintf(fpout, " </ModificationParams>\n");
 }
+
+
+void CometWriteMzIdentML::WriteMods(FILE *fpout,
+                                    CometSearchManager &searchMgr)
+{
+   string strModID;
+   string strModRef;
+   string strModName;
+
+   fprintf(fpout, "   <ModificationParams>\n");
+
+   WriteStaticMod(fpout, searchMgr, "add_G_glycine");
+   WriteStaticMod(fpout, searchMgr, "add_A_alanine");
+   WriteStaticMod(fpout, searchMgr, "add_S_serine");
+   WriteStaticMod(fpout, searchMgr, "add_P_proline");
+   WriteStaticMod(fpout, searchMgr, "add_V_valine");
+   WriteStaticMod(fpout, searchMgr, "add_T_threonine");
+   WriteStaticMod(fpout, searchMgr, "add_C_cysteine");
+   WriteStaticMod(fpout, searchMgr, "add_L_leucine");
+   WriteStaticMod(fpout, searchMgr, "add_I_isoleucine");
+   WriteStaticMod(fpout, searchMgr, "add_N_asparagine");
+   WriteStaticMod(fpout, searchMgr, "add_O_ornithine");
+   WriteStaticMod(fpout, searchMgr, "add_D_aspartic_acid");
+   WriteStaticMod(fpout, searchMgr, "add_Q_glutamine");
+   WriteStaticMod(fpout, searchMgr, "add_K_lysine");
+   WriteStaticMod(fpout, searchMgr, "add_E_glutamic_acid");
+   WriteStaticMod(fpout, searchMgr, "add_M_methionine");
+   WriteStaticMod(fpout, searchMgr, "add_H_histidine");
+   WriteStaticMod(fpout, searchMgr, "add_F_phenylalanine");
+   WriteStaticMod(fpout, searchMgr, "add_R_arginine");
+   WriteStaticMod(fpout, searchMgr, "add_Y_tyrosine");
+   WriteStaticMod(fpout, searchMgr, "add_W_tryptophan");
+   WriteStaticMod(fpout, searchMgr, "add_B_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_J_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_U_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_X_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_Z_user_amino_acid");
+
+   double dMass = 0.0;
+   if (searchMgr.GetParamValue("add_Cterm_peptide", dMass))
+   {
+      if (!isEqual(dMass, 0.0))
+      {
+         double dMassDiff = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+
+         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\%0.6f\" residues=\".\">\n", dMassDiff);
+         fprintf(fpout, "   <SpecificityRules>\n");
+         fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001190\" name=\"modification specificity peptide C-term\" />\n");
+         fprintf(fpout, "   </SpecificityRules>\n");
+
+         GetModificationID('.', dMassDiff, &strModID, &strModRef, &strModName);
+         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+               strModRef.c_str(), strModID.c_str(), strModName.c_str());
+
+         fprintf(fpout, "  </SearchModification>\n");
+      }
+   }
+
+   dMass = 0.0;
+   if (searchMgr.GetParamValue("add_Nterm_peptide", dMass))
+   {
+      if (!isEqual(dMass, 0.0))
+      {
+         double dMassDiff = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+
+         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\%0.6f\" residues=\".\">\n", dMassDiff);
+         fprintf(fpout, "   <SpecificityRules>\n");
+         fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001189\" name=\"modification specificity peptide N-term\" />\n");
+         fprintf(fpout, "   </SpecificityRules>\n");
+
+         GetModificationID('.', dMassDiff, &strModID, &strModRef, &strModName);
+         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+               strModRef.c_str(), strModID.c_str(), strModName.c_str());
+
+         fprintf(fpout, "  </SearchModification>\n");
+      }
+   }
+
+   dMass = 0.0;
+   if (searchMgr.GetParamValue("add_Cterm_protein", dMass))
+   {
+      if (!isEqual(dMass, 0.0))
+      {
+         double dMassDiff = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+
+         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\%0.6f\" residues=\".\">\n", dMassDiff);
+         fprintf(fpout, "   <SpecificityRules>\n");
+         fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002058\" name=\"modification specificity protein C-term\" />\n");
+         fprintf(fpout, "   </SpecificityRules>\n");
+
+         GetModificationID('.', dMassDiff, &strModID, &strModRef, &strModName);
+         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+               strModRef.c_str(), strModID.c_str(), strModName.c_str());
+
+         fprintf(fpout, "  </SearchModification>\n");
+      }
+   }
+
+   dMass = 0.0;
+   if (searchMgr.GetParamValue("add_Nterm_protein", dMass))
+   {
+      if (!isEqual(dMass, 0.0))
+      {
+         double dMassDiff = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+
+         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\%0.6f\" residues=\".\">\n", dMassDiff);
+         fprintf(fpout, "   <SpecificityRules>\n");
+         fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002057\" name=\"modification specificity protein N-term\" />\n");
+         fprintf(fpout, "   </SpecificityRules>\n");
+
+         GetModificationID('.', dMassDiff, &strModID, &strModRef, &strModName);
+         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+               strModRef.c_str(), strModID.c_str(), strModName.c_str());
+
+         fprintf(fpout, "  </SearchModification>\n");
+      }
+   }
+
+   // Write out properly encoded mods
+   WriteVariableMod(fpout, searchMgr, "variable_mod01", 0); // this writes aminoacid_modification
+   WriteVariableMod(fpout, searchMgr, "variable_mod02", 0);
+   WriteVariableMod(fpout, searchMgr, "variable_mod03", 0);
+   WriteVariableMod(fpout, searchMgr, "variable_mod04", 0);
+   WriteVariableMod(fpout, searchMgr, "variable_mod05", 0);
+   WriteVariableMod(fpout, searchMgr, "variable_mod06", 0);
+   WriteVariableMod(fpout, searchMgr, "variable_mod07", 0);
+   WriteVariableMod(fpout, searchMgr, "variable_mod08", 0);
+   WriteVariableMod(fpout, searchMgr, "variable_mod09", 0);
+   WriteVariableMod(fpout, searchMgr, "variable_mod01", 1);  // this writes terminal_modification
+   WriteVariableMod(fpout, searchMgr, "variable_mod02", 1);  // which has to come after aminoaicd_modification
+   WriteVariableMod(fpout, searchMgr, "variable_mod03", 1);
+   WriteVariableMod(fpout, searchMgr, "variable_mod04", 1);
+   WriteVariableMod(fpout, searchMgr, "variable_mod05", 1);
+   WriteVariableMod(fpout, searchMgr, "variable_mod06", 1);
+   WriteVariableMod(fpout, searchMgr, "variable_mod07", 1);
+   WriteVariableMod(fpout, searchMgr, "variable_mod08", 1);
+   WriteVariableMod(fpout, searchMgr, "variable_mod09", 1);
+
+   fprintf(fpout, "   </ModificationParams>\n");
+}
+
+
+void CometWriteMzIdentML::WriteStaticMod(FILE *fpout,
+                                         CometSearchManager &searchMgr,
+                                         string paramName)
+{
+   double dMass = 0.0;
+   if (searchMgr.GetParamValue(paramName, dMass))
+   {
+      if (!isEqual(dMass, 0.0))
+      {
+         fprintf(fpout, "    <SearchModification residues=\"%c\" massDelta=\"%0.6f\" fixedMod= \"true\" >\n",
+               paramName[4], dMass);
+
+         string strModID;
+         string strModRef;
+         string strModName; 
+
+         GetModificationID(paramName[4], dMass, &strModID, &strModRef, &strModName);
+
+         fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+               strModRef.c_str(), strModID.c_str(), strModName.c_str());
+         fprintf(fpout, "    </SearchModification>\n");
+      }
+   }
+}
+
+
+void CometWriteMzIdentML::GetModificationID(char cResidue,
+                                            double dModMass,
+                                            string *strModID,
+                                            string *strModRef,
+                                            string *strModName)
+{
+   *strModID = "MS:1001460";
+   *strModRef = "PSI-MS";
+   *strModName = "unknown modification";
+
+   if (fabs(dModMass - 15.994915) < 0.01)
+   {
+      *strModID = "UNIMOD:35";
+      *strModRef = "UNIMOD";
+      *strModName = "Oxidation";
+   }
+   else if (fabs(dModMass - 79.966331) < 0.01)
+   {
+      *strModID = "UNIMOD:21";
+      *strModRef = "UNIMOD";
+      *strModName = "Phospho";
+   }
+   else if (fabs(dModMass - 42.010565) < 0.01)
+   {
+      *strModID = "UNIMOD:1";
+      *strModRef = "UNIMOD";
+      *strModName = "Acetyl";
+   }
+   else if (fabs(dModMass - 226.077598) < 0.01)
+   {
+      *strModID = "UNIMOD:3";
+      *strModRef = "UNIMOD";
+      *strModName = "Biotin";
+   }
+   else if (fabs(dModMass - 57.021464) < 0.01)
+   {
+      *strModID = "UNIMOD:4";
+      *strModRef = "UNIMOD";
+      *strModName = "Carbamidomethyl";
+   }
+   else if (fabs(dModMass - 58.005479) < 0.01)
+   {
+      *strModID = "UNIMOD:6";
+      *strModRef = "UNIMOD";
+      *strModName = "Carboxymethyl";
+   }
+   else if (fabs(dModMass - 0.984016) < 0.01)
+   {
+      *strModID = "UNIMOD:7";
+      *strModRef = "UNIMOD";
+      *strModName = "Deamidated";
+   }
+   else if (fabs(dModMass - -18.010565) < 0.01)
+   {
+      if (cResidue == 'E')
+      {
+         *strModID = "UNIMOD:27";
+         *strModRef = "UNIMOD";
+         *strModName = "Glu->pyro-Glu";
+      }
+      else
+      {
+         *strModID = "UNIMOD:23";
+         *strModRef = "UNIMOD";
+         *strModName = "Dehydrated";
+      }
+   }
+   else if (fabs(dModMass - -17.026549) < 0.01)
+   {
+      if (cResidue == 'Q')
+      {
+         *strModID = "UNIMOD:28";
+         *strModRef = "UNIMOD";
+         *strModName = "Gln->pyro-Glu";
+      }
+      else
+      {
+         *strModID = "UNIMOD:385";
+         *strModRef = "UNIMOD";
+         *strModName = "Ammonia-loss";
+      }
+   }
+   else if (fabs(dModMass - 14.01565) < 0.01)
+   {
+      *strModID = "UNIMOD:34";
+      *strModRef = "UNIMOD";
+      *strModName = "Methyl";
+   }
+   else if (fabs(dModMass - 114.042927) < 0.01)
+   {
+      *strModID = "UNIMOD:121";
+      *strModRef = "UNIMOD";
+      *strModName = "GG";
+   }
+   else if (fabs(dModMass - 229.162932) < 0.01)
+   {
+      *strModID = "UNIMOD:737";
+      *strModRef = "UNIMOD";
+      *strModName = "TMT6plex";
+   }
+   else if (fabs(dModMass - 224.152478) < 0.01)
+   {
+      *strModID = "UNIMOD:739";
+      *strModRef = "UNIMOD";
+      *strModName = "TMT";
+   }
+   else if (fabs(dModMass - 304.207146) < 0.01)
+   {
+      *strModID = "UNIMOD:2016";
+      *strModRef = "UNIMOD";
+      *strModName = "TMTpro";
+   }
+}
+                                            
 
 void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
                                            CometSearchManager &searchMgr,
@@ -470,6 +777,7 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
                                            bool bWriteTerminalMods)
 {
    VarMods varModsParam;
+
    if (searchMgr.GetParamValue(varModName, varModsParam))
    {
       char cSymbol = '-';
@@ -497,6 +805,12 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
          int iLen = (int)strlen(varModsParam.szVarModChar);
          for (int i=0; i<iLen; i++)
          {
+            string strModID;
+            string strModRef;
+            string strModName;
+
+            GetModificationID(varModsParam.szVarModChar[i], varModsParam.dVarModMass, &strModID, &strModRef, &strModName);
+
             if (varModsParam.szVarModChar[i]=='n' && bWriteTerminalMods)
             {
                if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 1 || varModsParam.iWhichTerm == 3))
@@ -511,24 +825,28 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
                   // print this if N-term protein variable mod or a generic N-term mod there's also N-term protein static mod
                   if (varModsParam.iWhichTerm == 0 && varModsParam.iVarModTermDistance == 0)
                   {
-                     // massdiff = mod mass + h
-                     fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\" symbol=\"%c\"/>\n",
-                           varModsParam.dVarModMass,
-                           varModsParam.dVarModMass
-                              + dMass
-                              + g_staticParams.precalcMasses.dNtermProton
-                              - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'],
-                           cSymbol);
+                     fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
+
+                     fprintf(fpout, "     <SpecificityRules>\n");
+                     fprintf(fpout, "       <cvParam accession=\"MS:1002057\" cvRef=\"PSI-MS\" name=\"modification specificity protein N-term\" />\n");
+                     fprintf(fpout, "     </SpecificityRules>\n");
+         
+                     fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+                           strModRef.c_str(), strModID.c_str(), strModName.c_str());
+                     fprintf(fpout, "    </SearchModification>\n");
                   }
                   // print this if non-protein N-term variable mod
                   else
                   {
-                     fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\" symbol=\"%c\"/>\n",
-                           varModsParam.dVarModMass,
-                           varModsParam.dVarModMass
-                              + g_staticParams.precalcMasses.dNtermProton
-                              - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'],
-                           cSymbol);
+                     fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
+
+                     fprintf(fpout, "     <SpecificityRules>\n");
+                     fprintf(fpout, "       <cvParam accession=\"MS:1001189\" cvRef=\"PSI-MS\" name=\"modification specificity peptide N-term\" />\n");
+                     fprintf(fpout, "     </SpecificityRules>\n");
+         
+                     fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+                           strModRef.c_str(), strModID.c_str(), strModName.c_str());
+                     fprintf(fpout, "    </SearchModification>\n");
                   }
                }
             }
@@ -546,37 +864,41 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
                   // print this if C-term protein variable mod or a generic C-term mod there's also C-term protein static mod
                   if (varModsParam.iWhichTerm == 1 && varModsParam.iVarModTermDistance == 0)
                   {
-                     // massdiff = mod mass + oh
-                     fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\" symbol=\"%c\"/>\n",
-                           varModsParam.dVarModMass,
-                           varModsParam.dVarModMass
-                              + dMass
-                              + g_staticParams.precalcMasses.dCtermOH2Proton
-                              - PROTON_MASS
-                              - g_staticParams.massUtility.pdAAMassFragment[(int)'h'],
-                           cSymbol);
+                     fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
+
+                     fprintf(fpout, "     <SpecificityRules>\n");
+                     fprintf(fpout, "       <cvParam accession=\"MS:1002058\" cvRef=\"PSI-MS\" name=\"modification specificity protein C-term\" />\n");
+                     fprintf(fpout, "     </SpecificityRules>\n");
+         
+                     fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+                           strModRef.c_str(), strModID.c_str(), strModName.c_str());
+                     fprintf(fpout, "    </SearchModification>\n");
                   }
                   // print this if non-protein C-term variable mod
                   else
                   {
-                     fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\" symbol=\"%c\"/>\n",
-                           varModsParam.dVarModMass,
-                           varModsParam.dVarModMass
-                              + g_staticParams.precalcMasses.dCtermOH2Proton
-                              - PROTON_MASS
-                              - g_staticParams.massUtility.pdAAMassFragment[(int)'h'],
-                           cSymbol);
+                     fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
+
+                     fprintf(fpout, "     <SpecificityRules>\n");
+                     fprintf(fpout, "       <cvParam accession=\"MS:1001190\" cvRef=\"PSI-MS\" name=\"modification specificity peptide C-term\" />\n");
+                     fprintf(fpout, "     </SpecificityRules>\n");
+         
+                     fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+                           strModRef.c_str(), strModID.c_str(), strModName.c_str());
+                     fprintf(fpout, "    </SearchModification>\n");
                   }
                }
             }
             else if (!bWriteTerminalMods && varModsParam.szVarModChar[i]!='c' && varModsParam.szVarModChar[i]!='n')
             {
-               fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" %ssymbol=\"%c\"/>\n",
+               fprintf(fpout, "    <SearchModification residues=\"%c\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n",
                      varModsParam.szVarModChar[i],
-                     varModsParam.dVarModMass,
-                     g_staticParams.massUtility.pdAAMassParent[(int)varModsParam.szVarModChar[i]] + varModsParam.dVarModMass,
-                     (varModsParam.iBinaryMod?"binary=\"Y\" ":""),
-                     cSymbol);
+                     varModsParam.dVarModMass);
+
+     
+               fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\"/>\n",
+                     strModRef.c_str(), strModID.c_str(), strModName.c_str());
+               fprintf(fpout, "    </SearchModification>\n");
             }
          }
       }
@@ -584,23 +906,71 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
 }
 
 
-void CometWriteMzIdentML::WriteStaticMod(FILE *fpout,
-                                         CometSearchManager &searchMgr,
-                                         string paramName)
+void CometWriteMzIdentML::WriteEnzyme(FILE *fpout)
 {
-/*
-   double dMass = 0.0;
-   if (searchMgr.GetParamValue(paramName, dMass))
+   fprintf(fpout, "   <Enzymes>\n");
+
+   char szSemi[8];
+   char szRegExpression[128];
+   if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)
+      strcpy(szSemi, "false");
+   else
+      strcpy(szSemi, "true");
+
+   // regular expression examples
+   // Trypsin (?<=[KR])(?!P)
+   // Trypsin/P (?<=[KR])
+   // Chymotrypsin (?<=[FYWL])(?!P)
+   // CNBr (?<=M)
+   // Asp-N (?=[BD])
+   // Lys-N (?=K)
+
+   //search enzyme 1
+   if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1)
    {
-      if (!isEqual(dMass, 0.0))
-      {
-         fprintf(fpout, "<SearchModification residues=\"%c\" massDelta=\"%0.6f\" fixedMod= \"true\" >\n", paramName[4], dMass,);
-         fprintf(fpout, "  <cvParam cvRef=\"UNIMOD\" accession=\"UNIMOD:4\" name=\"Carbamidomethyl\"/>\n");
-         fprintf(fpout, "</SearchModification>\n");
-      }
+      sprintf(szRegExpression, "(?&lt;=[%s])", g_staticParams.enzymeInformation.szSearchEnzymeBreakAA);
+      if (g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA[0] != '-')
+         sprintf(szRegExpression+strlen(szRegExpression), " (?!%s)", g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
    }
-*/
+   else
+   {
+      szRegExpression[0] = '\0';
+      if (g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA[0] != '-')
+         sprintf(szRegExpression, "(?&lt;=[%s]) ", g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+      sprintf(szRegExpression+strlen(szRegExpression), "(?=[%s])", g_staticParams.enzymeInformation.szSearchEnzymeBreakAA);
+   }
+
+   fprintf(fpout, "     <Enzyme id=\"ENZ_1\"  missedCleavages=\"%d\" semiSpecific=\"%s\">\n", 
+         g_staticParams.enzymeInformation.iAllowedMissedCleavage, szSemi);
+   fprintf(fpout, "       <SiteRegexp>(%s)</SiteRegexp>\n", szRegExpression);
+   fprintf(fpout, "     </Enzyme>\n");
+
+   //search enzyme 2
+   if (!g_staticParams.enzymeInformation.bNoEnzyme2Selected)
+   {
+      if (g_staticParams.enzymeInformation.iSearchEnzyme2OffSet == 1)
+      {
+         sprintf(szRegExpression, "(?&lt;=[%s])", g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA);
+         if (g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA[0] != '-')
+            sprintf(szRegExpression+strlen(szRegExpression), " (?!%s)", g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+      }
+      else
+      {
+         szRegExpression[0] = '\0';
+         if (g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA[0] != '-')
+            sprintf(szRegExpression, "(?&lt;=[%s])", g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA);
+         sprintf(szRegExpression, "(?=[%s])", g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA);
+      }
+
+      fprintf(fpout, "     <Enzyme id=\"ENZ_2\"  missedCleavages=\"%d\" semiSpecific=\"%s\">\n", 
+            g_staticParams.enzymeInformation.iAllowedMissedCleavage, szSemi);
+      fprintf(fpout, "       <SiteRegexp>(%s)</SiteRegexp>\n", szRegExpression);
+      fprintf(fpout, "     </Enzyme>\n");
+   }
+  
+   fprintf(fpout, "   </Enzymes>\n");
 }
+
 
 void CometWriteMzIdentML::WriteMzIdentMLEndTags(FILE *fpout)
 {

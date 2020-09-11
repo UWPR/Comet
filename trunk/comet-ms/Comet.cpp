@@ -248,7 +248,7 @@ void LoadParameters(char *pszParamsFile,
                char szVersion2[128];
                sprintf(szVersion2, "%.100s %.11s %.11s", szVersion, szRev1, szRev2);
                strcpy(szVersion, szVersion2);
-               pSearchMgr->SetParam("# comet_version ", szVersion, szVersion);
+               pSearchMgr->SetParam("# comet_version", szVersion, szVersion);
                break;
             }
          }

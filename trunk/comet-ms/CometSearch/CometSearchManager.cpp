@@ -543,7 +543,7 @@ CometSearchManager::CometSearchManager() :
    Threading::CreateMutex(&g_searchMemoryPoolMutex);
 
    // Initialize the Comet version
-   SetParam("# comet_version ", comet_version, comet_version);
+   SetParam("# comet_version", comet_version, comet_version);
 }
 
 CometSearchManager::~CometSearchManager()
@@ -2302,7 +2302,7 @@ bool CometSearchManager::DoSearch()
                }
 
                // now read tmp file and write mzIdentML
-               CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpdb, szOutputMzIdentMLtmp);
+               CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpdb, szOutputMzIdentMLtmp, *this);
 
                fclose(fpout_mzidentmltmp);
 //             unlink(szOutputMzIdentMLtmp);
@@ -2323,7 +2323,7 @@ bool CometSearchManager::DoSearch()
                }
 
                // now read tmp file and write mzIdentML
-               CometWriteMzIdentML::WriteMzIdentML(fpoutd_mzidentml, fpdb, szOutputDecoyMzIdentMLtmp);
+               CometWriteMzIdentML::WriteMzIdentML(fpoutd_mzidentml, fpdb, szOutputDecoyMzIdentMLtmp, *this);
 
                fclose(fpoutd_mzidentmltmp);
 //             unlink(szOutputDecoyMzIdentMLtmp);
