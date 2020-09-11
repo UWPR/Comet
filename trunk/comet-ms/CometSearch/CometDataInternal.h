@@ -36,7 +36,7 @@ class CometSearchManager;
 #define NUM_SP_IONS                 1000     // num ions for preliminary scoring
 #define NUM_ION_SERIES              7        // a,b,c,x,y,z,z1
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
-#define BIN_MOD_COUNT               11       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9), precNL (10)
+#define BIN_MOD_COUNT               10       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9)
 
 #define WIDTH_REFERENCE             512      // size of the protein accession field to store
 
@@ -690,7 +690,8 @@ struct StaticParams
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
          variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
          variableModParameters.varModList[i].dVarModMass = 0.0;
-         variableModParameters.varModList[i].dNeutralLoss = 0.0;
+         for (int ii=0; ii<NUMFRAGNL; ii++)
+            variableModParameters.varModList[i].dNeutralLoss[ii] = 0.0;
          strcpy(variableModParameters.varModList[i].szVarModChar, "X");
 
 #ifdef CRUX

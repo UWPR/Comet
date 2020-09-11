@@ -1119,7 +1119,7 @@ bool CometSearchManager::InitializeStaticParams()
          if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
             g_staticParams.variableModParameters.bRequireVarMod = true;
 
-         if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
+         if (g_staticParams.variableModParameters.varModList[i].iCountFragNL > 0)
             g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
       }
    }
@@ -3057,7 +3057,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // write out index header
    fprintf(fptr, "Comet indexed database.\n");
    fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
-   fprintf(fptr, "MassRange: %f %f\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
+   fprintf(fptr, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
    fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
    fprintf(fptr, "Enzyme: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzymeName,
       g_staticParams.enzymeInformation.iSearchEnzymeOffSet, 
@@ -3072,19 +3072,25 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // write out static mod params A to Z is ascii 65 to 90 then terminal mods
    fprintf(fptr, "StaticMod:");
    for (int x = 65; x <= 90; x++)
-      fprintf(fptr, " %f", g_staticParams.staticModifications.pdStaticMods[x]);
-   fprintf(fptr, " %f", g_staticParams.staticModifications.dAddNterminusPeptide);
-   fprintf(fptr, " %f", g_staticParams.staticModifications.dAddCterminusPeptide);
-   fprintf(fptr, " %f", g_staticParams.staticModifications.dAddNterminusProtein);
-   fprintf(fptr, " %f\n", g_staticParams.staticModifications.dAddCterminusProtein);
+      fprintf(fptr, " %lf", g_staticParams.staticModifications.pdStaticMods[x]);
+   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddNterminusPeptide);
+   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddCterminusPeptide);
+   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddNterminusProtein);
+   fprintf(fptr, " %lf\n", g_staticParams.staticModifications.dAddCterminusProtein);
 
    // write out variable mod params
    fprintf(fptr, "VariableMod:");
    for (int x = 0; x < VMODS; x++)
    {
-      fprintf(fptr, " %s %f:%f", g_staticParams.variableModParameters.varModList[x].szVarModChar,
-            g_staticParams.variableModParameters.varModList[x].dVarModMass,
-            g_staticParams.variableModParameters.varModList[x].dNeutralLoss);
+      fprintf(fptr, " %s %lf:", g_staticParams.variableModParameters.varModList[x].szVarModChar,
+            g_staticParams.variableModParameters.varModList[x].dVarModMass);
+      for (int xx = 0; xx < g_staticParams.variableModParameters.varModList[x].iCountFragNL; xx++)
+      {
+         if (xx == 0)
+            fprintf(fptr, "%lf", g_staticParams.variableModParameters.varModList[x].dNeutralLoss[xx]);
+         else
+            fprintf(fptr, ",%lf", g_staticParams.variableModParameters.varModList[x].dNeutralLoss[xx]);
+      }
    }
    fprintf(fptr, "\n\n");
 

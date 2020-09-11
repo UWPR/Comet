@@ -36,6 +36,8 @@
 
 #define SPARSE_MATRIX_SIZE          100
 
+#define NUMFRAGNL                   3        // number of fragment neutral loss for each var mod
+
 struct DoubleRange
 {
    double dStart;
@@ -192,48 +194,55 @@ struct Fragment
 struct VarMods
 {
    double dVarModMass;
-   double dNeutralLoss;
+   double dNeutralLoss[NUMFRAGNL];
    int    iBinaryMod;
-   int    bRequireThisMod;
    int    iMaxNumVarModAAPerMod;
    int    iVarModTermDistance;
    int    iWhichTerm;
+   int    bRequireThisMod;
+   int    iCountFragNL;
    char   szVarModChar[MAX_VARMOD_AA];
 
    VarMods()
    {
       iBinaryMod = 0;
       bRequireThisMod = 0;
+      iCountFragNL = 0;
       iMaxNumVarModAAPerMod = 0;
       iVarModTermDistance = -1;
       iWhichTerm = 0;
       dVarModMass = 0.0;
-      dNeutralLoss = 0.0;
       szVarModChar[0] = '\0';
+      for (int ii=0; ii<NUMFRAGNL; ii++)
+         dNeutralLoss[ii] = 0.0;
    }
 
    VarMods(const VarMods& a)
    {
       iBinaryMod = a.iBinaryMod;
       bRequireThisMod = a.bRequireThisMod;
+      iCountFragNL = a.iCountFragNL;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
-      dNeutralLoss = a.dNeutralLoss;
       strcpy(szVarModChar, a.szVarModChar);
+      for (int ii=0; ii<NUMFRAGNL; ii++)
+         dNeutralLoss[ii] = a.dNeutralLoss[ii];
    }
 
    VarMods& operator=(VarMods& a)
    {
       iBinaryMod = a.iBinaryMod;
       bRequireThisMod = a.bRequireThisMod;
+      iCountFragNL = a.iCountFragNL;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
-      dNeutralLoss = a.dNeutralLoss;
       strcpy(szVarModChar, a.szVarModChar);
+      for (int ii=0; ii<NUMFRAGNL; ii++)
+         dNeutralLoss[ii] = a.dNeutralLoss[ii];
 
       return *this;
    }
