@@ -373,6 +373,13 @@ void LoadParameters(char *pszParamsFile,
                sscanf(szParamVal, "%255s", szTxtFileExt);
                pSearchMgr->SetParam("text_file_extension", szTxtFileExt, szTxtFileExt);
             }
+            else if (!strcmp(szParamName, "explicit_deltacn"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("explicit_deltacn", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "mass_offsets"))
             {
                // Remove white spaces at beginning/end of szParamVal

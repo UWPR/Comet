@@ -109,6 +109,7 @@ struct Options             // output parameters
    int bCreateIndex;             // 0=normal search; 1=create peptide index file
    int bVerboseOutput;
    int bShowFragmentIons;
+   int bExplicitDeltaCn;         // if set to 1, do not use sequence similarity logic 
    int bPrintExpectScore;
    int bOverrideCharge;
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
@@ -155,6 +156,7 @@ struct Options             // output parameters
       bCreateIndex = a.bCreateIndex;
       bVerboseOutput = a.bVerboseOutput;
       bShowFragmentIons = a.bShowFragmentIons;
+      bExplicitDeltaCn = a.bExplicitDeltaCn;
       bPrintExpectScore = a.bPrintExpectScore;
       bOverrideCharge = a.bOverrideCharge;
       bCorrectMass = a.bCorrectMass;
@@ -734,6 +736,7 @@ struct StaticParams
       options.iMaxDuplicateProteins = 20;               // maximum number of duplicate proteins to report or store in idx file
 
       options.bShowFragmentIons = 0;
+      options.bExplicitDeltaCn = 0;
       options.bPrintExpectScore = 1;
       options.bOverrideCharge = 0;
       options.bCorrectMass = 0;

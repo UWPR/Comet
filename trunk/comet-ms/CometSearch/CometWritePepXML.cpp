@@ -539,23 +539,26 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
             // very poor way of calculating peptide similarity but it's what we have for now
             int iDiffCt = 0;
 
-            for (int k=0; k<iMinLength; k++)
+            if (!g_staticParams.options.bExplicitDeltaCn)
             {
-               // I-L and Q-K are same for purposes here
-               if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
+               for (int k=0; k<iMinLength; k++)
                {
-                  if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
-                          && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                        && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
-                           && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                  // I-L and Q-K are same for purposes here
+                  if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
                   {
-                     iDiffCt++;
+                     if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
+                              && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                           && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
+                              && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                     {
+                        iDiffCt++;
+                     }
                   }
                }
             }
 
             // calculate deltaCn only if sequences are less than 0.75 similar
-            if ( ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
+            if (g_staticParams.options.bExplicitDeltaCn || ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
             {
                if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
                   dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
