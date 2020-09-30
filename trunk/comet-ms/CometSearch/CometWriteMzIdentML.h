@@ -20,6 +20,29 @@
 
 class CometWriteMzIdentML
 {
+   struct MzidTmpStruct        // stores the info from tab-delimited text file
+   {
+      int    iScanNumber;
+      int    iXcorrRank;
+      int    iCharge;
+      int    iMatchedIons;
+      int    iTotalIons;
+      int    iRankSp;
+      int    iWhichQuery;
+      int    iWhichResult;
+      double dExpMass;         // neutral experimental mass
+      double dCalcMass;        // neutral calculated mass
+      double dExpect;
+      float  fXcorr;
+      float  fCn;
+      float  fSp;
+      char   cPrevNext[3];
+      string strPeptide;
+      string strMods;
+      string strProtsTarget;   // delimited list of file offsets
+      string strProtsDecoy;    // delimited list of file offsets
+   };
+
 public:
    CometWriteMzIdentML();
    ~CometWriteMzIdentML();
@@ -34,6 +57,7 @@ public:
                               CometSearchManager &searchMgr);
 
 private:
+
    static bool WriteMzIdentMLHeader(FILE *fpout);
 
    static void WriteMzIdentMLEndTags(FILE *fpout);
@@ -41,28 +65,6 @@ private:
    static void PrintTmpPSM(int iWhichQuery,
                            int iPrintTargetDecoy,
                            FILE *fpOut);
-
-   static void PrintMzIdentMLSearchHit(int iWhichQuery,
-                                    int iWhichResult,
-                                    int iRankXcorr,
-                                    bool bDecoy,
-                                    Results *pOutput,
-                                    FILE *fpOut,
-                                    FILE *fpdb,
-                                    double dDeltaCn,
-                                    double dDeltaCnStar);
-
-   static void ReadInstrument(char *szManufacturer,
-                              char *szModel);
-
-   static void GetVal(char *szElement,
-                      char *szAttribute,
-                      char *szAttributeVal);
-
-   static void CalcNTTNMC(Results *pOutput,
-                          int iWhichQuery,
-                          int *iNTT,
-                          int *iNMC);
 
    static void WriteMods(FILE *fpout,
                          CometSearchManager &searchMgr);
@@ -84,12 +86,20 @@ private:
  
    static void WriteEnzyme(FILE *fpout);
 
+   static void WriteMassTable(FILE *fpout);
+
+   static void WriteTolerance(FILE *fpout);
+
+   static void WriteInputs(FILE *fpout);
+
+   static void WriteSpectrumIdentificationList(FILE* fpout,
+                                               FILE *fpdb,
+                                               vector<MzidTmpStruct>* vMzid);
+
    static bool ParseTmpFile(FILE *fpout,
                             FILE *fpdb,
                             char *szTmpFile,
                             CometSearchManager &searchMgr);
-
-   static void WriteAnalysisProtocol(FILE *fpout);
 };
 
 #endif

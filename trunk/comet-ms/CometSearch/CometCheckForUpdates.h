@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <stdarg.h>
-#ifdef WIN32
+#ifdef _WIN32
 #include <io.h>
 #include <stdio.h>
 #include <winsock2.h>

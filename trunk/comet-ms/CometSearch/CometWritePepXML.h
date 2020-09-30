@@ -33,6 +33,14 @@ public:
 
    static void WritePepXMLEndTags(FILE *fpout);
 
+   static void ReadInstrument(char *szManufacturer,
+                              char *szModel);
+
+   static void CalcNTTNMC(Results *pOutput,
+                          int iWhichQuery,
+                          int *iNTT,
+                          int *iNMC);
+
 
 private:
    static void PrintResults(int iWhichQuery,
@@ -50,17 +58,9 @@ private:
                                     double dDeltaCn,
                                     double dDeltaCnStar);
 
-   static void ReadInstrument(char *szManufacturer,
-                              char *szModel);
-
    static void GetVal(char *szElement,
                       char *szAttribute,
                       char *szAttributeVal);
-
-   static void CalcNTTNMC(Results *pOutput,
-                          int iWhichQuery,
-                          int *iNTT,
-                          int *iNMC);
 
    static void WriteVariableMod(FILE *fpout,
                                 CometSearchManager &searchMgr,

@@ -52,7 +52,7 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    const char *host = "comet-ms.sourceforge.net";
    const char *page = "current_version.htm";
 
-#ifdef WIN32
+#ifdef _WIN32
 #define snprintf _snprintf
 #define close _close
    WSADATA wsaData;
@@ -132,7 +132,7 @@ void CometCheckForUpdates::CheckForUpdates(char *szOut)
    freeaddrinfo(res0);
 
    SendAnalyticsHit(); // google analytics tracking
-#ifdef WIN32
+#ifdef _WIN32
    WSACleanup();
 #endif
 
@@ -162,7 +162,7 @@ void CometCheckForUpdates::SendAnalyticsHit(void)
 
    // create the socket
    sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#ifdef WIN32
+#ifdef _WIN32
    if (sockfd == INVALID_SOCKET)
    {
       WSACleanup();
@@ -190,7 +190,7 @@ void CometCheckForUpdates::SendAnalyticsHit(void)
 
    // send the request
    total = strlen(message);
-#ifdef WIN32
+#ifdef _WIN32
    bytes = send(sockfd, message, total, 0);
    // no point in checking return value here as the
    // analytics message was sent or it wasn't

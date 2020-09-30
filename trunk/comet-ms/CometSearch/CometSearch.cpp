@@ -363,7 +363,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            if (pTmp == NULL)
                            {
                               char szErrorMsg[SIZE_ERROR];
-#ifdef WIN32
+#ifdef _WIN32
                               sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
 #else
                               sprintf(szErrorMsg,  " Error realloc(szMods[%ld])\n", iLenAllocMods);
@@ -509,7 +509,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                            if (pTmp == NULL)
                            {
                               char szErrorMsg[SIZE_ERROR];
-#ifdef WIN32
+#ifdef _WIN32
                               sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
 #else
                               sprintf(szErrorMsg,  " Error realloc(szMods[%ld])\n", iLenAllocMods);
