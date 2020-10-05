@@ -1,0 +1,2 @@
+MSTOOLKIT = MSToolkit
+CXX = g++
