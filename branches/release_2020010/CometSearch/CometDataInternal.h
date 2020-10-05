@@ -598,7 +598,6 @@ struct StaticParams
    vector<double>  vectorMassOffsets;
    vector<double>  precursorNLIons;
    int             iPrecursorNLSize;
-   char            szDIAWindowsFile[SIZE_FILE];
    bool            bSkipToStartScan;
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
 
@@ -660,7 +659,6 @@ struct StaticParams
       peffInfo.szPeffOBO[0] = '\0';
       peffInfo.iPeffSearch = 0;
 
-      szDIAWindowsFile[0]='\0';
       iPrecursorNLSize = 0;
 
       for (i=0; i<SIZE_MASS; i++)
