@@ -60,8 +60,6 @@ private:
 
    static bool WriteMzIdentMLHeader(FILE *fpout);
 
-   static void WriteMzIdentMLEndTags(FILE *fpout);
-
    static void PrintTmpPSM(int iWhichQuery,
                            int iPrintTargetDecoy,
                            FILE *fpOut);

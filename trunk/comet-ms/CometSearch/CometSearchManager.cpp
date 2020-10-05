@@ -1991,7 +1991,6 @@ bool CometSearchManager::DoSearch()
             logerr(szErrorMsg);
             return false;
          }
-         rewind(fpdb);
 
          int iBatchNum = 0;
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
@@ -2307,7 +2306,7 @@ bool CometSearchManager::DoSearch()
                CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpdb, szOutputMzIdentMLtmp, *this);
 
                fclose(fpout_mzidentmltmp);
-//             unlink(szOutputMzIdentMLtmp);
+               unlink(szOutputMzIdentMLtmp);
             }
 
             if (NULL != fpoutd_mzidentml)
@@ -2328,7 +2327,7 @@ bool CometSearchManager::DoSearch()
                CometWriteMzIdentML::WriteMzIdentML(fpoutd_mzidentml, fpdb, szOutputDecoyMzIdentMLtmp, *this);
 
                fclose(fpoutd_mzidentmltmp);
-//             unlink(szOutputDecoyMzIdentMLtmp);
+               unlink(szOutputDecoyMzIdentMLtmp);
             }
 
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
