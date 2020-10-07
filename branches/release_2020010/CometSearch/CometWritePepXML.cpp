@@ -527,7 +527,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    {
       int j;
       bool bNoDeltaCnYet = true;
-      bool bDeltaCnStar = false;
+//    bool bDeltaCnStar = false;
       double dDeltaCn = 0.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
       double dDeltaCnStar = 0.0;   // if reported deltaCn is for dissimilar peptide, the value stored here is the
                                    // explicit deltaCn between top hit and peptide in list
@@ -569,8 +569,9 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
                bNoDeltaCnYet = 0;
 
-               if (j - i > 1)
-                  bDeltaCnStar = true;
+//             if (j - i > 1)
+//                bDeltaCnStar = true;
+
                break;
             }
          }
@@ -582,9 +583,9 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       if (i > 0 && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
-/*
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
       {
+/*
          if (bDeltaCnStar && i+1<iNumPrintLines)
          {
             if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr >= 0.0)
