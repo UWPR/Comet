@@ -23,7 +23,7 @@ limitations under the License.
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
-
+using namespace mzParser;
 //For mzXML Writing
 //#include "mzXMLWriter.h"
 //#include "MSToolkitInterface.h"

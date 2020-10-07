@@ -35,10 +35,13 @@
 
 #include "mzParser.h"
 using namespace std;
+using namespace mzParser;
 
 mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs){
   m_bChromatogramIndex = false;
   m_bInmzArrayBinary = false;
+  m_bInionMobilityArrayBinary = false;
+  m_bionMobility = false;
   m_bInintenArrayBinary = false;
   m_bInRefGroup = false;
   m_bNetworkData = false; //always little-endian for mzML
@@ -107,7 +110,8 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     m_encodedLen=atoi(&s[0]);
 
   } else if (isElement("binaryDataArrayList",el)) {
-    if(m_bHeaderOnly) stopParser();
+    //if(m_bHeaderOnly) stopParser();
+    m_bionMobility = false;
 
   } else if (isElement("chromatogram",el)) {
     string s=getAttrValue("id", attr);
@@ -135,6 +139,9 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
   } else if(isElement("offset",el) && m_bSpectrumIndex){
     m_strData.clear();
     curIndex.idRef=string(getAttrValue("idRef", attr));
+    if(strstr(&curIndex.idRef[0],"frame=")!=NULL)  {
+      curIndex.scanNum=++m_scanIDXCount;//atoi(strstr(&curIndex.idRef[0],"frame=")+6);
+    } else
     if(strstr(&curIndex.idRef[0],"scan=")!=NULL)  {
       curIndex.scanNum=atoi(strstr(&curIndex.idRef[0],"scan=")+5);
     } else if(strstr(&curIndex.idRef[0],"scanId=")!=NULL) {
@@ -154,6 +161,9 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     if(s.length()<1){
       spec->setPrecursorScanNum(0);
     } else {
+      if(strstr(&curIndex.idRef[0],"frame=")!=NULL)  {
+	 spec->setPrecursorScanNum(++m_scanPRECCount);
+      } else
       if(strstr(&s[0],"scan=")!=NULL)  {
         spec->setPrecursorScanNum(atoi(strstr(&s[0],"scan=")+5));
       } else if(strstr(&s[0],"scanId=")!=NULL) {
@@ -186,16 +196,17 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
   }  else if (isElement("spectrum", el)) {
     string s=getAttrValue("id", attr);
     spec->setIDString(&s[0]);
+    if(strstr(&curIndex.idRef[0],"frame=")!=NULL)  {
+      spec->setScanNum(++m_scanSPECCount);
+    } else
     if(strstr(&s[0],"scan=")!=NULL)  {
       spec->setScanNum(atoi(strstr(&s[0],"scan=")+5));
     } else if(strstr(&s[0],"scanId=")!=NULL) {
       spec->setScanNum(atoi(strstr(&s[0],"scanId=")+7));
     } else if(strstr(&s[0],"S")!=NULL) {
       spec->setScanNum(atoi(strstr(&s[0],"S")+1));
-    } else if(m_scanNumOverride>-1){ //if a scan index was set (usually obtained from the calling class), use that instead.
-      spec->setScanNum(m_scanNumOverride);
     } else {
-      spec->setScanNum(++m_scanSPECCount); //This is a bad deal...it will count iteratively when file is read random-access.
+      spec->setScanNum(++m_scanSPECCount);
       //Suppressing warning.
       //cout << "WARNING: Cannot extract scan number spectrum line: " << &s[0] << "\tDefaulting to " << m_scanSPECCount << endl;
     }
@@ -250,7 +261,8 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
 void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
 
   if(isElement("binary", el))  {
-    processData();
+    if (!m_bHeaderOnly)
+      processData();
     m_strData.clear();
 
   } else if(isElement("binaryDataArray", el))  {
@@ -262,7 +274,11 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
     m_bNumpressPic=false;
     m_iDataType=0;
 
-  } else if(isElement("chromatogram",el)) {
+  }
+  else if (isElement("binaryDataArrayList",el)) {
+    if(m_bHeaderOnly) stopParser();
+  }
+  else if(isElement("chromatogram",el)) {
     pushChromatogram();
     stopParser();
 
@@ -313,7 +329,11 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
     spec->setPrecursorIon(m_precursorIon);
     m_precursorIon.clear();
 
-  }  else if(isElement("spectrum", el)) {
+  } else if(isElement("precursor",el)) {
+    spec->setPrecursorIon(m_precursorIon);
+    m_precursorIon.clear();
+
+  } else if(isElement("spectrum", el)) {
     pushSpectrum();
     stopParser();
     
@@ -381,6 +401,7 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if(!strcmp(name, "intensity array") || !strcmp(accession,"MS:1000515"))  {
     m_bInintenArrayBinary = true;
     m_bInmzArrayBinary = false;
+    m_bInionMobilityArrayBinary = false;
 
   } else if (!strcmp(name, "ion injection time") || !strcmp(accession, "MS:1000927"))  {
     spec->setIonInjectionTime(atof(value));
@@ -426,13 +447,16 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if(!strcmp(name, "m/z array") || !strcmp(accession,"MS:1000514"))  {
     m_bInmzArrayBinary = true;
     m_bInintenArrayBinary = false;
+    m_bInionMobilityArrayBinary = false;
+    
+  } else if(!strcmp(name, "non-standard data array") && !strcmp(value,"Ion Mobility") && !strcmp(accession,"MS:1000786"))  {
+    m_bInmzArrayBinary = false;
+    m_bInintenArrayBinary = false;
+    m_bInionMobilityArrayBinary = true;
+    m_bionMobility = true;
 
   } else if(!strcmp(name,"nanoelectrospray") || !strcmp(accession,"MS:1000398")) {
     m_instrument.ionization=name;
-
-  } else if (!strcmp(name, "non-standard data array") || !strcmp(accession, "MS:1000786"))  {
-    m_bInmzArrayBinary = false;
-    m_bInintenArrayBinary = false;
 
   } else if(!strcmp(name,"orbitrap") || !strcmp(accession,"MS:1000484")) {
     m_instrument.analyzer=name;
@@ -497,6 +521,13 @@ void mzpSAXMzmlHandler::processData()
     //else decompress64(vdM);
   } else if(m_bInintenArrayBinary) {
     decode(vdI);
+    //if(m_bLowPrecision && !m_bCompressedData) decode32(vdI);
+    //else if(m_bLowPrecision && m_bCompressedData) decompress32(vdI);
+    //else if(!m_bLowPrecision && !m_bCompressedData) decode64(vdI);
+    //else decompress64(vdI);
+  }
+  else if(m_bInionMobilityArrayBinary) {
+    decode(vdIM);
     //if(m_bLowPrecision && !m_bCompressedData) decode32(vdI);
     //else if(m_bLowPrecision && m_bCompressedData) decompress32(vdI);
     //else if(!m_bLowPrecision && !m_bCompressedData) decode64(vdI);
@@ -570,9 +601,8 @@ bool mzpSAXMzmlHandler::readHeader(int num){
 
 }
 
-bool mzpSAXMzmlHandler::readHeaderFromOffset(f_off offset, int scNm){
+bool mzpSAXMzmlHandler::readHeaderFromOffset(f_off offset){
   spec->clear();
-  m_scanNumOverride=scNm;
 
   //index must be positive.
   if (offset<0) return false;
@@ -633,9 +663,8 @@ bool mzpSAXMzmlHandler::readSpectrum(int num){
 }
 
 //somewhat dangerous as it allows reading anywhere in the file
-bool mzpSAXMzmlHandler::readSpectrumFromOffset(f_off offset, int scNm){
+bool mzpSAXMzmlHandler::readSpectrumFromOffset(f_off offset){
   spec->clear();
-  m_scanNumOverride=scNm;
 
   //index must be positive.
   if (offset<0) return false;
@@ -658,13 +687,24 @@ void mzpSAXMzmlHandler::pushChromatogram(){
 }
 
 void mzpSAXMzmlHandler::pushSpectrum(){
-
   specDP dp;
+  specIonMobDP dp_im;
   for(unsigned int i=0;i<vdM.size();i++)  {
     dp.mz = vdM[i];
     dp.intensity = vdI[i];
-    spec->addDP(dp);
+
+    if (i < vdIM.size()) {
+      dp_im.mz = vdM[i];
+      dp_im.intensity = vdI[i];
+      dp_im.ionMobility = vdIM[i];
+      spec->addDP(dp_im);      
+ 
+    }
+    else {
+      spec->addDP(dp);      
+    }
   }
+
   
 }
 
@@ -690,7 +730,7 @@ void mzpSAXMzmlHandler::decode(vector<double>& d){
 
   char* decoded = new char[m_encodedLen];  //array for decoded base64 string
   int decodeLen;
-  Bytef* unzipped = NULL;
+  Bytef* unzipped;
   uLong unzippedLen;
 
   int i;
@@ -845,7 +885,7 @@ f_off mzpSAXMzmlHandler::readIndexOffset() {
   }
 
   if(start==NULL || stop==NULL) {
-//  cerr << "No index list offset found." << endl;
+    cerr << "No index list offset found. File will not be read." << endl;
     return 0;
   }
 
@@ -856,7 +896,6 @@ f_off mzpSAXMzmlHandler::readIndexOffset() {
   return mzpatoi64(offset);
 
 }
-
 bool mzpSAXMzmlHandler::load(const char* fileName){
   if(!open(fileName)) return false;
   m_vInstrument.clear();
@@ -941,6 +980,7 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
 
   return true;
 }
+
 
 
 void mzpSAXMzmlHandler::stopParser(){

@@ -28,6 +28,7 @@ Spectrum::Spectrum(){
   scanNumber=0;
   scanNumber2=0;
   msLevel = 2;
+  ionMobility = false;
   monoMZ=new vector<double>;
   mz=new vector<double>;
   TIC=0;
@@ -47,6 +48,7 @@ Spectrum::Spectrum(){
 
   fileType=Unspecified;
   vPeaks = new vector<Peak_T>;
+  vPeaksIonMob = new vector<PeakIonMob_T>;
   vEZ = new vector<EZState>;
   vZ = new vector<ZState>;
   actMethod=mstNA;
@@ -58,10 +60,11 @@ Spectrum::Spectrum(){
 
 
 Spectrum::~Spectrum(){
-  if(vPeaks) delete vPeaks;
+  if(vPeaks) { delete vPeaks; }
+  if(vPeaksIonMob) { delete vPeaksIonMob; }
   if(vEZ) delete vEZ;
   if(vZ) delete vZ;
-	if(mz) delete mz;
+  if(mz) delete mz;
   if(monoMZ) delete monoMZ;
 }
 
@@ -71,17 +74,18 @@ Spectrum::Spectrum(const Spectrum& s){
 
   rTime = s.rTime;
   charge = s.charge;
+  ionMobility = s.ionMobility;
   scanNumber = s.scanNumber;
   scanNumber2 = s.scanNumber2;
   msLevel = s.msLevel;
   monoMZ = new vector<double>;
-  for(i=0;i<s.monoMZ->size();i++){
+  for(i=0;s.monoMZ && i<s.monoMZ->size();i++){
 		monoMZ->push_back(s.monoMZ->at(i));
 	}
   mz = new vector<double>;
-	for(i=0;i<s.mz->size();i++){
-		mz->push_back(s.mz->at(i));
-	}
+  for(i=0;s.mz && i<s.mz->size();i++){
+    mz->push_back(s.mz->at(i));
+  }
   fileType = s.fileType;
   IIT = s.IIT;
   TIC = s.TIC;
@@ -98,15 +102,19 @@ Spectrum::Spectrum(const Spectrum& s){
   selectionWinUpper=s.selectionWinUpper;
   centroidStatus = s.centroidStatus;
   vPeaks = new vector<Peak_T>;
-  for(i=0;i<s.vPeaks->size();i++){
+  for(i=0;s.vPeaks && i<s.vPeaks->size();i++){
     vPeaks->push_back(s.vPeaks->at(i));
   }
+  vPeaksIonMob = new vector<PeakIonMob_T>;
+  for(i=0;s.vPeaksIonMob && i<s.vPeaksIonMob->size();i++){
+    vPeaksIonMob->push_back(s.vPeaksIonMob->at(i));
+  }
   vEZ = new vector<EZState>;
-  for(i=0;i<s.vEZ->size();i++){
+  for(i=0;s.vEZ && i<s.vEZ->size();i++){
     vEZ->push_back(s.vEZ->at(i));
   }
   vZ = new vector<ZState>;
-  for(i=0;i<s.vZ->size();i++){
+  for(i=0;s.vZ && i<s.vZ->size();i++){
     vZ->push_back(s.vZ->at(i));
   }
   strcpy(rawFilter,s.rawFilter);
@@ -117,28 +125,80 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
 	//cout<<"in Spectrum ="<<endl;
   unsigned int i;
   if (this != &s) {
-    delete vPeaks;
-    delete vEZ;
-    delete vZ;
-    delete monoMZ;
-		delete mz;
-    monoMZ = new vector<double>;
+    if (vPeaks && vPeaks->size()) {
+      vPeaks->clear();
+      // delete vPeaks;
+    }
+    if (vPeaksIonMob && vPeaksIonMob->size()) {
+      vPeaksIonMob->clear();
+      //delete vPeaksIonMob;
+    }
+    //delete vEZ;
+    //delete vZ;
+    //delete monoMZ;
+    //delete mz;
+
+    if (!monoMZ) {
+      monoMZ = new vector<double>;
+    }
+    else  {
+      monoMZ->clear();
+    }
     for(i=0;i<s.monoMZ->size();i++){
-		  monoMZ->push_back(s.monoMZ->at(i));
-	  }
-		mz = new vector<double>;
-		for(i=0;i<s.mz->size();i++){
-			mz->push_back(s.mz->at(i));
-		}
-    vPeaks = new vector<Peak_T>;
+      monoMZ->push_back(s.monoMZ->at(i));
+    }
+
+    if (!mz) {
+      mz = new vector<double>;
+    }
+    else {
+      mz->clear();
+    }
+    
+    for(i=0;i<s.mz->size();i++){
+      mz->push_back(s.mz->at(i));
+    }
+
+    if (!vPeaks) {
+      vPeaks = new vector<Peak_T>;
+    }
+    else {
+      vPeaks->clear();
+    }
+    
     for(i=0;i<s.vPeaks->size();i++){
       vPeaks->push_back(s.vPeaks->at(i));
     }
-    vEZ = new vector<EZState>;
+
+    if (!vPeaksIonMob) {
+      vPeaksIonMob = new vector<PeakIonMob_T>;
+    }
+    else {
+      vPeaksIonMob->clear();
+    }
+    
+    for(i=0;i<s.vPeaksIonMob->size();i++){
+      vPeaksIonMob->push_back(s.vPeaksIonMob->at(i));
+    }
+
+    if (!vEZ) {
+      vEZ = new vector<EZState>;
+    }
+    else {
+      vEZ->clear();
+ 
+    }
+    
     for(i=0;i<s.vEZ->size();i++){
       vEZ->push_back(s.vEZ->at(i));
     }
-    vZ = new vector<ZState>;
+    if (!vZ) {
+      vZ = new vector<ZState>;
+    }
+    else {
+      vZ->clear();
+    }
+    
     for(i=0;i<s.vZ->size();i++){
       vZ->push_back(s.vZ->at(i));
     }
@@ -156,6 +216,7 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
     convD = s.convD;
     convE = s.convE;
     convI = s.convI;
+    ionMobility = s.ionMobility;
     TIC = s.TIC;
     IIT = s.IIT;
     fileType = s.fileType;
@@ -169,9 +230,12 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
 }
 
 Peak_T& Spectrum::operator[](const int& i) {
-	return vPeaks->operator[](i);
+  return vPeaks->operator[](i);
 }
 
+PeakIonMob_T& Spectrum::atIM(const int& i) {
+  return vPeaksIonMob->operator[](i);
+}
 
 /* ----- Begin Functions ----- */
 
@@ -181,11 +245,23 @@ void Spectrum::add(Peak_T& p){
   vPeaks->push_back(p);
 }
 
+void Spectrum::add(PeakIonMob_T& p){
+  vPeaksIonMob->push_back(p);
+}
+
 void Spectrum::add(double d1, float d2){
   Peak_T p;
   p.mz=d1;
   p.intensity=d2;
   vPeaks->push_back(p);
+}
+
+void Spectrum::add(double d1, float d2, float ionMob){
+  PeakIonMob_T p;
+  p.mz=d1;
+  p.intensity=d2;
+  p.ion_mob=ionMob;
+  vPeaksIonMob->push_back(p);
 }
 
 void Spectrum::addEZState(EZState& z){
@@ -244,16 +320,50 @@ ZState& Spectrum::atZ(const unsigned int& i){
 
 /* Clears the spectrum */
 void Spectrum::clear(){
-	delete vPeaks;
-	vPeaks = new vector<Peak_T>;
-  delete vEZ;
-  vEZ = new vector<EZState>;
-	delete vZ;
-	vZ = new vector<ZState>;
-	delete mz;
-	mz = new vector<double>;
-  delete monoMZ;
-  monoMZ = new vector<double>;
+  if (vPeaksIonMob) {
+    vPeaksIonMob->clear();
+  }
+  else {
+
+    
+    vPeaksIonMob = new vector<PeakIonMob_T>;
+  }
+
+  if (vPeaks) {
+    vPeaks->clear();
+  }
+  else {
+    vPeaks = new vector<Peak_T>;
+  }
+
+  if (vEZ) {
+    vEZ->clear();
+  }
+  else {
+    vEZ = new vector<EZState>;
+  }
+
+  if (vZ) {
+    vZ->clear();
+  }
+  else {
+    vZ = new vector<ZState>;
+  }
+  
+  if (mz) {
+    mz->clear();
+  }
+  else {
+    mz = new vector<double>;
+  }
+  
+  if (monoMZ) {
+    monoMZ->clear();
+  }
+  else {
+    monoMZ = new vector<double>;
+  }
+
 	scanNumber = 0;
   scanNumber2 = 0;
 	rTime = 0;
@@ -272,15 +382,33 @@ void Spectrum::clear(){
 }
 
 void Spectrum::clearMZ(){
-	delete mz;
-	mz = new vector<double>;
-  delete monoMZ;
-	monoMZ = new vector<double>;
+  if (mz) {
+    mz->clear();
+  }
+  else {
+    mz = new vector<double>;
+  }
+  
+  if (monoMZ) {
+    monoMZ->clear();
+  }
+  else {
+    monoMZ = new vector<double>;
+  }
 }
 
 void Spectrum::clearPeaks(){
-	delete vPeaks;
-	vPeaks = new vector<Peak_T>;
+  if (vPeaksIonMob) {
+    //delete vPeaksIonMob;
+    //vPeaksIonMob = new vector<PeakIonMob_T>;
+    vPeaksIonMob->clear();
+  }
+
+  if (vPeaks) {
+    //delete vPeaks;
+    //vPeaks = new vector<Peak_T>;
+    vPeaks->clear();
+  }
 }
 
 /* Erases element i in the spectrum. */
@@ -331,6 +459,12 @@ void Spectrum::eraseZ(unsigned int i, unsigned int j){
 
 MSActivation Spectrum::getActivationMethod(){
   return actMethod;
+}
+bool Spectrum::getIonMobility(){
+  return ionMobility;
+}
+void Spectrum::setIonMobility(bool ionMob){
+  ionMobility = ionMob;
 }
 
 float Spectrum::getBPI(){
@@ -556,6 +690,8 @@ void Spectrum::setScanID(int scanid){
 
 /* Returns the number of elements in the spectrum. */
 int Spectrum::size(){
+  if (ionMobility)
+      return (int)vPeaksIonMob->size();
   return (int)vPeaks->size();
 }
 
@@ -579,22 +715,26 @@ float Spectrum::getTotalIntensity(){
 
 /* Sorts the spectrum by Data. */
 void Spectrum::sortIntensity(){
-  qsort(&vPeaks->at(0),vPeaks->size(),sizeof(Peak_T),compareIntensity);
+  if (vPeaks->size()) qsort(&vPeaks->at(0),vPeaks->size(),sizeof(Peak_T),compareIntensity);
+  if (vPeaksIonMob->size()) qsort(&vPeaksIonMob->at(0),vPeaksIonMob->size(),sizeof(PeakIonMob_T),compareIntensityIonMob);
 }
 
 /* Sorts the spectrum by Mass. */
 void Spectrum::sortMZ(){
-  qsort(&vPeaks->at(0),vPeaks->size(),sizeof(Peak_T),compareMZ);
+  if (vPeaks->size()) qsort(&vPeaks->at(0),vPeaks->size(),sizeof(Peak_T),compareMZ);
+  if (vPeaksIonMob->size()) qsort(&vPeaksIonMob->at(0),vPeaksIonMob->size(),sizeof(PeakIonMob_T),compareMZIonMob);
 }
 
 /* Sorts the spectrum by Data. */
 void Spectrum::sortIntensityRev(){
-  qsort(&vPeaks->at(0),vPeaks->size(),sizeof(Peak_T),compareIntensityRev);
+  if (vPeaks->size()) qsort(&vPeaks->at(0),vPeaks->size(),sizeof(Peak_T),compareIntensityRev);
+  if (vPeaksIonMob->size()) qsort(&vPeaksIonMob->at(0),vPeaksIonMob->size(),sizeof(PeakIonMob_T),compareIntensityRevIonMob);
 }
 
 /* Sorts the spectrum by Mass. */
 void Spectrum::sortMZRev(){
-  qsort(&vPeaks->at(0),vPeaks->size(),sizeof(Peak_T),compareMZRev);
+  if (vPeaks->size()) qsort(&vPeaks->at(0),vPeaks->size(),sizeof(Peak_T),compareMZRev);
+  if (vPeaksIonMob->size()) qsort(&vPeaksIonMob->at(0),vPeaksIonMob->size(),sizeof(PeakIonMob_T),compareMZRevIonMob);
 }
 
 //const vector<Peak_T>* Spectrum::getPeaks(){
@@ -603,6 +743,10 @@ void Spectrum::sortMZRev(){
 
 vector<Peak_T>* Spectrum::getPeaks(){
 	return vPeaks;
+}
+
+vector<PeakIonMob_T>* Spectrum::getPeaksIonMob(){
+	return vPeaksIonMob;
 }
 
 void Spectrum::setPeaks(vector<Peak_T> peaks) {
@@ -662,6 +806,57 @@ int Spectrum::compareIntensityRev(const void *p1, const void *p2){
 int Spectrum::compareMZRev(const void *p1, const void *p2){
   const Peak_T d1 = *(Peak_T *)p1;
   const Peak_T d2 = *(Peak_T *)p2;
+  if(d1.mz>d2.mz) return -1;
+  else if(d1.mz<d2.mz) return 1;
+  else return 0;
+}
+
+/* For the qsort */
+int Spectrum::compareIntensityIonMob(const void *p1, const void *p2){
+  const PeakIonMob_T d1 = *(PeakIonMob_T *)p1;
+  const PeakIonMob_T d2 = *(PeakIonMob_T *)p2;
+  if(d1.intensity<d2.intensity) return -1;
+  else if(d1.intensity>d2.intensity) return 1;
+  else return 0;
+}
+
+/* For the qsort */
+int Spectrum::compareMZIonMob(const void *p1, const void *p2){
+  const PeakIonMob_T d1 = *(PeakIonMob_T *)p1;
+  const PeakIonMob_T d2 = *(PeakIonMob_T *)p2;
+  if(d1.mz<d2.mz) return -1;
+  else if(d1.mz>d2.mz) return 1;
+  else return 0;
+}
+
+int Spectrum::compareMobilityIonMob(const void *p1, const void *p2){
+  const PeakIonMob_T d1 = *(PeakIonMob_T *)p1;
+  const PeakIonMob_T d2 = *(PeakIonMob_T *)p2;
+  if(d1.ion_mob<d2.ion_mob) return -1;
+  else if(d1.ion_mob>d2.ion_mob) return 1;
+  else return 0;
+}
+
+int Spectrum::compareMobilityRevIonMob(const void *p1, const void *p2){
+  const PeakIonMob_T d1 = *(PeakIonMob_T *)p1;
+  const PeakIonMob_T d2 = *(PeakIonMob_T *)p2;
+  if(d1.ion_mob>d2.ion_mob) return -1;
+  else if(d1.ion_mob>d2.ion_mob) return 1;
+  else return 0;
+}
+/* For the qsort */
+int Spectrum::compareIntensityRevIonMob(const void *p1, const void *p2){
+  const PeakIonMob_T d1 = *(PeakIonMob_T *)p1;
+  const PeakIonMob_T d2 = *(PeakIonMob_T *)p2;
+  if(d1.intensity>d2.intensity) return -1;
+  else if(d1.intensity<d2.intensity) return 1;
+  else return 0;
+}
+
+/* For the qsort */
+int Spectrum::compareMZRevIonMob(const void *p1, const void *p2){
+  const PeakIonMob_T d1 = *(PeakIonMob_T *)p1;
+  const PeakIonMob_T d2 = *(PeakIonMob_T *)p2;
   if(d1.mz>d2.mz) return -1;
   else if(d1.mz<d2.mz) return 1;
   else return 0;

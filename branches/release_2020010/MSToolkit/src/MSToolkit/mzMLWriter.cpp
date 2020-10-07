@@ -750,11 +750,11 @@ bool MzMLWriter::exportScanWindow(Spectrum& s, int tabs){
   if (bTabs) exportTabs(tabs);
   fprintf(fptr, "<scanWindow>\n");
 
-  sprintf(tmp, "%.8lf", s.getScanWindowLower());
+  sprintf(tmp, "%.8lf", s.getSelWindowLower());
   value = tmp;
   exportCvParam("MS:1000501", "MS", "scan window lower limit", "MS:1000040", "MS", "m/z", value, tabs + 1);
 
-  sprintf(tmp, "%.8lf", s.getScanWindowUpper());
+  sprintf(tmp, "%.8lf", s.getSelWindowUpper());
   value = tmp;
   exportCvParam("MS:1000500", "MS", "scan window upper limit", "MS:1000040", "MS", "m/z", value, tabs + 1);
 
