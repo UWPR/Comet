@@ -779,7 +779,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("add_N_asparagine", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'N'] = dDoubleData;
 
-   if (GetParamValue("add_O_ornithine", dDoubleData))
+   if (GetParamValue("add_O_pyrrolysine", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'O'] = dDoubleData;
 
    if (GetParamValue("add_D_aspartic_acid", dDoubleData))

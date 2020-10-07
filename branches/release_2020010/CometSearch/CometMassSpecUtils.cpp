@@ -76,7 +76,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
 
    if (bMonoMasses) // monoisotopic masses
    {
-       H = pdAAMass['h'] = Hydrogen_Mono; // hydrogen
+      H = pdAAMass['h'] = Hydrogen_Mono; // hydrogen
       O = pdAAMass['o'] = Oxygen_Mono;  // oxygen
       C = pdAAMass['c'] = Carbon_Mono;   // carbon
       N = pdAAMass['n'] = Nitrogen_Mono;   // nitrogen
@@ -119,7 +119,7 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
    pdAAMass['Y'] = C*9  + H*9  + N   + O*2 ;
    pdAAMass['W'] = C*11 + H*10 + N*2 + O ;
 
-   pdAAMass['O'] = C*5  + H*12 + N*2 + O*2 ;
+   pdAAMass['O'] = C*12  + H*19 + N*3 + O*2 ;
 
    pdAAMass['B'] = 0.0;
    pdAAMass['J'] = 0.0;

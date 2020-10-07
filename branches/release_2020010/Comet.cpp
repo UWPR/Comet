@@ -895,12 +895,12 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_N_asparagine", szParamStringVal, dDoubleParam);
             }
-            else if (!strcmp(szParamName, "add_O_ornithine"))
+            else if (!strcmp(szParamName, "add_O_pyrrolysine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("add_O_ornithine", szParamStringVal, dDoubleParam);
+               pSearchMgr->SetParam("add_O_pyrrolysine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_D_aspartic_acid"))
             {
