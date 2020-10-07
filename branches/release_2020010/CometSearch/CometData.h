@@ -250,8 +250,8 @@ struct VarMods
 
 struct EnzymeInfo
 {
-   bool bNoEnzymeSelected;   // set to true if enzyme is no-enzyme
-   bool bNoEnzyme2Selected;  // set to true if 2nd enzyme is no-enzyme
+   bool bNoEnzymeSelected;   // set to true if enzyme is no-enzyme (cut everwhere)
+   bool bNoEnzyme2Selected;  // set to true if 2nd enzyme is no-enzyme (cut everywhere)
 
    int  iAllowedMissedCleavage;
 

@@ -1643,7 +1643,7 @@ add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.0
 # COMET_ENZYME_INFO _must_ be at the end of this parameters file\n\
 #\n\
 [COMET_ENZYME_INFO]\n\
-0.  No_enzyme              0      -           -\n\
+0.  Cut_everywhere         0      -           -\n\
 1.  Trypsin                1      KR          P\n\
 2.  Trypsin/P              1      KR          -\n\
 3.  Lys_C                  1      K           P\n\
