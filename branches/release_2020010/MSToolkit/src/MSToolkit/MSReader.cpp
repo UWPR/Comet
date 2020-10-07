@@ -1796,6 +1796,10 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
       else if(strcmp(scanHeader.activationMethod,"HCD")==0) s.setActivationMethod(mstHCD);
 		else s.setActivationMethod(mstNA);
 	}
+
+   if (strstr(scanHeader.filterLine, " sid=")) // OK; hack for "activation_method = SID" filter
+      s.setActivationMethod(mstSID);
+
 	if(scanHeader.msLevel>1) {
 		s.setMZ(scanHeader.precursorMZ,scanHeader.precursorMonoMZ);
 		s.setCharge(scanHeader.precursorCharge);

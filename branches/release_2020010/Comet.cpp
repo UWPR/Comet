@@ -1565,7 +1565,7 @@ scan_range = 0 0                       # start and end scan range to search; eit
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override any existing charge; 0 as 1st entry ignores parameter\n\
 override_charge = 0                    # 0=no, 1=override precursor charge states, 2=ignore precursor charges outside precursor_charge range, 3=see online\n\
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3\n\
-activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, ETD+SA, PQD, HCD, IRMPD\n\
+activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, ETD+SA, PQD, HCD, IRMPD, SID\n\
 \n\
 #\n\
 # misc parameters\n\
