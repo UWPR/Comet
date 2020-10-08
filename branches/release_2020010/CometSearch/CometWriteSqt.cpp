@@ -317,12 +317,24 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
       for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
-         fprintf(fpout, "L\t%s\n", (*it).c_str());
+      {
+         if (g_staticParams.options.bOutputSqtStream)
+            fprintf(stdout, "L\t%s\n", (*it).c_str());
+   
+         if (g_staticParams.options.bOutputSqtFile)
+            fprintf(fpout, "L\t%s\n", (*it).c_str());
+      }
    }
 
    if (iPrintTargetDecoy != 1)  // if not target only, print decoy proteins
    {
       for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
-         fprintf(fpout, "L\t%s\n", (*it).c_str());
+      {
+         if (g_staticParams.options.bOutputSqtStream)
+            fprintf(stdout, "L\t%s\n", (*it).c_str());
+
+         if (g_staticParams.options.bOutputSqtFile)
+            fprintf(fpout, "L\t%s\n", (*it).c_str());
+      }
    }
 }
