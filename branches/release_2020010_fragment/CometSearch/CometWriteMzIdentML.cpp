@@ -546,7 +546,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
       {
          double dMassDiff = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\%0.6f\" residues=\".\">\n", dMassDiff);
+         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\"%0.6f\" residues=\".\">\n", dMassDiff);
          fprintf(fpout, "   <SpecificityRules>\n");
          fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001190\" name=\"modification specificity peptide C-term\" />\n");
          fprintf(fpout, "   </SpecificityRules>\n");
@@ -566,7 +566,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
       {
          double dMassDiff = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\%0.6f\" residues=\".\">\n", dMassDiff);
+         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\"%0.6f\" residues=\".\">\n", dMassDiff);
          fprintf(fpout, "   <SpecificityRules>\n");
          fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001189\" name=\"modification specificity peptide N-term\" />\n");
          fprintf(fpout, "   </SpecificityRules>\n");
@@ -586,7 +586,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
       {
          double dMassDiff = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\%0.6f\" residues=\".\">\n", dMassDiff);
+         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\"%0.6f\" residues=\".\">\n", dMassDiff);
          fprintf(fpout, "   <SpecificityRules>\n");
          fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002058\" name=\"modification specificity protein C-term\" />\n");
          fprintf(fpout, "   </SpecificityRules>\n");
@@ -606,7 +606,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
       {
          double dMassDiff = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\%0.6f\" residues=\".\">\n", dMassDiff);
+         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\"%0.6f\" residues=\".\">\n", dMassDiff);
          fprintf(fpout, "   <SpecificityRules>\n");
          fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002057\" name=\"modification specificity protein N-term\" />\n");
          fprintf(fpout, "   </SpecificityRules>\n");
@@ -1115,8 +1115,13 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
    char szSpectrumAccession[24];
    char szSpectrumName[128];
    int iLen = strlen(g_staticParams.inputFile.szFileName);
+   char szFileNameLower[SIZE_FILE];
 
-   if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 4, ".raw"))
+   for (int x = 0; x < iLen; x++)
+      szFileNameLower[x] = tolower(g_staticParams.inputFile.szFileName[x]);
+   szFileNameLower[iLen] = '\0';
+
+   if (!strcmp(g_staticParams.inputFile.szFileName + iLen - 4, ".raw"))
    {
       strcpy(szFormatAccession, "MS:1000563"); // Thermo RAW
       strcpy(szFormatName, "Thermo RAW file");
@@ -1124,8 +1129,8 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
       strcpy(szSpectrumAccession, "MS:1000776");
       strcpy(szSpectrumName, "scan number only nativeID format");
    }
-   else if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 6, ".mzXML")
-         || !strcasecmp(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz"))
+   else if (!strcmp(g_staticParams.inputFile.szFileName + iLen - 6, ".mzxml")
+         || !strcmp(g_staticParams.inputFile.szFileName + iLen - 9, ".mzxml.gz"))
    {
       strcpy (szFormatAccession, "MS:1000566");  // mzXML
       strcpy(szFormatName, "ISB mzXML file");
@@ -1133,8 +1138,8 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
       strcpy(szSpectrumAccession, "MS:1000776");
       strcpy(szSpectrumName, "scan number only nativeID format");
    }
-   else if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 5, ".mzML")
-         || !strcasecmp(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+   else if (!strcmp(g_staticParams.inputFile.szFileName + iLen - 5, ".mzml")
+         || !strcmp(g_staticParams.inputFile.szFileName + iLen - 8, ".mzml.gz"))
    {
       strcpy (szFormatAccession, "MS:1000584");  // mzML
       strcpy(szFormatName, "mzML file");
@@ -1142,7 +1147,7 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
       strcpy(szSpectrumAccession, "MS:1001530");
       strcpy(szSpectrumName, "mzML unique identifier");
    }
-   else if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 4, ".ms2"))
+   else if (!strcmp(g_staticParams.inputFile.szFileName + iLen - 4, ".ms2"))
    {
       strcpy (szFormatAccession, "MS:1001466");  // ms2
       strcpy(szFormatName, "MS2 file");
@@ -1150,7 +1155,7 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
       strcpy(szSpectrumAccession, "MS:1000776");
       strcpy(szSpectrumName, "scan number only nativeID format");
    }
-   else if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 4, ".mgf"))
+   else if (!strcmp(g_staticParams.inputFile.szFileName + iLen - 4, ".mgf"))
    {
       strcpy (szFormatAccession, "MS:1001062");  // mgf
       strcpy(szFormatName, "Mascot MGF file");
