@@ -1882,7 +1882,12 @@ bool CometSearchManager::DoSearch()
          }
 
          sprintf(szOutputMzIdentMLtmp, "%s.XXXXXX", szOutputMzIdentML);
+#ifdef _WIN32
+         _mktemp_s(szOutputMzIdentMLtmp, strlen(szOutputMzIdentMLtmp)+1);
+
+#else
          mkstemp(szOutputMzIdentMLtmp);
+#endif
 
          if ((fpout_mzidentmltmp = fopen(szOutputMzIdentMLtmp, "w")) == NULL)
          {
