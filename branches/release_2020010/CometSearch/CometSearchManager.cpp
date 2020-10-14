@@ -1923,7 +1923,12 @@ bool CometSearchManager::DoSearch()
             }
 
             sprintf(szOutputDecoyMzIdentMLtmp, "%s.XXXXXX",szOutputDecoyMzIdentML);
+#ifdef _WIN32
+            _mktemp_s(szOutputDecoyMzIdentMLtmp, strlen(szOutputMzIdentMLtmp) + 1);
 
+#else
+            mkstemp(szOutputDecoyMzIdentMLtmp);
+#endif
             if ((fpoutd_mzidentmltmp = fopen(szOutputDecoyMzIdentMLtmp, "w")) == NULL)
             {
                char szErrorMsg[SIZE_ERROR];
