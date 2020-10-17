@@ -1924,7 +1924,7 @@ bool CometSearchManager::DoSearch()
 
             sprintf(szOutputDecoyMzIdentMLtmp, "%s.XXXXXX",szOutputDecoyMzIdentML);
 #ifdef _WIN32
-            _mktemp_s(szOutputDecoyMzIdentMLtmp, strlen(szOutputMzIdentMLtmp) + 1);
+            _mktemp_s(szOutputDecoyMzIdentMLtmp, strlen(szOutputDecoyMzIdentMLtmp) + 1);
 
 #else
             mkstemp(szOutputDecoyMzIdentMLtmp);
