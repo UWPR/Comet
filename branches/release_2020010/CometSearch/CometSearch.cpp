@@ -1241,8 +1241,8 @@ bool CometSearch::IndexSearch(void)
       for (unsigned int x=0; x<strlen(sDBI.szPeptide); x++)
          printf("%d", sDBI.pcVarModSites[x]);
       printf("\n");
-
 */
+
       if (sDBI.dPepMass > g_massRange.dMaxMass)
          break;
 

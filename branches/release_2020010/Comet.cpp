@@ -574,6 +574,12 @@ void LoadParameters(char *pszParamsFile,
                      &varModsParam.bRequireThisMod,
                      &varModsParam.dNeutralLoss);
 
+#ifdef _WIN32
+               szParamVal[strlen(szParamVal)-2] = '\0';  // remove CR/LF
+#else
+               szParamVal[strlen(szParamVal)-1] = '\0';  // remove LF
+#endif
+
                sprintf(szParamStringVal, "%s", szParamVal);  // FIX: confirm that this is OK
 
                pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
