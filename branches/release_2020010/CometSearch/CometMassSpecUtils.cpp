@@ -233,7 +233,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       // targets + decoys, targets only, decoys only
  
       // get target proteins
-      if (iPrintTargetDecoy == 0 || iPrintTargetDecoy == 1)  // targets can be combined target/decoy or separate target
+      if (iPrintTargetDecoy != 2)  // if not decoy-only
       {
          if (pOutput[iWhichResult].pWhichProtein.size() > 0)
          {
@@ -252,7 +252,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       }
 
       // get decoy proteins
-      if (iPrintTargetDecoy == 0 || iPrintTargetDecoy == 2)  // decoy can be combined target/decoy or separate decoy
+      if (iPrintTargetDecoy != 1)  // if not target-only
       {
          if (pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
          {
