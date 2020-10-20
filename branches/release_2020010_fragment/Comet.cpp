@@ -564,8 +564,7 @@ void LoadParameters(char *pszParamsFile,
             else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
             {
                varModsParam.szVarModChar[0] = '\0';
-               char szVarModNL[1024];
-               sscanf(szParamVal, "%lf %19s %d %d %d %d %d %s",
+               sscanf(szParamVal, "%lf %19s %d %d %d %d %d %lf",
                      &varModsParam.dVarModMass,
                      varModsParam.szVarModChar,
                      &varModsParam.iBinaryMod,
@@ -573,40 +572,16 @@ void LoadParameters(char *pszParamsFile,
                      &varModsParam.iVarModTermDistance,
                      &varModsParam.iWhichTerm,
                      &varModsParam.bRequireThisMod,
-                     szVarModNL);
+                     &varModsParam.dNeutralLoss);
 
-               //Now tokenize and parse out szVarModNL
-               char *tok2;
-               char delims2[] = ",";
-               int xx=0;
-               tok2 = strtok(szVarModNL, delims2);
+#ifdef _WIN32
+               szParamVal[strlen(szParamVal)-2] = '\0';  // remove CR/LF
+#else
+               szParamVal[strlen(szParamVal)-1] = '\0';  // remove LF
+#endif
 
-               while (tok2 != NULL)
-               {
-                  sscanf(tok2, "%lf", &(varModsParam.dNeutralLoss[xx]));
+               sprintf(szParamStringVal, "%s", szParamVal);  // FIX: confirm that this is OK
 
-
-                  if (varModsParam.dNeutralLoss[xx] != 0.0)
-                  {
-                     xx++;
-                     if (xx == NUMFRAGNL)
-                        break;
-                  }
-
-                  tok2 = strtok(NULL, delims2);
-               }
-
-               varModsParam.iCountFragNL = xx;
-
-               sprintf(szParamStringVal, "%lf %s %d %d %d %d %d %s",
-                     varModsParam.dVarModMass,
-                     varModsParam.szVarModChar,
-                     varModsParam.iBinaryMod,
-                     varModsParam.iMaxNumVarModAAPerMod,
-                     varModsParam.iVarModTermDistance,
-                     varModsParam.iWhichTerm,
-                     varModsParam.bRequireThisMod,
-                     szVarModNL);
                pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
             }
             else if (!strcmp(szParamName, "max_variable_mods_in_peptide"))

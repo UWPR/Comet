@@ -692,8 +692,7 @@ struct StaticParams
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
          variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
          variableModParameters.varModList[i].dVarModMass = 0.0;
-         for (int ii=0; ii<NUMFRAGNL; ii++)
-            variableModParameters.varModList[i].dNeutralLoss[ii] = 0.0;
+         variableModParameters.varModList[i].dNeutralLoss = 0.0;
          strcpy(variableModParameters.varModList[i].szVarModChar, "X");
 
 #ifdef CRUX

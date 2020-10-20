@@ -55,8 +55,7 @@ private:
                                     Results *pOutput,
                                     FILE *fpOut,
                                     FILE *fpdb,
-                                    double dDeltaCn,
-                                    double dDeltaCnStar);
+                                    double dDeltaCn);
 
    static void GetVal(char *szElement,
                       char *szAttribute,
