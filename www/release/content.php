@@ -3,6 +3,7 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
+               <li><a href="/release/release_202001/">Release 2020.01, 2020/10/20</a></li>
                <li><a href="/release/release_201901/">Release 2019.01, 2019/08/19, last revised 2020/04/06</a></li>
                <li><a href="/release/release_201801/">Release 2018.01, 2018/04/26, last revised 2019/02/13</a></li>
                <li><a href="/release/release_201701/">Release 2017.01, 2017/10/02, last revised 2018/02/20</a></li>
@@ -23,6 +24,7 @@
          <p>Comet is currently or soon-to-be integrated into the following software projects:
          <ul>
             <!-- <li><a target="new" href="http://chorusproject.org">Chorus</a> -->
+            <li><a target="new" href="https://www.openms.de/">OpenMS</a>
             <li><a target="new" href="http://cruxtoolkit.sourceforge.net/">Crux</a>
             <li><a target="new" href="https://hub.docker.com/r/biodckr/comet/">Bio Docker</a>
             <li><a target="new" href="http://www.labkey.org">LabKey</a>
