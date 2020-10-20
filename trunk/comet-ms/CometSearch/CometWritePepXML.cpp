@@ -527,10 +527,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    {
       int j;
       bool bNoDeltaCnYet = true;
-      bool bDeltaCnStar = false;
       double dDeltaCn = 0.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
-      double dDeltaCnStar = 0.0;   // if reported deltaCn is for dissimilar peptide, the value stored here is the
-                                   // explicit deltaCn between top hit and peptide in list
 
       for (j=i+1; j<iNumPrintLines; j++)
       {
@@ -569,8 +566,6 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
                bNoDeltaCnYet = 0;
 
-               if (j - i > 1)
-                  bDeltaCnStar = true;
                break;
             }
          }
@@ -583,25 +578,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
          iRankXcorr++;
 
       if (pOutput[i].fXcorr > XCORR_CUTOFF)
-      {
-         if (bDeltaCnStar && i+1<iNumPrintLines)
-         {
-            if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr >= 0.0)
-            {
-               dDeltaCnStar = 1.0 - pOutput[i+1].fXcorr/pOutput[i].fXcorr;
-               if (isEqual(dDeltaCnStar, 0.0)) // note top two xcorrs could be identical so this gives a
-                  dDeltaCnStar = 0.001;        // non-zero deltacnstar value to denote deltaCn is not explicit
-            }
-            else if (pOutput[i].fXcorr > 0.0 && pOutput[i+1].fXcorr < 0.0)
-               dDeltaCnStar = 1.0;
-            else
-               dDeltaCnStar = 0.0;
-         }
-         else
-            dDeltaCnStar = 0.0;
-
-         PrintPepXMLSearchHit(iWhichQuery, i, iRankXcorr, iPrintTargetDecoy, pOutput, fpout, fpdb, dDeltaCn, dDeltaCnStar);
-      }
+         PrintPepXMLSearchHit(iWhichQuery, i, iRankXcorr, iPrintTargetDecoy, pOutput, fpout, fpdb, dDeltaCn);
    }
 
    fprintf(fpout, "  </search_result>\n");
@@ -616,8 +593,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                                             Results *pOutput,
                                             FILE *fpout,
                                             FILE *fpdb,
-                                            double dDeltaCn,
-                                            double dDeltaCnStar)
+                                            double dDeltaCn)
 {
    int  i;
    int iNTT;
@@ -868,10 +844,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    }
 
    fprintf(fpout, "    <search_score name=\"xcorr\" value=\"%0.3f\"/>\n", pOutput[iWhichResult].fXcorr);
-
    fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.3f\"/>\n", dDeltaCn);
-   fprintf(fpout, "    <search_score name=\"deltacnstar\" value=\"%0.3f\"/>\n", dDeltaCnStar);
-
    fprintf(fpout, "    <search_score name=\"spscore\" value=\"%0.1f\"/>\n", pOutput[iWhichResult].fScoreSp);
    fprintf(fpout, "    <search_score name=\"sprank\" value=\"%d\"/>\n", pOutput[iWhichResult].iRankSp);
    fprintf(fpout, "    <search_score name=\"expect\" value=\"%0.2E\"/>\n", pOutput[iWhichResult].dExpect);

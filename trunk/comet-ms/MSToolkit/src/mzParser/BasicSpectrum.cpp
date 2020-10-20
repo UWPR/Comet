@@ -7,7 +7,7 @@
 
 #include "mzParser.h"
 using namespace std;
-
+using namespace mzParser;
 //------------------------------------------
 //  Constructors & Destructors
 //------------------------------------------
@@ -119,9 +119,13 @@ specDP& BasicSpectrum::operator[ ](const unsigned int index) {
   return vData->at(index);
 }
 
+specIonMobDP& BasicSpectrum::getIonMobDP(const unsigned int index) {
+  return vDataIonMob->at(index);
+}
 //------------------------------------------
 //  Modifiers
 //------------------------------------------
+void BasicSpectrum::addDP(specIonMobDP dp) { vDataIonMob->push_back(dp);}
 void BasicSpectrum::addDP(specDP dp) { vData->push_back(dp);}
 void BasicSpectrum::clear(){
   activation=none;

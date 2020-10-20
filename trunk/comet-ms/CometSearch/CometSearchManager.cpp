@@ -779,7 +779,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("add_N_asparagine", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'N'] = dDoubleData;
 
-   if (GetParamValue("add_O_ornithine", dDoubleData))
+   if (GetParamValue("add_O_pyrrolysine", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'O'] = dDoubleData;
 
    if (GetParamValue("add_D_aspartic_acid", dDoubleData))
@@ -1121,7 +1121,7 @@ bool CometSearchManager::InitializeStaticParams()
          if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
             g_staticParams.variableModParameters.bRequireVarMod = true;
 
-         if (g_staticParams.variableModParameters.varModList[i].iCountFragNL > 0)
+         if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
             g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
       }
    }
@@ -1882,7 +1882,12 @@ bool CometSearchManager::DoSearch()
          }
 
          sprintf(szOutputMzIdentMLtmp, "%s.XXXXXX", szOutputMzIdentML);
+#ifdef _WIN32
+         _mktemp_s(szOutputMzIdentMLtmp, strlen(szOutputMzIdentMLtmp) + 1);
+
+#else
          mkstemp(szOutputMzIdentMLtmp);
+#endif
 
          if ((fpout_mzidentmltmp = fopen(szOutputMzIdentMLtmp, "w")) == NULL)
          {
@@ -1918,7 +1923,12 @@ bool CometSearchManager::DoSearch()
             }
 
             sprintf(szOutputDecoyMzIdentMLtmp, "%s.XXXXXX",szOutputDecoyMzIdentML);
+#ifdef _WIN32
+            _mktemp_s(szOutputDecoyMzIdentMLtmp, strlen(szOutputDecoyMzIdentMLtmp) + 1);
 
+#else
+            mkstemp(szOutputDecoyMzIdentMLtmp);
+#endif
             if ((fpoutd_mzidentmltmp = fopen(szOutputDecoyMzIdentMLtmp, "w")) == NULL)
             {
                char szErrorMsg[SIZE_ERROR];
@@ -3086,15 +3096,9 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fprintf(fptr, "VariableMod:");
    for (int x = 0; x < VMODS; x++)
    {
-      fprintf(fptr, " %s %lf:", g_staticParams.variableModParameters.varModList[x].szVarModChar,
-            g_staticParams.variableModParameters.varModList[x].dVarModMass);
-      for (int xx = 0; xx < g_staticParams.variableModParameters.varModList[x].iCountFragNL; xx++)
-      {
-         if (xx == 0)
-            fprintf(fptr, "%lf", g_staticParams.variableModParameters.varModList[x].dNeutralLoss[xx]);
-         else
-            fprintf(fptr, ",%lf", g_staticParams.variableModParameters.varModList[x].dNeutralLoss[xx]);
-      }
+      fprintf(fptr, " %s %lf:%lf", g_staticParams.variableModParameters.varModList[x].szVarModChar,
+            g_staticParams.variableModParameters.varModList[x].dVarModMass,
+            g_staticParams.variableModParameters.varModList[x].dNeutralLoss);
    }
    fprintf(fptr, "\n\n");
 

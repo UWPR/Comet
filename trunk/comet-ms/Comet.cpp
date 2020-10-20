@@ -564,8 +564,7 @@ void LoadParameters(char *pszParamsFile,
             else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
             {
                varModsParam.szVarModChar[0] = '\0';
-               char szVarModNL[1024];
-               sscanf(szParamVal, "%lf %19s %d %d %d %d %d %s",
+               sscanf(szParamVal, "%lf %19s %d %d %d %d %d %lf",
                      &varModsParam.dVarModMass,
                      varModsParam.szVarModChar,
                      &varModsParam.iBinaryMod,
@@ -573,40 +572,16 @@ void LoadParameters(char *pszParamsFile,
                      &varModsParam.iVarModTermDistance,
                      &varModsParam.iWhichTerm,
                      &varModsParam.bRequireThisMod,
-                     szVarModNL);
+                     &varModsParam.dNeutralLoss);
 
-               //Now tokenize and parse out szVarModNL
-               char *tok2;
-               char delims2[] = ",";
-               int xx=0;
-               tok2 = strtok(szVarModNL, delims2);
+#ifdef _WIN32
+               szParamVal[strlen(szParamVal)-2] = '\0';  // remove CR/LF
+#else
+               szParamVal[strlen(szParamVal)-1] = '\0';  // remove LF
+#endif
 
-               while (tok2 != NULL)
-               {
-                  sscanf(tok2, "%lf", &(varModsParam.dNeutralLoss[xx]));
+               sprintf(szParamStringVal, "%s", szParamVal);  // FIX: confirm that this is OK
 
-
-                  if (varModsParam.dNeutralLoss[xx] != 0.0)
-                  {
-                     xx++;
-                     if (xx == NUMFRAGNL)
-                        break;
-                  }
-
-                  tok2 = strtok(NULL, delims2);
-               }
-
-               varModsParam.iCountFragNL = xx;
-
-               sprintf(szParamStringVal, "%lf %s %d %d %d %d %d %s",
-                     varModsParam.dVarModMass,
-                     varModsParam.szVarModChar,
-                     varModsParam.iBinaryMod,
-                     varModsParam.iMaxNumVarModAAPerMod,
-                     varModsParam.iVarModTermDistance,
-                     varModsParam.iWhichTerm,
-                     varModsParam.bRequireThisMod,
-                     szVarModNL);
                pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
             }
             else if (!strcmp(szParamName, "max_variable_mods_in_peptide"))
@@ -895,12 +870,12 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_N_asparagine", szParamStringVal, dDoubleParam);
             }
-            else if (!strcmp(szParamName, "add_O_ornithine"))
+            else if (!strcmp(szParamName, "add_O_pyrrolysine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("add_O_ornithine", szParamStringVal, dDoubleParam);
+               pSearchMgr->SetParam("add_O_pyrrolysine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_D_aspartic_acid"))
             {
@@ -1565,7 +1540,7 @@ scan_range = 0 0                       # start and end scan range to search; eit
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override any existing charge; 0 as 1st entry ignores parameter\n\
 override_charge = 0                    # 0=no, 1=override precursor charge states, 2=ignore precursor charges outside precursor_charge range, 3=see online\n\
 ms_level = 2                           # MS level to analyze, valid are levels 2 (default) or 3\n\
-activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, ETD+SA, PQD, HCD, IRMPD\n\
+activation_method = ALL                # activation method; used if activation method set; allowed ALL, CID, ECD, ETD, ETD+SA, PQD, HCD, IRMPD, SID\n\
 \n\
 #\n\
 # misc parameters\n\
@@ -1627,13 +1602,13 @@ add_Q_glutamine = 0.0000               # added to Q - avg. 128.1292, mono. 128.0
 add_K_lysine = 0.0000                  # added to K - avg. 128.1723, mono. 128.09496\n\
 add_E_glutamic_acid = 0.0000           # added to E - avg. 129.1140, mono. 129.04259\n\
 add_M_methionine = 0.0000              # added to M - avg. 131.1961, mono. 131.04048\n\
-add_O_ornithine = 0.0000               # added to O - avg. 132.1610, mono  132.08988\n\
 add_H_histidine = 0.0000               # added to H - avg. 137.1393, mono. 137.05891\n\
 add_F_phenylalanine = 0.0000           # added to F - avg. 147.1739, mono. 147.06841\n\
 add_U_selenocysteine = 0.0000          # added to U - avg. 150.0379, mono. 150.95363\n\
 add_R_arginine = 0.0000                # added to R - avg. 156.1857, mono. 156.10111\n\
 add_Y_tyrosine = 0.0000                # added to Y - avg. 163.0633, mono. 163.06333\n\
 add_W_tryptophan = 0.0000              # added to W - avg. 186.0793, mono. 186.07931\n\
+add_O_pyrrolysine = 0.0000             # added to O - avg. 237.2982, mono  237.14773\n\
 add_B_user_amino_acid = 0.0000         # added to B - avg.   0.0000, mono.   0.00000\n\
 add_J_user_amino_acid = 0.0000         # added to J - avg.   0.0000, mono.   0.00000\n\
 add_X_user_amino_acid = 0.0000         # added to X - avg.   0.0000, mono.   0.00000\n\
@@ -1643,7 +1618,7 @@ add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.0
 # COMET_ENZYME_INFO _must_ be at the end of this parameters file\n\
 #\n\
 [COMET_ENZYME_INFO]\n\
-0.  No_enzyme              0      -           -\n\
+0.  Cut_everywhere         0      -           -\n\
 1.  Trypsin                1      KR          P\n\
 2.  Trypsin/P              1      KR          -\n\
 3.  Lys_C                  1      K           P\n\

@@ -21,6 +21,7 @@
 #include "mzParser.h"
 
 using namespace std;
+using namespace mzParser;
 
 mzpSAXMzxmlHandler::mzpSAXMzxmlHandler(BasicSpectrum* bs){
   m_bInMsInstrument=false;

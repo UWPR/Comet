@@ -455,7 +455,7 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
    std::vector<string>::iterator it;
 
    CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
-  
+ 
    bool bPrintComma = false;
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {

@@ -48,7 +48,7 @@
  */
 
 #include "mzParser.h"
-
+using namespace mzParser;
 
 Czran::Czran(){
 	index=NULL;

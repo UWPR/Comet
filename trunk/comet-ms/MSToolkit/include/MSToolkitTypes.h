@@ -71,8 +71,9 @@ enum MSActivation {
   mstETDSA,
   mstPQD,
   mstHCD,
-	mstIRMPD,
-  mstNA
+  mstIRMPD,
+  mstNA,
+  mstSID
 };
 
 struct MSHeader {
@@ -120,6 +121,14 @@ struct Peak_T {
   double mz;
   float intensity;
 };
+
+
+struct PeakIonMob_T {
+  double mz;
+  float intensity;
+  float ion_mob;
+};
+
 
 struct ZState {
   int z;

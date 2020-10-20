@@ -612,6 +612,10 @@ bool CometPreprocess::CheckActivationMethodFilter(MSActivation act)
       {
          bSearchSpectrum = 0;
       }
+      else if (!strcmp(g_staticParams.options.szActivationMethod, "SID") && (act != mstSID))
+      {  
+         bSearchSpectrum = 0;
+      }
    }
 
    return bSearchSpectrum;
