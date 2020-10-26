@@ -366,12 +366,14 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       for (it = vBinnedSpectrumXcorr.begin(); it != vBinnedSpectrumXcorr.end(); ++it)
       {
          dNewInten = it->second;  // get current intensity
+
          if (it != vBinnedSpectrumXcorr.begin())
          {
             it1 = it - 1;
             if (it1->first == it->first - 1)
                dNewInten += 0.5 * it1->second;  // add intensity of lower flank
          }
+
          if (it != vBinnedSpectrumXcorr.end())
          {
             it1 = it + 1;
@@ -386,9 +388,45 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       vBinnedSpectrumXcorr = vBinnedSpectrumXcorrFlank;
    }
 
+   vector< pair<int, double> > vBinnedSpectrumXcorrNL;
+
+   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+   {
+      vector< pair<int, double> >::iterator it, it1;
+      double dNewInten;
+
+      for (it = vBinnedSpectrumXcorr.begin(); it != vBinnedSpectrumXcorr.end(); ++it)
+      {
+         dNewInten = it->second;  // get current intensity
+
+         if (it->first >= vBinnedSpectrumXcorr.begin()->first + g_staticParams.precalcMasses.iMinus17)
+         {
+            it1 = it - g_staticParams.precalcMasses.iMinus17;
+            if (it1->first == it->first - g_staticParams.precalcMasses.iMinus17)
+            {
+               dNewInten += 0.2 * it1->second;  // add intensity 0.2 * intensity at -17
+            }
+         }
+
+
+         if (it->first >= vBinnedSpectrumXcorr.begin()->first + g_staticParams.precalcMasses.iMinus18)
+         {
+            it1 = it - g_staticParams.precalcMasses.iMinus18;
+            if (it1->first == it->first - g_staticParams.precalcMasses.iMinus18)
+            {
+               dNewInten += 0.2 * it1->second;  // add intensity 0.2 * intensity at -18
+            }
+         }
+
+         vBinnedSpectrumXcorrNL.push_back(make_pair(it->first, dNewInten));
+      }
+   }
+
    pScoring->iFastXcorrDataSize =  pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE + 1;
 
-   vector< pair<int, double> > vBinnedSpectrumXcorrNL;
    // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
    if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
@@ -403,7 +441,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataSize, ba.what());
+         sprintf(szErrorMsg, " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d]). bad_alloc: %s.", pScoring->iFastXcorrDataSize, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
@@ -428,7 +466,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                catch (std::bad_alloc& ba)
                {
                   char szErrorMsg[SIZE_ERROR];
-                  sprintf(szErrorMsg,  " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
+                  sprintf(szErrorMsg, " Error - new(pScoring->ppfSparseFastXcorrDataNL[%d][%d]). bad_alloc: %s.\n", x, SPARSE_MATRIX_SIZE, ba.what());
                   sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
                   sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
                   string strErrorMsg(szErrorMsg);
