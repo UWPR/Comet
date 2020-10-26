@@ -412,11 +412,11 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
          return false;
       }
 
-      for (size_t iii = 0; iii < vBinnedSpectrumXcorr.size(); iii++)
+      for (size_t iii = 0; iii < vBinnedSpectrumXcorrNL.size(); iii++)
       {
-         if (vBinnedSpectrumXcorr[iii].second > FLOAT_ZERO || vBinnedSpectrumXcorr[iii].second < -FLOAT_ZERO)
+         if (vBinnedSpectrumXcorrNL[iii].second > FLOAT_ZERO || vBinnedSpectrumXcorrNL[iii].second < -FLOAT_ZERO)
          {
-            int x = vBinnedSpectrumXcorr[iii].first / SPARSE_MATRIX_SIZE;
+            int x = vBinnedSpectrumXcorrNL[iii].first / SPARSE_MATRIX_SIZE;
             int y;
 
             if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
@@ -502,6 +502,45 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByInverseIntensity);
       // trim to NUM_SP_IONS entries
       vBinnedSpectrumSP.resize(NUM_SP_IONS);
+   }
+
+   // now sort by ion
+   sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByBin);
+
+   // stairstep
+   size_t iSize = vBinnedSpectrumSP.size();
+   double dGlobalMax = 0.0;
+   for (size_t iii = 0; iii < iSize; iii++)
+   {
+      size_t iCurrent = iii;
+      double dLocalMax = vBinnedSpectrumSP[iii].second;
+
+      // increment iCurrent for all adjacent .first entries, get the largest
+      // intensity within iii to iCurrent
+      while (iCurrent + 1 < iSize
+            && vBinnedSpectrumSP[iCurrent + 1].second > 0.0
+            && vBinnedSpectrumSP[iCurrent + 1].first -1 == vBinnedSpectrumSP[iCurrent].first)
+      {
+         iCurrent++;
+         if (vBinnedSpectrumSP[iCurrent].second > dLocalMax)
+            dLocalMax = vBinnedSpectrumSP[iCurrent].second;
+      }
+
+      // assigned local max intensity across all adjacent bins
+      for (size_t iv = iii; iv <= iCurrent; iv++)
+         vBinnedSpectrumSP[iv].second = dLocalMax;
+
+      if (dLocalMax > dGlobalMax)
+         dGlobalMax = dLocalMax;
+
+      iii = iCurrent;
+   }
+
+   // normalize max intensity to 100
+   for (size_t iii = 0; iii < iSize; iii++)
+   {
+      if (vBinnedSpectrumSP[iii].second > 0.0)
+         vBinnedSpectrumSP[iii].second = (vBinnedSpectrumSP[iii].second * 100.0 / dGlobalMax);
    }
 
    // MH: Fill sparse matrix for SpScore
@@ -1327,6 +1366,13 @@ bool CometPreprocess::SortVectorByInverseIntensity(const pair<int,double> &a,
                                                    const pair<int,double> &b) 
 {
    return (a.second > b.second);
+}
+
+
+bool CometPreprocess::SortVectorByBin(const pair<int,double> &a,  
+                                      const pair<int,double> &b) 
+{
+   return (a.first < b.first);
 }
 
 

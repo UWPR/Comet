@@ -101,6 +101,8 @@ private:
                                    struct PreprocessStruct *pPre);
    static bool SortVectorByInverseIntensity(const pair<int,double> &a,
                                     const pair<int,double> &b);
+   static bool SortVectorByBin(const pair<int,double> &a,
+                               const pair<int,double> &b);
    static bool IsValidInputType(int inputType);
 
 
