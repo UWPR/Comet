@@ -534,20 +534,25 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
 
    vBinnedSpectrumXcorr.clear();
 
-   if (vBinnedSpectrumSP.size() > NUM_SP_IONS)
+   // sort map by intensity
+   sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByInverseIntensity);
+
+   double dGlobalMax = vBinnedSpectrumSP[0].second;
+
+   size_t iSize = vBinnedSpectrumSP.size();
+
+   // trim to NUM_SP_IONS entries
+   if (iSize > NUM_SP_IONS)
    {
-      // sort map by intensity
-      sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByInverseIntensity);
-      // trim to NUM_SP_IONS entries
       vBinnedSpectrumSP.resize(NUM_SP_IONS);
+      iSize = NUM_SP_IONS;
    }
 
+/*
    // now sort by ion
    sort(vBinnedSpectrumSP.begin(), vBinnedSpectrumSP.end(), SortVectorByBin);
 
    // stairstep
-   size_t iSize = vBinnedSpectrumSP.size();
-   double dGlobalMax = 0.0;
    for (size_t iii = 0; iii < iSize; iii++)
    {
       size_t iCurrent = iii;
@@ -573,12 +578,12 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
 
       iii = iCurrent;
    }
+*/
 
    // normalize max intensity to 100
    for (size_t iii = 0; iii < iSize; iii++)
    {
-      if (vBinnedSpectrumSP[iii].second > 0.0)
-         vBinnedSpectrumSP[iii].second = (vBinnedSpectrumSP[iii].second * 100.0 / dGlobalMax);
+      vBinnedSpectrumSP[iii].second = (vBinnedSpectrumSP[iii].second * 100.0 / dGlobalMax);
    }
 
    // MH: Fill sparse matrix for SpScore
