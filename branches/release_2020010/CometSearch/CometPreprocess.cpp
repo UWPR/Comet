@@ -57,8 +57,8 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    Spectrum mstSpectrum;           // For holding spectrum.
 
    g_massRange.iMaxFragmentCharge = 0;
-   g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
-   g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
+   g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dNH3);
+   g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dH2O);
 
    // Create the mutex we will use to protect g_massRange.iMaxFragmentCharge.
    Threading::CreateMutex(&_maxChargeMutex);
@@ -356,72 +356,72 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                itCurr->second - (1.0/(2.0*g_staticParams.iXcorrProcessingOffset) * (dSum - itCurr->second))));
    }
 
-   // Add flanking peaks to vBinnedSpectrumXcorrFlank
-   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
-   {
-      vector< pair<int, double> > vBinnedSpectrumXcorrFlank;
-      vector< pair<int, double> >::iterator it, it1;
-      double dNewInten;
-
-      for (it = vBinnedSpectrumXcorr.begin(); it != vBinnedSpectrumXcorr.end(); ++it)
-      {
-         dNewInten = it->second;  // get current intensity
-
-         if (it != vBinnedSpectrumXcorr.begin())
-         {
-            it1 = it - 1;
-            if (it1->first == it->first - 1)
-               dNewInten += 0.5 * it1->second;  // add intensity of lower flank
-         }
-
-         if (it != vBinnedSpectrumXcorr.end())
-         {
-            it1 = it + 1;
-            if (it1->first == it->first + 1)
-               dNewInten += 0.5 * it1->second;  // add intensity of upper flank
-         }
-
-         vBinnedSpectrumXcorrFlank.push_back(make_pair(it->first, dNewInten));
-      }
-
-      vBinnedSpectrumXcorr.clear();
-      vBinnedSpectrumXcorr = vBinnedSpectrumXcorrFlank;
-   }
-
    vector< pair<int, double> > vBinnedSpectrumXcorrNL;
+   bool bUseWaterAmmonia = false;
 
    if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
-      vector< pair<int, double> >::iterator it, it1;
+      bUseWaterAmmonia = true;
+   }
+
+   // Add flanking peaks and water/ammonia loss to vBinnedSpectrumXcorrFlank
+   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0 || bUseWaterAmmonia)
+   {
+      vector< pair<int, double> > vBinnedSpectrumXcorrFlank;
+      vector< pair<int, double> >::iterator it, it1, it17, it18;
       double dNewInten;
+
+      // it17 and it118 point to entries that are -17 and -18 from current iterator
+      it17 = vBinnedSpectrumXcorr.begin();
+      it18 = vBinnedSpectrumXcorr.begin();
 
       for (it = vBinnedSpectrumXcorr.begin(); it != vBinnedSpectrumXcorr.end(); ++it)
       {
          dNewInten = it->second;  // get current intensity
 
-         if (it->first >= vBinnedSpectrumXcorr.begin()->first + g_staticParams.precalcMasses.iMinus17)
+         if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
          {
-            it1 = it - g_staticParams.precalcMasses.iMinus17;
-            if (it1->first == it->first - g_staticParams.precalcMasses.iMinus17)
+            if (it != vBinnedSpectrumXcorr.begin())
             {
-               dNewInten += 0.2 * it1->second;  // add intensity 0.2 * intensity at -17
+               it1 = it - 1;
+               if (it1->first == it->first - 1)
+                  dNewInten += 0.5 * it1->second;  // add intensity of lower flank
             }
+
+            if (it != vBinnedSpectrumXcorr.end())
+            {
+               it1 = it + 1;
+               if (it1->first == it->first + 1)
+                  dNewInten += 0.5 * it1->second;  // add intensity of upper flank
+            }
+
+            vBinnedSpectrumXcorrFlank.push_back(make_pair(it->first, dNewInten));
          }
 
-
-         if (it->first >= vBinnedSpectrumXcorr.begin()->first + g_staticParams.precalcMasses.iMinus18)
+         if (bUseWaterAmmonia)
          {
-            it1 = it - g_staticParams.precalcMasses.iMinus18;
-            if (it1->first == it->first - g_staticParams.precalcMasses.iMinus18)
-            {
-               dNewInten += 0.2 * it1->second;  // add intensity 0.2 * intensity at -18
-            }
-         }
+            while (it17->first < it->first - g_staticParams.precalcMasses.iMinus17)
+               it17++;
+            while (it18->first < it->first - g_staticParams.precalcMasses.iMinus18)
+               it18++;
 
-         vBinnedSpectrumXcorrNL.push_back(make_pair(it->first, dNewInten));
+            if (it->first == it17->first + g_staticParams.precalcMasses.iMinus17)
+               dNewInten += 0.2 * it17->second;  // add intensity 0.2 * intensity at -17
+
+            if (it->first == it18->first + g_staticParams.precalcMasses.iMinus18)
+               dNewInten += 0.2 * it18->second;  // add intensity 0.2 * intensity at -18
+
+            vBinnedSpectrumXcorrNL.push_back(make_pair(it->first, dNewInten));
+         }
+      }
+
+      if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+      {
+         vBinnedSpectrumXcorr.clear();
+         vBinnedSpectrumXcorr = vBinnedSpectrumXcorrFlank;
       }
    }
 
