@@ -3443,18 +3443,11 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       }
    }
 
-   for (int ctZ=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ>=1; ctZ--)
+   // precursor NL
+   ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
+   for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
    {
-      if (ctZ == 1 && bUseWaterAmmoniaNLPeaks)
-      {
-         ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrDataNL;
-      }
-      else
-      {
-         ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
-      }
-
-      for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
+      for (int ctZ=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ>=1; ctZ--)
       {
          bin = *(*(*p_uiBinnedPrecursorNL + ctNL) + ctZ);
 
@@ -3637,11 +3630,16 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
       else
       {
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].bClippedM = false;
+
          if (iStartPos == 0)
          {
             // check if clip n-term met
             if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
+            {
                pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = 'M';
+               pQuery->_pDecoys[siLowestDecoySpScoreIndex].bClippedM = true;
+            }
             else
                pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = '-';
          }
