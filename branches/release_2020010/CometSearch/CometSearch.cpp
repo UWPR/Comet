@@ -1825,7 +1825,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         int iPosReverse;
 
                         iDecoyStartPos = 1;
-                        iDecoyEndPos = strlen(szDecoyPeptide)-2;
+                        iDecoyEndPos = (int)strlen(szDecoyPeptide)-2;
 
                         for (i=iDecoyStartPos; i<iDecoyEndPos; i++)
                         {
@@ -2040,7 +2040,7 @@ void CometSearch::AnalyzeIndexPep(int iWhichQuery,
       {
          if (sDBI.pcVarModSites[i] > 0)
          {
-            if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i]-1].iCountFragNL)
+            if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i]-1].dNeutralLoss != 0.0)
             {
                iPositionNLB[sDBI.pcVarModSites[i] -1] = i;
                break;
@@ -2052,7 +2052,7 @@ void CometSearch::AnalyzeIndexPep(int iWhichQuery,
       {
          if (sDBI.pcVarModSites[i] > 0)
          {
-            if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i]-1].iCountFragNL)
+            if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i]-1].dNeutralLoss != 0.0)
             {
                iPositionNLY[sDBI.pcVarModSites[i] -1] = i;
                break;
@@ -3422,7 +3422,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             {
                for (int ii = 0; ii < VMODS; ii++)
                {
-                  for (int xx = 0; xx < g_staticParams.variableModParameters.varModList[ii].iCountFragNL; xx++)
+                  if (g_staticParams.variableModParameters.varModList[ii].dNeutralLoss != 0.0)
                   {
                      //x+1 here as 0 is the base fragment ion series
                      // *(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)+NL) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][NL].
@@ -3729,7 +3729,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->siLowestDecoySpScoreIndex = siLowestDecoySpScoreIndex;
 
       // round lowest score to 6 significant digits
-      int iTmp = pQuery->dLowestDecoyXcorrScore * 1000000;
+      int iTmp = (int)(pQuery->dLowestDecoyXcorrScore * 1000000);
       pQuery->dLowestDecoyXcorrScore = (double)iTmp / 1000000.0;
    }
    else
@@ -3866,7 +3866,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
 
       // round lowest score to 6 significant digits
-      int iTmp = pQuery->dLowestXcorrScore * 1000000;
+      int iTmp = (int)(pQuery->dLowestXcorrScore * 1000000);
       pQuery->dLowestXcorrScore = (double)iTmp / 1000000.0;
    }
 }
@@ -6005,7 +6005,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   dYion += g_staticParams.variableModParameters.varModList[piVarModSitesDecoy[iLenPeptide+1]-1].dVarModMass;
 
                iDecoyStartPos = 1;  // This is start/end for newly created decoy peptide
-               iDecoyEndPos = strlen(szDecoyPeptide)-2;
+               iDecoyEndPos = (int)strlen(szDecoyPeptide)-2;
 
                int iPosForward;  // count forward in peptide from 0
                int iPosReverse;  // point to residue in reverse order
@@ -6036,7 +6036,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                      if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
                      {
-                        for (int xx = 0; xx < g_staticParams.variableModParameters.varModList[iMod].iCountFragNL; xx++)
+                        if (g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss != 0.0)
                         {
                            if (g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss != 0.0)
                            {
