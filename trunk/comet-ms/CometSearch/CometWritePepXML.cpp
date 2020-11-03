@@ -606,11 +606,11 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    int iNumTotProteins = 0;
 
    if (iPrintTargetDecoy == 0)
-      iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
+      iNumTotProteins = (int)(pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size());
    else if (iPrintTargetDecoy == 1)
-      iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size();
+      iNumTotProteins = (int)pOutput[iWhichResult].pWhichProtein.size();
    else //if (iPrintTargetDecoy == 2)
-      iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
+      iNumTotProteins = (int)pOutput[iWhichResult].pWhichDecoyProtein.size();
 
    std::vector<string> vProteinTargets;  // store vector of target protein names
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names

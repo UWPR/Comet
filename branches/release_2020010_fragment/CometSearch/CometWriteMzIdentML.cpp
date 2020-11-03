@@ -339,7 +339,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
 
       std::getline(isString, strLocal, ';');
       fprintf(fpout, "  <PeptideSequence>%s</PeptideSequence>\n", strLocal.c_str());
-      iLen = strLocal.length();
+      iLen = (int)strLocal.length();
 
       while ( std::getline(isString, strLocal, ';') )
       {
@@ -1114,7 +1114,7 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
    char szFormatName[128];
    char szSpectrumAccession[24];
    char szSpectrumName[128];
-   int iLen = strlen(g_staticParams.inputFile.szFileName);
+   int iLen = (int)strlen(g_staticParams.inputFile.szFileName);
    char szFileNameLower[SIZE_FILE];
 
    for (int x = 0; x < iLen; x++)
@@ -1419,7 +1419,11 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          {
             for (it=pOutput[iWhichResult].pWhichProtein.begin(); it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
             {
+#ifdef _WIN32
+               fprintf(fpout, "%I64d;", (*it).lWhichProtein);
+#else
                fprintf(fpout, "%ld;", (*it).lWhichProtein);
+#endif
             }
             fprintf(fpout, "\t");
          }
@@ -1433,7 +1437,11 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          {
             for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
             {
+#ifdef _WIN32
+               fprintf(fpout, "%I64d;", (*it).lWhichProtein);
+#else
                fprintf(fpout, "%ld;", (*it).lWhichProtein);
+#endif
             }
             fprintf(fpout, "\t");
          }

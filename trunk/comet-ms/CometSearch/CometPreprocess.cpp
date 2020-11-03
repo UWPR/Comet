@@ -478,7 +478,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                   pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
             }
             y = vBinnedSpectrumXcorrNL[iii].first - (x * SPARSE_MATRIX_SIZE);
-            pScoring->ppfSparseFastXcorrDataNL[x][y] = vBinnedSpectrumXcorrNL[iii].second;
+            pScoring->ppfSparseFastXcorrDataNL[x][y] = (float)vBinnedSpectrumXcorrNL[iii].second;
          }
       }
    }
@@ -528,7 +528,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                pScoring->ppfSparseFastXcorrData[x][y]=0;
          }
          y = vBinnedSpectrumXcorr[iii].first - (x * SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseFastXcorrData[x][y] = vBinnedSpectrumXcorr[iii].second;
+         pScoring->ppfSparseFastXcorrData[x][y] = (float)vBinnedSpectrumXcorr[iii].second;
       }
    }
 
@@ -633,7 +633,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                pScoring->ppfSparseSpScoreData[x][y]=0;
          }
          y = vBinnedSpectrumSP[iii].first - (x * SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseSpScoreData[x][y] = vBinnedSpectrumSP[iii].second;
+         pScoring->ppfSparseSpScoreData[x][y] = (float)vBinnedSpectrumSP[iii].second;
       }
    }
 

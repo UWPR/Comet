@@ -1233,7 +1233,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.options.iMaxDuplicateProteins == -1)
       g_staticParams.options.iMaxDuplicateProteins = INT_MAX;
 
-   g_staticParams.iPrecursorNLSize = g_staticParams.precursorNLIons.size();
+   g_staticParams.iPrecursorNLSize = (int)g_staticParams.precursorNLIons.size();
    if (g_staticParams.iPrecursorNLSize > MAX_PRECURSOR_NL_SIZE)
       g_staticParams.iPrecursorNLSize = MAX_PRECURSOR_NL_SIZE;
 
@@ -2858,7 +2858,7 @@ bool CometSearchManager::CompareByPeptide(const DBIndex &lhs,
       }
 
       // same sequences and masses here so next look at mod state
-      int iLen = strlen(lhs.szPeptide)+2;
+      int iLen = (int)strlen(lhs.szPeptide)+2;
       for (int i=0; i<iLen; i++)
       {
          if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
@@ -3137,7 +3137,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
             lIndex[iPrevMass10] = comet_ftell(fptr);
       }
 
-      int iLen = strlen((*it).szPeptide);
+      int iLen = (int)strlen((*it).szPeptide);
       fwrite(&iLen, sizeof(int), 1, fptr);
       fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
 //    fwrite((*it).szPrevNextAA, sizeof(char), 2, fptr);

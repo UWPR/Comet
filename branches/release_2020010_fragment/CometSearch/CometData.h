@@ -198,14 +198,12 @@ struct VarMods
    int    iVarModTermDistance;
    int    iWhichTerm;
    int    bRequireThisMod;
-   int    iCountFragNL;
    char   szVarModChar[MAX_VARMOD_AA];
 
    VarMods()
    {
       iBinaryMod = 0;
       bRequireThisMod = 0;
-      iCountFragNL = 0;
       iMaxNumVarModAAPerMod = 0;
       iVarModTermDistance = -1;
       iWhichTerm = 0;
@@ -230,7 +228,6 @@ struct VarMods
    {
       iBinaryMod = a.iBinaryMod;
       bRequireThisMod = a.bRequireThisMod;
-      iCountFragNL = a.iCountFragNL;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
