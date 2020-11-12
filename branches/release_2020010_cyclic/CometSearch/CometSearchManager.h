@@ -82,9 +82,9 @@ private:
    static bool CompareByMass(const DBIndex &lhs,
                              const DBIndex &rhs);
    static bool WriteIndexedDatabase(void);
-
    static void UpdatePrevNextAA(int iWhichQuery,
                                 int iPrintTargetDecoy);
+   static void ReadFileHeaders(MSReader &mstReader);
 
    bool singleSearchInitializationComplete;
    int singleSearchThreadCount;

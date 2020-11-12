@@ -38,6 +38,7 @@
 std::vector<Query*>           g_pvQuery;
 std::vector<InputFileInfo *>  g_pvInputFiles;
 std::vector<double>           g_pvDIAWindows;
+std::vector<SpecHeaderStruct> g_pvSpecHeader;
 StaticParams                  g_staticParams;
 vector<DBIndex>               g_pvDBIndex;
 MassRange                     g_massRange;
@@ -238,10 +239,18 @@ static void SetMSLevelFilter(MSReader &mstReader)
 {
    vector<MSSpectrumType> msLevel;
 
-   if (g_staticParams.options.iMSLevel == 3)
-      msLevel.push_back(MS3);
-   else
+   if (g_staticParams.options.bCyclicSearch)
+   {
       msLevel.push_back(MS2);
+      msLevel.push_back(MS3);
+   }
+   else
+   {
+      if (g_staticParams.options.iMSLevel == 3)
+         msLevel.push_back(MS3);
+      else
+         msLevel.push_back(MS2);
+   }
 
    mstReader.setFilter(msLevel);
 }
@@ -609,6 +618,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("show_fragment_ions", g_staticParams.options.bShowFragmentIons);
 
    GetParamValue("explicit_deltacn", g_staticParams.options.bExplicitDeltaCn);
+
+   GetParamValue("cyclic_peptide_search", g_staticParams.options.bCyclicSearch);
 
    GetParamValue("num_threads", g_staticParams.options.iNumThreads);
 
@@ -1990,6 +2001,16 @@ bool CometSearchManager::DoSearch()
 
          // We need to reset some of the static variables in-between input files
          CometPreprocess::Reset();
+   
+         // Read header info prior to cyclic search
+         if (g_staticParams.options.bCyclicSearch)
+         {
+            ReadFileHeaders(mstReader);
+
+//          for (std::vector<SpecHeaderStruct>::iterator it = g_pvSpecHeader.begin(); it != g_pvSpecHeader.end(); ++it)
+//             printf("OK2  scan %d, level %d, mz %f\n", it->iScanNumber, it->iMSLevel, it->dMZ);
+         }
+
 
          FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
          if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
@@ -3256,4 +3277,46 @@ void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
          }
       }
    }
+}
+
+
+// If cyclic peptide search, first walk through scans get get list of MS2 and MS3 scans and masses
+// This will only work for files where MS3 scans follow MS2 scans, 1 to 1.
+void CometSearchManager::ReadFileHeaders(MSReader &mstReader)
+{
+   int scNum = 0;
+   int iLastScan = 0;
+   bool bFirst = true;
+   Spectrum mstSpectrum;
+
+
+   while (1)
+   {
+      SpecHeaderStruct vTmp;
+
+      if (bFirst)
+      {
+         mstReader.readFile(g_staticParams.inputFile.szFileName, mstSpectrum, scNum);
+         bFirst = false;
+         iLastScan = mstReader.getLastScan();
+      }
+      else
+         mstReader.readFile(NULL, mstSpectrum);
+
+      vTmp.iMSLevel = mstSpectrum.getMsLevel();
+      vTmp.iScanNumber = mstSpectrum.getScanNumber();
+      vTmp.dMZ = mstSpectrum.getMZ();
+
+      if (mstSpectrum.sizeZ() > 0)
+        vTmp.iCharge = mstSpectrum.atZ(0).z;
+      else
+        vTmp.iCharge = 0;
+
+      g_pvSpecHeader.push_back(vTmp);
+
+      if (mstSpectrum.getScanNumber() == iLastScan)
+         break;
+   }
+
+   CometPreprocess::Reset();
 }

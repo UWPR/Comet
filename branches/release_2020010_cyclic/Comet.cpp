@@ -380,6 +380,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("explicit_deltacn", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "cyclic_peptide_search"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("cyclic_peptide_search", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "mass_offsets"))
             {
                // Remove white spaces at beginning/end of szParamVal

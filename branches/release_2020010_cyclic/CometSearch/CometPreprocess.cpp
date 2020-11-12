@@ -899,6 +899,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec)
    double dSelectionLower = 0.0;
    double dSelectedMZ = 0.0;
    double dMonoMZ = 0.0;
+   int iMSLevel = spec.getMsLevel();
 
    if (g_staticParams.options.bCorrectMass)
    {
@@ -952,6 +953,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec)
             pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
             pScoring->_spectrumInfoInternal.dRTime = 60.0*spec.getRTime();;
             pScoring->_spectrumInfoInternal.iScanNumber = iScanNumber;
+            pScoring->_spectrumInfoInternal.iMSLevel = iMSLevel;
 
             if (iPrecursorCharge == 1)
                pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;

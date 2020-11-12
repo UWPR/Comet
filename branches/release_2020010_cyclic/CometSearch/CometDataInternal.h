@@ -115,6 +115,7 @@ struct Options             // output parameters
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
+   int bCyclicSearch;            // 0 = normal search; 1 = cyclic peptide search
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;
    double dRemovePrecursorTol;
@@ -216,6 +217,7 @@ struct SpectrumInfoInternal
    int    iScanNumber;
    int    iChargeState;
    int    iMaxFragCharge;
+   int    iMSLevel;                   // store the MS level now that cyclic peptide option will search both MS2/MS3
    double dTotalIntensity;
    double dRTime;
    char   szMango[32];                // Mango encoding
@@ -978,7 +980,6 @@ struct IonSeriesStruct         // defines which fragment ion series are consider
    int bPreviousMatch[8];
 };
 
-
 struct MatchedIonsStruct  // for SingleSpectrumSearch
 {
    double dMass;
@@ -989,5 +990,15 @@ struct MatchedIonsStruct  // for SingleSpectrumSearch
       return dInten > a.dInten;
    }
 };
+
+struct SpecHeaderStruct
+{
+   int iMSLevel;
+   int iScanNumber;
+   int iCharge;
+   double dMZ;
+};
+
+extern vector<SpecHeaderStruct> g_pvSpecHeader;
 
 #endif // _COMETDATAINTERNAL_H_
