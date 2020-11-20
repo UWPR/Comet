@@ -217,7 +217,7 @@ struct SpectrumInfoInternal
    int    iScanNumber;
    int    iChargeState;
    int    iMaxFragCharge;
-   int    iMSLevel;                   // store the MS level now that cyclic peptide option will search both MS2/MS3
+   int    iSpecMSLevel;               // store the MS level now that cyclic peptide option will search both MS2/MS3
    double dTotalIntensity;
    double dRTime;
    char   szMango[32];                // Mango encoding
@@ -911,6 +911,7 @@ struct Query
       _spectrumInfoInternal.iHighestIon = 0;
       _spectrumInfoInternal.iScanNumber = 0;
       _spectrumInfoInternal.dTotalIntensity = 0.0;
+      _spectrumInfoInternal.iSpecMSLevel = 0;
 
       _pResults = NULL;
       _pDecoys = NULL;

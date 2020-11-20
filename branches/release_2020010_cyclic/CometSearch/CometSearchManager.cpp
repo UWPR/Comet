@@ -2003,14 +2003,15 @@ bool CometSearchManager::DoSearch()
          CometPreprocess::Reset();
    
          // Read header info prior to cyclic search
-         if (g_staticParams.options.bCyclicSearch)
+         if (g_staticParams.options.bCyclicSearch
+               && (g_staticParams.inputFile.iInputType == InputType_MZXML
+                  || g_staticParams.inputFile.iInputType == InputType_RAW))
          {
             ReadFileHeaders(mstReader);
 
 //          for (std::vector<SpecHeaderStruct>::iterator it = g_pvSpecHeader.begin(); it != g_pvSpecHeader.end(); ++it)
-//             printf("OK2  scan %d, level %d, mz %f\n", it->iScanNumber, it->iMSLevel, it->dMZ);
+//             printf("OK  scan %d, level %d, mz %f\n", it->iScanNumber, it->iMSLevel, it->dMZ);
          }
-
 
          FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
          if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
