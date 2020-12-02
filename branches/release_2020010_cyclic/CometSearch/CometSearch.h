@@ -117,6 +117,7 @@ private:
                    bool bDecoyPep,
                    int iWhichQuery,
                    int iLenPeptide,
+                   int iLenProtein,
                    int *piVarModSites,
                    struct sDBEntry *dbe);
    bool CheckEnzymeTermini(const char *szProteinSeq,
