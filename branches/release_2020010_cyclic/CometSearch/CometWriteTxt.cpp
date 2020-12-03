@@ -101,7 +101,12 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "protein_count\t");
    fprintf(fpout, "modifications\t");
    fprintf(fpout, "retention_time_sec\t");
-   fprintf(fpout, "sp_rank\n");
+   fprintf(fpout, "sp_rank");
+
+   if (g_staticParams.options.bCyclicSearch)
+      fprintf(fpout, "\tms_level");
+
+   fprintf(fpout, "\n");
 
 #endif
 }
@@ -435,6 +440,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // Sp rank
          fprintf(fpout, "%d", pOutput[iWhichResult].iRankSp);
+
+         if (g_staticParams.options.bCyclicSearch)
+            fprintf(fpout, "\t%d", pQuery->_spectrumInfoInternal.iSpecMSLevel);
 
          fprintf(fpout, "\n");
       }

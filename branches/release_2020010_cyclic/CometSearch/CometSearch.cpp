@@ -3757,16 +3757,21 @@ void CometSearch::XcorrScore(const char *szProteinSeq,
    if (g_staticParams.options.bCyclicSearch)
    {
       bool bPass = false;
-      // is fulll length, only score MS2
-      if (iLenPeptide == iLenProtein)
-      {
-         if (pQuery-> _spectrumInfoInternal.iSpecMSLevel == 2)
-            bPass = true;
-      }
+      // is full length, only score MS2
+      if (pQuery-> _spectrumInfoInternal.iSpecMSLevel == 0)
+         bPass = true;
       else
       {
-         if (pQuery-> _spectrumInfoInternal.iSpecMSLevel == 3)
-            bPass = true;
+         if (iLenPeptide == iLenProtein)
+         {
+            if (pQuery-> _spectrumInfoInternal.iSpecMSLevel == 2)
+               bPass = true;
+         }
+         else
+         {
+            if (pQuery-> _spectrumInfoInternal.iSpecMSLevel == 3)
+               bPass = true;
+         }
       }
 
       if (bPass)
