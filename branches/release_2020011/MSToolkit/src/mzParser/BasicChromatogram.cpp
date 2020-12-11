@@ -9,7 +9,6 @@ Version 1.1, March 14, 2012.
 */
 
 #include "mzParser.h"
-using namespace mzParser;
 
 BasicChromatogram::BasicChromatogram(){}
 

@@ -10,7 +10,6 @@ Version 1.1, March 14, 2012.
 #include "mzParser.h"
 
 using namespace std;
-using namespace mzParser;
 
 int main(int argc, char* argv[]){
 

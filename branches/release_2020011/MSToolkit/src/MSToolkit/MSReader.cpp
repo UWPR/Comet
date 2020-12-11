@@ -1,7 +1,7 @@
 /*
 Copyright 2005-2016, Michael R. Hoopmann
 
-Licensed under he Apache License, Version 2.0 (the "License");
+Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
@@ -1720,7 +1720,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
       return false; //don't grab previous scan when we're out of bounds
     }
     while(true){
-      readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader);
+      readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader,rampIndex);
       if (scNum>0 && scanHeader.acquisitionNum != scNum && scanHeader.acquisitionNum != -1) {
         cerr << "ERROR: Failure reading scan, index corrupted.  Line endings may have changed during transfer.\n" << flush;
         return false;
@@ -1756,7 +1756,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
       if (rampIndex>rampLastScan) return false;
       if (pScanIndex[rampIndex]<0) continue;
 
-      readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader);
+      readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader,rampIndex);
       switch (scanHeader.msLevel){
       case 1: mslevel = MS1; break;
       case 2: mslevel = MS2; break;
@@ -1783,9 +1783,11 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
   s.setCompensationVoltage(scanHeader.compensationVoltage);
   s.setIonInjectionTime((float)scanHeader.ionInjectionTime);
   s.setTIC(scanHeader.totIonCurrent);
-  s.setSelWindow(scanHeader.lowMZ,scanHeader.highMZ);
+  s.setScanWindow(scanHeader.lowMZ,scanHeader.highMZ);
   s.setBPI((float)scanHeader.basePeakIntensity);
   s.setRawFilter(scanHeader.filterLine);
+
+
 	if(strlen(scanHeader.activationMethod)>1){
 		if(strcmp(scanHeader.activationMethod,"CID")==0) s.setActivationMethod(mstCID);
       else if(strcmp(scanHeader.activationMethod,"ECD")==0) s.setActivationMethod(mstECD);
@@ -1797,7 +1799,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		else s.setActivationMethod(mstNA);
 	}
 
-   if (strstr(scanHeader.filterLine, " sid=")) // OK; hack for "activation_method = SID" filter
+   if (strstr(scanHeader.filterLine, " sid=")) // OK; hack for Jared
       s.setActivationMethod(mstSID);
 
 	if(scanHeader.msLevel>1) {

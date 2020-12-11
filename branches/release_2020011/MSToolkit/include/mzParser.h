@@ -81,7 +81,7 @@ typedef __int64 f_off;
 //#include <stdexcept>
 #endif
 
-#if defined(GCC) || defined(__LINUX__) || defined(GNUC) || defined(__MINGW32__) || defined(_GNU_SOURCE)
+#if defined(GCC) || defined(__LINUX__) || defined(GNUC) || defined(__MINGW32__)
 #include <stdint.h>
 #include <stdexcept>
 #ifndef _LARGEFILE_SOURCE
@@ -111,7 +111,7 @@ typedef off_t f_off;
 
 // this define should work for most LINUX and UNIX platforms
 
-namespace mzParser {
+
 
 //------------------------------------------------
 // mzMLParser structures, definitions, and enums
@@ -122,24 +122,70 @@ typedef struct specDP{
   double intensity;
 } specDP;
 
-typedef struct specIonMobDP{
-  double mz;
-  double intensity;
-  double ionMobility;
-} specIonMobDP;
-
 typedef struct TimeIntensityPair{
   double time;
   double intensity;
 } TimeIntensityPair;
 
-typedef struct TimeIntensityIonMob{
-  double time;
-  double intensity;
-  double ionMobility;
-} TimeIntensityIonMob;
+enum enumActivation {
+  none=0,
+  CID=1,
+  HCD=2,
+  ETD=3,
+  ETDSA=4,
+  ECD=5,
+};
 
-  
+
+
+//------------------------------------------------
+// mzMLParser classes
+//------------------------------------------------
+//For holding mzML and mzXML indexes
+class cindex  { 
+public:
+
+  //MH: Fix this!!!
+  static int compare (const void* a, const void* b) {
+    if (*(size_t*)a < *(size_t*)b) return -1;
+    if (*(size_t*)a > *(size_t*)b) return 1;
+    return 0;
+  }
+
+  size_t scanNum;
+  std::string idRef;
+  f_off offset;
+};
+
+
+
+//For instrument information
+class instrumentInfo {
+public:
+  std::string analyzer;
+  std::string detector;
+  std::string id;
+  std::string ionization;
+  std::string manufacturer;
+  std::string model;
+  instrumentInfo(){
+    analyzer="";
+    detector="";
+    id="";
+    ionization="";
+    manufacturer="";
+    model="";
+  }
+  void clear(){
+    analyzer="";
+    detector="";
+    id="";
+    ionization="";
+    manufacturer="";
+    model="";
+  }
+};
+
 typedef struct sPrecursorIon{
   double intensity;
   double isoLowerMZ; //lower offset of the isolation window
@@ -200,66 +246,6 @@ typedef struct sPrecursorIon{
   }
 } sPrecursorIon;
 
-  
-enum enumActivation {
-  none=0,
-  CID=1,
-  HCD=2,
-  ETD=3,
-  ETDSA=4,
-  ECD=5,
-};
-
-
-
-//------------------------------------------------
-// mzMLParser classes
-//------------------------------------------------
-//For holding mzML and mzXML indexes
-class cindex  {
-public:
-
-  static int compare (const void* a, const void* b) {
-    if (*(size_t*)a < *(size_t*)b) return -1;
-    if (*(size_t*)a > *(size_t*)b) return 1;
-    return 0;
-  }
-
-  size_t scanNum;
-  std::string idRef;
-  f_off offset;
-};
-
-
-
-//For instrument information
-class instrumentInfo {
-public:
-  std::string analyzer;
-  std::string detector;
-  std::string id;
-  std::string ionization;
-  std::string manufacturer;
-  std::string model;
-  instrumentInfo(){
-    analyzer="";
-    detector="";
-    id="";
-    ionization="";
-    manufacturer="";
-    model="";
-  }
-  void clear(){
-    analyzer="";
-    detector="";
-    id="";
-    ionization="";
-    manufacturer="";
-    model="";
-  }
-};
-
-
 class BasicSpectrum  {
 public:
 
@@ -271,11 +257,9 @@ public:
   //Operator overloads
   BasicSpectrum& operator=(const BasicSpectrum& s);
   specDP& operator[ ](const unsigned int index);
-  specIonMobDP& getIonMobDP(const unsigned int index);
 
   //Modifiers
   void addDP(specDP dp);
-  void addDP(specIonMobDP dp);
   void clear();
   void setActivation(int a);
   void setBasePeakIntensity(double d);
@@ -351,7 +335,6 @@ protected:
   int             scanNum;              //identifying scan number
   double          totalIonCurrent;
   std::vector<specDP>* vData;                //Spectrum data points
-  std::vector<specIonMobDP>* vDataIonMob;    //Ion Mobility Spectrum data points
   std::vector<sPrecursorIon>* vPrecursor;
      
 };
@@ -367,7 +350,7 @@ public:
   //Operator overloads
   BasicChromatogram& operator=(const BasicChromatogram& c);
   TimeIntensityPair& operator[ ](const unsigned int index);
-  TimeIntensityIonMob& getIonMobDP(const unsigned int index);
+
   //Modifiers
   void addTIP(TimeIntensityPair tip);
   void clear();
@@ -399,7 +382,6 @@ protected:
   double                      productOffsetLower;
   double                      productOffsetUpper;
   std::vector<TimeIntensityPair>   vData;          //Chromatogram data points
-  std::vector<TimeIntensityIonMob>   vDataIonMob;          //Chromatogram data points
      
 };
 
@@ -501,17 +483,12 @@ public:
     return "";
   }
 
-  bool getIonMobility() {
-    return m_bionMobility;
-  }
-
 protected:
 
   XML_Parser m_parser;
   std::string  m_strFileName;
   bool m_bStopParse;
   bool m_bGZCompression;
-  bool m_bionMobility;
 
   FILE* fptr;
   Czran gzObj;
@@ -541,9 +518,9 @@ public:
   int                     lowScan();
   bool                    readChromatogram(int num=-1);
   bool                    readHeader(int num=-1);
-  bool                    readHeaderFromOffset(f_off offset);
+  bool                    readHeaderFromOffset(f_off offset, int scNm=-1);
   bool                    readSpectrum(int num=-1);
-  bool                    readSpectrumFromOffset(f_off offset);
+  bool                    readSpectrumFromOffset(f_off offset, int scNm=-1);
   
 protected:
 
@@ -583,7 +560,6 @@ private:
   bool m_bInRefGroup;
   bool m_bInmzArrayBinary;
   bool m_bInintenArrayBinary;
-  bool m_bInionMobilityArrayBinary;
   bool m_bInSpectrumList;
   bool m_bInChromatogramList;
   bool m_bInIndexList;
@@ -623,6 +599,7 @@ private:
   int                     m_scanSPECCount;
   int                     m_scanIDXCount;
   int                     m_scanPRECCount;
+  int                     m_scanNumOverride;
   double                  m_startTime;            //in minutes
   double                  m_stopTime;              //in minutes
   std::string                  m_strData;              // For collecting character data.
@@ -630,10 +607,6 @@ private:
   BasicSpectrum*          spec;
   std::vector<double>          vdI;
   std::vector<double>          vdM;                    // Peak list std::vectors (masses and charges)
-
-
-
-  std::vector<double>          vdIM;                    // Peak list std::vectors Ion Mobility
 
 };
 
@@ -713,7 +686,7 @@ private:
   BasicSpectrum*          spec;
   std::vector<double>          vdI;
   std::vector<double>          vdM;            // Peak list vectors (masses and charges)
-  std::vector<double>          vdIM;                    // Peak list std::vectors Ion Mobility
+
 };
 
 //------------------------------------------------
@@ -1416,13 +1389,11 @@ char*               rampConstructInputPath(char *buf, int inbuflen, const char *
 const char**        rampListSupportedFileTypes();
 RAMPFILE*           rampOpenFile(const char *filename);
 char*               rampValidFileType(const char *buf);
-void                readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader);
+void                readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader, int iIndex=-1);
 ramp_fileoffset_t*  readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *iLastScan);
 int                 readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex);
 void                readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader);
-
-RAMPREAL*           readPeaks(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, bool ionMobility = false);
-
+RAMPREAL*           readPeaks(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, int iIndex=-1);
 int                 readPeaksCount(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex);
 void                readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeaderStruct *runHeader, int iLastScan);
 
@@ -1559,5 +1530,5 @@ private:
   BasicSpectrum*      spec;
 
 };
-}
+
 #endif

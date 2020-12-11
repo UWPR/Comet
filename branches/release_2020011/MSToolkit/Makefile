@@ -47,7 +47,7 @@ CLEAN_LIBS = libmstoolkitlite.a libmstoolkitlite.so libmstoolkitlite.so.$(SOVER)
 
 all: 
 	make arlib 
-#	make solib
+	make solib
 
 .PHONY: objects
 objects: $(ZLIB) $(MZPARSER) $(MZPARSERLITE) $(MZIMLTOOLS) $(MSTOOLKIT) $(READER) $(READERLITE) $(EXPAT)
