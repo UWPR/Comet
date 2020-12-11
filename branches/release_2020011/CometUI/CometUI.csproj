@@ -1,0 +1,457 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{93BEAB5A-61BB-40F1-BC55-B7CFCC262535}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>CometUI</RootNamespace>
+    <AssemblyName>CometUI</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+    <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>true</IsWebBootstrapper>
+    <PublishUrl>Publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Web</InstallFrom>
+    <UpdateEnabled>true</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <InstallUrl>http://comet-ms.sourceforge.net/CometUI/</InstallUrl>
+    <ApplicationRevision>73</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <CreateDesktopShortcut>true</CreateDesktopShortcut>
+    <PublishWizardCompleted>true</PublishWizardCompleted>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\Win32\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\Win32\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
+    <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>..\x64\Release\</OutputPath>
+    <DefineConstants>
+    </DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+    <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>CometUI.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignManifests>true</SignManifests>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestCertificateThumbprint>26E89C6FAA02A3E6E6CC67B9B8584C819B2E4F7B</ManifestCertificateThumbprint>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestKeyFile>CometUI.pfx</ManifestKeyFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GenerateManifests>true</GenerateManifests>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemGroup>
+    <Reference Include="CometWrapper">
+      <HintPath>..\Release\CometWrapper.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="ObjectListView">
+      <HintPath>..\packages\ObjectListView.Official.2.8.0\lib\net20\ObjectListView.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="ZedGraph">
+      <HintPath>..\packages\ZedGraph.5.1.6\lib\net35-Client\ZedGraph.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="About Dlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="About Dlg.Designer.cs">
+      <DependentUpon>About Dlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CometParam.cs" />
+    <Compile Include="CometParamsReader.cs" />
+    <Compile Include="CometParamsWriter.cs" />
+    <Compile Include="Search\ExportSearchParamsDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SharedUI\ExportFileDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SharedUI\ExportFileDlg.Designer.cs">
+      <DependentUpon>ExportFileDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SharedUI\FindFileDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SharedUI\FindFileDlg.Designer.cs">
+      <DependentUpon>FindFileDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MassSpecUtils.cs" />
+    <Compile Include="Peak.cs" />
+    <Compile Include="Search\CometSearch.cs" />
+    <Compile Include="CometUI.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CometUI.Designer.cs">
+      <DependentUpon>CometUI.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SharedUI\ProgressDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SharedUI\ProgressDlg.designer.cs">
+      <DependentUpon>ProgressDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\ImportSearchParamsDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Search\ImportSearchParamsDlg.Designer.cs">
+      <DependentUpon>ImportSearchParamsDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\ViewResultsSettings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>ViewResultsSettings.settings</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\VarModInfoDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\VarModInfoDlg.Designer.cs">
+      <DependentUpon>VarModInfoDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\FDRDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ViewResults\FDRDlg.Designer.cs">
+      <DependentUpon>FDRDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\PeptideFragmentCalculator.cs" />
+    <Compile Include="ViewResults\PepXMLReader.cs" />
+    <Compile Include="Properties\SearchSettings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>SearchSettings.settings</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\RunSearchSettings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>RunSearchSettings.settings</DependentUpon>
+    </Compile>
+    <Compile Include="Search\RunSearchBackgroundWorker.cs" />
+    <Compile Include="Search\RunSearchDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Search\RunSearchDlg.Designer.cs">
+      <DependentUpon>RunSearchDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\RunSearchProgressDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Search\RunSearchProgressDlg.Designer.cs">
+      <DependentUpon>RunSearchProgressDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\InputSettingsControl.Designer.cs">
+      <DependentUpon>InputSettingsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\MiscSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\MiscSettingsControl.Designer.cs">
+      <DependentUpon>MiscSettingsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SharedUI\NumericTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\StaticModSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\StaticModSettingsControl.Designer.cs">
+      <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\EnzymeInfoDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\EnzymeInfoDlg.Designer.cs">
+      <DependentUpon>EnzymeInfoDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\EnzymeSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\EnzymeSettingsControl.Designer.cs">
+      <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\InputSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\SearchSettingsDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\SearchSettingsDlg.Designer.cs">
+      <DependentUpon>SearchSettingsDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\MassSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\MassSettingsControl.Designer.cs">
+      <DependentUpon>MassSettingsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\VarModSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\VarModSettingsControl.Designer.cs">
+      <DependentUpon>VarModSettingsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Search\SearchSettings\OutputSettingsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Search\SearchSettings\OutputSettingsControl.Designer.cs">
+      <DependentUpon>OutputSettingsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ViewResults\ProteinDBReader.cs" />
+    <Compile Include="ViewResults\SearchResult.cs" />
+    <Compile Include="ViewResults\ExportSearchResults.cs" />
+    <Compile Include="ViewResults\ViewResultsBackgroundWorker.cs" />
+    <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsDisplayOptionsControl.Designer.cs">
+      <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsOtherActionsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsOtherActionsControl.Designer.cs">
+      <DependentUpon>ViewResultsOtherActionsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsPickColumnsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsPickColumnsControl.Designer.cs">
+      <DependentUpon>ViewResultsPickColumnsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsProgressDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsProgressDlg.Designer.cs">
+      <DependentUpon>ViewResultsProgressDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsSummaryOptionsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewResults\ViewResultsSummaryOptionsControl.Designer.cs">
+      <DependentUpon>ViewResultsSummaryOptionsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ViewResults\ViewSearchResultsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewResults\ViewSearchResultsControl.Designer.cs">
+      <DependentUpon>ViewSearchResultsControl.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="About Dlg.resx">
+      <DependentUpon>About Dlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CometUI.resx">
+      <DependentUpon>CometUI.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\ExportSearchParamsDlg.resx">
+      <DependentUpon>ExportSearchParamsDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SharedUI\ExportFileDlg.resx">
+      <DependentUpon>ExportFileDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SharedUI\FindFileDlg.resx">
+      <DependentUpon>FindFileDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SharedUI\ProgressDlg.resx">
+      <DependentUpon>ProgressDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\ImportSearchParamsDlg.resx">
+      <DependentUpon>ImportSearchParamsDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\RunSearchDlg.resx">
+      <DependentUpon>RunSearchDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\VarModInfoDlg.resx">
+      <DependentUpon>VarModInfoDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\MiscSettingsControl.resx">
+      <DependentUpon>MiscSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\StaticModSettingsControl.resx">
+      <DependentUpon>StaticModSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\EnzymeInfoDlg.resx">
+      <DependentUpon>EnzymeInfoDlg.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\EnzymeSettingsControl.resx">
+      <DependentUpon>EnzymeSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\InputSettingsControl.resx">
+      <DependentUpon>InputSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\SearchSettingsDlg.resx">
+      <DependentUpon>SearchSettingsDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\MassSettingsControl.resx">
+      <DependentUpon>MassSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\VarModSettingsControl.resx">
+      <DependentUpon>VarModSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Search\SearchSettings\OutputSettingsControl.resx">
+      <DependentUpon>OutputSettingsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <EmbeddedResource Include="ViewResults\FDRDlg.resx">
+      <DependentUpon>FDRDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ViewResults\ViewResultsDisplayOptionsControl.resx">
+      <DependentUpon>ViewResultsDisplayOptionsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ViewResults\ViewResultsOtherActionsControl.resx">
+      <DependentUpon>ViewResultsOtherActionsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ViewResults\ViewResultsPickColumnsControl.resx">
+      <DependentUpon>ViewResultsPickColumnsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ViewResults\ViewResultsSummaryOptionsControl.resx">
+      <DependentUpon>ViewResultsSummaryOptionsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ViewResults\ViewSearchResultsControl.resx">
+      <DependentUpon>ViewSearchResultsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="CometUI.pfx" />
+    <None Include="CometUI_Key.pfx" />
+    <None Include="CometUI_TemporaryKey.pfx" />
+    <None Include="packages.config" />
+    <None Include="Properties\DataSources\CometUI.Properties.Settings.datasource" />
+    <None Include="Properties\DataSources\EnzymeSettingsControl.datasource" />
+    <None Include="Properties\SearchSettings.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>SearchSettings.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Properties\Settings.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <None Include="Properties\RunSearchSettings.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>RunSearchSettings.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="Properties\ViewResultsSettings.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>ViewResultsSettings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.0,Profile=Client">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4 Client Profile %28x86 and x64%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="CometUI.ico" />
+    <Content Include="License-LGPL.txt" />
+    <None Include="Resources\cometpng.png" />
+    <Content Include="Resources\CometUI.ico" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
