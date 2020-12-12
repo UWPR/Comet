@@ -356,6 +356,9 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                itCurr->second - (1.0/(2.0*g_staticParams.iXcorrProcessingOffset) * (dSum - itCurr->second))));
    }
 
+   if (dSum <= FLOAT_ZERO)  // skip scan with all peaks zero intensity
+      return false;
+
    vector< pair<int, double> > vBinnedSpectrumXcorrNL;
    bool bUseWaterAmmonia = false;
 
