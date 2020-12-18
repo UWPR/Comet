@@ -3,6 +3,9 @@
       <div class="post hr">
          <h1>Comet release 2014.01</h1>
                               
+            <p>Documentation for parameters for release 2014.01
+            <a href="/parameters/parameters_201401/">can be found here</a>.
+
             <ul>
                <b>release 2014.01 rev. 1 (2014.01.1), release date 2014/06/03</b>
                <li>Known issue:  when using "<a href="/parameters/parameters_201401/precursor_tolerance_type.php">precursor_tolerance_type = 1</a>"
@@ -102,9 +105,6 @@
                    this version of Comet will also run with comet.params files from
                    version 2013.02.
             </ul>
-
-            <p>Documentation for parameters for release 2014.01
-            <a href="/parameters/parameters_201401/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 

@@ -2,6 +2,10 @@
    <div id="content_full">
       <div class="post hr">
          <h1>Comet release 2016.01</h1>
+
+            <p>Documentation for parameters for release 2016.01
+            <a href="/parameters/parameters_201601/">can be found here</a>.
+
             <ul>
                <b>release 2016.01 rev. 3 (2016.01.3), release date 2017/05/02</b>
                <li>Bug fix: peptides with variable modifications would have their precursor
@@ -79,9 +83,6 @@
                    "add_U_user_amino_acid" that you can safely ignore.  Set "add_U_user_amino_acid = 150.95363" for
                    selenocysteine support with the old parameters file.
             </ul>
-
-            <p>Documentation for parameters for release 2016.01
-            <a href="/parameters/parameters_201601/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 

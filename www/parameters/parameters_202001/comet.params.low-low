@@ -92,7 +92,6 @@ digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze
 peptide_length_range = 5 63            # minimum and maximum peptide length to analyze (default 1 63; max length 63)
 num_results = 100                      # number of search hits to store internally
 max_duplicate_proteins = 20            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates
-skip_researching = 1                   # for '.out' file output only, 0=search everything again (default), 1=don't search if .out exists
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max 5)
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max 9)
 nucleotide_reading_frame = 0           # 0=proteinDB, 1-6, 7=forward three, 8=reverse three, 9=all six

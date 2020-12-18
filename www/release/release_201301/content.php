@@ -3,6 +3,9 @@
       <div class="post hr">
          <h1>Comet release 2013.01</h1>
                               
+            <p>Documentation for parameters for release 2013.01
+            <a href="/parameters/parameters_201301/">can be found here</a>.
+
             <ul>
                <b>release 2013.01 rev 0 (2013.01.0), release date 2013/06/05</b>
                <li>This is the second major release of Comet.
@@ -69,10 +72,6 @@
                    parameter and not run individual subset scan range searches to
                    avoid this naming issue.
             </ul>
-
-
-            <p>Documentation for parameters for release 2013.01
-            <a href="/parameters/parameters_201301/">can be found here</a>.
 
             <p>For low-res ms/ms spectra, try the following settings:
                <ul>

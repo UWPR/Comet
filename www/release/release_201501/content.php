@@ -3,6 +3,9 @@
       <div class="post hr">
          <h1>Comet release 2015.01</h1>
                               
+            <p>Documentation for parameters for release 2015.01
+            <a href="/parameters/parameters_201501/">can be found here</a>.
+
             <ul>
                <b>release 2015.01 rev. 2 (2015.01.2), release date 2015/04/28</b>
                <li>Change decoy generation for E-value calculation when a small number of
@@ -117,9 +120,6 @@
                    after 2013.02 are slower and do not scale well with the thread count.
                    Looking into addressing this ASAP.
             </ul>
-
-            <p>Documentation for parameters for release 2015.01
-            <a href="/parameters/parameters_201501/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 

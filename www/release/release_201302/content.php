@@ -3,6 +3,9 @@
       <div class="post hr">
          <h1>Comet release 2013.02</h1>
                               
+            <p>Documentation for parameters for release 2013.02
+            <a href="/parameters/parameters_201302/">can be found here</a>.
+
             <ul>
                <b>release 2013.02 rev 2 (2013.02.2), release date 2014/01/23</b>
                <li>The major change with this maintenance release addresses Windows
@@ -83,10 +86,6 @@
                <li>The tab-delimited text output was reported the second best hit and not the
                    top ranked hit.  This has also been corrected in this release.
             </ul>
-
-
-            <p>Documentation for parameters for release 2013.02
-            <a href="/parameters/parameters_201302/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> link.
 

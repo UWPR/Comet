@@ -2,7 +2,10 @@
    <div id="content_full">
       <div class="post hr">
          <h1>Comet release 2012.01</h1>
-                              
+
+            <p>Documentation for parameters for release 2012.01
+            <a href="http://comet-ms.sourceforge.net/parameters/parameters_201201/">can be found here</a>.
+
             <ul>
                <b>release 2012.01 rev 3 (2012.01.3), release date 2013/02/04</b>
                <li>This is a maintenance release.  
@@ -54,9 +57,6 @@
                segfault if the enzyme cuts n-terminal to specified residues. This
                bug has been fixed in the sources files in trunk as of 2012/10/09.
             </ul>
-
-            <p>Documentation for parameters for release 2012.01
-            <a href="http://comet-ms.sourceforge.net/parameters/parameters_201201/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> link.
 

@@ -7,7 +7,7 @@
          
          <p>Parameters for all versions of Comet <a href="http://comet-ms.sourceforge.net/parameters">can be found here</a>.
          <br>Entries marked with an <font color="red">*</font> are new parameters.
-         <br>Entries marked with an <font color="red">**</font> are redefined compared to previous release.</p>
+         <br>Entries marked with an <font color="red">**</font> are modified parameters.</p>
          
          <p>To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
          <br>Example comet.params files (primary differences are the MS and MS/MS mass tolerance settings):

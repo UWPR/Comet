@@ -2,6 +2,10 @@
    <div id="content_full">
       <div class="post hr">
          <h1>Comet release 2019.01</h1>
+
+            <p>Documentation for parameters for release 2019.01
+            <a href="/parameters/parameters_201901/">can be found here</a>.
+
             <ul>
                <b>release 2019.01 rev. 5 (2019.01.5), release date 2020/04/06</b>
                <li>Bug fix: a bug in the code could randomly set the "minimum_peaks"
@@ -115,9 +119,6 @@
                <li>Features that didn't make the cut and are targeted for the next release:
                mzIdentML output and Comet-PTM functionality.
             </ul>
-
-            <p>Documentation for parameters for release 2019.01
-            <a href="/parameters/parameters_201901/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 

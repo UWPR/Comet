@@ -3,6 +3,9 @@
       <div class="post hr">
          <h1>Comet release 2015.02</h1>
                               
+            <p>Documentation for parameters for release 2015.02
+            <a href="/parameters/parameters_201502/">can be found here</a>.
+
             <ul>
                <b>release 2015.02 rev. 5 (2015.02.5), release date 2016/01/22</b>
                <li>pepXML output: correctly report modified_peptide string; previously missing
@@ -96,9 +99,6 @@
                <li>Fix small bug that inadvertantly removed .cms2 input file support
                    in previous release.  Reported by MacCoss lab.
             </ul>
-
-            <p>Documentation for parameters for release 2015.02
-            <a href="/parameters/parameters_201502/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 

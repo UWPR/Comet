@@ -3,6 +3,9 @@
       <div class="post hr">
          <h1>Comet release 2014.02</h1>
                               
+            <p>Documentation for parameters for release 2014.02
+            <a href="/parameters/parameters_201402/">can be found here</a>.
+
             <ul>
                <b>release 2014.02 rev. 2 (2014.02.2), release date 2014/09/25</b>
                <li>This release addresses a potential bug in SQT output where an infinite loop
@@ -86,9 +89,6 @@
                <li>Update MSToolkit to version r72.
 
             </ul>
-
-            <p>Documentation for parameters for release 2014.02
-            <a href="/parameters/parameters_201402/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 

@@ -2,6 +2,10 @@
    <div id="content_full">
       <div class="post hr">
          <h1>Comet release 2018.01</h1>
+
+            <p>Documentation for parameters for release 2018.01
+            <a href="/parameters/parameters_201801/">can be found here</a>.
+
             <ul>
                <b>release 2018.01 rev. 4 (2018.01.4), release date 2019/02/13</b>
                <li>Bug fix: the flanking/next amino acid is not reported correctly as a dash "-"
@@ -92,9 +96,6 @@
                    set of PEFF modifications to be analyzed; this is now fixed.
                <li>This version of Comet will run with comet.params files from version 2017.01.
             </ul>
-
-            <p>Documentation for parameters for release 2018.01
-            <a href="/parameters/parameters_201801/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 

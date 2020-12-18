@@ -2,6 +2,10 @@
    <div id="content_full">
       <div class="post hr">
          <h1>Comet release 2017.01</h1>
+
+            <p>Documentation for parameters for release 2017.01
+            <a href="/parameters/parameters_201701/">can be found here</a>.
+
             <ul>
                <b>release 2017.01 rev. 4 (2017.01.4), release date 2018/02/14</b>
                <li>Bug fix: In the Percolator .pin output format, the deltCn and deltLCn values
@@ -165,9 +169,6 @@
                    "output_outfiles = 1" manually into your comet.params files.  This is a start of an
                    eventual slow phase out of .out file output support.
             </ul>
-
-            <p>Documentation for parameters for release 2017.01
-            <a href="/parameters/parameters_201701/">can be found here</a>.
 
             <p>Go download from the <a href="https://sourceforge.net/projects/comet-ms/files/">download</a> page.
 
