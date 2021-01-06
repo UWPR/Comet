@@ -336,7 +336,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
          while (itEnd->first - itCurr->first <= g_staticParams.iXcorrProcessingOffset)
          {
             dSum += itEnd->second;
-            if (itEnd->second > 0.0 && !bAllZeroes)
+            if (itEnd->second > 0.0 && bAllZeroes)
                bAllZeroes = false;
             itEnd++;
             if (itEnd == mapSpectrum->end())
