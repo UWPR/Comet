@@ -1,0 +1,256 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="CometUI.Properties" GeneratedClassName="SearchSettings">
+  <Profiles />
+  <Settings>
+    <Setting Name="ProteomeDatabaseFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="NucleotideReadingFrame" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="SearchType" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="DecoyPrefix" Type="System.String" Scope="User">
+      <Value Profile="(Default)">DECOY_</Value>
+    </Setting>
+    <Setting Name="EnzymeTermini" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">2</Value>
+    </Setting>
+    <Setting Name="AllowedMissedCleavages" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">2</Value>
+    </Setting>
+    <Setting Name="EnzymeInfo" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;string&gt;0,No_enzyme,0,-,-&lt;/string&gt;
+  &lt;string&gt;1,Trypsin,1,KR,P&lt;/string&gt;
+  &lt;string&gt;2,Trypsin/P,1,KR,-&lt;/string&gt;
+  &lt;string&gt;3,Lys_C,1,K,P&lt;/string&gt;
+  &lt;string&gt;4,Lys_N,0,K,-&lt;/string&gt;
+  &lt;string&gt;5,Arg_C,1,R,P&lt;/string&gt;
+  &lt;string&gt;6,Asp_N,0,D,-&lt;/string&gt;
+  &lt;string&gt;7,CNBr,1,M,-&lt;/string&gt;
+  &lt;string&gt;8,Glu_C,1,DE,P&lt;/string&gt;
+  &lt;string&gt;9,PepsinA,1,FL,P&lt;/string&gt;
+  &lt;string&gt;10,Chymotrypsin,1,FWYL,P&lt;/string&gt;
+&lt;/ArrayOfString&gt;</Value>
+    </Setting>
+    <Setting Name="SearchEnzymeNumber" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="SampleEnzymeNumber" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="PrecursorMassTolerance" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">20</Value>
+    </Setting>
+    <Setting Name="PrecursorMassUnit" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">2</Value>
+    </Setting>
+    <Setting Name="PrecursorMassType" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="PrecursorIsotopeError" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="FragmentBinSize" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1.0005</Value>
+    </Setting>
+    <Setting Name="FragmentBinOffset" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0.4</Value>
+    </Setting>
+    <Setting Name="FragmentMassType" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="UseAIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UseBIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="UseCIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UseXIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UseYIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="UseZIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UseNLIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="TheoreticalFragmentIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="OutputFormatPepXML" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="OutputFormatPercolator" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="OutputFormatOutFiles" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="OutputFormatSqtFile" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="PrintExpectScoreInPlaceOfSP" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="NumOutputLines" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">5</Value>
+    </Setting>
+    <Setting Name="OutputFormatTextFile" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="OutputFormatShowFragmentIons" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="VariableMods" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;string&gt;15.9949,M,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+  &lt;string&gt;0.0,X,0,3,-1,0,0&lt;/string&gt;
+&lt;/ArrayOfString&gt;</Value>
+    </Setting>
+    <Setting Name="MaxVarModsInPeptide" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">5</Value>
+    </Setting>
+    <Setting Name="StaticMods" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;string&gt;Glycine,G,0.0000&lt;/string&gt;
+  &lt;string&gt;Alanine,A,0.0000&lt;/string&gt;
+  &lt;string&gt;Serine,S,0.0000&lt;/string&gt;
+  &lt;string&gt;Proline,P,0.0000&lt;/string&gt;
+  &lt;string&gt;Valine,V,0.0000&lt;/string&gt;
+  &lt;string&gt;Threonine,T,0.0000&lt;/string&gt;
+  &lt;string&gt;Cysteine,C,57.021464&lt;/string&gt;
+  &lt;string&gt;Leucine,L,0.0000&lt;/string&gt;
+  &lt;string&gt;Isoleucine,I,0.0000&lt;/string&gt;
+  &lt;string&gt;Asparagine,N,0.0000&lt;/string&gt;
+  &lt;string&gt;Aspartic Acid,D,0.0000&lt;/string&gt;
+  &lt;string&gt;Glutamine,Q,0.0000&lt;/string&gt;
+  &lt;string&gt;Lysine,K,0.0000&lt;/string&gt;
+  &lt;string&gt;Glutamic Acid,E,0.0000&lt;/string&gt;
+  &lt;string&gt;Methionine,M,0.0000&lt;/string&gt;
+  &lt;string&gt;Ornithine,O,0.0000&lt;/string&gt;
+  &lt;string&gt;Histidine,H,0.0000&lt;/string&gt;
+  &lt;string&gt;Phenylalanine,F,0.0000&lt;/string&gt;
+  &lt;string&gt;Selenocysteine,U,0.0000&lt;/string&gt;
+  &lt;string&gt;Arginine,R,0.0000&lt;/string&gt;
+  &lt;string&gt;Tyrosine,Y,0.0000&lt;/string&gt;
+  &lt;string&gt;Tryptophan,W,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,B,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,J,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,X,0.0000&lt;/string&gt;
+  &lt;string&gt;User Amino Acid,Z,0.0000&lt;/string&gt;
+&lt;/ArrayOfString&gt;</Value>
+    </Setting>
+    <Setting Name="StaticModNTermPeptide" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="StaticModCTermPeptide" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="StaticModNTermProtein" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="StaticModCTermProtein" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="OutputFormatSkipReSearching" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="NumThreads" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="SpectrumBatchSize" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="NumResults" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">50</Value>
+    </Setting>
+    <Setting Name="MaxFragmentCharge" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">3</Value>
+    </Setting>
+    <Setting Name="MaxPrecursorCharge" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">6</Value>
+    </Setting>
+    <Setting Name="ClipNTermMethionine" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="mzxmlScanRangeMin" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="mzxmlScanRangeMax" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="mzxmlPrecursorChargeRangeMin" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="mzxmlPrecursorChargeRangeMax" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="mzxmlMsLevel" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">2</Value>
+    </Setting>
+    <Setting Name="mzxmlActivationMethod" Type="System.String" Scope="User">
+      <Value Profile="(Default)">ALL</Value>
+    </Setting>
+    <Setting Name="spectralProcessingMinPeaks" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">10</Value>
+    </Setting>
+    <Setting Name="spectralProcessingMinIntensity" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="spectralProcessingRemovePrecursorPeak" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="spectralProcessingRemovePrecursorTol" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1.5</Value>
+    </Setting>
+    <Setting Name="spectralProcessingClearMzMin" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="spectralProcessingClearMzMax" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="digestMassRangeMin" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">600</Value>
+    </Setting>
+    <Setting Name="digestMassRangeMax" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">5000</Value>
+    </Setting>
+    <Setting Name="OutputFormatSqtToStandardOutput" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="RequireVariableMod" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="mzxmlOverrideCharge" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="OutputSuffix" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="PrecursorToleranceType" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="PrecursorMassOffsets" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+  </Settings>
+</SettingsFile>
