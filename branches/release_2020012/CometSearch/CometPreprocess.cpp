@@ -327,6 +327,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
    for (unsigned int ii = 0; ii < vAddOffsets.size(); ii++)
       mapSpectrum->insert(make_pair(vAddOffsets.at(ii), 0.0));
 
+   bool bAllZeroes = true;
    for (itCurr = mapSpectrum->begin(); itCurr != mapSpectrum->end(); ++itCurr)
    {
       if (itEnd != mapSpectrum->end())
@@ -335,6 +336,8 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
          while (itEnd->first - itCurr->first <= g_staticParams.iXcorrProcessingOffset)
          {
             dSum += itEnd->second;
+            if (itEnd->second > 0.0 && !bAllZeroes)
+               bAllZeroes = false;
             itEnd++;
             if (itEnd == mapSpectrum->end())
                break;
@@ -356,7 +359,7 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                itCurr->second - (1.0/(2.0*g_staticParams.iXcorrProcessingOffset) * (dSum - itCurr->second))));
    }
 
-   if (dSum <= FLOAT_ZERO)  // skip scan with all peaks zero intensity
+   if (bAllZeroes)  // skip scan where all peaks have zero intensity
       return false;
 
    vector< pair<int, double> > vBinnedSpectrumXcorrNL;
