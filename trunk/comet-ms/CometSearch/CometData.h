@@ -195,6 +195,7 @@ struct VarMods
    double dNeutralLoss;
    int    iBinaryMod;
    int    iMaxNumVarModAAPerMod;
+   int    iMinNumVarModAAPerMod;
    int    iVarModTermDistance;
    int    iWhichTerm;
    int    bRequireThisMod;
@@ -205,6 +206,7 @@ struct VarMods
       iBinaryMod = 0;
       bRequireThisMod = 0;
       iMaxNumVarModAAPerMod = 0;
+      iMinNumVarModAAPerMod = 0;
       iVarModTermDistance = -1;
       iWhichTerm = 0;
       dVarModMass = 0.0;
@@ -217,6 +219,7 @@ struct VarMods
       iBinaryMod = a.iBinaryMod;
       bRequireThisMod = a.bRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
+      iMinNumVarModAAPerMod = a.iMinNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
@@ -229,6 +232,7 @@ struct VarMods
       iBinaryMod = a.iBinaryMod;
       bRequireThisMod = a.bRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
+      iMinNumVarModAAPerMod = a.iMinNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
