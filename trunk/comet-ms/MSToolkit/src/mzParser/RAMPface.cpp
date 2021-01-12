@@ -1,9 +1,17 @@
+/*
+RAMPface - The code is
+open source under the FreeBSD License, please see LICENSE file
+for detailed information.
+
+Copyright (C) 2011, Mike Hoopmann, Institute for Systems Biology
+Version 1.0, January 4, 2011.
+Version 1.1, March 14, 2012.
+*/
+
 #include "mzParser.h"
-
 using namespace std;
-using namespace mzParser;
 
-int mzParser::checkFileType(const char* fname){
+int checkFileType(const char* fname){
   char file[256];
   char ext[256];
   char *tok;
@@ -41,7 +49,7 @@ int mzParser::checkFileType(const char* fname){
   return 0;
 }
 
-void mzParser::getPrecursor(const struct ScanHeaderStruct *scanHeader,int index,double &mz,double &monoMZ,double &intensity,int &charge,int &possibleCharges,int *&possibleChargeArray){
+void getPrecursor(const struct ScanHeaderStruct *scanHeader,int index,double &mz,double &monoMZ,double &intensity,int &charge,int &possibleCharges,int *&possibleChargeArray){
   int i,j,k;
   double d;
   
@@ -82,7 +90,7 @@ void mzParser::getPrecursor(const struct ScanHeaderStruct *scanHeader,int index,
   }
 }
 
-ramp_fileoffset_t mzParser::getIndexOffset(RAMPFILE *pFI){
+ramp_fileoffset_t getIndexOffset(RAMPFILE *pFI){
   switch(pFI->fileType){
     case 1:
     case 3:
@@ -97,7 +105,7 @@ ramp_fileoffset_t mzParser::getIndexOffset(RAMPFILE *pFI){
   }
 }
 
-InstrumentStruct* mzParser::getInstrumentStruct(RAMPFILE *pFI){
+InstrumentStruct* getInstrumentStruct(RAMPFILE *pFI){
   InstrumentStruct* r=(InstrumentStruct *) calloc(1,sizeof(InstrumentStruct));
   if(r==NULL) {
     printf("Cannot allocate memory\n");
@@ -139,7 +147,7 @@ InstrumentStruct* mzParser::getInstrumentStruct(RAMPFILE *pFI){
   return r;
 }
 
-int mzParser::getScanNumberFromOffset(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
+int getScanNumberFromOffset(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
   vector<cindex>* v;
 #ifdef MZP_MZ5
   vector<cMz5Index>* v2;
@@ -209,7 +217,7 @@ int mzParser::getScanNumberFromOffset(RAMPFILE *pFI, ramp_fileoffset_t lScanInde
   return -1;
 }
 
-void mzParser::getScanSpanRange(const struct ScanHeaderStruct *scanHeader, int *startScanNum, int *endScanNum) {
+void getScanSpanRange(const struct ScanHeaderStruct *scanHeader, int *startScanNum, int *endScanNum) {
    if (0 == scanHeader->mergedResultStartScanNum || 0 == scanHeader->mergedResultEndScanNum) {
       *startScanNum = scanHeader->acquisitionNum;
       *endScanNum = scanHeader->acquisitionNum;
@@ -219,14 +227,14 @@ void mzParser::getScanSpanRange(const struct ScanHeaderStruct *scanHeader, int *
    }
 }
 
-void mzParser::rampCloseFile(RAMPFILE *pFI){
+void rampCloseFile(RAMPFILE *pFI){
   if(pFI!=NULL) {
     delete pFI;
     pFI=NULL;
   }
 }
 
-string mzParser::rampConstructInputFileName(const string &basename){
+string rampConstructInputFileName(const string &basename){
   int len;
   char *buf = new char[len = (int)(basename.length()+100)]; 
   rampConstructInputPath(buf, len, "", basename.c_str());
@@ -235,11 +243,11 @@ string mzParser::rampConstructInputFileName(const string &basename){
   return result;
 }
 
-char* mzParser::rampConstructInputFileName(char *buf,int buflen,const char *basename){
+char* rampConstructInputFileName(char *buf,int buflen,const char *basename){
   return rampConstructInputPath(buf, buflen, "", basename);
 }
 
-char* mzParser::rampConstructInputPath(char *buf, int inbuflen, const char *dir_in, const char *basename){
+char* rampConstructInputPath(char *buf, int inbuflen, const char *dir_in, const char *basename){
 
   if( (int)(strlen(dir_in)+strlen(basename)+1) > inbuflen ){
     //Can't output error messages in TPP software that use this function
@@ -291,19 +299,19 @@ char* mzParser::rampConstructInputPath(char *buf, int inbuflen, const char *dir_
 }
 
 
-const char** mzParser::rampListSupportedFileTypes(){
+const char** rampListSupportedFileTypes(){
   if (!data_Ext.size()) { // needs init
-    data_Ext.push_back(".mzML");
     data_Ext.push_back(".mzXML");
-    data_Ext.push_back(".mzML.gz");
+    data_Ext.push_back(".mzML");
     data_Ext.push_back(".mzXML.gz");
+    data_Ext.push_back(".mzML.gz");
     data_Ext.push_back(".mz5");
     data_Ext.push_back(NULL); // end of list
   }
   return &(data_Ext[0]);
 }
 
-RAMPFILE* mzParser::rampOpenFile(const char* filename){
+RAMPFILE* rampOpenFile(const char* filename){
   int i=checkFileType(filename);
   if(i==0){
     return NULL;
@@ -354,7 +362,7 @@ RAMPFILE* mzParser::rampOpenFile(const char* filename){
 
 }
 
-char* mzParser::rampValidFileType(const char *buf){
+char* rampValidFileType(const char *buf){
   char ext[256];
   char preExt[256];
 
@@ -398,7 +406,7 @@ char* mzParser::rampValidFileType(const char *buf){
 
 //MH: Read header is redundant with readPeaks, which automatically reads the header.
 //But due to legacy issues, this function must exist.
-void mzParser::readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader){
+void readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader, int iIndex){
 
   vector<cindex>* v;
   sPrecursorIon p;
@@ -446,7 +454,7 @@ void mzParser::readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct Sc
   switch(pFI->fileType){
     case 1:
     case 3:
-      if (!pFI->mzML->readHeaderFromOffset((f_off)lScanIndex)){
+      if (!pFI->mzML->readHeaderFromOffset((f_off)lScanIndex,iIndex)){
         v = NULL;
         return;
       }
@@ -562,7 +570,7 @@ void mzParser::readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct Sc
 
 //MH: Indexes in RAMP are stored in an array indexed by scan number, with -1 for the offset
 //if the scan number does not exist.
-ramp_fileoffset_t* mzParser::readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *iLastScan){
+ramp_fileoffset_t* readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *iLastScan){
   vector<cindex>* v;
 #ifdef MZP_MZ5
   vector<cMz5Index>* v2;
@@ -610,7 +618,7 @@ ramp_fileoffset_t* mzParser::readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOff
   return rIndex;
 }
 
-int mzParser::readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
+int readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
   vector<cindex>* v;
 #ifdef MZP_MZ5
   vector<cMz5Index>* v2;
@@ -663,7 +671,7 @@ int mzParser::readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
   return pFI->bs->getMSLevel();
 }
 
-void mzParser::readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
+void readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 
   vector<cindex>* v;
 #ifdef MZP_MZ5
@@ -722,11 +730,7 @@ void mzParser::readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader){
 
 //MH: Matching the index is very indirect, but requires less code,
 //making this wrapper much easier to read
-RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex) {
-  return  readPeaks(pFI, lScanIndex, false);
-}
-
-RAMPREAL* mzParser::readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, bool ionMobility){
+RAMPREAL* readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, int iIndex){
   vector<cindex>* v;
 #ifdef MZP_MZ5
   vector<cMz5Index>* v2;
@@ -740,7 +744,7 @@ RAMPREAL* mzParser::readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, bool 
   switch(pFI->fileType){
     case 1:
     case 3:
-      pFI->mzML->readSpectrumFromOffset((f_off)lScanIndex);
+      pFI->mzML->readSpectrumFromOffset((f_off)lScanIndex,iIndex);
       break;
     case 2:
     case 4:
@@ -768,20 +772,10 @@ RAMPREAL* mzParser::readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, bool 
 
   unsigned int j=0;
   if(pFI->bs->size()>0){
-    if ((pFI->fileType == 3 || pFI->fileType == 1) && pFI->mzML->getIonMobility())
-      pPeaks = (RAMPREAL *) malloc((pFI->bs->size()+1) * 3 * sizeof(RAMPREAL) + 1);
-    else 
-      pPeaks = (RAMPREAL *) malloc((pFI->bs->size()+1) * 2 * sizeof(RAMPREAL) + 1);
+    pPeaks = (RAMPREAL *) malloc((pFI->bs->size()+1) * 2 * sizeof(RAMPREAL) + 1);
     for(i=0;i<pFI->bs->size();i++){
-      if ((pFI->fileType == 3 || pFI->fileType == 1) && pFI->mzML->getIonMobility()) {
-	pPeaks[j++]=pFI->bs->getIonMobDP(i).mz;
-	pPeaks[j++]=pFI->bs->getIonMobDP(i).intensity;
-	pPeaks[j++]=pFI->bs->getIonMobDP(i).ionMobility;
-      }
-      else {
-	pPeaks[j++]=pFI->bs->operator [](i).mz;
-	pPeaks[j++]=pFI->bs->operator [](i).intensity;
-      }
+      pPeaks[j++]=pFI->bs->operator [](i).mz;
+      pPeaks[j++]=pFI->bs->operator [](i).intensity;
     }
   } else {
     pPeaks = (RAMPREAL *) malloc(2 * sizeof(RAMPREAL));
@@ -791,13 +785,13 @@ RAMPREAL* mzParser::readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, bool 
   return pPeaks;
 }
 
-int mzParser::readPeaksCount(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
+int readPeaksCount(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
   ScanHeaderStruct s;
   readHeader(pFI, lScanIndex, &s);
   return s.peaksCount;
 }
 
-void mzParser::readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeaderStruct *runHeader, int iLastScan){
+void readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeaderStruct *runHeader, int iLastScan){
   vector<cindex>* v;
 #ifdef MZP_MZ5
   vector<cMz5Index>* v2;
@@ -913,7 +907,7 @@ void mzParser::readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struc
 //--------------------------------------------------
 // CACHED RAMP FUNCTIONS
 //--------------------------------------------------
-void mzParser::clearScanCache(struct ScanCacheStruct* cache){
+void clearScanCache(struct ScanCacheStruct* cache){
   for (int i=0; i<cache->size; i++) {
     if (cache->peaks[i] == NULL) continue;
     free(cache->peaks[i]);
@@ -922,7 +916,7 @@ void mzParser::clearScanCache(struct ScanCacheStruct* cache){
   memset(cache->headers, 0, cache->size * sizeof(struct ScanHeaderStruct));
 }
 
-void mzParser::freeScanCache(struct ScanCacheStruct* cache){
+void freeScanCache(struct ScanCacheStruct* cache){
   if (cache) {
     for (int i=0; i<cache->size; i++){
       if (cache->peaks[i] != NULL) free(cache->peaks[i]);
@@ -933,7 +927,7 @@ void mzParser::freeScanCache(struct ScanCacheStruct* cache){
   }
 }
 
-int mzParser::getCacheIndex(struct ScanCacheStruct* cache, int seqNum) {
+int getCacheIndex(struct ScanCacheStruct* cache, int seqNum) {
   int seqNumStart = cache->seqNumStart;
   int size = cache->size;
 
@@ -951,7 +945,7 @@ int mzParser::getCacheIndex(struct ScanCacheStruct* cache, int seqNum) {
   return (int) (seqNum - cache->seqNumStart);
 }
 
-struct mzParser::ScanCacheStruct* getScanCache(int size){
+struct ScanCacheStruct* getScanCache(int size){
   struct ScanCacheStruct* cache = (struct ScanCacheStruct*) malloc(sizeof(struct ScanCacheStruct));
   cache->seqNumStart = 0;
   cache->size = size;
@@ -960,24 +954,24 @@ struct mzParser::ScanCacheStruct* getScanCache(int size){
   return cache;
 }
 
-const struct mzParser::ScanHeaderStruct* mzParser::readHeaderCached(struct ScanCacheStruct* cache, int seqNum, RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
+const struct ScanHeaderStruct* readHeaderCached(struct ScanCacheStruct* cache, int seqNum, RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
   int i = getCacheIndex(cache, seqNum);
   if (cache->headers[i].msLevel == 0) readHeader(pFI, lScanIndex, cache->headers + i);
   return cache->headers + i;
 }
 
-int  mzParser::readMsLevelCached(struct ScanCacheStruct* cache, int seqNum, RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
+int  readMsLevelCached(struct ScanCacheStruct* cache, int seqNum, RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
   const struct ScanHeaderStruct* header = readHeaderCached(cache, seqNum, pFI, lScanIndex);
   return header->msLevel;
 }
 
-const RAMPREAL* readPeaksCached(struct ScanCacheStruct* cache, int seqNum, RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, bool IonMobility){
+const RAMPREAL* readPeaksCached(struct ScanCacheStruct* cache, int seqNum, RAMPFILE* pFI, ramp_fileoffset_t lScanIndex){
   int i = getCacheIndex(cache, seqNum);
-  if (cache->peaks[i] == NULL) cache->peaks[i] = readPeaks(pFI, lScanIndex, IonMobility);
+  if (cache->peaks[i] == NULL) cache->peaks[i] = readPeaks(pFI, lScanIndex);
   return cache->peaks[i];
 }
 
-void mzParser::shiftScanCache(struct ScanCacheStruct* cache, int nScans) {
+void shiftScanCache(struct ScanCacheStruct* cache, int nScans) {
   int i;
   cache->seqNumStart += nScans;
   if (abs(nScans) > cache->size) {
@@ -1017,41 +1011,41 @@ void mzParser::shiftScanCache(struct ScanCacheStruct* cache, int nScans) {
 //--------------------------------------------------
 // DEAD FUNCTIONS
 //--------------------------------------------------
-int mzParser::isScanAveraged(struct ScanHeaderStruct *scanHeader){
+int isScanAveraged(struct ScanHeaderStruct *scanHeader){
   cerr << "call to unsupported function: isScanAveraged(struct ScanHeaderStruct *scanHeader)" << endl;
   return 0;
 }
 
-int mzParser::isScanMergedResult(struct ScanHeaderStruct *scanHeader){
+int isScanMergedResult(struct ScanHeaderStruct *scanHeader){
   cerr << "call to unsupported function: isScanMergedResult(struct ScanHeaderStruct *scanHeader)" << endl;
   return 0;
 }
 
-int mzParser::rampSelfTest(char *filename){
+int rampSelfTest(char *filename){
   cerr << "call to unsupported function: rampSelfTest(char *filename)" << endl;
   return 0;
 }
 
-char* mzParser::rampTrimBaseName(char *buf){
+char* rampTrimBaseName(char *buf){
   cerr << "call to unsupported function: rampTrimBaseName(char *buf)" << endl;
   return buf;
 }
 
-int mzParser::rampValidateOrDeriveInputFilename(char *inbuf, int inbuflen, char *spectrumName){
+int rampValidateOrDeriveInputFilename(char *inbuf, int inbuflen, char *spectrumName){
   cerr << "call to unsupported function: rampValidateOrDeriveInputFilename(char *inbuf, int inbuflen, char *spectrumName)" << endl;
   return 0;
 }
 
-double mzParser::readStartMz(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
+double readStartMz(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
   cerr << "call to unsupported function: readStartMz(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex)" << endl;
   return 0.0;
 }
 
-double mzParser::readEndMz(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
+double readEndMz(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex){
   cerr << "call to unsupported function: readEndMz(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex)" << endl;
   return 0.0;
 }
 
-void mzParser::setRampOption(long option){
+void setRampOption(long option){
   cerr << "call to unsupported function: setRampOption(long option)" << endl;
 }

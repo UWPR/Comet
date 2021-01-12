@@ -22,8 +22,6 @@ limitations under the License.
 #include <cstdlib>
 #include <iomanip>
 
-using namespace std;
-
 namespace MSToolkit {
 class Spectrum {
  public:
@@ -36,22 +34,11 @@ class Spectrum {
 
   //Operator Functions
   Spectrum& operator=(const Spectrum&);
-
-
-
-
-  Peak_T& operator[](const int&);
-  
-  PeakIonMob_T& atIM(const int&);
-
-
-
+	Peak_T& operator[](const int&);
 
   //Functions
   void	    			add(Peak_T&);
-  void	    			add(PeakIonMob_T&);
   void			    	add(double,float);
-  void			    	add(double,float,float);
   void            addEZState(int,double,float,float);
   void            addEZState(EZState&);
 	void						addMZ(double, double mono=0);
@@ -131,8 +118,6 @@ class Spectrum {
   int     				sizeZ();
   void		    		sortIntensity();
   void				    sortIntensityRev();
-   void		    		sortIonMob();
-  void				    sortIonMobRev();
   void    				sortMZ();
   void            setPeaks( std::vector<Peak_T> peaks);
   void		    		sortMZRev();
@@ -141,13 +126,8 @@ class Spectrum {
   void setScanID(int scanID);
   int getScanID();
 
-  bool getIonMobility();
-
-  void setIonMobility(bool);
-  
   //const vector<Peak_T>* getPeaks();
-  vector<Peak_T>* getPeaks();
-  vector<PeakIonMob_T>* getPeaksIonMob();
+  std::vector<Peak_T>* getPeaks();
   //void setPeaks(vector<Peak_T> peaks);
   float getTotalIntensity();
  
@@ -156,19 +136,17 @@ class Spectrum {
 
  protected:
 
- //Data Members
-  vector<Peak_T>   *vPeaks;
-  vector<PeakIonMob_T>    *vPeaksIonMob;
-  
-  vector<EZState>  *vEZ;        //extended z-lines with charge state, M+H, and peak information.
-  vector<ZState>   *vZ;         //presumed charge states and M+H; M can be monoisotopic or selected.
+  //Data Members
+  std::vector<Peak_T>   *vPeaks;
+  std::vector<EZState>  *vEZ;        //extended z-lines with charge state, M+H, and peak information.
+  std::vector<ZState>   *vZ;         //presumed charge states and M+H; M can be monoisotopic or selected.
   int		           charge;
   float		         rTime;
   int		           scanNumber;
   int              scanNumber2;
   int              msLevel;
-  vector<double>   *monoMZ;     //the monoisotopic m/z of the selected ion(s)
-  vector<double>   *mz;         //the selected ion(s) in m/z
+  std::vector<double>   *monoMZ;     //the monoisotopic m/z of the selected ion(s)
+  std::vector<double>   *mz;         //the selected ion(s) in m/z
   MSSpectrumType   fileType;
   MSActivation     actMethod;
   int              scanID;       //index for sqlite
@@ -190,21 +168,16 @@ class Spectrum {
   char             nativeID[256];   //spectrumNativeID in mzML files
   char             rawFilter[256];  //RAW file header line
   int              centroidStatus;  //0=profile, 1=centroid, 2=unknown
-  bool             ionMobility;
   double           scanWinLower;    //the instrument spectrum m/z range
   double           scanWinUpper;    //the instrument spectrum m/z range
+
   //private:
   //Functions
   static int compareIntensity(const void *p1,const void *p2);
   static int compareMZ(const void *p1,const void *p2);
   static int compareIntensityRev(const void *p1,const void *p2);
   static int compareMZRev(const void *p1,const void *p2);
-  static int compareIntensityIonMob(const void *p1,const void *p2);
-  static int compareMZIonMob(const void *p1,const void *p2);
-  static int compareIntensityRevIonMob(const void *p1,const void *p2);
-  static int compareMZRevIonMob(const void *p1,const void *p2);
-  static int compareMobilityIonMob(const void *p1, const void *p2);
-  static int compareMobilityRevIonMob(const void *p1, const void *p2);
+
 };
 
 }

@@ -21,7 +21,6 @@
 #include "mzParser.h"
 
 using namespace std;
-using namespace mzParser;
 
 mzpSAXMzxmlHandler::mzpSAXMzxmlHandler(BasicSpectrum* bs){
   m_bInMsInstrument=false;
@@ -49,6 +48,7 @@ mzpSAXMzxmlHandler::~mzpSAXMzxmlHandler(){
 void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
 
   string s;
+  bool bSID = false;   // has " sid=" string in filterLine; for Jared Mohr
 
   if (isElement("dataProcessing",el)) {
     m_bInDataProcessing=true;
@@ -149,6 +149,10 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
       spec->setCollisionEnergy(atof(getAttrValue("collisionEnergy", attr)));
       spec->setCompensationVoltage(atof(getAttrValue("CompensationVoltage", attr)));
       s=getAttrValue("filterLine", attr);
+
+      if (s.find(" sid=") !=  string::npos)
+         bSID = true;
+
       spec->setFilterLine(&s[0]);
       spec->setHighMZ(atof(getAttrValue("highMz", attr)));
       spec->setLowMZ(atof(getAttrValue("lowMz", attr)));
@@ -636,7 +640,7 @@ bool mzpSAXMzxmlHandler::generateIndexOffset() {
   long lOffset = 0;
 
   if(!m_bGZCompression){
-    FILE* f=fopen(&m_strFileName[0],"rb");
+    FILE* f=fopen(&m_strFileName[0],"r");
     char *pStr;
 
     if (f==NULL){

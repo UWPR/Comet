@@ -130,7 +130,6 @@ The End
 
 #include "mzParser.h"
 using namespace std;
-using namespace mzParser;
 
 // Static callback handlers
 static void mzp_startElementCallback(void *data, const XML_Char *el, const XML_Char **attr)
@@ -152,7 +151,6 @@ mzpSAXHandler::mzpSAXHandler()
 {
 	fptr = NULL;
 	m_bGZCompression = false;
-	m_bionMobility = false;
 	fptr = NULL;
 	m_parser = XML_ParserCreate(NULL);
 	XML_SetUserData(m_parser, this);
