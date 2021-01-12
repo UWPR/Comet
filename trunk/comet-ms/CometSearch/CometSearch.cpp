@@ -4578,21 +4578,21 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
 
                                  if (i1 > 0 && i1 < g_staticParams.variableModParameters.varModList[0].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i2 > 0 && i1 < g_staticParams.variableModParameters.varModList[1].iMinNumVarModAAPerMod)
+                                 if (i2 > 0 && i2 < g_staticParams.variableModParameters.varModList[1].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i3 > 0 && i1 < g_staticParams.variableModParameters.varModList[2].iMinNumVarModAAPerMod)
+                                 if (i3 > 0 && i3 < g_staticParams.variableModParameters.varModList[2].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i4 > 0 && i1 < g_staticParams.variableModParameters.varModList[3].iMinNumVarModAAPerMod)
+                                 if (i4 > 0 && i4 < g_staticParams.variableModParameters.varModList[3].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i5 > 0 && i1 < g_staticParams.variableModParameters.varModList[4].iMinNumVarModAAPerMod)
+                                 if (i5 > 0 && i5 < g_staticParams.variableModParameters.varModList[4].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i6 > 0 && i1 < g_staticParams.variableModParameters.varModList[5].iMinNumVarModAAPerMod)
+                                 if (i6 > 0 && i6 < g_staticParams.variableModParameters.varModList[5].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i7 > 0 && i1 < g_staticParams.variableModParameters.varModList[6].iMinNumVarModAAPerMod)
+                                 if (i7 > 0 && i7 < g_staticParams.variableModParameters.varModList[6].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i8 > 0 && i1 < g_staticParams.variableModParameters.varModList[7].iMinNumVarModAAPerMod)
+                                 if (i8 > 0 && i8 < g_staticParams.variableModParameters.varModList[7].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i9 > 0 && i1 < g_staticParams.variableModParameters.varModList[8].iMinNumVarModAAPerMod)
+                                 if (i9 > 0 && i9 < g_staticParams.variableModParameters.varModList[8].iMinNumVarModAAPerMod)
                                     bPass = false;
 
                                  if (bPass)
