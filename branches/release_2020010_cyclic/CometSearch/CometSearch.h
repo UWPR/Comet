@@ -129,6 +129,9 @@ private:
                               int iStartPos);
    bool CheckMassMatch(int iWhichQuery,
                        double dCalcPepMass);
+   bool CheckMassMatch(int iWhichQuery,
+                       double dCalcPepMass,
+                       double dFullLengthMass);
    double GetFragmentIonMass(int iWhichIonSeries,
                              int i,
                              int ctCharge,

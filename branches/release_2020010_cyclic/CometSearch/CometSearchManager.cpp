@@ -308,6 +308,8 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].pWhichProtein.clear();
          pQuery->_pResults[j].cPeffOrigResidue = '\0';
          pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
+         pQuery->_pResults[j].szPrevNextAA[0] = '-';
+         pQuery->_pResults[j].szPrevNextAA[0] = '-';
 
          if (g_staticParams.options.iDecoySearch)
             pQuery->_pResults[j].pWhichDecoyProtein.clear();
@@ -326,6 +328,8 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].strSingleSearchProtein = "";
             pQuery->_pDecoys[j].cPeffOrigResidue = '\0';
             pQuery->_pDecoys[j].iPeffOrigResiduePosition = -9;
+            pQuery->_pDecoys[j].szPrevNextAA[0] = '-';
+            pQuery->_pDecoys[j].szPrevNextAA[1] = '-';
          }
       }
    }
@@ -2135,6 +2139,30 @@ bool CometSearchManager::DoSearch()
                }
             }
 
+            if (g_staticParams.options.bCyclicSearch)
+            {
+               // sort back to original spectrum order
+               std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByMangoIndex);
+
+               // now assign iMS2QueryIndex (iWhichQuery value for correspoding MS2 scan) for each MS3 scan by looking for previous MS2 scan
+               for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+               {
+                  if ((*it)->_spectrumInfoInternal.iSpecMSLevel == 3)
+                  {
+                     std::vector<Query*>::iterator it2 = it;
+
+                     while ((*it2)->_spectrumInfoInternal.iSpecMSLevel != 2 && it2 > g_pvQuery.begin())
+                        --it2;
+
+                     if ((*it2)->_spectrumInfoInternal.iSpecMSLevel == 2)
+                     {
+                        // reference the MangoIndex here first.  Then after sort by mass, use dMangoIndex to populate iMS2Queryindex
+                        (*it)->_spectrumInfoInternal.dMS2MangoIndex = (*it2)->dMangoIndex;
+                     }
+                  }
+               }
+            }
+
             if (g_pvDIAWindows.size() > 0)
             {
                // delete scan entries that do not map to a DIA window;
@@ -2155,6 +2183,24 @@ bool CometSearchManager::DoSearch()
 
             // Sort g_pvQuery vector by dExpPepMass.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
+
+            // now assign iMS2QueryIndex (to the g_pvQuery index value of MS2 scan) to each MS3 scan
+            if (g_staticParams.options.bCyclicSearch)
+            {
+               for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+               {
+                  if ((*it)->_spectrumInfoInternal.iSpecMSLevel == 3) // now find corresponding MS2 entry
+                  {
+                     for (std::vector<Query*>::iterator it2 = g_pvQuery.begin(); it2 != g_pvQuery.end(); ++it2)
+                     {
+                        if ((*it)->_spectrumInfoInternal.dMS2MangoIndex == (*it2)->dMangoIndex)
+                        {
+                           (*it)->_spectrumInfoInternal.iMS2QueryIndex = it2 - g_pvQuery.begin();
+                        }
+                     }
+                  }
+               }
+            }
 
             g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
             g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;

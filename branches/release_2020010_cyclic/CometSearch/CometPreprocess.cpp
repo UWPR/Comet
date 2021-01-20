@@ -298,8 +298,12 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
    // Add in zero points within iXcorrProcessingOffset
    // If flanking peaks are used ... add extra zero point for the flanking peaks
    int iAddFlank = 0;
-   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+
+   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0
+         || g_staticParams.ionInformation.iTheoreticalFragmentIons == 2)
+   {
       iAddFlank = 1;
+   }
 
    vector <int> vAddOffsets;  // this stores the offsets that need to be added to mapSpectrum
 
@@ -327,6 +331,8 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
    for (unsigned int ii = 0; ii < vAddOffsets.size(); ii++)
       mapSpectrum->insert(make_pair(vAddOffsets.at(ii), 0.0));
 
+   bool bAllZeroes = true;
+
    for (itCurr = mapSpectrum->begin(); itCurr != mapSpectrum->end(); ++itCurr)
    {
       if (itEnd != mapSpectrum->end())
@@ -335,6 +341,10 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
          while (itEnd->first - itCurr->first <= g_staticParams.iXcorrProcessingOffset)
          {
             dSum += itEnd->second;
+
+            if (itEnd->second > 0.0 && bAllZeroes)
+               bAllZeroes = false;
+
             itEnd++;
             if (itEnd == mapSpectrum->end())
                break;
@@ -356,6 +366,9 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
                itCurr->second - (1.0/(2.0*g_staticParams.iXcorrProcessingOffset) * (dSum - itCurr->second))));
    }
 
+   if (bAllZeroes)  // skip scan where all peaks have zero intensity
+      return false;
+
    vector< pair<int, double> > vBinnedSpectrumXcorrNL;
    bool bUseWaterAmmonia = false;
 
@@ -368,7 +381,9 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
    }
 
    // Add flanking peaks and water/ammonia loss to vBinnedSpectrumXcorrFlank
-   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0 || bUseWaterAmmonia)
+   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0
+         || g_staticParams.ionInformation.iTheoreticalFragmentIons == 2
+         || bUseWaterAmmonia)
    {
       vector< pair<int, double> > vBinnedSpectrumXcorrFlank;
       vector< pair<int, double> >::iterator it, it1, it17, it18;
@@ -382,21 +397,25 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
       {
          dNewInten = it->second;  // get current intensity
 
-         if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+         if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0
+               || g_staticParams.ionInformation.iTheoreticalFragmentIons == 2)
          {
-            if (it != vBinnedSpectrumXcorr.begin())
+            if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0
+                  && it != vBinnedSpectrumXcorr.begin())
             {
                it1 = it - 1;
                if (it1->first == it->first - 1)
                   dNewInten += 0.5 * it1->second;  // add intensity of lower flank
             }
 
+/*
             if (it != vBinnedSpectrumXcorr.end())
             {
                it1 = it + 1;
                if (it1->first == it->first + 1)
                   dNewInten += 0.5 * it1->second;  // add intensity of upper flank
             }
+*/
 
             vBinnedSpectrumXcorrFlank.push_back(make_pair(it->first, dNewInten));
          }
@@ -418,7 +437,8 @@ bool CometPreprocess::FillSparseMatrixMap(struct Query *pScoring,
          }
       }
 
-      if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+      if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0
+            || g_staticParams.ionInformation.iTheoreticalFragmentIons == 2)
       {
          vBinnedSpectrumXcorr.clear();
          vBinnedSpectrumXcorr = vBinnedSpectrumXcorrFlank;
@@ -841,22 +861,22 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec)
    {
       int i=0;
       double dSumBelow = 0.0;
-      double dSumTotal = 0.0;
+      double dSumAbove = 0.0;
 
       while (true)
       {
          if (i >= spec.size())
             break;
 
-         dSumTotal += spec.at(i).intensity;
-
-         if (spec.at(i).mz < spec.getMZ())
+         if (spec.at(i).mz < spec.getMZ() - 3.0)  // add +- 3 da tolerace around precursor m/z
             dSumBelow += spec.at(i).intensity;
+         else if (spec.at(i).mz > spec.getMZ() + 3.0)
+            dSumAbove += spec.at(i).intensity;
 
          i++;
       }
 
-      if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
+      if (isEqual(dSumBelow + dSumAbove, 0.0) || ((dSumBelow/(dSumBelow + dSumAbove)) > 0.95))
       {
          z = 1;
          spec.addZState(z, spec.getMZ() * z - (z-1) * PROTON_MASS);
@@ -951,7 +971,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec)
             pScoring->_pepMassInfo.dExpPepMass = dMass;
             pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
             pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
-            pScoring->_spectrumInfoInternal.dRTime = 60.0*spec.getRTime();;
+            pScoring->_spectrumInfoInternal.dRTime = 60.0*spec.getRTime();
             pScoring->_spectrumInfoInternal.iScanNumber = iScanNumber;
             pScoring->_spectrumInfoInternal.iSpecMSLevel = iMSLevel;
 

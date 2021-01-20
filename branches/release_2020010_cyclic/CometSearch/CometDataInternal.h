@@ -218,6 +218,8 @@ struct SpectrumInfoInternal
    int    iChargeState;
    int    iMaxFragCharge;
    int    iSpecMSLevel;               // store the MS level now that cyclic peptide option will search both MS2/MS3
+   int    iMS2QueryIndex;             // for cyclic peptide MS3 scans, store the corresponding MS2 iWhichQuery value
+   double dMS2MangoIndex;             // for cyclic peptide MS2 scans, the dMangoIndex value of corresponding MS2 scan
    double dTotalIntensity;
    double dRTime;
    char   szMango[32];                // Mango encoding
@@ -322,6 +324,7 @@ typedef struct sDBEntry
 {
    string strName;           // might be able to delete this here
    string strSeq;
+   int    iStrSeqLength;
    comet_fileoffset_t lProteinFilePosition;
    vector<PeffModStruct> vectorPeffMod;
    vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
@@ -733,7 +736,7 @@ struct StaticParams
       options.iNumPeptideOutputLines = 5;
       options.iWhichReadingFrame = 0;
       options.iEnzymeTermini = 2;
-      options.iNumStored = 100;                         // default # of search results to store for xcorr analysis.
+      options.iNumStored = 1000;                        // default # of search results to store for xcorr analysis.
       options.iMaxDuplicateProteins = 20;               // maximum number of duplicate proteins to report or store in idx file
 
       options.bShowFragmentIons = 0;
@@ -912,6 +915,8 @@ struct Query
       _spectrumInfoInternal.iScanNumber = 0;
       _spectrumInfoInternal.dTotalIntensity = 0.0;
       _spectrumInfoInternal.iSpecMSLevel = 0;
+      _spectrumInfoInternal.iMS2QueryIndex = 0;
+      _spectrumInfoInternal.dMS2MangoIndex = 0;
 
       _pResults = NULL;
       _pDecoys = NULL;
