@@ -4861,19 +4861,29 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                pTmp.lWhichProtein = dbe->lProteinFilePosition;
                pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
 
-               if (iStartResidue == 0)
-                  pTmp.cPrevAA = '-';
-               else
-                  pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+               if (g_staticParams.options.bCyclicSearch)
+               {
+                  if (iStartResidue == 0)
+                     pTmp.cPrevAA = '-';
+                  else
+                     pTmp.cPrevAA = szProteinSeq[iStartResidue - 1];  //must be here since szProteinSeq contains doubled cyclic peptide; will have to handle short decoy later
 
-               if (iEndResidue == (int)(dbe->strSeq.length() -1))
-                  pTmp.cNextAA = '-';
+                  if (iEndResidue == (int)(dbe->strSeq.length() -1))
+                     pTmp.cNextAA = '-';
+                  else
+                     pTmp.cNextAA = szProteinSeq[iEndResidue + 1];    //must be here since szProteinSeq contains doubled cyclic peptide
+               }
                else
                {
-                  if (g_staticParams.options.bCyclicSearch && iEndResidue + 1 == dbe->iStrSeqLength)
-                     pTmp.cNextAA = dbe->strSeq[0];
+                  if (iStartResidue == 0)
+                     pTmp.cPrevAA = '-';
                   else
-                     pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+                     pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+
+                  if (iEndResidue == (int)(dbe->strSeq.length() -1))
+                     pTmp.cNextAA = '-';
+                  else
+                     pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];    //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
                }
 
                if (bDecoyPep)
