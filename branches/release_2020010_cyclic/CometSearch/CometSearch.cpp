@@ -2118,8 +2118,9 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                   {
                      _vuiBinnedIonMasses.clear();
 
-                     // account for intact molecule with CO neutral loss
-                     _vuiBinnedIonMasses.push_back(BIN(dCalcPepMass - g_staticParams.massUtility.dCO));
+                     // account for intact molecule with cyclic neutral loss
+                     if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
+                        _vuiBinnedIonMasses.push_back(BIN(dCalcPepMass - g_staticParams.options.dCyclicNL));
 
                      if (bFullLengthSequence) // ms2, calculate all cyclic ions
                      {
@@ -2134,13 +2135,18 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                            {
                               dSum = PROTON_MASS;
                               for (unsigned int x=iTmpStart; x<=iTmpEnd; x++)
+                              {
                                  dSum += g_staticParams.massUtility.pdAAMassFragment[(int)strDoubleSeq[x]];
-                              _vuiBinnedIonMasses.push_back(BIN(dSum));
+                                 _vuiBinnedIonMasses.push_back(BIN(dSum));
 
-                              // consider -CO neutral loss
-                              dTmp = dSum - g_staticParams.massUtility.dCO;
-                              if (dTmp > 0.0)
-                                 _vuiBinnedIonMasses.push_back(BIN(dTmp));
+                                 // consider cyclic neutral loss
+                                 if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
+                                 {
+                                    dTmp = dSum - g_staticParams.options.dCyclicNL;
+                                    if (dTmp > 0.0)
+                                       _vuiBinnedIonMasses.push_back(BIN(dTmp));
+                                 }
+                              }
                            }
                         }
                      }
@@ -2149,8 +2155,9 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                         double dForwardSum = PROTON_MASS;
                         double dReverseSum = PROTON_MASS;
 
-                        // add intact -CO
-                        _vuiBinnedIonMasses.push_back(BIN(dCalcPepMass - g_staticParams.massUtility.dCO));
+                        // add intact cyclic NL
+                        if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
+                           _vuiBinnedIonMasses.push_back(BIN(dCalcPepMass - g_staticParams.options.dCyclicNL));
 
                         for (unsigned int x = iStartPos; x < iEndPos; x++)
                         {
@@ -2159,18 +2166,19 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                            dReverseSum += g_staticParams.massUtility.pdAAMassFragment[(int)strDoubleSeq[iEndPos+iStartPos-x]];
                            _vuiBinnedIonMasses.push_back(BIN(dReverseSum));
 
-                           // consider -CO neutral loss
-                           double dTmp = dForwardSum - g_staticParams.massUtility.dCO;
-                           if (dTmp > 0.0)
-                              _vuiBinnedIonMasses.push_back(BIN(dTmp));
+                           if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
+                           {
+                              // consider fragment neutral loss
+                              double dTmp = dForwardSum - g_staticParams.options.dCyclicNL;
+                              if (dTmp > 0.0)
+                                 _vuiBinnedIonMasses.push_back(BIN(dTmp));
 
-                           dTmp = dReverseSum - g_staticParams.massUtility.dCO;
-                           if (dTmp > 0.0)
-                              _vuiBinnedIonMasses.push_back(BIN(dTmp));
+                              dTmp = dReverseSum - g_staticParams.options.dCyclicNL;
+                              if (dTmp > 0.0)
+                                 _vuiBinnedIonMasses.push_back(BIN(dTmp));
+                           }
                         }
                      }
-
-                     // Add in fragment NL peaks here
 
                      // Unique sort _vuiBinnedIonMasses
                      sort(_vuiBinnedIonMasses.begin(), _vuiBinnedIonMasses.end());

@@ -117,6 +117,7 @@ struct Options             // output parameters
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
    int bCyclicSearch;            // 0 = normal search; 1 = cyclic peptide search
    long lMaxIterations;          // max # of modification permutations for each iStart position
+   double dCyclicNL;             // NL applied to cyclic peptide fragments
    double dMinIntensity;
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
@@ -164,6 +165,7 @@ struct Options             // output parameters
       bTreatSameIL = a.bTreatSameIL;
       iMaxIndexRunTime = a.iMaxIndexRunTime;
       lMaxIterations = a.lMaxIterations;
+      dCyclicNL = a.dCyclicNL;
       dMinIntensity = a.dMinIntensity;
       dRemovePrecursorTol = a.dRemovePrecursorTol;
       dPeptideMassLow = a.dPeptideMassLow;
@@ -778,6 +780,7 @@ struct StaticParams
       options.iMaxFragmentCharge = 3;
       options.iMaxPrecursorCharge = 6;
       options.iMSLevel = 2;
+      options.dCyclicNL = 0.0;
       options.dMinIntensity = 0.0;
       options.dPeptideMassLow = 600.0;
       options.dPeptideMassHigh = 8000.0;

@@ -625,6 +625,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("cyclic_peptide_search", g_staticParams.options.bCyclicSearch);
 
+   GetParamValue("cyclic_peptide_NL", g_staticParams.options.dCyclicNL);
+
    GetParamValue("num_threads", g_staticParams.options.iNumThreads);
 
    GetParamValue("clip_nterm_methionine", g_staticParams.options.bClipNtermMet);
