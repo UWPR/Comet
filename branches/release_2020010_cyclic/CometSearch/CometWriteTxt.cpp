@@ -265,6 +265,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       }
 
       int iRankXcorr = 1;
+      int iLineCount = 1;
 
       for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
       {
@@ -316,7 +317,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          }
 
          if (iWhichResult > 0 && !isEqual(pOutput[iWhichResult].fXcorr, pOutput[iWhichResult-1].fXcorr))
-            iRankXcorr++;
+            iRankXcorr = iLineCount;
+         iLineCount++;
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
 
