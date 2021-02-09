@@ -220,7 +220,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    for (i=0; i<iNumPrintLines; i++)
    {
-      char szProteinName[100];
+      char szProteinName[WIDTH_REFERENCE];
       vector<ProteinEntryStruct>::iterator it;
 
       int iNumTotProteins = 0;
@@ -424,7 +424,7 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    iWidthSize=0;
    iWidthPrintRef=0;
 
-   char szProteinName[100];
+   char szProteinName[WIDTH_REFERENCE];
    vector<ProteinEntryStruct>::iterator it;
    bool bPrintDecoyPrefix = false;
 

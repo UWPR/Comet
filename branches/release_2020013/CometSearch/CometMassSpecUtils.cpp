@@ -159,7 +159,7 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
    else  //regular fasta database
    {
       fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-      szProteinName[99] = '\0';
+      szProteinName[511] = '\0';
    }
 }
 
@@ -172,8 +172,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                                               vector<string>& vProteinTargets,  // the target protein names
                                               vector<string>& vProteinDecoys)   // the decoy protein names if applicable
 {
-   char szProteinName[100];
-   char szDecoyProteinName[512];
+   char szProteinName[WIDTH_REFERENCE];
+   char szDecoyProteinName[WIDTH_REFERENCE];
    std::vector<ProteinEntryStruct>::iterator it;
 
    if (g_staticParams.bIndexDb)  //index database
@@ -208,7 +208,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
          comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
          fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-         szProteinName[99] = '\0';
+         szProteinName[511] = '\0';
    
          if (bDecoy)
          {
@@ -241,7 +241,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
             {
                comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
                fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-               szProteinName[99] = '\0';
+               szProteinName[511] = '\0';
 
                vProteinTargets.push_back(szProteinName);
                iPrintDuplicateProteinCt++;
@@ -264,7 +264,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
    
                comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
                fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-               szProteinName[99] = '\0';
+               szProteinName[511] = '\0';
    
                sprintf(szDecoyProteinName, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
    
