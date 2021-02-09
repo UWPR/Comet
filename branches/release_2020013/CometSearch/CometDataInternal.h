@@ -667,15 +667,11 @@ struct StaticParams
       {
          massUtility.pdAAMassParent[i] = 999999.;
          massUtility.pdAAMassFragment[i] = 999999.;
+         staticModifications.pdStaticMods[i] = 0.0;
       }
 
       massUtility.bMonoMassesFragment = 1;
       massUtility.bMonoMassesParent = 1;
-
-      for (int i=0; i<SIZE_MASS; i++)
-      {
-         staticModifications.pdStaticMods[i] = 0.0;
-      }
 
 #ifdef CRUX
       staticModifications.pdStaticMods[(int)'C'] = 57.021464;
@@ -864,8 +860,7 @@ struct Query
 
    Query()
    {
-      for (int i=0; i < HISTO_SIZE; i++)
-         iXcorrHistogram[i] = 0;
+      memset(iXcorrHistogram, 0, sizeof(int)*HISTO_SIZE);
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
