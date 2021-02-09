@@ -132,6 +132,9 @@ namespace CometWrapper {
         int get_VarModMass() {return (int)_pVarMods->dVarModMass;}
         void set_VarModMass(double dVarModMass) {_pVarMods->dVarModMass = dVarModMass;}
 
+        int get_VarNeutralLoss() {return (int)_pVarMods->dNeutralLoss;}
+        void set_VarNeutralLoss(double dNeutralLoss) {_pVarMods->dNeutralLoss = dNeutralLoss;}
+
         System::String^% get_VarModChar() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pVarMods->szVarModChar))));}
         void set_VarModChar(System::String^ varModChar) 
         {
