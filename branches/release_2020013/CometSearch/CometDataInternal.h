@@ -928,14 +928,6 @@ struct Query
       delete[] ppfSparseSpScoreData;
       ppfSparseSpScoreData = NULL;
 
-      for (i=0;i<iFastXcorrDataSize;i++)
-      {
-         if (ppfSparseFastXcorrData[i] != NULL)
-            delete[] ppfSparseFastXcorrData[i];
-      }
-      delete[] ppfSparseFastXcorrData;
-      ppfSparseFastXcorrData = NULL;
-
       if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
             && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
@@ -943,12 +935,24 @@ struct Query
       {
          for (i=0;i<iFastXcorrDataSize;i++)
          {
+            if (ppfSparseFastXcorrData[i] != NULL)
+               delete[] ppfSparseFastXcorrData[i];
             if (ppfSparseFastXcorrDataNL[i]!=NULL)
                delete[] ppfSparseFastXcorrDataNL[i];
          }
          delete[] ppfSparseFastXcorrDataNL;
          ppfSparseFastXcorrDataNL = NULL;
       }
+      else
+      {
+         for (i=0;i<iFastXcorrDataSize;i++)
+         {
+            if (ppfSparseFastXcorrData[i] != NULL)
+               delete[] ppfSparseFastXcorrData[i];
+         }
+      }
+      delete[] ppfSparseFastXcorrData;
+      ppfSparseFastXcorrData = NULL;
 
       _pResults->pWhichProtein.clear();
       if (g_staticParams.options.iDecoySearch == 1)
