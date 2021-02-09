@@ -424,6 +424,10 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
     m_bZlib = true;
     m_bNumpressLinear = true;
 
+  } else if (!strcmp(name, "MS-Numpress positive integer compression followed by zlib compression") || !strcmp(accession, "MS:1002747")) {
+    m_bZlib = true;
+    m_bNumpressPic = true;
+
   } else if (!strcmp(name, "MS-Numpress short logged float compression followed by zlib compression") || !strcmp(accession, "MS:1002748")){
     m_bZlib = true;
     m_bNumpressSlof = true;
