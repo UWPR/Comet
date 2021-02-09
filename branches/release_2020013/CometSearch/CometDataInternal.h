@@ -687,6 +687,7 @@ struct StaticParams
       for (i=0; i<VMODS; i++)
       {
          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 3;
+         variableModParameters.varModList[i].iMinNumVarModAAPerMod = 0;
          variableModParameters.varModList[i].iBinaryMod = 0;
          variableModParameters.varModList[i].bRequireThisMod = false;
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance

@@ -4574,193 +4574,154 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
 
                               if (i1>0 || i2>0 || i3>0 || i4>0 || i5>0 || i6>0 || i7>0 || i8>0 || i9>0 || bPeffMod)
                               {
-                                 double dCalcPepMass;
-                                 int iTmpEnd;
-                                 char cResidue;
+                                 bool bPass = true;
 
-                                 dCalcPepMass = dTmpMass + TotalVarModMass(piTmpVarModCounts);
+                                 if (i1 > 0 && i1 < g_staticParams.variableModParameters.varModList[0].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i2 > 0 && i2 < g_staticParams.variableModParameters.varModList[1].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i3 > 0 && i3 < g_staticParams.variableModParameters.varModList[2].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i4 > 0 && i4 < g_staticParams.variableModParameters.varModList[3].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i5 > 0 && i5 < g_staticParams.variableModParameters.varModList[4].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i6 > 0 && i6 < g_staticParams.variableModParameters.varModList[5].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i7 > 0 && i7 < g_staticParams.variableModParameters.varModList[6].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i8 > 0 && i8 < g_staticParams.variableModParameters.varModList[7].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i9 > 0 && i9 < g_staticParams.variableModParameters.varModList[8].iMinNumVarModAAPerMod)
+                                    bPass = false;
 
-                                 for (i=0; i<VMODS; i++)
+                                 if (bPass)
                                  {
-                                    // this variable tracks how many of each variable mod is in the peptide
-                                    _varModInfo.varModStatList[i].iTotVarModCt = 0;
-                                    _varModInfo.varModStatList[i].iTotBinaryModCt = 0;
-                                 }
+                                    double dCalcPepMass;
+                                    int iTmpEnd;
+                                    char cResidue;
 
-                                 // The start of the peptide is established; need to evaluate
-                                 // where the end of the peptide is.
-                                 for (iTmpEnd=iStartPos; iTmpEnd<=iEndPos; iTmpEnd++)
-                                 {
-                                    if (iTmpEnd-iStartPos+1 < MAX_PEPTIDE_LEN-1)
+                                    dCalcPepMass = dTmpMass + TotalVarModMass(piTmpVarModCounts);
+
+                                    for (i=0; i<VMODS; i++)
                                     {
-                                       cResidue = szProteinSeq[iTmpEnd];
+                                       // this variable tracks how many of each variable mod is in the peptide
+                                       _varModInfo.varModStatList[i].iTotVarModCt = 0;
+                                       _varModInfo.varModStatList[i].iTotBinaryModCt = 0;
+                                    }
 
-                                       dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)cResidue];
-
-                                       for (i=0; i<VMODS; i++)
+                                    // The start of the peptide is established; need to evaluate
+                                    // where the end of the peptide is.
+                                    for (iTmpEnd=iStartPos; iTmpEnd<=iEndPos; iTmpEnd++)
+                                    {
+                                       if (iTmpEnd-iStartPos+1 < MAX_PEPTIDE_LEN-1)
                                        {
-                                          if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
-                                          {
-                                             // look at residues first
-                                             if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
-                                             {
-                                                if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
-                                                   _varModInfo.varModStatList[i].iTotVarModCt++;
+                                          cResidue = szProteinSeq[iTmpEnd];
 
-                                                else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
-                                                {
-                                                   if (iTmpEnd <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
-                                                }
-                                                else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
-                                                {
-                                                   if (iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
-                                                         >= iLenProteinMinus1)
-                                                   {
-                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
-                                                   }
-                                                }
-                                                else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
-                                                {
-                                                   if (iTmpEnd - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
-                                                }
+                                          dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)cResidue];
 
-                                                // analyse peptide C term mod later as iTmpEnd is variable
-                                             }
-
-                                             // consider n-term mods only for start residue
-                                             if (iTmpEnd == iStartPos)
-                                             {
-                                                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
-                                                      && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
-                                                         || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
-                                                            && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                         || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
-                                                               &&  iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
-                                                               >= iLenProteinMinus1)
-                                                         || g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2))
-                                                {
-                                                   _varModInfo.varModStatList[i].iTotVarModCt++;
-                                                }
-                                             }
-                                          }
-                                       }
-
-                                       if (g_staticParams.variableModParameters.bBinaryModSearch)
-                                       {
-                                          // make iTotBinaryModCt similar to iTotVarModCt but count the
-                                          // number of mod sites in peptide for that particular binary
-                                          // mod group and store in first group entry
                                           for (i=0; i<VMODS; i++)
                                           {
-                                             bool bMatched=false;
-
-                                             if (g_staticParams.variableModParameters.varModList[i].iBinaryMod
-                                                   && !isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
-                                                   && !bMatched)
+                                             if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
                                              {
-                                                int ii;
-
+                                                // look at residues first
                                                 if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
                                                 {
                                                    if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
-                                                   {
-                                                      _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                      bMatched = true;
-                                                   }
+                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
+
                                                    else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
                                                    {
                                                       if (iTmpEnd <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                      {
-                                                         _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                         bMatched = true;
-                                                      }
+                                                         _varModInfo.varModStatList[i].iTotVarModCt++;
                                                    }
                                                    else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
                                                    {
-                                                      if (iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
+                                                      if (iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
                                                             >= iLenProteinMinus1)
                                                       {
-                                                         _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                         bMatched = true;
+                                                         _varModInfo.varModStatList[i].iTotVarModCt++;
                                                       }
                                                    }
                                                    else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
                                                    {
                                                       if (iTmpEnd - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                      {
-                                                         _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                         bMatched = true;
-                                                      }
+                                                         _varModInfo.varModStatList[i].iTotVarModCt++;
                                                    }
 
                                                    // analyse peptide C term mod later as iTmpEnd is variable
                                                 }
 
-                                                // if we didn't increment iTotBinaryModCt for base mod in group
-                                                if (!bMatched)
-                                                {
-                                                   for (ii=i+1; ii<VMODS; ii++)
-                                                   {
-                                                      if (!isEqual(g_staticParams.variableModParameters.varModList[ii].dVarModMass, 0.0)
-                                                            && (g_staticParams.variableModParameters.varModList[ii].iBinaryMod
-                                                               == g_staticParams.variableModParameters.varModList[i].iBinaryMod)
-                                                            && strchr(g_staticParams.variableModParameters.varModList[ii].szVarModChar, cResidue))
-                                                      {
-                                                         if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
-                                                         {
-                                                            _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                            bMatched=true;
-                                                         }
-                                                         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
-                                                         {
-                                                            if (iTmpEnd <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                            {
-                                                               _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                               bMatched=true;
-                                                            }
-                                                         }
-                                                         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
-                                                         {
-                                                            if (iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= iLenProteinMinus1)
-                                                            {
-                                                               _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                               bMatched=true;
-                                                            }
-                                                         }
-                                                         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
-                                                         {
-                                                            if (iTmpEnd - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                            {
-                                                               _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                               bMatched=true;
-                                                            }
-                                                         }
-                                                      }
-
-                                                      if (bMatched)
-                                                         break;
-                                                   }
-                                                }
-
                                                 // consider n-term mods only for start residue
                                                 if (iTmpEnd == iStartPos)
                                                 {
-                                                   if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
-                                                         && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
+                                                   if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
                                                          && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
                                                             || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
                                                                && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
                                                             || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
                                                                   &&  iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
-                                                                  >= _proteinInfo.iTmpProteinSeqLength-1)
-                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)))
+                                                                  >= iLenProteinMinus1)
+                                                            || g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2))
                                                    {
-                                                      _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                      bMatched=true;
+                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                   }
+                                                }
+                                             }
+                                          }
+
+                                          if (g_staticParams.variableModParameters.bBinaryModSearch)
+                                          {
+                                             // make iTotBinaryModCt similar to iTotVarModCt but count the
+                                             // number of mod sites in peptide for that particular binary
+                                             // mod group and store in first group entry
+                                             for (i=0; i<VMODS; i++)
+                                             {
+                                                bool bMatched=false;
+
+                                                if (g_staticParams.variableModParameters.varModList[i].iBinaryMod
+                                                      && !isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+                                                      && !bMatched)
+                                                {
+                                                   int ii;
+
+                                                   if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
+                                                   {
+                                                      if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
+                                                      {
+                                                         _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                         bMatched = true;
+                                                      }
+                                                      else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
+                                                      {
+                                                         if (iTmpEnd <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                         {
+                                                            _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                            bMatched = true;
+                                                         }
+                                                      }
+                                                      else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
+                                                      {
+                                                         if (iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
+                                                               >= iLenProteinMinus1)
+                                                         {
+                                                            _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                            bMatched = true;
+                                                         }
+                                                      }
+                                                      else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
+                                                      {
+                                                         if (iTmpEnd - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                         {
+                                                            _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                            bMatched = true;
+                                                         }
+                                                      }
+
+                                                      // analyse peptide C term mod later as iTmpEnd is variable
                                                    }
 
+                                                   // if we didn't increment iTotBinaryModCt for base mod in group
                                                    if (!bMatched)
                                                    {
                                                       for (ii=i+1; ii<VMODS; ii++)
@@ -4768,245 +4729,307 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                          if (!isEqual(g_staticParams.variableModParameters.varModList[ii].dVarModMass, 0.0)
                                                                && (g_staticParams.variableModParameters.varModList[ii].iBinaryMod
                                                                   == g_staticParams.variableModParameters.varModList[i].iBinaryMod)
-                                                               && strchr(g_staticParams.variableModParameters.varModList[ii].szVarModChar, 'n'))
+                                                               && strchr(g_staticParams.variableModParameters.varModList[ii].szVarModChar, cResidue))
                                                          {
-                                                            _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                            bMatched=true;
+                                                            if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
+                                                            {
+                                                               _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                               bMatched=true;
+                                                            }
+                                                            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
+                                                            {
+                                                               if (iTmpEnd <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                               {
+                                                                  _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                  bMatched=true;
+                                                               }
+                                                            }
+                                                            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
+                                                            {
+                                                               if (iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= iLenProteinMinus1)
+                                                               {
+                                                                  _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                  bMatched=true;
+                                                               }
+                                                            }
+                                                            else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
+                                                            {
+                                                               if (iTmpEnd - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                               {
+                                                                  _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                  bMatched=true;
+                                                               }
+                                                            }
                                                          }
 
                                                          if (bMatched)
                                                             break;
                                                       }
                                                    }
-                                                }
-                                             }
-                                          }
-                                       }
 
-
-                                       bool bValid = true;
-
-                                       // since we're varying iEndPos, check enzyme consistency first
-                                       if (!CheckEnzymeTermini(szProteinSeq, iStartPos, iTmpEnd))
-                                          bValid = false;
-
-                                       if (bValid)
-                                       {
-                                          // at this point, consider variable c-term mod at iTmpEnd position
-                                          for (i=0; i<VMODS; i++)
-                                          {
-                                             // Store current number of iTotVarModCt because we're going to possibly
-                                             // increment it for variable c-term mod.  But as we continue to extend iEndPos,
-                                             // we need to temporarily save this value here and restore it later.
-                                             piTmpTotVarModCt[i] = _varModInfo.varModStatList[i].iTotVarModCt;
-                                             piTmpTotBinaryModCt[i] = _varModInfo.varModStatList[i].iTotBinaryModCt;
-
-                                             // Add in possible c-term variable mods
-                                             if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
-                                             {
-                                                if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
-                                                      && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0
-                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
-                                                               && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
-                                                               &&  iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= iLenProteinMinus1)
-                                                            || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2
-                                                               && iTmpEnd-iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                            || g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)))
-                                                {
-                                                   _varModInfo.varModStatList[i].iTotVarModCt++;
-                                                }
-                                             }
-                                          }
-
-                                          // also need to consider all residue mods that have a peptide c-term distance
-                                          // constraint because these depend on iTmpEnd which was not defined until now
-                                          int x;
-                                          for (x=iStartPos; x<=iTmpEnd; x++)
-                                          {
-                                             cResidue = szProteinSeq[x];
-
-                                             for (i=0; i<VMODS; i++)
-                                             {
-                                                if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
-                                                {
-                                                   if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
+                                                   // consider n-term mods only for start residue
+                                                   if (iTmpEnd == iStartPos)
                                                    {
-                                                      if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)  //c-term pep
+                                                      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+                                                            && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n')
+                                                            && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
+                                                               || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
+                                                                  && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                               || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
+                                                                     &&  iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
+                                                                     >= _proteinInfo.iTmpProteinSeqLength-1)
+                                                               || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2)))
                                                       {
-                                                         if (iTmpEnd - x <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                            _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                         _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                         bMatched=true;
+                                                      }
+
+                                                      if (!bMatched)
+                                                      {
+                                                         for (ii=i+1; ii<VMODS; ii++)
+                                                         {
+                                                            if (!isEqual(g_staticParams.variableModParameters.varModList[ii].dVarModMass, 0.0)
+                                                                  && (g_staticParams.variableModParameters.varModList[ii].iBinaryMod
+                                                                     == g_staticParams.variableModParameters.varModList[i].iBinaryMod)
+                                                                  && strchr(g_staticParams.variableModParameters.varModList[ii].szVarModChar, 'n'))
+                                                            {
+                                                               _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                               bMatched=true;
+                                                            }
+
+                                                            if (bMatched)
+                                                               break;
+                                                         }
                                                       }
                                                    }
                                                 }
                                              }
                                           }
-                                       }
 
-                                       if (bValid && !g_staticParams.variableModParameters.bBinaryModSearch)
-                                       {
 
-                                          // Check to make sure # required mod are actually present in
-                                          // current peptide since the end position is variable.
-                                          for (i=0; i<VMODS; i++)
+                                          bool bValid = true;
+
+                                          // since we're varying iEndPos, check enzyme consistency first
+                                          if (!CheckEnzymeTermini(szProteinSeq, iStartPos, iTmpEnd))
+                                             bValid = false;
+
+                                          if (bValid)
                                           {
-                                             // varModStatList[i].iTotVarModCt contains # of mod residues in current
-                                             // peptide defined by iTmpEnd.  Since piTmpVarModCounts contains # of
-                                             // each variable mod to match peptide mass, need to make sure that
-                                             // piTmpVarModCounts is not greater than varModStatList[i].iTotVarModCt.
-
-                                             // if number of expected modifications is greater than # of modifiable residues
-                                             // within start/end then not possible
-                                             if (piTmpVarModCounts[i] > _varModInfo.varModStatList[i].iTotVarModCt)
+                                             // at this point, consider variable c-term mod at iTmpEnd position
+                                             for (i=0; i<VMODS; i++)
                                              {
-                                                bValid = false;
-                                                break;
-                                             }
-                                          }
-                                       }
+                                                // Store current number of iTotVarModCt because we're going to possibly
+                                                // increment it for variable c-term mod.  But as we continue to extend iEndPos,
+                                                // we need to temporarily save this value here and restore it later.
+                                                piTmpTotVarModCt[i] = _varModInfo.varModStatList[i].iTotVarModCt;
+                                                piTmpTotBinaryModCt[i] = _varModInfo.varModStatList[i].iTotBinaryModCt;
 
-                                       if (bValid && g_staticParams.variableModParameters.bBinaryModSearch)
-                                       {
-                                          int ii;
-                                          bool bUsed[VMODS];
-
-                                          for (ii=0; ii<VMODS; ii++)
-                                             bUsed[ii] = false;
-
-                                          // walk through all list of mods, find those with the same iBinaryMod value,
-                                          // and make sure all mods are accounted for
-                                          for (i=0; i<VMODS; i++)
-                                          {
-                                             // check for binary mods; since multiple sets of binary mods can be
-                                             // specified with logical OR, need to compare the sets
-                                             int iSumTmpVarModCounts=0;
-
-                                             if (!bUsed[i] && g_staticParams.variableModParameters.varModList[i].iBinaryMod)
-                                             {
-                                                iSumTmpVarModCounts += piTmpVarModCounts[i];
-
-                                                bUsed[i]=true;
-
-                                                for (ii=i+1; ii<VMODS; ii++)
+                                                // Add in possible c-term variable mods
+                                                if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
                                                 {
-                                                   if ((g_staticParams.variableModParameters.varModList[ii].iBinaryMod
-                                                            == g_staticParams.variableModParameters.varModList[i].iBinaryMod))
+                                                   if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c')
+                                                         && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0
+                                                               || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
+                                                                  && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                               || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1
+                                                                  &&  iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= iLenProteinMinus1)
+                                                               || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2
+                                                                  && iTmpEnd-iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                               || g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)))
                                                    {
-                                                      bUsed[ii]=true;
-                                                      iSumTmpVarModCounts += piTmpVarModCounts[ii];
+                                                      _varModInfo.varModStatList[i].iTotVarModCt++;
                                                    }
                                                 }
+                                             }
 
-                                                // the set sum counts must match total # of mods in peptide
-                                                if (iSumTmpVarModCounts != 0
-                                                      && iSumTmpVarModCounts != _varModInfo.varModStatList[i].iTotBinaryModCt)
+                                             // also need to consider all residue mods that have a peptide c-term distance
+                                             // constraint because these depend on iTmpEnd which was not defined until now
+                                             int x;
+                                             for (x=iStartPos; x<=iTmpEnd; x++)
+                                             {
+                                                cResidue = szProteinSeq[x];
+
+                                                for (i=0; i<VMODS; i++)
+                                                {
+                                                   if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
+                                                   {
+                                                      if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
+                                                      {
+                                                         if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)  //c-term pep
+                                                         {
+                                                            if (iTmpEnd - x <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                                                               _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                         }
+                                                      }
+                                                   }
+                                                }
+                                             }
+                                          }
+
+                                          if (bValid && !g_staticParams.variableModParameters.bBinaryModSearch)
+                                          {
+
+                                             // Check to make sure # required mod are actually present in
+                                             // current peptide since the end position is variable.
+                                             for (i=0; i<VMODS; i++)
+                                             {
+                                                // varModStatList[i].iTotVarModCt contains # of mod residues in current
+                                                // peptide defined by iTmpEnd.  Since piTmpVarModCounts contains # of
+                                                // each variable mod to match peptide mass, need to make sure that
+                                                // piTmpVarModCounts is not greater than varModStatList[i].iTotVarModCt.
+
+                                                // if number of expected modifications is greater than # of modifiable residues
+                                                // within start/end then not possible
+                                                if (piTmpVarModCounts[i] > _varModInfo.varModStatList[i].iTotVarModCt)
                                                 {
                                                    bValid = false;
                                                    break;
                                                 }
                                              }
-
-                                             if (piTmpVarModCounts[i] > _varModInfo.varModStatList[i].iTotVarModCt)
-                                             {
-                                                bValid = false;
-                                                break;
-                                             }
                                           }
-                                       }
 
-                                       if (bValid && g_staticParams.variableModParameters.bRequireVarMod)
-                                       {
-                                          // Check to see if required mods are satisfied; here, we're just making
-                                          // sure the number of possible modified residues for each mod is non-zero
-                                          // so don't worry about distance constraint issues yet.
-                                          for (i=0; i<VMODS; i++)
+                                          if (bValid && g_staticParams.variableModParameters.bBinaryModSearch)
                                           {
-                                             if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod
-                                                   && piTmpVarModCounts[i] == 0)
+                                             int ii;
+                                             bool bUsed[VMODS];
+
+                                             for (ii=0; ii<VMODS; ii++)
+                                                bUsed[ii] = false;
+
+                                             // walk through all list of mods, find those with the same iBinaryMod value,
+                                             // and make sure all mods are accounted for
+                                             for (i=0; i<VMODS; i++)
                                              {
-                                                bValid = false;
-                                                break;
-                                             }
-                                          }
-                                       }
+                                                // check for binary mods; since multiple sets of binary mods can be
+                                                // specified with logical OR, need to compare the sets
+                                                int iSumTmpVarModCounts=0;
 
-                                       if (bValid && HasVariableMod(piTmpVarModCounts, iStartPos, iTmpEnd, dbe))
-                                       {
-                                          // mass including terminal mods that need to be tracked separately here
-                                          // because we are considering multiple terminating positions in peptide
-                                          double dTmpCalcPepMass;
-
-                                          dTmpCalcPepMass = dCalcPepMass;
-
-                                          // static protein terminal mod
-                                          if (iTmpEnd == iLenProteinMinus1)
-                                             dTmpCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
-
-                                          int iWhichQuery = WithinMassTolerance(dTmpCalcPepMass, szProteinSeq, iStartPos, iTmpEnd);
-
-                                          bool bDoPeffAnalysis = false;
-
-                                          // Need to see if peptide + PEFF mod is within mass tolerance of any query.
-                                          if (bPeffMod)
-                                          {
-                                             bool bPeff = false;
-
-                                             // Only need to return true/false here to know whether or not to permute
-                                             // through PEFF mods later.  So as long as just 1 combination of PEFF
-                                             // mods work, that's great.
-
-                                             // First see if PEFF mods are within iStartPos and iTmpEnd
-                                             int iPeffModSize = (int)dbe->vectorPeffMod.size();
-                                             for (i=0; i<iPeffModSize; i++)
-                                             {
-                                                if (dbe->vectorPeffMod.at(i).iPosition >= iStartPos && dbe->vectorPeffMod.at(i).iPosition <=iTmpEnd)
+                                                if (!bUsed[i] && g_staticParams.variableModParameters.varModList[i].iBinaryMod)
                                                 {
-                                                   bPeff = true;
+                                                   iSumTmpVarModCounts += piTmpVarModCounts[i];
+
+                                                   bUsed[i]=true;
+
+                                                   for (ii=i+1; ii<VMODS; ii++)
+                                                   {
+                                                      if ((g_staticParams.variableModParameters.varModList[ii].iBinaryMod
+                                                               == g_staticParams.variableModParameters.varModList[i].iBinaryMod))
+                                                      {
+                                                         bUsed[ii]=true;
+                                                         iSumTmpVarModCounts += piTmpVarModCounts[ii];
+                                                      }
+                                                   }
+
+                                                   // the set sum counts must match total # of mods in peptide
+                                                   if (iSumTmpVarModCounts != 0
+                                                         && iSumTmpVarModCounts != _varModInfo.varModStatList[i].iTotBinaryModCt)
+                                                   {
+                                                      bValid = false;
+                                                      break;
+                                                   }
+                                                }
+
+                                                if (piTmpVarModCounts[i] > _varModInfo.varModStatList[i].iTotVarModCt)
+                                                {
+                                                   bValid = false;
                                                    break;
                                                 }
                                              }
-
-                                             if (bPeff)
-                                                bDoPeffAnalysis = WithinMassTolerancePeff(dTmpCalcPepMass, &vPeffArray, iStartPos, iTmpEnd);
                                           }
 
-                                          if (iWhichQuery != -1 || bDoPeffAnalysis)
+                                          if (bValid && g_staticParams.variableModParameters.bRequireVarMod)
                                           {
-                                             // We know that mass is within some query's tolerance range so
-                                             // now need to permute variable mods and at each permutation calculate
-                                             // fragment ions once and loop through all matching spectra to score.
+                                             // Check to see if required mods are satisfied; here, we're just making
+                                             // sure the number of possible modified residues for each mod is non-zero
+                                             // so don't worry about distance constraint issues yet.
                                              for (i=0; i<VMODS; i++)
                                              {
-                                                if (g_staticParams.variableModParameters.varModList[i].dVarModMass > 0.0  && piTmpVarModCounts[i] > 0)
+                                                if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod
+                                                      && piTmpVarModCounts[i] == 0)
                                                 {
-                                                   // memset(_varModInfo.varModStatList[i].iVarModSites, 0, sizeof(_varModInfo.varModStatList[i].iVarModSites));
-                                                   memset(_varModInfo.varModStatList[i].iVarModSites, 0, _iSizepiVarModSites);
+                                                   bValid = false;
+                                                   break;
+                                                }
+                                             }
+                                          }
+
+                                          if (bValid && HasVariableMod(piTmpVarModCounts, iStartPos, iTmpEnd, dbe))
+                                          {
+                                             // mass including terminal mods that need to be tracked separately here
+                                             // because we are considering multiple terminating positions in peptide
+                                             double dTmpCalcPepMass;
+
+                                             dTmpCalcPepMass = dCalcPepMass;
+
+                                             // static protein terminal mod
+                                             if (iTmpEnd == iLenProteinMinus1)
+                                                dTmpCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+
+                                             int iWhichQuery = WithinMassTolerance(dTmpCalcPepMass, szProteinSeq, iStartPos, iTmpEnd);
+
+                                             bool bDoPeffAnalysis = false;
+
+                                             // Need to see if peptide + PEFF mod is within mass tolerance of any query.
+                                             if (bPeffMod)
+                                             {
+                                                bool bPeff = false;
+
+                                                // Only need to return true/false here to know whether or not to permute
+                                                // through PEFF mods later.  So as long as just 1 combination of PEFF
+                                                // mods work, that's great.
+
+                                                // First see if PEFF mods are within iStartPos and iTmpEnd
+                                                int iPeffModSize = (int)dbe->vectorPeffMod.size();
+                                                for (i=0; i<iPeffModSize; i++)
+                                                {
+                                                   if (dbe->vectorPeffMod.at(i).iPosition >= iStartPos && dbe->vectorPeffMod.at(i).iPosition <=iTmpEnd)
+                                                   {
+                                                      bPeff = true;
+                                                      break;
+                                                   }
                                                 }
 
-                                                _varModInfo.varModStatList[i].iMatchVarModCt = piTmpVarModCounts[i];
+                                                if (bPeff)
+                                                   bDoPeffAnalysis = WithinMassTolerancePeff(dTmpCalcPepMass, &vPeffArray, iStartPos, iTmpEnd);
                                              }
 
-                                             _varModInfo.iStartPos = iStartPos;
-                                             _varModInfo.iEndPos = iTmpEnd;
-                                             _varModInfo.dCalcPepMass = dCalcPepMass;
+                                             if (iWhichQuery != -1 || bDoPeffAnalysis)
+                                             {
+                                                // We know that mass is within some query's tolerance range so
+                                                // now need to permute variable mods and at each permutation calculate
+                                                // fragment ions once and loop through all matching spectra to score.
+                                                for (i=0; i<VMODS; i++)
+                                                {
+                                                   if (g_staticParams.variableModParameters.varModList[i].dVarModMass > 0.0  && piTmpVarModCounts[i] > 0)
+                                                   {
+                                                      // memset(_varModInfo.varModStatList[i].iVarModSites, 0, sizeof(_varModInfo.varModStatList[i].iVarModSites));
+                                                      memset(_varModInfo.varModStatList[i].iVarModSites, 0, _iSizepiVarModSites);
+                                                   }
 
-                                             // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-                                             PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe, &lNumIterations);
+                                                   _varModInfo.varModStatList[i].iMatchVarModCt = piTmpVarModCounts[i];
+                                                }
 
+                                                _varModInfo.iStartPos = iStartPos;
+                                                _varModInfo.iEndPos = iTmpEnd;
+                                                _varModInfo.dCalcPepMass = dCalcPepMass;
+
+                                                // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
+                                                PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe, &lNumIterations);
+
+                                             }
                                           }
-                                       }
 
-                                       if (bValid)
-                                       {
-                                          for (i=0; i<VMODS; i++)
+                                          if (bValid)
                                           {
-                                             _varModInfo.varModStatList[i].iTotVarModCt = piTmpTotVarModCt[i];
-                                             _varModInfo.varModStatList[i].iTotBinaryModCt = piTmpTotBinaryModCt[i];
+                                             for (i=0; i<VMODS; i++)
+                                             {
+                                                _varModInfo.varModStatList[i].iTotVarModCt = piTmpTotVarModCt[i];
+                                                _varModInfo.varModStatList[i].iTotBinaryModCt = piTmpTotBinaryModCt[i];
+                                             }
                                           }
                                        }
-
-                                    }
-                                 } // loop through iStartPos to iEndPos
+                                    } // loop through iStartPos to iEndPos
+                                 }
                               }
                            }
                         }

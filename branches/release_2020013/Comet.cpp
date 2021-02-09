@@ -563,16 +563,31 @@ void LoadParameters(char *pszParamsFile,
             }
             else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
             {
+               char szTmp[512];
+
                varModsParam.szVarModChar[0] = '\0';
-               sscanf(szParamVal, "%lf %19s %d %d %d %d %d %lf",
+               sscanf(szParamVal, "%lf %19s %d %511s %d %d %d %lf",
                      &varModsParam.dVarModMass,
                      varModsParam.szVarModChar,
                      &varModsParam.iBinaryMod,
-                     &varModsParam.iMaxNumVarModAAPerMod,
+                     szTmp,
                      &varModsParam.iVarModTermDistance,
                      &varModsParam.iWhichTerm,
                      &varModsParam.bRequireThisMod,
                      &varModsParam.dNeutralLoss);
+
+               // the 4th entry can either be just the max_num_var_mod or a comma separated
+               // value composed of min_num,max_num
+               char *pStr;
+               if ( (pStr=strchr(szTmp, ',')) == NULL)
+               {
+                  sscanf(szTmp, "%d", &varModsParam.iMaxNumVarModAAPerMod);
+               }
+               else
+               {
+                  *pStr = ' ';
+                  sscanf(szTmp, "%d %d", &varModsParam.iMinNumVarModAAPerMod, &varModsParam.iMaxNumVarModAAPerMod);
+               }
 
 #ifdef _WIN32
                szParamVal[strlen(szParamVal)-2] = '\0';  // remove CR/LF
