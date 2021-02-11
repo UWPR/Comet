@@ -3972,15 +3972,23 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                pTmp.lWhichProtein = dbe->lProteinFilePosition;
                pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
 
-               if (iStartResidue == 0)
-                  pTmp.cPrevAA = '-';
+               if (bDecoyPep)
+               {
+                  pTmp.cPrevAA = szProteinSeq[0];
+                  pTmp.cNextAA = szProteinSeq[iEndPos + 1];
+               }
                else
-                  pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+               {
+                  if (iStartResidue == 0)
+                     pTmp.cPrevAA = '-';
+                  else
+                     pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
 
-               if (iEndResidue == (int)(dbe->strSeq.length() -1))
-                  pTmp.cNextAA = '-';
-               else
-                  pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+                  if (iEndResidue == (int)(dbe->strSeq.length() -1))
+                     pTmp.cNextAA = '-';
+                  else
+                     pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+               }
 
                pQuery->_pDecoys[i].pWhichDecoyProtein.push_back(pTmp);
 
@@ -4079,41 +4087,37 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                pTmp.lWhichProtein = dbe->lProteinFilePosition;
                pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
 
-               if (iStartResidue == 0)
-                  pTmp.cPrevAA = '-';
+               if (bDecoyPep)
+               {
+                  pTmp.cPrevAA = szProteinSeq[0];
+                  pTmp.cNextAA = szProteinSeq[iEndPos + 1];
+               }
                else
-                  pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+               {
+                  if (iStartResidue == 0)
+                     pTmp.cPrevAA = '-';
+                  else
+                     pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
 
-               if (iEndResidue == (int)(dbe->strSeq.length() -1))
-                  pTmp.cNextAA = '-';
-               else
-                  pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+                  if (iEndResidue == (int)(dbe->strSeq.length() -1))
+                     pTmp.cNextAA = '-';
+                  else
+                     pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+
+                  // FIX:  Now that decoys are handled in the if() above, does it makes more sense
+                  // to grab the prev/next AA from szProteinSeq instead of the original dbe->strSeq??
+               }
 
                if (bDecoyPep)
                   pQuery->_pResults[i].pWhichDecoyProtein.push_back(pTmp);
                else
                   pQuery->_pResults[i].pWhichProtein.push_back(pTmp);
 
-               // FIX:  figure out what to do with lProteinFilePosition and bDecoyPep
-
                // if duplicate, check to see if need to replace stored protein info
                // with protein that's earlier in database
                if (pQuery->_pResults[i].lProteinFilePosition > dbe->lProteinFilePosition)
                {
                   pQuery->_pResults[i].lProteinFilePosition = dbe->lProteinFilePosition;
-
-                  // I had commented out the next 9 lines for some reason previously and I can't remember why.
-                  // But w/o updating the flanking residues, we'll get different ones depending on which thread
-                  // found which protein first. So the code is needed.
-                  if (iStartPos == 0)
-                     pQuery->_pResults[i].szPrevNextAA[0] = '-';
-                  else
-                     pQuery->_pResults[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
-
-                  if (iEndPos == strlen(szProteinSeq) - 1)
-                     pQuery->_pResults[i].szPrevNextAA[1] = '-';
-                  else
-                     pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
 
                   // also if IL equivalence set, go ahead and copy peptide from first sequence
                   memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pResults[i].iLenPeptide*sizeof(char));
