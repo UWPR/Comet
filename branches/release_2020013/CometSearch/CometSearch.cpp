@@ -4101,17 +4101,19 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (pQuery->_pResults[i].lProteinFilePosition > dbe->lProteinFilePosition)
                {
                   pQuery->_pResults[i].lProteinFilePosition = dbe->lProteinFilePosition;
-/*
+
+                  // I had commented out the next 9 lines for some reason previously and I can't remember why.
+                  // But w/o updating the flanking residues, we'll get different ones depending on which thread
+                  // found which protein first. So the code is needed.
                   if (iStartPos == 0)
                      pQuery->_pResults[i].szPrevNextAA[0] = '-';
                   else
                      pQuery->_pResults[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
-                  if (iEndPos == iLenProteinSeqMinus1)
+                  if (iEndPos == strlen(szProteinSeq) - 1)
                      pQuery->_pResults[i].szPrevNextAA[1] = '-';
                   else
                      pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
-*/
 
                   // also if IL equivalence set, go ahead and copy peptide from first sequence
                   memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pResults[i].iLenPeptide*sizeof(char));
