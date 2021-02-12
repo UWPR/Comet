@@ -3982,12 +3982,12 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   if (iStartResidue == 0)
                      pTmp.cPrevAA = '-';
                   else
-                     pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+                     pTmp.cPrevAA = szProteinSeq[iStartResidue - 1];
 
-                  if (iEndResidue == (int)(dbe->strSeq.length() -1))
+                  if (iEndResidue == (int)(strlen(szProteinSeq) - 1))
                      pTmp.cNextAA = '-';
                   else
-                     pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+                     pTmp.cNextAA = szProteinSeq[iEndResidue + 1];
                }
 
                pQuery->_pDecoys[i].pWhichDecoyProtein.push_back(pTmp);
@@ -4097,15 +4097,12 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   if (iStartResidue == 0)
                      pTmp.cPrevAA = '-';
                   else
-                     pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+                     pTmp.cPrevAA = szProteinSeq[iStartResidue - 1];
 
-                  if (iEndResidue == (int)(dbe->strSeq.length() -1))
+                  if (iEndResidue == (int)(strlen(szProteinSeq) - 1))
                      pTmp.cNextAA = '-';
                   else
-                     pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
-
-                  // FIX:  Now that decoys are handled in the if() above, does it makes more sense
-                  // to grab the prev/next AA from szProteinSeq instead of the original dbe->strSeq??
+                     pTmp.cNextAA = szProteinSeq[iEndResidue + 1];
                }
 
                if (bDecoyPep)
