@@ -2259,7 +2259,7 @@ bool CometSearchManager::DoSearch()
             }
 
             if (g_staticParams.options.bOutputPepXMLFile)
-               CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb);
+               CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb, iTotalSpectraSearched - g_pvQuery.size());
 
             // For mzid output, dump psms as tab-delimited text first then collate results to
             // mzid file at very end due to requirements of this format.

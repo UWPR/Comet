@@ -29,7 +29,8 @@ public:
 
    static void WritePepXML(FILE *fpout,
                            FILE *fpoutd,
-                           FILE *fpdb);
+                           FILE *fpdb,
+                           int iNumSpectraSearched);
 
    static void WritePepXMLEndTags(FILE *fpout);
 
@@ -46,7 +47,8 @@ private:
    static void PrintResults(int iWhichQuery,
                             int iPrintTargetDecoy,
                             FILE *fpOut,
-                            FILE *fpdb);
+                            FILE *fpdb,
+                            int iNumSpectraSearched);
 
    static void PrintPepXMLSearchHit(int iWhichQuery,
                                     int iWhichResult,
