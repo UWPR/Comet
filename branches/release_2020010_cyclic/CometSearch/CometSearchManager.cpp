@@ -3356,6 +3356,9 @@ void CometSearchManager::ReadFileHeaders(MSReader &mstReader)
       vTmp.iScanNumber = mstSpectrum.getScanNumber();
       vTmp.dMZ = mstSpectrum.getMZ();
 
+      if (vTmp.iScanNumber == 0)
+         break;
+
       if (mstSpectrum.sizeZ() > 0)
         vTmp.iCharge = mstSpectrum.atZ(0).z;
       else
@@ -3363,7 +3366,7 @@ void CometSearchManager::ReadFileHeaders(MSReader &mstReader)
 
       g_pvSpecHeader.push_back(vTmp);
 
-      if (mstSpectrum.getScanNumber() == iLastScan)
+      if (vTmp.iScanNumber  == iLastScan)
          break;
    }
 
