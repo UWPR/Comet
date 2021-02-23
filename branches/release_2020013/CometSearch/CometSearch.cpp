@@ -143,7 +143,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
       {
          char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+         sprintf(szErrorMsg, " Error (1) - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);

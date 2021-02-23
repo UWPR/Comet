@@ -454,16 +454,40 @@ static bool ValidateOutputFormat()
    return true;
 }
 
+
 static bool ValidateSequenceDatabaseFile()
 {
    FILE *fpcheck;
+   char szErrorMsg[SIZE_ERROR];
+
+   // do a quick test if specified file is a directory
+   struct stat st;
+   stat(g_staticParams.databaseInfo.szDatabase, &st );
+
+   if (S_ISDIR( st.st_mode )) 
+   {
+      sprintf(szErrorMsg, " Error - specified database file is a directory: \"%s\".\n",
+            g_staticParams.databaseInfo.szDatabase);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+   if (!(S_ISREG( st.st_mode ) || S_ISLNK( st.st_mode )))
+   {
+      sprintf(szErrorMsg, " Error - specified database file is not a regular file or symlink: \"%s\".\n",
+            g_staticParams.databaseInfo.szDatabase);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
 
    // Quick sanity check to make sure sequence db file is present before spending
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
+      sprintf(szErrorMsg, " Error (2) - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
             g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -477,7 +501,6 @@ static bool ValidateSequenceDatabaseFile()
 
    if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
    {
-      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - input database already indexed: \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -2000,7 +2023,7 @@ bool CometSearchManager::DoSearch()
          if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
          {
             char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+            sprintf(szErrorMsg, " Error (3) - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(szErrorMsg);
