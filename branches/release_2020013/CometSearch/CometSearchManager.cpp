@@ -460,6 +460,7 @@ static bool ValidateSequenceDatabaseFile()
    FILE *fpcheck;
    char szErrorMsg[SIZE_ERROR];
 
+#ifndef WIN32
    // do a quick test if specified file is a directory
    struct stat st;
    stat(g_staticParams.databaseInfo.szDatabase, &st );
@@ -482,6 +483,7 @@ static bool ValidateSequenceDatabaseFile()
       logerr(szErrorMsg);
       return false;
    }
+#endif
 
    // Quick sanity check to make sure sequence db file is present before spending
    // time reading & processing spectra and then reporting this error.
