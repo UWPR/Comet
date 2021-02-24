@@ -274,6 +274,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    else
       pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
 
+   // get filter line
+   mstSpectrum.getRawFilter(pScoring->_spectrumInfoInternal.szFilterLine, SIZE_NATIVEID);
+
    bool bSuccess = FillSparseMatrixMap(pScoring, &mapSpectrum, &pPre);
 
    return bSuccess;

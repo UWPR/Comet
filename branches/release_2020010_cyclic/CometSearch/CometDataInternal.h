@@ -226,6 +226,7 @@ struct SpectrumInfoInternal
    double dRTime;
    char   szMango[32];                // Mango encoding
    char   szNativeID[SIZE_NATIVEID];  // nativeID string from mzML
+   char   szFilterLine[SIZE_NATIVEID];
 };
 
 // The minimum and maximum mass range of all peptides to consider
@@ -999,15 +1000,5 @@ struct MatchedIonsStruct  // for SingleSpectrumSearch
       return dInten > a.dInten;
    }
 };
-
-struct SpecHeaderStruct
-{
-   int iMSLevel;
-   int iScanNumber;
-   int iCharge;
-   double dMZ;
-};
-
-extern vector<SpecHeaderStruct> g_pvSpecHeader;
 
 #endif // _COMETDATAINTERNAL_H_

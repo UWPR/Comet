@@ -38,7 +38,6 @@
 std::vector<Query*>           g_pvQuery;
 std::vector<InputFileInfo *>  g_pvInputFiles;
 std::vector<double>           g_pvDIAWindows;
-std::vector<SpecHeaderStruct> g_pvSpecHeader;
 StaticParams                  g_staticParams;
 vector<DBIndex>               g_pvDBIndex;
 MassRange                     g_massRange;
@@ -2008,17 +2007,6 @@ bool CometSearchManager::DoSearch()
          // We need to reset some of the static variables in-between input files
          CometPreprocess::Reset();
    
-         // Read header info prior to cyclic search
-         if (g_staticParams.options.bCyclicSearch
-               && (g_staticParams.inputFile.iInputType == InputType_MZXML
-                  || g_staticParams.inputFile.iInputType == InputType_RAW))
-         {
-            ReadFileHeaders(mstReader);
-
-//          for (std::vector<SpecHeaderStruct>::iterator it = g_pvSpecHeader.begin(); it != g_pvSpecHeader.end(); ++it)
-//             printf("OK  scan %d, level %d, mz %f\n", it->iScanNumber, it->iMSLevel, it->dMZ);
-         }
-
          FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
          if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
          {
@@ -2152,11 +2140,38 @@ bool CometSearchManager::DoSearch()
                   if ((*it)->_spectrumInfoInternal.iSpecMSLevel == 3)
                   {
                      std::vector<Query*>::iterator it2 = it;
+                     char szMS2[SIZE_NATIVEID];
+                     char *pStr;
 
-                     while ((*it2)->_spectrumInfoInternal.iSpecMSLevel != 2 && it2 > g_pvQuery.begin())
+                     // scan 4486, level 2, mz 1004.654846, FTMS + c NSI d Full ms2 1004.6548@cid45.00 [272.0000-1015.0000]
+                     // scan 4487, level 2, mz 912.592468,  FTMS + c NSI d Full ms2 912.5925@cid45.00 [247.0000-923.0000]
+                     // scan 4488, level 3, mz 750.454000,  FTMS + c NSI d Full ms3 1004.6548@cid45.00 750.4540@cid40.00 [202.0000-761.0000]
+                     // scan 4489, level 3, mz 728.469800,  FTMS + c NSI d Full ms3 912.5925@cid45.00 728.4698@cid40.00 [196.0000-739.0000]
+                     pStr = strstr((*it)->_spectrumInfoInternal.szFilterLine, "Full ms3");
+                     if (pStr == NULL)
+                     {
+                        printf(" Error strstr cyclic scan ms3, filter line does no have 'Full ms3' string:\n%s\n", 
+                              (*it)->_spectrumInfoInternal.szFilterLine);
+                        exit(1);
+                     }
+                     pStr += 8;
+                     sscanf(pStr, "%s", szMS2);
+                     // so now, in scan 4489 example above, szMS2 will now contain "912.5925@cid45.00"
+
+                     // We are going to use dMangoIndex to reference the specific MS2 that corresponds to the cyclic MS3 scan.
+                     // First just have to store dMangoIndex here.  Then later after sorting g_pvQuery by mass, look up
+                     // dMangoIndex to reference corresponding MS2 scan iWhichQuery and store that as iMS2QueryIndex.
+                     while ((*it2)->_spectrumInfoInternal.iSpecMSLevel != 1 && it2 > g_pvQuery.begin())
+                     {
                         --it2;
+                        if ((*it2)->_spectrumInfoInternal.iSpecMSLevel == 2 
+                              && (strstr((*it2)->_spectrumInfoInternal.szFilterLine, szMS2) != NULL))
+                        {
+                           break;
+                        }
+                     }
 
-                     if ((*it2)->_spectrumInfoInternal.iSpecMSLevel == 2)
+                     if ((*it2)->_spectrumInfoInternal.iSpecMSLevel == 2 && (strstr((*it2)->_spectrumInfoInternal.szFilterLine, szMS2)))
                      {
                         // reference the MangoIndex here first.  Then after sort by mass, use dMangoIndex to populate iMS2Queryindex
                         (*it)->_spectrumInfoInternal.dMS2MangoIndex = (*it2)->dMangoIndex;
@@ -3326,49 +3341,4 @@ void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
          }
       }
    }
-}
-
-
-// If cyclic peptide search, first walk through scans get get list of MS2 and MS3 scans and masses
-// This will only work for files where MS3 scans follow MS2 scans, 1 to 1.
-void CometSearchManager::ReadFileHeaders(MSReader &mstReader)
-{
-   int scNum = 0;
-   int iLastScan = 0;
-   bool bFirst = true;
-   Spectrum mstSpectrum;
-
-
-   while (1)
-   {
-      SpecHeaderStruct vTmp;
-
-      if (bFirst)
-      {
-         mstReader.readFile(g_staticParams.inputFile.szFileName, mstSpectrum, scNum);
-         bFirst = false;
-         iLastScan = mstReader.getLastScan();
-      }
-      else
-         mstReader.readFile(NULL, mstSpectrum);
-
-      vTmp.iMSLevel = mstSpectrum.getMsLevel();
-      vTmp.iScanNumber = mstSpectrum.getScanNumber();
-      vTmp.dMZ = mstSpectrum.getMZ();
-
-      if (vTmp.iScanNumber == 0)
-         break;
-
-      if (mstSpectrum.sizeZ() > 0)
-        vTmp.iCharge = mstSpectrum.atZ(0).z;
-      else
-        vTmp.iCharge = 0;
-
-      g_pvSpecHeader.push_back(vTmp);
-
-      if (vTmp.iScanNumber  == iLastScan)
-         break;
-   }
-
-   CometPreprocess::Reset();
 }
