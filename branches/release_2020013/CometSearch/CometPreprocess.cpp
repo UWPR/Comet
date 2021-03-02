@@ -1451,6 +1451,8 @@ void CometPreprocess::GetTopIons(double *pdTmpRawData,
             {
                dLowestInten = (pTmpSpData+ii)->dIntensity;
                iLowestIntenIndex=ii;
+               if (dLowestInten == 0.0)
+                  break;
             }
          }
       }
