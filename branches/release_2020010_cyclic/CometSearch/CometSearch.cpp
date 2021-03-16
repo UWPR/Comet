@@ -2120,7 +2120,11 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
 
                      // account for intact molecule with cyclic neutral loss
                      if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
-                        _vuiBinnedIonMasses.push_back(BIN(dCalcPepMass - g_staticParams.options.dCyclicNL));
+                     {
+                        int iTmp = BIN(dCalcPepMass - g_staticParams.options.dCyclicNL);
+                        if (iTmp > 0)
+                           _vuiBinnedIonMasses.push_back(iTmp);
+                     }
 
                      if (bFullLengthSequence) // ms2, calculate all cyclic ions
                      {
@@ -2157,7 +2161,11 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
 
                         // add intact cyclic NL
                         if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
-                           _vuiBinnedIonMasses.push_back(BIN(dCalcPepMass - g_staticParams.options.dCyclicNL));
+                        {
+                           int iTmp = BIN(dCalcPepMass - g_staticParams.options.dCyclicNL);
+                           if (iTmp > 0)
+                              _vuiBinnedIonMasses.push_back(iTmp);
+                        }
 
                         for (unsigned int x = iStartPos; x < iEndPos; x++)
                         {
@@ -2330,7 +2338,7 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                         }
                      }
 
-// FIX
+// FIX cyclic decoys!!
 //                   XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, 0,
 //                         dCalcPepMass, true, iWhichQuery, iLenPeptide, iLenProtein, piVarModSites, &dbe);
                   }
@@ -3076,7 +3084,6 @@ bool CometSearch::CheckEnzymeTermini(const char *szProteinSeq,
                || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset2])
                   && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
       }
-
 
       if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)      // Check full enzyme search.
       {
