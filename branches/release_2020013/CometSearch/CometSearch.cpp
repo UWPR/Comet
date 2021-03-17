@@ -1291,57 +1291,58 @@ bool CometSearch::IndexSearch(void)
          // sort and report results by xcorr; E-value calculation too expensive for real-time search
          std::sort((*it)->_pResults, (*it)->_pResults + iNumMatchedPeptides, CometPostAnalysis::SortFnXcorr);
 
-         for (int ii = 0; ii < iNumMatchedPeptides; ii++)  // loop through all hits to this one spectrum query
+         std::vector<ProteinEntryStruct>::iterator itProt;
+         bool bPrintDecoyPrefix = false;
+
+         // Note peptides can be from target or internal decoy. If peptide is from a target protein,
+         // Comet will only report target protein matches and not internal decoy protein matches.
+         // Decoy proteins only reported for peptides that are exclusively decoy matches.
+         if ((*it)->_pResults[0].pWhichProtein.size() > 0)
+            itProt = (*it)->_pResults[0].pWhichProtein.begin();   // list of target proteins
+         else
          {
-            std::vector<ProteinEntryStruct>::iterator itProt;
-            bool bPrintDecoyPrefix = false;
-
-            // Note peptides can be from target or internal decoy. If peptide is from a target protein,
-            // Comet will only report target protein matches and not internal decoy protein matches.
-            // Decoy proteins only reported for peptides that are exclusively decoy matches.
-            if ((*it)->_pResults[ii].pWhichProtein.size() > 0)
-               itProt = (*it)->_pResults[ii].pWhichProtein.begin();   // list of target proteins
-            else
-            {
-               itProt = (*it)->_pResults[ii].pWhichDecoyProtein.begin();  // list of decoy proteins
-               bPrintDecoyPrefix = true;
-            }
-
-            if (itProt->lWhichProtein > -1)
-            {
-               long lSize;
-               vector<comet_fileoffset_t> vOffsets;
-
-               comet_fseek(fp, itProt->lWhichProtein, SEEK_SET);
-               fread(&lSize, sizeof(long), 1, fp);  // read count of protein offsets that this peptide matches to
-
-               for (long x = 0; x < lSize; x++)  // loop through this count and read each file offset for each protein name
-               {
-                  comet_fileoffset_t tmpoffset;
-                  fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fp);
-                  vOffsets.push_back(tmpoffset);
-               }
-               for (long x = 0; x < lSize; x++)  // now given each protein name offset, seek to that position and read protein name
-               {
-                  char szTmp[WIDTH_REFERENCE];
-                  comet_fseek(fp, vOffsets.at(x), SEEK_SET);
-                  fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fp);
-                  if (bPrintDecoyPrefix)
-                     (*it)->_pResults[ii].strSingleSearchProtein += g_staticParams.szDecoyPrefix;
-                  (*it)->_pResults[ii].strSingleSearchProtein += szTmp;
-                  if (x < lSize - 1)
-                     (*it)->_pResults[ii].strSingleSearchProtein += " : ";
-               }
-            }
-/*
-            printf("OK  scan %d, pep %s, xcorr %f, matchcount %d, prot %s\n",
-                  (*it)->_spectrumInfoInternal.iScanNumber,
-                  (*it)->_pResults[ii].szPeptide,
-                  (*it)->_pResults[ii].fXcorr,
-                  (*it)->iMatchPeptideCount,
-                  (*it)->_pResults[ii].strSingleSearchProtein.c_str()); fflush(stdout);
-*/
+            itProt = (*it)->_pResults[0].pWhichDecoyProtein.begin();  // list of decoy proteins
+            bPrintDecoyPrefix = true;
          }
+
+         if (itProt->lWhichProtein > -1)
+         {
+            long lSize;
+            vector<comet_fileoffset_t> vOffsets;
+
+            comet_fseek(fp, itProt->lWhichProtein, SEEK_SET);
+            fread(&lSize, sizeof(long), 1, fp);  // read count of protein offsets that this peptide matches to
+
+            if (lSize > MAX_PROTEINS)
+               lSize = MAX_PROTEINS;
+
+            for (long x = 0; x < lSize; x++)  // loop through this count and read each file offset for each protein name
+            {
+               comet_fileoffset_t tmpoffset;
+               fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fp);
+               vOffsets.push_back(tmpoffset);
+            }
+            for (long x = 0; x < lSize; x++)  // now given each protein name offset, seek to that position and read protein name
+            {
+               char szTmp[WIDTH_REFERENCE];
+               comet_fseek(fp, vOffsets.at(x), SEEK_SET);
+               fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fp);
+               if (bPrintDecoyPrefix)
+                  (*it)->_pResults[0].strSingleSearchProtein += g_staticParams.szDecoyPrefix;
+               (*it)->_pResults[0].strSingleSearchProtein += szTmp;
+               if (x < lSize - 1)
+                  (*it)->_pResults[0].strSingleSearchProtein += " : ";
+            }
+         }
+
+/*
+         printf("OK  scan %d, pep %s, xcorr %f, matchcount %d, prot %s\n",
+               (*it)->_spectrumInfoInternal.iScanNumber,
+               (*it)->_pResults[0].szPeptide,
+               (*it)->_pResults[0].fXcorr,
+               (*it)->iMatchPeptideCount,
+               (*it)->_pResults[0].strSingleSearchProtein.c_str()); fflush(stdout);
+*/
       }
    }
 

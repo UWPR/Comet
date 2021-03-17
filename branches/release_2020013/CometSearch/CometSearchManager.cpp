@@ -2642,7 +2642,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       iSize = g_staticParams.options.iNumStored;
 
    // simply take top xcorr peptide as E-value calculation too expensive
-   if (iSize > 1) {
+   if (iSize > 1)
+   {
       std::sort(g_pvQuery.at(0)->_pResults, g_pvQuery.at(0)->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
 
