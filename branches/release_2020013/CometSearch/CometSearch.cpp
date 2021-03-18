@@ -3528,8 +3528,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    {
       if (dXcorr > pQuery->dLowestXcorrScore)
       {
-         // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL
-         if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL && !bDecoyPep)
+         // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL and no internal decoys
+         if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL && g_staticParams.options.iDecoySearch == 0)
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
                   dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
