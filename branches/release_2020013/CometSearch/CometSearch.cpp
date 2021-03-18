@@ -1278,7 +1278,7 @@ bool CometSearch::IndexSearch(void)
       }
    }
 
-   //for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it) // g_pvQuery is always size 1 here; for loop is useless
+// for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it) // g_pvQuery is always size 1 here; for loop is useless
    vector<Query*>::iterator it = g_pvQuery.begin();
    {
       int iNumMatchedPeptides;

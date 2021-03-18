@@ -82,6 +82,7 @@
 
                SearchMgr.InitializeSingleSpectrumSearch();
 
+iFirstScan = iLastScan = 8032;
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
                {
                   var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
@@ -161,17 +162,21 @@
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
                         // do not decode peptide/proteins strings unless xcorr>0
-                        if (xcorr >= 0)
+                        if (xcorr > 0)
                         {
-                           if ((iScanNumber % 100) == 0)
+                           if ((iScanNumber % 1) == 0)
                            {
                               if (protein.Length > 10)
                                  protein = protein.Substring(0, 10);  // trim to avoid printing long protein description string
 
+                              Console.WriteLine("{0}\t{1}\t{2}\t{3:0.0000}\t{4:0.0000}\t{5}\t{6}\t{7}",
+                                 iScanNumber, peptide, protein, xcorr, dPepMass, iIonsMatch, iIonsTotal, iPass);
+
+/*
                               Console.WriteLine("pass {12}\t{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.0000}\t{8}\t{10}/{11}",
                                  iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein,
                                  xcorr, watch.ElapsedMilliseconds, dPepMass, iIonsMatch, iIonsTotal, iPass);
-/*
+
                               foreach (var myFragment in matchingFragments)
                               {
                                  Console.WriteLine("{0:0000.0000} {1:0.0} {2} {3}",
