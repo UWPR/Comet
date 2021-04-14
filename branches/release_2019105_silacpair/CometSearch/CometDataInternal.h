@@ -811,7 +811,9 @@ extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 // This struct is allocated for each spectrum/charge combination
 struct Query
 {
+   int   piOrigHisto[HISTO_SIZE];  // histogram before internal decoys added 
    int   iXcorrHistogram[HISTO_SIZE];
+   double pdCumulativeHistogram[HISTO_SIZE];
    int   iHistogramCount;   // # of entries in histogram
    float fPar[4];           // parameters of LMA regression
 
@@ -857,7 +859,11 @@ struct Query
    Query()
    {
       for (int i=0; i < HISTO_SIZE; i++)
+      {
          iXcorrHistogram[i] = 0;
+         piOrigHisto[i] = 0;
+         pdCumulativeHistogram[i] = 0.0;
+      }
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;

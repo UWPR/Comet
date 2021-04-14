@@ -99,7 +99,15 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "next_aa\t");
    fprintf(fpout, "protein\t");
    fprintf(fpout, "protein_count\t");
-   fprintf(fpout, "modifications\n");
+   fprintf(fpout, "modifications\t");
+   fprintf(fpout, "orig_histogram\t");
+   fprintf(fpout, "withdecoys_histogram\t");
+   fprintf(fpout, "log_cumulative\t");
+   fprintf(fpout, "intercept\t");
+   fprintf(fpout, "slope\t");
+   fprintf(fpout, "start_xcorr\t");
+   fprintf(fpout, "next_xcorr\t");
+   fprintf(fpout, "max_xcorr\n");
 
 #endif
 }
@@ -547,6 +555,35 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
 
+         for (int i=0; i<HISTO_SIZE; i++) //xcorr histo
+         {
+            if (i>0)
+               fprintf(fpout, ",");
+            fprintf(fpout, "%d", pQuery->piOrigHisto[i]);
+         }
+
+         fprintf(fpout, "\t");
+         for (int i=0; i<HISTO_SIZE; i++) //xcorr histo
+         {
+            if (i>0)
+               fprintf(fpout, ",");
+            fprintf(fpout, "%d", pQuery->iXcorrHistogram[i]);
+         }
+
+         fprintf(fpout, "\t");
+         for (int i=0; i<HISTO_SIZE; i++) //log10 cumulative distribution
+         {
+            if (i>0)
+               fprintf(fpout, ",");
+            fprintf(fpout, "%0.2f", pQuery->pdCumulativeHistogram[i]);
+         }
+
+         fprintf(fpout, "\t");
+         fprintf(fpout, "%f\t", pQuery->fPar[0]); //intercept
+         fprintf(fpout, "%f\t", pQuery->fPar[1]); //slope
+         fprintf(fpout, "%d\t", (int)pQuery->fPar[2]); //start_xcorr
+         fprintf(fpout, "%d\t", (int)pQuery->fPar[3]); //next_xcorr
+         fprintf(fpout, "%d",   (int)pQuery->siMaxXcorr); //max_xcorr
          fprintf(fpout, "\n");
       }
    }

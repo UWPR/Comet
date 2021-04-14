@@ -55,6 +55,7 @@ private:
    static bool CalculateEValue(int iWhichQuery);
    static bool GenerateXcorrDecoys(int iWhichQuery);
    static void LinearRegression(int *pHistogram,
+                                double *pdCumulative,
                                 double *dSlope,
                                 double *dIntercept,
                                 int *iMaxCorr,
