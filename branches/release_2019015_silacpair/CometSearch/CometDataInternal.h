@@ -812,6 +812,7 @@ extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 struct Query
 {
    int   piOrigHisto[HISTO_SIZE];  // histogram before internal decoys added 
+   int   piAfterDecoyHisto[HISTO_SIZE];  // histogram after internal decoys added 
    int   iXcorrHistogram[HISTO_SIZE];
    double pdCumulativeHistogram[HISTO_SIZE];
    int   iHistogramCount;   // # of entries in histogram
@@ -862,6 +863,7 @@ struct Query
       {
          iXcorrHistogram[i] = 0;
          piOrigHisto[i] = 0;
+         piAfterDecoyHisto[i] = 0;
          pdCumulativeHistogram[i] = 0.0;
       }
 

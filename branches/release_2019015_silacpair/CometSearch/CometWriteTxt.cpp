@@ -563,11 +563,11 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          }
 
          fprintf(fpout, "\t");
-         for (int i=0; i<HISTO_SIZE; i++) //xcorr histo
+         for (int i=0; i<HISTO_SIZE; i++) //xcorr histo after decoys
          {
             if (i>0)
                fprintf(fpout, ",");
-            fprintf(fpout, "%d", pQuery->iXcorrHistogram[i]);
+            fprintf(fpout, "%d", pQuery->piAfterDecoyHisto[i]);
          }
 
          fprintf(fpout, "\t");

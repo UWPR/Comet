@@ -445,6 +445,9 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
       }
    }
 
+   for (i=0; i<HISTO_SIZE; i++)
+      pQuery->piAfterDecoyHisto[i] = piHistogram[i];
+
    LinearRegression(piHistogram, pdCumulative, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
 
    pQuery->fPar[0] = (float)dIntercept;  // b
@@ -493,6 +496,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
       }
    }
 
+
    return true;
 }
 
@@ -525,18 +529,22 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    iMaxCorr = i;
 
    iNextCorr =0;
+   bool bFoundFirstNonZeroEntry = false;
+
    for (i=0; i<iMaxCorr; i++)
    {
-      if (piHistogram[i]==0)
+      if (piHistogram[i] == 0 && bFoundFirstNonZeroEntry)
       {
          // register iNextCorr if there's a histo value of 0 consecutively
-         if (piHistogram[i+1]==0 || i+1 == iMaxCorr)
+         if (piHistogram[i+1] == 0 || i+1 == iMaxCorr)
          {
             if (i>0)
                iNextCorr = i-1;
             break;
          }
       }
+      if (piHistogram[i] != 0)
+         bFoundFirstNonZeroEntry = true;
    }
 
    if (i==iMaxCorr)
@@ -570,11 +578,24 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       }
    }
 
+/*
    iStartCorr = 0;
    if (iNextCorr >= 30)
       iStartCorr = (int)(iNextCorr - iNextCorr*0.25);
    else if (iNextCorr >= 15)
       iStartCorr = (int)(iNextCorr - iNextCorr*0.5);
+*/
+
+   iStartCorr = iNextCorr - 5;
+   int iNumZeroes = 0;
+   for (i=iStartCorr; i<=iNextCorr; i++)
+      if (pdCumulative[i] == 0)
+         iNumZeroes++;
+
+   iStartCorr -= iNumZeroes;
+
+   if (iStartCorr < 0)
+      iStartCorr = 0;
 
    Mx=My=a=b=0.0;
 
@@ -722,6 +743,9 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   break;
             }
 
+            int x, y;
+            int iThresh;
+
             for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
             {
                dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
@@ -732,10 +756,11 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
                   if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
-                     int x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
+                     x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
+
                      if (pQuery->ppfSparseFastXcorrData[x] != NULL)
                      {
-                        int y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
+                        y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
                         dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
                      }
                   }
@@ -754,6 +779,46 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                      logerr(szErrorMsg);
                      return false;
+                  }
+
+                  // add in the paired fragments to decoys
+                  if (g_staticParams.variableModParameters.bSilacPair)
+                  {
+                     iThresh = i % (3 + iWhichIonSeries); // start residue position to add paired peaks
+
+                     dFragmentIonMass = (dFragmentIonMass + 8.014199 + (ctCharge-1)*PROTON_MASS)/ctCharge;
+
+                     if (j >= iThresh && dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
+                     {
+                        iFragmentIonMass = BIN(dFragmentIonMass);
+
+                        if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
+                        {
+                           x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
+
+                           if (pQuery->ppfSparseFastXcorrData[x] != NULL)
+                           {
+                              y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
+                              dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
+                           }
+                        }
+                        else if (iFragmentIonMass > pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
+                        {
+                           char szErrorMsg[256];
+                           sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
+                                 dFragmentIonMass,
+                                 iFragmentIonMass,
+                                 pQuery->_spectrumInfoInternal.iArraySize,
+                                 pQuery->_pepMassInfo.dExpPepMass,
+                                 pQuery->_spectrumInfoInternal.iScanNumber,
+                                 ctCharge);
+
+                           string strErrorMsg(szErrorMsg);
+                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                           logerr(szErrorMsg);
+                           return false;
+                        }
+                     }
                   }
                }
             }
