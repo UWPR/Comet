@@ -506,7 +506,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    double b, a;
    double SumX, SumY;   // Sum of X and Y values to calculate mean.
 
-   double dCummulative[HISTO_SIZE];  // Cummulative frequency at each xcorr value.
+   double pdCumulative[HISTO_SIZE];  // Cummulative frequency at each xcorr value.
 
    int i;
    int iNextCorr;    // 2nd best xcorr index
@@ -523,18 +523,22 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    iMaxCorr = i;
 
    iNextCorr =0;
+   bool bFoundFirstNonZeroEntry = false;
+
    for (i=0; i<iMaxCorr; i++)
    {
-      if (piHistogram[i]==0)
+      if (piHistogram[i] == 0 && bFoundFirstNonZeroEntry)
       {
          // register iNextCorr if there's a histo value of 0 consecutively
-         if (piHistogram[i+1]==0 || i+1 == iMaxCorr)
+         if (piHistogram[i+1] == 0 || i+1 == iMaxCorr)
          {
             if (i>0)
                iNextCorr = i-1;
             break;
          }
       }
+      if (piHistogram[i] != 0)
+         bFoundFirstNonZeroEntry = true;
    }
 
    if (i==iMaxCorr)
@@ -544,27 +548,48 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
          iNextCorr = iMaxCorr-2;
    }
 
-   // Create cummulative distribution function from iNextCorr down, skipping the outliers.
-   dCummulative[iNextCorr] = piHistogram[iNextCorr];
+   // Create cumulative distribution function from iNextCorr down, skipping the outliers.
+   pdCumulative[iNextCorr] = piHistogram[iNextCorr];
    for (i=iNextCorr-1; i>=0; i--)
    {
-      dCummulative[i] = dCummulative[i+1] + piHistogram[i];
+      pdCumulative[i] = pdCumulative[i+1] + piHistogram[i];
       if (piHistogram[i+1] == 0)
-         dCummulative[i+1] = 0.0;
+         pdCumulative[i+1] = 0.0;
    }
 
    // log10
    for (i=iNextCorr; i>=0; i--)
    {
-      piHistogram[i] = (int)dCummulative[i];  // First store cummulative in histogram.
-      dCummulative[i] = log10(dCummulative[i]);
+      piHistogram[i] = (int)pdCumulative[i];  // First store cumulative in histogram.
+      if (pdCumulative[i] > 0.0)
+         pdCumulative[i] = log10(pdCumulative[i]);
+      else
+      {
+         if (pdCumulative[i+1] > 0.0)
+            pdCumulative[i] = log10(pdCumulative[i+1]);
+         else
+            pdCumulative[i] = 0;
+      }
    }
 
+/*
    iStartCorr = 0;
    if (iNextCorr >= 30)
       iStartCorr = (int)(iNextCorr - iNextCorr*0.25);
    else if (iNextCorr >= 15)
       iStartCorr = (int)(iNextCorr - iNextCorr*0.5);
+*/
+
+   iStartCorr = iNextCorr - 5;
+   int iNumZeroes = 0;
+   for (i=iStartCorr; i<=iNextCorr; i++)
+      if (pdCumulative[i] == 0)
+         iNumZeroes++;
+
+   iStartCorr -= iNumZeroes;
+
+   if (iStartCorr < 0)
+      iStartCorr = 0;
 
    Mx=My=a=b=0.0;
 
@@ -578,7 +603,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       {
          if (piHistogram[i] > 0)
          {
-            SumY += (float)dCummulative[i];
+            SumY += (float)pdCumulative[i];
             SumX += i;
             iNumPoints++;
          }
@@ -595,13 +620,13 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       // Calculate sum of squares.
       for (i=iStartCorr; i<=iNextCorr; i++)
       {
-         if (dCummulative[i] > 0)
+         if (pdCumulative[i] > 0)
          {
             double dX;
             double dY;
 
             dX = i - Mx;
-            dY = dCummulative[i] - My;
+            dY = pdCumulative[i] - My;
 
             Sx  += dX*dX;
             Sxy += dX*dY;
