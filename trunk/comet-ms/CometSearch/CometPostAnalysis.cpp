@@ -385,6 +385,7 @@ bool CometPostAnalysis::SortFnSp(const Results &a,
 {
    if (a.fScoreSp > b.fScoreSp)
       return true;
+
    return false;
 }
 
@@ -393,13 +394,10 @@ bool CometPostAnalysis::SortFnXcorr(const Results &a,
                                     const Results &b)
 {
    if (a.fXcorr > b.fXcorr)
-   {
       return true;
-   }
    else if (a.fXcorr == b.fXcorr && strcmp(a.szPeptide, b.szPeptide) < 0)
-   {
       return true;
-   }
+
    return false;
 }
 
@@ -417,6 +415,7 @@ bool CometPostAnalysis::SortFnMod(const Results &a,
       else if (a.piVarModSites[i] > b.piVarModSites[i])
          return false;
    }
+
    return false;
 }
 

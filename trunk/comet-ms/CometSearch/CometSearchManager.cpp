@@ -454,16 +454,42 @@ static bool ValidateOutputFormat()
    return true;
 }
 
+
 static bool ValidateSequenceDatabaseFile()
 {
    FILE *fpcheck;
+   char szErrorMsg[SIZE_ERROR];
+
+#ifndef WIN32
+   // do a quick test if specified file is a directory
+   struct stat st;
+   stat(g_staticParams.databaseInfo.szDatabase, &st );
+
+   if (S_ISDIR( st.st_mode )) 
+   {
+      sprintf(szErrorMsg, " Error - specified database file is a directory: \"%s\".\n",
+            g_staticParams.databaseInfo.szDatabase);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+   if (!(S_ISREG( st.st_mode ) || S_ISLNK( st.st_mode )))
+   {
+      sprintf(szErrorMsg, " Error - specified database file is not a regular file or symlink: \"%s\".\n",
+            g_staticParams.databaseInfo.szDatabase);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+#endif
 
    // Quick sanity check to make sure sequence db file is present before spending
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
+      sprintf(szErrorMsg, " Error (2) - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
             g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -477,7 +503,6 @@ static bool ValidateSequenceDatabaseFile()
 
    if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
    {
-      char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - input database already indexed: \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1977,6 +2002,11 @@ bool CometSearchManager::DoSearch()
       int iTotalSpectraSearched = 0;
       if (bSucceeded)
       {
+         //MH: Allocate memory shared by threads during spectral processing.
+         bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+         if (!bSucceeded)
+            break;
+
          // Allocate memory shared by threads during search
          bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
          if (!bSucceeded)
@@ -1995,7 +2025,7 @@ bool CometSearchManager::DoSearch()
          if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
          {
             char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+            sprintf(szErrorMsg, " Error (3) - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(szErrorMsg);
@@ -2254,7 +2284,7 @@ bool CometSearchManager::DoSearch()
             }
 
             if (g_staticParams.options.bOutputPepXMLFile)
-               CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb);
+               CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb, iTotalSpectraSearched - g_pvQuery.size());
 
             // For mzid output, dump psms as tab-delimited text first then collate results to
             // mzid file at very end due to requirements of this format.
@@ -2495,8 +2525,14 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
    g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
 
-    // Allocate memory shared by threads during search
-   bool bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+   bool bSucceeded;
+   //MH: Allocate memory shared by threads during spectral processing.
+   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+       return bSucceeded;
+
+   // Allocate memory shared by threads during search
+   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
    if (!bSucceeded)
       return bSucceeded;
 
@@ -2561,17 +2597,16 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
 
-// int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
-// double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
-   map<int, double> mapRawSpectrum;
-   bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, mapRawSpectrum);
+   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
+   double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
+   bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
 
    if (!bSucceeded)
       goto cleanup_results;
 
    if (g_pvQuery.empty())
    {
-//    delete[] pdTmpSpectrum;
+      delete[] pdTmpSpectrum;
       return false; // no search to run
    }
 
@@ -2607,7 +2642,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       iSize = g_staticParams.options.iNumStored;
 
    // simply take top xcorr peptide as E-value calculation too expensive
-   if (iSize > 1) {
+   if (iSize > 1)
+   {
       std::sort(g_pvQuery.at(0)->_pResults, g_pvQuery.at(0)->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
 
@@ -2798,11 +2834,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                double mz = (mass + (ctCharge - 1)*PROTON_MASS) / ctCharge;
 
                iTmp = BIN(mz);
-               it = mapRawSpectrum.find(iTmp);
-               if (it != mapRawSpectrum.end())
+               if (iTmp<iArraySize && pdTmpSpectrum[iTmp] > 0.0)
                {
                   Fragment frag;
-                  frag.intensity = it->second;
+                  frag.intensity = pdTmpSpectrum[iTmp];
                   frag.mass = mass;
                   frag.type = ionSeries;
                   frag.number = fragNumber;
@@ -2836,6 +2871,8 @@ cleanup_results:
    // Clean up the input files vector
    g_staticParams.vectorMassOffsets.clear();
    g_staticParams.precursorNLIons.clear();
+
+   delete[] pdTmpSpectrum;
 
    return bSucceeded;
 }

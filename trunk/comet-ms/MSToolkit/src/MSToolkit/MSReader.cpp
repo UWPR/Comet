@@ -1799,7 +1799,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		else s.setActivationMethod(mstNA);
 	}
 
-   if (strstr(scanHeader.filterLine, " sid=")) // OK; hack for Jared
+   if (strstr(scanHeader.filterLine, " sid=")) // OK; hack for "activation_method = SID" filter
       s.setActivationMethod(mstSID);
 
 	if(scanHeader.msLevel>1) {

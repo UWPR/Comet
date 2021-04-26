@@ -40,7 +40,8 @@ CometWritePepXML::~CometWritePepXML()
 
 void CometWritePepXML::WritePepXML(FILE *fpout,
                                    FILE *fpoutd,
-                                   FILE *fpdb)
+                                   FILE *fpdb,
+                                   int iNumSpectraSearched)
 {
    int i;
 
@@ -48,14 +49,14 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
    if (g_staticParams.options.iDecoySearch == 2)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
-         PrintResults(i, 1, fpout, fpdb);
+         PrintResults(i, 1, fpout, fpdb, iNumSpectraSearched);
       for (i=0; i<(int)g_pvQuery.size(); i++)
-         PrintResults(i, 2, fpoutd, fpdb);
+         PrintResults(i, 2, fpoutd, fpdb, iNumSpectraSearched);
    }
    else
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
-         PrintResults(i, 0, fpout, fpdb);
+         PrintResults(i, 0, fpout, fpdb, iNumSpectraSearched);
    }
 
    fflush(fpout);
@@ -419,7 +420,8 @@ void CometWritePepXML::WritePepXMLEndTags(FILE *fpout)
 void CometWritePepXML::PrintResults(int iWhichQuery,
                                     int iPrintTargetDecoy,
                                     FILE *fpout,
-                                    FILE *fpdb)
+                                    FILE *fpdb,
+                                    int iNumSpectraSearched)
 {
    int  i,
         iNumPrintLines,
@@ -486,7 +488,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    fprintf(fpout, " end_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
    fprintf(fpout, " precursor_neutral_mass=\"%0.6f\"", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
    fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.iChargeState);
-   fprintf(fpout, " index=\"%d\"", iWhichQuery+1);
+   fprintf(fpout, " index=\"%d\"", iNumSpectraSearched + iWhichQuery + 1);
 
    if (pQuery->_spectrumInfoInternal.dRTime > 0.0)
       fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", pQuery->_spectrumInfoInternal.dRTime);

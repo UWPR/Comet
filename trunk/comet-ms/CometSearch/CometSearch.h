@@ -135,7 +135,7 @@ private:
                              double *pdAAreverse);
    int CheckDuplicate(int iWhichQuery,
                       int iStartResidue,
-					  int iEndResidue,
+                      int iEndResidue,
                       int iStartPos,
                       int iEndPos,
                       int iFoundVariableMod,

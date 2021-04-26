@@ -54,11 +54,11 @@ CometSearchManagerWrapper::~CometSearchManagerWrapper()
 
 bool CometSearchManagerWrapper::CreateIndex()
 {
-	if (!_pSearchMgr)
-	{
-		return false;
-	}
-	return _pSearchMgr->CreateIndex();
+   if (!_pSearchMgr)
+   {
+      return false;
+   }
+   return _pSearchMgr->CreateIndex();
 }
 
 bool CometSearchManagerWrapper::InitializeSingleSpectrumSearch()

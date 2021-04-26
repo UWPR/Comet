@@ -38,7 +38,8 @@ class CometSearchManager;
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
 #define BIN_MOD_COUNT               10       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9)
 
-#define WIDTH_REFERENCE             512      // size of the protein accession field to store
+#define WIDTH_REFERENCE             512      // length of the protein accession field to store
+#define MAX_PROTEINS                50       // maximum number of proteins to return for each query; for index search only right now
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
@@ -667,15 +668,11 @@ struct StaticParams
       {
          massUtility.pdAAMassParent[i] = 999999.;
          massUtility.pdAAMassFragment[i] = 999999.;
+         staticModifications.pdStaticMods[i] = 0.0;
       }
 
       massUtility.bMonoMassesFragment = 1;
       massUtility.bMonoMassesParent = 1;
-
-      for (int i=0; i<SIZE_MASS; i++)
-      {
-         staticModifications.pdStaticMods[i] = 0.0;
-      }
 
 #ifdef CRUX
       staticModifications.pdStaticMods[(int)'C'] = 57.021464;
@@ -864,8 +861,7 @@ struct Query
 
    Query()
    {
-      for (int i=0; i < HISTO_SIZE; i++)
-         iXcorrHistogram[i] = 0;
+      memset(iXcorrHistogram, 0, sizeof(int)*HISTO_SIZE);
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
@@ -928,14 +924,6 @@ struct Query
       delete[] ppfSparseSpScoreData;
       ppfSparseSpScoreData = NULL;
 
-      for (i=0;i<iFastXcorrDataSize;i++)
-      {
-         if (ppfSparseFastXcorrData[i] != NULL)
-            delete[] ppfSparseFastXcorrData[i];
-      }
-      delete[] ppfSparseFastXcorrData;
-      ppfSparseFastXcorrData = NULL;
-
       if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
             && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
@@ -943,12 +931,24 @@ struct Query
       {
          for (i=0;i<iFastXcorrDataSize;i++)
          {
+            if (ppfSparseFastXcorrData[i] != NULL)
+               delete[] ppfSparseFastXcorrData[i];
             if (ppfSparseFastXcorrDataNL[i]!=NULL)
                delete[] ppfSparseFastXcorrDataNL[i];
          }
          delete[] ppfSparseFastXcorrDataNL;
          ppfSparseFastXcorrDataNL = NULL;
       }
+      else
+      {
+         for (i=0;i<iFastXcorrDataSize;i++)
+         {
+            if (ppfSparseFastXcorrData[i] != NULL)
+               delete[] ppfSparseFastXcorrData[i];
+         }
+      }
+      delete[] ppfSparseFastXcorrData;
+      ppfSparseFastXcorrData = NULL;
 
       _pResults->pWhichProtein.clear();
       if (g_staticParams.options.iDecoySearch == 1)

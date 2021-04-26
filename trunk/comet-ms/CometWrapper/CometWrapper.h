@@ -30,7 +30,7 @@ using namespace CometInterfaces;
 
 namespace CometWrapper {
     public ref class CometSearchManagerWrapper
-	{
+    {
     public:
         CometSearchManagerWrapper();
         virtual ~CometSearchManagerWrapper();
@@ -79,5 +79,5 @@ namespace CometWrapper {
         ICometSearchManager *_pSearchMgr;
         msclr::interop::marshal_context _marshalContext;
         vector<InputFileInfo*>* _pvInputFilesList;
-	};
+    };
 }

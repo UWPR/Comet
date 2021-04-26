@@ -143,7 +143,7 @@ bool CometSearch::RunSearch(int minNumThreads,
       if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
       {
          char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg, " Error - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+         sprintf(szErrorMsg, " Error (1) - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
          string strErrorMsg(szErrorMsg);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
@@ -1278,7 +1278,8 @@ bool CometSearch::IndexSearch(void)
       }
    }
 
-   for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it) // g_pvQuery is always size 1 here; for loop is useless
+// for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it) // g_pvQuery is always size 1 here; for loop is useless
+   vector<Query*>::iterator it = g_pvQuery.begin();
    {
       int iNumMatchedPeptides;
 
@@ -1293,6 +1294,9 @@ bool CometSearch::IndexSearch(void)
 
          for (int ii = 0; ii < iNumMatchedPeptides; ii++)  // loop through all hits to this one spectrum query
          {
+            if (ii > 0 && (*it)->_pResults[ii].fXcorr < (*it)->_pResults[0].fXcorr)  // do this only for peptides that have same top xcorr, could be more than 1
+               break;
+
             std::vector<ProteinEntryStruct>::iterator itProt;
             bool bPrintDecoyPrefix = false;
 
@@ -1315,6 +1319,9 @@ bool CometSearch::IndexSearch(void)
                comet_fseek(fp, itProt->lWhichProtein, SEEK_SET);
                fread(&lSize, sizeof(long), 1, fp);  // read count of protein offsets that this peptide matches to
 
+               if (lSize > MAX_PROTEINS)
+                  lSize = MAX_PROTEINS;
+
                for (long x = 0; x < lSize; x++)  // loop through this count and read each file offset for each protein name
                {
                   comet_fileoffset_t tmpoffset;
@@ -1333,15 +1340,19 @@ bool CometSearch::IndexSearch(void)
                      (*it)->_pResults[ii].strSingleSearchProtein += " : ";
                }
             }
-/*
-            printf("OK  scan %d, pep %s, xcorr %f, matchcount %d, prot %s\n",
-                  (*it)->_spectrumInfoInternal.iScanNumber,
-                  (*it)->_pResults[ii].szPeptide,
-                  (*it)->_pResults[ii].fXcorr,
-                  (*it)->iMatchPeptideCount,
-                  (*it)->_pResults[ii].strSingleSearchProtein.c_str()); fflush(stdout);
-*/
          }
+/*
+         for (int x = 0; x < iNumMatchedPeptides; x++)
+         {
+            printf("OK %d scan %d, pep %s, xcorr %f, mass %f, matchcount %d, prot %s\n", x,
+               (*it)->_spectrumInfoInternal.iScanNumber,
+               (*it)->_pResults[x].szPeptide,
+               (*it)->_pResults[x].fXcorr,
+               (*it)->_pResults[x].dPepMass,
+               (*it)->iMatchPeptideCount,
+               (*it)->_pResults[x].strSingleSearchProtein.c_str()); fflush(stdout);
+         }
+*/
       }
    }
 
@@ -2970,23 +2981,23 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
                }
                return false;
             }
-			else if (g_staticParams.tolerances.iIsotopeError == 7)
-			{
-				double dC13diff = C13_DIFF;
+            else if (g_staticParams.tolerances.iIsotopeError == 7)
+            {
+               double dC13diff = C13_DIFF;
 
-				for (int i = 0; i < iMassOffsetsSize; i++)
-				{
-					double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
+               for (int i = 0; i < iMassOffsetsSize; i++)
+               {
+                  double dTmpDiff = dMassDiff - g_staticParams.vectorMassOffsets[i];
 
-					if ((fabs(dTmpDiff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-						|| (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance) 
-						|| (fabs(dTmpDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
-					{
-						return true;
-					}
-				}
-				return false;
-			}
+                  if ((fabs(dTmpDiff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                        || (fabs(dTmpDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance) 
+                        || (fabs(dTmpDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+                  {
+                     return true;
+                  }
+               }
+               return false;
+            }
             else
             {
                char szErrorMsg[SIZE_ERROR];
@@ -3100,21 +3111,21 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
                }
                return false;
             }
-			else if (g_staticParams.tolerances.iIsotopeError == 7)
-			{
-				double dC13diff = C13_DIFF;
+            else if (g_staticParams.tolerances.iIsotopeError == 7)
+            {
+               double dC13diff = C13_DIFF;
 
-				// Using C13 isotope mass difference here but likely should
-				// be slightly bigger for other elemental contaminents.
+               // Using C13 isotope mass difference here but likely should
+               // be slightly bigger for other elemental contaminents.
 
-				if ((fabs(dMassDiff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-					|| (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
-					|| (fabs(dMassDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
-				{
-					return true;
-				}
-				return false;
-			}
+               if ((fabs(dMassDiff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dMassDiff - dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance)
+                     || (fabs(dMassDiff + dC13diff) <= pQuery->_pepMassInfo.dPeptideMassTolerance))
+               {
+                  return true;
+               }
+               return false;
+            }
             else
             {
                char szErrorMsg[SIZE_ERROR];
@@ -3517,8 +3528,8 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    {
       if (dXcorr > pQuery->dLowestXcorrScore)
       {
-         // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL
-         if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL)
+         // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL and no internal decoys
+         if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL && g_staticParams.options.iDecoySearch == 0)
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
                   dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
@@ -3972,15 +3983,23 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                pTmp.lWhichProtein = dbe->lProteinFilePosition;
                pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
 
-               if (iStartResidue == 0)
-                  pTmp.cPrevAA = '-';
+               if (bDecoyPep)
+               {
+                  pTmp.cPrevAA = szProteinSeq[0];
+                  pTmp.cNextAA = szProteinSeq[iEndPos + 1];
+               }
                else
-                  pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+               {
+                  if (iStartResidue == 0)
+                     pTmp.cPrevAA = '-';
+                  else
+                     pTmp.cPrevAA = szProteinSeq[iStartResidue - 1];
 
-               if (iEndResidue == (int)(dbe->strSeq.length() -1))
-                  pTmp.cNextAA = '-';
-               else
-                  pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+                  if (iEndResidue == (int)(strlen(szProteinSeq) - 1))
+                     pTmp.cNextAA = '-';
+                  else
+                     pTmp.cNextAA = szProteinSeq[iEndResidue + 1];
+               }
 
                pQuery->_pDecoys[i].pWhichDecoyProtein.push_back(pTmp);
 
@@ -4079,39 +4098,34 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                pTmp.lWhichProtein = dbe->lProteinFilePosition;
                pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
 
-               if (iStartResidue == 0)
-                  pTmp.cPrevAA = '-';
+               if (bDecoyPep)
+               {
+                  pTmp.cPrevAA = szProteinSeq[0];
+                  pTmp.cNextAA = szProteinSeq[iEndPos + 1];
+               }
                else
-                  pTmp.cPrevAA = dbe->strSeq[iStartResidue - 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+               {
+                  if (iStartResidue == 0)
+                     pTmp.cPrevAA = '-';
+                  else
+                     pTmp.cPrevAA = szProteinSeq[iStartResidue - 1];
 
-               if (iEndResidue == (int)(dbe->strSeq.length() -1))
-                  pTmp.cNextAA = '-';
-               else
-                  pTmp.cNextAA = dbe->strSeq[iEndResidue + 1];  //must be dbe->strSeq here instead of szProteinSeq because latter could be short decoy
+                  if (iEndResidue == (int)(strlen(szProteinSeq) - 1))
+                     pTmp.cNextAA = '-';
+                  else
+                     pTmp.cNextAA = szProteinSeq[iEndResidue + 1];
+               }
 
                if (bDecoyPep)
                   pQuery->_pResults[i].pWhichDecoyProtein.push_back(pTmp);
                else
                   pQuery->_pResults[i].pWhichProtein.push_back(pTmp);
 
-               // FIX:  figure out what to do with lProteinFilePosition and bDecoyPep
-
                // if duplicate, check to see if need to replace stored protein info
                // with protein that's earlier in database
                if (pQuery->_pResults[i].lProteinFilePosition > dbe->lProteinFilePosition)
                {
                   pQuery->_pResults[i].lProteinFilePosition = dbe->lProteinFilePosition;
-/*
-                  if (iStartPos == 0)
-                     pQuery->_pResults[i].szPrevNextAA[0] = '-';
-                  else
-                     pQuery->_pResults[i].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
-
-                  if (iEndPos == iLenProteinSeqMinus1)
-                     pQuery->_pResults[i].szPrevNextAA[1] = '-';
-                  else
-                     pQuery->_pResults[i].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
-*/
 
                   // also if IL equivalence set, go ahead and copy peptide from first sequence
                   memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pResults[i].iLenPeptide*sizeof(char));

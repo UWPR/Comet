@@ -41,7 +41,7 @@ namespace CometWrapper {
         SRM,
         REFERENCE,
         Unspecified,
-	    MSX
+        MSX
     };
 
     public ref class Peak_T_Wrapper
@@ -70,13 +70,13 @@ namespace CometWrapper {
     };
 
     public ref class MSFileReaderWrapper
-	{
+    {
     public:
         MSFileReaderWrapper();
         virtual ~MSFileReaderWrapper();
         bool ReadPeaks(String^ msFileName, int scanNum, MSSpectrumTypeWrapper msSpectrumType, List<Peak_T_Wrapper^> ^peaks);
         bool ReadPrecursorPeaks(String^ msFileName, int fragmentScanNum, MSSpectrumTypeWrapper msFragmentSpectrumType, List<Peak_T_Wrapper^> ^precursorPeaks, int% ms1ScanNum);
-		
+
     private:
         MSReader* _pMSReader;
         msclr::interop::marshal_context _marshalContext;
