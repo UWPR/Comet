@@ -297,6 +297,20 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
          }
 
+         // for g_staticParams.variableModParameters.bSilacPair
+         bool bIsSilacPair = false;
+         int iCountKBion = 0;   // current count of lysine residues b-ions
+         int iCountKYion = 0;   // current count of lysine residues y ions
+         int iContainsKB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain lyisne
+         int iContainsKY[MAX_PEPTIDE_LEN];   // track list of y-ion fragments that contain lysine, increasing order from end of peptide
+         if (g_staticParams.variableModParameters.bSilacPair)
+         {
+            memset(iContainsKB, 0, pOutput[i].iLenPeptide * sizeof(int));
+            memset(iContainsKY, 0, pOutput[i].iLenPeptide * sizeof(int));
+         }
+
+         int iSign = 1;  // 1=light paired, 2=heavy paired
+
          // Generate pdAAforward for _pResults[0].szPeptide.
          for (ii=0; ii<pOutput[i].iLenPeptide; ii++)
          {
@@ -308,15 +322,40 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             if (g_staticParams.variableModParameters.bVarModSearch)
             {
                if (pOutput[i].piVarModSites[ii] != 0)
+               {
                   dBion += pOutput[i].pdVarModSites[ii];
 
+                  if (pOutput[i].szPeptide[ii] == 'K')  // heavy silac
+                     iSign = -1;
+               }
+
                if (pOutput[i].piVarModSites[iPos] != 0)
+               {
                   dYion += pOutput[i].pdVarModSites[iPos];
+
+                  if (pOutput[i].szPeptide[iPos] == 'K')  // heavy silac
+                     iSign = -1;
+               }
+
             }
 
             pdAAforward[ii] = dBion;
             pdAAreverse[ii] = dYion;
+
+            if (g_staticParams.variableModParameters.bSilacPair)
+            {
+               if (pOutput[i].szPeptide[ii] == 'K')
+                  iCountKBion++;
+               if (pOutput[i].szPeptide[iPos] == 'K')
+                  iCountKYion++;
+
+               iContainsKB[ii] = iCountKBion;
+               iContainsKY[ii] = iCountKYion;
+            }
          }
+
+         if (iCountKBion > 0 || iCountKYion > 0)  // must have lysine to score pairs together
+            bIsSilacPair = true;
 
          for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
          {
@@ -331,6 +370,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   // Gets fragment ion mass.
                   dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
 
+
                   if ( !(dFragmentIonMass <= FLOAT_ZERO))
                   {
                      int iFragmentIonMass = BIN(dFragmentIonMass);
@@ -338,9 +378,12 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
                      fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
 
+
                      if (fSpScore > FLOAT_ZERO)
                      {
                         iMatchedFragmentIonCt++;
+
+//printf("\nOK  %c iMatched %d, z %d, ion %d, mass %f, SpScore %f\n", pOutput[i].szPeptide[iii], iMatchedFragmentIonCt, ctCharge, iWhichIonSeries, dFragmentIonMass, fSpScore);
 
                         // Simple sum intensity.
                         dTmpIntenMatch += fSpScore;
@@ -353,7 +396,43 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                      }
                      else
                      {
-                        ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                        if (!g_staticParams.variableModParameters.bSilacPair)
+                           ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                     }
+
+                     if (bIsSilacPair)
+                     {
+                        if ((iWhichIonSeries == 1 && iContainsKB[iii])  // b-ions
+                              || (iWhichIonSeries == 4 && iContainsKY[iii])) // y-ions
+                        {
+                           int iCountK = 0;
+
+                           if (iWhichIonSeries == 1)
+                              iCountK = iContainsKB[iii];
+                           else if (iWhichIonSeries == 4)
+                              iCountK = iContainsKY[iii];
+
+                           double dNewMass = dFragmentIonMass +  (iSign*8.014199*iCountK / ctCharge);
+
+                           iFragmentIonMass = BIN(dNewMass);
+ 
+                           fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
+
+
+                           if (fSpScore > FLOAT_ZERO)
+                           {
+                              iMatchedFragmentIonCt++;
+//printf("OK3 %c iMatched %d, z %d, ion %d, mass %f, SpScore %f\n", pOutput[i].szPeptide[iii], iMatchedFragmentIonCt, ctCharge, iWhichIonSeries, dNewMass, fSpScore);
+
+                              // Simple sum intensity.
+                              dTmpIntenMatch += fSpScore;
+
+                              // I'm ignoring dConsec contribution of paired fragments here
+                              // if main fragment does not match
+
+                              ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                           }
+                        }
                      }
                   }
                }
