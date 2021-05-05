@@ -823,7 +823,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
             }
 
             int x, y;
-            int iThresh;
 
             for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
             {
@@ -860,14 +859,12 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                      return false;
                   }
 
-                  // add in the paired fragments to decoys
-                  if (g_staticParams.variableModParameters.bSilacPair)
+                  // add in the paired fragments to decoys only for y-ions as if terminal lysine only
+                  if (g_staticParams.variableModParameters.bSilacPair && iWhichIonSeries == ION_SERIES_Y)
                   {
-                     iThresh = i % (3 + iWhichIonSeries); // start residue position to add paired peaks
-
                      dFragmentIonMass = (dFragmentIonMass + 8.014199 + (ctCharge-1)*PROTON_MASS)/ctCharge;
 
-                     if (j >= iThresh && dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
+                     if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
                      {
                         iFragmentIonMass = BIN(dFragmentIonMass);
 

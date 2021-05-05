@@ -36,7 +36,9 @@ class CometSearchManager;
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
-#define BIN_MOD_COUNT               12       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9), precNL (10), silacpair (11)
+
+#define BIN_MOD_COUNT               11       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9), silacpair (10)
+#define BIN_SILACPAIR               10
 
 #define WIDTH_REFERENCE             512      // size of the protein accession field to store
 

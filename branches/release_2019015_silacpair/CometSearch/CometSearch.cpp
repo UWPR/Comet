@@ -1658,7 +1658,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                            if (g_staticParams.variableModParameters.bSilacPair)
                            {
                               if (szProteinSeq[i] == 'K')
-                              iCountKBion++;
+                                 iCountKBion++;
                               if (szProteinSeq[iPosReverse] == 'K')
                                  iCountKYion++;
 
@@ -1689,6 +1689,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                                  if (bIsSilacPair)
                                  {
+                                    _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = 0;
+
                                     if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
                                        || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
                                     {
@@ -1764,11 +1766,9 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                                        if (pbDuplFragment[iVal] == false)
                                        {
-                                          _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][11] = iVal;
+                                          _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = iVal;
                                           pbDuplFragment[iVal] = true;
                                        }
-                                       else
-                                          _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][11] = 0;
                                     }
                                  }
                               }
@@ -1907,6 +1907,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                                  if (bIsSilacPair)
                                  {
+                                    _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = 0;
+
                                     if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
                                        || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
                                     {
@@ -1985,11 +1987,11 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                                        if (pbDuplFragment[iVal] == false)
                                        {
-                                          _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][11] = iVal;
+                                          _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = iVal;
                                           pbDuplFragment[iVal] = true;
                                        }
                                        else
-                                          _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][11] = 0;
+                                          _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = 0;
                                     }
                                  }
 
@@ -3352,7 +3354,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             // consider SILAC light and heavy peaks together here
             if (bIsSilacPair)
             {
-               bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries) + ctLen) + 11);
+               bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries) + ctLen) + BIN_SILACPAIR);
                x = bin / SPARSE_MATRIX_SIZE;
                if (x > iMax || bin == 0 || ppSparseFastXcorrData[x] == NULL) // x should never be > iMax so this is just a safety check
                   continue;
@@ -5858,6 +5860,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                      // bSilacPair assumes all light or all heavy SILAC (binary modification search)
                      if (bIsSilacPair)
                      {
+                        _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = 0;
+
                         if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
                            || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
                         {
@@ -5875,7 +5879,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                               pbDuplFragment[BIN(dNewMass)] = false;
                            }
                         }
-                        _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][11] = 0;
                      }
 
                   }
@@ -5959,11 +5962,11 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                            if (pbDuplFragment[iVal] == false)
                            {
-                              _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][11] = iVal;
+                              _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = iVal;
                               pbDuplFragment[iVal] = true;
                            }
                            else
-                              _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][11] = 0;
+                              _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = 0;
                         }
                      }
 
@@ -6219,6 +6222,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                         // Fine to have other modifications such as OxMet.
                         if (bIsSilacPair)
                         {
+                           _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = 0;
+
                            if ((iWhichIonSeries == 1 && iContainsKB[ctLen])  // b-ions
                               || (iWhichIonSeries == 4 && iContainsKY[ctLen])) // y-ions
                            {
@@ -6236,9 +6241,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                                  pbDuplFragment[BIN(dNewMass)] = false;
                               }
                            }
-
-                           _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][11] = 0;
-
                         }
 
                      }
@@ -6319,11 +6321,9 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                               if (pbDuplFragment[iVal] == false)
                               {
-                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][11] = iVal;
+                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][BIN_SILACPAIR] = iVal;
                                  pbDuplFragment[iVal] = true;
                               }
-                              else
-                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][11] = 0;
                            }
                         }
 
