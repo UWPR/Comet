@@ -164,7 +164,7 @@ public:
       }
 
       // Now wait for all of them to go to sleep
-      while (NumActiveThreads() != 0)
+      while (NumActiveThreads() > 0)
       {
          Threading::ThreadSleep(100);
       }
