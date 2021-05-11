@@ -9,6 +9,66 @@
             <a href="/parameters/parameters_202001/">can be found here</a>.
 
             <ul>
+               <b>release 2020.01 rev. 4 (2020.01.4), release date 2021/05/11</b>
+               <li>Bug fix: for Percolator .pin output, correctly calculate the dM (mass difference)
+               for all lower hit entries. The top hit's dM value was being reported for all lower
+               hits for each spectrum query. Issue and fix reported by D. Goldfarb.
+               <li>Bug fix: address potential ThreadPool sleep issue. Issue identified and fixed
+               by D. Shteynberg.
+            </ul>
+            <ul>
+               <b>release 2020.01 rev. 3 (2020.01.3), release date 2021/03/18</b>
+               <li>Revert use of maps (ala HiXcorr) to spectral arrays for spectral preprocessing.
+               The use of maps had a measurable performance hit under Windows that was
+               especially noticeable for real-time search applications.
+
+               <li> For each
+               "<a href="/parameters/parameters_202001/variable_mod01.php">variable_mod0X</i></a>"
+               parameter, extend the 4th field to allow specifying
+               a minimum (in addition to the maximum) number of modified residues in each
+               peptide. Feature request by J. Mohr.
+
+               <li>In the text output, the xcorr rank column (2nd column) will now correctly
+               handle ties in its rank reporting.
+
+               <li>Extend the maximum length of reported protein accession string from 99 to 511
+               characters. Feature request by L. Liu.
+
+               <li>Real-time search: Comet was inadvertently looping over all PSMs for a
+               spectrum query to retrieve matched protein names. This was unnecessary and
+               caused a performance hit; protein names are now retrieved only for the top
+               scoring peptide(s).
+
+               <li>Bug fix: added a check to see if a directory path was specified as the sequence
+               database. Under linux, if a directory were specified as the database, Comet
+               would simply sit there and not report any error. Thanks to L. Mendoza for
+               reporting this issue.
+
+               <li>Bug fix: report proper flanking residues for a peptide when it is identified in
+               multiple proteins; use the flanking residues from the first protein in the
+               database. Similarly, flanking residues for start methionine clipped sequences
+               were addressed as those were not being handled correctly either.
+
+               <li>Bug fix: for real-time search using Comet's internal decoy peptides, storing
+               and reporting of duplicate peptides, e.g. a peptide that is present in both
+               target and decoy forms, was not being handled correctly; this has been
+               addressed.
+
+               <li>Bug fix: in the pep.xml output, the "index" attribute of the "spectrum_query"
+               element was not being populated correctly. With each spectrum batch, the index
+               value was being reset to 1. This has been corrected.
+
+               <li>Known bug: <a href="https://groups.google.com/g/comet-ms/c/JL9zrbNWcQM">per this thread</a>,
+               the mass difference (dM) column of the Percolator .pin output is always reporting
+               the mass difference of the top hit for all lower ranked hits of a spectrum query.
+            </ul>
+            <ul>
+               <b>release 2020.01 rev. 2 (2020.01.2), release date 2021/01/05</b>
+               <li>Bug fix: Fixed issue where spectra were not being searched. This was due to
+               the poor attempt at a fix in release 2020.01.1 for spectra with all zero
+               intensity peaks.
+            </ul>
+            <ul>
                <b>release 2020.01 rev. 1 (2020.01.1), release date 2020/12/17</b>
 
                <li> For TIMS-TOF mzML files, changed the scan number reporting to be the scan
@@ -75,11 +135,9 @@
                this reduces the index database size and indexing time by nearly half compared
                to indexing a FASTA file composed of target+decoy sequences.
 
-               <li>Add support for reporting all matched proteins in an indexed database search.
-               to indexing a FASTA file composed of target+decoy sequences.
-
-               <li>Add support for reporting all matched proteins in an indexed database search.
-               Previously only one protein name was returned for each peptide identification.
+               <li>Add support for reporting multiple matched proteins in an indexed database search.
+               Previously only one protein name was returned for each peptide identification. Now
+               up to 20 matched/duplicate proteins are stored and reported.
 
                <li>Corrected/changed residue 'O' from Ornithine to Pyrrolysine. This
                entails retiring the

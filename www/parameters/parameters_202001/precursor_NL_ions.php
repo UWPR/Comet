@@ -20,6 +20,9 @@
          the fragment tolerance settings (fragment_bin_tol, fragment_bin_offset, theoretical_fragment_ion)
          apply to the precursor neutral loss peaks.
          <li>The default value is blank/unused if this parameter is missing.
+         <li>A value of "0" or "0.0" will caues Comet to consider the intact precursor peaks (m/z's of the
+         precursor in all fragment charge states) as ions to analyze in the ms/ms scan.
+         <li>Negative mass values will be ignored.
          </ul>
 
          <p>Example:

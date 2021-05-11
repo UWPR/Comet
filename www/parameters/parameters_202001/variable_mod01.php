@@ -32,7 +32,11 @@
                 use "1" for all modifications in set 1, and "2" or all modifications in set 2.
                 Binary groups were added with version 2015.02 rev. 1.
             <li>The fourth entry is an integer specifying the maximum number of modified residues
-                possible in a peptide for this modification entry.
+                possible in a peptide for this modification entry. With release 2020.01 rev. 3, this
+                field has been extended to allow specifying both a mininum and maximum number of
+                modified residues for this modification entry. A single integer, e.g. "3", would
+                specify that up to 3 variable mods are allowed.  Comma separated values, e.g. "2,4"
+                would specify that peptides must have between 2 and 4 of this variable modification.
             <li>The fifth entry specifies the distance the modification is applied to from the
                 respective terminus:
                 <ul>
@@ -56,7 +60,8 @@
                 <li>0 = not forced to be present
                 <li>1 = modification is required 
                 </ul>
-            <li>The eigth entry is an optional fragment neutral loss field. For any fragment ion that
+            <li>The 
+            eigth entry is an optional fragment neutral loss field. For any fragment ion that
                 contain the variable modification, a neutral loss will also be analyzed if the specified
                 neutral loss value is not zero (0.0).
 

@@ -3,7 +3,7 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
-               <li><a href="/release/release_202001/">Release 2020.01, 2020/11/09, last revised 2020/12/17</a></li>
+               <li><a href="/release/release_202001/">Release 2020.01, 2020/11/09, last revised 2021/05/11</a></li>
                <li><a href="/release/release_201901/">Release 2019.01, 2019/08/19, last revised 2020/04/06</a></li>
                <li><a href="/release/release_201801/">Release 2018.01, 2018/04/26, last revised 2019/02/13</a></li>
                <li><a href="/release/release_201701/">Release 2017.01, 2017/10/02, last revised 2018/02/20</a></li>
@@ -19,26 +19,26 @@
       </div>
 
       <div class="post hr">
-         <h2>Comet integration</h2>
+         <h2><a id="software">Comet integration</a></h2>
 
-         <p>Comet is currently or soon-to-be integrated into the following software projects:
+         <p>Comet is currently integrated into the following software projects:
          <ul>
-            <!-- <li><a target="new" href="http://chorusproject.org">Chorus</a> -->
-            <li><a target="new" href="https://www.openms.de/">OpenMS</a>
-            <li><a target="new" href="http://cruxtoolkit.sourceforge.net/">Crux</a>
-            <li><a target="new" href="https://hub.docker.com/r/biodckr/comet/">Bio Docker</a>
-            <li><a target="new" href="http://www.labkey.org">LabKey</a>
-            <li><a target="new" href="http://www.bioprocess.org/massypup/">MASSyPup</a>
+            <li><a target="new" href="http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP">Trans-Proteomic Pipeline (TPP)</a>
             <li><a target="new" href="http://www.patternlabforproteomics.org/">PatternLab</a>
+            <li><a target="new" href="http://www.labkey.org">LabKey</a>
+            <li><a target="new" href="https://www.openms.de">OpenMS</a>
+            <li><a target="new" href="https://crux.ms">Crux</a>
+            <li><a target="new" href="https://github.com/pwilmart/PAW_pipeline/">PAW pipeline</a>
+            <li><a target="new" href="https://hub.docker.com/r/biodckr/comet/">Bio Docker</a>
+            <li><a target="new" href="http://www.bioprocess.org/massypup/">MASSyPup</a>
             <li><a target="new" href="http://prohitsms.com/">ProHits</a>
             <li><a target="new" href="http://compomics.github.io/projects/searchgui.html">SearchGUI</a> and <a target="new" href="http://compomics.github.io/projects/peptide-shaker.html">PeptideShaker</a> 
-            <li><a target="new" href="http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP">Trans-Proteomic Pipeline (TPP)</a>
          </ul>
 
          <p>Comet is a free, open source tool distributed under the
          <a target="new" href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0 license</a>.
-         If you happen to integrate Comet in your software tool/suite, consider sending
-         me a note about it so that I can link to your software here.
+         If you happen to integrate Comet in your software tool/suite or know of other software
+         that includes Comet, consider sending me a note about it so that I can add a link to it here.
 
       </div>
 
