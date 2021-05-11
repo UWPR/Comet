@@ -277,7 +277,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "%0.6f\t", -20.0);
 
-   double dMassDiff = (pQuery->_pepMassInfo.dExpPepMass - pOutput[0].dPepMass) / pOutput[0].dPepMass;
+   double dMassDiff = (pQuery->_pepMassInfo.dExpPepMass - pOutput[iWhichResult].dPepMass) / pOutput[iWhichResult].dPepMass;
    fprintf(fpout, "%0.6f\t", dMassDiff); // dM is normalized mass diff
    fprintf(fpout, "%0.6f\t", abs(dMassDiff)); // absdM
 
