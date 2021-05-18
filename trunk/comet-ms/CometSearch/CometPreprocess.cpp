@@ -48,7 +48,8 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                                                int iLastScan,
                                                int iAnalysisType,
                                                int minNumThreads,
-                                               int maxNumThreads)
+                                               int maxNumThreads,
+					       ThreadPool* tp)
 {
    int iFileLastScan = -1;         // The actual last scan in the file.
    int iScanNumber = 0;
@@ -65,12 +66,10 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    Threading::CreateMutex(&_maxChargeMutex);
 
    // Get the thread pool of threads that will preprocess the data.
-   // NOTE: We are specifying a "maxNumParamsToQueue" to indicate that,
-   // at most, we will only read in and queue "maxNumParamsToQueue"
-   // additional parameters (1 in this case)
-   ThreadPool<PreprocessThreadData *> *pPreprocessThreadPool = new ThreadPool<PreprocessThreadData *>(PreprocessThreadProc,
-         minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
 
+   ThreadPool *pPreprocessThreadPool = tp;
+   
+   
    // Load all input spectra.
    while (true)
    {
@@ -172,12 +171,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                iNumSpectraLoaded++;
                Threading::UnlockMutex(g_pvQueryMutex);
 
-               // When we created the thread pool above, we specified the max number of
-               // additional params to queue. Here, we must call this method if we want
-               // to wait for the queued params to be processed by the threads before we
-               // load any more params.
-               pPreprocessThreadPool->WaitForQueuedParams();
-
+	       
                //-->MH
                //If there are no Z-lines, filter the spectrum for charge state
                //run filter here.
@@ -185,7 +179,8 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                PreprocessThreadData *pPreprocessThreadData =
                   new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
-               pPreprocessThreadPool->Launch(pPreprocessThreadData);
+	       pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProc, pPreprocessThreadData, pPreprocessThreadPool));
+	       
             }
          }
 
@@ -222,12 +217,11 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    }
 
    // Wait for active preprocess threads to complete processing.
-   pPreprocessThreadPool->WaitForThreads();
+
+   pPreprocessThreadPool->wait_on_threads();
 
    Threading::DestroyMutex(_maxChargeMutex);
 
-   delete pPreprocessThreadPool;
-   pPreprocessThreadPool = NULL;
 
    bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
 
@@ -235,14 +229,17 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 }
 
 
-void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData)
+void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData, ThreadPool* tp)
 {
    // This returns false if it fails, but the errors are already logged
    // so no need to check the return value here.
 
    //MH: Grab available array from shared memory pool.
    int i;
+
+   
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
+   tp->wait_for_available_thread();
    for (i=0; i<g_staticParams.options.iNumThreads; i++)
    {
       if (pbMemoryPool[i]==false)
@@ -251,7 +248,6 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
          break;
       }
    }
-   Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
    //MH: Fail-safe to stop if memory isn't available for the next thread.
    //Needs better capture and return?
@@ -260,6 +256,9 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
       printf("Error with memory pool.\n");
       exit(1);
    }
+
+   tp->incrementRunningCount();
+   Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
    //MH: Give memory manager access to the thread.
    pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);
@@ -271,6 +270,13 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
+
+   if (pbMemoryPool[i]) {
+     pbMemoryPool[i] = false;
+   }
+   
+   tp->decrementRunningCount();
+   
 }
 
 

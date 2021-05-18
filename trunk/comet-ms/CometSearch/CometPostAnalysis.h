@@ -38,8 +38,8 @@ class CometPostAnalysis
 public:
    CometPostAnalysis();
    ~CometPostAnalysis();
-   static bool PostAnalysis(int minNumThreads, int maxNumThreads);
-   static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData);
+   static bool PostAnalysis(int minNumThreads, int maxNumThreads, ThreadPool* tp);
+  static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData, ThreadPool* tp);
    static void AnalyzeSP(int i);
    static bool SortFnXcorr(const Results &a,
                            const Results &b);

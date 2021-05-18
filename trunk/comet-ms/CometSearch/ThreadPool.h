@@ -1,5 +1,5 @@
 /*
-   Copyright 2012 University of Washington
+   Copyright (C) 2021 David Shteynberg, Institute for Systems Biology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -14,320 +14,373 @@
    limitations under the License.
 */
 
-///////////////////////////////////////////////////////////////////////////////
-// Templated class for creating a pool of threads that hang around and wait
-// to do work. It should work for both Win32 threads and Posix threads. If the
-// user specifies a max number of threads to allow in the pool, jobs will be
-// queued until a thread is free to do the work.
-//
-// User can specify the following:
-//     * A parameter type to pass to the threads
-//     * Thread function the threads will run
-//     * Minimum number of threads to keep around in the pool
-//     * The maximum number of threads to allow in the pool
-//
-///////////////////////////////////////////////////////////////////////////////
+#ifndef _THREAD_POOL_H_
+#define _THREAD_POOL_H_
+#include <iostream>
 
-#ifndef _THREADPOOL_H
-#define _THREADPOOL_H
-
-#include <vector>
+#include <mutex>
+#include <condition_variable>
 #include <deque>
-#include <stdint.h>
-#include "Threading.h"
-#include "CometStatus.h"
+#include <vector>
+#include <functional>
+#include <chrono>
 
-template<class T> class ThreadManager;
+#include <thread>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#include <process.h>
+#else
+#endif
 
-// This is the pool where the threads reside. New threads are created as
-// needed, but without exceeding the max number specified by the user.
-// Jobs are queued if necessary, until a thread is free to do the work.
-template <class T> class ThreadPool
-{
-public:
-   typedef void (*ThreadProc) (T param);
 
-public:
-   static const int UnlimitedThreads = -1;
+#ifndef _WIN32
+#include <pthread.h>
+#endif
 
-// typedef enum NextThreadState { Run, Sleep, Die } ;
-   enum NextThreadState { Run, Sleep, Die } ;
+#define VERBOSE 0
 
-   ThreadPool(ThreadProc threadProc, int minThreads, int maxThreads, int maxNumParamsToQueue = -1)
-   {
-      _minThreads = minThreads;
-      _maxThreads = maxThreads;
-      _threadProc = threadProc;
-      _maxQueuedParams = maxNumParamsToQueue;
 
-      Threading::CreateMutex(&_poolAccessMutex);
+class  thpldata {
+ public:
+  thpldata() {};
+  void setThreadNum(int i) {
+    thread_no = i;
+  }
 
-      Threading::CreateSemaphore(&_queueParamsSemaphore);
-
-      for (_numCurrThreads=0; _numCurrThreads < _minThreads; _numCurrThreads++)
-      {
-         new ThreadManager<T>(this);
-      }
-   }
-
-   ~ThreadPool()
-   {
-     for (unsigned int i = 0; i < _threads.size(); i++)
-     {
-         _threads[i]->End();
-     }
-
-     Threading::DestroyMutex(_poolAccessMutex);
-
-     Threading::DestroySemaphore(_queueParamsSemaphore);
-   }
-
-   ThreadProc GetThreadProc() { return _threadProc; }
-
-   void Launch(T param)
-   {
-      Threading::LockMutex(_poolAccessMutex);
-      if (!_threads.empty())
-      {
-         ThreadManager<T> *pThreadMgr = _threads.back();
-         _threads.pop_back();
-         Threading::UnlockMutex(_poolAccessMutex);
-         pThreadMgr->Wake(param);
-         return;
-      }
-
-      if (_numCurrThreads < _maxThreads)
-      {
-         new ThreadManager<T>(this);
-         _numCurrThreads++;
-      }
-
-      _params.push_back(param);
-      Threading::UnlockMutex(_poolAccessMutex);
-   }
-
-   NextThreadState RejoinPool(ThreadManager<T> *pThreadMgr)
-   {
-      Threading::LockMutex(_poolAccessMutex);
-
-      // Any parameters queued?  If yes, give it to the thread to process.
-      if (!_params.empty())
-      {
-         T param = _params.front();
-         _params.pop_front();
-         Threading::UnlockMutex(_poolAccessMutex);
-         pThreadMgr->SetParam(param);
-         return ThreadPool<T>::Run;
-      }
-
-      // Have we exceeded the min num threads allowed?  If yes, reduce
-      // the number back down.
-      if (_numCurrThreads > _minThreads)
-      {
-         _numCurrThreads--;
-         Threading::UnlockMutex(_poolAccessMutex);
-         return ThreadPool<T>::Die;
-      }
-
-      // Has there been an error, or has search been cancelled?
-      // If so, we need to kill the thread.
-      if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
-      {
-         _numCurrThreads--;
-         Threading::UnlockMutex(_poolAccessMutex);
-         return ThreadPool<T>::Die;
-      }
-
-      // No params queued; ask thread to go to sleep & wait mode.
-      _threads.push_back(pThreadMgr);
-      Threading::UnlockMutex(_poolAccessMutex);
-      return ThreadPool<T>::Sleep;
-   }
-
-   void WaitForThreads()
-   {
-      // This is not the best solution. Try to think of a better way to
-      // handle this - maybe using a semaphore?
-
-      // Give the threads a chance to start doing work - 1 second at the most!
-      const unsigned long ulMaxTotalWaitMilliseconds = 1000;
-      const unsigned long ulWaitMilliseconds = 10;
-      unsigned long ulElapsedTimeMilliseconds = 0;
-      while (NumActiveThreads() == 0)
-      {
-         if (ulElapsedTimeMilliseconds >= ulMaxTotalWaitMilliseconds)
-         {
-            break;
-         }
-         Threading::ThreadSleep(ulWaitMilliseconds);
-         ulElapsedTimeMilliseconds += ulWaitMilliseconds;
-      }
-
-      // Now wait for all of them to go to sleep
-      while (NumActiveThreads() > 0)
-      {
-         Threading::ThreadSleep(100);
-      }
-   }
-
-   void WaitForQueuedParams()
-   {
-      if (ShouldCheckQueuedParams() && (NumParamsQueued() > _maxQueuedParams))
-      {
-         Threading::WaitSemaphore(_queueParamsSemaphore);
-      }
-   }
-
-   void CheckQueuedParams()
-   {
-       if (ShouldCheckQueuedParams())
-       {
-           if (NumParamsQueued() <= _maxQueuedParams)
-           {
-               QueueMoreParams();
-           }
-       }
-   }
-
-   int NumParamsQueued()
-   {
-      Threading::LockMutex(_poolAccessMutex);
-      int numParamsQueued = (int)_params.size();
-      Threading::UnlockMutex(_poolAccessMutex);
-      return numParamsQueued;
-   }
-
-   int NumActiveThreads()
-   {
-      Threading::LockMutex(_poolAccessMutex);
-      int numActiveThreads = _numCurrThreads - (int)_threads.size();
-      Threading::UnlockMutex(_poolAccessMutex);
-      return numActiveThreads;
-   }
-
-protected:
-   bool ShouldCheckQueuedParams()
-   {
-       // Only check for queued params if we have a valid number for _maxQueuedParams
-       return _maxQueuedParams != -1;
-   }
-
-   void QueueMoreParams()
-   {
-      Threading::SignalSemaphore(_queueParamsSemaphore);
-   }
-
-   ThreadProc                     _threadProc;
-   std::vector<ThreadManager<T>*> _threads;
-   std::deque<T>                  _params;
-   Mutex                          _poolAccessMutex;
-   int                            _maxThreads;
-   int                            _minThreads;
-   int                            _numCurrThreads;
-   int                            _maxQueuedParams;
-   Semaphore                      _queueParamsSemaphore;
+  int thread_no;
+  void* tp;
 };
 
+#ifdef _WIN32
+unsigned int  threadStart(void* ptr); 
+#else
+void* threadStart(void* ptr); 
+#endif  
 
-// Thread manager for individual threads - calls specified thread proc function
-// and takes a prameter of type T. It manages the interactions with the thread
-// pool.
-template<class T> class ThreadManager
+class ThreadPool
 {
-public:
-   static uint32_t ThreadRoutingFunction(void* pParam)
-   {
-      ThreadManager<T> *pThreadMgr = reinterpret_cast<ThreadManager<T>*>(pParam);
+    public:
+  
+  
+  ThreadPool () : shutdown_ (false)
+    {
+      running_count_ = 0;
+    }
+  
+  ThreadPool (int threads) : shutdown_ (false)
+    {
+      // Create the specified number of threads
+      running_count_ = 0;
+      threads_.reserve (threads);
+      fillPool(threads);
+      
+    }
+  
+  void fillPool(int threads) 
+  {
+    thpldata* data = new thpldata();
 
-      // Infinite loop in here until instructed to die.
-      return pThreadMgr->Run();
-   }
-
-   ThreadManager(ThreadPool<T> *pPool)
-   {
-      _endThread = false;
-
-      ThreadManager<T>::_pPool = pPool;
-
-      Threading::CreateSemaphore(&_wakeSemaphore);
-      Threading::CreateSemaphore(&_sleepSemaphore);
-
-      // Begin the thread that is being managed
-      Threading::BeginThread(
-            reinterpret_cast<ThreadProc>(ThreadManager<T>::ThreadRoutingFunction),
-            this,   // Parameter to the thread
-            &_threadIdentifier);
-   }
-
-   ~ThreadManager()
-   {
-      Threading::DestroySemaphore(_wakeSemaphore);
-      Threading::DestroySemaphore(_sleepSemaphore);
-   }
-
-   void SetParam(T param) { ThreadManager::_param = param; }
-
-   T GetParam() { return _param; }
-
-   void Sleep()
-   {
-      Threading::SignalSemaphore(_sleepSemaphore);
-      Threading::WaitSemaphore(_wakeSemaphore);
-   }
-
-   void Wake(T param)
-   {
-      Threading::WaitSemaphore(_sleepSemaphore);
-      SetParam(param);
-      Threading::SignalSemaphore(_wakeSemaphore);
-   }
-
-   void End()
-   {
-      Threading::WaitSemaphore(_sleepSemaphore);
-      _endThread = true;
-      Threading::SignalSemaphore(_wakeSemaphore);
-   }
-
-   uint32_t Run()
-   {
-      typename ThreadPool<T>::NextThreadState nextState;
-      while ((nextState = _pPool->RejoinPool(this)) != ThreadPool<T>::Die)
+#ifdef _WIN32
+    lock_ = CreateMutex( 
+			      NULL,              // default security attributes
+			      FALSE,             // initially not owned
+			      NULL);             // unnamed mutex
+    
+    if (lock_ == NULL) 
       {
-         // Rejoin will set pParam if possible
-         if (nextState == ThreadPool<T>::Sleep)
-         {
-            Sleep();
-         }
-
-         // We've been awoken. First check to see if we should die. If not,
-         // we run the function we're bound to.
-         if (_endThread)
-         {
-             break;
-         }
-
-         (*_pPool->GetThreadProc()) (GetParam());
-
-         // So we don't loop endlessly with the same parameter
-         SetParam(NULL);
-
-         _pPool->CheckQueuedParams();
+	printf("CreateMutex error: %d\n", (int)GetLastError());
+	exit(1);
       }
+    countlock_ = CreateMutex( 
+			      NULL,              // default security attributes
+			      FALSE,             // initially not owned
+			      NULL);             // unnamed mutex
+    
+    if (countlock_ == NULL) 
+      {
+	printf("CreateMutex error: %d\n", (int)GetLastError());
+	exit(1);
+      }
+#else
+    pthread_mutex_init(&lock_, NULL);
+    pthread_mutex_init(&countlock_, NULL);
+#endif
+  
+#ifdef _WIN32
+    HANDLE *pHandle = new HANDLE[threads];
+#else
+    pthread_t *pHandle = new pthread_t[threads];
+#endif
+    
+    threads_.reserve (threads);
+    data_.reserve(threads);
+    for (int i = 0; i < threads; ++i) {
+      
+      data->setThreadNum(i);
+      data->tp = this;
+      data_.push_back(data);
 
-      // The thread exits if the pool won't accept it's rejoin - deleting itself on exit
-      Threading::EndThread();
-      delete this;
-      return 0;
-   }
+      threads_[i] = pHandle[i];
+      
+#ifdef _WIN32
+      threads_[i] = (HANDLE)_beginthreadex(0,0,
+				   &threadStart,
+				   (void*) data_[i],
+				   0,NULL);
 
-protected:
-   T             _param;
-   ThreadPool<T> *_pPool;
-   Semaphore     _sleepSemaphore;
-   Semaphore     _wakeSemaphore;
-   ThreadId      _threadIdentifier;
-   bool          _endThread;
-};
+#else
+      pthread_create(&threads_[i],NULL,threadStart, 
+		     (void*) data_[i]);
+#endif
+    }
+    
+  }
+
+  void wait_on_threads() {
+    while(haveJob())  {
+#ifndef _WIN32
+      pthread_yield();
+#else
+      sched_yield(); 
+#endif  
+    }
+  }
+
+  void wait_for_available_thread() {
+    this->LOCK(&countlock_);
+    while(data_.size() > 0 && running_count_ >= (int)data_.size())  {
+      this->UNLOCK(&countlock_);      
+#ifndef _WIN32
+      pthread_yield();
+#else
+      sched_yield(); 
+#endif
+      this->LOCK(&countlock_);
+    }
+    this->UNLOCK(&countlock_);
+  }
+
+  void drainPool() 
+  {
+    shutdown_ = true;    
+    for (size_t i =0 ; i < threads_.size(); i++)  {
+      delete data_[i];
+      void * ignore = 0;
+#ifdef _WIN32
+     WaitForSingleObject(threads_[i],INFINITE);
+#else
+     pthread_join(threads_[i],&ignore);
+#endif
+    }
+    data_.clear();
+
+  } 
+  
+  ~ThreadPool ()
+    {
+      
+	for (size_t i =0 ; i < threads_.size(); i++)  {
+	  delete data_[i];
+	  void * ignore = 0;
+#ifdef _WIN32
+	  WaitForSingleObject(threads_[i],INFINITE);
+#else
+	  pthread_join(threads_[i],&ignore);
+#endif
+	}
+	data_.clear();
+	
+    }
+
+    void doJob (std::function <void (void)> func)
+    {
+      
+      // Place a job on the queu and unblock a thread
+
+      this->LOCK(&lock_);
+      jobs_.emplace_back (std::move (func));
+      this->UNLOCK(&lock_);
+
+    }
+  
+    void incrementRunningCount() 
+    {
+      this->LOCK(&countlock_);
+      running_count_++;
+      this->UNLOCK(&countlock_);
+    }
+  
+    void decrementRunningCount() 
+    {
+      this->LOCK(&countlock_);
+      running_count_--;
+      this->UNLOCK(&countlock_);
+    }
+
+
+    bool haveJob() {
+      bool rtn;
+      this->LOCK(&lock_);
+      rtn = !jobs_.empty() || running_count_;
+      this->UNLOCK(&lock_);
+      
+      return rtn;
+    }
+
+    int getAvailableThreads(int user) {
+      //Borrowed from Comet
+      int iNumCPUCores;
+#ifdef _WIN32
+      SYSTEM_INFO sysinfo;
+      GetSystemInfo( &sysinfo );
+      iNumCPUCores = sysinfo.dwNumberOfProcessors;
+#else
+      iNumCPUCores= sysconf( _SC_NPROCESSORS_ONLN );
 
 #endif
+
+      iNumCPUCores += user;
+
+      if (iNumCPUCores < 1) iNumCPUCores = 1;
+      return iNumCPUCores;
+
+    }
+
+
+
+void LOCK(
+#ifdef _WIN32
+	  HANDLE* mutex
+#else
+	  pthread_mutex_t* mutex
+#endif
+	  )  {
+  
+#ifdef _WIN32
+  WaitForSingleObject( *mutex,    // handle to mutex
+		       INFINITE); //#include "windows.h"
+#else	
+  pthread_mutex_lock( &*mutex );  //#include <pthread.h>
+#endif 
+}
+
+void UNLOCK(
+#ifdef _WIN32
+	  HANDLE* mutex
+#else
+	  pthread_mutex_t* mutex
+#endif
+	  )  {
+  
+#ifdef _WIN32
+  ReleaseMutex( *mutex );          //#include "windows.h"
+#else	
+  pthread_mutex_unlock( &*mutex ); //#include <pthread.h>
+#endif 
+}
+
+
+  int running_count_;
+  bool shutdown_;
+  std::deque <std::function <void (void)>> jobs_;
+  
+  vector<thpldata*> data_;
+
+#ifdef _WIN32
+
+  HANDLE lock_;
+  HANDLE countlock_;
+  
+  
+  std::vector<HANDLE> threads_;
+    
+    
+#else
+  pthread_mutex_t lock_;
+  pthread_mutex_t countlock_;
+  
+  std::vector<pthread_t> threads_;
+#endif
+
+
+};
+
+
+#ifdef _WIN32
+inline unsigned int  threadStart(LPVOID ptr) 
+#else
+inline void* threadStart(void* ptr) 
+#endif  
+    {
+        std::function <void (void)> job;
+
+	thpldata* data = (thpldata *) ptr; 
+	int i = data->thread_no;
+        ThreadPool* tp = (ThreadPool*)data->tp;
+	while (1)
+        {
+	      tp->LOCK(&tp->lock_);
+	      {
+
+                while (! tp->shutdown_ && tp->jobs_.empty()) {
+					tp->UNLOCK(&tp->lock_);
+#ifndef _WIN32
+					pthread_yield();
+#else
+					sched_yield(); 
+#endif 
+
+					if (tp->threads_.capacity() == 0)
+#ifdef _WIN32
+		    return 1;
+#else
+		    return NULL;
+#endif
+
+					tp->LOCK(&tp->lock_);
+		}
+		   
+
+                if (tp->jobs_.empty ())
+                {
+		  // No jobs to do and we are shutting down
+		  if (VERBOSE)
+                    std::cerr << "Thread " << i << " terminates" << std::endl;
+		  tp->UNLOCK(&tp->lock_);
+#ifdef _WIN32
+		    return 1;
+#else
+		    return NULL;
+#endif
+		    break;
+		  
+		}
+		else {
+		  //std::cerr << "Thread " << i << " does a job" << std::endl;
+		  int sz1 = tp->jobs_.size();
+		  job = std::move (tp->jobs_.front ());
+		  tp->jobs_.pop_front();
+		  int sz2 = tp->jobs_.size();
+		  tp->UNLOCK(&tp->lock_);
+		  // Do the job without holding any locks
+		  try{
+		    job();
+		  }catch (std::exception& e){
+		    cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
+#ifdef _WIN32
+		    return 1;
+#else
+		    return NULL;
+#endif 
+		    break;
+		  }
+		}
+	      
+	      }
+	
+        }
+
+    }
+
+#endif // _THREAD_POOL_H_

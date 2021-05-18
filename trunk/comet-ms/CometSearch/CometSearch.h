@@ -17,6 +17,7 @@
 #ifndef _COMETSEARCH_H_
 #define _COMETSEARCH_H_
 
+
 #include "Common.h"
 #include "CometDataInternal.h"
 
@@ -24,7 +25,8 @@ struct SearchThreadData
 {
    sDBEntry dbEntry;
    bool *pbSearchMemoryPool;
-
+   ThreadPool *tp;
+  
 
    SearchThreadData()
    {
@@ -43,7 +45,7 @@ struct SearchThreadData
    {
       // Mark that the memory is no longer in use.
       // DO NOT FREE MEMORY HERE. Just release pointer.
-      Threading::LockMutex(g_searchMemoryPoolMutex);
+     //      Threading::LockMutex(g_searchMemoryPoolMutex);
 
       if (pbSearchMemoryPool!=NULL)
       {
@@ -54,7 +56,7 @@ struct SearchThreadData
       dbEntry.vectorPeffMod.clear();
       dbEntry.vectorPeffVariantSimple.clear();
 
-      Threading::UnlockMutex(g_searchMemoryPoolMutex);
+      //Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
 };
 
@@ -70,8 +72,8 @@ public:
    static bool RunSearch(int minNumThreads,
                          int maxNumThreads,
                          int iPercentStart,
-                         int iPercentEnd);
-   static void SearchThreadProc(SearchThreadData *pSearchThreadData);
+                         int iPercentEnd, ThreadPool* tp);
+  static void SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPool *tp);
    bool DoSearch(sDBEntry dbe, bool *pbDuplFragment);
 
 private:

@@ -72,8 +72,8 @@ public:
                                         int iLastScan,
                                         int iAnalysisType,
                                         int minNumThreads,
-                                        int maxNumThreads);
-   static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData);
+                                        int maxNumThreads, ThreadPool* tp);
+  static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData, ThreadPool* tp);
    static bool DoneProcessingAllSpectra();
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
