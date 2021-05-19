@@ -271,9 +271,9 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
 
-   if (pbMemoryPool[i]) {
-     pbMemoryPool[i] = false;
-   }
+   // if (pbMemoryPool[i]) {
+   //   pbMemoryPool[i] = false;
+   //}
    
    tp->decrementRunningCount();
    

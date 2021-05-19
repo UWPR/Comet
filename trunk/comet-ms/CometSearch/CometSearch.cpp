@@ -832,7 +832,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
 
 
    Threading::LockMutex(g_searchMemoryPoolMutex);   
-   tp->wait_for_available_thread();
+   //tp->wait_for_available_thread();
      
    for (i=0; i < g_staticParams.options.iNumThreads; i++)
    {
@@ -867,9 +867,9 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    delete pSearchThreadData;
    pSearchThreadData = NULL;
 
-   if (_pbSearchMemoryPool[i]) {
-     _pbSearchMemoryPool[i] = false;
-   }
+   ///if (_pbSearchMemoryPool[i]) {
+   ///  _pbSearchMemoryPool[i] = false;
+   ///}
 
    tp->decrementRunningCount();
 

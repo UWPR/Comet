@@ -139,6 +139,7 @@ class ThreadPool
 
   void wait_on_threads() {
     while(haveJob())  {
+      usleep(1000);
 #ifndef _WIN32
       pthread_yield();
 #else
