@@ -50,7 +50,6 @@ typedef off64_t comet_fileoffset_t;
 
 using namespace std;
 
-#include "ThreadPool.h"
 #include "MSReader.h"
 #include "Spectrum.h"
 #include "MSObject.h"

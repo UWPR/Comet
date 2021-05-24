@@ -102,8 +102,7 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 bool CometSearch::RunSearch(int minNumThreads,
                             int maxNumThreads,
                             int iPercentStart,
-                            int iPercentEnd,
-			    ThreadPool *tp)
+                            int iPercentEnd)
 {
    bool bSucceeded = true;
 
@@ -129,10 +128,15 @@ bool CometSearch::RunSearch(int minNumThreads,
 
       vector<OBOStruct> vectorPeffOBO;
 
+      // Create the thread pool containing g_staticParams.options.iNumThreads,
+      // each hanging around and sleeping until asked to so a search.
+      // NOTE: We don't want to read in ALL the database sequences at once or we
+      // will run out of memory for large databases, so we specify a
+      // "maxNumParamsToQueue" to indicate that, at most, we will only read in
+      // and queue "maxNumParamsToQueue" additional parameters (1 in this case)
+      ThreadPool<SearchThreadData *> *pSearchThreadPool = new ThreadPool<SearchThreadData *>(SearchThreadProc,
+          minNumThreads, maxNumThreads, 1 /*maxNumParamsToQueue*/);
 
-      //Reuse existing ThreadPool
-      ThreadPool *pSearchThreadPool = tp;
-      
       g_staticParams.databaseInfo.uliTotAACount = 0;
       g_staticParams.databaseInfo.iTotalNumProteins = 0;
 
@@ -238,6 +242,11 @@ bool CometSearch::RunSearch(int minNumThreads,
       // Loop through entire database.
       while(!feof(fp))
       {
+         // When we created the thread pool above, we specified the max number of
+         // additional params to queue. Here, we must call this method if we want
+         // to wait for the queued params to be processed by the threads before we
+         // load any more params.
+         pSearchThreadPool->WaitForQueuedParams();
 
          dbe.strName = "";
          dbe.strSeq = "";
@@ -653,10 +662,8 @@ bool CometSearch::RunSearch(int minNumThreads,
             // Now search sequence entry; add threading here so that
             // each protein sequence is passed to a separate thread.
             SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
+            pSearchThreadPool->Launch(pSearchThreadData);
 
-	    pSearchThreadPool->doJob(std::bind(SearchThreadProc, pSearchThreadData, pSearchThreadPool));
-	    
-	    
             bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
             if (!bSucceeded)
                break;
@@ -669,9 +676,10 @@ bool CometSearch::RunSearch(int minNumThreads,
       }
 
       // Wait for active search threads to complete processing.
+      pSearchThreadPool->WaitForThreads();
 
-      pSearchThreadPool->wait_on_threads();
-
+      delete pSearchThreadPool;
+      pSearchThreadPool = NULL;
 
       // Check for errors one more time since there might have been an error
       // while we were waiting for the threads.
@@ -699,7 +707,6 @@ bool CometSearch::RunSearch(int minNumThreads,
          free(szPeffLine);
       }
    }
-
 
    return bSucceeded;
 }
@@ -825,15 +832,11 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
 }
 
 
-void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPool* tp)
+void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData)
 {
    // Grab available array from shared memory pool.
    int i;
-
-
-   Threading::LockMutex(g_searchMemoryPoolMutex);   
-   //tp->wait_for_available_thread();
-     
+   Threading::LockMutex(g_searchMemoryPoolMutex);
    for (i=0; i < g_staticParams.options.iNumThreads; i++)
    {
       if (!_pbSearchMemoryPool[i])
@@ -842,7 +845,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
          break;
       }
    }
-
+   Threading::UnlockMutex(g_searchMemoryPoolMutex);
 
    // Fail-safe to stop if memory isn't available for the next thread.
    // Needs better capture and return?
@@ -852,10 +855,6 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
       exit(1);
    }
 
-   tp->incrementRunningCount();
-
-   Threading::UnlockMutex(g_searchMemoryPoolMutex);
-   
    // Give memory manager access to the thread.
    pSearchThreadData->pbSearchMemoryPool = &_pbSearchMemoryPool[i];
 
@@ -866,13 +865,6 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    sqSearch.DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
    delete pSearchThreadData;
    pSearchThreadData = NULL;
-
-   ///if (_pbSearchMemoryPool[i]) {
-   ///  _pbSearchMemoryPool[i] = false;
-   ///}
-
-   tp->decrementRunningCount();
-
 }
 
 

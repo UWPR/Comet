@@ -1560,7 +1560,7 @@ bool CometSearchManager::CreateIndex()
 bool CometSearchManager::DoSearch()
 {
    char szOut[256];
-   ThreadPool * tp = new ThreadPool();
+
    if (!InitializeStaticParams())
       return false;
 
@@ -1600,8 +1600,6 @@ bool CometSearchManager::DoSearch()
 
    bool bBlankSearchFile = false;
 
-
-   tp->fillPool( g_staticParams.options.iNumThreads);
    if (strlen(g_staticParams.szDIAWindowsFile) > 0)
    {
       FILE *fp;
@@ -2073,12 +2071,11 @@ bool CometSearchManager::DoSearch()
             // IMPORTANT: From this point onwards, because we've loaded some
             // spectra, we MUST "goto cleanup_results" before exiting the loop,
             // or we will create a memory leak!
-	    
+
             bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
                 g_staticParams.options.iNumThreads,  // min # threads
-		g_staticParams.options.iNumThreads,
-		tp); // max # threads
+                g_staticParams.options.iNumThreads); // max # threads
 
             if (!bSucceeded)
                goto cleanup_results;
@@ -2193,7 +2190,7 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Running search..."));
 
             // Now that spectra are loaded to memory and sorted, do search.
-            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd, tp);
+            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
             if (!bSucceeded)
                goto cleanup_results;
 
@@ -2232,7 +2229,7 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
 
             // Sort each entry by xcorr, calculate E-values, etc.
-            bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, tp);
+            bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
             if (!bSucceeded)
                goto cleanup_results;
 
@@ -2577,8 +2574,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    score.matchedIons = 0;
    score.totalIons = 0;
 
-   ThreadPool* tp = new ThreadPool();
-   
    if (iNumPeaks == 0)
       return false;
 
@@ -2616,7 +2611,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    }
 
    bSucceeded = AllocateResultsMem();
-   tp->fillPool( g_staticParams.options.iNumThreads);
+
    if (!bSucceeded)
       goto cleanup_results;
 
@@ -2629,7 +2624,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       g_massRange.bNarrowMassRange = false;
 
    // Now that spectra are loaded to memory and sorted, do search.
-   bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd, tp);
+   bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
 
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
       CometPostAnalysis::AnalyzeSP(0);
@@ -2978,7 +2973,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    FILE *fptr;
    bool bSucceeded;
    char szOut[256];
-   ThreadPool* tp = new ThreadPool();
+
    char szIndexFile[SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
@@ -2997,14 +2992,13 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   tp->fillPool( g_staticParams.options.iNumThreads);
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;
    else
       g_massRange.bNarrowMassRange = false;
 
    if (bSucceeded)
-     bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, 0, 0, tp);
+       bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, 0, 0);
 
    if (!bSucceeded)
    {
