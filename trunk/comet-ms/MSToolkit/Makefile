@@ -41,7 +41,7 @@ SOVER = 82
 RELVER = $(SOVER).0.1
 
 AR_CFLAGS = -O3 -static -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H
-SO_CFLAGS = -O3 -shared -fPIC -g -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H
+SO_CFLAGS = -O3 -shared -fPIC -I. -I$(HEADER_PATH) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H
 LIBS = -lm -lpthread -ldl
 CLEAN_LIBS = libmstoolkitlite.a libmstoolkitlite.so libmstoolkitlite.so.$(SOVER)* libmstoolkit.a libmstoolkit.so libmstoolkit.so.$(SOVER)*
 
