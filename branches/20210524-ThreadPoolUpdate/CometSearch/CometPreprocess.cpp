@@ -171,6 +171,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                iNumSpectraLoaded++;
                Threading::UnlockMutex(g_pvQueryMutex);
 
+               pPreprocessThreadPool->wait_for_available_thread();
 	       
                //-->MH
                //If there are no Z-lines, filter the spectrum for charge state
