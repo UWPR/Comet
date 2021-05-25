@@ -4,9 +4,9 @@ COMETSEARCH =  CometSearch
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-   override CXXFLAGS += -O3 -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
+   override CXXFLAGS += -O3 -std=c++11 -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
 else
-   override CXXFLAGS += -O3 -static -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
+   override CXXFLAGS += -O3 -static -std=c++11 -fpermissive -Wall -Wextra -Wno-char-subscripts -DCURL_STATICLIB -DHTTP_ONLY -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -I$(MSTOOLKIT)/include -I$(COMETSEARCH)
 endif
 
 EXECNAME = comet.exe
