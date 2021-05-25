@@ -507,6 +507,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    double SumX, SumY;   // Sum of X and Y values to calculate mean.
 
    double pdCumulative[HISTO_SIZE];  // Cummulative frequency at each xcorr value.
+   memset(pdCumulative, 0, sizeof(pdCumulative));
 
    int i;
    int iNextCorr;    // 2nd best xcorr index
@@ -522,7 +523,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    }
    iMaxCorr = i;
 
-   iNextCorr =0;
+   iNextCorr = 0;
    bool bFoundFirstNonZeroEntry = false;
 
    for (i=0; i<iMaxCorr; i++)
@@ -550,7 +551,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
    // Create cumulative distribution function from iNextCorr down, skipping the outliers.
    pdCumulative[iNextCorr] = piHistogram[iNextCorr];
-   for (i=iNextCorr-1; i>=0; i--)
+   for (i=iNextCorr-1; i>0; i--)
    {
       pdCumulative[i] = pdCumulative[i+1] + piHistogram[i];
       if (piHistogram[i+1] == 0)
@@ -558,7 +559,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    }
 
    // log10
-   for (i=iNextCorr; i>=0; i--)
+   for (i=iNextCorr; i>0; i--)
    {
       piHistogram[i] = (int)pdCumulative[i];  // First store cumulative in histogram.
       if (pdCumulative[i] > 0.0)
