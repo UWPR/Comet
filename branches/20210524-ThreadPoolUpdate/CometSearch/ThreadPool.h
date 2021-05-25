@@ -139,11 +139,11 @@ class ThreadPool
 
   void wait_on_threads() {
     while(haveJob())  {
-      usleep(1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(1000));
 #ifndef _WIN32
       pthread_yield();
 #else
-      sched_yield(); 
+      std::this_thread::yield();
 #endif  
     }
   }
@@ -155,7 +155,7 @@ class ThreadPool
 #ifndef _WIN32
       pthread_yield();
 #else
-      sched_yield(); 
+      std::this_thread::yield();
 #endif
       this->LOCK(&countlock_);
     }
@@ -329,7 +329,7 @@ inline void* threadStart(void* ptr)
 #ifndef _WIN32
 					pthread_yield();
 #else
-					sched_yield(); 
+               std::this_thread::yield();
 #endif 
 
 					if (tp->threads_.capacity() == 0)
@@ -359,10 +359,8 @@ inline void* threadStart(void* ptr)
 		}
 		else {
 		  //std::cerr << "Thread " << i << " does a job" << std::endl;
-		  int sz1 = tp->jobs_.size();
 		  job = std::move (tp->jobs_.front ());
 		  tp->jobs_.pop_front();
-		  int sz2 = tp->jobs_.size();
 		  tp->UNLOCK(&tp->lock_);
 		  // Do the job without holding any locks
 		  try{
