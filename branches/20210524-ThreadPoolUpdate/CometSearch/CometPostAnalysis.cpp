@@ -43,7 +43,7 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
 
 
 
-   vector<PostAnalysisThreadData*>* thDataVec = new vector<PostAnalysisThreadData*>();
+   //vector<PostAnalysisThreadData*>* thDataVec = new vector<PostAnalysisThreadData*>();
 
    //Reuse existing ThreadPool
    ThreadPool *pPostAnalysisThreadPool = tp;
@@ -51,7 +51,7 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
    for (int i=0; i<(int)g_pvQuery.size(); i++)
    {
       PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
-      thDataVec->push_back(pThreadData);
+      // thDataVec->push_back(pThreadData);
 
       pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool));
 
@@ -71,12 +71,12 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
    
 
    //CLEANUP
-   for (int i=0; i<(int)g_pvQuery.size(); i++)
-   {
-     delete (*thDataVec)[i];
-   }
-   thDataVec->clear();
-   delete thDataVec;
+   //for (int i=0; i<(int)g_pvQuery.size(); i++)
+   //{
+   //  delete (*thDataVec)[i];
+   //}
+   //thDataVec->clear();
+   //delete thDataVec;
    
    
    pPostAnalysisThreadPool = NULL;
@@ -97,7 +97,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    int iQueryIndex = pThreadData->iQueryIndex;
 
    
-   tp->incrementRunningCount();
+   //tp->incrementRunningCount();
 
    AnalyzeSP(iQueryIndex);
 
@@ -116,7 +116,9 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
       }
    }
 
-   tp->decrementRunningCount();
+   delete pThreadData;
+   pThreadData = NULL;
+   //tp->decrementRunningCount();
 }
 
 

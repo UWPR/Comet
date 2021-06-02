@@ -844,6 +844,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    }
 
 
+   
    // Fail-safe to stop if memory isn't available for the next thread.
    // Needs better capture and return?
    if (i == g_staticParams.options.iNumThreads)
@@ -852,9 +853,10 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
       exit(1);
    }
 
-   tp->incrementRunningCount();
-
    Threading::UnlockMutex(g_searchMemoryPoolMutex);
+   //tp->incrementRunningCount();
+
+
    
    // Give memory manager access to the thread.
    pSearchThreadData->pbSearchMemoryPool = &_pbSearchMemoryPool[i];
@@ -871,7 +873,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    ///  _pbSearchMemoryPool[i] = false;
    ///}
 
-   tp->decrementRunningCount();
+   //tp->decrementRunningCount();
 
 }
 

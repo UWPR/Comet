@@ -18,8 +18,9 @@
 #define _THREAD_POOL_H_
 #include <iostream>
 
-#include <mutex>
-#include <condition_variable>
+#include "Threading.h"
+//#include <mutex>
+//#include <condition_variable>
 #include <deque>
 #include <vector>
 #include <functional>
@@ -138,13 +139,50 @@ class ThreadPool
   }
 
   void wait_on_threads() {
+    std::function <void (void)> job;
     while(haveJob())  {
-      std::this_thread::sleep_for(std::chrono::microseconds(1000));
+
+      this->LOCK(&this->lock_);
+      if (this->jobs_.empty () || this->running_count_ < this->threads_.capacity() )
+	{
+	  this->UNLOCK(&this->lock_);
+	  //Threading::ThreadSleep(100);
+	  // When threads are still busy and no jobs to do wait ...
 #ifndef _WIN32
-      pthread_yield();
+	  pthread_yield();
 #else
       std::this_thread::yield();
 #endif  
+	}
+      else {
+	// Threads are busy but there are jobs to do
+	//std::cerr << "Thread " << i << " does a job" << std::endl;
+	int sz1 = this->jobs_.size();
+	job = std::move (this->jobs_.front ());
+	this->jobs_.pop_front();
+	int sz2 = this->jobs_.size();
+	
+	//if (!did_job) 
+	// this->running_count_ ++;
+	
+	this->UNLOCK(&this->lock_);
+	// Do the job without holding any locks
+	try{
+	  job();
+	  //did_job = true;
+	}catch (std::exception& e){
+	  cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
+#ifdef _WIN32
+	  return 1;
+#else
+	  return NULL;
+#endif 
+	  break;
+	}
+	
+      }
+
+
     }
   }
 
@@ -319,13 +357,16 @@ inline void* threadStart(void* ptr)
 	thpldata* data = (thpldata *) ptr; 
 	int i = data->thread_no;
         ThreadPool* tp = (ThreadPool*)data->tp;
+	bool did_job = false;
 	while (1)
         {
 	      tp->LOCK(&tp->lock_);
+	      
 	      {
 
                 while (! tp->shutdown_ && tp->jobs_.empty()) {
 					tp->UNLOCK(&tp->lock_);
+
 #ifndef _WIN32
 					pthread_yield();
 #else
@@ -338,8 +379,13 @@ inline void* threadStart(void* ptr)
 #else
 		    return NULL;
 #endif
-
+		    //sleep some before reacquiring lock
+		    //Threading::ThreadSleep(100);
 					tp->LOCK(&tp->lock_);
+					if  (did_job) {
+					  tp->running_count_ --;
+					  did_job = false;
+					}
 		}
 		   
 
@@ -361,10 +407,15 @@ inline void* threadStart(void* ptr)
 		  //std::cerr << "Thread " << i << " does a job" << std::endl;
 		  job = std::move (tp->jobs_.front ());
 		  tp->jobs_.pop_front();
+
+		  if (!did_job) 
+		    tp->running_count_ ++;
+
 		  tp->UNLOCK(&tp->lock_);
 		  // Do the job without holding any locks
 		  try{
 		    job();
+		    did_job = true;
 		  }catch (std::exception& e){
 		    cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
 #ifdef _WIN32
@@ -374,6 +425,7 @@ inline void* threadStart(void* ptr)
 #endif 
 		    break;
 		  }
+
 		}
 	      
 	      }
@@ -381,5 +433,7 @@ inline void* threadStart(void* ptr)
         }
 
     }
+
+
 
 #endif // _THREAD_POOL_H_

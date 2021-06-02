@@ -1601,7 +1601,7 @@ bool CometSearchManager::DoSearch()
    bool bBlankSearchFile = false;
 
 
-   tp->fillPool( g_staticParams.options.iNumThreads);
+   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
    if (strlen(g_staticParams.szDIAWindowsFile) > 0)
    {
       FILE *fp;
@@ -2616,7 +2616,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    }
 
    bSucceeded = AllocateResultsMem();
-   tp->fillPool( g_staticParams.options.iNumThreads);
+   tp->fillPool(1);
    if (!bSucceeded)
       goto cleanup_results;
 
@@ -2629,7 +2629,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       g_massRange.bNarrowMassRange = false;
 
    // Now that spectra are loaded to memory and sorted, do search.
-   bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd, tp);
+   bSucceeded = CometSearch::RunSearch(1, 1, iPercentStart, iPercentEnd, tp);
 
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
       CometPostAnalysis::AnalyzeSP(0);
@@ -2997,7 +2997,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   tp->fillPool( g_staticParams.options.iNumThreads);
+   tp->fillPool( g_staticParams.options.iNumThreads <= 1 ? 1 : g_staticParams.options.iNumThreads-1);
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;
    else

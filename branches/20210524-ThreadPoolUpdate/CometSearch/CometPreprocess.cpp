@@ -206,6 +206,9 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          }
       }
 
+      if (iTotalScans > g_staticParams.options.iSpectrumBatchSize) break;
+      
+      Threading::LockMutex(g_pvQueryMutex);
       if (CheckExit(iAnalysisType,
                     iScanNumber,
                     iTotalScans,
@@ -213,8 +216,13 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                     mstReader.getLastScan(),
                     iNumSpectraLoaded))
       {
-         break;
+      Threading::UnlockMutex(g_pvQueryMutex);
+	break;
       }
+      else {
+	Threading::UnlockMutex(g_pvQueryMutex);
+      }
+
    }
 
    // Wait for active preprocess threads to complete processing.
@@ -240,7 +248,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
-   tp->wait_for_available_thread();
+   //tp->wait_for_available_thread();
    for (i=0; i<g_staticParams.options.iNumThreads; i++)
    {
       if (pbMemoryPool[i]==false)
@@ -249,7 +257,8 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
          break;
       }
    }
-
+   Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
+   
    //MH: Fail-safe to stop if memory isn't available for the next thread.
    //Needs better capture and return?
    if (i==g_staticParams.options.iNumThreads)
@@ -258,8 +267,8 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
       exit(1);
    }
 
-   tp->incrementRunningCount();
-   Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
+   //tp->incrementRunningCount();
+
 
    //MH: Give memory manager access to the thread.
    pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);
@@ -276,7 +285,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    //   pbMemoryPool[i] = false;
    //}
    
-   tp->decrementRunningCount();
+   //tp->decrementRunningCount();
    
 }
 
