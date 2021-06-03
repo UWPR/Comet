@@ -635,6 +635,13 @@ bool CometSearch::RunSearch(int minNumThreads,
                }
             }
 
+
+	        // Now search sequence entry; add threading here so that
+            // each protein sequence is passed to a separate thread.
+            SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
+
+	    pSearchThreadPool->doJob(std::bind(SearchThreadProc, pSearchThreadData, pSearchThreadPool));
+	    
             g_staticParams.databaseInfo.iTotalNumProteins++;
 
             if (!g_staticParams.options.bOutputSqtStream && !(g_staticParams.databaseInfo.iTotalNumProteins%500))
@@ -650,12 +657,7 @@ bool CometSearch::RunSearch(int minNumThreads,
                logout("\b\b\b\b");
             }
 
-            // Now search sequence entry; add threading here so that
-            // each protein sequence is passed to a separate thread.
-            SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
-
-	    pSearchThreadPool->doJob(std::bind(SearchThreadProc, pSearchThreadData, pSearchThreadPool));
-	    
+       
 	    
             bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
             if (!bSucceeded)
