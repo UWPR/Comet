@@ -99,7 +99,8 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "next_aa\t");
    fprintf(fpout, "protein\t");
    fprintf(fpout, "protein_count\t");
-   fprintf(fpout, "modifications\t");
+   fprintf(fpout, "modifications\n");
+/*
    fprintf(fpout, "orig_histogram\t");
    fprintf(fpout, "withdecoys_histogram\t");
    fprintf(fpout, "log_cumulative\t");
@@ -108,7 +109,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "start_xcorr\t");
    fprintf(fpout, "next_xcorr\t");
    fprintf(fpout, "max_xcorr\n");
-
+*/
 #endif
 }
 
@@ -554,7 +555,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
-
+/*
          for (int i=0; i<HISTO_SIZE; i++) //xcorr histo
          {
             if (i>0)
@@ -584,6 +585,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%d\t", (int)pQuery->fPar[2]); //start_xcorr
          fprintf(fpout, "%d\t", (int)pQuery->fPar[3]); //next_xcorr
          fprintf(fpout, "%d",   (int)pQuery->siMaxXcorr); //max_xcorr
+*/
          fprintf(fpout, "\n");
       }
    }
