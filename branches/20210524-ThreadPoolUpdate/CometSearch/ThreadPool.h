@@ -173,9 +173,9 @@ class ThreadPool
 	}catch (std::exception& e){
 	  cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
 #ifdef _WIN32
-	  return 1;
+	  return;
 #else
-	  return NULL;
+	  return;
 #endif 
 	  break;
 	}
