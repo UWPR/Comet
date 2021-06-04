@@ -635,15 +635,18 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
    // Create cumulative distribution function from iNextCorr down, skipping the outliers.
    pdCumulative[iNextCorr] = piHistogram[iNextCorr];
-   for (i=iNextCorr-1; i>0; i--)
+   for (i=iNextCorr-1; i>=0; i--)
    {
+      if (i == -1)
+         printf("i= -1\n");
+
       pdCumulative[i] = pdCumulative[i+1] + piHistogram[i];
       if (piHistogram[i+1] == 0)
          pdCumulative[i+1] = 0.0;
    }
 
    // log10
-   for (i=iNextCorr; i>0; i--)
+   for (i=iNextCorr; i>=0; i--)
    {
       piHistogram[i] = (int)pdCumulative[i];  // First store cumulative in histogram.
       if (pdCumulative[i] > 0.0)
