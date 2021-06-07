@@ -206,8 +206,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          }
       }
 
-      if (iTotalScans > g_staticParams.options.iSpectrumBatchSize) break;
-      
       Threading::LockMutex(g_pvQueryMutex);
       if (CheckExit(iAnalysisType,
                     iScanNumber,
