@@ -3354,7 +3354,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             // consider SILAC light and heavy peaks together here
             if (bIsSilacPair)
             {
-               if ((iWhichIonSeries == 1 && g_staticParams.variableModParameters.bSilacPair == 2) // option to only add pairs to y-ions
+               if ((iWhichIonSeries != 1 && g_staticParams.variableModParameters.bSilacPair == 2) // option to only add pairs to y-ions
                      || g_staticParams.variableModParameters.bSilacPair != 2)
                {
                   bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries) + ctLen) + BIN_SILACPAIR);
