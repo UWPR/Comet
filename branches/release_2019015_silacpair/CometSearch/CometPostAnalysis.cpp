@@ -344,7 +344,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
             if (g_staticParams.variableModParameters.bSilacPair)
             {
-               if (pOutput[i].szPeptide[ii] == 'K')
+               if (pOutput[i].szPeptide[ii] == 'K' && g_staticParams.variableModParameters.bSilacPair != 2)
                   iCountKBion++;
                if (pOutput[i].szPeptide[iPos] == 'K')
                   iCountKYion++;
@@ -383,8 +383,6 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                      {
                         iMatchedFragmentIonCt++;
 
-//printf("\nOK  %c iMatched %d, z %d, ion %d, mass %f, SpScore %f\n", pOutput[i].szPeptide[iii], iMatchedFragmentIonCt, ctCharge, iWhichIonSeries, dFragmentIonMass, fSpScore);
-
                         // Simple sum intensity.
                         dTmpIntenMatch += fSpScore;
 
@@ -402,7 +400,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
                      if (bIsSilacPair)
                      {
-                        if ((iWhichIonSeries == 1 && iContainsKB[iii])  // b-ions
+                        if ((iWhichIonSeries == 1 && iContainsKB[iii] && g_staticParams.variableModParameters.bSilacPair != 2)  // b-ions
                               || (iWhichIonSeries == 4 && iContainsKY[iii])) // y-ions
                         {
                            int iCountK = 0;

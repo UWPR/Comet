@@ -650,7 +650,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("require_variable_mod", g_staticParams.variableModParameters.bRequireVarMod);
 
-   GetParamValue("silac_pair_fragments", g_staticParams.variableModParameters.bSilacPair);
+   GetParamValue("silac_pair_fragments", g_staticParams.variableModParameters.bSilacPair);  // value of 2 = use y-ion pairs only
 
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
    if (g_staticParams.tolerances.dFragmentBinSize < 0.01)
