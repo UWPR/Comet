@@ -28,7 +28,7 @@
 
 #include <thread>
 #ifdef _WIN32
-#include <winsock2.h>
+//#include <winsock2.h>
 #include <windows.h>
 #include <process.h>
 #else
@@ -157,10 +157,10 @@ class ThreadPool
       else {
 	// Threads are busy but there are jobs to do
 	//std::cerr << "Thread " << i << " does a job" << std::endl;
-	int sz1 = this->jobs_.size();
+	//int sz1 = this->jobs_.size();
 	job = std::move (this->jobs_.front ());
 	this->jobs_.pop_front();
-	int sz2 = this->jobs_.size();
+	//int sz2 = this->jobs_.size();
 	
 	//if (!did_job) 
 	// this->running_count_ ++;

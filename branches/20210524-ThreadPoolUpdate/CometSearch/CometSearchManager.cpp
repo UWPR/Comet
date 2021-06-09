@@ -2616,7 +2616,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    }
 
    bSucceeded = AllocateResultsMem();
-   tp->fillPool(1);
+//   tp->fillPool(0);
    if (!bSucceeded)
       goto cleanup_results;
 
@@ -3247,7 +3247,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fclose(fptr);
 
    sprintf(szOut, " - done\n");
-   logout(szOut);
+   logout(" - done\n");
    fflush(stdout);
 
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
