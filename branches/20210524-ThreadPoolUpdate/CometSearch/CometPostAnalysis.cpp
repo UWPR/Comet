@@ -35,9 +35,7 @@ CometPostAnalysis::~CometPostAnalysis()
 }
 
 
-bool CometPostAnalysis::PostAnalysis(int minNumThreads,
-                                     int maxNumThreads,
-                                     ThreadPool* tp)
+bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
 {
    bool bSucceeded = true;
 

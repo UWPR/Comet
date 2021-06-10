@@ -1561,6 +1561,7 @@ bool CometSearchManager::DoSearch()
 {
    char szOut[256];
    ThreadPool * tp = new ThreadPool();
+
    if (!InitializeStaticParams())
       return false;
 
@@ -1600,8 +1601,8 @@ bool CometSearchManager::DoSearch()
 
    bool bBlankSearchFile = false;
 
-
    tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
+
    if (strlen(g_staticParams.szDIAWindowsFile) > 0)
    {
       FILE *fp;
@@ -2074,11 +2075,7 @@ bool CometSearchManager::DoSearch()
             // spectra, we MUST "goto cleanup_results" before exiting the loop,
             // or we will create a memory leak!
     
-            bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
-                iFirstScan, iLastScan, iAnalysisType,
-                g_staticParams.options.iNumThreads,  // min # threads
-                g_staticParams.options.iNumThreads,
-                tp); // max # threads
+            bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp);
 
             if (!bSucceeded)
                goto cleanup_results;
@@ -2193,7 +2190,7 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Running search..."));
 
             // Now that spectra are loaded to memory and sorted, do search.
-            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd, tp);
+            bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
             if (!bSucceeded)
                goto cleanup_results;
 
@@ -2232,7 +2229,7 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
 
             // Sort each entry by xcorr, calculate E-values, etc.
-            bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, tp);
+            bSucceeded = CometPostAnalysis::PostAnalysis(tp);
             if (!bSucceeded)
                goto cleanup_results;
 
@@ -2511,15 +2508,13 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 {
    // Skip doing if already completed successfully.
    if (singleSearchInitializationComplete)
-   {
       return true;
-   }
 
    if (!InitializeStaticParams())
       return false;
 
    if (!ValidateSequenceDatabaseFile())
-       return false;
+      return false;
 
    // this uses a single thread
    singleSearchThreadCount = 1;
@@ -2532,7 +2527,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    //MH: Allocate memory shared by threads during spectral processing.
    bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
    if (!bSucceeded)
-       return bSucceeded;
+      return bSucceeded;
 
    // Allocate memory shared by threads during search
    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
@@ -2583,15 +2578,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       return false;
 
    if (dMZ * iPrecursorCharge - (iPrecursorCharge - 1)*PROTON_MASS > g_staticParams.options.dPeptideMassHigh)
-   {
-      // this assumes dPeptideMassHigh is set correctly in the calling program
-      return false;
-   }
+      return false;    // this assumes dPeptideMassHigh is set correctly in the calling program
 
    if (!InitializeSingleSpectrumSearch())
-   {
       return false;
-   }
 
    g_staticParams.tRealTimeStart = std::chrono::high_resolution_clock::now();
 
@@ -2629,7 +2619,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       g_massRange.bNarrowMassRange = false;
 
    // Now that spectra are loaded to memory and sorted, do search.
-   bSucceeded = CometSearch::RunSearch(1, 1, iPercentStart, iPercentEnd, tp);
+   bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
 
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
       CometPostAnalysis::AnalyzeSP(0);
@@ -2792,9 +2782,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       {
          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] - 1].dVarModMass;
       }
-
-      //vector<MatchedIonsStruct> vMatchedYions;
-      //vector<MatchedIonsStruct> vMatchedBions;
 
       int iTmp;
 
@@ -3004,7 +2991,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       g_massRange.bNarrowMassRange = false;
 
    if (bSucceeded)
-     bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, 0, 0, tp);
+     bSucceeded = CometSearch::RunSearch(0, 0, tp);
 
    if (!bSucceeded)
    {

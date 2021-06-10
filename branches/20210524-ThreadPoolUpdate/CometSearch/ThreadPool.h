@@ -121,12 +121,10 @@ public:
 
 #ifdef _WIN32
          threads_[i] = (HANDLE)_beginthreadex(0, 0, &threadStart, (void*) data_[i], 0,NULL);
-
 #else
          pthread_create(&threads_[i], NULL, threadStart, (void*) data_[i]);
 #endif
       }
-
    }
 
    void wait_on_threads()
@@ -136,7 +134,7 @@ public:
       {
          this->LOCK(&this->lock_);
 
-         if (this->jobs_.empty () || this->running_count_ < this->threads_.capacity() )
+         if (this->jobs_.empty () || this->running_count_ < (int) this->threads_.capacity() )
          {
             this->UNLOCK(&this->lock_);
             //Threading::ThreadSleep(100);
@@ -169,17 +167,9 @@ public:
             catch (std::exception& e)
             {
                cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
-#ifdef _WIN32
                return;
-#else
-               return;
-#endif
-               break;
             }
-
          }
-
-
       }
    }
 
@@ -274,7 +264,6 @@ public:
       iNumCPUCores = sysinfo.dwNumberOfProcessors;
 #else
       iNumCPUCores= sysconf( _SC_NPROCESSORS_ONLN );
-
 #endif
 
       iNumCPUCores += user;
@@ -286,29 +275,25 @@ public:
 
 #ifdef _WIN32
    void LOCK(HANDLE* mutex)
-#else
-   void LOCK(pthread_mutex_t* mutex)
-#endif
    {
-#ifdef _WIN32
       WaitForSingleObject( *mutex, INFINITE);
-#else
-      pthread_mutex_lock( &*mutex );
-#endif
    }
 
-#ifdef _WIN32
    void UNLOCK(HANDLE* mutex)
-#else
-   void UNLOCK(pthread_mutex_t* mutex)
-#endif
    {
-#ifdef _WIN32
       ReleaseMutex( *mutex );
-#else
-      pthread_mutex_unlock( &*mutex );
-#endif
    }
+#else
+   void LOCK(pthread_mutex_t* mutex)
+   {
+      pthread_mutex_lock( &*mutex );
+   }
+
+   void UNLOCK(pthread_mutex_t* mutex)
+   {
+      pthread_mutex_unlock( &*mutex );
+   }
+#endif
 
    int running_count_;
    bool shutdown_;

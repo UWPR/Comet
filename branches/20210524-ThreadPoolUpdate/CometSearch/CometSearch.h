@@ -69,12 +69,13 @@ public:
    // Manages memory in the search memory pool
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
-   static bool RunSearch(int minNumThreads,
-                         int maxNumThreads,
-                         int iPercentStart,
-                         int iPercentEnd, ThreadPool* tp);
-  static void SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPool *tp);
-   bool DoSearch(sDBEntry dbe, bool *pbDuplFragment);
+   static bool RunSearch(int iPercentStart,
+                         int iPercentEnd,
+                         ThreadPool* tp);
+   static void SearchThreadProc(SearchThreadData *pSearchThreadData,
+                                ThreadPool *tp);
+   bool DoSearch(sDBEntry dbe,
+                 bool *pbDuplFragment);
 
 private:
 
@@ -307,7 +308,7 @@ private:
    unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
-   static bool **_ppbDuplFragmentArr;      // Number of arrays equals number of threads
+   static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
 };
 
 #endif // _COMETSEARCH_H_

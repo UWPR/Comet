@@ -47,8 +47,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                                                int iFirstScan,
                                                int iLastScan,
                                                int iAnalysisType,
-                                               int minNumThreads,
-                                               int maxNumThreads,
                                                ThreadPool* tp)
 {
    int iFileLastScan = -1;         // The actual last scan in the file.
@@ -244,7 +242,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    int i;
    
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
-   //tp->wait_for_available_thread();
+
    for (i=0; i<g_staticParams.options.iNumThreads; i++)
    {
       if (pbMemoryPool[i]==false)
@@ -263,8 +261,6 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
       exit(1);
    }
 
-   //tp->incrementRunningCount();
-
    //MH: Give memory manager access to the thread.
    pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);
 
@@ -275,13 +271,6 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
-
-   // if (pbMemoryPool[i]) {
-   //   pbMemoryPool[i] = false;
-   //}
-   
-   //tp->decrementRunningCount();
-   
 }
 
 

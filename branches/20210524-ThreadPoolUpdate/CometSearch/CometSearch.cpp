@@ -99,9 +99,7 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 }
 
 
-bool CometSearch::RunSearch(int minNumThreads,
-                            int maxNumThreads,
-                            int iPercentStart,
+bool CometSearch::RunSearch(int iPercentStart,
                             int iPercentEnd,
                             ThreadPool *tp)
 {
@@ -829,7 +827,6 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    int i;
 
    Threading::LockMutex(g_searchMemoryPoolMutex);   
-   //tp->wait_for_available_thread();
      
    for (i=0; i < g_staticParams.options.iNumThreads; i++)
    {
@@ -849,7 +846,6 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    }
 
    Threading::UnlockMutex(g_searchMemoryPoolMutex);
-   //tp->incrementRunningCount();
 
    // Give memory manager access to the thread.
    pSearchThreadData->pbSearchMemoryPool = &_pbSearchMemoryPool[i];
@@ -861,12 +857,6 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    sqSearch.DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
    delete pSearchThreadData;
    pSearchThreadData = NULL;
-
-   ///if (_pbSearchMemoryPool[i]) {
-   ///  _pbSearchMemoryPool[i] = false;
-   ///}
-
-   //tp->decrementRunningCount();
 }
 
 
