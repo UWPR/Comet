@@ -34,240 +34,238 @@
 #else
 #endif
 
-
 #ifndef _WIN32
 #include <pthread.h>
 #endif
 
 #define VERBOSE 0
 
+class  thpldata
+{
+public:
+   thpldata() {};
+   void setThreadNum(int i)
+   {
+      thread_no = i;
+   }
 
-class  thpldata {
- public:
-  thpldata() {};
-  void setThreadNum(int i) {
-    thread_no = i;
-  }
-
-  int thread_no;
-  void* tp;
+   int thread_no;
+   void* tp;
 };
 
 #ifdef _WIN32
-unsigned int  threadStart(void* ptr); 
+unsigned int  threadStart(void* ptr);
 #else
-void* threadStart(void* ptr); 
-#endif  
+void* threadStart(void* ptr);
+#endif
 
 class ThreadPool
 {
-    public:
-  
-  
-  ThreadPool () : shutdown_ (false)
-    {
+public:
+
+   ThreadPool () : shutdown_ (false)
+   {
       running_count_ = 0;
-    }
-  
-  ThreadPool (int threads) : shutdown_ (false)
-    {
+   }
+
+   ThreadPool (int threads) : shutdown_ (false)
+   {
       // Create the specified number of threads
       running_count_ = 0;
       threads_.reserve (threads);
       fillPool(threads);
-      
-    }
-  
-  void fillPool(int threads) 
-  {
-    thpldata* data = new thpldata();
+
+   }
+
+   void fillPool(int threads)
+   {
+      thpldata* data = new thpldata();
 
 #ifdef _WIN32
-    lock_ = CreateMutex( 
-			      NULL,              // default security attributes
-			      FALSE,             // initially not owned
-			      NULL);             // unnamed mutex
-    
-    if (lock_ == NULL) 
+      lock_ = CreateMutex(NULL, FALSE, NULL);
+
+      if (lock_ == NULL)
       {
-	printf("CreateMutex error: %d\n", (int)GetLastError());
-	exit(1);
+         printf("CreateMutex error: %d\n", (int)GetLastError());
+         exit(1);
       }
-    countlock_ = CreateMutex( 
-			      NULL,              // default security attributes
-			      FALSE,             // initially not owned
-			      NULL);             // unnamed mutex
-    
-    if (countlock_ == NULL) 
+      countlock_ = CreateMutex(NULL, FALSE, NULL);
+
+      if (countlock_ == NULL)
       {
-	printf("CreateMutex error: %d\n", (int)GetLastError());
-	exit(1);
+         printf("CreateMutex error: %d\n", (int)GetLastError());
+         exit(1);
       }
 #else
-    pthread_mutex_init(&lock_, NULL);
-    pthread_mutex_init(&countlock_, NULL);
+      pthread_mutex_init(&lock_, NULL);
+      pthread_mutex_init(&countlock_, NULL);
 #endif
-  
+
 #ifdef _WIN32
-    HANDLE *pHandle = new HANDLE[threads];
+      HANDLE *pHandle = new HANDLE[threads];
 #else
-    pthread_t *pHandle = new pthread_t[threads];
+      pthread_t *pHandle = new pthread_t[threads];
 #endif
-    
-    threads_.reserve (threads);
-    data_.reserve(threads);
-    for (int i = 0; i < threads; ++i) {
-      
-      data->setThreadNum(i);
-      data->tp = this;
-      data_.push_back(data);
 
-      threads_[i] = pHandle[i];
-      
+      threads_.reserve (threads);
+      data_.reserve(threads);
+
+      for (int i = 0; i < threads; ++i)
+      {
+
+         data->setThreadNum(i);
+         data->tp = this;
+         data_.push_back(data);
+
+         threads_[i] = pHandle[i];
+
 #ifdef _WIN32
-      threads_[i] = (HANDLE)_beginthreadex(0,0,
-				   &threadStart,
-				   (void*) data_[i],
-				   0,NULL);
+         threads_[i] = (HANDLE)_beginthreadex(0, 0, &threadStart, (void*) data_[i], 0,NULL);
 
 #else
-      pthread_create(&threads_[i],NULL,threadStart, 
-		     (void*) data_[i]);
+         pthread_create(&threads_[i], NULL, threadStart, (void*) data_[i]);
 #endif
-    }
-    
-  }
-
-  void wait_on_threads() {
-    std::function <void (void)> job;
-    while(haveJob())  {
-
-      this->LOCK(&this->lock_);
-      if (this->jobs_.empty () || this->running_count_ < this->threads_.capacity() )
-	{
-	  this->UNLOCK(&this->lock_);
-	  //Threading::ThreadSleep(100);
-	  // When threads are still busy and no jobs to do wait ...
-#ifndef _WIN32
-	  pthread_yield();
-#else
-      std::this_thread::yield();
-#endif  
-	}
-      else {
-	// Threads are busy but there are jobs to do
-	//std::cerr << "Thread " << i << " does a job" << std::endl;
-	//int sz1 = this->jobs_.size();
-	job = std::move (this->jobs_.front ());
-	this->jobs_.pop_front();
-	//int sz2 = this->jobs_.size();
-	
-	//if (!did_job) 
-	// this->running_count_ ++;
-	
-	this->UNLOCK(&this->lock_);
-	// Do the job without holding any locks
-	try{
-	  job();
-	  //did_job = true;
-	}catch (std::exception& e){
-	  cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
-#ifdef _WIN32
-	  return;
-#else
-	  return;
-#endif 
-	  break;
-	}
-	
       }
 
+   }
 
-    }
-  }
+   void wait_on_threads()
+   {
+      std::function <void (void)> job;
+      while(haveJob())
+      {
+         this->LOCK(&this->lock_);
 
-  void wait_for_available_thread() {
-    this->LOCK(&countlock_);
-    while(data_.size() > 0 && running_count_ >= (int)data_.size())  {
-      this->UNLOCK(&countlock_);      
+         if (this->jobs_.empty () || this->running_count_ < this->threads_.capacity() )
+         {
+            this->UNLOCK(&this->lock_);
+            //Threading::ThreadSleep(100);
+            // When threads are still busy and no jobs to do wait ...
 #ifndef _WIN32
-      pthread_yield();
+            pthread_yield();
 #else
-      std::this_thread::yield();
+            std::this_thread::yield();
 #endif
+         }
+         else
+         {
+            // Threads are busy but there are jobs to do
+            //std::cerr << "Thread " << i << " does a job" << std::endl;
+            //int sz1 = this->jobs_.size();
+            job = std::move (this->jobs_.front ());
+            this->jobs_.pop_front();
+            //int sz2 = this->jobs_.size();
+
+            //if (!did_job)
+            // this->running_count_ ++;
+
+            this->UNLOCK(&this->lock_);
+            // Do the job without holding any locks
+            try
+            {
+               job();
+               //did_job = true;
+            }
+            catch (std::exception& e)
+            {
+               cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
+#ifdef _WIN32
+               return;
+#else
+               return;
+#endif
+               break;
+            }
+
+         }
+
+
+      }
+   }
+
+   void wait_for_available_thread()
+   {
       this->LOCK(&countlock_);
-    }
-    this->UNLOCK(&countlock_);
-  }
-
-  void drainPool() 
-  {
-    shutdown_ = true;    
-    for (size_t i =0 ; i < threads_.size(); i++)  {
-      delete data_[i];
-      void * ignore = 0;
-#ifdef _WIN32
-     WaitForSingleObject(threads_[i],INFINITE);
+      while(data_.size() > 0 && running_count_ >= (int)data_.size())
+      {
+         this->UNLOCK(&countlock_);
+#ifndef _WIN32
+         pthread_yield();
 #else
-     pthread_join(threads_[i],&ignore);
+         std::this_thread::yield();
 #endif
-    }
-    data_.clear();
+         this->LOCK(&countlock_);
+      }
+      this->UNLOCK(&countlock_);
+   }
 
-  } 
-  
-  ~ThreadPool ()
-    {
-      
-	for (size_t i =0 ; i < threads_.size(); i++)  {
-	  delete data_[i];
-	  void * ignore = 0;
+   void drainPool()
+   {
+      shutdown_ = true;
+      for (size_t i =0 ; i < threads_.size(); i++)
+      {
+         delete data_[i];
+         void * ignore = 0;
 #ifdef _WIN32
-	  WaitForSingleObject(threads_[i],INFINITE);
+         WaitForSingleObject(threads_[i],INFINITE);
 #else
-	  pthread_join(threads_[i],&ignore);
+         pthread_join(threads_[i],&ignore);
 #endif
-	}
-	data_.clear();
-	
-    }
+      }
+      data_.clear();
 
-    void doJob (std::function <void (void)> func)
-    {
-      
+   }
+
+   ~ThreadPool ()
+   {
+      for (size_t i =0 ; i < threads_.size(); i++)
+      {
+         delete data_[i];
+         void * ignore = 0;
+#ifdef _WIN32
+         WaitForSingleObject(threads_[i],INFINITE);
+#else
+         pthread_join(threads_[i],&ignore);
+#endif
+      }
+      data_.clear();
+   }
+
+   void doJob (std::function <void (void)> func)
+   {
       // Place a job on the queu and unblock a thread
 
       this->LOCK(&lock_);
       jobs_.emplace_back (std::move (func));
       this->UNLOCK(&lock_);
+   }
 
-    }
-  
-    void incrementRunningCount() 
-    {
+   void incrementRunningCount()
+   {
       this->LOCK(&countlock_);
       running_count_++;
       this->UNLOCK(&countlock_);
-    }
-  
-    void decrementRunningCount() 
-    {
+   }
+
+   void decrementRunningCount()
+   {
       this->LOCK(&countlock_);
       running_count_--;
       this->UNLOCK(&countlock_);
-    }
+   }
 
-
-    bool haveJob() {
+   bool haveJob()
+   {
       bool rtn;
       this->LOCK(&lock_);
       rtn = !jobs_.empty() || running_count_;
       this->UNLOCK(&lock_);
-      
-      return rtn;
-    }
 
-    int getAvailableThreads(int user) {
+      return rtn;
+   }
+
+   int getAvailableThreads(int user)
+   {
       //Borrowed from Comet
       int iNumCPUCores;
 #ifdef _WIN32
@@ -281,159 +279,143 @@ class ThreadPool
 
       iNumCPUCores += user;
 
-      if (iNumCPUCores < 1) iNumCPUCores = 1;
+      if (iNumCPUCores < 1)
+         iNumCPUCores = 1;
       return iNumCPUCores;
+   }
 
-    }
-
-
-
-void LOCK(
 #ifdef _WIN32
-	  HANDLE* mutex
+   void LOCK(HANDLE* mutex)
 #else
-	  pthread_mutex_t* mutex
+   void LOCK(pthread_mutex_t* mutex)
 #endif
-	  )  {
-  
+   {
 #ifdef _WIN32
-  WaitForSingleObject( *mutex,    // handle to mutex
-		       INFINITE); //#include "windows.h"
-#else	
-  pthread_mutex_lock( &*mutex );  //#include <pthread.h>
-#endif 
-}
-
-void UNLOCK(
-#ifdef _WIN32
-	  HANDLE* mutex
+      WaitForSingleObject( *mutex, INFINITE);
 #else
-	  pthread_mutex_t* mutex
+      pthread_mutex_lock( &*mutex );
 #endif
-	  )  {
-  
-#ifdef _WIN32
-  ReleaseMutex( *mutex );          //#include "windows.h"
-#else	
-  pthread_mutex_unlock( &*mutex ); //#include <pthread.h>
-#endif 
-}
-
-
-  int running_count_;
-  bool shutdown_;
-  std::deque <std::function <void (void)>> jobs_;
-  
-  vector<thpldata*> data_;
+   }
 
 #ifdef _WIN32
-
-  HANDLE lock_;
-  HANDLE countlock_;
-  
-  
-  std::vector<HANDLE> threads_;
-    
-    
+   void UNLOCK(HANDLE* mutex)
 #else
-  pthread_mutex_t lock_;
-  pthread_mutex_t countlock_;
-  
-  std::vector<pthread_t> threads_;
+   void UNLOCK(pthread_mutex_t* mutex)
 #endif
+   {
+#ifdef _WIN32
+      ReleaseMutex( *mutex );
+#else
+      pthread_mutex_unlock( &*mutex );
+#endif
+   }
 
+   int running_count_;
+   bool shutdown_;
+   std::deque <std::function <void (void)>> jobs_;
+
+   vector<thpldata*> data_;
+
+#ifdef _WIN32
+   HANDLE lock_;
+   HANDLE countlock_;
+
+   std::vector<HANDLE> threads_;
+#else
+   pthread_mutex_t lock_;
+   pthread_mutex_t countlock_;
+
+   std::vector<pthread_t> threads_;
+#endif
 
 };
 
 
 #ifdef _WIN32
-inline unsigned int  threadStart(LPVOID ptr) 
+inline unsigned int  threadStart(LPVOID ptr)
 #else
-inline void* threadStart(void* ptr) 
-#endif  
-    {
-        std::function <void (void)> job;
+inline void* threadStart(void* ptr)
+#endif
+{
+   std::function <void (void)> job;
 
-	thpldata* data = (thpldata *) ptr; 
-	int i = data->thread_no;
-        ThreadPool* tp = (ThreadPool*)data->tp;
-	bool did_job = false;
-	while (1)
-        {
-	      tp->LOCK(&tp->lock_);
-	      
-	      {
+   thpldata* data = (thpldata *) ptr;
+   int i = data->thread_no;
+   ThreadPool* tp = (ThreadPool*)data->tp;
+   bool did_job = false;
+   while (1)
+   {
+      tp->LOCK(&tp->lock_);
 
-                while (! tp->shutdown_ && tp->jobs_.empty()) {
-					tp->UNLOCK(&tp->lock_);
+      while (! tp->shutdown_ && tp->jobs_.empty())
+      {
+         tp->UNLOCK(&tp->lock_);
 
 #ifndef _WIN32
-					pthread_yield();
+         pthread_yield();
 #else
-               std::this_thread::yield();
-#endif 
-
-					if (tp->threads_.capacity() == 0)
-#ifdef _WIN32
-		    return 1;
-#else
-		    return NULL;
+         std::this_thread::yield();
 #endif
-		    //sleep some before reacquiring lock
-		    //Threading::ThreadSleep(100);
-					tp->LOCK(&tp->lock_);
-					if  (did_job) {
-					  tp->running_count_ --;
-					  did_job = false;
-					}
-		}
-		   
 
-                if (tp->jobs_.empty ())
-                {
-		  // No jobs to do and we are shutting down
-		  if (VERBOSE)
-                    std::cerr << "Thread " << i << " terminates" << std::endl;
-		  tp->UNLOCK(&tp->lock_);
+         if (tp->threads_.capacity() == 0)
 #ifdef _WIN32
-		    return 1;
+            return 1;
 #else
-		    return NULL;
+            return NULL;
 #endif
-		    break;
-		  
-		}
-		else {
-		  //std::cerr << "Thread " << i << " does a job" << std::endl;
-		  job = std::move (tp->jobs_.front ());
-		  tp->jobs_.pop_front();
+         //sleep some before reacquiring lock
+         //Threading::ThreadSleep(100);
+         tp->LOCK(&tp->lock_);
+         if  (did_job)
+         {
+            tp->running_count_ --;
+            did_job = false;
+         }
+      }
 
-		  if (!did_job) 
-		    tp->running_count_ ++;
-
-		  tp->UNLOCK(&tp->lock_);
-		  // Do the job without holding any locks
-		  try{
-		    job();
-		    did_job = true;
-		  }catch (std::exception& e){
-		    cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
+      if (tp->jobs_.empty ())
+      {
+         // No jobs to do and we are shutting down
+         if (VERBOSE)
+            std::cerr << "Thread " << i << " terminates" << std::endl;
+         tp->UNLOCK(&tp->lock_);
 #ifdef _WIN32
-		    return 1;
+         return 1;
 #else
-		    return NULL;
-#endif 
-		    break;
-		  }
+         return NULL;
+#endif
+         break;
 
-		}
-	      
-	      }
-	
-        }
+      }
+      else
+      {
+         //std::cerr << "Thread " << i << " does a job" << std::endl;
+         job = std::move (tp->jobs_.front ());
+         tp->jobs_.pop_front();
 
-    }
+         if (!did_job)
+            tp->running_count_ ++;
 
+         tp->UNLOCK(&tp->lock_);
+         // Do the job without holding any locks
+         try
+         {
+            job();
+            did_job = true;
+         }
+         catch (std::exception& e)
+         {
+            cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
+#ifdef _WIN32
+            return 1;
+#else
+            return NULL;
+#endif
+            break;
+         }
+      }
+   }
+}
 
 
 #endif // _THREAD_POOL_H_

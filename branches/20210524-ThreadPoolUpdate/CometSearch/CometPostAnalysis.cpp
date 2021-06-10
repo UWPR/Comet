@@ -37,11 +37,9 @@ CometPostAnalysis::~CometPostAnalysis()
 
 bool CometPostAnalysis::PostAnalysis(int minNumThreads,
                                      int maxNumThreads,
-				     ThreadPool* tp)
+                                     ThreadPool* tp)
 {
    bool bSucceeded = true;
-
-
 
    //vector<PostAnalysisThreadData*>* thDataVec = new vector<PostAnalysisThreadData*>();
 
@@ -68,8 +66,6 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
 
    pPostAnalysisThreadPool->wait_on_threads();
 
-   
-
    //CLEANUP
    //for (int i=0; i<(int)g_pvQuery.size(); i++)
    //{
@@ -77,7 +73,6 @@ bool CometPostAnalysis::PostAnalysis(int minNumThreads,
    //}
    //thDataVec->clear();
    //delete thDataVec;
-   
    
    pPostAnalysisThreadPool = NULL;
 
@@ -96,7 +91,6 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 {
    int iQueryIndex = pThreadData->iQueryIndex;
 
-   
    //tp->incrementRunningCount();
 
    AnalyzeSP(iQueryIndex);

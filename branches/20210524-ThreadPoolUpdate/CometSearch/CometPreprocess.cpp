@@ -49,7 +49,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                                                int iAnalysisType,
                                                int minNumThreads,
                                                int maxNumThreads,
-					       ThreadPool* tp)
+                                               ThreadPool* tp)
 {
    int iFileLastScan = -1;         // The actual last scan in the file.
    int iScanNumber = 0;
@@ -172,7 +172,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                Threading::UnlockMutex(g_pvQueryMutex);
 
                pPreprocessThreadPool->wait_for_available_thread();
-	       
+
                //-->MH
                //If there are no Z-lines, filter the spectrum for charge state
                //run filter here.
@@ -180,8 +180,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                PreprocessThreadData *pPreprocessThreadData =
                   new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
-	       pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProc, pPreprocessThreadData, pPreprocessThreadPool));
-	       
+               pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProc, pPreprocessThreadData, pPreprocessThreadPool));
             }
          }
 
@@ -214,11 +213,12 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                     mstReader.getLastScan(),
                     iNumSpectraLoaded))
       {
-      Threading::UnlockMutex(g_pvQueryMutex);
-	break;
+         Threading::UnlockMutex(g_pvQueryMutex);
+         break;
       }
-      else {
-	Threading::UnlockMutex(g_pvQueryMutex);
+      else
+      {
+         Threading::UnlockMutex(g_pvQueryMutex);
       }
 
    }
@@ -228,7 +228,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    pPreprocessThreadPool->wait_on_threads();
 
    Threading::DestroyMutex(_maxChargeMutex);
-
 
    bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
 
@@ -243,7 +242,6 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    //MH: Grab available array from shared memory pool.
    int i;
-
    
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
    //tp->wait_for_available_thread();
@@ -266,7 +264,6 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    }
 
    //tp->incrementRunningCount();
-
 
    //MH: Give memory manager access to the thread.
    pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);

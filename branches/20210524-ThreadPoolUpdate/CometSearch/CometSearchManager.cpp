@@ -2073,12 +2073,12 @@ bool CometSearchManager::DoSearch()
             // IMPORTANT: From this point onwards, because we've loaded some
             // spectra, we MUST "goto cleanup_results" before exiting the loop,
             // or we will create a memory leak!
-	    
+    
             bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
                 iFirstScan, iLastScan, iAnalysisType,
                 g_staticParams.options.iNumThreads,  // min # threads
-		g_staticParams.options.iNumThreads,
-		tp); // max # threads
+                g_staticParams.options.iNumThreads,
+                tp); // max # threads
 
             if (!bSucceeded)
                goto cleanup_results;
