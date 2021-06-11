@@ -2564,16 +2564,11 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 vector<Fragment> & matchedFragments,
                                                 Scores & score)
 {
-   int iPercentStart = 0;
-   int iPercentEnd = 0;
-
    score.dCn = 0;
    score.xCorr = 0;
    score.matchedIons = 0;
    score.totalIons = 0;
 
-   ThreadPool* tp = new ThreadPool();
-   
    if (iNumPeaks == 0)
       return false;
 
@@ -2583,6 +2578,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    if (!InitializeSingleSpectrumSearch())
       return false;
 
+   // tRealTimeStart used to track elapsed search time and to exit if g_staticParams.options.iMaxIndexRunTime is surpased
    g_staticParams.tRealTimeStart = std::chrono::high_resolution_clock::now();
 
    // We need to reset some of the static variables in-between input files
@@ -2606,7 +2602,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    }
 
    bSucceeded = AllocateResultsMem();
-//   tp->fillPool(0);
+
    if (!bSucceeded)
       goto cleanup_results;
 
@@ -2619,7 +2615,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       g_massRange.bNarrowMassRange = false;
 
    // Now that spectra are loaded to memory and sorted, do search.
-   bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
+   bSucceeded = CometSearch::RunSearch();
 
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
       CometPostAnalysis::AnalyzeSP(0);
@@ -2855,8 +2851,7 @@ cleanup_results:
 
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometData.h).
-   for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
-      delete *it;
+   delete g_pvQuery.at(0);
 
    g_pvQuery.clear();
 

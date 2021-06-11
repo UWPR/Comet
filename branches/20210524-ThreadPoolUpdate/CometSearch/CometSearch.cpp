@@ -99,6 +99,16 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 }
 
 
+bool CometSearch::RunSearch(void)
+{
+
+   CometSearch sqSearch;
+   sqSearch.IndexSearch();
+   return true;
+
+}
+
+
 bool CometSearch::RunSearch(int iPercentStart,
                             int iPercentEnd,
                             ThreadPool *tp)
