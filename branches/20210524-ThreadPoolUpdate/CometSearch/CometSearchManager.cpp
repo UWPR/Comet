@@ -25,8 +25,6 @@
 #include "CometWritePepXML.h"
 #include "CometWriteMzIdentML.h"
 #include "CometWritePercolator.h"
-#include "Threading.h"
-#include "ThreadPool.h"
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
@@ -569,6 +567,7 @@ CometSearchManager::CometSearchManager() :
 
    // Initialize the Comet version
    SetParam("# comet_version", comet_version, comet_version);
+   _tp = new ThreadPool();
 }
 
 CometSearchManager::~CometSearchManager()
@@ -586,6 +585,10 @@ CometSearchManager::~CometSearchManager()
    g_pvInputFiles.clear();
 
    _mapStaticParams.clear();
+
+   if (_tp != NULL) delete _tp;
+
+   _tp = NULL;
 }
 
 bool CometSearchManager::InitializeStaticParams()
@@ -1560,7 +1563,9 @@ bool CometSearchManager::CreateIndex()
 bool CometSearchManager::DoSearch()
 {
    char szOut[256];
-   ThreadPool * tp = new ThreadPool();
+
+
+   ThreadPool * tp = _tp;
 
    if (!InitializeStaticParams())
       return false;
@@ -2568,7 +2573,12 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    score.xCorr = 0;
    score.matchedIons = 0;
    score.totalIons = 0;
+   
 
+
+   ThreadPool * tp = _tp;
+
+   
    if (iNumPeaks == 0)
       return false;
 
@@ -2960,7 +2970,11 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    FILE *fptr;
    bool bSucceeded;
    char szOut[256];
-   ThreadPool* tp = new ThreadPool();
+
+
+   ThreadPool * tp = _tp;
+
+   
    char szIndexFile[SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
