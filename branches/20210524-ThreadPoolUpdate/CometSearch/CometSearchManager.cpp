@@ -1564,7 +1564,6 @@ bool CometSearchManager::DoSearch()
 {
    char szOut[256];
 
-
    ThreadPool * tp = _tp;
 
    if (!InitializeStaticParams())
@@ -2574,11 +2573,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    score.matchedIons = 0;
    score.totalIons = 0;
    
-
-
-   ThreadPool * tp = _tp;
-
-   
    if (iNumPeaks == 0)
       return false;
 
@@ -2971,10 +2965,8 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    bool bSucceeded;
    char szOut[256];
 
-
    ThreadPool * tp = _tp;
 
-   
    char szIndexFile[SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
