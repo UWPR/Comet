@@ -2067,7 +2067,7 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tLoadAndPreprocessSpectraStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraStartTime));
-               sprintf(szOut, " - Start LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> Start LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
                logout(szOut);
 #endif
 
@@ -2094,10 +2094,10 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tLoadAndPreprocessSpectraEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraEndTime));
-               sprintf(szOut, " - End LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> End LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
                logout(szOut);
                int iElapsedTime=(int)difftime(tLoadAndPreprocessSpectraEndTime, tLoadAndPreprocessSpectraStartTime);
-               sprintf(szOut, " - Time spent in LoadAndPreprocessSpectra:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, "\n >> Time spent in LoadAndPreprocessSpectra:  %d seconds\n", iElapsedTime);
                logout(szOut);
                fflush(stdout);
             }
@@ -2182,7 +2182,7 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tRunSearchStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchStartTime));
-               sprintf(szOut, " - Start RunSearch:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> Start RunSearch:  %s\n", szTimeBuffer);
                logout(szOut);
                fflush(stdout);
             }
@@ -2205,16 +2205,16 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tRunSearchEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchEndTime));
-               sprintf(szOut, " - End RunSearch:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> End RunSearch:  %s\n", szTimeBuffer);
                logout(szOut);
 
                int iElapsedTime=(int)difftime(tRunSearchEndTime, tRunSearchStartTime);
-               sprintf(szOut, " - Time spent in RunSearch:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, "\n >> Time spent in RunSearch:  %d seconds\n", iElapsedTime);
                logout(szOut);
 
                time(&tPostAnalysisStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisStartTime));
-               sprintf(szOut, " - Start PostAnalysis:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> Start PostAnalysis:  %s\n", szTimeBuffer);
                logout(szOut);
 
                fflush(stdout);
@@ -2244,10 +2244,10 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tPostAnalysisEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisEndTime));
-               sprintf(szOut, " - End PostAnalysis:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> End PostAnalysis:  %s\n", szTimeBuffer);
                logout(szOut);
                int iElapsedTime=(int)difftime(tPostAnalysisEndTime, tPostAnalysisStartTime);
-               sprintf(szOut, " - Time spent in PostAnalysis:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, "\n >> Time spent in PostAnalysis:  %d seconds\n", iElapsedTime);
                logout(szOut);
                fflush(stdout);
             }

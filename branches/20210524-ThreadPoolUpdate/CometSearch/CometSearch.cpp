@@ -648,7 +648,7 @@ bool CometSearch::RunSearch(int iPercentStart,
             SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
 
             pSearchThreadPool->doJob(std::bind(SearchThreadProc, pSearchThreadData, pSearchThreadPool));
-            
+
             g_staticParams.databaseInfo.iTotalNumProteins++;
 
             if (!g_staticParams.options.bOutputSqtStream && !(g_staticParams.databaseInfo.iTotalNumProteins%500))
@@ -678,7 +678,6 @@ bool CometSearch::RunSearch(int iPercentStart,
       // Wait for active search threads to complete processing.
 
       pSearchThreadPool->wait_on_threads();
-
 
       // Check for errors one more time since there might have been an error
       // while we were waiting for the threads.
