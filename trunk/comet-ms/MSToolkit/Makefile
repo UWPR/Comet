@@ -68,7 +68,7 @@ solib: clean_objects objects
 	$(CC) $(CFLAGS) -o libmstoolkit.so.$(RELVER) -Wl,-z,relro -Wl,-soname,libmstoolkit.so.$(SOVER) $(LIBS) $(ZLIB) $(EXPAT) $(MZIMLTOOLS) $(MZPARSER) $(MSTOOLKIT) $(READER) $(SQLITE)
 	ln -sf libmstoolkit.so.$(RELVER) libmstoolkit.so.$(SOVER)
 	ln -sf libmstoolkit.so.$(SOVER) libmstoolkit.so
-	# Be careful not to include in the linker command line below the compilation -shared -fPIC flags!
+        # Be careful not to include in the linker command line below the compilation -shared -fPIC flags!
 	$(CC) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H -I./include -L. MSSingleScan/MSSingleScan.cpp -lmstoolkitlite -o msSingleScan.shared 
 
 clean_objects: 
@@ -161,7 +161,7 @@ MSObject.o : $(MST_PATH)/MSObject.cpp
 
 mzMLWriter.o : $(MST_PATH)/mzMLWriter.cpp
 	$(CC) $(CFLAGS) $(MST_PATH)/mzMLWriter.cpp -c
-	
+
 pepXMLWriter.o : $(MST_PATH)/pepXMLWriter.cpp
 	$(CC) $(CFLAGS) $(MST_PATH)/pepXMLWriter.cpp -c
 

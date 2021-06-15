@@ -17,6 +17,7 @@
 #ifndef _COMETSEARCH_H_
 #define _COMETSEARCH_H_
 
+
 #include "Common.h"
 #include "CometDataInternal.h"
 
@@ -24,7 +25,8 @@ struct SearchThreadData
 {
    sDBEntry dbEntry;
    bool *pbSearchMemoryPool;
-
+   ThreadPool *tp;
+  
 
    SearchThreadData()
    {
@@ -43,7 +45,7 @@ struct SearchThreadData
    {
       // Mark that the memory is no longer in use.
       // DO NOT FREE MEMORY HERE. Just release pointer.
-      Threading::LockMutex(g_searchMemoryPoolMutex);
+     //      Threading::LockMutex(g_searchMemoryPoolMutex);
 
       if (pbSearchMemoryPool!=NULL)
       {
@@ -54,7 +56,7 @@ struct SearchThreadData
       dbEntry.vectorPeffMod.clear();
       dbEntry.vectorPeffVariantSimple.clear();
 
-      Threading::UnlockMutex(g_searchMemoryPoolMutex);
+      //Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
 };
 
@@ -67,12 +69,14 @@ public:
    // Manages memory in the search memory pool
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
-   static bool RunSearch(int minNumThreads,
-                         int maxNumThreads,
-                         int iPercentStart,
-                         int iPercentEnd);
-   static void SearchThreadProc(SearchThreadData *pSearchThreadData);
-   bool DoSearch(sDBEntry dbe, bool *pbDuplFragment);
+   static bool RunSearch(int iPercentStart,
+                         int iPercentEnd,
+                         ThreadPool* tp);
+   static bool RunSearch(void);    // for DoSingleSpectrumSearch() to call IndexSearch()
+   static void SearchThreadProc(SearchThreadData *pSearchThreadData,
+                                ThreadPool *tp);
+   bool DoSearch(sDBEntry dbe,
+                 bool *pbDuplFragment);
 
 private:
 
@@ -305,7 +309,7 @@ private:
    unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
-   static bool **_ppbDuplFragmentArr;      // Number of arrays equals number of threads
+   static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
 };
 
 #endif // _COMETSEARCH_H_

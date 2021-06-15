@@ -19,6 +19,8 @@
 
 #include "Common.h"
 #include "CometData.h"
+#include "Threading.h"
+#include "ThreadPool.h"
 
 using namespace std;
 
@@ -71,6 +73,8 @@ public:
 
    ICometSearchManager *GetCometSearchManager();
    void ReleaseCometSearchManager();
+
+   static ThreadPool* _tp;
 }
 
 #endif // _COMETINTERFACES_H_

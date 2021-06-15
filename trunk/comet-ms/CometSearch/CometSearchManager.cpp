@@ -25,8 +25,6 @@
 #include "CometWritePepXML.h"
 #include "CometWriteMzIdentML.h"
 #include "CometWritePercolator.h"
-#include "Threading.h"
-#include "ThreadPool.h"
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
@@ -569,6 +567,7 @@ CometSearchManager::CometSearchManager() :
 
    // Initialize the Comet version
    SetParam("# comet_version", comet_version, comet_version);
+   _tp = new ThreadPool();
 }
 
 CometSearchManager::~CometSearchManager()
@@ -586,6 +585,10 @@ CometSearchManager::~CometSearchManager()
    g_pvInputFiles.clear();
 
    _mapStaticParams.clear();
+
+   if (_tp != NULL) delete _tp;
+
+   _tp = NULL;
 }
 
 bool CometSearchManager::InitializeStaticParams()
@@ -1561,6 +1564,8 @@ bool CometSearchManager::DoSearch()
 {
    char szOut[256];
 
+   ThreadPool * tp = _tp;
+
    if (!InitializeStaticParams())
       return false;
 
@@ -1599,6 +1604,8 @@ bool CometSearchManager::DoSearch()
       PrintOutfileHeader();
 
    bool bBlankSearchFile = false;
+
+   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
 
    if (strlen(g_staticParams.szDIAWindowsFile) > 0)
    {
@@ -2059,7 +2066,7 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tLoadAndPreprocessSpectraStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraStartTime));
-               sprintf(szOut, " - Start LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> Start LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
                logout(szOut);
 #endif
 
@@ -2071,11 +2078,8 @@ bool CometSearchManager::DoSearch()
             // IMPORTANT: From this point onwards, because we've loaded some
             // spectra, we MUST "goto cleanup_results" before exiting the loop,
             // or we will create a memory leak!
-
-            bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader,
-                iFirstScan, iLastScan, iAnalysisType,
-                g_staticParams.options.iNumThreads,  // min # threads
-                g_staticParams.options.iNumThreads); // max # threads
+    
+            bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp);
 
             if (!bSucceeded)
                goto cleanup_results;
@@ -2089,10 +2093,10 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tLoadAndPreprocessSpectraEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraEndTime));
-               sprintf(szOut, " - End LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> End LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
                logout(szOut);
                int iElapsedTime=(int)difftime(tLoadAndPreprocessSpectraEndTime, tLoadAndPreprocessSpectraStartTime);
-               sprintf(szOut, " - Time spent in LoadAndPreprocessSpectra:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, "\n >> Time spent in LoadAndPreprocessSpectra:  %d seconds\n", iElapsedTime);
                logout(szOut);
                fflush(stdout);
             }
@@ -2177,7 +2181,7 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tRunSearchStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchStartTime));
-               sprintf(szOut, " - Start RunSearch:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> Start RunSearch:  %s\n", szTimeBuffer);
                logout(szOut);
                fflush(stdout);
             }
@@ -2190,7 +2194,7 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Running search..."));
 
             // Now that spectra are loaded to memory and sorted, do search.
-            bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
+            bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
             if (!bSucceeded)
                goto cleanup_results;
 
@@ -2200,16 +2204,16 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tRunSearchEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchEndTime));
-               sprintf(szOut, " - End RunSearch:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> End RunSearch:  %s\n", szTimeBuffer);
                logout(szOut);
 
                int iElapsedTime=(int)difftime(tRunSearchEndTime, tRunSearchStartTime);
-               sprintf(szOut, " - Time spent in RunSearch:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, "\n >> Time spent in RunSearch:  %d seconds\n", iElapsedTime);
                logout(szOut);
 
                time(&tPostAnalysisStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisStartTime));
-               sprintf(szOut, " - Start PostAnalysis:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> Start PostAnalysis:  %s\n", szTimeBuffer);
                logout(szOut);
 
                fflush(stdout);
@@ -2229,7 +2233,7 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
 
             // Sort each entry by xcorr, calculate E-values, etc.
-            bSucceeded = CometPostAnalysis::PostAnalysis(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads);
+            bSucceeded = CometPostAnalysis::PostAnalysis(tp);
             if (!bSucceeded)
                goto cleanup_results;
 
@@ -2239,10 +2243,10 @@ bool CometSearchManager::DoSearch()
                char szOut[128];
                time(&tPostAnalysisEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisEndTime));
-               sprintf(szOut, " - End PostAnalysis:  %s\n", szTimeBuffer);
+               sprintf(szOut, "\n >> End PostAnalysis:  %s\n", szTimeBuffer);
                logout(szOut);
                int iElapsedTime=(int)difftime(tPostAnalysisEndTime, tPostAnalysisStartTime);
-               sprintf(szOut, " - Time spent in PostAnalysis:  %d seconds\n", iElapsedTime);
+               sprintf(szOut, "\n >> Time spent in PostAnalysis:  %d seconds\n", iElapsedTime);
                logout(szOut);
                fflush(stdout);
             }
@@ -2508,15 +2512,13 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 {
    // Skip doing if already completed successfully.
    if (singleSearchInitializationComplete)
-   {
       return true;
-   }
 
    if (!InitializeStaticParams())
       return false;
 
    if (!ValidateSequenceDatabaseFile())
-       return false;
+      return false;
 
    // this uses a single thread
    singleSearchThreadCount = 1;
@@ -2529,7 +2531,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    //MH: Allocate memory shared by threads during spectral processing.
    bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
    if (!bSucceeded)
-       return bSucceeded;
+      return bSucceeded;
 
    // Allocate memory shared by threads during search
    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
@@ -2566,28 +2568,21 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 vector<Fragment> & matchedFragments,
                                                 Scores & score)
 {
-   int iPercentStart = 0;
-   int iPercentEnd = 0;
-
    score.dCn = 0;
    score.xCorr = 0;
    score.matchedIons = 0;
    score.totalIons = 0;
-
+   
    if (iNumPeaks == 0)
       return false;
 
    if (dMZ * iPrecursorCharge - (iPrecursorCharge - 1)*PROTON_MASS > g_staticParams.options.dPeptideMassHigh)
-   {
-      // this assumes dPeptideMassHigh is set correctly in the calling program
-      return false;
-   }
+      return false;    // this assumes dPeptideMassHigh is set correctly in the calling program
 
    if (!InitializeSingleSpectrumSearch())
-   {
       return false;
-   }
 
+   // tRealTimeStart used to track elapsed search time and to exit if g_staticParams.options.iMaxIndexRunTime is surpased
    g_staticParams.tRealTimeStart = std::chrono::high_resolution_clock::now();
 
    // We need to reset some of the static variables in-between input files
@@ -2624,7 +2619,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       g_massRange.bNarrowMassRange = false;
 
    // Now that spectra are loaded to memory and sorted, do search.
-   bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, iPercentStart, iPercentEnd);
+   bSucceeded = CometSearch::RunSearch();
 
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
       CometPostAnalysis::AnalyzeSP(0);
@@ -2788,9 +2783,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].iLenPeptide + 1] - 1].dVarModMass;
       }
 
-      //vector<MatchedIonsStruct> vMatchedYions;
-      //vector<MatchedIonsStruct> vMatchedBions;
-
       int iTmp;
 
       // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
@@ -2863,8 +2855,7 @@ cleanup_results:
 
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometData.h).
-   for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
-      delete *it;
+   delete g_pvQuery.at(0);
 
    g_pvQuery.clear();
 
@@ -2974,6 +2965,8 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    bool bSucceeded;
    char szOut[256];
 
+   ThreadPool * tp = _tp;
+
    char szIndexFile[SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
@@ -2992,13 +2985,14 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
+   tp->fillPool( g_staticParams.options.iNumThreads <= 1 ? 1 : g_staticParams.options.iNumThreads-1);
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;
    else
       g_massRange.bNarrowMassRange = false;
 
    if (bSucceeded)
-       bSucceeded = CometSearch::RunSearch(g_staticParams.options.iNumThreads, g_staticParams.options.iNumThreads, 0, 0);
+     bSucceeded = CometSearch::RunSearch(0, 0, tp);
 
    if (!bSucceeded)
    {
@@ -3241,7 +3235,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fclose(fptr);
 
    sprintf(szOut, " - done\n");
-   logout(szOut);
+   logout(" - done\n");
    fflush(stdout);
 
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);

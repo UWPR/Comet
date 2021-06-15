@@ -68,7 +68,11 @@ void Threading::EndThread()
 
 void Threading::ThreadSleep(unsigned long dwMilliseconds)
 {
-   usleep(dwMilliseconds);
+// usleep(dwMilliseconds);  // usleep deprecated
+   struct timespec ts;
+   ts.tv_sec = dwMilliseconds / 1000;
+   ts.tv_nsec = (dwMilliseconds % 1000) * 1000000;
+   nanosleep(&ts, NULL);
 }
 
 void Threading::CreateSemaphore(Semaphore* pSem)
