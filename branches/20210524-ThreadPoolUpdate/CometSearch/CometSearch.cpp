@@ -643,6 +643,12 @@ bool CometSearch::RunSearch(int iPercentStart,
                }
             }
 
+            // Add a check here to queue up a maximum of (500*iNumThreads) sequences; otherwise all
+            // sequences in the database will be loaded/queued all at once which might cause a memory
+            // issue with extremely large fasta files.
+            while (pSearchThreadPool->jobs_.size() > 500 * g_staticParams.options.iNumThreads)
+               Sleep(5);
+
             // Now search sequence entry; add threading here so that
             // each protein sequence is passed to a separate thread.
             SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
