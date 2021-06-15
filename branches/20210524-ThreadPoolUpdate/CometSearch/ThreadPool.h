@@ -195,10 +195,10 @@ public:
       for (size_t i =0 ; i < threads_.size(); i++)
       {
          delete data_[i];
-         void * ignore = 0;
 #ifdef _WIN32
          WaitForSingleObject(threads_[i],INFINITE);
 #else
+         void* ignore = 0;
          pthread_join(threads_[i],&ignore);
 #endif
       }
@@ -211,10 +211,10 @@ public:
       for (size_t i =0 ; i < threads_.size(); i++)
       {
          delete data_[i];
-         void * ignore = 0;
 #ifdef _WIN32
          WaitForSingleObject(threads_[i],INFINITE);
 #else
+         void* ignore = 0;
          pthread_join(threads_[i],&ignore);
 #endif
       }
