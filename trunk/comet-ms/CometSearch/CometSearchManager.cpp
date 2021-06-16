@@ -3251,7 +3251,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 }
 
 
-// set set prev/next AA as want then from first target protein and
+// set prev/next AA from first target protein and
 // if decoy only then from first decoy protein
 void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
                                           int iPrintTargetDecoy)
@@ -3282,8 +3282,8 @@ void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
             pOutput[i].szPrevNextAA[0] = pOutput[i].pWhichProtein.at(0).cPrevAA;
             pOutput[i].szPrevNextAA[1] = pOutput[i].pWhichProtein.at(0).cNextAA;
          }
-        else
-        {
+         else
+         {
             pOutput[i].szPrevNextAA[0] = pOutput[i].pWhichDecoyProtein.at(0).cPrevAA;
             pOutput[i].szPrevNextAA[1] = pOutput[i].pWhichDecoyProtein.at(0).cNextAA;
          }

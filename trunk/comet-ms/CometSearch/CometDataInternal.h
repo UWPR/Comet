@@ -259,7 +259,7 @@ struct OBOStruct           // stores info read from OBO file
 
 struct ProteinEntryStruct
 {
-    comet_fileoffset_t   lWhichProtein;     // file pointer to protein
+   comet_fileoffset_t   lWhichProtein;     // file pointer to protein
    int    iStartResidue;      // start residue position in protein (1-based)
    char   cPrevAA;
    char   cNextAA;

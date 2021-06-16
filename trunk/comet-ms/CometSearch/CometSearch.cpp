@@ -3625,7 +3625,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide[iLenPeptide]='\0';
-
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].dPepMass = dCalcPepMass;
 
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
@@ -3762,7 +3761,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
       pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
-
+                  
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
          pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
@@ -3992,7 +3991,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
                if (bDecoyPep)
                {
-                  pTmp.cPrevAA = szProteinSeq[0];
+                  pTmp.cPrevAA = szProteinSeq[0];  // because szProteinSeq encodes decoy with flanking residues here
                   pTmp.cNextAA = szProteinSeq[iEndPos + 1];
                }
                else
@@ -4107,7 +4106,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
                if (bDecoyPep)
                {
-                  pTmp.cPrevAA = szProteinSeq[0];
+                  pTmp.cPrevAA = szProteinSeq[0];;  // because szProteinSeq encodes decoy with flanking residues here
                   pTmp.cNextAA = szProteinSeq[iEndPos + 1];
                }
                else
@@ -4137,6 +4136,9 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   // also if IL equivalence set, go ahead and copy peptide from first sequence
                   memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pResults[i].iLenPeptide*sizeof(char));
                   pQuery->_pResults[i].szPeptide[pQuery->_pResults[i].iLenPeptide]='\0';
+
+                  pQuery->_pResults[i].szPrevNextAA[0] = pTmp.cPrevAA;
+                  pQuery->_pResults[i].szPrevNextAA[1] = pTmp.cNextAA;
                }
 
                break;

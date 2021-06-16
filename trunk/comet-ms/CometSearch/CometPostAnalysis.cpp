@@ -39,18 +39,14 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
 {
    bool bSucceeded = true;
 
-   //vector<PostAnalysisThreadData*>* thDataVec = new vector<PostAnalysisThreadData*>();
-
    //Reuse existing ThreadPool
    ThreadPool *pPostAnalysisThreadPool = tp;
 
    for (int i=0; i<(int)g_pvQuery.size(); i++)
    {
       PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
-      // thDataVec->push_back(pThreadData);
 
       pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool));
-
 
       pThreadData = NULL;
       bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
@@ -63,14 +59,6 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
    // Wait for active post analysis threads to complete processing.
 
    pPostAnalysisThreadPool->wait_on_threads();
-
-   //CLEANUP
-   //for (int i=0; i<(int)g_pvQuery.size(); i++)
-   //{
-   //  delete (*thDataVec)[i];
-   //}
-   //thDataVec->clear();
-   //delete thDataVec;
    
    pPostAnalysisThreadPool = NULL;
 
@@ -89,8 +77,6 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 {
    int iQueryIndex = pThreadData->iQueryIndex;
 
-   //tp->incrementRunningCount();
-
    AnalyzeSP(iQueryIndex);
 
    // Calculate E-values if necessary.
@@ -107,10 +93,8 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
          CalculateEValue(iQueryIndex);
       }
    }
-
    delete pThreadData;
    pThreadData = NULL;
-   //tp->decrementRunningCount();
 }
 
 
@@ -127,6 +111,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    CalculateSP(pQuery->_pResults, i, iSize);
 
    std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnSp);
+
    pQuery->_pResults[0].iRankSp = 1;
 
    for (int ii=1; ii<iSize; ii++)
@@ -390,7 +375,10 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 bool CometPostAnalysis::ProteinEntryCmp(const struct ProteinEntryStruct &a,
                                         const struct ProteinEntryStruct &b)
 {
-   return a.lWhichProtein < b.lWhichProtein;
+   if (a.lWhichProtein == b.lWhichProtein)
+      return a.iStartResidue < b.iStartResidue;
+   else
+      return a.lWhichProtein < b.lWhichProtein;
 }
 
 
