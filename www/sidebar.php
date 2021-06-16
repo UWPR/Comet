@@ -21,7 +21,7 @@
                <li><a target="new" href="https://sourceforge.net/projects/sashimi/">Sashimi</a> Trans-Proteomic Pipeline</li>
                <li><a target="new" href="http://open-ms.sourceforge.net/">OpenMS</a></li>
                <li><a target="new" href="http://crux.ms/">Crux</a></li>
-               <li><a target="new" href="https://github.com/pwilmart/PAW_pipeline/https://github.com/pwilmart/PAW_pipeline/">PAW pipeline</a></li>
+               <li><a target="new" href="https://github.com/pwilmart/PAW_pipeline/">PAW pipeline</a></li>
                <li><a target="new" href="http://www.labkey.org">LabKey</a></li>
                <li><a target="new" href="http://skyline.ms">Skyline</a></li>
                <li><a target="new" href="http://proteowizard.sourceforge.net/">ProteoWizard</a></li>
