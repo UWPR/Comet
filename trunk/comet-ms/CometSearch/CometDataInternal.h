@@ -599,6 +599,7 @@ struct StaticParams
    vector<double>  vectorMassOffsets;
    vector<double>  precursorNLIons;
    int             iPrecursorNLSize;
+   int             iOldModsEncoding;
    char            szDIAWindowsFile[SIZE_FILE];
    bool            bSkipToStartScan;
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
@@ -621,6 +622,7 @@ struct StaticParams
        vectorMassOffsets = a.vectorMassOffsets;
        precursorNLIons= a.precursorNLIons;
        iPrecursorNLSize = a.iPrecursorNLSize;
+       iOldModsEncoding = a.iOldModsEncoding;
        iElapseTime = a.iElapseTime;
        strcpy(szDate, a.szDate);
        options = a.options;

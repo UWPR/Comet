@@ -626,6 +626,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("precursor_NL_ions", g_staticParams.precursorNLIons);
 
+   GetParamValue("old_mods_encoding", g_staticParams.iOldModsEncoding);
+
    GetParamValue("xcorr_processing_offset", g_staticParams.iXcorrProcessingOffset);
 
    GetParamValue("nucleotide_reading_frame", g_staticParams.options.iWhichReadingFrame);

@@ -288,18 +288,50 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
 
    // generate modified_peptide string
    sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
-   if (bNterm)
-      sprintf(szBuf+strlen(szBuf), "n[%0.4f]", dNterm);
-   // Print peptide sequence.
-   for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+   if (g_staticParams.iOldModsEncoding)
    {
-      sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
+      if (bNterm)
+      {
+         sprintf(szBuf+strlen(szBuf), "n%c",
+               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
+      }
 
-      if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
-         sprintf(szBuf+strlen(szBuf), "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+      // Print peptide sequence.
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+      {
+         sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
+
+         if (g_staticParams.variableModParameters.bVarModSearch
+               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+         {
+            sprintf(szBuf+strlen(szBuf), "%c",
+                  g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+         }
+      }
+
+      if (bCterm)
+      {
+         sprintf(szBuf+strlen(szBuf), "c%c",
+               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
+      }
    }
-   if (bCterm)
-      sprintf(szBuf+strlen(szBuf), "c[%0.4f]", dCterm);
+   else
+   {
+      if (bNterm)
+         sprintf(szBuf+strlen(szBuf), "n[%0.4f]", dNterm);
+
+      // Print peptide sequence.
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+      {
+         sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
+
+         if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
+            sprintf(szBuf+strlen(szBuf), "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+      }
+
+      if (bCterm)
+         sprintf(szBuf+strlen(szBuf), "c[%0.4f]", dCterm);
+   }
    sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
 
    if (g_staticParams.options.bOutputSqtStream)

@@ -456,6 +456,13 @@ void LoadParameters(char *pszParamsFile,
 
                pSearchMgr->SetParam("precursor_NL_ions", szMassOffsets, vectorPrecursorNLIons);
             }
+            else if (!strcmp(szParamName, "old_mods_encoding"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("old_mods_encoding", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "nucleotide_reading_frame"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
