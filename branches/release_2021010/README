@@ -5,6 +5,8 @@ To compile on linux:
 
 To compile with Microsoft Visual Studio:
 
+- use build tools v142 with Microsoft Visual Studio 2019
+
 - First install MSFileReader from Thermo Fischer Scientific.
   https://thermo.flexnetoperations.com/control/thmo/login
   Once registered you will find the software under "Other Software Releases".
@@ -16,3 +18,8 @@ To compile with Microsoft Visual Studio:
 
 - Right-mouse-click on the "Comet" project and choose "Build".
   This should generate a binary "Comet.exe" in x64/Release.
+
+  OR
+  
+  If you want to also build CometUI and the RealtmeSearch
+  test applications, both C# tools, build the entire solution.
