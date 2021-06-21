@@ -3426,7 +3426,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          {
             //MH: newer sparse matrix converts bin to sparse matrix bin
             bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries)  +ctLen) + 0);
-
+/*
             if (bin < 0)
             {
                char szErrorMsg[SIZE_ERROR];
@@ -3436,10 +3436,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                logout(szErrorMsg);
                continue;
             }
-
+*/
             x = bin / SPARSE_MATRIX_SIZE;
 
-            if (x>iMax || ppSparseFastXcorrData[x]==NULL || bin==0) // x should never be > iMax so this is just a safety check
+            if (bin <= 0 || x>iMax || ppSparseFastXcorrData[x]==NULL) // x should never be > iMax so this is just a safety check
                continue;
 
             y = bin - (x*SPARSE_MATRIX_SIZE);
@@ -3455,7 +3455,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                      //x+1 here as 0 is the base fragment ion series
                      // *(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)+NL) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][NL].
                      bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries)  +ctLen) + ii+1);
-
+/*
                      if (bin < 0)
                      {
                         char szErrorMsg[SIZE_ERROR];
@@ -3465,10 +3465,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                         logout(szErrorMsg);
                         continue;
                      }
-
+*/
                      x = bin / SPARSE_MATRIX_SIZE;
 
-                     if (x>iMax || ppSparseFastXcorrData[x]==NULL || bin==0) // x should never be > iMax so this is just a safety check
+                     if (bin <= 0 || x>iMax || ppSparseFastXcorrData[x]==NULL) // x should never be > iMax so this is just a safety check
                         continue;
 
                      y = bin - (x*SPARSE_MATRIX_SIZE);
@@ -3488,7 +3488,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       for (int ctZ=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ>=1; ctZ--)
       {
          bin = *(*(*p_uiBinnedPrecursorNL + ctNL) + ctZ);
-         
+/*
          if (bin < 0)
          {
             char szErrorMsg[SIZE_ERROR];
@@ -3497,10 +3497,10 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             logout(szErrorMsg);
             continue;
          }
-
+*/
          x = bin / SPARSE_MATRIX_SIZE;
 
-         if (x>iMax || ppSparseFastXcorrData[x]==NULL || bin==0) // x should never be > iMax so this is just a safety check
+         if (bin <= 0 || x>iMax || ppSparseFastXcorrData[x]==NULL) // x should never be > iMax so this is just a safety check
             continue;
 
          y = bin - (x*SPARSE_MATRIX_SIZE);
