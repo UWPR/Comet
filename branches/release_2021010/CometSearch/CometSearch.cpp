@@ -1772,8 +1772,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                               int iVal = BIN(dNLMass);
-if (dNLMass < 0)
-   printf("OK  dNLMass %f, dCalcPepMass %f, NLIon[%d] %f, ctZ %d\n", dNLMass, dCalcPepMass, ctNL, g_staticParams.precursorNLIons[ctNL], ctCharge);
 
                               if (iVal > 0 && pbDuplFragment[iVal] == false)
                               {
