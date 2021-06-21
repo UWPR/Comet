@@ -646,8 +646,8 @@ bool CometSearch::RunSearch(int iPercentStart,
             // Allow up to 500 jobs/sequences to be queued before pausing; otherwise all
             // sequences in the database will be loaded/queued all at once which can be
             // a memory issue for extremely large fasta files
-            while (pSearchThreadPool->jobs_.size() >= 500)
-               pSearchThreadPool->wait_on_threads();
+//          while (pSearchThreadPool->jobs_.size() >= 500)
+//             pSearchThreadPool->wait_on_threads();
 
             // Now search sequence entry; add threading here so that
             // each protein sequence is passed to a separate thread.
@@ -1772,6 +1772,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                               int iVal = BIN(dNLMass);
+if (dNLMass < 0)
+   printf("OK  dNLMass %f, dCalcPepMass %f, NLIon[%d] %f, ctZ %d\n", dNLMass, dCalcPepMass, ctNL, g_staticParams.precursorNLIons[ctNL], ctCharge);
 
                               if (iVal > 0 && pbDuplFragment[iVal] == false)
                               {
@@ -3427,6 +3429,16 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             //MH: newer sparse matrix converts bin to sparse matrix bin
             bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries)  +ctLen) + 0);
 
+            if (bin < 0)
+            {
+               char szErrorMsg[SIZE_ERROR];
+               sprintf(szErrorMsg,  " Error1 in CometSearch::XcorrScore: bin %d, scan %d, ctZ %d, ctIon %d, ctLen %d\n",
+                     bin, g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
+                     ctCharge, ctIonSeries, ctLen);
+               logout(szErrorMsg);
+               continue;
+            }
+
             x = bin / SPARSE_MATRIX_SIZE;
 
             if (x>iMax || ppSparseFastXcorrData[x]==NULL || bin==0) // x should never be > iMax so this is just a safety check
@@ -3445,6 +3457,16 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                      //x+1 here as 0 is the base fragment ion series
                      // *(*(*(*(*p_uiBinnedIonMasses + ctCharge)+ctIonSeries)+ctLen)+NL) gives uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][NL].
                      bin = *(*(*(*(*p_uiBinnedIonMasses + ctCharge) + ctIonSeries)  +ctLen) + ii+1);
+
+                     if (bin < 0)
+                     {
+                        char szErrorMsg[SIZE_ERROR];
+                        sprintf(szErrorMsg,  " Error2 in CometSearch::XcorrScore: bin %d, scan %d, ctZ %d, ctIon %d, ctLen %d, mod %d\n",
+                              bin, g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber,
+                              ctCharge, ctIonSeries, ctLen, ii);
+                        logout(szErrorMsg);
+                        continue;
+                     }
 
                      x = bin / SPARSE_MATRIX_SIZE;
 
@@ -3468,6 +3490,15 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       for (int ctZ=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ>=1; ctZ--)
       {
          bin = *(*(*p_uiBinnedPrecursorNL + ctNL) + ctZ);
+         
+         if (bin < 0)
+         {
+            char szErrorMsg[SIZE_ERROR];
+            sprintf(szErrorMsg,  " Error3 in CometSearch::XcorrScore: bin %d, scan %d, ctNL %d, ctZ %d\n",
+                  bin, g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iScanNumber, ctNL, ctZ);
+            logout(szErrorMsg);
+            continue;
+         }
 
          x = bin / SPARSE_MATRIX_SIZE;
 
