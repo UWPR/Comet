@@ -212,24 +212,6 @@ private:
               int iDirection,
               char *sDNASequence);
 
-   // Processing results
-// void CalculateEvalue(struct Results *_pResults);
-   void GenerateXcorrDecoys(struct Results *_pResults,
-                            bool bDecoy);
-
-    // Displaying results
-   void PrintResults(struct Results *_pResults,
-                     bool bDecoySearch);
-   void PrintOutputLine(struct Results *_pResults,
-                        int iRankXcorr,
-                        int iLenMaxDuplicates,
-                        int iMaxWidthReference,
-                        int iWhichResult,
-                        bool bDecoySearch,
-                        FILE *fpOut);
-   void PrintIons(int iTmpCharge,
-                  FILE *fpOut);
-
    // Cleaning up
    void CleanUp();
 
