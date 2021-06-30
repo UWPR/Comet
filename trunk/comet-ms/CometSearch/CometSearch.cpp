@@ -3656,16 +3656,9 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].dPepMass = dCalcPepMass;
 
-      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
-      {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1) * g_staticParams.ionInformation.iNumIonSeriesUsed;
-      }
-      else
-      {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
-      }
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons = (iLenPeptide - 1)
+         * pQuery->_spectrumInfoInternal.iMaxFragmentCharge
+         * g_staticParams.ionInformation.iNumIonSeriesUsed;
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
 
@@ -3791,17 +3784,9 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
                   
-      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
-      {
-         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1)
-               * g_staticParams.ionInformation.iNumIonSeriesUsed;
-      }
-      else
-      {
-         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
-      }
+      pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
+         * pQuery->_spectrumInfoInternal.iMaxFragmentCharge
+         * g_staticParams.ionInformation.iNumIonSeriesUsed;
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
 
