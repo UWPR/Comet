@@ -120,7 +120,7 @@ public:
          threads_[i] = pHandle[i];
 
 #ifdef _WIN32
-         threads_[i] = (HANDLE)_beginthreadex(0, 0, &threadStart, (void*) data_[i], 0,NULL);
+         threads_[i] = (HANDLE)_beginthreadex(0, 0, (_beginthreadex_proc_type) &threadStart, (void*) data_[i], 0,NULL);
 #else
          pthread_create(&threads_[i], NULL, threadStart, (void*) data_[i]);
 #endif

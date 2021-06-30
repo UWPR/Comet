@@ -80,7 +80,7 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>26E89C6FAA02A3E6E6CC67B9B8584C819B2E4F7B</ManifestCertificateThumbprint>
+    <ManifestCertificateThumbprint>778CCE9AE02C6CFDB0E9B00A8E374F45FA8A35A1</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
     <ManifestKeyFile>CometUI.pfx</ManifestKeyFile>
@@ -385,6 +385,8 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="CometUI.pfx" />
+    <None Include="CometUI_1_TemporaryKey.pfx" />
+    <None Include="CometUI_2_TemporaryKey.pfx" />
     <None Include="CometUI_Key.pfx" />
     <None Include="CometUI_TemporaryKey.pfx" />
     <None Include="packages.config" />

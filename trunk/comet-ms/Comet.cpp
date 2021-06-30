@@ -1650,6 +1650,7 @@ add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.0
 8.  Glu_C                  1      DE          P\n\
 9.  PepsinA                1      FL          P\n\
 10. Chymotrypsin           1      FWYL        P\n\
+11. No_cut                 1      @           @\n\
 \n");
 
    logout("\n Created:  comet.params.new\n\n");
