@@ -387,6 +387,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("cyclic_peptide_search", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "cyclic_NL_ms_level"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("cyclic_NL_ms_level", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "cyclic_peptide_NL"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
@@ -1478,6 +1485,14 @@ peff_obo =                             # path to PSI Mod or Unimod OBO file\n\
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\
 \n", MAX_THREADS);
+
+   fprintf(fp,
+"#\n\
+# cyclic search\n\
+#\n\
+cyclic_peptide_search = 1              # 0=regular DDA search, 1=cyclic peptide search\n\
+cyclic_peptide_NL = 27.994915          # neutral loss mass\n\
+cyclic_NL_ms_level = 1                 # 0=don't use, 1=use on all scans, 2=use on MS2 scans only, 3=use on MS3 scans only\n");
 
    fprintf(fp,
 "#\n\

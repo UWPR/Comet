@@ -311,7 +311,7 @@ private:
    unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
    unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
    vector<int>        _vuiBinnedIonMasses;
-   vector<int>        _vuiBinnedIonDecoy;
+   vector<int>        _vuiBinnedIonMasses2Plus;
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;      // Number of arrays equals number of threads

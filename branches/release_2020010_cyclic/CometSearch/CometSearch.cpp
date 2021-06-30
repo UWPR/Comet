@@ -2116,22 +2116,31 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                   // Calculate ion series just once to compare against all relevant query spectra.
                   if (bFirstTimeThroughLoopForPeptide)
                   {
+                     bool bAddNLMS2 = (g_staticParams.options.dCyclicNL > FLOAT_ZERO
+                           && (g_staticParams.options.iCyclicNL & 2));
+                     bool bAddNLMS3 = (g_staticParams.options.dCyclicNL > FLOAT_ZERO
+                           && (g_staticParams.options.iCyclicNL & 3));
+
                      _vuiBinnedIonMasses.clear();
+                     _vuiBinnedIonMasses2Plus.clear();
 
                      // account for intact molecule with cyclic neutral loss
-                     if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
+                     if (bAddNLMS2)
                      {
                         int iTmp = BIN(dCalcPepMass - g_staticParams.options.dCyclicNL);
                         if (iTmp > 0)
+                        {
                            _vuiBinnedIonMasses.push_back(iTmp);
+                           _vuiBinnedIonMasses2Plus.clear();
+                        }
                      }
 
                      if (bFullLengthSequence) // ms2, calculate all cyclic ions
                      {
                         unsigned int iTmpStart;
                         unsigned int iTmpEnd;
-                        double dTmp;
                         double dSum;
+                        int iTmp;
 
                         for (iTmpStart = 0; iTmpStart <= iProteinSeqLengthMinus1; iTmpStart++)
                         {
@@ -2141,14 +2150,24 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                               for (unsigned int x=iTmpStart; x<=iTmpEnd; x++)
                               {
                                  dSum += g_staticParams.massUtility.pdAAMassFragment[(int)strDoubleSeq[x]];
+
+                                 // 1+ fragments
                                  _vuiBinnedIonMasses.push_back(BIN(dSum));
 
+                                 // peptides analyzed with 2+ fragments (which also includes 1+ fragments)
+                                 _vuiBinnedIonMasses2Plus.push_back(BIN(dSum));
+                                 _vuiBinnedIonMasses2Plus.push_back(BIN((dSum + PROTON_MASS)/2.0));
+
                                  // consider cyclic neutral loss
-                                 if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
+                                 if (bAddNLMS2)
                                  {
-                                    dTmp = dSum - g_staticParams.options.dCyclicNL;
-                                    if (dTmp > 0.0)
-                                       _vuiBinnedIonMasses.push_back(BIN(dTmp));
+                                    iTmp = BIN(dSum - g_staticParams.options.dCyclicNL);
+
+                                    if (iTmp > 0)
+                                    {
+                                       _vuiBinnedIonMasses.push_back(iTmp);
+                                       _vuiBinnedIonMasses2Plus.push_back(iTmp);
+                                    }
                                  }
                               }
                            }
@@ -2160,30 +2179,46 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                         double dReverseSum = PROTON_MASS;
 
                         // add intact cyclic NL
-                        if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
+                        if (bAddNLMS3)
                         {
                            int iTmp = BIN(dCalcPepMass - g_staticParams.options.dCyclicNL);
                            if (iTmp > 0)
+                           {
                               _vuiBinnedIonMasses.push_back(iTmp);
+                              _vuiBinnedIonMasses2Plus.push_back(iTmp);
+                           }
                         }
 
                         for (unsigned int x = iStartPos; x < iEndPos; x++)
                         {
-                           dForwardSum += g_staticParams.massUtility.pdAAMassFragment[(int)strDoubleSeq[x]];
-                           _vuiBinnedIonMasses.push_back(BIN(dForwardSum));
-                           dReverseSum += g_staticParams.massUtility.pdAAMassFragment[(int)strDoubleSeq[iEndPos+iStartPos-x]];
-                           _vuiBinnedIonMasses.push_back(BIN(dReverseSum));
+                           int iTmp;
 
-                           if (g_staticParams.options.dCyclicNL > FLOAT_ZERO)
+                           dForwardSum += g_staticParams.massUtility.pdAAMassFragment[(int)strDoubleSeq[x]];
+                           iTmp = BIN(dForwardSum);
+                           _vuiBinnedIonMasses.push_back(iTmp);
+                           _vuiBinnedIonMasses2Plus.push_back(iTmp);
+
+                           dReverseSum += g_staticParams.massUtility.pdAAMassFragment[(int)strDoubleSeq[iEndPos+iStartPos-x]];
+                           iTmp = BIN(dReverseSum);
+                           _vuiBinnedIonMasses.push_back(iTmp);
+                           _vuiBinnedIonMasses2Plus.push_back(iTmp);
+
+                           if (bAddNLMS3)
                            {
                               // consider fragment neutral loss
-                              double dTmp = dForwardSum - g_staticParams.options.dCyclicNL;
-                              if (dTmp > 0.0)
-                                 _vuiBinnedIonMasses.push_back(BIN(dTmp));
+                              iTmp = BIN(dForwardSum - g_staticParams.options.dCyclicNL);
+                              if (iTmp > 0)
+                              {
+                                 _vuiBinnedIonMasses.push_back(iTmp);
+                                 _vuiBinnedIonMasses2Plus.push_back(iTmp);
+                              }
 
-                              dTmp = dReverseSum - g_staticParams.options.dCyclicNL;
-                              if (dTmp > 0.0)
-                                 _vuiBinnedIonMasses.push_back(BIN(dTmp));
+                              iTmp = BIN(dReverseSum - g_staticParams.options.dCyclicNL);
+                              if (iTmp > 0)
+                              {
+                                 _vuiBinnedIonMasses.push_back(iTmp);
+                                 _vuiBinnedIonMasses2Plus.push_back(iTmp);
+                              }
                            }
                         }
                      }
@@ -2192,6 +2227,10 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
                      sort(_vuiBinnedIonMasses.begin(), _vuiBinnedIonMasses.end());
                      auto last = unique(_vuiBinnedIonMasses.begin(), _vuiBinnedIonMasses.end());
                      _vuiBinnedIonMasses.erase(last, _vuiBinnedIonMasses.end());
+
+                     sort(_vuiBinnedIonMasses2Plus.begin(), _vuiBinnedIonMasses2Plus.end());
+                     last = unique(_vuiBinnedIonMasses2Plus.begin(), _vuiBinnedIonMasses2Plus.end());
+                     _vuiBinnedIonMasses2Plus.erase(last, _vuiBinnedIonMasses2Plus.end());
                   }
 
                   if (bFirstTimeThroughLoopForPeptide)
@@ -2350,7 +2389,10 @@ bool CometSearch::SearchForCyclicPeptides(struct sDBEntry dbe,
       }
 
       // Increment end.
-      if (dCalcPepMass <= g_massRange.dMaxMass && iEndPos < iDoubleLenMinus1 && iLenPeptide < MAX_PEPTIDE_LEN && (iEndPos-iStartPos) < iProteinSeqLengthMinus1)
+      if (dCalcPepMass <= g_massRange.dMaxMass
+            && iEndPos < iDoubleLenMinus1
+            && iLenPeptide < MAX_PEPTIDE_LEN
+            && (iEndPos-iStartPos) < iProteinSeqLengthMinus1)
       {
          iEndPos++;
 
@@ -4109,6 +4151,8 @@ void CometSearch::XcorrScore(const char *szProteinSeq,
    if (g_staticParams.options.bCyclicSearch)
    {
       bool bPass = false;
+      bool bUse2PlusFragments = false;
+
       // is full length, only score MS2
       if (pQuery-> _spectrumInfoInternal.iSpecMSLevel == 0)
          bPass = true;
@@ -4117,7 +4161,11 @@ void CometSearch::XcorrScore(const char *szProteinSeq,
          if (iLenPeptide == iLenProtein)
          {
             if (pQuery-> _spectrumInfoInternal.iSpecMSLevel == 2)
+            {
                bPass = true;
+               if (pQuery->_spectrumInfoInternal.iMaxFragCharge > 1)
+                  bUse2PlusFragments = true;
+            }
          }
          else
          {
@@ -4131,12 +4179,18 @@ void CometSearch::XcorrScore(const char *szProteinSeq,
          // _vuiBinnedIonMasses
          ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
 
-         unsigned int iSize = (unsigned int)_vuiBinnedIonMasses.size();
+         unsigned int iSize;
+         if (bUse2PlusFragments)
+            iSize = (unsigned int)_vuiBinnedIonMasses2Plus.size();
+         else
+            iSize = (unsigned int)_vuiBinnedIonMasses.size();
 
          for (unsigned int i = 0; i < iSize; i++)
          {
-            //MH: newer sparse matrix converts bin to sparse matrix bin
-            bin = _vuiBinnedIonMasses.at(i);
+            if (bUse2PlusFragments)
+               bin = _vuiBinnedIonMasses2Plus.at(i);
+            else
+               bin = _vuiBinnedIonMasses.at(i);
 
             x = bin / SPARSE_MATRIX_SIZE;
 
@@ -4147,6 +4201,7 @@ void CometSearch::XcorrScore(const char *szProteinSeq,
 
             dXcorr += ppSparseFastXcorrData[x][y];
          }
+
       }
       else
          return;
@@ -4407,16 +4462,24 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].dPepMass = dCalcPepMass;
 
-      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
+      if (g_staticParams.options.bCyclicSearch && (iLenPeptide == (int)strlen(szProteinSeq)))  //FIX avoid repeated strlen here
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1) * g_staticParams.ionInformation.iNumIonSeriesUsed;
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons = iLenPeptide * (iLenPeptide - 1)
+            * pQuery->_spectrumInfoInternal.iMaxFragCharge;
+ 
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iIsCyclic = 1;  // fully cyclic
       }
-      else
+      else // linear
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons = (iLenPeptide - 1)
+            * pQuery->_spectrumInfoInternal.iMaxFragCharge;
+         
+         if (g_staticParams.options.bCyclicSearch)
+            pQuery->_pDecoys[siLowestDecoySpScoreIndex].iIsCyclic = 2;  // subset cyclic linear
+         else
+            pQuery->_pDecoys[siLowestDecoySpScoreIndex].iIsCyclic = 0;  // normal search
       }
+
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
 
@@ -4542,16 +4605,22 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
 
-      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
+      if (g_staticParams.options.bCyclicSearch && (iLenPeptide == (int)strlen(szProteinSeq)))  //FIX avoid repeated strlen here
       {
-         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*(pQuery->_spectrumInfoInternal.iChargeState-1)
-               * g_staticParams.ionInformation.iNumIonSeriesUsed;
+         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = iLenPeptide * (iLenPeptide - 1)
+            * pQuery->_spectrumInfoInternal.iMaxFragCharge;
+
+         pQuery->_pResults[siLowestSpScoreIndex].iIsCyclic = 1;  // fully cyclic
       }
-      else
+      else // linear
       {
-         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons
-            = (iLenPeptide-1)*g_staticParams.ionInformation.iNumIonSeriesUsed;
+         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
+            * pQuery->_spectrumInfoInternal.iMaxFragCharge;
+
+         if (g_staticParams.options.bCyclicSearch)
+            pQuery->_pResults[siLowestSpScoreIndex].iIsCyclic = 2;  // subset cyclic linear
+         else
+            pQuery->_pResults[siLowestSpScoreIndex].iIsCyclic = 0;  // normal search
       }
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;

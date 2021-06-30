@@ -982,7 +982,10 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec)
                pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;
             else
             {
-               pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
+               if (g_staticParams.options.bCyclicSearch)
+                  pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge;
+               else
+                  pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
 
                if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
                   pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;

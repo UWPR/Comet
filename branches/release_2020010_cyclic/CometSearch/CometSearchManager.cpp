@@ -302,6 +302,7 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].iRankSp = 0;
          pQuery->_pResults[j].iMatchedIons = 0;
          pQuery->_pResults[j].iTotalIons = 0;
+         pQuery->_pResults[j].iIsCyclic = 0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
          pQuery->_pResults[j].strSingleSearchProtein = "";
          pQuery->_pResults[j].pWhichProtein.clear();
@@ -323,6 +324,7 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].iRankSp = 0;
             pQuery->_pDecoys[j].iMatchedIons = 0;
             pQuery->_pDecoys[j].iTotalIons = 0;
+            pQuery->_pDecoys[j].iIsCyclic = 0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
             pQuery->_pDecoys[j].strSingleSearchProtein = "";
             pQuery->_pDecoys[j].cPeffOrigResidue = '\0';
@@ -625,6 +627,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("cyclic_peptide_search", g_staticParams.options.bCyclicSearch);
 
    GetParamValue("cyclic_peptide_NL", g_staticParams.options.dCyclicNL);
+
+   GetParamValue("cyclic_NL_ms_level", g_staticParams.options.iCyclicNL);
 
    GetParamValue("num_threads", g_staticParams.options.iNumThreads);
 
@@ -2152,6 +2156,7 @@ bool CometSearchManager::DoSearch()
                      {
                         printf(" Error strstr cyclic scan ms3, filter line does no have 'Full ms3' string:\n%s\n", 
                               (*it)->_spectrumInfoInternal.szFilterLine);
+                        printf(" Scan %d\n", (*it)->_spectrumInfoInternal.iScanNumber);
                         exit(1);
                      }
                      pStr += 8;

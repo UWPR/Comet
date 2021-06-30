@@ -116,6 +116,7 @@ struct Options             // output parameters
    int bTreatSameIL;
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
    int bCyclicSearch;            // 0 = normal search; 1 = cyclic peptide search
+   int iCyclicNL;                // 0 = don't use, 1 = use on all scans, 2 = use only on MS2 scans, 3 = use only on MS3 scans
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dCyclicNL;             // NL applied to cyclic peptide fragments
    double dMinIntensity;
@@ -165,6 +166,7 @@ struct Options             // output parameters
       bTreatSameIL = a.bTreatSameIL;
       iMaxIndexRunTime = a.iMaxIndexRunTime;
       lMaxIterations = a.lMaxIterations;
+      iCyclicNL = a.iCyclicNL;
       dCyclicNL = a.dCyclicNL;
       dMinIntensity = a.dMinIntensity;
       dRemovePrecursorTol = a.dRemovePrecursorTol;
@@ -196,6 +198,7 @@ struct Results
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
+   int    iIsCyclic;                          // 0 = regular peptide, 1 = cyclic, 2 = subset cyclic linear
    string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    char   cPeffOrigResidue;                   // original residue of a PEFF variant
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
@@ -781,6 +784,7 @@ struct StaticParams
       options.iMaxFragmentCharge = 3;
       options.iMaxPrecursorCharge = 6;
       options.iMSLevel = 2;
+      options.iCyclicNL = 0;
       options.dCyclicNL = 0.0;
       options.dMinIntensity = 0.0;
       options.dPeptideMassLow = 600.0;
