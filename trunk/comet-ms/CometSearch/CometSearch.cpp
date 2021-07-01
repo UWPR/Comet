@@ -3657,7 +3657,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].dPepMass = dCalcPepMass;
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons = (iLenPeptide - 1)
-         * pQuery->_spectrumInfoInternal.iMaxFragmentCharge
+         * pQuery->_spectrumInfoInternal.iMaxFragCharge
          * g_staticParams.ionInformation.iNumIonSeriesUsed;
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
@@ -3785,7 +3785,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
                   
       pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
-         * pQuery->_spectrumInfoInternal.iMaxFragmentCharge
+         * pQuery->_spectrumInfoInternal.iMaxFragCharge
          * g_staticParams.ionInformation.iNumIonSeriesUsed;
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
