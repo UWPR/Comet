@@ -397,7 +397,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                      {
                         CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
 
-                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s\" isDecoy=\"%s\" DBSequence_Ref=\"%s\" />\n",
+                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s\" isDecoy=\"%s\" dBSequence_Ref=\"%s\" />\n",
                               strPeptide.c_str(),
                               szProteinName,
                               "false",
@@ -422,7 +422,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                      {
                         CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
 
-                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s%s\" isDecoy=\"%s\" DBSequence_Ref=\"%s%s\" />\n",
+                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s%s\" isDecoy=\"%s\" dBSequence_Ref=\"%s%s\" />\n",
                               strPeptide.c_str(),
                               g_staticParams.szDecoyPrefix,
                               szProteinName,
