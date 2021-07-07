@@ -3,4 +3,5 @@ These source files differ from MSToolkit:
 2.  modify Makefile to remove sqlite and build only mstoolkitlite.a
 3.  delete src/sqlite-3.7.7.1/
 4.  delete MSSingleScan/
-4.  delete MSToolkitCLR.vcproj, MSToolkitLiteCLR.vcproj, MSToolkit.sln, MSToolkit.vcproj
+5.  delete MSToolkitCLR.vcproj, MSToolkitLiteCLR.vcproj, MSToolkit.sln, MSToolkit.vcproj
+6.  add mstSID support by modifying saxmzxmlhandler.cpp and MSToolkitTypes.h
