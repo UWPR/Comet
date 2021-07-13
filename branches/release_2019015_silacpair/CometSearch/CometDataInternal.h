@@ -178,8 +178,10 @@ struct Results
 {
    double dPepMass;
    double dExpect;
+   double dExpectPair;
    float  fScoreSp;
    float  fXcorr;
+   float  fXcorrPair;
    int    iLenPeptide;
    int    iRankSp;
    int    iMatchedIons;
@@ -816,8 +818,11 @@ struct Query
    int   piOrigHisto[HISTO_SIZE];  // histogram before internal decoys added 
    int   piAfterDecoyHisto[HISTO_SIZE];  // histogram after internal decoys added 
    int   iXcorrHistogram[HISTO_SIZE];
+   int   iXcorrHistogramPair[HISTO_SIZE];  // histogram of xcorr of paired peaks only
    double pdCumulativeHistogram[HISTO_SIZE];
+   double pdCumulativeHistogramPair[HISTO_SIZE];
    int   iHistogramCount;   // # of entries in histogram
+   int   iHistogramCountPair;   // # of entries in histogram for silac paired fragments
    float fPar[4];           // parameters of LMA regression
 
    int iMatchPeptideCount;        // # of peptides that get stored (i.e. are greater than lowest score)
@@ -864,14 +869,17 @@ struct Query
       for (int i=0; i < HISTO_SIZE; i++)
       {
          iXcorrHistogram[i] = 0;
+         iXcorrHistogramPair[i] = 0;
          piOrigHisto[i] = 0;
          piAfterDecoyHisto[i] = 0;
          pdCumulativeHistogram[i] = 0.0;
+         pdCumulativeHistogramPair[i] = 0.0;
       }
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
       iHistogramCount = 0;
+      iHistogramCountPair = 0;
 
       fPar[0]=0.0;
       fPar[1]=0.0;

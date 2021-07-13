@@ -136,7 +136,7 @@ private:
                              double *pdAAreverse);
    int CheckDuplicate(int iWhichQuery,
                       int iStartResidue,
-					  int iEndResidue,
+                      int iEndResidue,
                       int iStartPos,
                       int iEndPos,
                       int iFoundVariableMod,
@@ -152,7 +152,8 @@ private:
                      int iFoundVariableMod,
                      char *szProteinSeq,
                      double dCalcPepMass,
-                     double dScoreSp,
+                     double dXcorr,
+                     double dXcorrPair,
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);

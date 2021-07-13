@@ -86,6 +86,8 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "exp_neutral_mass\t");
    fprintf(fpout, "calc_neutral_mass\t");
    fprintf(fpout, "e-value\t");
+   if (g_staticParams.variableModParameters.bSilacPair)
+      fprintf(fpout, "e-value_pair\t");
    fprintf(fpout, "xcorr\t");
    fprintf(fpout, "delta_cn\t");
    fprintf(fpout, "sp_score\t");
@@ -221,6 +223,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // prints modification encoding
          PrintModifications(fpout, pOutput, iWhichResult);
+         fprintf(fpout, "\t");
 
          // Print protein reference/accession.
          char szProteinName[100];
@@ -412,6 +415,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
          fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
          fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpect);
+         if (g_staticParams.variableModParameters.bSilacPair)
+            fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpectPair);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
          fprintf(fpout, "%0.4f\t", dDeltaCn);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
@@ -555,7 +560,10 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
+
+
 /*
+         fprintf(fpout, "\t");
          for (int i=0; i<HISTO_SIZE; i++) //xcorr histo
          {
             if (i>0)
@@ -586,6 +594,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%d\t", (int)pQuery->fPar[3]); //next_xcorr
          fprintf(fpout, "%d",   (int)pQuery->siMaxXcorr); //max_xcorr
 */
+
          fprintf(fpout, "\n");
       }
    }
@@ -736,8 +745,6 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       bPrintMod = true;
    }
 
-   if (bPrintMod)
-      fprintf(fpout, "\t");
-   else
-      fprintf(fpout, "-\t");
+   if (!bPrintMod)
+      fprintf(fpout, "-");
 }
