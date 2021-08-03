@@ -155,7 +155,7 @@ private:
                      int iFoundVariableMod,
                      char *szProteinSeq,
                      double dCalcPepMass,
-                     double dScoreSp,
+                     double dXcorr,
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
