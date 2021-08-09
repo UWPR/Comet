@@ -54,7 +54,7 @@ private:
                          const Results &b);
    static bool CalculateEValue(int iWhichQuery);
    static bool GenerateXcorrDecoys(int iWhichQuery,
-                                   bool bOnlySilacPairPeaks);
+                                   int iWhichSilac);
    static void LinearRegression(int *pHistogram,
                                 double *pdCumulative,
                                 double *dSlope,

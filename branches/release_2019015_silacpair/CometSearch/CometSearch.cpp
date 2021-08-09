@@ -3263,6 +3263,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
         ctCharge;
    double dXcorr = 0.0;
    double dXcorrPair = 0.0;   // xcorr for silac paired fragments only
+   double dXcorrPlain = 0.0;   // xcorr for plain peptide, no paired fragments
    int iLenPeptideMinus1 = iLenPeptide - 1;
 
    // Pointer to either regular or decoy uiBinnedIonMasses[][][][].
@@ -3327,6 +3328,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             y = bin - (x*SPARSE_MATRIX_SIZE);
 
             dXcorr += ppSparseFastXcorrData[x][y];
+            dXcorrPlain += ppSparseFastXcorrData[x][y];
 
             if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss && iFoundVariableMod==2)
             {
@@ -3346,6 +3348,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                      y = bin - (x*SPARSE_MATRIX_SIZE);
 
                      dXcorr += ppSparseFastXcorrData[x][y];
+                     dXcorrPlain += ppSparseFastXcorrData[x][y];
                   }
                }
             }
@@ -3363,7 +3366,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                   y = bin - (x*SPARSE_MATRIX_SIZE);
 
                   dXcorr += ppSparseFastXcorrData[x][y];
-
                   dXcorrPair += ppSparseFastXcorrData[x][y];  // xcorr contribution only of the paired peaks
                }
             }
@@ -3397,6 +3399,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             y = bin - (x*SPARSE_MATRIX_SIZE);
 
             dXcorr += ppSparseFastXcorrData[x][y];
+            dXcorrPlain += ppSparseFastXcorrData[x][y];
          }
       }
    }
@@ -3410,6 +3413,11 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       dXcorrPair = XCORR_CUTOFF;
    else
       dXcorrPair *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
+
+   if (dXcorrPlain < XCORR_CUTOFF)
+      dXcorrPlain = XCORR_CUTOFF;
+   else
+      dXcorrPlain *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
    Threading::LockMutex(pQuery->accessMutex);
 
@@ -3449,6 +3457,18 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       pQuery->iXcorrHistogramPair[iTmp] += 1;
       if (pQuery->iHistogramCountPair < DECOY_SIZE)
          pQuery->iHistogramCountPair += 1;
+
+      iTmp = (int)(dXcorrPlain * 10.0 + 0.5);
+
+      if (iTmp < 0) // possible for CRUX compiled option to have a negative xcorr
+         iTmp = 0;  // lump these all in the zero bin of the histogram
+
+      if (iTmp >= HISTO_SIZE)
+         iTmp = HISTO_SIZE - 1;
+
+      pQuery->iXcorrHistogramPlain[iTmp] += 1;
+      if (pQuery->iHistogramCountPlain < DECOY_SIZE)
+         pQuery->iHistogramCountPlain += 1;
    }
 
    if (bDecoyPep && g_staticParams.options.iDecoySearch==2)
@@ -3459,13 +3479,13 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL)
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, dXcorrPair, bDecoyPep, piVarModSites, dbe);
+                  dCalcPepMass, dXcorr, dXcorrPair, dXcorrPlain, bDecoyPep, piVarModSites, dbe);
          }
          else if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
                   szProteinSeq, bDecoyPep, piVarModSites, dbe))
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, dXcorrPair, bDecoyPep, piVarModSites, dbe);
+                  dCalcPepMass, dXcorr, dXcorrPair, dXcorrPlain, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -3477,13 +3497,13 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL)
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, dXcorrPair, bDecoyPep, piVarModSites, dbe);
+                  dCalcPepMass, dXcorr, dXcorrPair, dXcorrPlain, bDecoyPep, piVarModSites, dbe);
          }
          else if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
                   szProteinSeq, bDecoyPep, piVarModSites, dbe))
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, dXcorrPair, bDecoyPep, piVarModSites, dbe);
+                  dCalcPepMass, dXcorr, dXcorrPair, dXcorrPlain, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -3535,6 +3555,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
                                double dCalcPepMass,
                                double dXcorr,
                                double dXcorrPair,
+                               double dXcorrPlain,
                                bool bDecoyPep,
                                int *piVarModSites,
                                struct sDBEntry *dbe)
@@ -3609,6 +3630,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
       pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorrPair = (float)dXcorrPair;
+      pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorrPlain = (float)dXcorrPlain;
 
       if (g_staticParams.bIndexDb)
       {
@@ -3771,6 +3793,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
       pQuery->_pResults[siLowestSpScoreIndex].fXcorrPair = (float)dXcorrPair;
+      pQuery->_pResults[siLowestSpScoreIndex].fXcorrPlain = (float)dXcorrPlain;
 
       if (g_staticParams.bIndexDb)
       {

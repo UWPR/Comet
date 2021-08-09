@@ -501,95 +501,21 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
    int iMaxCorr;
    int iStartCorr;
    int iNextCorr;
+   int iLoopCount;
    double dSlope;
    double dIntercept;
    double *pdCumulative;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   piHistogram = pQuery->iXcorrHistogram;
-   pdCumulative = pQuery->pdCumulativeHistogram;
-
-
-   // copy original histogram before any possible decoys
-// for (i=0; i<HISTO_SIZE; i++)
-//    pQuery->piOrigHisto[i] = piHistogram[i];
-
-   if (pQuery->iHistogramCount < DECOY_SIZE)
-   {
-      if (!GenerateXcorrDecoys(iWhichQuery, 0))
-      {
-          return false;
-      }
-   }
-
-// for (i=0; i<HISTO_SIZE; i++)
-//    pQuery->piAfterDecoyHisto[i] = piHistogram[i];
-
-   LinearRegression(piHistogram, pdCumulative, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
-
-   pQuery->fPar[0] = (float)dIntercept;  // b
-   pQuery->fPar[1] = (float)dSlope    ;  // m
-   pQuery->fPar[2] = (float)iStartCorr;
-   pQuery->fPar[3] = (float)iNextCorr;
-   pQuery->siMaxXcorr = (short)iMaxCorr;
-
-   dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
-
-   int iLoopCount;
-
-   iLoopCount = max(pQuery->iMatchPeptideCount, pQuery->iDecoyMatchPeptideCount);
-
-   if (iLoopCount > g_staticParams.options.iNumPeptideOutputLines)
-      iLoopCount = g_staticParams.options.iNumPeptideOutputLines;
-
-   for (i=0; i<iLoopCount; i++)
-   {
-      if (dSlope >= 0.0)
-      {
-         if (i<pQuery->iMatchPeptideCount)
-            pQuery->_pResults[i].dExpect = 999.0;
-         if (i<pQuery->iDecoyMatchPeptideCount)
-            pQuery->_pDecoys[i].dExpect = 999.0;
-      }
-      else
-      {
-         double dExpect = 999.9;
-
-         if (i<pQuery->iMatchPeptideCount)
-         {
-            dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
-            if (dExpect > 999.0)
-               dExpect = 999.0;
-            pQuery->_pResults[i].dExpect = dExpect;
-         }
-
-         if (i<pQuery->iDecoyMatchPeptideCount)
-         {
-            dExpect = pow(10.0, dSlope * pQuery->_pDecoys[i].fXcorr + dIntercept);
-            if (dExpect > 999.0)
-               dExpect = 999.0;
-            pQuery->_pDecoys[i].dExpect = dExpect;
-         }
-      }
-   }
-
-
-
    if (g_staticParams.variableModParameters.bSilacPair)  // E-value of just the paired fragments contribution
    {
-
-//get rid of this line
-memset(pQuery->pdCumulativeHistogram, 0, sizeof(pQuery->pdCumulativeHistogram));
+      // DO PAIR PEAKS FIRST
 
       piHistogram = pQuery->iXcorrHistogramPair;
-      pdCumulative = pQuery->pdCumulativeHistogram;
+      pdCumulative = pQuery->pdCumulativeHistogramPair;
 
-      // copy original histogram before any possible decoys
-      for (i=0; i<HISTO_SIZE; i++)
-         pQuery->piOrigHisto[i] = piHistogram[i];
-
-      if (pQuery->iHistogramCount < DECOY_SIZE)
+      if (pQuery->iHistogramCountPair < DECOY_SIZE)
       {
          if (!GenerateXcorrDecoys(iWhichQuery, 1))
          {
@@ -598,19 +524,17 @@ memset(pQuery->pdCumulativeHistogram, 0, sizeof(pQuery->pdCumulativeHistogram));
       }
 
       for (i=0; i<HISTO_SIZE; i++)
-         pQuery->piAfterDecoyHisto[i] = piHistogram[i];
+         pQuery->piAfterDecoyHistoPair[i] = piHistogram[i];
 
       LinearRegression(piHistogram, pdCumulative, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
 
-      pQuery->fPar[0] = (float)dIntercept;  // b
-      pQuery->fPar[1] = (float)dSlope    ;  // m
-      pQuery->fPar[2] = (float)iStartCorr;
-      pQuery->fPar[3] = (float)iNextCorr;
-      pQuery->siMaxXcorr = (short)iMaxCorr;
+      pQuery->fParPair[0] = (float)dIntercept;  // b
+      pQuery->fParPair[1] = (float)dSlope    ;  // m
+      pQuery->fParPair[2] = (float)iStartCorr;
+      pQuery->fParPair[3] = (float)iNextCorr;
+      pQuery->siMaxXcorrPair = (short)iMaxCorr;
 
       dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
-
-      int iLoopCount;
 
       iLoopCount = max(pQuery->iMatchPeptideCount, pQuery->iDecoyMatchPeptideCount);
 
@@ -648,8 +572,134 @@ memset(pQuery->pdCumulativeHistogram, 0, sizeof(pQuery->pdCumulativeHistogram));
          }
       }
 
-//    memset(pQuery->pdCumulativeHistogram, 0, sizeof(pQuery->pdCumulativeHistogram));
+      // DO PLAIN PEAKS NEXT
+
+      piHistogram = pQuery->iXcorrHistogramPlain;
+      pdCumulative = pQuery->pdCumulativeHistogramPlain;
+
+      if (pQuery->iHistogramCountPlain < DECOY_SIZE)
+      {
+         if (!GenerateXcorrDecoys(iWhichQuery, 2))
+         {
+             return false;
+         }
+      }
+
+      for (i=0; i<HISTO_SIZE; i++)
+         pQuery->piAfterDecoyHistoPlain[i] = piHistogram[i];
+
+      LinearRegression(piHistogram, pdCumulative, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
+
+      pQuery->fParPlain[0] = (float)dIntercept;  // b
+      pQuery->fParPlain[1] = (float)dSlope    ;  // m
+      pQuery->fParPlain[2] = (float)iStartCorr;
+      pQuery->fParPlain[3] = (float)iNextCorr;
+      pQuery->siMaxXcorrPlain= (short)iMaxCorr;
+
+      dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
+
+
+      iLoopCount = max(pQuery->iMatchPeptideCount, pQuery->iDecoyMatchPeptideCount);
+
+      if (iLoopCount > g_staticParams.options.iNumPeptideOutputLines)
+         iLoopCount = g_staticParams.options.iNumPeptideOutputLines;
+
+      for (i=0; i<iLoopCount; i++)
+      {
+         if (dSlope >= 0.0)
+         {
+            if (i<pQuery->iMatchPeptideCount)
+               pQuery->_pResults[i].dExpectPlain = 999.0;
+            if (i<pQuery->iDecoyMatchPeptideCount)
+               pQuery->_pDecoys[i].dExpectPlain = 999.0;
+         }
+         else
+         {
+            double dExpect = 999.9;
+
+            if (i<pQuery->iMatchPeptideCount)
+            {
+               dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorrPlain + dIntercept);
+               if (dExpect > 999.0)
+                  dExpect = 999.0;
+               pQuery->_pResults[i].dExpectPlain = dExpect;
+            }
+
+            if (i<pQuery->iDecoyMatchPeptideCount)
+            {
+               dExpect = pow(10.0, dSlope * pQuery->_pDecoys[i].fXcorrPlain+ dIntercept);
+               if (dExpect > 999.0)
+                  dExpect = 999.0;
+               pQuery->_pDecoys[i].dExpectPlain = dExpect;
+            }
+         }
+      }
    }
+
+   piHistogram = pQuery->iXcorrHistogram;
+   pdCumulative = pQuery->pdCumulativeHistogram;
+
+   // copy original histogram before any possible decoys
+   for (i=0; i<HISTO_SIZE; i++)
+      pQuery->piOrigHisto[i] = piHistogram[i];
+
+   if (pQuery->iHistogramCount < DECOY_SIZE)
+   {
+      if (!GenerateXcorrDecoys(iWhichQuery, 0))
+      {
+          return false;
+      }
+   }
+
+   for (i=0; i<HISTO_SIZE; i++)
+      pQuery->piAfterDecoyHisto[i] = piHistogram[i];
+
+   LinearRegression(piHistogram, pdCumulative, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
+
+   pQuery->fPar[0] = (float)dIntercept;  // b
+   pQuery->fPar[1] = (float)dSlope    ;  // m
+   pQuery->fPar[2] = (float)iStartCorr;
+   pQuery->fPar[3] = (float)iNextCorr;
+   pQuery->siMaxXcorr = (short)iMaxCorr;
+
+   dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
+
+   iLoopCount = max(pQuery->iMatchPeptideCount, pQuery->iDecoyMatchPeptideCount);
+
+   if (iLoopCount > g_staticParams.options.iNumPeptideOutputLines)
+      iLoopCount = g_staticParams.options.iNumPeptideOutputLines;
+
+   for (i=0; i<iLoopCount; i++)
+   {
+      if (dSlope >= 0.0)
+      {
+         if (i<pQuery->iMatchPeptideCount)
+            pQuery->_pResults[i].dExpect = 999.0;
+         if (i<pQuery->iDecoyMatchPeptideCount)
+            pQuery->_pDecoys[i].dExpect = 999.0;
+      }
+      else
+      {
+         double dExpect = 999.9;
+
+         if (i<pQuery->iMatchPeptideCount)
+         {
+            dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
+            if (dExpect > 999.0)
+               dExpect = 999.0;
+            pQuery->_pResults[i].dExpect = dExpect;
+         }
+
+         if (i<pQuery->iDecoyMatchPeptideCount)
+         {
+            dExpect = pow(10.0, dSlope * pQuery->_pDecoys[i].fXcorr + dIntercept);
+            if (dExpect > 999.0)
+               dExpect = 999.0;
+            pQuery->_pDecoys[i].dExpect = dExpect;
+         }
+      }
+   }
+
 
    return true;
 }
@@ -736,14 +786,6 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       }
    }
 
-/*
-   iStartCorr = 0;
-   if (iNextCorr >= 30)
-      iStartCorr = (int)(iNextCorr - iNextCorr*0.25);
-   else if (iNextCorr >= 15)
-      iStartCorr = (int)(iNextCorr - iNextCorr*0.5);
-*/
-
    iStartCorr = iNextCorr - 5;
    int iNumZeroes = 0;
    for (i=iStartCorr; i<=iNextCorr; i++)
@@ -821,7 +863,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 // Make synthetic decoy spectra to fill out correlation histogram by going
 // through each candidate peptide and rotating spectra in m/z space.
 bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
-                                            bool bOnlySilacPairPeaks)
+                                            int iWhichSilac)
 {
    int i;
    int ii;
@@ -840,16 +882,28 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   if (bOnlySilacPairPeaks)
-      piHistogram = pQuery->iXcorrHistogramPair;
-   else
+   int iLoopMax;
+
+   if (iWhichSilac == 0)
+   {
       piHistogram = pQuery->iXcorrHistogram;
+      iLoopMax = DECOY_SIZE - pQuery->iHistogramCount;
+   }
+   else if (iWhichSilac == 1)
+   {
+      piHistogram = pQuery->iXcorrHistogramPair;
+      iLoopMax = DECOY_SIZE - pQuery->iHistogramCountPair;
+   }
+   else
+   {
+      piHistogram = pQuery->iXcorrHistogramPlain;
+      iLoopMax = DECOY_SIZE - pQuery->iHistogramCountPlain;
+   }
 
    iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
 
    // DECOY_SIZE is the minimum # of decoys required or else this function isn't
    // called.  So need to generate iLoopMax more xcorr scores for the histogram.
-   int iLoopMax = DECOY_SIZE - pQuery->iHistogramCount;
    int iLastEntry;
 
    // Determine if using target or decoy peptides to rotate to fill out histogram.
@@ -913,7 +967,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
 
                if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
                {
-                  if (!bOnlySilacPairPeaks)
+                  if (iWhichSilac == 0 || iWhichSilac == 2)  // add normal peak for paired search and plain
                   {
                      iFragmentIonMass = BIN(dFragmentIonMass);
 
@@ -948,37 +1002,40 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   // add in the paired fragments to decoys only for y-ions as if terminal lysine only
                   if (g_staticParams.variableModParameters.bSilacPair && iWhichIonSeries == ION_SERIES_Y)
                   {
-                     dFragmentIonMass = (dFragmentIonMass + g_staticParams.variableModParameters.dSilacPairMassDiff + (ctCharge-1)*PROTON_MASS)/ctCharge;
-
-                     if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
+                     if (iWhichSilac == 0 || iWhichSilac == 1)   // add the paired fragments for normal search or paired only
                      {
-                        iFragmentIonMass = BIN(dFragmentIonMass);
+                        dFragmentIonMass = (dFragmentIonMass + g_staticParams.variableModParameters.dSilacPairMassDiff + (ctCharge-1)*PROTON_MASS)/ctCharge;
 
-                        if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
+                        if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
                         {
-                           x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
+                           iFragmentIonMass = BIN(dFragmentIonMass);
 
-                           if (pQuery->ppfSparseFastXcorrData[x] != NULL)
+                           if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                            {
-                              y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
-                              dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
-                           }
-                        }
-                        else if (iFragmentIonMass > pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
-                        {
-                           char szErrorMsg[256];
-                           sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
-                                 dFragmentIonMass,
-                                 iFragmentIonMass,
-                                 pQuery->_spectrumInfoInternal.iArraySize,
-                                 pQuery->_pepMassInfo.dExpPepMass,
-                                 pQuery->_spectrumInfoInternal.iScanNumber,
-                                 ctCharge);
+                              x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
 
-                           string strErrorMsg(szErrorMsg);
-                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(szErrorMsg);
-                           return false;
+                              if (pQuery->ppfSparseFastXcorrData[x] != NULL)
+                              {
+                                 y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
+                                 dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
+                              }
+                           }
+                           else if (iFragmentIonMass > pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
+                           {
+                              char szErrorMsg[256];
+                              sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
+                                    dFragmentIonMass,
+                                    iFragmentIonMass,
+                                    pQuery->_spectrumInfoInternal.iArraySize,
+                                    pQuery->_pepMassInfo.dExpPepMass,
+                                    pQuery->_spectrumInfoInternal.iScanNumber,
+                                    ctCharge);
+
+                              string strErrorMsg(szErrorMsg);
+                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                              logerr(szErrorMsg);
+                              return false;
+                           }
                         }
                      }
                   }

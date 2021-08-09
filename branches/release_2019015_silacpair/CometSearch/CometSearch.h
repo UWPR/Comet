@@ -154,6 +154,7 @@ private:
                      double dCalcPepMass,
                      double dXcorr,
                      double dXcorrPair,
+                     double dXcorrPlain,
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);

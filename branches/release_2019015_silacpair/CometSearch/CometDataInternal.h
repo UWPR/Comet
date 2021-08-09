@@ -179,9 +179,11 @@ struct Results
    double dPepMass;
    double dExpect;
    double dExpectPair;
+   double dExpectPlain;
    float  fScoreSp;
    float  fXcorr;
    float  fXcorrPair;
+   float  fXcorrPlain;
    int    iLenPeptide;
    int    iRankSp;
    int    iMatchedIons;
@@ -819,18 +821,27 @@ struct Query
 {
    int   piOrigHisto[HISTO_SIZE];  // histogram before internal decoys added 
    int   piAfterDecoyHisto[HISTO_SIZE];  // histogram after internal decoys added 
+   int   piAfterDecoyHistoPair[HISTO_SIZE];  // histogram after internal decoys added 
+   int   piAfterDecoyHistoPlain[HISTO_SIZE];  // histogram after internal decoys added 
    int   iXcorrHistogram[HISTO_SIZE];
    int   iXcorrHistogramPair[HISTO_SIZE];  // histogram of xcorr of paired peaks only
+   int   iXcorrHistogramPlain[HISTO_SIZE];  // histogram of xcorr w/o paired peaks
    double pdCumulativeHistogram[HISTO_SIZE];
    double pdCumulativeHistogramPair[HISTO_SIZE];
+   double pdCumulativeHistogramPlain[HISTO_SIZE];
    int   iHistogramCount;   // # of entries in histogram
    int   iHistogramCountPair;   // # of entries in histogram for silac paired fragments
-   float fPar[4];           // parameters of LMA regression
+   int   iHistogramCountPlain;   // # of entries in histogram for plain peptide (no silac paired peaks)
+   float fPar[4];           // parameters of LMA regression, plain and paired peaks
+   float fParPair[4];           // parameters of LMA regression paired peaks only
+   float fParPlain[4];          // parameters of LMA regression plain peaks only, no pairs
 
    int iMatchPeptideCount;        // # of peptides that get stored (i.e. are greater than lowest score)
    int iDecoyMatchPeptideCount;   // # of decoy peptides that get stored (i.e. are greater than lowest score)
 
    short siMaxXcorr;        // index of maximum correlation score in iXcorrHistogram
+   short siMaxXcorrPair;        // index of maximum correlation score in iXcorrHistogram
+   short siMaxXcorrPlain;        // index of maximum correlation score in iXcorrHistogram
 
    short siLowestSpScoreIndex;
    short siLowestDecoySpScoreIndex;
@@ -872,23 +883,29 @@ struct Query
       {
          iXcorrHistogram[i] = 0;
          iXcorrHistogramPair[i] = 0;
+         iXcorrHistogramPlain[i] = 0;
          piOrigHisto[i] = 0;
          piAfterDecoyHisto[i] = 0;
+         piAfterDecoyHistoPair[i] = 0;
+         piAfterDecoyHistoPlain[i] = 0;
          pdCumulativeHistogram[i] = 0.0;
          pdCumulativeHistogramPair[i] = 0.0;
+         pdCumulativeHistogramPlain[i] = 0.0;
       }
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
       iHistogramCount = 0;
       iHistogramCountPair = 0;
+      iHistogramCountPlain = 0;
 
-      fPar[0]=0.0;
-      fPar[1]=0.0;
-      fPar[2]=0.0;
-      fPar[3]=0.0;
+      fPar[0] = fPar[1] = fPar[2] = fPar[3] = 0.0;
+      fParPair[0] = fParPair[1] = fParPair[2] = fParPair[3] = 0.0;
+      fParPlain[0] = fParPlain[1] = fParPlain[2] = fParPlain[3] = 0.0;
 
       siMaxXcorr = 0;                        // index of maximum correlation score in iXcorrHistogram
+      siMaxXcorrPair = 0;                        // index of maximum correlation score in iXcorrHistogram
+      siMaxXcorrPlain = 0;                        // index of maximum correlation score in iXcorrHistogram
       siLowestSpScoreIndex = 0;
       siLowestDecoySpScoreIndex = 0;
 
