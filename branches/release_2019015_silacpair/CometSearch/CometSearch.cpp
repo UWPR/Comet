@@ -1701,7 +1701,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                        else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                                           iCountK = iContainsKY[ctLen];
 
-                                       double dNewMass = dFragMass + 8.014199*iCountK/ctCharge;
+                                       double dNewMass = dFragMass + g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK/ctCharge;
 
                                        if (dNewMass >= 0.0)
                                        {
@@ -1760,7 +1760,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                        else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                                           iCountK = iContainsKY[ctLen];
 
-                                       double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+                                       double dNewMass = dFragMass + g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK / ctCharge;
 
                                        iVal = BIN(dNewMass);
 
@@ -1919,7 +1919,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                        else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                                           iCountK = iContainsKY[ctLen];
 
-                                       double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+                                       double dNewMass = dFragMass + g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK / ctCharge;
 
                                        if (dNewMass >= 0.0)
                                        {
@@ -1981,7 +1981,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                        else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                                           iCountK = iContainsKY[ctLen];
 
-                                       double dNewMass = dFragMass + 8.014199*iCountK / ctCharge;
+                                       double dNewMass = dFragMass + g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK / ctCharge;
 
                                        iVal = BIN(dNewMass);
 
@@ -5900,7 +5900,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                            else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                               iCountK = iContainsKY[ctLen];
 
-                           double dNewMass = dFragMass + iSign*8.014199*iCountK / ctCharge;
+                           double dNewMass = dFragMass + iSign* g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK / ctCharge;
 
                            if (dNewMass >= 0.0)
                            {
@@ -5984,7 +5984,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                            else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                               iCountK = iContainsKY[ctLen];
 
-                           double dNewMass = dFragMass + iSign*8.014199*iCountK / ctCharge;
+                           double dNewMass = dFragMass + iSign* g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK / ctCharge;
 
                            iVal = BIN(dNewMass);
 
@@ -6262,7 +6262,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                               else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                                  iCountK = iContainsKY[ctLen];
 
-                              double dNewMass = dFragMass + iSign*8.014199*iCountK / ctCharge;
+                              double dNewMass = dFragMass + iSign* g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK / ctCharge;
 
                               if (dNewMass >= 0.0)
                               {
@@ -6343,7 +6343,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                               else if (iWhichIonSeries == 4 && iContainsKY[ctLen])
                                  iCountK = iContainsKY[ctLen];
 
-                              double dNewMass = dFragMass + iSign*8.014199*iCountK / ctCharge;
+                              double dNewMass = dFragMass + iSign* g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK / ctCharge;
 
                               iVal = BIN(dNewMass);
 

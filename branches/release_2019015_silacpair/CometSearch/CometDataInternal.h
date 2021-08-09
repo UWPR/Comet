@@ -443,6 +443,7 @@ struct VarModParams
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
    bool    bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
+   double  dSilacPairMassDiff;
    int     bSilacPair;               // any identified peptide, search with both heavy and light fragments
    int     iMaxVarModPerPeptide;
    int     iMaxPermutations;
@@ -455,6 +456,7 @@ struct VarModParams
       bBinaryModSearch = a.bBinaryModSearch;
       bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
       bRequireVarMod = a.bRequireVarMod;
+      dSilacPairMassDiff = a.dSilacPairMassDiff;
       bSilacPair = a.bSilacPair;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;

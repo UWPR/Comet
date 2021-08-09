@@ -410,7 +410,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                            else if (iWhichIonSeries == 4)
                               iCountK = iContainsKY[iii];
 
-                           double dNewMass = dFragmentIonMass +  (iSign*8.014199*iCountK / ctCharge);
+                           double dNewMass = dFragmentIonMass +  (iSign*g_staticParams.variableModParameters.dSilacPairMassDiff*iCountK / ctCharge);
 
                            iFragmentIonMass = BIN(dNewMass);
  
@@ -948,7 +948,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery,
                   // add in the paired fragments to decoys only for y-ions as if terminal lysine only
                   if (g_staticParams.variableModParameters.bSilacPair && iWhichIonSeries == ION_SERIES_Y)
                   {
-                     dFragmentIonMass = (dFragmentIonMass + 8.014199 + (ctCharge-1)*PROTON_MASS)/ctCharge;
+                     dFragmentIonMass = (dFragmentIonMass + g_staticParams.variableModParameters.dSilacPairMassDiff + (ctCharge-1)*PROTON_MASS)/ctCharge;
 
                      if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
                      {

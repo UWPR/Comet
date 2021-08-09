@@ -1110,6 +1110,14 @@ bool CometSearchManager::InitializeStaticParams()
 
          if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
             g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
+
+         if (g_staticParams.variableModParameters.bSilacPair && g_staticParams.variableModParameters.dSilacPairMassDiff == 0.0)
+         {
+            if (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] == 'K')
+            {
+               g_staticParams.variableModParameters.dSilacPairMassDiff = g_staticParams.variableModParameters.varModList[i].dVarModMass;
+            }
+         }
       }
    }
 
