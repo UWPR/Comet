@@ -1,9 +1,9 @@
 <div id="page">
    <div id="content_full">
       <div class="post hr">
-         <h1>Search parameters (2020.01)</h1>
+         <h1>Search parameters (2021.01)</h1>
          <p><strong>Comet</strong> search parameters are defined here.  These are valid for
-         Comet version 2020.01.0.</p>
+         Comet version 2021.01.?.</p>
          
          <p>Parameters for all versions of Comet <a href="http://comet-ms.sourceforge.net/parameters">can be found here</a>.
          <br>Entries marked with an <font color="red">*</font> are new parameters.
@@ -57,13 +57,13 @@
          <li><a href="use_X_ions.php">use_X_ions</a></li>
          <li><a href="use_Y_ions.php">use_Y_ions</a></li>
          <li><a href="use_Z_ions.php">use_Z_ions</a></li>
-         <li><a href="use_Z1_ions.php">use_Z1_ions</a>   <font color="red">*</font></li>
+         <li><a href="use_Z1_ions.php">use_Z1_ions</a></li>
          <li><a href="use_NL_ions.php">use_NL_ions</a></li>
          </ul>
 
          <h3>Output</h3>
          <ul>
-         <li><a href="output_mzidentmlfile.php">output_mzidentmlfile</a>  <font color="red">*</font></li>
+         <li><a href="output_mzidentmlfile.php">output_mzidentmlfile</a></li>
          <li><a href="output_pepxmlfile.php">output_pepxmlfile</a></li>
          <li><a href="output_percolatorfile.php">output_percolatorfile</a></li>
          <li><a href="output_sqtfile.php">output_sqtfile</a></li>
@@ -81,7 +81,7 @@
          <li><a href="precursor_charge.php">precursor_charge</a></li>
          <li><a href="override_charge.php">override_charge</a></li>
          <li><a href="ms_level.php">ms_level</a></li>
-         <li><a href="activation_method.php">activation_method</a>  <font color="red">**</font></li>
+         <li><a href="activation_method.php">activation_method</a></li>
          </ul>
 
          <h3>Misc. parameters</h3>
@@ -103,8 +103,9 @@
          <li><a href="precursor_NL_ions.php">precursor_NL_ions</a></li>
          <li><a href="skip_researching.php">skip_researching</a></li>
          <li><a href="spectrum_batch_size.php">spectrum_batch_size</a></li>
-         <li><a href="text_file_extension.php">text_file_extension</a>  <font color="red">*</font></li>
-         <li><a href="explicit_deltacn.php">explicit_deltacn</a>  <font color="red">*</font></li>
+         <li><a href="text_file_extension.php">text_file_extension</a></li>
+         <li><a href="explicit_deltacn.php">explicit_deltacn</a></li>
+         <li><a href="old_mods_encoding.php">old_mods_encoding</a>  <font color="red">*</font></li>
          </ul>
 
          <h3>Spectral processing</h3>
@@ -158,7 +159,7 @@
          <li><a href="add_R_arginine.php">add_R_arginine</a></li>
          <li><a href="add_Y_tyrosine.php">add_Y_tyrosine</a></li>
          <li><a href="add_W_tryptophan.php">add_W_tryptophan</a></li>
-         <li><a href="add_O_pyrrolysine.php">add_O_pyrrolysine</a>  <font color="red">*</font></li>
+         <li><a href="add_O_pyrrolysine.php">add_O_pyrrolysine</a></li>
          <li><a href="add_B_user_amino_acid.php">add_B_user_amino_acid</a></li>
          <li><a href="add_J_user_amino_acid.php">add_J_user_amino_acid</a></li>
          <li><a href="add_X_user_amino_acid.php">add_X_user_amino_acid</a></li>

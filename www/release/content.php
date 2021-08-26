@@ -3,7 +3,7 @@
       <div class="post hr">
          <h1>Comet releases</h1>
             <ul>
-               <li><a href="/release/release_202101/">Release 2021.01, 2021/06/??</a></li>
+               <li><a href="/release/release_202101/">Release 2021.01, 2021/06/23</a></li>
                <li><a href="/release/release_202001/">Release 2020.01, 2020/11/09, last revised 2021/05/11</a></li>
                <li><a href="/release/release_201901/">Release 2019.01, 2019/08/19, last revised 2020/04/06</a></li>
                <li><a href="/release/release_201801/">Release 2018.01, 2018/04/26, last revised 2019/02/13</a></li>
@@ -22,17 +22,18 @@
       <div class="post hr">
          <h2><a id="software">Comet integration</a></h2>
 
-         <p>Comet is currently integrated into the following software projects:
+         <p>Comet is currently supported within the following software projects:
          <ul>
             <li><a target="new" href="http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP">Trans-Proteomic Pipeline (TPP)</a>
             <li><a target="new" href="http://www.patternlabforproteomics.org/">PatternLab</a>
             <li><a target="new" href="http://www.labkey.org">LabKey</a>
             <li><a target="new" href="https://www.openms.de">OpenMS</a>
             <li><a target="new" href="https://crux.ms">Crux</a>
-            <li><a target="new" href="https://github.com/pwilmart/PAW_pipeline/">PAW pipeline</a>
-            <li><a target="new" href="https://hub.docker.com/r/biodckr/comet/">Bio Docker</a>
+            <li><a target="new" href="https://hub.docker.com/r/biocontainers/comet">Bio Docker</a>
             <li><a target="new" href="http://www.bioprocess.org/massypup/">MASSyPup</a>
             <li><a target="new" href="http://prohitsms.com/">ProHits</a>
+            <li><a target="new" href="https://github.com/pwilmart/PAW_pipeline/">PAW pipeline</a>
+            <li><a target="new" href="https://philosopher.nesvilab.org/">Philosopher</a>
             <li><a target="new" href="http://compomics.github.io/projects/searchgui.html">SearchGUI</a> and <a target="new" href="http://compomics.github.io/projects/peptide-shaker.html">PeptideShaker</a> 
          </ul>
 
