@@ -36,9 +36,10 @@ class CometSearchManager;
 #define NUM_SP_IONS                 200      // num ions for preliminary scoring
 #define NUM_ION_SERIES              9
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
+#define MAX_ADDFRAGMASS             500.0
 
-#define BIN_MOD_COUNT               11       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9), silacpair (10)
-#define BIN_SILACPAIR               10
+#define BIN_MOD_COUNT               21       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-10) & FRAGMENT_ADDMASSES
+#define FRAGMENT_ADDMASSES          10       // allow up to 9 fragment mass additions "add_fragment_masses"; these are accounted in 4th dimension of uiBinnedIonMasses as entries 11 thru 20
 
 #define WIDTH_REFERENCE             512      // size of the protein accession field to store
 
@@ -178,12 +179,8 @@ struct Results
 {
    double dPepMass;
    double dExpect;
-   double dExpectPair;
-   double dExpectPlain;
    float  fScoreSp;
    float  fXcorr;
-   float  fXcorrPair;
-   float  fXcorrPlain;
    int    iLenPeptide;
    int    iRankSp;
    int    iMatchedIons;
@@ -445,8 +442,6 @@ struct VarModParams
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
    bool    bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
-   double  dSilacPairMassDiff;
-   int     bSilacPair;               // any identified peptide, search with both heavy and light fragments
    int     iMaxVarModPerPeptide;
    int     iMaxPermutations;
    VarMods varModList[VMODS];
@@ -458,8 +453,6 @@ struct VarModParams
       bBinaryModSearch = a.bBinaryModSearch;
       bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
       bRequireVarMod = a.bRequireVarMod;
-      dSilacPairMassDiff = a.dSilacPairMassDiff;
-      bSilacPair = a.bSilacPair;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;
 
@@ -601,10 +594,14 @@ struct StaticParams
    int             iXcorrProcessingOffset;
    int             bIndexDb;            // 0 = normal fasta; 1 = indexed database
    vector<double>  vectorMassOffsets;
+   vector<double>  vectorAddFragmentMasses;
    vector<double>  precursorNLIons;
    int             iPrecursorNLSize;
    char            szDIAWindowsFile[SIZE_FILE];
    bool            bSkipToStartScan;
+   int             iUseAddFragmentMasses;          // set to true if 
+   int             iAddFragmentMassesModEntry;     // which mod entry to apply add_fragment_masses to; 0 to apply add_fragment_masses to all fragments
+   int             iArraySize;
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
 
    StaticParams()
@@ -614,34 +611,38 @@ struct StaticParams
 
    StaticParams& operator=(StaticParams& a)
    {
-       strcpy(szHostName, a.szHostName);
-       strcpy(szOutFileTimeString, a.szOutFileTimeString);
-       strcpy(szIonSeries, a.szIonSeries);
-       strcpy(szDisplayLine, a.szDisplayLine);
-       strcpy(szMod, a.szMod);
-       strcpy(szDecoyPrefix, a.szDecoyPrefix);
-       strcpy(szOutputSuffix, a.szOutputSuffix);
-       vectorMassOffsets = a.vectorMassOffsets;
-       precursorNLIons= a.precursorNLIons;
-       iPrecursorNLSize = a.iPrecursorNLSize;
-       iElapseTime = a.iElapseTime;
-       strcpy(szDate, a.szDate);
-       options = a.options;
-       databaseInfo = a.databaseInfo;
-       inputFile = a.inputFile;
-       bPrintDuplReferences = a.bPrintDuplReferences;
-       variableModParameters = a.variableModParameters;
-       tolerances = a.tolerances;
-       staticModifications = a.staticModifications;
-       precalcMasses = a.precalcMasses;
-       enzymeInformation = a.enzymeInformation;
-       massUtility = a.massUtility;
-       dInverseBinWidth = a.dInverseBinWidth;
-       dOneMinusBinOffset = a.dOneMinusBinOffset;
-       iXcorrProcessingOffset = a.iXcorrProcessingOffset;
-       peaksInformation = a.peaksInformation;
-       ionInformation = a.ionInformation;
-       return *this;
+      strcpy(szHostName, a.szHostName);
+      strcpy(szOutFileTimeString, a.szOutFileTimeString);
+      strcpy(szIonSeries, a.szIonSeries);
+      strcpy(szDisplayLine, a.szDisplayLine);
+      strcpy(szMod, a.szMod);
+      strcpy(szDecoyPrefix, a.szDecoyPrefix);
+      strcpy(szOutputSuffix, a.szOutputSuffix);
+      vectorMassOffsets = a.vectorMassOffsets;
+      vectorAddFragmentMasses = a.vectorAddFragmentMasses;
+      precursorNLIons= a.precursorNLIons;
+      iPrecursorNLSize = a.iPrecursorNLSize;
+      iElapseTime = a.iElapseTime;
+      strcpy(szDate, a.szDate);
+      options = a.options;
+      databaseInfo = a.databaseInfo;
+      inputFile = a.inputFile;
+      bPrintDuplReferences = a.bPrintDuplReferences;
+      variableModParameters = a.variableModParameters;
+      tolerances = a.tolerances;
+      staticModifications = a.staticModifications;
+      precalcMasses = a.precalcMasses;
+      enzymeInformation = a.enzymeInformation;
+      massUtility = a.massUtility;
+      dInverseBinWidth = a.dInverseBinWidth;
+      dOneMinusBinOffset = a.dOneMinusBinOffset;
+      iXcorrProcessingOffset = a.iXcorrProcessingOffset;
+      peaksInformation = a.peaksInformation;
+      ionInformation = a.ionInformation;
+      iUseAddFragmentMasses = a.iUseAddFragmentMasses;
+      iAddFragmentMassesModEntry = a.iAddFragmentMassesModEntry;
+      iArraySize = a.iArraySize;
+      return *this;
    }
 
    void RestoreDefaults()
@@ -683,7 +684,6 @@ struct StaticParams
 #ifdef CRUX
       staticModifications.pdStaticMods[(int)'C'] = 57.021464;
 #endif
-
 
       enzymeInformation.iAllowedMissedCleavage = 2;
 
@@ -819,29 +819,15 @@ extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 // This struct is allocated for each spectrum/charge combination
 struct Query
 {
-   int   piOrigHisto[HISTO_SIZE];  // histogram before internal decoys added 
-   int   piAfterDecoyHisto[HISTO_SIZE];  // histogram after internal decoys added 
-   int   piAfterDecoyHistoPair[HISTO_SIZE];  // histogram after internal decoys added 
-   int   piAfterDecoyHistoPlain[HISTO_SIZE];  // histogram after internal decoys added 
    int   iXcorrHistogram[HISTO_SIZE];
-   int   iXcorrHistogramPair[HISTO_SIZE];  // histogram of xcorr of paired peaks only
-   int   iXcorrHistogramPlain[HISTO_SIZE];  // histogram of xcorr w/o paired peaks
    double pdCumulativeHistogram[HISTO_SIZE];
-   double pdCumulativeHistogramPair[HISTO_SIZE];
-   double pdCumulativeHistogramPlain[HISTO_SIZE];
    int   iHistogramCount;   // # of entries in histogram
-   int   iHistogramCountPair;   // # of entries in histogram for silac paired fragments
-   int   iHistogramCountPlain;   // # of entries in histogram for plain peptide (no silac paired peaks)
    float fPar[4];           // parameters of LMA regression, plain and paired peaks
-   float fParPair[4];           // parameters of LMA regression paired peaks only
-   float fParPlain[4];          // parameters of LMA regression plain peaks only, no pairs
 
    int iMatchPeptideCount;        // # of peptides that get stored (i.e. are greater than lowest score)
    int iDecoyMatchPeptideCount;   // # of decoy peptides that get stored (i.e. are greater than lowest score)
 
    short siMaxXcorr;        // index of maximum correlation score in iXcorrHistogram
-   short siMaxXcorrPair;        // index of maximum correlation score in iXcorrHistogram
-   short siMaxXcorrPlain;        // index of maximum correlation score in iXcorrHistogram
 
    short siLowestSpScoreIndex;
    short siLowestDecoySpScoreIndex;
@@ -882,30 +868,16 @@ struct Query
       for (int i=0; i < HISTO_SIZE; i++)
       {
          iXcorrHistogram[i] = 0;
-         iXcorrHistogramPair[i] = 0;
-         iXcorrHistogramPlain[i] = 0;
-         piOrigHisto[i] = 0;
-         piAfterDecoyHisto[i] = 0;
-         piAfterDecoyHistoPair[i] = 0;
-         piAfterDecoyHistoPlain[i] = 0;
          pdCumulativeHistogram[i] = 0.0;
-         pdCumulativeHistogramPair[i] = 0.0;
-         pdCumulativeHistogramPlain[i] = 0.0;
       }
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
       iHistogramCount = 0;
-      iHistogramCountPair = 0;
-      iHistogramCountPlain = 0;
 
       fPar[0] = fPar[1] = fPar[2] = fPar[3] = 0.0;
-      fParPair[0] = fParPair[1] = fParPair[2] = fParPair[3] = 0.0;
-      fParPlain[0] = fParPlain[1] = fParPlain[2] = fParPlain[3] = 0.0;
 
       siMaxXcorr = 0;                        // index of maximum correlation score in iXcorrHistogram
-      siMaxXcorrPair = 0;                        // index of maximum correlation score in iXcorrHistogram
-      siMaxXcorrPlain = 0;                        // index of maximum correlation score in iXcorrHistogram
       siLowestSpScoreIndex = 0;
       siLowestDecoySpScoreIndex = 0;
 

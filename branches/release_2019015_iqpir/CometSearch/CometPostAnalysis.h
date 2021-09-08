@@ -53,8 +53,7 @@ private:
    static bool SortFnMod(const Results &a,
                          const Results &b);
    static bool CalculateEValue(int iWhichQuery);
-   static bool GenerateXcorrDecoys(int iWhichQuery,
-                                   int iWhichSilac);
+   static bool GenerateXcorrDecoys(int iWhichQuery);
    static void LinearRegression(int *pHistogram,
                                 double *pdCumulative,
                                 double *dSlope,

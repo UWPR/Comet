@@ -650,7 +650,22 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("require_variable_mod", g_staticParams.variableModParameters.bRequireVarMod);
 
-   GetParamValue("silac_pair_fragments", g_staticParams.variableModParameters.bSilacPair);  // value of 2 = use y-ion pairs only
+   GetParamValue("add_fragment_masses_modentry", g_staticParams.iAddFragmentMassesModEntry);
+   GetParamValue("add_fragment_masses", g_staticParams.vectorAddFragmentMasses);
+
+printf("\n OK  vector addfragmass size %ld\n", g_staticParams.vectorAddFragmentMasses.size() );
+   // sanity check to make sure fragment mass additions are in some reasonable range
+   int iCount = 0;
+   for (std::vector<double>::iterator it = g_staticParams.vectorAddFragmentMasses.begin(); it != g_staticParams.vectorAddFragmentMasses.end(); it++)
+   {
+      printf("\n OK add fragment mass %lf\n", *it);
+      if (*it > MAX_ADDFRAGMASS || *it < -MAX_ADDFRAGMASS || iCount >= FRAGMENT_ADDMASSES)
+         it = g_staticParams.vectorAddFragmentMasses.erase(it);
+      iCount++;
+   }
+printf("\n OK  vector addfragmass size after any erase %ld\n", g_staticParams.vectorAddFragmentMasses.size() );
+
+   g_staticParams.iUseAddFragmentMasses = g_staticParams.vectorAddFragmentMasses.size();
 
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
    if (g_staticParams.tolerances.dFragmentBinSize < 0.01)
@@ -1110,14 +1125,6 @@ bool CometSearchManager::InitializeStaticParams()
 
          if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
             g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
-
-         if (g_staticParams.variableModParameters.bSilacPair && g_staticParams.variableModParameters.dSilacPairMassDiff == 0.0)
-         {
-            if (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] == 'K')
-            {
-               g_staticParams.variableModParameters.dSilacPairMassDiff = g_staticParams.variableModParameters.varModList[i].dVarModMass;
-            }
-         }
       }
    }
 
@@ -2387,8 +2394,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
 
-   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
-   double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
+   g_staticParams.iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
+   double *pdTmpSpectrum = new double[g_staticParams.iArraySize];  // use this to determine most intense b/y-ions masses to report back
    bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
 
    if (!bSucceeded)
@@ -2623,7 +2630,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                double mz = (mass + (ctCharge - 1)*PROTON_MASS) / ctCharge;
 
                iTmp = BIN(mz);
-               if (iTmp<iArraySize && pdTmpSpectrum[iTmp] > 0.0)
+               if (iTmp<g_staticParams.iArraySize && pdTmpSpectrum[iTmp] > 0.0)
                {
                   Fragment frag;
                   frag.intensity = pdTmpSpectrum[iTmp];

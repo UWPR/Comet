@@ -404,6 +404,51 @@ void LoadParameters(char *pszParamsFile,
 
                pSearchMgr->SetParam("mass_offsets", szMassOffsets, vectorSetMassOffsets);
             }
+            else if (!strcmp(szParamName, "add_fragment_masses"))
+            {
+               // Remove white spaces at beginning/end of szParamVal
+               int iLen = (int)strlen(szParamVal);
+               char *szTrimmed = szParamVal;
+
+               while (iLen>=1 && isspace(szTrimmed[iLen -1]))  // trim end
+                  szTrimmed[--iLen] = 0;
+               while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
+               {
+                  ++szTrimmed;
+                  --iLen;
+               }
+
+               memmove(szParamVal, szTrimmed, iLen+1);
+
+               char szMassOffsets[512];
+               vector<double> vectorAddFragmentMasses;
+
+               char *tok;
+               char delims[] = " \t";  // tokenize by space and tab
+               double dMass;
+
+               strcpy(szMassOffsets, szParamVal);  // need to copy as strtok below destroys szParamVal
+
+               tok = strtok(szParamVal, delims);
+               while (tok != NULL)
+               {
+                  sscanf(tok, "%lf", &dMass);
+                  if (dMass >= 0.0)
+                     vectorAddFragmentMasses.push_back(dMass);
+                  tok = strtok(NULL, delims);
+               }
+
+               sort(vectorAddFragmentMasses.begin(), vectorAddFragmentMasses.end());
+
+               pSearchMgr->SetParam("add_fragment_masses", szMassOffsets, vectorAddFragmentMasses);
+            }
+            else if (!strcmp(szParamName, "add_fragment_masses_modentry"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("add_fragment_masses_modentry", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "precursor_NL_ions"))
             {
                // Remove white spaces at beginning/end of szParamVal
@@ -576,13 +621,6 @@ void LoadParameters(char *pszParamsFile,
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("require_variable_mod", szParamStringVal, iIntParam);
-            }
-            else if (!strcmp(szParamName, "silac_pair_fragments"))
-            {
-               sscanf(szParamVal, "%d", &iIntParam);
-               szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%d", iIntParam);
-               pSearchMgr->SetParam("silac_pair_fragments", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "fragment_bin_tol"))
             {
@@ -1479,7 +1517,6 @@ variable_mod08 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0 0.0\n\
 max_variable_mods_in_peptide = 5\n\
 require_variable_mod = 0\n\
-silac_pair_fragments = 0\n\
 \n\
 #\n\
 # fragment ions\n\
@@ -1546,6 +1583,8 @@ equal_I_and_L = 1                      # 0=treat I and L as different; 1=treat I
 output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\
 mass_offsets =                         # one or more mass offsets to search (values substracted from deconvoluted precursor mass)\n\
 precursor_NL_ions =                    # one or more precursor neutral loss masses, will be added to xcorr analysis\n\
+add_fragment_masses =                  # one or more masses that will be added to each fragment ion\n\
+add_fragment_masses_modentry =         # if not 0 or blank, apply add_fragment_masses only to fragments which contain a modified residue\n\
 \n\
 #\n\
 # spectral processing\n\

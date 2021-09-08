@@ -86,17 +86,6 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "exp_neutral_mass\t");
    fprintf(fpout, "calc_neutral_mass\t");
    fprintf(fpout, "e-value\t");
-   if (g_staticParams.variableModParameters.bSilacPair)
-   {
-      fprintf(fpout, "e-value_pair\t");
-      fprintf(fpout, "e-value_plain\t");
-   }
-   fprintf(fpout, "xcorr\t");
-   if (g_staticParams.variableModParameters.bSilacPair)
-   {
-      fprintf(fpout, "xcorr_pair\t");
-      fprintf(fpout, "xcorr_plain\t");
-   }
    fprintf(fpout, "delta_cn\t");
    fprintf(fpout, "sp_score\t");
    fprintf(fpout, "ions_matched\t");
@@ -111,38 +100,6 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "protein_count\t");
    fprintf(fpout, "modifications\n");
 
-/*
-   fprintf(fpout, "xcorr_histogram\t");
-   fprintf(fpout, "log_cumulative\t");
-   fprintf(fpout, "intercept\t");
-   fprintf(fpout, "slope\t");
-   fprintf(fpout, "start_xcorr\t");
-   fprintf(fpout, "next_xcorr\t");
-   fprintf(fpout, "max_xcorr");
-
-   if (g_staticParams.variableModParameters.bSilacPair)
-   {
-      fprintf(fpout, "\t");
-
-      fprintf(fpout, "pair_xcorr_histogram\t");
-      fprintf(fpout, "pair_log_cumulative\t");
-      fprintf(fpout, "pair_intercept\t");
-      fprintf(fpout, "pair_slope\t");
-      fprintf(fpout, "pair_start_xcorr\t");
-      fprintf(fpout, "pair_next_xcorr\t");
-      fprintf(fpout, "pair_max_xcorr\t");
-
-      fprintf(fpout, "plain_xcorr_histogram\t");
-      fprintf(fpout, "plain_log_cumulative\t");
-      fprintf(fpout, "plain_intercept\t");
-      fprintf(fpout, "plain_slope\t");
-      fprintf(fpout, "plain_start_xcorr\t");
-      fprintf(fpout, "plain_next_xcorr\t");
-      fprintf(fpout, "plain_max_xcorr");
-   }
-
-   fprintf(fpout, "\n");
-*/
 #endif
 }
 
@@ -446,17 +403,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
          fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
          fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpect);
-         if (g_staticParams.variableModParameters.bSilacPair)
-         {
-            fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpectPair);
-            fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpectPlain);
-         }
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
-         if (g_staticParams.variableModParameters.bSilacPair)
-         {
-            fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorrPair);
-            fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorrPlain);
-         }
          fprintf(fpout, "%0.4f\t", dDeltaCn);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].iMatchedIons);
@@ -599,81 +546,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
-
-/*
-         fprintf(fpout, "\t");
-         for (int i=0; i<HISTO_SIZE; i++) //xcorr histo after decoys
-         {
-            if (i>0)
-               fprintf(fpout, ",");
-            fprintf(fpout, "%d", pQuery->piAfterDecoyHisto[i]);
-         }
-
-         fprintf(fpout, "\t");
-         for (int i=0; i<HISTO_SIZE; i++) //log10 cumulative distribution
-         {
-            if (i>0)
-               fprintf(fpout, ",");
-            fprintf(fpout, "%0.2f", pQuery->pdCumulativeHistogram[i]);
-         }
-
-         fprintf(fpout, "\t");
-         fprintf(fpout, "%f\t", pQuery->fPar[0]); //intercept
-         fprintf(fpout, "%f\t", pQuery->fPar[1]); //slope
-         fprintf(fpout, "%d\t", (int)pQuery->fPar[2]); //start_xcorr
-         fprintf(fpout, "%d\t", (int)pQuery->fPar[3]); //next_xcorr
-         fprintf(fpout, "%d",   (int)pQuery->siMaxXcorr); //max_xcorr
-
-
-         // paired peaks only
-         fprintf(fpout, "\t");
-         for (int i=0; i<HISTO_SIZE; i++) //xcorr histo after decoys
-         {
-            if (i>0)
-               fprintf(fpout, ",");
-            fprintf(fpout, "%d", pQuery->piAfterDecoyHistoPair[i]);
-         }
-
-         fprintf(fpout, "\t");
-         for (int i=0; i<HISTO_SIZE; i++) //log10 cumulative distribution
-         {
-            if (i>0)
-               fprintf(fpout, ",");
-            fprintf(fpout, "%0.2f", pQuery->pdCumulativeHistogramPair[i]);
-         }
-
-         fprintf(fpout, "\t");
-         fprintf(fpout, "%f\t", pQuery->fParPair[0]); //intercept
-         fprintf(fpout, "%f\t", pQuery->fParPair[1]); //slope
-         fprintf(fpout, "%d\t", (int)pQuery->fParPair[2]); //start_xcorr
-         fprintf(fpout, "%d\t", (int)pQuery->fParPair[3]); //next_xcorr
-         fprintf(fpout, "%d",   (int)pQuery->siMaxXcorrPair); //max_xcorr
-
-
-         // plain peptide peaks
-         fprintf(fpout, "\t");
-         for (int i=0; i<HISTO_SIZE; i++) //xcorr histo after decoys
-         {
-            if (i>0)
-               fprintf(fpout, ",");
-            fprintf(fpout, "%d", pQuery->piAfterDecoyHistoPlain[i]);
-         }
-
-         fprintf(fpout, "\t");
-         for (int i=0; i<HISTO_SIZE; i++) //log10 cumulative distribution
-         {
-            if (i>0)
-               fprintf(fpout, ",");
-            fprintf(fpout, "%0.2f", pQuery->pdCumulativeHistogramPlain[i]);
-         }
-
-         fprintf(fpout, "\t");
-         fprintf(fpout, "%f\t", pQuery->fParPlain[0]); //intercept
-         fprintf(fpout, "%f\t", pQuery->fParPlain[1]); //slope
-         fprintf(fpout, "%d\t", (int)pQuery->fParPlain[2]); //start_xcorr
-         fprintf(fpout, "%d\t", (int)pQuery->fParPlain[3]); //next_xcorr
-         fprintf(fpout, "%d",   (int)pQuery->siMaxXcorrPlain); //max_xcorr
-*/
 
          fprintf(fpout, "\n");
       }

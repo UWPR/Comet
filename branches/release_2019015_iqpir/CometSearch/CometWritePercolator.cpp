@@ -80,7 +80,6 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "deltLCn\t");
    fprintf(fpout, "deltCn\t");
    fprintf(fpout, "lnExpect\t");
-   fprintf(fpout, "lnExpectPair\t");
    fprintf(fpout, "Xcorr\t");
    fprintf(fpout, "Sp\t");
    fprintf(fpout, "IonFrac\t");
@@ -272,11 +271,6 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
 
    if (pOutput[iWhichResult].dExpect > 0.0)
       fprintf(fpout, "%0.6f\t", log(pOutput[iWhichResult].dExpect)); // ln(Expect)
-   else
-      fprintf(fpout, "%0.6f\t", -20.0);
-
-   if (pOutput[iWhichResult].dExpectPair > 0.0)
-      fprintf(fpout, "%0.6f\t", log(pOutput[iWhichResult].dExpectPair)); // ln(ExpectPair)
    else
       fprintf(fpout, "%0.6f\t", -20.0);
 
