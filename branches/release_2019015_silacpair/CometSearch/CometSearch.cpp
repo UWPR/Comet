@@ -3322,13 +3322,17 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
             x = bin / SPARSE_MATRIX_SIZE;
 
-            if (x>iMax || ppSparseFastXcorrData[x]==NULL || bin==0) // x should never be > iMax so this is just a safety check
-               continue;
+            if (x > iMax || ppSparseFastXcorrData[x] == NULL || bin == 0) // x should never be > iMax so this is just a safety check
+            {
+               //continue;
+            }
+            else
+            {
+               y = bin - (x*SPARSE_MATRIX_SIZE);
 
-            y = bin - (x*SPARSE_MATRIX_SIZE);
-
-            dXcorr += ppSparseFastXcorrData[x][y];
-            dXcorrPlain += ppSparseFastXcorrData[x][y];
+               dXcorr += ppSparseFastXcorrData[x][y];
+               dXcorrPlain += ppSparseFastXcorrData[x][y];
+            }
 
             if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss && iFoundVariableMod==2)
             {
