@@ -331,21 +331,13 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
             if (g_staticParams.iUseAddFragmentMasses && g_staticParams.iAddFragmentMassesModEntry >= 0)
             {
-               if (g_staticParams.iAddFragmentMassesModEntry == -1)
-               {
-                  iContainsKB[ii] = 1;
-                  iContainsKY[ii] = 1;
-               }
-               else
-               {
-                  if (strchr(g_staticParams.variableModParameters.varModList[g_staticParams.iAddFragmentMassesModEntry].szVarModChar, pOutput[i].szPeptide[ii]))
-                     iCountKBion++;
-                  if (strchr(g_staticParams.variableModParameters.varModList[g_staticParams.iAddFragmentMassesModEntry].szVarModChar, pOutput[i].szPeptide[iPos]))
-                     iCountKYion++;
+               if (strchr(g_staticParams.variableModParameters.varModList[g_staticParams.iAddFragmentMassesModEntry].szVarModChar, pOutput[i].szPeptide[ii]))
+                  iCountKBion++;
+               if (strchr(g_staticParams.variableModParameters.varModList[g_staticParams.iAddFragmentMassesModEntry].szVarModChar, pOutput[i].szPeptide[iPos]))
+                  iCountKYion++;
 
-                  iContainsKB[ii] = iCountKBion;
-                  iContainsKY[ii] = iCountKYion;
-               }
+               iContainsKB[ii] = iCountKBion;
+               iContainsKY[ii] = iCountKYion;
             }
          }
 
@@ -402,7 +394,8 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                         {
                            for (std::vector<double>::iterator it = g_staticParams.vectorAddFragmentMasses.begin(); it != g_staticParams.vectorAddFragmentMasses.end(); it++)
                            {
-                              iFragmentIonMass = BIN(dFragmentIonMass + *it/ctCharge);
+                              double dNewMass = dFragmentIonMass + *it/ctCharge;
+                              iFragmentIonMass = BIN(dNewMass);
  
                               if (iFragmentIonMass > 0 && iFragmentIonMass < g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize)
                               {
