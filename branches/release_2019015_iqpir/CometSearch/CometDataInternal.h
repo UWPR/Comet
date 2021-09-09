@@ -600,8 +600,8 @@ struct StaticParams
    char            szDIAWindowsFile[SIZE_FILE];
    bool            bSkipToStartScan;
    int             iUseAddFragmentMasses;          // set to true if 
-   int             iAddFragmentMassesModEntry;     // which mod entry to apply add_fragment_masses to; 0 to apply add_fragment_masses to all fragments
-   int             iArraySize;
+   int             iAddFragmentMassesModEntry;     // which mod entry to apply add_fragment_masses to; 0 to apply add_fragment_masses to all fragments (which will set to -1 in runtime as mods are 0 to 8; -2 unused)
+   int             iArraySize;                     // global largest array size
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
 
    StaticParams()
@@ -666,6 +666,8 @@ struct StaticParams
 
       szDIAWindowsFile[0]='\0';
       iPrecursorNLSize = 0;
+
+      iUseAddFragmentMasses = -2;
 
       for (i=0; i<SIZE_MASS; i++)
       {

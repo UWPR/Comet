@@ -303,7 +303,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          int iCountKYion = 0;   // current count of lysine residues y ions
          int iContainsKB[MAX_PEPTIDE_LEN];   // track list of b-ion fragments that contain lyisne
          int iContainsKY[MAX_PEPTIDE_LEN];   // track list of y-ion fragments that contain lysine, increasing order from end of peptide
-         if (g_staticParams.iUseAddFragmentMasses)
+         if (g_staticParams.iUseAddFragmentMasses && g_staticParams.iAddFragmentMassesModEntry >= 0)
          {
             memset(iContainsKB, 0, pOutput[i].iLenPeptide * sizeof(int));
             memset(iContainsKY, 0, pOutput[i].iLenPeptide * sizeof(int));
@@ -329,19 +329,27 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             pdAAforward[ii] = dBion;
             pdAAreverse[ii] = dYion;
 
-            if (g_staticParams.iUseAddFragmentMasses)
+            if (g_staticParams.iUseAddFragmentMasses && g_staticParams.iAddFragmentMassesModEntry >= 0)
             {
-               if (strchr(g_staticParams.variableModParameters.varModList[g_staticParams.iAddFragmentMassesModEntry].szVarModChar, pOutput[i].szPeptide[ii]))
-                  iCountKBion++;
-               if (strchr(g_staticParams.variableModParameters.varModList[g_staticParams.iAddFragmentMassesModEntry].szVarModChar, pOutput[i].szPeptide[iPos]))
-                  iCountKYion++;
+               if (g_staticParams.iAddFragmentMassesModEntry == -1)
+               {
+                  iContainsKB[ii] = 1;
+                  iContainsKY[ii] = 1;
+               }
+               else
+               {
+                  if (strchr(g_staticParams.variableModParameters.varModList[g_staticParams.iAddFragmentMassesModEntry].szVarModChar, pOutput[i].szPeptide[ii]))
+                     iCountKBion++;
+                  if (strchr(g_staticParams.variableModParameters.varModList[g_staticParams.iAddFragmentMassesModEntry].szVarModChar, pOutput[i].szPeptide[iPos]))
+                     iCountKYion++;
 
-               iContainsKB[ii] = iCountKBion;
-               iContainsKY[ii] = iCountKYion;
+                  iContainsKB[ii] = iCountKBion;
+                  iContainsKY[ii] = iCountKYion;
+               }
             }
          }
 
-         if (iCountKBion > 0 || iCountKYion > 0)  // must have lysine to consider iqPIR fragments
+         if (g_staticParams.iAddFragmentMassesModEntry == -1 || iCountKBion > 0 || iCountKYion > 0)
             bApplyAddFragmentMasses = true;
 
          for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
@@ -388,30 +396,33 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
                      if (bApplyAddFragmentMasses)
                      {
-                        if (((iWhichIonSeries == ION_SERIES_A || iWhichIonSeries == ION_SERIES_B || iWhichIonSeries == ION_SERIES_C) && iContainsKB[iii])
-                              || ((iWhichIonSeries == ION_SERIES_X || iWhichIonSeries == ION_SERIES_Y || iWhichIonSeries == ION_SERIES_Z) && iContainsKY[iii]))
+                        if (g_staticParams.iAddFragmentMassesModEntry == -1
+                             || ((iWhichIonSeries == ION_SERIES_A || iWhichIonSeries == ION_SERIES_B || iWhichIonSeries == ION_SERIES_C) && iContainsKB[iii])
+                             || ((iWhichIonSeries == ION_SERIES_X || iWhichIonSeries == ION_SERIES_Y || iWhichIonSeries == ION_SERIES_Z) && iContainsKY[iii]))
                         {
                            for (std::vector<double>::iterator it = g_staticParams.vectorAddFragmentMasses.begin(); it != g_staticParams.vectorAddFragmentMasses.end(); it++)
                            {
-                              iFragmentIonMass = BIN(dFragmentIonMass + *it);
+                              iFragmentIonMass = BIN(dFragmentIonMass + *it/ctCharge);
  
-                              fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
-
-                              if (fSpScore > FLOAT_ZERO)
+                              if (iFragmentIonMass > 0 && iFragmentIonMass < g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize)
                               {
-                                 if (!bMatchedThisIon)  // only count any one of all fragment mass additions as a matched ion count
+                                 fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery),iFragmentIonMass);
+
+                                 if (fSpScore > FLOAT_ZERO)
                                  {
-                                    iMatchedFragmentIonCt++;
-                                    bMatchedThisIon = true;
+                                    if (!bMatchedThisIon)  // only count any one of all fragment mass additions as a matched ion count
+                                    {
+                                       iMatchedFragmentIonCt++;
+                                       bMatchedThisIon = true;
+                                    }
+
+                                    // Simple sum intensity.
+                                    dTmpIntenMatch += fSpScore;
+
+                                    // I'm ignoring dConsec contribution of paired fragments here
+                                    // if main fragment does not match
+                                    ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
                                  }
-
-                                 // Simple sum intensity.
-                                 dTmpIntenMatch += fSpScore;
-
-                                 // I'm ignoring dConsec contribution of paired fragments here
-                                 // if main fragment does not match
-
-                                 ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
                               }
                            }
                            

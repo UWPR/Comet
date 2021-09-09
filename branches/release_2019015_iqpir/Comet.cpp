@@ -433,8 +433,7 @@ void LoadParameters(char *pszParamsFile,
                while (tok != NULL)
                {
                   sscanf(tok, "%lf", &dMass);
-                  if (dMass >= 0.0)
-                     vectorAddFragmentMasses.push_back(dMass);
+                  vectorAddFragmentMasses.push_back(dMass);
                   tok = strtok(NULL, delims);
                }
 
@@ -1584,7 +1583,7 @@ output_suffix =                        # add a suffix to output base names i.e. 
 mass_offsets =                         # one or more mass offsets to search (values substracted from deconvoluted precursor mass)\n\
 precursor_NL_ions =                    # one or more precursor neutral loss masses, will be added to xcorr analysis\n\
 add_fragment_masses =                  # one or more masses that will be added to each fragment ion\n\
-add_fragment_masses_modentry =         # if not 0 or blank, apply add_fragment_masses only to fragments which contain a modified residue\n\
+add_fragment_masses_modentry =         # 0=apply to all fragment ions, otherwise only to fragments which contain the modified residue for the mod entry (1-9)\n\
 \n\
 #\n\
 # spectral processing\n\

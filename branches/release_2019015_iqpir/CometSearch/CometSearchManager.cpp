@@ -651,19 +651,30 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("require_variable_mod", g_staticParams.variableModParameters.bRequireVarMod);
 
    GetParamValue("add_fragment_masses_modentry", g_staticParams.iAddFragmentMassesModEntry);
+   if (g_staticParams.iAddFragmentMassesModEntry < 0 || g_staticParams.iAddFragmentMassesModEntry > VMODS)
+      g_staticParams.iAddFragmentMassesModEntry = -2; // unused
+   else
+      g_staticParams.iAddFragmentMassesModEntry--;  // -1 applies to everything, 0 to 8 applied if vmod is present
+
    GetParamValue("add_fragment_masses", g_staticParams.vectorAddFragmentMasses);
 
-printf("\n OK  vector addfragmass size %ld\n", g_staticParams.vectorAddFragmentMasses.size() );
    // sanity check to make sure fragment mass additions are in some reasonable range
+   // and to clip entries to FRAGMENT_ADDMASSES-1
+   sort(g_staticParams.vectorAddFragmentMasses.begin(), g_staticParams.vectorAddFragmentMasses.end() );
+   g_staticParams.vectorAddFragmentMasses.erase( unique( g_staticParams.vectorAddFragmentMasses.begin(), g_staticParams.vectorAddFragmentMasses.end() ), g_staticParams.vectorAddFragmentMasses.end() );
    int iCount = 0;
-   for (std::vector<double>::iterator it = g_staticParams.vectorAddFragmentMasses.begin(); it != g_staticParams.vectorAddFragmentMasses.end(); it++)
+   for (std::vector<double>::iterator it = g_staticParams.vectorAddFragmentMasses.begin(); it != g_staticParams.vectorAddFragmentMasses.end();)
    {
-      printf("\n OK add fragment mass %lf\n", *it);
-      if (*it > MAX_ADDFRAGMASS || *it < -MAX_ADDFRAGMASS || iCount >= FRAGMENT_ADDMASSES)
+      if (*it > MAX_ADDFRAGMASS || *it < -MAX_ADDFRAGMASS || iCount >= FRAGMENT_ADDMASSES-1)
+      {
          it = g_staticParams.vectorAddFragmentMasses.erase(it);
-      iCount++;
+      }
+      else
+      {
+         ++it;
+         iCount++;
+      }
    }
-printf("\n OK  vector addfragmass size after any erase %ld\n", g_staticParams.vectorAddFragmentMasses.size() );
 
    g_staticParams.iUseAddFragmentMasses = g_staticParams.vectorAddFragmentMasses.size();
 
@@ -1238,6 +1249,8 @@ printf("\n OK  vector addfragmass size after any erase %ld\n", g_staticParams.ve
    g_staticParams.iPrecursorNLSize = g_staticParams.precursorNLIons.size();
    if (g_staticParams.iPrecursorNLSize > MAX_PRECURSOR_NL_SIZE)
       g_staticParams.iPrecursorNLSize = MAX_PRECURSOR_NL_SIZE;
+
+   g_staticParams.iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
 
    return true;
 }
@@ -2394,7 +2407,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
 
-   g_staticParams.iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
    double *pdTmpSpectrum = new double[g_staticParams.iArraySize];  // use this to determine most intense b/y-ions masses to report back
    bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
 
