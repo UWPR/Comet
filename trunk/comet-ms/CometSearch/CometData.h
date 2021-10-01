@@ -148,13 +148,17 @@ struct Fragment
     int type;
     int number;
     int charge;
+    bool neutralLoss;
+    double neutralLossMass;
 
     Fragment() :
         mass(0),
         intensity(0),
         type(0),
         number(0),
-        charge(0)
+        charge(0),
+        neutralLoss(false),
+        neutralLossMass(0)
     { }
 
     Fragment(double mass, double intensity, int type, int number, int charge) :
@@ -165,12 +169,26 @@ struct Fragment
         charge(charge)
     { }
 
+    Fragment(double mass, double intensity, int type, int number, int charge, bool neutralLoss, double neutralLossMass) :
+        mass(mass),
+        intensity(intensity),
+        type(type),
+        number(number),
+        charge(charge),
+        neutralLoss(neutralLoss),
+        neutralLossMass(neutralLossMass)
+     { }
+
+
     Fragment(const Fragment& a) :
         mass(a.mass),
         intensity(a.intensity),
         type(a.type),
         number(a.number),
-        charge(a.charge)
+        charge(a.charge),
+        neutralLoss(a.neutralLoss),
+        neutralLossMass(a.neutralLossMass)
+
     { }
 
     Fragment& operator=(Fragment& a)
@@ -180,6 +198,8 @@ struct Fragment
         type = a.type;
         number = a.number;
         charge = a.charge;
+        neutralLoss = a.neutralLoss;
+        neutralLossMass = a.neutralLossMass;
         return *this;
     }
 

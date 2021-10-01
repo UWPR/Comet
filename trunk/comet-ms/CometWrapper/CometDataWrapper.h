@@ -342,6 +342,16 @@ namespace CometWrapper {
             double get() { return pFragment->ToMz(); }
         }
 
+        property bool IsNeutralLossFragment
+        {
+            bool get() { return pFragment->neutralLoss; }
+        }
+
+        property double NeutralLossMass
+        {
+            double get() { return pFragment->neutralLossMass; }
+        }
+
         property double Intensity
         {
             double get() { return pFragment->intensity; }
