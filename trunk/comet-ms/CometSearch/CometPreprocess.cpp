@@ -163,6 +163,10 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
             if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
             {
+               // add this hack when 1 thread is specified otherwise g_pvQuery.size() returns 0
+               if (g_staticParams.options.iNumThreads == 1)
+                  pPreprocessThreadPool->wait_on_threads();
+
                Threading::LockMutex(g_pvQueryMutex);
                // this needed because processing can add multiple spectra at a time
                iNumSpectraLoaded = (int)g_pvQuery.size();
