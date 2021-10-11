@@ -694,7 +694,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       bModified = 1;
 
    //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
-   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != -127)
       bModified = 1;
 
    if (!bModified)
