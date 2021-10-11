@@ -693,7 +693,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
       bModified = 1;
 
-   if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+   //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
       bModified = 1;
 
    if (!bModified)
@@ -822,22 +823,53 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       }
 
       // Report PEFF substitution
-      if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+      if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != -127)
       {
-         if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1)
+         if (pOutput[iWhichResult].iPeffOrigResiduePosition < 0)
          {
-            fprintf(fpout, "     <aminoacid_substitution peptide_prev_aa=\"%c\" orig_aa=\"%c\"/>\n",
-                  pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].cPeffOrigResidue);
+            if (pOutput[iWhichResult].iPeffOrigResiduePosition == -1 && pOutput[iWhichResult].sPeffOrigResidues.size() == 1 && pOutput[iWhichResult].iPeffNewResidueCount == 1) // single aa substitution
+            {
+               // case where a single amino acid substitution one prior to the start of the peptide caused the peptide sequence (i.e. creation of an enzyme cut site)
+               fprintf(fpout, "     <aminoacid_substitution peptide_prev_aa=\"%c\" orig_aa=\"%s\"/>\n",
+                     pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].sPeffOrigResidues.c_str());
+            }
+            else 
+            {
+               // where more than one amino acid was involved prior to the peptide: i.e. deletion or insertion
+               int iPepPos = pOutput[iWhichResult].iPeffOrigResiduePosition + pOutput[iWhichResult].iPeffNewResidueCount;
+               if (iPepPos == 0 || iPepPos <= (int)strlen(pOutput[iWhichResult].szPeptide))
+               { 
+                  fprintf(fpout, "     <aminoacid_substitution peptide_prev_aa=\"%c\" orig_aa=\"%c\"/>\n",
+                        pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].sPeffOrigResidues.back());
+               } 
+               if (iPepPos > 0)
+               {
+                  if (iPepPos > (int)strlen(pOutput[iWhichResult].szPeptide))
+                     iPepPos = (int)strlen(pOutput[iWhichResult].szPeptide);
+                  fprintf(fpout, "     <sequence_substitution position=\"1\" num_aas=\"%d\" orig_aas=\"\"/>\n",
+                        iPepPos);
+               }
+            }
          }
          else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
          {
+            // case where a single amino acid substitution one after the end of the peptide caused the peptide sequence (i.e. creation of an enzyme cut site)
             fprintf(fpout, "     <aminoacid_substitution peptide_next_aa=\"%c\" orig_aa=\"%c\"/>\n",
-                  pOutput[iWhichResult].szPrevNextAA[1], pOutput[iWhichResult].cPeffOrigResidue);
+                  pOutput[iWhichResult].szPrevNextAA[1], pOutput[iWhichResult].sPeffOrigResidues[0]);
          }
-         else
+         else if (pOutput[iWhichResult].sPeffOrigResidues.size() == 1 && pOutput[iWhichResult].iPeffNewResidueCount == 1) // single aa substitution
          {
             fprintf(fpout, "     <aminoacid_substitution position=\"%d\" orig_aa=\"%c\"/>\n",
-                  pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+                  pOutput[iWhichResult].iPeffOrigResiduePosition + 1, pOutput[iWhichResult].sPeffOrigResidues[0]);
+         }
+         else  //insertion or deletion within the peptide sequence
+         {
+            int rc = pOutput[iWhichResult].iPeffNewResidueCount;
+            if (rc > pOutput[iWhichResult].iPeffOrigResiduePosition + 1)
+               rc = pOutput[iWhichResult].iPeffOrigResiduePosition + 1;
+            fprintf(fpout, "     <sequence_substitution position=\"%d\" num_aas=\"%d\" orig_aas=\"%s\"/>\n",
+                  pOutput[iWhichResult].iPeffOrigResiduePosition + 1, rc, pOutput[iWhichResult].sPeffOrigResidues.c_str());
+                 
          }
       }
 

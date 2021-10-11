@@ -39,6 +39,7 @@ struct SearchThreadData
       dbEntry.lProteinFilePosition = dbEntry_in.lProteinFilePosition;
       dbEntry.vectorPeffMod = dbEntry_in.vectorPeffMod;
       dbEntry.vectorPeffVariantSimple = dbEntry_in.vectorPeffVariantSimple;
+      dbEntry.vectorPeffVariantComplex = dbEntry_in.vectorPeffVariantComplex;
    }
 
    ~SearchThreadData()
@@ -254,13 +255,15 @@ private:
    struct ProteinInfo
    {
        int  iProteinSeqLength;                    // length of sequence
-       int  iTmpProteinSeqLength;                 // either length of sequence or 1 less for skip N-term M
+       int  iTmpProteinSeqLength;                 // either length of sequence or 1 less for skip N-term M; or more for PEFF insertions
        int  iAllocatedProtSeqLength;              // used in nucleotide to AA translation
        int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
        comet_fileoffset_t lProteinFilePosition;
        char szProteinName[WIDTH_REFERENCE];
        char *pszProteinSeq;
-       char cPeffOrigResidue;                     // original residue of a PEFF variant
+       //char cPeffOrigResidue;                     // original residue of a PEFF variant
+       string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
+       int    iPeffNewResidueCount;               // number of new residue(s) being substituted/added in PEFF variant
        char cPrevAA;  // hack for indexdb realtime search
        char cNextAA;  // hack for indexdb realtime search
    };

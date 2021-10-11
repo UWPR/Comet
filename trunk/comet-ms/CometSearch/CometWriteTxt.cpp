@@ -617,14 +617,19 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
    }
 
    // PEFF amino acid substitution
-   if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+   //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
    {
       if (!bFirst)
          fprintf(fpout, ",");
       else
          bFirst=false;
 
-      fprintf(fpout, "%d_p_%c", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+      //fprintf(fpout, "%d_p_%c", pOutput[iWhichResult].iPeffOrigResiduePosition+1, pOutput[iWhichResult].cPeffOrigResidue);
+      if(pOutput[iWhichResult].sPeffOrigResidues.size()>1)
+        fprintf(fpout, "%d-%d_p_%s", pOutput[iWhichResult].iPeffOrigResiduePosition + 1, pOutput[iWhichResult].iPeffOrigResiduePosition + (int)pOutput[iWhichResult].sPeffOrigResidues.size(), pOutput[iWhichResult].sPeffOrigResidues.c_str());
+      else
+        fprintf(fpout, "%d_p_%s", pOutput[iWhichResult].iPeffOrigResiduePosition + 1, pOutput[iWhichResult].sPeffOrigResidues.c_str());
       bPrintMod = true;
    }
 

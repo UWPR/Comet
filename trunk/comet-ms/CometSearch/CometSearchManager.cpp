@@ -295,7 +295,8 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].szPeptide[0] = '\0';
          pQuery->_pResults[j].strSingleSearchProtein = "";
          pQuery->_pResults[j].pWhichProtein.clear();
-         pQuery->_pResults[j].cPeffOrigResidue = '\0';
+         //pQuery->_pResults[j].cPeffOrigResidue = '\0';
+         pQuery->_pResults[j].sPeffOrigResidues.clear();
          pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
 
          if (g_staticParams.options.iDecoySearch)
@@ -313,7 +314,8 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].iTotalIons = 0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
             pQuery->_pDecoys[j].strSingleSearchProtein = "";
-            pQuery->_pDecoys[j].cPeffOrigResidue = '\0';
+            //pQuery->_pDecoys[j].cPeffOrigResidue = '\0';
+            pQuery->_pDecoys[j].sPeffOrigResidues.clear();
             pQuery->_pDecoys[j].iPeffOrigResiduePosition = -9;
          }
       }

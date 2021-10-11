@@ -195,8 +195,9 @@ struct Results
    char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
    string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
-   char   cPeffOrigResidue;                   // original residue of a PEFF variant
+   string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
+   int    iPeffNewResidueCount;               // more than 0 new residues is a substitution (if iPeffOrigResidueCount=1) or insertion (if iPeffOrigResidueCount>1)
    vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
    vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
 };
@@ -294,6 +295,19 @@ struct PeffVariantSimpleStruct  // stores info read from PEFF header
    }
 };
 
+struct PeffVariantComplexStruct  // stores info read from PEFF header
+{
+  int    iPositionA;       // start position of variant
+  int    iPositionB;       // end position of variant
+  string sResidues;        // if !empty(), insertion replacing aa from pos A to B; 
+                           // if empty(), deletion of aa from pos A to B
+
+  bool operator<(const PeffVariantComplexStruct& a) const
+  {
+    return (iPositionA < a.iPositionA);
+  }
+};
+
 struct PeffProcessedStruct
 {
    int iBeginResidue;
@@ -324,6 +338,7 @@ typedef struct sDBEntry
    comet_fileoffset_t lProteinFilePosition;
    vector<PeffModStruct> vectorPeffMod;
    vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
+   vector<PeffVariantComplexStruct> vectorPeffVariantComplex;
    vector<PeffProcessedStruct> vectorPeffProcessed;
 } sDBEntry;
 
