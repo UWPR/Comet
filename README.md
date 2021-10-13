@@ -23,9 +23,6 @@ To compile with Microsoft Visual Studio:
 
 - Right-mouse-click on the "Comet" project and choose "Build".
   This should generate a binary "Comet.exe" in x64/Release.
-
-  OR
-  
-  If you want to also build CometUI and the RealtmeSearch
+  If you want to also build CometUI or the RealtimeSearch
   test applications, both C# tools, build the entire solution
   or build each specific application.
