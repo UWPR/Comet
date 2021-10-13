@@ -1,37 +1,13 @@
-## Welcome to GitHub Pages
+## Welcome to the Comet project
 
-You can use the [editor on GitHub](https://github.com/UWPR/Comet/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+Comet is an open source tandem mass spectrometry (MS/MS) sequence database search tool.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+Searching uninterpreted tandem mass spectra of peptides against sequence databases is the most common method used to identify peptides and proteins. Since this method was first developed in 1993, many commercial, free, and open source tools have been created over the years that accomplish this task.
 
-### Markdown
+Although its history goes back two decades, the Comet search engine was first made publicly available in August 2012 [on SourceForge](https://sourceforge.net/projects/comet-ms/) under the Apache License, version 2.0. The repository was [moved to GitHub](https://github.com/UWPR/Comet) in September 2021.  Comet is multithreaded, supports multiple input and output formats, and binaries are available for both Windows and Linux operating systems.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+Note that Comet is just a single command line binary that perfoms  MS/MS database search. It takes in spectra in some supported input format and writes out .pep.xml, .pin.xml, .sqt and/or .out files. You will need some other support tool(s) to actually make use of Comet results. Or use one of the many proteomics software suites that Comet is integrated into.
 
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/UWPR/Comet/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+#### Publications
+- A Deeper Look into Comet - Implementation and Features. Eng JK, Hoopmann MR, Jahan TA, Egertson JD, Noble WS, MacCoss MJ. J Am Soc Mass Spectrom. 2015 Jun 27. doi: [10.1007/s13361-015-1179-x](http://link.springer.com/article/10.1007%2Fs13361-015-1179-x)
+- Comet: an open source tandem mass spectrometry sequence database search tool. Eng JK, Jahan TA, Hoopmann MR. Proteomics. 2012 Nov 12. doi: [10.1002/pmic.201200439](http://onlinelibrary.wiley.com/doi/10.1002/pmic.201200439/abstract)
