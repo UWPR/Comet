@@ -1,5 +1,0 @@
-These source files differ from MSToolkit:
-1.  modify Makefile (comment out #define __LINUX__, SQLITE)
-2.  delete src/sqlite-3.7.7.1/
-3.  delete MSSingleScan/
-4.  delete MSToolkitCLR.vcproj, MSToolkitLiteCLR.vcproj, MSToolkit.sln, MSToolkit.vcproj
