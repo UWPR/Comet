@@ -32,9 +32,9 @@ Comet is currently supported within the following software projects:
 - [SearchGUI](http://compomics.github.io/projects/searchgui.html) and [PeptideShaker](http://compomics.github.io/projects/peptide-shaker.html)
 
 Comet is a free, open source tool distributed under the
-[Apache 2.0 license]("http://www.apache.org/licenses/LICENSE-2.0.html").
+[Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0)
 If you happen to integrate Comet in your software tool/suite or know of other software
-that includes Comet, consider sending me a note about it so that I can add a link to it here.
+that includes Comet, send me a note about it so that I can add a link to it here.
 
 #### Legal:
 
