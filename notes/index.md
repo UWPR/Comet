@@ -1,6 +1,6 @@
 ## Comet notes
 
-####Support:
+#### Support:
                      
 - [Comet's Google group](http://groups.google.com/group/comet-ms"). Post your questions, problems, and feature requests here.
 - If you would rather not post to this public forum, feel free to e-mail me directly (jke000 at gmail dot com or engj at uw dot edu).
