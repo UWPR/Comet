@@ -1,4 +1,4 @@
-### Comet
+#### Comet
 
 Comet is an open source tandem mass spectrometry (MS/MS) sequence database search tool.
 
