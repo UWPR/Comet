@@ -7,11 +7,11 @@
 
 To run Comet, you need one or more input spectral files in mzXML, mzML, mgf, or
 ms2/cms2 formats and a comet.params file.  Then issue a command such as:
--comet.exe input.mzXML
--comet.exe input.mzML
--comet.exe input.mgf
--comet.exe input.ms2
--comet.exe *.ms2   _multiple inputs supported_
+- comet.exe input.mzXML
+- comet.exe input.mzML
+- comet.exe input.mgf
+- comet.exe input.ms2
+- comet.exe *.ms2   _multiple inputs supported_
 
 
 - 2020/12/01:  [Terminal modification massses](20201201_terminalmods.php)
