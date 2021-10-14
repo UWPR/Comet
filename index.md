@@ -1,6 +1,6 @@
-#### Comet
+#### Comet Home
 
-Comet is an open source tandem mass spectrometry (MS/MS) sequence database search tool.
+Comet is an open source tandem mass spectrometry (MS/MS) sequence database search tool release under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0).
 
 Searching uninterpreted tandem mass spectra of peptides against sequence databases is the most common method used to identify peptides and proteins. Since this method was first developed in 1993, many commercial, free, and open source tools have been created over the years that accomplish this task.
 
