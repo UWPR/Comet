@@ -8,3 +8,5 @@ color:#ffff;
       background-color:#275069;
       background-image:linear-gradient(120deg,#263759,#2f2f82);
 }
+
+body { padding: 0; margin: 0; font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #606c71; }
