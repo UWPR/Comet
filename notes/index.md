@@ -1,4 +1,4 @@
-## Comet notes
+## Comet Notes
 
 #### Support:
                      

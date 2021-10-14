@@ -1,4 +1,4 @@
-## Comet releases
+Comet Releases
 
 - Release 2021.01, 2021/06/23
 - Release 2020.01, 2020/11/09, last revised 2021/05/11
