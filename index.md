@@ -6,11 +6,11 @@ Searching uninterpreted tandem mass spectra of peptides against sequence databas
 
 Although its history goes back two decades, the Comet search engine was first made publicly available in August 2012 [on SourceForge](https://sourceforge.net/projects/comet-ms/) under the Apache License, version 2.0. The repository was [moved to GitHub](https://github.com/UWPR/Comet) in September 2021.  Comet is multithreaded, supports multiple input and output formats, and binaries are available for both Windows and Linux operating systems.
 
-<img src="./images/cometlogo_small.png" alt="Comet logo" style="float:right" height="80">
 Note that Comet is just a single command line binary that perfoms  MS/MS database search. It takes in spectra in various supported input formats, using the [MSToolkit C++ library](https://github.com/mhoopmann/mstoolkit), and writes .pep.xml, .pin, .sqt and/or .txt files. You will need some other support tool(s) to actually make use of Comet results. Consider using [one of the many proteomics software suites](./releases/) that Comet is integrated into.
 
 
 #### Publications
+<img src="./images/cometlogo_small.png" alt="Comet logo" style="float:right" height="80">
 - Comet: an open source tandem mass spectrometry sequence database search tool.
 Eng JK, Jahan TA, Hoopmann MR. Proteomics. 2012 Nov 12.
 doi: [10.1002/pmic.201200439](http://onlinelibrary.wiley.com/doi/10.1002/pmic.201200439/abstract)
