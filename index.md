@@ -8,6 +8,8 @@ Although its history goes back two decades, the Comet search engine was first ma
 
 Note that Comet is just a single command line binary that perfoms  MS/MS database search. It takes in spectra in various supported input formats, using the [MSToolkit C++ library](https://github.com/mhoopmann/mstoolkit), and writes .pep.xml, .pin, .sqt and/or .txt files. You will need some other support tool(s) to actually make use of Comet results. Or use [one of the many proteomics software suites](./releases/) that Comet is integrated into.
 
+<img src="./images/cometlogo_small.png" alt="Comet logo" style="float:right" height=50 width=85>
+
 #### Publications
 - Comet: an open source tandem mass spectrometry sequence database search tool.
 Eng JK, Jahan TA, Hoopmann MR. Proteomics. 2012 Nov 12.
