@@ -18,10 +18,10 @@
     <header class="page-header" role="banner">
       <h1 class="project-name">{{ page.title | default: site.title | default: site.github.repository_name }}</h1>
       <h2 class="project-tagline">{{ page.description | default: site.description | default: site.github.project_tagline }}</h2>
-      <a href="/" class="btn">Home</a>
-      <a href="/releases/" class="btn">Releases</a>
-      <a href="/parameters/" class="btn">Parameters</a>
-      <a href="/notes/" class="btn">Notes</a>
+      <a href="{{ site.github.baseurl }}" class="btn">Home</a>
+      <a href="{{ site.github.baseurl }}/releases/" class="btn">Releases</a>
+      <a href="{{ site.github.baseurl }}/parameters/" class="btn">Parameters</a>
+      <a href="{{ site.github.baseurl }}/notes/" class="btn">Notes</a>
       {% if site.github.is_project_page %}
         <a href="{{ site.github.repository_url }}" class="btn">View on GitHub</a>
       {% endif %}
