@@ -1,9 +1,3 @@
-<div id="sidebar">
-  <h2>Recent Updates</h2>
-  <li>2021/10/13: The Comet repository has migrated to GitHub
-  <li>2021/06/23: Release 2021.01 rev. 0 is now available.
-</div>
-
 ### Comet
 
 Comet is an open source tandem mass spectrometry (MS/MS) sequence database search tool released under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0).
@@ -15,6 +9,11 @@ Although its history goes back two decades, the Comet search engine was first ma
 Note that Comet is just a single command line binary that perfoms  MS/MS database search. It takes in spectra in various supported input formats, using the [MSToolkit C++ library](https://github.com/mhoopmann/mstoolkit), and writes .pep.xml, .pin, .sqt and/or .txt files. You will need some other support tool(s) to actually make use of Comet results. Consider using [one of the many proteomics software suites](./releases/) that Comet is integrated into.
 
 
+<div id="sidebar">
+  <h2>Recent Updates</h2>
+  <li>2021/10/13: The Comet repository has migrated to GitHub
+  <li>2021/06/23: Release 2021.01 rev. 0 is now available.
+</div>
 
 
 ### Publications
