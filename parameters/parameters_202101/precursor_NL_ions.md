@@ -19,6 +19,6 @@ in the ms/ms scan.
 
 Example:
 ```
-precursor_NL_ions =                                     _... entry blank; unused_
+precursor_NL_ions =                                     ... entry blank; unused
 precursor_NL_ions = 79.96633 97.97689
 ```
