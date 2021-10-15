@@ -2,6 +2,8 @@
   <h2>News</h2>
   <h3>2021/10/13: The Comet repository has migrated to GitHub.</h3>
   <h3>2021/06/23: <a href="http://comet-ms.sourceforge.net/release/release_202101/">Release 2021.01 rev. 0</a> is now available.</h3>
+  <h2>Keep Updated</h2>
+  <h3>Subscribe to <a href="http://groups.google.com/group/comet-ms">Comet's Google group</a> for announcements, issues, questions.</h3>
 </div>
 
 ### Comet
