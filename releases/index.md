@@ -16,9 +16,9 @@
 
 ### Comet integration
 
+<img src="/Comet/images/cometlogo_small.png" alt="Comet logo" style="float:right" height="80">
 Comet is currently supported within the following software projects:
 
-<img src="/Comet/images/cometlogo_small.png" alt="Comet logo" style="float:right" height="80">
 - [Thermo Fischer Scientific Real-Time Search](https://www.thermofisher.com/us/en/home/industrial/mass-spectrometry/liquid-chromatography-mass-spectrometry-lc-ms/lc-ms-systems/orbitrap-lc-ms/orbitrap-tribrid-mass-spectrometers/orbitrap-eclipse-tribrid-mass-spectrometer.html#how-advanced)
 - [Trans-Proteomic Pipeline (TPP)](http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP)
 - [PatternLab](http://www.patternlabforproteomics.org/)
