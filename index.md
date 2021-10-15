@@ -2,7 +2,7 @@
 
 <div id="sidebar">
   <h2>News</h2>
-  <h3>2021/10/13: The Comet repository has migrated to GitHub.</h3>
+  <h3>2021/09/17: The Comet repository has migrated to GitHub.</h3>
   <h3>2021/06/23: <a href="http://comet-ms.sourceforge.net/release/release_202101/">Release 2021.01 rev. 0</a> is now available.</h3>
   <h2>Keep Updated</h2>
   <h3>Subscribe to <a href="http://groups.google.com/group/comet-ms">Comet's Google group</a> for announcements, issues, questions.</h3>
@@ -12,7 +12,7 @@ Comet is an open source tandem mass spectrometry (MS/MS) sequence database searc
 
 Searching uninterpreted tandem mass spectra of peptides against sequence databases is the most common method used to identify peptides and proteins. Since this method was first developed in 1993, many commercial, free, and open source tools have been created over the years that accomplish this task.
 
-Although its history goes back two decades, the Comet search engine was first made publicly available in August 2012 [on SourceForge](https://sourceforge.net/projects/comet-ms/) under the Apache License, version 2.0. The repository was [moved to GitHub](https://github.com/UWPR/Comet) in September 2021.  Comet is multithreaded, supports multiple input and output formats, and binaries are available for both Windows and Linux operating systems.
+Although its history goes back two decades, the Comet search engine was first made publicly available in August 2012 [on SourceForge](https://sourceforge.net/projects/comet-ms/) under the Apache License, version 2.0. The repository was [migrated to GitHub](https://github.com/UWPR/Comet) in September 2021.  Comet is multithreaded, supports multiple input and output formats, and binaries are available for both Windows and Linux operating systems.
 
 Note that Comet is just a single command line binary that perfoms  MS/MS database search. It takes in spectra in various supported input formats, using the [MSToolkit C++ library](https://github.com/mhoopmann/mstoolkit), and writes .pep.xml, .pin, .sqt and/or .txt files. You will need some other support tool(s) to actually make use of Comet results. Consider using [one of the many proteomics software suites](./releases/) that Comet is integrated into.
 
