@@ -1,3 +1,5 @@
+### Comet
+
 <div id="sidebar">
   <h2>News</h2>
   <h3>2021/10/13: The Comet repository has migrated to GitHub.</h3>
@@ -5,8 +7,6 @@
   <h2>Keep Updated</h2>
   <h3>Subscribe to <a href="http://groups.google.com/group/comet-ms">Comet's Google group</a> for announcements, issues, questions.</h3>
 </div>
-
-### Comet
 
 Comet is an open source tandem mass spectrometry (MS/MS) sequence database search tool released under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0).
 
