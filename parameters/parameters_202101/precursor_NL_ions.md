@@ -18,5 +18,7 @@ in the ms/ms scan.
 - Negative mass values will be ignored.
 
 Example:
+```
 precursor_NL_ions =                                     _... entry blank; unused_
 precursor_NL_ions = 79.96633 97.97689
+```

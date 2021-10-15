@@ -11,5 +11,7 @@ after the removal of the methionine.
 - The default value is 0 if this parameter is missing.
 
 Example:
+```
 clip_nterm_methionine = 0
 clip_nterm_methionine = 1
+```

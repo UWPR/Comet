@@ -13,5 +13,7 @@ at the end of each .out file; this histogram is not present for SQT output.
 - The default value is 1 if this parameter is missing.
 
 Example:
+```
 print_expect_score = 0
 print_expect_score = 1
+```
