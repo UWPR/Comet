@@ -15,8 +15,6 @@ Note that Comet is just a single command line binary that perfoms  MS/MS databas
    <li>2021/10/13: The Comet repository has migrated to GitHub
    <li>2021/06/23: Release 2021.01 rev. 0 is now available.
   </ul>
-</div>
-</div>
 
 
 ### Publications
