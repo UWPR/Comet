@@ -1,5 +1,5 @@
 <div id="sidebar">
-  ## Recent Updates
+  <h2>Recent Updates</h2>
   <li>2021/10/13: The Comet repository has migrated to GitHub
   <li>2021/06/23: Release 2021.01 rev. 0 is now available.
 </div>
