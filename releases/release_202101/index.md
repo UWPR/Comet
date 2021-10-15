@@ -1,6 +1,6 @@
 ### Comet releases 2021.01
 
-Documentation for parameters for release 2021.01 [can be found here]("/Comet/parameters/parameters_202101/").
+Documentation for parameters for release 2021.01 [can be found here](/Comet/parameters/parameters_202101/).
 
 #### release 2021.01 rev. 0 (2021.01.0), release date 2021/06/23
 - Update the expectation value (E-value) calculation by improving the determination of the tail region of the xcorr cumulative distribution for the linear regression fit.
