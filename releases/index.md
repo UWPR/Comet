@@ -1,6 +1,6 @@
 ### Comet Releases
 
-- Release 2021.01, 2021/06/23
+- [Release 2021.01, 2021/06/23]("/Comet/releases/release_202101/")
 - Release 2020.01, 2020/11/09, last revised 2021/05/11
 - Release 2019.01, 2019/08/19, last revised 2020/04/06
 - Release 2018.01, 2018/04/26, last revised 2019/02/13
