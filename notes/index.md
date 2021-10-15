@@ -1,6 +1,6 @@
-#### Comet Notes
+### Comet Notes
 
-#### Support:
+### Support:
                      
 - [Comet Google group](http://groups.google.com/group/comet-ms). Post your questions, problems, and feature requests here.
 - If you would rather not post to this public forum, feel free to e-mail me directly (jke000 at gmail.com or engj at uw.edu).
@@ -13,7 +13,7 @@ ms2/cms2 formats and a comet.params file.  Then issue a command such as:
 - comet.exe input.ms2
 - comet.exe *.ms2
 
-#### Miscellaneous Notes
+### Miscellaneous Notes
 
 - 2020/12/01:  [Terminal modification massses](20201201_terminalmods.php)
 - 2019/11/04:  [Quick analysis on search times vs. number of search threads](20191104_threading.php)

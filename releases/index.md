@@ -1,4 +1,4 @@
-#### Comet Releases
+### Comet Releases
 
 - Release 2021.01, 2021/06/23
 - Release 2020.01, 2020/11/09, last revised 2021/05/11
@@ -14,7 +14,7 @@
 - Release 2013.01, 2013/06/05
 - Release 2012.01, 2012/08/16, last revised 2013/01/10
 
-#### Comet integration
+### Comet integration
 
 Comet is currently supported within the following software projects:
 
@@ -37,7 +37,7 @@ Comet is a free, open source tool distributed under the
 If you happen to integrate Comet in your software tool/suite or know of other software
 that includes Comet, send me a note about it so that I can add a link to it here.
 
-#### Legal:
+### Legal:
 
 >THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF

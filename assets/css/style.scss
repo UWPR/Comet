@@ -12,6 +12,45 @@ body { padding: 0; margin: 0; font-family: Inconsolata, Marcellus, Helvetica, Ar
 .main-content { font-size: 16px }
 
 .page-header{ color:#fff; text-align: center; background-color:#275069; background-image:linear-gradient(175deg, #190a05, #870000); }
-@media screen and (min-width: 64em) { .page-header { padding: 2rem 2rem; } }
-@media screen and (min-width: 42em) and (max-width: 64em) { .page-header { padding: 2rem 2rem; } }
-@media screen and (max-width: 42em) { .page-header { padding: 2rem 1rem; } }
+@media screen and (min-width: 64em) { .page-header { padding: 1rem 1rem; } }
+@media screen and (min-width: 42em) and (max-width: 64em) { .page-header { padding: 1rem 1rem; } }
+@media screen and (max-width: 42em) { .page-header { padding: 1rem 1rem; } }
+
+
+#sidebar {
+   float: right;
+   width: 210px;
+   padding: 5px;
+   background: #002244;
+   text-align: left;
+   color: #222222;
+}
+
+#sidebar h2 {
+   margin: 0;
+   padding: 5px 15px;
+   color: #FFFFFF;
+   text-align: center;
+}
+
+#sidebar h2 a {
+   text-decoration: none;
+}
+
+#sidebar h2 a:hover {
+   text-decoration: underline;
+}
+
+#sidebar h3 {
+   font-size: 85%;
+   color: #FFFFFF;
+   text-align: left;
+}
+
+#sidebar ul {
+   margin: 0;
+   padding: 10px;
+   list-style: none;
+   text-align: left;
+}
+
