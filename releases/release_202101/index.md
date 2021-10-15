@@ -46,7 +46,7 @@ the error.
 Hopefully I can address some of these in a follow-up maintenance release.
   - Reported PEFF modification and substitution positions are off by 1 when the
   start methionine residue is cleaved (using
-  "[clip_nterm_methionine](/Comet/parameters/parameters_202101/clip_nterm_methionine.md") = 1").
+  "[clip_nterm_methionine](/Comet/parameters/parameters_202101/clip_nterm_methionine.md) = 1").
   - The program will access restricted memory (negative array position) when
   "[precursor_NL_ions](/Comet/parameters/parameters_202101/precursor_NL_ions.md) = 1"
   is set. Presumably this can happen with other specified neutral loss
