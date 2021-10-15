@@ -31,6 +31,7 @@ Comet is currently supported within the following software projects:
 - [Philosopher](https://philosopher.nesvilab.org/)
 - [SearchGUI](http://compomics.github.io/projects/searchgui.html) and [PeptideShaker](http://compomics.github.io/projects/peptide-shaker.html)
 
+<img src="./images/cometlogo_small.png" alt="Comet logo" style="float:right" height="80">
 Comet is a free, open source tool distributed under the
 [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0)
 If you happen to integrate Comet in your software tool/suite or know of other software

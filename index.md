@@ -10,7 +10,6 @@ Note that Comet is just a single command line binary that perfoms  MS/MS databas
 
 
 #### Publications
-<img src="./images/cometlogo_small.png" alt="Comet logo" style="float:right" height="80">
 - Comet: an open source tandem mass spectrometry sequence database search tool.
 Eng JK, Jahan TA, Hoopmann MR. Proteomics. 2012 Nov 12.
 doi: [10.1002/pmic.201200439](http://onlinelibrary.wiley.com/doi/10.1002/pmic.201200439/abstract)
