@@ -2,7 +2,7 @@
 
 Comet search parameters are defined here. These are valid for Comet version 2021.01.?.
 
-Parameters for all versions of Comet can be found here.
+Parameters for all versions of Comet [can be found here](/Comet/parameters/).
 Entries marked with an * are new parameters.
 Entries marked with an ** are modified parameters.
 
