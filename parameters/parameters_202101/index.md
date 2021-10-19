@@ -96,7 +96,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [spectrum_batch_size](spectrum_batch_size.html)
 - [text_file_extension](text_file_extension.html)
 - [explicit_deltacn](explicit_deltacn.html)
-- [old_mods_encoding](old_mods_encoding *.html) <font color="red">*</font>
+- [old_mods_encoding](old_mods_encoding.html) <font color="red">*</font>
 
 #### Spectral processing
 
