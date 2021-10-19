@@ -2,6 +2,7 @@
 
 Documentation for parameters for release 2021.01 [can be found
 here](/Comet/parameters/parameters_202101/).
+Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2021.01 rev. 0 (2021.01.0), release date 2021/06/23
 - Update the expectation value (E-value) calculation by improving the

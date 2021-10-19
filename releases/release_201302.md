@@ -2,7 +2,7 @@
 
 Documentation for parameters for release 2013.02 [can be found
 here](/Comet/parameters/parameters_201302/).
-[Release download here](https://sourceforge.net/projects/comet-ms/files/).
+Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2013.02 rev 2 (2013.02.2), release date 2014/01/23
 - The major change with this maintenance release addresses Windows search

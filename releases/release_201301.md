@@ -2,7 +2,7 @@
 
 Documentation for parameters for release 2013.01 [can be found
 here](/Comet/parameters/parameters_201301/).
-[Release download here](https://sourceforge.net/projects/comet-ms/files/).
+Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2013.01 rev 0 (2013.01.0), release date 2013/06/05
 - This is the second major release of Comet.

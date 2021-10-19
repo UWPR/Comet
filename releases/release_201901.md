@@ -2,8 +2,7 @@
 
 Documentation for parameters for release 2019.01 [can be found
 here](/Comet/parameters/parameters_201901/).
-[Release download here](https://sourceforge.net/projects/comet-ms/files/).
-
+Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2019.01 rev. 5 (2019.01.5), release date 2020/04/06
 - Bug fix: a bug in the code could randomly set the "minimum_peaks" parameter

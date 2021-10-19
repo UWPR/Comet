@@ -2,7 +2,7 @@
 
 Documentation for parameters for release 2020.01 [can be found
 here](/Comet/parameters/parameters_202001/).
-[Release download here](https://sourceforge.net/projects/comet-ms/files/).
+Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2020.01 rev. 4 (2020.01.4), release date 2021/05/11
 - Bug fix: for Percolator .pin output, correctly calculate the dM (mass

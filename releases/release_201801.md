@@ -2,8 +2,7 @@
 
 Documentation for parameters for release 2018.01 [can be found
 here](/Comet/parameters/parameters_201801/).
-[Release download here](https://sourceforge.net/projects/comet-ms/files/).
-
+Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2018.01 rev. 4 (2018.01.4), release date 2019/02/13
 - Bug fix: the flanking/next amino acid is not reported correctly as a dash "-"

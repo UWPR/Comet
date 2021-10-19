@@ -1,7 +1,8 @@
 ### Comet releases 2014.02
 
-Documentation for parameters for release 2014.02 [can be found here](/Comet/parameters/parameters_201402/).
-[Release download here](https://sourceforge.net/projects/comet-ms/files/).
+Documentation for parameters for release 2014.02 [can be found
+here](/Comet/parameters/parameters_201402/).
+Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2014.02 rev. 2 (2014.02.2), release date 2014/09/25
 - This release addresses a potential bug in SQT output where an infinite loop
