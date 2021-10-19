@@ -1,4 +1,4 @@
-### Comet
+### Welcome to the Comet project!
 
 <div id="sidebar">
   <h2>News</h2>
