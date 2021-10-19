@@ -24,7 +24,7 @@ search_enzyme2_number = 10 (digest with chymotrypsin in addition to first enzyme
 The format of the parameter definition looks like the following:
 ```
 [COMET_ENZYME_INFO]
-0.  No_enzyme              0      -           -
+0.  Cut_everywhere         0      -           -
 1.  Trypsin                1      KR          P
 2.  Trypsin/P              1      KR          -
 3.  Lys_C                  1      K           P
@@ -34,7 +34,7 @@ The format of the parameter definition looks like the following:
 7.  CNBr                   1      M           -
 8.  Glu_C                  1      DE          P
 9.  PepsinA                1      FL          P
-10. Chymotrypsin           1      FWYL        P</pre></p>
+10. Chymotrypsin           1      FWYL        P
 ```
 
 The first column of the parameter definition is the enzyme number. This number list

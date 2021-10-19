@@ -8,7 +8,7 @@ digestion parameters are read from here in each search.  So one can edit/add/del
 enzyme definitions simply be changing the enzyme information.
 - This parameter works in conjection with the [num_enzyme_termini](num_enzyme_termini.html)
 parameter to define the cleavage rule for fully-digested vs. semi-digested search options.
-- This parameter works in conjection with the [allowed_missed_cleavage)[allowed_missed_cleavage.html)
+- This parameter works in conjection with the [allowed_missed_cleavage](allowed_missed_cleavage.html)
 parameter to define the miss cleavage rule.
 - The default value is "1" if this parameter is missing.
 
@@ -22,7 +22,7 @@ search_enzyme_number = 1
 The format of the parameter definition looks like the following:
 ```
 COMET_ENZYME_INFO]
-0.  No_enzyme              0      -           -
+0.  Cut_everywhere         0      -           -
 1.  Trypsin                1      KR          P
 2.  Trypsin/P              1      KR          -
 3.  Lys_C                  1      K           P
@@ -32,7 +32,7 @@ COMET_ENZYME_INFO]
 7.  CNBr                   1      M           -
 8.  Glu_C                  1      DE          P
 9.  PepsinA                1      FL          P
-10. Chymotrypsin           1      FWYL        P</pre></p>
+10. Chymotrypsin           1      FWYL        P
 ```
 
 The first column of the parameter definition is the enzyme number. This number list

@@ -3,23 +3,23 @@
 - Controls whether to output search results into a tab-delimited text file (.txt).
 - Valid values are 0 (do not output) or 1 (output).
 - The default value is "0" if this parameter is missing.
-- "peff_modified_peptide" column is present only if a [PEFF search](peff_format.html) is performed.
+- "peff\_modified\_peptide" column is present only if a [PEFF search](peff_format.html) is performed.
 PEFF modifications will contain bracketed OBO identifiers for each PEFF modification.  User specified
 static and variable modifications will still be reported as bracketed mass differences.  For
 example:  K.n[144.1000]RT[MOD:00047]EAR.S
 - The "modifications" column reports a comma separated list of modifications in the format
-"position_code_massdiff", e.g. "3_V_15.9949".  The "position" field is the position of the peptide residue
+"position\_code\_massdiff", e.g. "3\_V\_15.9949".  The "position" field is the position of the peptide residue
 where position 1 is the first residue.  A position of "0" denotes the previous flanking amino acid and a position
 of 1 greater than the peptide length denotes the following flanking amino acid; these are relevant for
 PEFF substitutions.  The "code" field can be "S" for a static modification, "V" for a variable modification,
 "P" for a PEFF modification, and "p" for a PEFF substitution.  In the case of a PEFF substitution, the
-original amino acid is listed in the "massdiff" field, e.g. "2_p_L" indicates the 2nd residue was originally
+original amino acid is listed in the "massdiff" field, e.g. "2\_p\_L" indicates the 2nd residue was originally
 a leucine before the PEFF substitution.
 - The "modifications" string can be appended with:
-  - "_N" to denote a N-term protein modification, e.g. "1_S_-17.0265_N"
-  - "_n" to denote a N-term peptide modification, e.g. "1_A_42.0146_n"
-  - "_C" to denote a C-term protein modification, e.g. "9_R_356.1882_C"
-  - "_c" to denote a C-term peptide modification, e.g. "12_K_42.0106_c"
+  - "\_N" to denote a N-term protein modification, e.g. "1\_S\_-17.0265\_N"
+  - "\_n" to denote a N-term peptide modification, e.g. "1\_A\_42.0146\_n"
+  - "\_C" to denote a C-term protein modification, e.g. "9\_R\_356.1882]_C"
+  - "\_c" to denote a C-term peptide modification, e.g. "12\_K\_42.0106\_c"
 
 Example:
 ```

@@ -4,7 +4,7 @@
 the base output name for the pep.xml, pin.xml, txt and sqt output files.
 - Use this parameter to give output files a unique suffix base name.
 - For example, if the output_suffix parameter is set to
-"output_suffix = _000", then a search of the file base.mzXML
+"output_suffix = \_000", then a search of the file base.mzXML
 will generate output files named base_000.pep.xml, base_000.pin.xml,
 base_000.txt, and/or base_000.sqt.
 - Note that using this parameter could break downstream tools that

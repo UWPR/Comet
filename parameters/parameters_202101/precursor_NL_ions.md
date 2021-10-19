@@ -6,7 +6,10 @@
 - Each entered mass value will be subtracted from the experimentral precursor mass and resulting
 neutral loss m/z values for all charge states (from 1 to precursor charge) will be analyzed.
 - As these neutral loss peaks are analyzed along side fragment ion peaks,
-the fragment tolerance settings (fragment_bin_tol, fragment_bin_offset, theoretical_fragment_ion)
+the fragment tolerance settings 
+([fragment_bin_tol](fragment_bin_tol),
+[fragment_bin_offset](fragment_bin_offset), and
+[theoretical_fragment_ion](theoretical_fragment_ion))
 apply to the precursor neutral loss peaks.
 - The default value is blank/unused if this parameter is missing.
 - A value of "0" or "0.0" will caues Comet to consider the intact precursor peaks (m/z's of the

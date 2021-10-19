@@ -1,6 +1,6 @@
 ### Comet parameter: output_percolatorfile
 
-- Controls whether to output search results in a [Percolator's](http://per-colator.com)
+- Controls whether to output search results in a [Percolator's](http://percolator.ms)
 tab-delimited input format.
 - Valid values are 0 (do not output) or 1 (output).
 - The default value is "0" if this parameter is missing.

@@ -14,7 +14,7 @@ this problem, this "isotope_error" parameter allows you to perform an accurate m
   - 3 searches 0, +1, +2, +3 isotope offsets
   - 4 searches -8, -4, 0, +4, +8 isotope offsets (for +4/+8 stable isotope labeling)
   - 5 searches -1, 0, +1, +2, +3 isotope offsets
-The default value is "0" if this parameter is missing.
+- The default value is "0" if this parameter is missing.
 
 Example:
 ```

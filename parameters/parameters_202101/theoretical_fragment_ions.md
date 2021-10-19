@@ -11,10 +11,10 @@ the intensity of each flanking bin.
 - A value of 1 indicates that the fast correlation score will be
 the sum of the intensities at each theoretical fragment mass bin.
 - For extremely coarse
-[fragment_bin_tol] (fragment_bin_tol.html)
+[fragment_bin_tol](fragment_bin_tol.html)
 values such as the historical ~1 Da bins, a theoretical_fragment_ions
 value of 1 is optimal.
-- But for narrower bins, such as ~0.3 for ion trap data or ~0.03 for
+- But for narrower bins, such as ~0.3 for ion trap data or ~0.02 for
 high-res MS/MS spectra, a value of 0 is optimal to incorporate
 intensities from the flanking bins.
 - Allowed values are 0 or 1.
