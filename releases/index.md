@@ -1,18 +1,7 @@
 ### Comet Releases
 
 - [Release 2021.01, 2021/06/23](/Comet/releases/release_202101/)
-- Release 2020.01, 2020/11/09, last revised 2021/05/11
-- Release 2019.01, 2019/08/19, last revised 2020/04/06
-- Release 2018.01, 2018/04/26, last revised 2019/02/13
-- Release 2017.01, 2017/10/02, last revised 2018/02/20
-- Release 2016.01, 2016/03/15, last revised 2017/05/02
-- Release 2015.02, 2015/07/31, last revised 2016/01/22
-- Release 2015.01, 2015/02/23, last revised 2015/04/28
-- Release 2014.02, 2014/09/16, last revised 2014/09/25
-- Release 2014.01, 2014/03/25, last revised 2014/06/03
-- Release 2013.02, 2013/10/18, last revised 2014/01/23
-- Release 2013.01, 2013/06/05
-- Release 2012.01, 2012/08/16, last revised 2013/01/10
+- [Release 2012.01 through 2020.01 documented on the old SourceForge site](http://comet-ms.sourceforge.net/release/)
 
 ### Comet integration
 

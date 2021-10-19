@@ -1,30 +1,29 @@
 ### Search parameters (2021.01)
 
-Comet search parameters are defined here. These are valid for Comet version 2021.01.?.
-
+Comet search parameters are defined here.  These are valid for Comet version 2021.01.?.
+         
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an * are new parameters.
-Entries marked with an ** are modified parameters.
-
+Entries marked with an <font color="red">*</font> are new parameters.
+Entries marked with an <font color="red">**</font> are modified parameters.
+         
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
-
 Example comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
 - [comet.params.low-low](comet.params.low-low) for low res MS1 and low res MS2 e.g. ion trap
 - [comet.params.high-low](comet.params.high-low) high res MS1 and low res MS2 e.g. Velos-Orbitrap
 - [comet.params.high-high](comet.params.high-high) high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
 
-#### Database
+### Database
 
 - [database_name](database_name.html)
 - [decoy_search](decoy_search.html)
 - [peff_format](peff_format.html)
 - [peff_obo](peff_obo.html)
 
-#### CPU threads
+### CPU threads
 
 - [num_threads](num_threads.html)
 
-#### Masses
+### Masses
 
 - [peptide_mass_tolerance](peptide_mass_tolerance.html)
 - [peptide_mass_units](peptide_mass_units.html)
@@ -33,14 +32,14 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [precursor_tolerance_type](precursor_tolerance_type.html)
 - [isotope_error](isotope_error.html)
 
-#### Search enzyme
+### Search enzyme
 
 - [search_enzyme_number](search_enzyme_number.html)
 - [search_enzyme2_number](search_enzyme2_number.html)
 - [num_enzyme_termini](num_enzyme_termini.html)
 - [allowed_missed_cleavage](allowed_missed_cleavage.html)
 
-#### Fragment ions
+### Fragment ions
 
 - [fragment_bin_tol](fragment_bin_tol.html)
 - [fragment_bin_offset](fragment_bin_offset.html)
@@ -54,7 +53,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [use_Z1_ions](use_Z1_ions.html)
 - [use_NL_ions](use_NL_ions.html)
 
-#### Output
+### Output
 
 - [output_mzidentmlfile](output_mzidentmlfile.html)
 - [output_pepxmlfile](output_pepxmlfile.html)
@@ -66,8 +65,8 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [num_output_lines](num_output_lines.html)
 - [show_fragment_ions](show_fragment_ions.html)
 - [sample_enzyme_number](sample_enzyme_number.html)
-
-#### mzXML/mzML parameters
+                        
+### mzXML/mzML parameters
 
 - [scan_range](scan_range.html)
 - [precursor_charge](precursor_charge.html)
@@ -75,7 +74,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [ms_level](ms_level.html)
 - [activation_method](activation_method.html)
 
-#### Misc. parameters
+### Misc. parameters
 
 - [clip_nterm_methionine](clip_nterm_methionine.html)
 - [decoy_prefix](decoy_prefix.html)
@@ -96,17 +95,18 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [spectrum_batch_size](spectrum_batch_size.html)
 - [text_file_extension](text_file_extension.html)
 - [explicit_deltacn](explicit_deltacn.html)
-- [old_mods_encoding *](old_mods_encoding *.html)
+- [old_mods_encoding](old_mods_encoding.html) <font color="red">*</font>
 
-#### Spectral processing
+### Spectral processing
 
 - [minimum_peaks](minimum_peaks.html)
 - [minimum_intensity](minimum_intensity.html)
 - [remove_precursor_peak](remove_precursor_peak.html)
 - [remove_precursor_tolerance](remove_precursor_tolerance.html)
 - [clear_mz_range](clear_mz_range.html)
+                        
 
-#### Variable modifications
+### Variable modifications
 
 - [variable_mod01](variable_mod01.html)
 - [variable_mod02](variable_mod02.html)
@@ -120,7 +120,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [max_variable_mods_in_peptide](max_variable_mods_in_peptide.html)
 - [require_variable_mod](require_variable_mod.html)
 
-#### Static modifications
+### Static modifications
 
 - [add_Cterm_peptide](add_Cterm_peptide.html)
 - [add_Nterm_peptide](add_Nterm_peptide.html)
