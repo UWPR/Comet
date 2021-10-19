@@ -1,18 +1,18 @@
 ### Comet Releases
 
-- [Release 2021.01, 2021/06/23](/Comet/releases/release_202101/)
-- [Release 2020.01, 2020/11/09, last revised 2021/05/11](http://comet-ms.sourceforge.net/release/release_202001/) (on old SourceForge site)
-- [Release 2019.01, 2019/08/19, last revised 2020/04/06](http://comet-ms.sourceforge.net/release/release_201901/) (on old SourceForge site)
-- [Release 2018.01, 2018/04/26, last revised 2019/02/13](http://comet-ms.sourceforge.net/release/release_201801/) (on old SourceForge site)
-- [Release 2017.01, 2017/10/02, last revised 2018/02/20](http://comet-ms.sourceforge.net/release/release_201701/) (on old SourceForge site)
-- [Release 2016.01, 2016/03/15, last revised 2017/05/02](http://comet-ms.sourceforge.net/release/release_201601/) (on old SourceForge site)
-- [Release 2015.02, 2015/07/31, last revised 2016/01/22](http://comet-ms.sourceforge.net/release/release_201502/) (on old SourceForge site)
-- [Release 2015.01, 2015/02/23, last revised 2015/04/28](http://comet-ms.sourceforge.net/release/release_201501/) (on old SourceForge site)
-- [Release 2014.02, 2014/09/16, last revised 2014/09/25](http://comet-ms.sourceforge.net/release/release_201402/) (on old SourceForge site)
-- [Release 2014.01, 2014/03/25, last revised 2014/06/03](http://comet-ms.sourceforge.net/release/release_201401/) (on old SourceForge site)
-- [Release 2013.02, 2013/10/18, last revised 2014/01/23](http://comet-ms.sourceforge.net/release/release_201302/) (on old SourceForge site)
-- [Release 2013.01, 2013/06/05](http://comet-ms.sourceforge.net/release/release_201301/) (on old SourceForge site)
-- [Release 2012.01, 2012/08/16, last revised 2013/01/10](http://comet-ms.sourceforge.net/release/release_201201/) (on old SourceForge site)
+- [Release 2021.01, 2021/06/23](/Comet/releases/release_202101.html)
+- [Release 2020.01, 2020/11/09, last revised 2021/05/11](/Comet/releases/release_202001.html)
+- [Release 2019.01, 2019/08/19, last revised 2020/04/06](/Comet/releases/release_201901.html)
+- [Release 2018.01, 2018/04/26, last revised 2019/02/13](/Comet/releases/release_201801.html)
+- [Release 2017.01, 2017/10/02, last revised 2018/02/20](/Comet/releases/release_201701.html)
+- [Release 2016.01, 2016/03/15, last revised 2017/05/02](/Comet/releases/release_201601.html)
+- [Release 2015.02, 2015/07/31, last revised 2016/01/22](/Comet/releases/release_201502.html)
+- [Release 2015.01, 2015/02/23, last revised 2015/04/28](/Comet/releases/release_201501.html)
+- [Release 2014.02, 2014/09/16, last revised 2014/09/25](/Comet/releases/release_201402.html)
+- [Release 2014.01, 2014/03/25, last revised 2014/06/03](/Comet/releases/release_201401.html)
+- [Release 2013.02, 2013/10/18, last revised 2014/01/23](/Comet/releases/release_201302.html)
+- [Release 2013.01, 2013/06/05](/Comet/releases/release_201301.html)
+- [Release 2012.01, 2012/08/16, last revised 2013/01/10](/Comet/releases/release_201201.html)
 
 ### Comet integration
 
