@@ -3,8 +3,8 @@
 Comet search parameters are defined here. These are valid for Comet version 2021.01.?.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an * are new parameters.
-Entries marked with an ** are modified parameters.
+Entries marked with an <font color="red">*</font> are new parameters.
+Entries marked with an <font color="red">**</font> are modified parameters.
 
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
 
@@ -96,7 +96,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [spectrum_batch_size](spectrum_batch_size.html)
 - [text_file_extension](text_file_extension.html)
 - [explicit_deltacn](explicit_deltacn.html)
-- [old_mods_encoding *](old_mods_encoding *.html)
+- [old_mods_encoding](old_mods_encoding *.html) <font color="red">*</font>
 
 #### Spectral processing
 

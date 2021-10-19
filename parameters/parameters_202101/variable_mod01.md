@@ -1,6 +1,6 @@
 ### Comet parameter: variable_mod01 through variable_mod09
 
-- There are 8 entries/settings that are associated with these parameters:
+There are 8 entries/settings that are associated with these parameters:
   - The first entry is a decimal value specifying the modification mass difference.
   - The second entry is the residue(s) that the modifications are possibly applied to.
     If more than a single residue is modified by the same mass difference, list them
