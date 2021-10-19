@@ -144,7 +144,7 @@ Shteynberg and M. Hoopmann for the MSToolkit mods to support this.
 score has been reported as "0.0" for every result and I've never understood
 what it represented so I'm taking this opportunity to get rid of it now. NOTE:
 PeptideProphet apparently expects to parse this score so stick to
-[Comet 2019.01.5](/Comet/releases/release_2019015.html)
+[Comet 2019.01.5](/Comet/releases/release_201901.html)
 if you need PeptideProphet compatibility.
 - Changed the "No_enzyme" text to "Cut_everywhere" in the enzyme definition of
 the exported comet.params file. Hopefully this clarifies the purpose of that

@@ -64,25 +64,25 @@ currently supports the ModResPsi and VariantSimple keywords only. This enables
 one to search annotated variable modifications and amino acid substitutions
 (aka variants). The ModResPsi modifications can be analyzed in conjunction with
 the standard Comet variable modifications.
- - Note that the controls for Comet's standard variable modifications (such as
+  - Note that the controls for Comet's standard variable modifications (such as
 binary mods, force modification, etc.) only apply to the standard variable
 modifications and not the PEFF mods.
- - For the VariantSimple amino acid substitutions, Comet will currently only
+  - For the VariantSimple amino acid substitutions, Comet will currently only
 allow a single amino acid substitution in a peptide at a time.
- - PSI-Mod OBO entries must have "xref: DiffMono:". UniMod OBO entries must
+  - PSI-Mod OBO entries must have "xref: DiffMono:". UniMod OBO entries must
 have "xref: delta_mono_mass:". Entries without these values are ignored.
- - Addition of **source="peff"** or **source="param"** attributes to the
+  - Addition of **source="peff"** or **source="param"** attributes to the
 **mod_aminoacid_mass** element in the pepXML output.
- - Addition of **id** attribute, referencing the modification ID from the OBO
+  - Addition of **id** attribute, referencing the modification ID from the OBO
 file, to the **mod_aminoacid_mass** element in the pepXML output.
- - PEFF modifications will not be specified in the "search_summary" element at
+  - PEFF modifications will not be specified in the "search_summary" element at
 the head of each pepXML file.
- - Note that any static mods are *always* applied and variable or PEFF
+  - Note that any static mods are *always* applied and variable or PEFF
 modification masses are added on top of static mods.
- - When a PEFF modification occurs at the same position as a PEFF variant, the
+  - When a PEFF modification occurs at the same position as a PEFF variant, the
 modification will be considered at that position on both the original residue
 as well the variant residue.
- - The .out, .sqt, and .pin output formats currently expect a modification
+  - The .out, .sqt, and .pin output formats currently expect a modification
 character (e.g. * or #) to appear in the sequence for each variable
 modification. This does not extend well to PEFF modifications so for these
 output formats, the peptide string will replace these modification characters

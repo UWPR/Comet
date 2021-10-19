@@ -69,8 +69,8 @@ digestion enzyme. Enzyme specificity and missed cleavage settings are are
 shared between both "search_enzyme_number" and "search_enzyme2_number".
 - Update "max_variable_mods_in_peptide" parameter to support value 0.
 - In the example comet.params files available here and the when generated using
-"comet -p", the "spectrum_batch_size" parameter is now set to 15000 instead of
-0. For high-res "fragment_bin_tol" settings, Comet should use less than 6GB of
+"comet -p", the "spectrum_batch_size" parameter is now set to 15000 instead of 0.
+For high-res "fragment_bin_tol" settings, Comet should use less than 6GB of
 memory with a 15K batch size with very little impact on search times compared
 to loading and searching all spectra at once. If you have a computer with lots
 of ram, feel free to set this parameter value to 0 to gain a bit of search
