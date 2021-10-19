@@ -7,13 +7,14 @@ There are 8 fields/settings that are associated with these parameters:
     all as a string.  Use 'n' for N-terminal modfication and 'c' for C-terminal modification.
   - The third entry is a integer to specify whether the modification is a
     variable modification (0) or a binary modification (non-zero value).
-    - 0 = variable modification analyzes all permutations of modified and unmodified residues.
-    - non-zero value = A binary modification analyzes peptides where all residues are either modified or all residues are not modified.
     Note that if you set the same binary modification value in multiple "variable_mod?" parameter
     entries, Comet will treat those variable modifications as a "binary set".  This means
     that all modifiable residues in the "binary set" must be unmodified or modified.  Multiple
     "binary sets" can be specified by setting a different binary modification value e.g.
-    use "1" for all modifications in set 1, and "2" or all modifications in set 2.  Binary groups were added with version 2015.02 rev. 1.
+    use "1" for all modifications in set 1, and "2" or all modifications in set 2.
+    Binary modification groups were added with version 2015.02 rev. 1.
+    - 0 = variable modification analyzes all permutations of modified and unmodified residues.
+    - non-zero value = binary modification analyzes peptides where all residues are either modified or all residues are not modified.
   - The fourth entry is an integer specifying the maximum number of modified residues
     possible in a peptide for this modification entry. With release 2020.01 rev. 3, this
     field has been extended to allow specifying both a mininum and maximum number of
@@ -47,13 +48,13 @@ There are 8 fields/settings that are associated with these parameters:
 Example:
 ```
 variable_mod01 = 15.9949 M 0 3 -1 0 0 0.0
-variable_mod02 = 79.966331 STY 0 3 -1 0 0 97.976896 ... possible phosphorylation on any S, T, Y residue with a neutral loss of 98
-variable_mod02 = 79.966331 STY 0 3 -1 0 1 0.0</tt> &nbsp; &nbsp; ... force peptide IDs to contain at least one phosphorylation mod
-variable_mod01 = 42.010565 nK 0 3 -1 0 0 0.0</tt> &nbsp; &nbsp; ... acetylation mod to lysine and N-terminus of all peptides
-variable_mod01 = 15.994915 n 0 3 0 0 0 0.0</tt> &nbsp; &nbsp; ... oxidation of protein's N-terminus
-variable_mod01 = 28.0 c 0 3 8 1 0 0.0</tt> &nbsp; &nbsp; ... modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein
-variable_mod03 = -17.026549 Q 0 1 0 2 0 0.0</tt> &nbsp; &nbsp; ... cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)
-variable_mod04 = -18.010565 E 0 1 0 2 0 0.0</tt> &nbsp; &nbsp; ... cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)
+variable_mod02 = 79.966331 STY 0 3 -1 0 0 97.976896  ... possible phosphorylation on any S, T, Y residue with a neutral loss of 98
+variable_mod02 = 79.966331 STY 0 3 -1 0 1 0.0        ... force peptide IDs to contain at least one phosphorylation mod
+variable_mod01 = 42.010565 nK 0 3 -1 0 0 0.0         ... acetylation mod to lysine and N-terminus of all peptides
+variable_mod01 = 15.994915 n 0 3 0 0 0 0.0           ... oxidation of protein's N-terminus
+variable_mod01 = 28.0 c 0 3 8 1 0 0.0                ... modification applied to C-terminus as long as the C-term residue is one of last 9 residues in protein
+variable_mod03 = -17.026549 Q 0 1 0 2 0 0.0          ... cyclization of N-terminal glutamine to form pyroglutamic acid (elimination of NH3)
+variable_mod04 = -18.010565 E 0 1 0 2 0 0.0          ... cyclization of N-terminal glutamic acid to form pyroglutamic acid (elimination of H2O)
 ```
 
 Here is a binary modification search example of triple SILAC plus acetylation of lysine.
@@ -73,5 +74,4 @@ variable_mod06 =  8.0 K 2 3 -1 0 0 0.0
 variable_mod07 = 50.0 K 2 3 -1 0 0 0.0
 variable_mod08 =  0.0 X 0 3 -1 0 0 0.0
 variable_mod09 =  0.0 X 0 3 -1 0 0 0.0
-
 ```
