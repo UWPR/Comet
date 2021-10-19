@@ -4,7 +4,7 @@
 - The specified mass is added to the unmodified mass of C.
 - The default value is "0.0" if this parameter is missing *except*
   if Comet is compiled with the
-  [Crux]("http://crux.ms/") flag on.
+  [Crux](http://crux.ms/) flag on.
   For Crux compilation, the default value is "57.021464" if this parameter is missing.
 
 Example:
