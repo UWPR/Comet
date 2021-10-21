@@ -39,17 +39,17 @@ release will address this bug but if you would like a fix sooner, send me an
 email and I'll get you a patched binary.
 - Known implementation issue: the Percolator .pin output format only exports
 the top hit for each spectrum query. Per request, it has been updated to
-respect the num_output_lines parameter which will be available in the next
+respect the "num_output_lines" parameter which will be available in the next
 release.
 
 #### release 2017.01 rev. 1 (2017.01.1), release date 2017/10/17
 - Report all duplicate proteins as a comma separated list under the
-"proteinId1" column in Percolator output (output_percolatorfile); rev. 0
+"proteinId1" column in Percolator output ("output_percolatorfile"); rev. 0
 release reported just a single protein identifier.
 - Bug fix: a decoy peptide that appears multiple times within a decoy protein
 would previously cause that decoy protein to be reported multiple times.
 - Bug fix: add a missing comma separating protein list in text output
-(output_txtfile) when performing a combined target-decoy search ("decoy_search
+("output_txtfile") when performing a combined target-decoy search ("decoy_search
 = 2"). The missing comma was between the target protein list and the decoy
 protein list.
 
@@ -58,7 +58,7 @@ protein list.
 and L treated as being the same/equivalent. You can turn off I/L equivalence by
 adding an undocumented/hidden parameter "equal_I_and_L = 0".
 - Major update to code to add
-[PSI's extended fasta format (PEFF)](https://www.psidev.info/peff) support. Comet
+[PSI's Extended Fasta Format (PEFF)](https://www.psidev.info/peff) support. Comet
 currently supports the ModResPsi and VariantSimple keywords only. This enables
 one to search annotated variable modifications and amino acid substitutions
 (aka variants). The ModResPsi modifications can be analyzed in conjunction with
@@ -92,7 +92,7 @@ compatibility as there are not enough modification characters to encode all
 possible PEFF modifications. **Stick with version
 [2016.01.3](/Comet/releases/release_201601.html) if you are using
 downstream processing tools that cannot handle the new output**.
-- In pepXML modification output, 'static="mass"' and 'variable="mass' are added
+- In pepXML modification output, **static="mass"** and **variable="mass"** are added
 to each "mod_aminoacid_mass" element.
 - Add a "peff_format" to control whether or not a PEFF search is performed. For
 a PEFF search, his parameter additionally controls whether to search both PEFF
@@ -108,7 +108,7 @@ available for download. To invoke this parameter, a user must manually add
 - The parameter remove_precursor_peak" has been extended to handle phosphate
 neutral loss peaks. When this parameter is set to "3", the HPO3 and H2PO4
 neutral loss peaks are removed from the spectrum prior to analysis.
-- Modified the text output, controlled by the output_txtfile" parameter. The
+- Modified the text output, controlled by the "output_txtfile" parameter. The
 "protein" column prints out a comma separated list of all protein accessions.
 The "duplicate_protein_count" column is now the "protein_count" column which
 reports the protein count. The "peptide" column is renamed "modified_peptide";
