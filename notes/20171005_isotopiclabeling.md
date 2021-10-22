@@ -43,7 +43,7 @@ add_K_lysine = 229.162932
 clear_mz_range = 125.5 131.5
 ```
 
-#### SILAC 4 Da:
+#### SILAC4:
 
 There are a number of different SILAC reagents with a ~4 Da  modification
 (based on combinations of C13 and N15), each with different sites of
@@ -65,7 +65,7 @@ To search just the heavy labeled sample, you can apply a static modification:
 add_R_lysine = 3.988140
 ```
 
-#### SILAC 6 Da:
+#### SILAC6:
 
 I'm using the 13C(6) SILAC mass in the example below assuming it's applied to
 both K and R; adjust as necessary.  There's at least one more SILAC reagent
@@ -87,7 +87,7 @@ add_K_lysine = 6.020129
 add_R_arginine = 6.020129
 ```
 
-#### SILAC 8 Da:
+#### SILAC8:
 
 The example below is for 13C(6) 15N(2) on K residues.
 
@@ -102,4 +102,3 @@ Static modification for just the heavy labeled search:
 ```
 add_K_lysine = 8.014199
 ```
-
