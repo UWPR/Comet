@@ -26,4 +26,3 @@ ms2/cms2 formats and a comet.params file.  Then issue a command such as:
 - 2016/06/13:  [Information I will need when you report a problem/bug](20160613_reporting_issues.php)
 - 2016/03/09:  [High res vs. low res fragmention comparison on Q Exactive data](20160309_highres.php)
 - 2016/01/01:  [Comet parameters info and suggested high-res/low-res settings](20160101_parameters.php)
-- 2015/01/01:  [Comet batch processing scripts and avoiding memory creep](20150101_batch.php)
