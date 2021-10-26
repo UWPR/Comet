@@ -1,7 +1,7 @@
 ### Comet releases 2020.01
 
 Documentation for parameters for release 2020.01 [can be found
-here](/Comet/parameters/parameters_202001/).
+here](http://comet-ms.sourceforge.net/parameters/parameters_202001/).
 Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2020.01 rev. 4 (2020.01.4), release date 2021/05/11

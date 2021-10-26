@@ -1,7 +1,7 @@
 ### Comet releases 2016.01
 
 Documentation for parameters for release 2016.01 [can be found
-here](/Comet/parameters/parameters_201601/).
+here](http://comet-ms.sourceforge.net/parameters/parameters_201601/).
 Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2016.01 rev. 3 (2016.01.3), release date 2017/05/02

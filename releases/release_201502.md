@@ -1,7 +1,7 @@
 ### Comet releases 2015.02
 
 Documentation for parameters for release 2015.02 [can be found
-here](/Comet/parameters/parameters_201502/).
+here](http://comet-ms.sourceforge.net/parameters/parameters_201502/).
 Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2015.02 rev. 5 (2015.02.5), release date 2016/01/22

@@ -1,7 +1,7 @@
 ### Comet releases 2012.01
 
 Documentation for parameters for release 2012.01 [can be found
-here](/Comet/parameters/parameters_201201/).
+here](http://comet-ms.sourceforge.net/parameters/parameters_201201/).
 Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2012.01 rev 3 (2012.01.3), release date 2013/02/04
