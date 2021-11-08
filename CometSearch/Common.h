@@ -43,6 +43,11 @@ typedef __int64 comet_fileoffset_t;
 #include <errno.h>
 #include <pthread.h>
 #define STRCMP_IGNORE_CASE(a,b) strcasecmp(a,b)
+#ifdef __APPLE__
+#define off64_t off_t
+#define fseeko64 fseeko
+#define ftello64 ftello
+#endif
 typedef off64_t comet_fileoffset_t;
 #define comet_fseek(handle, offset, whence) fseeko64(handle, offset, whence)
 #define comet_ftell(handle) ftello64(handle)
