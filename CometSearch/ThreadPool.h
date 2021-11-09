@@ -134,7 +134,7 @@ public:
       {
          this->LOCK(&this->lock_);
 
-         if (this->jobs_.empty () && this->running_count_ < (int) this->threads_.capacity() )
+         if (this->jobs_.empty () || this->running_count_ < (int) this->threads_.capacity() )
          {
             this->UNLOCK(&this->lock_);
             //Threading::ThreadSleep(100);
@@ -186,7 +186,7 @@ public:
 #elif __APPLE__
             sched_yield();
 #else
-            std::this_thread::yield();
+         std::this_thread::yield();
 #endif
          this->LOCK(&countlock_);
       }
@@ -252,7 +252,7 @@ public:
    {
       bool rtn;
       this->LOCK(&lock_);
-      rtn = !jobs_.empty() && running_count_;
+      rtn = !jobs_.empty() || running_count_;
       this->UNLOCK(&lock_);
 
       return rtn;
