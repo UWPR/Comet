@@ -182,9 +182,9 @@ public:
       {
          this->UNLOCK(&countlock_);
 #if !defined(_WIN32) && !defined(__APPLE__)
-            pthread_yield();
+         pthread_yield();
 #elif __APPLE__
-            sched_yield();
+         sched_yield();
 #else
          std::this_thread::yield();
 #endif
