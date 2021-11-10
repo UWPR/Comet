@@ -15,12 +15,14 @@ jobs:
         os: [ubuntu-latest, macos-latest]
 
     steps:
+    - uses: actions/checkout@v2
     - name: Build Comet
       run: make
 
   windows-build:
     runs-on: windows-latest
     steps:
+    - uses: actions/checkout@v2
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
 
