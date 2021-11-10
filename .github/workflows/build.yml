@@ -1,0 +1,30 @@
+# This workflow will build Comet on Unix-like systems.
+name: test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  unix-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - name: Build Comet
+      run: make
+
+  windows-build:
+    runs-on: windows-latest
+    steps:
+    - name: Setup msbuild
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Build Comet
+      run: |
+        msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 \
+        -p:PlatformToolset -tv:16.5
