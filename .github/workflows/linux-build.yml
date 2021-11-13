@@ -73,6 +73,6 @@ jobs:
       if : ${{ github.event_name == 'release' }}
       with:
         context: .
-        push: ${{ github.event_name == 'release' }}
+        push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
