@@ -13,10 +13,14 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Build Comet
-      run: make && ./comet.exe -p
 
-    - name: Prepare release
+    - name: Build Comet
+      run: make
+
+    - name: Test Comet
+      run: ./comet.exe -p
+
+    - name: Prepare Comet release
       run: |
         mkdir release && \
         cp comet.exe release/comet && \

@@ -17,10 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Build Comet
-      run: make && ./comet.exe -p
 
-    - name: Prepare release
+    - name: Build Comet
+      run: make
+
+    - name: Test Comet
+      run:  ./comet.exe -p
+
+    - name: Prepare Comet release
       run: |
         mkdir release && \
         cp comet.exe release/comet && \
@@ -36,13 +40,17 @@ jobs:
         file: linux.tar.gz
         overwrite: true
 
-    - name: Extract metadata for Docker
-      id: meta
-      uses: docker/metadata-action@v3
+    - name: Build the Docker image
+      uses: docker/build-push-action@v2
       with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        context: .
+        load: true
+        tags: ${{ env.IMAGE_NAME }}:test
 
-    - name: Log in to the GitHub Container registry
+    - name: Test the Docker image
+      run: docker run --rm ${IMAGE_NAME} comet -p
+
+    - name: Log in to the GitHub Container Registry
       if: ${{ github.event_name == 'release' }}
       uses: docker/login-action@v1
       with:
@@ -50,14 +58,20 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and push Docker image
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v3
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+    # Note that the image is cached from the test build, so it won't be build a
+    # second time. Correspondingly, this step only pushes it to the GitHub
+    # Container Registry.
+    - name: Push the Docker image to the GHCR
       uses: docker/build-push-action@v2
+      if : ${{ github.event_name == 'release' }}
       with:
         context: .
         push: ${{ github.event_name == 'release' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-
-    - name: Test the Docker image
-      if: ${{ github.event_name != 'release' }}
-      run: ls && docker run ${REGISTRY}/${{ env.IMAGE_NAME }} comet -p

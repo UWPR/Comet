@@ -21,6 +21,9 @@ jobs:
       run: |
         msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v142 -tv:Current
 
+    - name: Test Comet
+      run: comet.exe -p
+
     - name: Prepare release
       shell: bash
       run: |
