@@ -1,4 +1,4 @@
-name: Build and Release on Linux
+name: Build on Linux
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         mkdir release && \
         cp comet.exe release/comet && \
         cp README.md release/README.md && \
-        tar -czv linux.tar.gz release
+        tar -czf linux.tar.gz release
 
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
