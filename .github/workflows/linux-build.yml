@@ -48,7 +48,7 @@ jobs:
         tags: ${{ env.IMAGE_NAME }}:test
 
     - name: Test the Docker image
-      run: docker run --rm ${IMAGE_NAME} comet -p
+      run: docker run --rm ${IMAGE_NAME}:test comet -p
 
     - name: Log in to the GitHub Container Registry
       if: ${{ github.event_name == 'release' }}
@@ -59,6 +59,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Extract metadata for Docker
+      if: ${{ github.event_name == 'release' }}
       id: meta
       uses: docker/metadata-action@v3
       with:
