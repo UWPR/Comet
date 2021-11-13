@@ -1,0 +1,63 @@
+name: Build and Release on Linux
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  release:
+    types: [ created ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: uwpr/comet
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build Comet
+      run: make && ./comet.exe -p
+
+    - name: Prepare release
+      run: |
+        mkdir release && \
+        cp comet.exe release/comet && \
+        cp README.md release/README.md && \
+        tar -czv linux.tar.gz release
+
+    - name: Upload binaries to the release
+      uses: svenstaro/upload-release-action@v2
+      if: ${{ github.event_name == 'release' }}
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: linux.tar.gz
+        overwrite: true
+
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v3
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+    - name: Log in to the GitHub Container registry
+      if: ${{ github.event_name == 'release' }}
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: ${{ github.event_name == 'release' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Test the Docker image
+      if: ${{ github.event_name != 'release' }}
+      run: docker run ${REGISTRY}/${{ env.IMAGE_NAME }}:main comet -p

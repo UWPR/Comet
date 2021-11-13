@@ -1,0 +1,39 @@
+name: Build and Release on Windows
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  release:
+    types: [ created ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup msbuild
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Build Comet
+      run: |
+        msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v142 -tv:Current
+
+    - name: Prepare release
+      shell: bash
+      run: |
+        mkdir release && \
+        cp comet.exe release/comet.exe && \
+        cp README.md release/README.md && \
+        zip -r windows.zip release
+
+    - name: Upload binaries to the release
+      uses: svenstaro/upload-release-action@v2
+      if: ${{ github.event_name == 'release' }}
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: windows.zip
+        overwrite: true
