@@ -60,4 +60,4 @@ jobs:
 
     - name: Test the Docker image
       if: ${{ github.event_name != 'release' }}
-      run: docker run ${REGISTRY}/${{ env.IMAGE_NAME }}:${{ steps.meta.output.tags }} comet -p
+      run: docker run ${REGISTRY}/${{ env.IMAGE_NAME }}* comet -p
