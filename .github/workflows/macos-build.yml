@@ -1,0 +1,37 @@
+name: Build on MacOS
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  release:
+    types: [ created ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build Comet
+      run: make
+
+    - name: Test Comet
+      run: ./comet.exe -p
+
+    - name: Prepare Comet release
+      run: |
+        mkdir release && \
+        cp comet.exe release/comet && \
+        cp README.md release/README.md && \
+        zip -r macos.zip release
+
+    - name: Upload binaries to the release
+      uses: svenstaro/upload-release-action@v2
+      if: ${{ github.event_name == 'release' }}
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: macos.zip
+        overwrite: true
