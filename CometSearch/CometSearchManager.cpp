@@ -2506,7 +2506,7 @@ bool CometSearchManager::DoSearch()
    }
 
    if (bBlankSearchFile)
-      return true;
+      return false;
    else
       return bSucceeded;
 }
