@@ -1,0 +1,8 @@
+2021/11/19
+
+msfreader.zip contains the MSFileReader library files from Thermo Scientific
+for MSFileReader 3.1 SP4.
+
+By accessing those files, you agree to Thermo Scientific's software license
+governing their library.  MSFileReader and its documentation can be downloaded
+at https://thermo.flexnetoperations.com/control/thmo/login
