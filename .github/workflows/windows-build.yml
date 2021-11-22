@@ -43,7 +43,7 @@ jobs:
         mkdir release && \
         cp x64/Release/Comet.exe release/Comet.exe && \
         cp README.md release/README.md && \
-        zip -r windows.zip release
+        7z a windows.zip release
 
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
