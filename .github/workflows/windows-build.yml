@@ -24,7 +24,7 @@ jobs:
     - name: Register Thermo MSFileReader
       shell: cmd
       run: |
-        FOR %1 IN (dlls\*.dll) DO regsvr32 /S %1
+        FOR %%G IN (dlls\*.dll) DO regsvr32 /S %%G
 
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
