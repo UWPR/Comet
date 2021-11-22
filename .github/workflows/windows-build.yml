@@ -35,13 +35,13 @@ jobs:
 
     - name: Test Comet
       shell: cmd
-      run: comet.exe -p
+      run: D:\a\Comet\Comet\x64\Release\Comet.exe -p
 
     - name: Prepare release
       shell: bash
       run: |
         mkdir release && \
-        cp comet.exe release/comet.exe && \
+        cp x64/Release/Comet.exe release/Comet.exe && \
         cp README.md release/README.md && \
         zip -r windows.zip release
 
