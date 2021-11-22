@@ -22,6 +22,7 @@ jobs:
         unzip -d dlls -P ${comet_license} extern/msfreader.zip
 
     - name: Register Thermo MSFileReader
+      shell: cmd
       run: |
         FOR %1 IN (dlls\*.dll) DO regsvr32 /S %1
 
