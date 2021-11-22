@@ -35,7 +35,7 @@ jobs:
 
     - name: Test Comet
       shell: cmd
-      run: .\comet.exe -p
+      run: comet.exe -p
 
     - name: Prepare release
       shell: bash
