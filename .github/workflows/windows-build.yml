@@ -14,6 +14,17 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Unpack Thermo MSFileReader
+      env:
+        comet_license: ${{ secrets.comet_license }}
+      shell: bash
+      run: |
+        unzip -d dlls -P comet_license extern/msfreader.zip
+
+    - name: Register Thermo MSFileReader
+      run: |
+        FOR %1 IN (dlls\*.dll) DO regsvr32 /S %1
+
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
 
