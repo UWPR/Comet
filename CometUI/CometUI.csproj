@@ -77,7 +77,7 @@
     <ApplicationIcon>CometUI.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
-    <SignManifests>true</SignManifests>
+    <SignManifests>false</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
     <ManifestCertificateThumbprint>778CCE9AE02C6CFDB0E9B00A8E374F45FA8A35A1</ManifestCertificateThumbprint>

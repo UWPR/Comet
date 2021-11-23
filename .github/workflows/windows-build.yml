@@ -14,6 +14,18 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Unpack Thermo MSFileReader
+      env:
+        comet_license: ${{ secrets.comet_license }}
+      shell: bash
+      run: |
+        unzip -d dlls -P ${comet_license} extern/msfreader.zip
+
+    - name: Register Thermo MSFileReader
+      shell: cmd
+      run: |
+        FOR %%G IN (dlls\*.dll) DO regsvr32 /S %%G
+
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
 
@@ -22,15 +34,15 @@ jobs:
         msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v142 -tv:Current
 
     - name: Test Comet
-      run: comet.exe -p
+      shell: cmd
+      run: D:\a\Comet\Comet\x64\Release\Comet.exe -p
 
     - name: Prepare release
       shell: bash
       run: |
-        mkdir release && \
-        cp comet.exe release/comet.exe && \
+        cp -r x64/Release release && \
         cp README.md release/README.md && \
-        zip -r windows.zip release
+        7z a windows.zip release
 
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
