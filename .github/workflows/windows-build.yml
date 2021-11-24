@@ -40,7 +40,10 @@ jobs:
     - name: Prepare release
       shell: bash
       run: |
-        cp -r x64/Release release && \
+        mkdir release && \
+        mkdir release/other && \
+        cp x64/Release/Comet.exe release && \
+        cp x64/Release/CometWrapper.dll release/other && \
         cp README.md release/README.md && \
         7z a windows.zip release
 
