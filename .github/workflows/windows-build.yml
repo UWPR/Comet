@@ -19,7 +19,7 @@ jobs:
         comet_license: ${{ secrets.comet_license }}
       shell: bash
       run: |
-        unzip -d dlls -P ${comet_license} extern/msfreader.zip
+        7z e -y extern/msfreader.zip -odlls -p${comet_license}
 
     - name: Register Thermo MSFileReader
       shell: cmd
