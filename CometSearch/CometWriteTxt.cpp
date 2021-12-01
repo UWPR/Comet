@@ -75,7 +75,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "flanking aa\t");
    fprintf(fpout, "e-value\n");
 #else
-   fprintf(fpout, "CometVersion %s\t", comet_version);
+   fprintf(fpout, "CometVersion %s\t", g_sCometVersion.c_str());
    fprintf(fpout, "%s\t", g_staticParams.inputFile.szBaseName);
    fprintf(fpout, "%s\t", g_staticParams.szDate);
    fprintf(fpout, "%s\n", g_staticParams.databaseInfo.szDatabase);

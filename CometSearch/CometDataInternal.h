@@ -815,14 +815,13 @@ struct StaticParams
 
       bSkipToStartScan = true;
    }
-
-  
-
 };
 
 extern StaticParams    g_staticParams;
 
 extern vector<double>  g_pvDIAWindows;    // vector of start-end masses for DIA window; even number start mass, odd number end mass
+
+extern string g_psGITHUB_SHA;             // grab the GITHUB_SHA environment variable and trim to 7 chars; null if environment variable not present
 
 extern map<long long, IndexProteinStruct>  g_pvProteinNames;
 

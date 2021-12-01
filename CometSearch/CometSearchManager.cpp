@@ -44,6 +44,8 @@ Mutex                         g_pvQueryMutex;
 Mutex                         g_preprocessMemoryPoolMutex;
 Mutex                         g_searchMemoryPoolMutex;
 CometStatus                   g_cometStatus;
+string                        g_sCometVersion;
+
 
 /******************************************************************************
 *
@@ -1534,7 +1536,7 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
-    if (strstr(comet_version, version.c_str()) || strstr("2020.01", version.c_str()))
+    if (strstr(comet_version, version.c_str()) || strstr("2021.01", version.c_str()) || strstr("2020.01", version.c_str()))
        return true;
     else
        return false;
@@ -1587,9 +1589,21 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
+   // add git hash to version string if present
+   // repeated here from Comet main() as main() is skipped when search invoked via DLL
+   if (strlen(GITHUBSHA) > 0)
+   {
+      string sTmp = std::string(GITHUBSHA);
+      if (sTmp.size() > 7)
+         sTmp.resize(7);
+      g_sCometVersion = std::string(comet_version) + " (" + sTmp + ")";
+   }
+   else
+      g_sCometVersion = std::string(comet_version);
+
    if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
    {
-      sprintf(szOut, " Comet version \"%s\"", comet_version);
+      sprintf(szOut, " Comet version \"%s\"", g_sCometVersion.c_str());
 //    if (!g_staticParams.options.bSkipUpdateCheck)
 //       CometCheckForUpdates::CheckForUpdates(szOut);
       sprintf(szOut+strlen(szOut), "\n\n");
@@ -2622,6 +2636,18 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    else
       g_massRange.bNarrowMassRange = false;
 
+   // add git hash to version string if present
+   // repeated here from Comet main() as main() is skipped when search invoked via DLL
+   if (strlen(GITHUBSHA) > 0)
+   {
+      string sTmp = std::string(GITHUBSHA);
+      if (sTmp.size() > 7)
+         sTmp.resize(7);
+      g_sCometVersion = std::string(comet_version) + " (" + sTmp + ")";
+   }
+   else
+      g_sCometVersion = comet_version;
+
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch();
 
@@ -3164,7 +3190,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fflush(stdout);
 
    // write out index header
-   fprintf(fptr, "Comet indexed database.\n");
+   fprintf(fptr, "Comet indexed database.  Comet version %s\n", g_sCometVersion.c_str());
    fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
    fprintf(fptr, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
    fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);

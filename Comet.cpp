@@ -40,6 +40,17 @@ bool ValidateInputFile(char *pszInputFileName);
 
 int main(int argc, char *argv[])
 {
+   // add git hash to version string if present
+   if (strlen(GITHUBSHA) > 0)
+   {
+      string sTmp = std::string(GITHUBSHA);
+      if (sTmp.size() > 7)
+         sTmp.resize(7);
+      g_sCometVersion = std::string(comet_version) + " (" + sTmp + ")";
+   }
+   else
+      g_sCometVersion = std::string(comet_version);
+
    if (argc < 2)
       Usage(argv[0]);
 
@@ -70,7 +81,7 @@ void Usage(char *pszCmd)
    char szTmp[1024];
 
    logout("\n");
-   sprintf(szTmp, " Comet version \"%s\"\n %s\n", comet_version, copyright);
+   sprintf(szTmp, " Comet version \"%s\"\n %s\n", g_sCometVersion.c_str(), copyright);
    logout(szTmp);
    logout("\n");
    sprintf(szTmp, " Comet usage:  %s [options] <input_files>\n", pszCmd);
@@ -221,7 +232,7 @@ void LoadParameters(char *pszParamsFile,
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
       sprintf(szErrorMsg+strlen(szErrorMsg), " Error - cannot open parameter file \"%s\".\n", pszParamsFile);
       logerr(szErrorMsg);
       exit(1);
@@ -241,7 +252,6 @@ void LoadParameters(char *pszParamsFile,
 
             sscanf(szParamBuf, "%*s %*s %127s %11s %11s", szVersion, szRev1, szRev2);
 
-
             if (pSearchMgr->IsValidCometVersion(string(szVersion)))
             {
                bValidParamsFile = true;
@@ -257,7 +267,7 @@ void LoadParameters(char *pszParamsFile,
 
    if (!bValidParamsFile)
    {
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
       sprintf(szErrorMsg+strlen(szErrorMsg), " The comet.params file is from version %s\n", szVersion);
       sprintf(szErrorMsg+strlen(szErrorMsg), " Please update your comet.params file.  You can generate\n");
       sprintf(szErrorMsg+strlen(szErrorMsg), " a new parameters file using \"comet -p\"\n\n");
@@ -1250,7 +1260,7 @@ void LoadParameters(char *pszParamsFile,
    if (!bCurrentParamsFile)
    {
       char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
       sprintf(szErrorMsg+strlen(szErrorMsg), " Error - outdated params file; generate an update params file using '-p' option.\n");
       logerr(szErrorMsg);
       exit(1);
@@ -1259,7 +1269,7 @@ void LoadParameters(char *pszParamsFile,
    if (!strcmp(enzymeInformation.szSearchEnzymeName, "-"))
    {
       char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
       sprintf(szErrorMsg+strlen(szErrorMsg), " Error - search_enzyme_number %d is missing definition in params file.\n", iSearchEnzymeNumber);
       logerr(szErrorMsg);
       exit(1);
@@ -1268,7 +1278,7 @@ void LoadParameters(char *pszParamsFile,
    if (!strcmp(enzymeInformation.szSearchEnzyme2Name, "-"))
    {
       char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
       sprintf(szErrorMsg+strlen(szErrorMsg), " Error - search_enzyme2_number %d is missing definition in params file.\n", iSearchEnzyme2Number);
       logerr(szErrorMsg);
       exit(1);
@@ -1277,7 +1287,7 @@ void LoadParameters(char *pszParamsFile,
    if (!strcmp(enzymeInformation.szSampleEnzymeName, "-"))
    {
       char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
       sprintf(szErrorMsg+strlen(szErrorMsg), " Error - sample_enzyme_number %d is missing definition in params file.\n", iSampleEnzymeNumber);
       logerr(szErrorMsg);
       exit(1);
@@ -1396,7 +1406,7 @@ void ProcessCmdLine(int argc,
    if (iStartInputFile == argc)
    {
       char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
       sprintf(szErrorMsg+strlen(szErrorMsg), " Error - no input files specified so nothing to do.\n");
       logerr(szErrorMsg);
       exit(1);
@@ -1442,7 +1452,7 @@ void ProcessCmdLine(int argc,
          if (!ParseCmdLine(arg, pInputFileInfo, pSearchMgr))
          {
             char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+            sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
             sprintf(szErrorMsg+strlen(szErrorMsg), " Error - input file \"%s\" not found.\n", pInputFileInfo->szFileName);
             logerr(szErrorMsg);
             pvInputFiles.clear();
@@ -1467,7 +1477,7 @@ void PrintParams(void)
    if ( (fp=fopen("comet.params.new", "w"))==NULL)
    {
       char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", comet_version);
+      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
       sprintf(szErrorMsg+strlen(szErrorMsg), " Error - cannot write file comet.params.new\n");
       logerr(szErrorMsg);
       exit(1);
@@ -1475,7 +1485,7 @@ void PrintParams(void)
 
    fprintf(fp, "# comet_version %s\n\
 # Comet MS/MS search engine parameters file.\n\
-# Everything following the '#' symbol is treated as a comment.\n", comet_version);
+# Everything following the '#' symbol is treated as a comment.\n", g_sCometVersion.c_str());
 
    fprintf(fp,
 "\n\

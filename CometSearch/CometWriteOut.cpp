@@ -176,7 +176,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iChargeState);
-   sprintf(szBuf+strlen(szBuf), " Comet version %s\n", comet_version);
+   sprintf(szBuf+strlen(szBuf), " Comet version %s\n", g_sCometVersion.c_str());
    sprintf(szBuf+strlen(szBuf), " %s\n", copyright);
    sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szOutFileTimeString);
    sprintf(szBuf+strlen(szBuf), " %s\n", szMassLine);

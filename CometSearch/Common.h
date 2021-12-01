@@ -68,8 +68,13 @@ using namespace std;
 #include <iostream>
 #endif
 
-#define comet_version   "2021.01 rev. X"
+#ifndef GITHUBSHA          // value passed thru at compile time
+   #define GITHUBSHA ""
+#endif
+
+#define comet_version   "2021.02 rev. 0"
 #define copyright "(c) University of Washington"
+extern string g_sCometVersion;   // version string including git hash
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
 // now between 0.0 and 1.0 and scales to the binWidth.

@@ -119,7 +119,7 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 
-   fprintf(fpout, "<MzIdentML id=\"Comet %s\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://psidev.info/psi/pi/mzIdentML/1.2 http://www.psidev.info/files/mzIdentML1.2.0.xsd\" xmlns=\"http://psidev.info/psi/pi/mzIdentML/1.2\" version=\"1.2.0\" creationDate=\"%s\">\n", szDate, comet_version);
+   fprintf(fpout, "<MzIdentML id=\"Comet %s\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://psidev.info/psi/pi/mzIdentML/1.2 http://www.psidev.info/files/mzIdentML1.2.0.xsd\" xmlns=\"http://psidev.info/psi/pi/mzIdentML/1.2\" version=\"1.2.0\" creationDate=\"%s\">\n", g_sCometVersion.c_str(), szDate);
    fprintf(fpout, " <cvList>\n");
    fprintf(fpout, "  <cv id=\"PSI-MS\" uri=\"https://raw.githubusercontent.com/HUPO-PSI/psi-ms-CV/master/psi-ms.obo\" fullName=\"PSI-MS\" />\n");
    fprintf(fpout, "  <cv id=\"UNIMOD\" uri=\"http://www.unimod.org/obo/unimod.obo\" fullName=\"UNIMOD\" />\n");
@@ -129,7 +129,7 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
 
 
    fprintf(fpout, " <AnalysisSoftwareList>\n");
-   fprintf(fpout, "  <AnalysisSoftware id=\"Comet\" name=\"Comet\" version=\"%s\">\n", comet_version);
+   fprintf(fpout, "  <AnalysisSoftware id=\"Comet\" name=\"Comet\" version=\"%s\">\n", g_sCometVersion.c_str());
    fprintf(fpout, "   <SoftwareName><cvParam cvRef=\"MS\" accession=\"MS:1002251\" name=\"Comet\" value=\"\" /></SoftwareName>\n");
    fprintf(fpout, "  </AnalysisSoftware>\n");
    fprintf(fpout, " </AnalysisSoftwareList>\n");

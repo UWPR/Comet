@@ -13,7 +13,7 @@ MSTPATH = ../$(MSTOOLKIT)
 endif
 
 
-override CXXFLAGS += -O3 -static -std=c++11 -fpermissive -Wall -Wextra -Wno-write-strings -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTPATH)/include
+override CXXFLAGS += -O3 -static -std=c++11 -fpermissive -Wall -Wextra -Wno-write-strings -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -I. -I$(MSTPATH)/include
 
 COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o\
 				  CometWriteSqt.o CometWritePepXML.o CometWriteMzIdentML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o
