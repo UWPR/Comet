@@ -16,7 +16,7 @@ jobs:
 
     - name: Unpack Thermo MSFileReader
       env:
-        comet_license: ${{ secrets.comet_license }}
+        comet_license: ${{ secrets.COMET_LICENSE }}
       shell: bash
       run: |
         7z e -y extern/msfreader.zip -odlls -p${comet_license}
