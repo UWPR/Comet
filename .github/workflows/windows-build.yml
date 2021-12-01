@@ -49,7 +49,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: windows-release
-        path: windwows.zip
+        path: windows.zip
 
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
