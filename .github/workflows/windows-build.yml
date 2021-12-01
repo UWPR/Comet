@@ -15,11 +15,9 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Unpack Thermo MSFileReader
-      env:
-        comet_license: ${{ secrets.COMET_LICENSE }}
       shell: bash
       run: |
-        unzip -P ${comet_license} extern/msfreader.zip -d dlls
+        unzip -P iaccepthelicense extern/msfreader.zip -d dlls
 
     - name: Register Thermo MSFileReader
       shell: cmd
