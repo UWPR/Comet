@@ -47,6 +47,12 @@ jobs:
         cp README.md release/README.md && \
         7z a windows.zip release
 
+    - name: Upload build artificats
+      uses: actions/upload-artifact@v2
+      with:
+        name: windows-release
+        path: windwows.zip
+
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
       if: ${{ github.event_name == 'release' }}
