@@ -27,6 +27,12 @@ jobs:
         cp README.md release/README.md && \
         zip -r macos.zip release
 
+    - name: Upload build artificats
+      uses: actions/upload-artifact@v2
+      with:
+        name: macos-release
+        path: macos.zip
+
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
       if: ${{ github.event_name == 'release' }}

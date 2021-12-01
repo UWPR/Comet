@@ -15,11 +15,9 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Unpack Thermo MSFileReader
-      env:
-        comet_license: ${{ secrets.comet_license }}
       shell: bash
       run: |
-        unzip -d dlls -P ${comet_license} extern/msfreader.zip
+        unzip -P iacceptthelicense extern/msfreader.zip -d dlls
 
     - name: Register Thermo MSFileReader
       shell: cmd
@@ -46,6 +44,12 @@ jobs:
         cp x64/Release/CometWrapper.dll release/other && \
         cp README.md release/README.md && \
         7z a windows.zip release
+
+    - name: Upload build artificats
+      uses: actions/upload-artifact@v2
+      with:
+        name: windows-release
+        path: windows.zip
 
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
