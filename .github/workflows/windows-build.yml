@@ -17,7 +17,7 @@ jobs:
     - name: Unpack Thermo MSFileReader
       shell: bash
       run: |
-        unzip -P iaccepthelicense extern/msfreader.zip -d dlls
+        unzip -P iacceptthelicense extern/msfreader.zip -d dlls
 
     - name: Register Thermo MSFileReader
       shell: cmd
