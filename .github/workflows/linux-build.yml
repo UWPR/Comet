@@ -28,7 +28,7 @@ jobs:
       run: |
         mkdir release && \
         cp comet.exe release/comet.exe && \
-        cp README.md release/README.md && \
+        cp README.md release/README.md
 #        tar -czf linux.tar.gz release
 
     - name: Upload build artificats
