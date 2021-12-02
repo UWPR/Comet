@@ -40,16 +40,15 @@ jobs:
       run: |
         mkdir release && \
         mkdir release/other && \
-        cp x64/Release/Comet.exe release && \
+        cp x64/Release/comet.exe release/ && \
         cp x64/Release/CometWrapper.dll release/other && \
-        cp README.md release/README.md && \
-        7z a windows.zip release
+        cp README.md release/README.md
 
     - name: Upload build artificats
       uses: actions/upload-artifact@v2
       with:
         name: windows-release
-        path: windows.zip
+        path: release/*
 
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
