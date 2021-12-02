@@ -27,15 +27,13 @@ jobs:
     - name: Prepare Comet release
       run: |
         mkdir release && \
-        cp comet.exe release/comet.exe && \
+        cp comet.exe release/comet.linux.exe && \
         cp README.md release/README.md
-#        tar -czf linux.tar.gz release
 
     - name: Upload build artificats
       uses: actions/upload-artifact@v2
       with:
         name: linux-release
-#        path: linux.tar.gz
         path: release
 
     - name: Upload binaries to the release
