@@ -38,5 +38,6 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file: macos.zip
+        file: release/*
         overwrite: true
+        file_glob: true
