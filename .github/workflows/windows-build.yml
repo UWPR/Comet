@@ -40,7 +40,7 @@ jobs:
       run: |
         mkdir release && \
         mkdir release/other && \
-        cp x64/Release/comet.exe release/ && \
+        cp x64/Release/comet.exe release/comet.win64.exe && \
         cp x64/Release/CometWrapper.dll release/other && \
         cp README.md release/README.md
 
