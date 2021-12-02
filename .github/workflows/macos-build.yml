@@ -29,7 +29,7 @@ jobs:
     - name: Upload build artificats
       uses: actions/upload-artifact@v2
       with:
-        name: macos-release
+        name: comet-macos
         path: release/*
 
     - name: Upload binaries to the release
