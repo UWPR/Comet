@@ -27,15 +27,16 @@ jobs:
     - name: Prepare Comet release
       run: |
         mkdir release && \
-        cp comet.exe release/comet && \
+        cp comet.exe release/comet.exe && \
         cp README.md release/README.md && \
-        tar -czf linux.tar.gz release
+#        tar -czf linux.tar.gz release
 
     - name: Upload build artificats
       uses: actions/upload-artifact@v2
       with:
         name: linux-release
-        path: linux.tar.gz
+#        path: linux.tar.gz
+        path: release
 
     - name: Upload binaries to the release
       uses: svenstaro/upload-release-action@v2
@@ -43,7 +44,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file: linux.tar.gz
+        file: release/*
         overwrite: true
 
     - name: Build the Docker image
