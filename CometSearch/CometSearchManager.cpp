@@ -592,7 +592,7 @@ CometSearchManager::~CometSearchManager()
 
    _mapStaticParams.clear();
 
-#ifndef CRUX             // hack to avoid segfault observed on linux Crux-Comet search exit
+#if !(defined(CRUX) && !defined(_WIN32) && !defined(__APPLE__))  // hack to avoid segfault observed on linux Crux-Comet search exit
    if (_tp != NULL)
       delete _tp;
    _tp = NULL;
