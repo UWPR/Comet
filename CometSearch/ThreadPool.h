@@ -332,7 +332,7 @@ inline void* threadStart(void* ptr)
    int i = data->thread_no;
    ThreadPool* tp = (ThreadPool*)data->tp;
    bool did_job = false;
-   while (&tp->jobs_)
+   while (1)
    {
       tp->LOCK(&tp->lock_);
 
@@ -381,16 +381,7 @@ inline void* threadStart(void* ptr)
       else
       {
          //std::cerr << "Thread " << i << " does a job" << std::endl;
-         if (&tp->jobs_)
-         {
-            job = std::move (tp->jobs_.front ());
-         }
-         else
-         {
-            tp->UNLOCK(&tp->lock_);
-            continue;
-         }
-
+         job = std::move (tp->jobs_.front ());
          tp->jobs_.pop_front();
 
          if (!did_job)
