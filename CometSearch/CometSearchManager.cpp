@@ -592,9 +592,11 @@ CometSearchManager::~CometSearchManager()
 
    _mapStaticParams.clear();
 
-   if (_tp != NULL) delete _tp;
-
+#ifndef CRUX             // hack to avoid segfault observed on linux Crux-Comet search exit
+   if (_tp != NULL)
+      delete _tp;
    _tp = NULL;
+#endif
 }
 
 bool CometSearchManager::InitializeStaticParams()
