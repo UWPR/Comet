@@ -1,6 +1,6 @@
-### Search parameters (2021.01)
+### Search parameters (2021.02)
 
-Comet search parameters are defined here.  These are valid for Comet version 2021.01.?.
+Comet search parameters are defined here.  These are valid for Comet version 2021.02.?.
          
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
 Entries marked with an <font color="red">*</font> are new parameters.
@@ -95,7 +95,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [spectrum_batch_size](spectrum_batch_size.html)
 - [text_file_extension](text_file_extension.html)
 - [explicit_deltacn](explicit_deltacn.html)
-- [old_mods_encoding](old_mods_encoding.html) <font color="red">*</font>
+- [old_mods_encoding](old_mods_encoding.html)
 
 ### Spectral processing
 
