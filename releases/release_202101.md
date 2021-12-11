@@ -1,7 +1,7 @@
 ### Comet releases 2021.01
 
-Documentation for parameters for release 2021.01 [can be found
-here](/Comet/parameters/parameters_202101/).
+Documentation for parameters for release 2021.01 [can be found here](/Comet/parameters/parameters_202101/).
+
 Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 
 #### release 2021.01 rev. 0 (2021.01.0), release date 2021/06/23
@@ -65,8 +65,3 @@ Hopefully I can address some of these in a follow-up maintenance release.
   especially for the "good" IDs. Plus the preliminary score rank and score are
   old retrofit values that are added solely for backwards compatibility; they
   were made unnecessary with the fast xcorr calculation from 2008.
-
-Go download from the
-[download](https://sourceforge.net/projects/comet-ms/files/) page.
-
-
