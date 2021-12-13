@@ -17,3 +17,6 @@ Download release [here](https://github.com/UWPR/Comet/releases).
   file naming fixes reverted as of the 2019.01.0 release.
 - There are no parameters changes so this version will work with comet.params files annotated as being
   for versions 2021.01 and 2020.01.
+- The docker container lives in the GitHub Container Registry (GHCR):
+  [https://github.com/UWPR/Comet/pkgs/container/comet](https://github.com/UWPR/Comet/pkgs/container/comet).
+  Docker command: "docker pull ghcr.io/uwpr/comet:latest"
