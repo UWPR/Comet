@@ -2,7 +2,7 @@
 
 Documentation for parameters for release 2021.02 [can be found here](/Comet/parameters/parameters_202102/).
 
-Download release [here](https://github.com/UWPR/Comet/releases).
+Download release [here](https://github.com/UWPR/Comet/releases/tag/v2021.02.0).
 
 #### release 2021.02 rev. 0 (2021.02.0), release date 2021/12/09
 - This is the first Comet release since the project was migrate to GitHub. There's no significant new
