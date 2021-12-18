@@ -2975,8 +2975,9 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 cleanup_results:
 
    // Deleting each Query object in the vector calls its destructor, which
-   // frees the spectral memory (see definition for Query in CometData.h).
-   delete g_pvQuery.at(0);
+   // frees the spectral memory (see definition for Query in CometDataInternal.h).
+   if (g_pvQuery.size() > 0)
+	   delete g_pvQuery.at(0);
 
    g_pvQuery.clear();
 
