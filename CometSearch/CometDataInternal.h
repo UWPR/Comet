@@ -103,7 +103,8 @@ struct Options             // output parameters
    int bOutputMzIdentMLFile;
    int bOutputPercolatorFile;
    int bOutputOutFiles;
-   int bClipNtermMet;            // 0=leave sequences alone; 1=also consider w/o N-term methionine
+   int bClipNtermMet;            // 0=leave protein sequences alone; 1=also consider w/o N-term methionine
+   int bClipNtermAA;             // 0=leave peptide sequences as-is; 1=clip N-term amino acid from every peptide
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
 // int bSkipUpdateCheck;         // 0=do not check for updates; 1=check for updates
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
@@ -151,6 +152,7 @@ struct Options             // output parameters
       bOutputPercolatorFile = a.bOutputPercolatorFile;
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
+      bClipNtermAA = a.bClipNtermAA;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
 //    bSkipUpdateCheck = a.bSkipUpdateCheck;
       bMango = a.bMango;
@@ -775,6 +777,7 @@ struct StaticParams
       options.iDecoySearch = 0;
       options.iNumThreads = 0;
       options.bClipNtermMet = 0;
+      options.bClipNtermAA = 0;
 
       options.lMaxIterations = 0;
 

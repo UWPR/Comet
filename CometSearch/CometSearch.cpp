@@ -1597,6 +1597,9 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    memset(piVarModCounts, 0, sizeof(piVarModCounts));
 
+   if (g_staticParams.options.bClipNtermAA) // skip the N-term residue of every peptide
+      iStartPos = 1;
+
    if (iPeffRequiredVariantPosition >= 0)
    {
       double dMass;
@@ -1645,7 +1648,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       // Check to see if peptide is within global min/mass range for all queries.
       iLenPeptide = iEndPos-iStartPos+1;
 
-      if (iLenPeptide<MAX_PEPTIDE_LEN-1)  // account for terminating char
+      if (iLenPeptide < MAX_PEPTIDE_LEN - 1)  // account for terminating char
       {
          if (g_staticParams.options.bCreateIndex && !g_staticParams.variableModParameters.bRequireVarMod)
          {
@@ -2848,6 +2851,9 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
                                      int iStartPos,
                                      int iEndPos)
 {
+   if (g_staticParams.options.bClipNtermAA)
+      iStartPos -= 1;
+
    if (!g_staticParams.enzymeInformation.bNoEnzymeSelected || !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
       bool bBeginCleavage=0;
@@ -2939,6 +2945,9 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
 bool CometSearch::CheckEnzymeStartTermini(char *szProteinSeq,
                                           int iStartPos)
 {
+   if (g_staticParams.options.bClipNtermAA)
+      iStartPos -= 1;
+
    if (!g_staticParams.enzymeInformation.bNoEnzymeSelected && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
       bool bBeginCleavage=0;
