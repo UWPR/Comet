@@ -17,7 +17,7 @@ ms2/cms2 formats and a comet.params file.  Then issue a command such as:
 
 ### Miscellaneous Notes
 
-- 2020/12/01:  [Terminal modification massses](20201201_terminalmods.html)
+- 2020/12/01:  [Terminal modification masses](20201201_terminalmods.html)
 - 2019/11/04:  [Quick analysis on search times vs. number of search threads](20191104_threading.html)
 - 2019/08/20:  [Misc. notes on indexed database and real-time search support](20190820_indexdb.html)
 - 2019/03/14:  [Misc. notes on Comet decoy peptides](20190314_decoys.html)
