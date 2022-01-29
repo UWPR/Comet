@@ -976,7 +976,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    int i;
 
    Threading::LockMutex(g_searchMemoryPoolMutex);   
-     
+
    for (i=0; i < g_staticParams.options.iNumThreads; i++)
    {
       if (!_pbSearchMemoryPool[i])

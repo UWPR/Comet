@@ -176,6 +176,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
    char szDecoyProteinName[WIDTH_REFERENCE];
    std::vector<ProteinEntryStruct>::iterator it;
 
+   int iLenDecoyPrefix = strlen(g_staticParams.szDecoyPrefix);
+
    if (g_staticParams.bIndexDb)  //index database
    {
       long lSize;
@@ -212,6 +214,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
    
          if (bDecoy)
          {
+            if (strlen(szProteinName) + iLenDecoyPrefix >= WIDTH_REFERENCE)
+               szProteinName[strlen(szProteinName) - iLenDecoyPrefix] = '\0';
             sprintf(szDecoyProteinName, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
             vProteinTargets.push_back(szDecoyProteinName);
          }
@@ -266,6 +270,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
                szProteinName[511] = '\0';
    
+               if (strlen(szProteinName) + iLenDecoyPrefix >= WIDTH_REFERENCE)
+                  szProteinName[strlen(szProteinName) - iLenDecoyPrefix] = '\0';
                sprintf(szDecoyProteinName, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
    
                vProteinDecoys.push_back(szDecoyProteinName);

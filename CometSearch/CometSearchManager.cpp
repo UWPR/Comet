@@ -1069,6 +1069,13 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
+   if (g_staticParams.options.bCreateIndex && g_staticParams.options.iNumThreads == 1)
+   {
+      // Temp workaround to until I'm able to properly address issue
+      // with memory pool and db indexing when "num_threads = 1"
+      g_staticParams.options.iNumThreads = 2;
+   }
+
    // Set masses to either average or monoisotopic.
    CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,
                                   g_staticParams.massUtility.bMonoMassesParent,

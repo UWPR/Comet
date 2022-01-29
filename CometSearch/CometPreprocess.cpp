@@ -261,7 +261,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    //Needs better capture and return?
    if (i==g_staticParams.options.iNumThreads)
    {
-      printf("Error with memory pool.\n");
+      printf("Error with memory pool in preprocessing.\n");
       exit(1);
    }
 
