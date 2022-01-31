@@ -515,6 +515,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("clip_nterm_methionine", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "clip_nterm_aa"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("clip_nterm_aa", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "theoretical_fragment_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1590,7 +1597,7 @@ max_precursor_charge = 6               # set maximum precursor charge state to a
 
 fprintf(fp,
 "nucleotide_reading_frame = 0           # 0=proteinDB, 1-6, 7=forward three, 8=reverse three, 9=all six\n\
-clip_nterm_methionine = 0              # 0=leave sequences as-is; 1=also consider sequence w/o N-term methionine\n\
+clip_nterm_methionine = 0              # 0=leave protein sequences as-is; 1=also consider sequence w/o N-term methionine\n\
 spectrum_batch_size = 15000            # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
 equal_I_and_L = 1                      # 0=treat I and L as different; 1=treat I and L as same\n\

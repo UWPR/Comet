@@ -652,6 +652,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("clip_nterm_methionine", g_staticParams.options.bClipNtermMet);
 
+   GetParamValue("clip_nterm_aa", g_staticParams.options.bClipNtermAA);
+
    GetParamValue("theoretical_fragment_ions", g_staticParams.ionInformation.iTheoreticalFragmentIons);
    if ((g_staticParams.ionInformation.iTheoreticalFragmentIons < 0)
          || (g_staticParams.ionInformation.iTheoreticalFragmentIons > 1))
