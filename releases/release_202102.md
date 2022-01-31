@@ -19,3 +19,11 @@ Download release [here](https://github.com/UWPR/Comet/releases/tag/v2021.02.0).
   for versions 2021.01 and 2020.01.
 - The docker container lives in the [GitHub Container Registry (GHCR)](https://github.com/UWPR/Comet/pkgs/container/comet).
   Docker command: "docker pull ghcr.io/uwpr/comet:latest"
+- Known bug: a buffer overflow can occur for decoy searches. This happens when
+  the decoy prefix gets appended to long (>=512) protein accessions and has been
+  addressed with commit d9de4b5.
+- Known bug: database indexing fails when a single thread is specified which
+  I believe is associated with the ThreadPool code rewrite in release 2021.01.0.
+  A proper fix has not been implemented yet but a temporary workaround was
+  added to the master branch with commit d9de4b5, using two threads for
+  indexing when a single thread is specified in the params file.
