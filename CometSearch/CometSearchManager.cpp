@@ -1071,13 +1071,6 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   if (g_staticParams.options.bCreateIndex && g_staticParams.options.iNumThreads == 1)
-   {
-      // Temp workaround to until I'm able to properly address issue
-      // with memory pool and db indexing when "num_threads = 1"
-      g_staticParams.options.iNumThreads = 2;
-   }
-
    // Set masses to either average or monoisotopic.
    CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,
                                   g_staticParams.massUtility.bMonoMassesParent,
@@ -3116,7 +3109,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   tp->fillPool( g_staticParams.options.iNumThreads <= 1 ? 1 : g_staticParams.options.iNumThreads-1);
+   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;
    else
