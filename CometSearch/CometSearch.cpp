@@ -218,7 +218,7 @@ bool CometSearch::RunSearch(int iPercentStart,
       char szBuf[8192];
       char szPeffAttributeMod[16];                                // from ModRes
       char szPeffAttributeVariant[16];
-      char szPeffAttributeVariantComplex[16];
+      char szPeffAttributeVariantComplex[32];
       char szPeffAttributeProcessed[16];
 
       if (g_staticParams.peffInfo.iPeffSearch == 1 || g_staticParams.peffInfo.iPeffSearch == 3)
@@ -1579,6 +1579,12 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    if (_proteinInfo.iPeffNewResidueCount>0) // if not a deletion, adjust the position by 1
       iPeffRequiredVariantPositionB--;
 
+   if (iPeffRequiredVariantPosition == strlen(szProteinSeq)) //Edge case where PEFF variant is simply a truncation of the c-terminal amino acids
+   {
+      iPeffRequiredVariantPosition--;
+      iPeffRequiredVariantPositionB--;
+   }
+
    iLenProtein = _proteinInfo.iTmpProteinSeqLength;
 
    int iFirstResiduePosition = 0;
@@ -2730,8 +2736,10 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
 
          // FIX: with change to how bClibNtermMet is implemented in SearchForPeptides, validate
          // that it's still functional with PEFF variant.
-         if (g_staticParams.options.bClipNtermMet && iPositionA == 0 && sResidues[0] == 'M')
-           SearchForPeptides(dbe, (char*)sVariantSeq.c_str() + 1, true, pbDuplFragment);
+         // MH: I think this is fixed for Complex Variants now (Feb 22, 2022).
+         if (g_staticParams.options.bClipNtermMet && iPositionA == 0)
+           if ((sResidues.size()>0 && sResidues[0] == 'M') || (sResidues.size()==0 && sVariantSeq[0]=='M'))
+             SearchForPeptides(dbe, (char*)sVariantSeq.c_str() + 1, true, pbDuplFragment);
 
          _proteinInfo.iTmpProteinSeqLength -= iLenChange;
 
