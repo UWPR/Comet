@@ -17,6 +17,7 @@ ms2/cms2 formats and a comet.params file.  Then issue a command such as:
 
 ### Miscellaneous Notes
 
+- 2022/02/28:  [Searching Thermo RAW files supported only under Windows](20220228_rawfile.html)
 - 2020/12/01:  [Terminal modification masses](20201201_terminalmods.html)
 - 2019/11/04:  [Quick analysis on search times vs. number of search threads](20191104_threading.html)
 - 2019/08/20:  [Misc. notes on indexed database and real-time search support](20190820_indexdb.html)
