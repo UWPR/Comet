@@ -19,7 +19,7 @@
 
 #define SIZE_BUF                    8192
 #define SIZE_FILE                   512
-#define SIZE_ERROR                  1024
+#define SIZE_ERROR                  1408
 
 #define MAX_THREADS                 128
 
@@ -501,7 +501,7 @@ class CometParam
 public:
    CometParam(CometParamType paramType, const string& strValue)
       : _paramType(paramType), _strValue(strValue) {}
-   virtual ~CometParam() {}
+   virtual ~CometParam() {cout << "virtual ~CometParam()" << endl;}
    string& GetStringValue() { return _strValue; }
 private:
    CometParamType _paramType;

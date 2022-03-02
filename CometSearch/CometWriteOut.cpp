@@ -73,7 +73,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
         szBuf[SIZE_BUF],
         szStatsBuf[512],
         szMassLine[200],
-        szOutput[1024],
+        szOutput[1280],
         scan1[32],
         scan2[32];
    FILE *fpout;
@@ -268,7 +268,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    if (iLenMaxDuplicates > 0)
    {
-      char szTempStr[10];
+      char szTempStr[13];
 
       sprintf(szTempStr, " %+d", iLenMaxDuplicates);
       iLenMaxDuplicates = (int)strlen(szTempStr);

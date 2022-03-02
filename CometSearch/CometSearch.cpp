@@ -249,7 +249,7 @@ bool CometSearch::RunSearch(int iPercentStart,
       int  iLenAttributeVariantComplex = (int)strlen(szPeffAttributeVariantComplex);
       int  iLenAttributeMod = (int)strlen(szPeffAttributeMod);
       int  iNumBadChars = 0; // count # of bad (non-printing) characters in header 
-
+ 
       bool bHeadOfFasta = true;
       // Loop through entire database.
       while(!feof(fp))
@@ -1579,7 +1579,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    if (_proteinInfo.iPeffNewResidueCount>0) // if not a deletion, adjust the position by 1
       iPeffRequiredVariantPositionB--;
 
-   if (iPeffRequiredVariantPosition == strlen(szProteinSeq)) //Edge case where PEFF variant is simply a truncation of the c-terminal amino acids
+   if (iPeffRequiredVariantPosition == (int)strlen(szProteinSeq)) //Edge case where PEFF variant is simply a truncation of the c-terminal amino acids
    {
       iPeffRequiredVariantPosition--;
       iPeffRequiredVariantPositionB--;

@@ -173,7 +173,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                                               vector<string>& vProteinDecoys)   // the decoy protein names if applicable
 {
    char szProteinName[WIDTH_REFERENCE];
-   char szDecoyProteinName[WIDTH_REFERENCE];
+   int iDECOY_WIDTH_REFERENCE = WIDTH_REFERENCE+256;
+   char szDecoyProteinName[iDECOY_WIDTH_REFERENCE];
    std::vector<ProteinEntryStruct>::iterator it;
 
    int iLenDecoyPrefix = strlen(g_staticParams.szDecoyPrefix);

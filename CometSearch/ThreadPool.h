@@ -196,9 +196,9 @@ public:
    void drainPool()
    {
       shutdown_ = true;
-      for (size_t i =0 ; i < threads_.size(); i++)
+      for (size_t i =0 ; i < data_.size(); i++)
       {
-         delete data_[i];
+	
 #ifdef _WIN32
          WaitForSingleObject(threads_[i],INFINITE);
 #else
@@ -206,23 +206,15 @@ public:
          pthread_join(threads_[i],&ignore);
 #endif
       }
+      
+      if (data_.size()) delete data_[0];
       data_.clear();
 
    }
 
    ~ThreadPool ()
    {
-      for (size_t i =0 ; i < threads_.size(); i++)
-      {
-         delete data_[i];
-#ifdef _WIN32
-         WaitForSingleObject(threads_[i],INFINITE);
-#else
-         void* ignore = 0;
-         pthread_join(threads_[i],&ignore);
-#endif
-      }
-      data_.clear();
+     drainPool();
    }
 
    void doJob (std::function <void (void)> func)
