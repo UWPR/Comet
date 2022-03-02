@@ -71,6 +71,7 @@ int main(int argc, char *argv[])
       // error message again via g_cometStatus
       exit(1);
    }
+
    return (0);
 } // main
 
