@@ -3091,7 +3091,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    ThreadPool * tp = _tp;
 
-   int iIndex_SIZE_FILE=SIZE_FILE+4;
+   const int iIndex_SIZE_FILE=SIZE_FILE+4;
    char szIndexFile[iIndex_SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
