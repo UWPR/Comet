@@ -378,7 +378,7 @@ static void PrintOutfileHeader()
 {
    // print parameters
 
-   char szIsotope[16];
+   char szIsotope[32];
    char szPeak[16];
 
    sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d%d %d",
@@ -1719,11 +1719,11 @@ bool CometSearchManager::DoSearch()
       char szOutputDecoyPepXML[1024];
       char szOutputMzIdentML[1024];
       char szOutputDecoyMzIdentML[1024];
-      char szOutputMzIdentMLtmp[1024];  // intermediate tmp file
-      char szOutputDecoyMzIdentMLtmp[1024];  // intermediate tmp file
+      char szOutputMzIdentMLtmp[1032];  // intermediate tmp file
+      char szOutputDecoyMzIdentMLtmp[1032];  // intermediate tmp file
       char szOutputPercolator[1024];
-      char szOutputTxt[1024];
-      char szOutputDecoyTxt[1024];
+      char szOutputTxt[1280];
+      char szOutputDecoyTxt[1280];
 
       if (g_staticParams.options.bOutputSqtFile)
       {
@@ -2169,7 +2169,7 @@ bool CometSearchManager::DoSearch()
             sprintf(szStatusMsg, " %d\n", (int)g_pvQuery.size());
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
-               char szOut[128];
+               char szOut[256];
                sprintf(szOut, "%s", szStatusMsg);
                logout(szOut);
             }
@@ -3091,7 +3091,8 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    ThreadPool * tp = _tp;
 
-   char szIndexFile[SIZE_FILE];
+   const int iIndex_SIZE_FILE=SIZE_FILE+4;
+   char szIndexFile[iIndex_SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
    if ((fptr = fopen(szIndexFile, "wb")) == NULL)
