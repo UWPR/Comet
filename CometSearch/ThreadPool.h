@@ -210,6 +210,14 @@ public:
       if (data_.size()) delete data_[0];
       data_.clear();
 
+#ifdef _WIN32
+      CloseHandle(lock_);
+      CloseHandle(countlock_);
+#else
+      pthread_mutex_destroy(&lock_);
+      pthread_mutex_destroy(&countlock_);
+#endif
+
    }
 
    ~ThreadPool ()
