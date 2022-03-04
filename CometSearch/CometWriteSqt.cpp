@@ -226,7 +226,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
       if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
 
-      if (pOutput[i].fXcorr > XCORR_CUTOFF)
+      if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
          PrintSqtLine(iRankXcorr, iWhichQuery, i, pOutput, fpout, fpdb, iPrintTargetDecoy);
    }
 }

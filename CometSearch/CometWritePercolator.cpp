@@ -40,12 +40,12 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
-      if (g_pvQuery.at(i)->_pResults[0].fXcorr > XCORR_CUTOFF)
+      if (g_pvQuery.at(i)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
       {
          PrintResults(i, fpout, fpdb, 0);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
       }
 
-      if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > XCORR_CUTOFF)
+      if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr)
       {
          PrintResults(i, fpout, fpdb, 2);  // print decoy hit
       }
@@ -118,7 +118,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
    for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
    {
-      if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
+      if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
          continue;
 
       fprintf(fpout, "%s_%d_%d_%d\t",    // id
@@ -324,7 +324,12 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
       {
          if (bPrintTab)
-            fprintf(fpout, "\t");
+         {
+            if (g_staticParams.options.bPinModProteinDelim)
+               fprintf(fpout, ",");
+            else
+               fprintf(fpout, "\t");
+         }
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintTab = true;
@@ -336,7 +341,12 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
       {
          if (bPrintTab)
-            fprintf(fpout, "\t");
+         {
+            if (g_staticParams.options.bPinModProteinDelim)
+               fprintf(fpout, ",");
+            else
+               fprintf(fpout, "\t");
+         }
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintTab = true;

@@ -3734,10 +3734,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       }
    }
 
-   if (dXcorr < XCORR_CUTOFF)
-      dXcorr = XCORR_CUTOFF;
-   else
-      dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
+   dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
    Threading::LockMutex(pQuery->accessMutex);
 

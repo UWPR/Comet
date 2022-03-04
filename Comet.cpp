@@ -522,6 +522,20 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("clip_nterm_aa", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "pin_mod_proteindelim"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("pin_proteindelim_comma", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "minimum_xcorr"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("minimum_xcorr", szParamStringVal, dDoubleParam);
+            }
             else if (!strcmp(szParamName, "theoretical_fragment_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);

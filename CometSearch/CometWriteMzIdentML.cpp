@@ -1286,8 +1286,8 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
                                       int iPrintTargetDecoy,
                                       FILE *fpout)
 {
-   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
-         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
+   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
    {
       Query* pQuery = g_pvQuery.at(iWhichQuery);
 
@@ -1325,7 +1325,7 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          int j;
          double dDeltaCn = 1.0;
 
-         if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
+         if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
             continue;
 
          // go one past iNumPrintLines to calculate deltaCn value

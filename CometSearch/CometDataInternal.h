@@ -105,6 +105,7 @@ struct Options             // output parameters
    int bOutputOutFiles;
    int bClipNtermMet;            // 0=leave protein sequences alone; 1=also consider w/o N-term methionine
    int bClipNtermAA;             // 0=leave peptide sequences as-is; 1=clip N-term amino acid from every peptide
+   int bPinModProteinDelim;      // 0=default pin output format; 1=change protein delimiter to comma
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
 // int bSkipUpdateCheck;         // 0=do not check for updates; 1=check for updates
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
@@ -122,6 +123,7 @@ struct Options             // output parameters
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
    double dPeptideMassHigh;      // MH+ mass
+   double dMinimumXcorr;         // set the minimum xcorr to report (default is 1e-8)
    IntRange scanRange;
    IntRange peptideLengthRange;
    DoubleRange clearMzRange;
@@ -153,6 +155,7 @@ struct Options             // output parameters
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
       bClipNtermAA = a.bClipNtermAA;
+      bPinModProteinDelim = a.bPinModProteinDelim;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
 //    bSkipUpdateCheck = a.bSkipUpdateCheck;
       bMango = a.bMango;
@@ -170,6 +173,7 @@ struct Options             // output parameters
       dRemovePrecursorTol = a.dRemovePrecursorTol;
       dPeptideMassLow = a.dPeptideMassLow;
       dPeptideMassHigh = a.dPeptideMassHigh;
+      dMinimumXcorr = a.dMinimumXcorr;
       scanRange = a.scanRange;
       peptideLengthRange = a.peptideLengthRange;
       clearMzRange = a.clearMzRange;
@@ -778,6 +782,7 @@ struct StaticParams
       options.iNumThreads = 0;
       options.bClipNtermMet = 0;
       options.bClipNtermAA = 0;
+      options.bPinModProteinDelim = 0;
 
       options.lMaxIterations = 0;
 
@@ -794,6 +799,7 @@ struct StaticParams
       options.dMinIntensity = 0.0;
       options.dPeptideMassLow = 600.0;
       options.dPeptideMassHigh = 8000.0;
+      options.dMinimumXcorr = XCORR_CUTOFF;
       strcpy(options.szActivationMethod, "ALL");
       // End of mzXML specific parameters.
 

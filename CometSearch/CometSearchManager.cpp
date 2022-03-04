@@ -291,7 +291,7 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].dPepMass = 0.0;
          pQuery->_pResults[j].dExpect = 0.0;
          pQuery->_pResults[j].fScoreSp = 0.0;
-         pQuery->_pResults[j].fXcorr = XCORR_CUTOFF;
+         pQuery->_pResults[j].fXcorr = g_staticParams.options.dMinimumXcorr;
          pQuery->_pResults[j].iLenPeptide = 0;
          pQuery->_pResults[j].iRankSp = 0;
          pQuery->_pResults[j].iMatchedIons = 0;
@@ -311,7 +311,7 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].dPepMass = 0.0;
             pQuery->_pDecoys[j].dExpect = 0.0;
             pQuery->_pDecoys[j].fScoreSp = 0.0;
-            pQuery->_pDecoys[j].fXcorr = XCORR_CUTOFF;
+            pQuery->_pDecoys[j].fXcorr = g_staticParams.options.dMinimumXcorr;
             pQuery->_pDecoys[j].iLenPeptide = 0;
             pQuery->_pDecoys[j].iRankSp = 0;
             pQuery->_pDecoys[j].iMatchedIons = 0;
@@ -653,6 +653,10 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("clip_nterm_methionine", g_staticParams.options.bClipNtermMet);
 
    GetParamValue("clip_nterm_aa", g_staticParams.options.bClipNtermAA);
+
+   GetParamValue("pin_mod_proteindelim", g_staticParams.options.bPinModProteinDelim);
+
+   GetParamValue("minimum_xcorr", g_staticParams.options.dMinimumXcorr);
 
    GetParamValue("theoretical_fragment_ions", g_staticParams.ionInformation.iTheoreticalFragmentIons);
    if ((g_staticParams.ionInformation.iTheoreticalFragmentIons < 0)
@@ -3398,7 +3402,7 @@ void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
 
    for (int i=0; i<iNumPrintLines; i++)
    {
-      if (pOutput[i].fXcorr > XCORR_CUTOFF)
+      if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
       {
          if (pOutput[i].pWhichProtein.size() != 0)
          {
