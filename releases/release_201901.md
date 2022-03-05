@@ -98,4 +98,3 @@ erroneous target and decoy fragment ions could be generated.
 flanking this character are valid search enzyme termini.
 - Features that didn't make the cut and are targeted for the next release:
 mzIdentML output and Comet-PTM functionality.
-- 
