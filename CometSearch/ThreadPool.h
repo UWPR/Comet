@@ -74,7 +74,6 @@ public:
       running_count_ = 0;
       threads_.reserve (threads);
       fillPool(threads);
-
    }
 
    void fillPool(int threads)
@@ -196,9 +195,8 @@ public:
    void drainPool()
    {
       shutdown_ = true;
-      for (size_t i =0 ; i < data_.size(); i++)
+      for (size_t i = 0; i < data_.size(); i++)
       {
-	
 #ifdef _WIN32
          WaitForSingleObject(threads_[i],INFINITE);
 #else
@@ -207,14 +205,15 @@ public:
 #endif
       }
       
-      if (data_.size()) delete data_[0];
-      data_.clear();
+      if (data_.size())
+         delete data_[0];
 
+      data_.clear();
    }
 
    ~ThreadPool ()
    {
-     drainPool();
+      drainPool();
    }
 
    void doJob (std::function <void (void)> func)

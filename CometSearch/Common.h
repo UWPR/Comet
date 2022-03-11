@@ -72,7 +72,7 @@ using namespace std;
    #define GITHUBSHA ""
 #endif
 
-#define comet_version   "2021.02 rev. 0"
+#define comet_version   "2022.01 rev. 0"
 #define copyright "(c) University of Washington"
 extern string g_sCometVersion;   // version string including git hash
 
