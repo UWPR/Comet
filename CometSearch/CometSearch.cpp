@@ -1018,18 +1018,18 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       //_proteinInfo.cPeffOrigResidue = '\0';
       _proteinInfo.sPeffOrigResidues.clear();
-      _proteinInfo.iPeffOrigResiduePosition = -127;  // used for PEFF variant (SAAV);  -127 set to off
+      _proteinInfo.iPeffOrigResiduePosition = NO_PEFF_VARIANT;  // used for PEFF variant (SAAV);  NO_PEFF_VARIANT set to off
       _proteinInfo.iPeffNewResidueCount = 0;
 
       // have to pass sequence as it can be modified per below
-      if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str(), false, pbDuplFragment))
+      if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str(), 0, pbDuplFragment))
          return false;
 
       if (g_staticParams.options.bClipNtermMet && dbe.strSeq[0]=='M')
       {
          _proteinInfo.iTmpProteinSeqLength -= 1;   // remove 1 for M, used in checking termini
 
-         if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str()+1, true, pbDuplFragment))
+         if (!SearchForPeptides(dbe, (char *)dbe.strSeq.c_str()+1, 1, pbDuplFragment))
             return false;
 
          _proteinInfo.iTmpProteinSeqLength += 1;
@@ -1039,9 +1039,6 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
       // in peptide or a flanking residue that causes a enzyme cut site
       if (dbe.vectorPeffVariantSimple.size() > 0 || dbe.vectorPeffVariantComplex.size() > 0)
          SearchForVariants(dbe, (char *)dbe.strSeq.c_str(), pbDuplFragment);
-
-      // FIX: how to incorporate Variant search with clipped N-term Met protein??
-
    }
    else
    {
@@ -1051,7 +1048,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
       _proteinInfo.lProteinFilePosition = dbe.lProteinFilePosition;
       //_proteinInfo.cPeffOrigResidue = '\0';
       _proteinInfo.sPeffOrigResidues.clear();
-      _proteinInfo.iPeffOrigResiduePosition = -127;
+      _proteinInfo.iPeffOrigResiduePosition = NO_PEFF_VARIANT;
       _proteinInfo.iPeffNewResidueCount = 0;
 
       // Nucleotide search; translate NA to AA.
@@ -1067,7 +1064,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          if (!TranslateNA2AA(&ii, 1,(char *)dbe.strSeq.c_str()))
             return false;
 
-         if (!SearchForPeptides(dbe, _proteinInfo.pszProteinSeq, false, pbDuplFragment))
+         if (!SearchForPeptides(dbe, _proteinInfo.pszProteinSeq, 0, pbDuplFragment))
             return false;
       }
       else if ((g_staticParams.options.iWhichReadingFrame == 7) ||
@@ -1079,7 +1076,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             if (!TranslateNA2AA(&ii, 1,(char *)dbe.strSeq.c_str()))
                return false;
 
-            if (!SearchForPeptides(dbe, _proteinInfo.pszProteinSeq, false, pbDuplFragment))
+            if (!SearchForPeptides(dbe, _proteinInfo.pszProteinSeq, 0, pbDuplFragment))
                return false;
          }
       }
@@ -1143,7 +1140,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
                if (!TranslateNA2AA(&ii, -1, pszTemp))
                   return false;
 
-               if (!SearchForPeptides(dbe, _proteinInfo.pszProteinSeq, false, pbDuplFragment))
+               if (!SearchForPeptides(dbe, _proteinInfo.pszProteinSeq, 0, pbDuplFragment))
                   return false;
             }
          }
@@ -1160,7 +1157,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
             if (!TranslateNA2AA(&ii, -1, pszTemp))
                return false;
 
-            if (!SearchForPeptides(dbe, _proteinInfo.pszProteinSeq, false, pbDuplFragment))
+            if (!SearchForPeptides(dbe, _proteinInfo.pszProteinSeq, 0, pbDuplFragment))
                return false;
          }
 
@@ -1552,9 +1549,13 @@ void CometSearch::ReadDBIndexEntry(struct DBIndex *sDBI, FILE *fp)
 
 
 // Compare MSMS data to peptide with szProteinSeq from the input database.
+// iNtermPeptideOnly==0 specifies normal sequence 
+// iNtermPeptideOnly==1 specifies clipped methionine sequence
+// iNtermPeptideOnly==2 specifies clipped methionine sequence due to the
+//                      PEFF variant becoming the clipped methionine
 bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                     char *szProteinSeq,
-                                    bool bNtermPeptideOnly,  // skip M in very first residue
+                                    int iNtermPeptideOnly,
                                     bool *pbDuplFragment)
 {
    int iLenPeptide = 0;
@@ -1576,10 +1577,13 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    int iPeffRequiredVariantPosition = _proteinInfo.iPeffOrigResiduePosition;
    int iPeffRequiredVariantPositionB = _proteinInfo.iPeffOrigResiduePosition + _proteinInfo.iPeffNewResidueCount;
-   if (_proteinInfo.iPeffNewResidueCount>0) // if not a deletion, adjust the position by 1
+
+   // if not a deletion, adjust the position by 1
+   if (_proteinInfo.iPeffNewResidueCount>0)
       iPeffRequiredVariantPositionB--;
 
-   if (iPeffRequiredVariantPosition == (int)strlen(szProteinSeq)) //Edge case where PEFF variant is simply a truncation of the c-terminal amino acids
+   // Edge case where PEFF variant is simply a truncation of the c-terminal amino acids
+   if (iPeffRequiredVariantPosition == (int)strlen(szProteinSeq))
    {
       iPeffRequiredVariantPosition--;
       iPeffRequiredVariantPositionB--;
@@ -1588,9 +1592,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    iLenProtein = _proteinInfo.iTmpProteinSeqLength;
 
    int iFirstResiduePosition = 0;
-
-   if (bNtermPeptideOnly)  // we're skipping the leading M
-      iLenProtein -= 1;
 
    if (dbe.vectorPeffMod.size() > 0) // sort vectorPeffMod by iPosition
       sort(dbe.vectorPeffMod.begin(), dbe.vectorPeffMod.end());
@@ -1606,9 +1607,24 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    if (g_staticParams.options.bClipNtermAA) // skip the N-term residue of every peptide
       iStartPos = 1;
 
-   if (iPeffRequiredVariantPosition >= 0)
+   // Quick clip n-term & PEFF variant check. Start summing amino acid mass at
+   // the start variant position and work backwards.  If the mass is larger than
+   // the max mass or the peptide length is longer than the max length before we
+   // get to the first residue then we know it's not possible that the first
+   // peptide in this clipped sequence contains the variant.  In this case, we
+   // exit/return because we only need to analyze peptides containing the first
+   // sequence as all other peptides will have been analyzed in the search of the
+   // non-clipped sequence.
+   // If iNtermPeptideOnly==2 then we want to skip this if() and continue analyzing
+   // the first peptide as this denotes variant was substituted to first M which
+   // was clipped off.
+   if (iNtermPeptideOnly==1 && iPeffRequiredVariantPosition >= 0)
    {
       double dMass;
+
+      // quick distance check of PEFF variant from start of sequene
+      if (iPeffRequiredVariantPosition >= MAX_PEPTIDE_LEN)
+         return true;
 
       // So find iStartPos that has to be near iPeffRequiredVariantPosition
       iStartPos = iPeffRequiredVariantPosition;
@@ -1617,14 +1633,14 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
       while (dMass < g_massRange.dMaxMass)
       {
-         if ((iStartPos == iFirstResiduePosition) || (iPeffRequiredVariantPosition - iStartPos >= MAX_PEPTIDE_LEN))
+         if (iStartPos == iFirstResiduePosition)
             break;
 
          iStartPos--;
          dMass += (double)g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[iStartPos]];
       }
 
-      if (bNtermPeptideOnly && iStartPos != 0)  // Variant outside of first peptide caused by clipping Met
+      if (iNtermPeptideOnly && iStartPos != 0)  // Variant outside of first peptide caused by clipping Met
          return true;
    }
 
@@ -1696,7 +1712,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             {
                bool bPass = false;
 
-               if ((iStartPos <= iPeffRequiredVariantPositionB && iPeffRequiredVariantPosition <= iEndPos)) // MH:extend boundary to include second position (for inserts)
+               // MH:extend boundary to include second position (for inserts)
+               if ((iStartPos <= iPeffRequiredVariantPositionB && iPeffRequiredVariantPosition <= iEndPos))
                {
                   // all is good here, continue to next "if" loop below
                   bPass = true;
@@ -1710,7 +1727,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   // S.DLRST  where D is iPeffRequiredVariantPosition and D is iStart; already accounted for in if() above
                   //
                   // iSearchEnZymeOffset == 1
-                  // SESTEQR.S   where R is iPeffRequiredVariantPositon and R is iEnd; already accounted for in if() above
+                  // SESTEQR.S   where R is iPeffRequiredVariantPosition and R is iEnd; already accounted for in if() above
                   //
                   // iSearchEnZymeOffset == 0
                   // SESTEQL.D   where D is iPeffRequiredVariantPosition and L is iEnd ... must check for this
@@ -2132,7 +2149,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                SubtractVarMods(piVarModCounts, szProteinSeq[iStartPos], iStartPos);
          }
 
-         if (bNtermPeptideOnly)
+         if (iNtermPeptideOnly)
             return true;
 
          if (g_massRange.bNarrowMassRange)
@@ -2642,7 +2659,8 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
 
 {
    int iLen = (int)strlen(szProteinSeq);
-   
+
+
    // Walk through each variant
    int iSize = (int)dbe.vectorPeffVariantSimple.size();
    for (int i=0; i<iSize; i++)
@@ -2674,16 +2692,33 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
             szProteinSeq[iPosition] = cResidue;
 
             _proteinInfo.iPeffOrigResiduePosition = iPosition;
-            //_proteinInfo.cPeffOrigResidue = cOrigResidue;
             _proteinInfo.sPeffOrigResidues = cOrigResidue;
             _proteinInfo.iPeffNewResidueCount = 1;
 
-            SearchForPeptides(dbe, szProteinSeq, false, pbDuplFragment);
+            SearchForPeptides(dbe, szProteinSeq, 0, pbDuplFragment);
 
-            // FIX: with change to how bClibNtermMet is implemented in SearchForPeptides, validate
-            // that it's still functional with PEFF variant.
-            if (g_staticParams.options.bClipNtermMet && iPosition == 0 && cResidue == 'M')
-               SearchForPeptides(dbe, szProteinSeq+1, true, pbDuplFragment);
+            if (g_staticParams.options.bClipNtermMet && szProteinSeq[0] == 'M')
+            {
+               // Is variant putting 'M' at position 0 or is variant further along
+               // in the sequence?
+               // We want to analyze any peptide that contains new clipped position 0
+               // if (1) the peptide being analyzed contains the variant (iPositionA) or
+               // (2) variant puts 'M' at unclipped position 0.
+               // For case (2), _proteinInfo.iPeffOrigResiduePosition == 0 so it's fine
+               // still being this value after the start M is clipped.
+
+               _proteinInfo.iTmpProteinSeqLength -= 1;
+
+               if (szProteinSeq[0] == 'M' && iPosition == 0)
+                  SearchForPeptides(dbe, szProteinSeq + 1, 2, pbDuplFragment);
+               else
+               {
+                  _proteinInfo.iPeffOrigResiduePosition -= 1;
+                  SearchForPeptides(dbe, szProteinSeq + 1, 1, pbDuplFragment);
+               }
+
+               _proteinInfo.iTmpProteinSeqLength += 1;
+            }
 
             // Return protein sequence to back to normal
             szProteinSeq[iPosition] = cOrigResidue;
@@ -2695,56 +2730,71 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
    iSize = (int)dbe.vectorPeffVariantComplex.size();
    for (int i = 0; i < iSize; i++)
    {
+      if (dbe.vectorPeffVariantComplex.at(i).iPositionA < iLen && dbe.vectorPeffVariantComplex.at(i).iPositionB < iLen)
+      {
+         int iPositionA = dbe.vectorPeffVariantComplex.at(i).iPositionA;
+         int iPositionB = dbe.vectorPeffVariantComplex.at(i).iPositionB;
+         string sResidues = dbe.vectorPeffVariantComplex.at(i).sResidues;
 
-     if (dbe.vectorPeffVariantComplex.at(i).iPositionA < iLen && dbe.vectorPeffVariantComplex.at(i).iPositionB < iLen)
-     {
-       int iPositionA = dbe.vectorPeffVariantComplex.at(i).iPositionA;
-       int iPositionB = dbe.vectorPeffVariantComplex.at(i).iPositionB;
-       string sResidues = dbe.vectorPeffVariantComplex.at(i).sResidues;
-
-       // capture the original sequence being removed/changed
-       string sOriginalResidues;
-       for(int a=iPositionA;a<=iPositionB;a++) 
-         sOriginalResidues+=szProteinSeq[a];  
+         // capture the original sequence being removed/changed
+         string sOriginalResidues;
+         for(int a=iPositionA;a<=iPositionB;a++) 
+            sOriginalResidues+=szProteinSeq[a];  
   
-       // make sure there's an actual AA change
-       if (sResidues.compare(sOriginalResidues)==0)
-       {
-         if (g_staticParams.options.bVerboseOutput)
+         // make sure there's an actual AA change
+         if (sResidues.compare(sOriginalResidues)==0)
          {
-           // Log a warning message here that the variant change didn't change the residue?
-           char szErrorMsg[SIZE_ERROR];
-           sprintf(szErrorMsg, " Warning: protein %s has variant '%s' between positions %d and %d with the same original AA residue(s).\n",
-             dbe.strName.c_str(), sResidues.c_str(), iPositionA, iPositionB);
-           logout(szErrorMsg);
+            if (g_staticParams.options.bVerboseOutput)
+            {
+               // Log a warning message here that the variant change didn't change the residue?
+               char szErrorMsg[SIZE_ERROR];
+               sprintf(szErrorMsg, " Warning: protein %s has variant '%s' between positions %d and %d with the same original AA residue(s).\n",
+                     dbe.strName.c_str(), sResidues.c_str(), iPositionA, iPositionB);
+               logout(szErrorMsg);
+            }
          }
-       } else
-       {
-         // Place variant in protein
-         string sVariantSeq = dbe.strSeq.substr(0,iPositionA);
-         sVariantSeq += sResidues;
-         sVariantSeq += dbe.strSeq.substr(iPositionB+1);
+         else
+         {
+            // Place variant in protein
+            string sVariantSeq = dbe.strSeq.substr(0,iPositionA);
+            sVariantSeq += sResidues;
+            sVariantSeq += dbe.strSeq.substr(iPositionB+1);
          
-         _proteinInfo.iPeffOrigResiduePosition = iPositionA;
-         _proteinInfo.sPeffOrigResidues = sOriginalResidues;
-         _proteinInfo.iPeffNewResidueCount = (int)sResidues.size();
+            _proteinInfo.iPeffOrigResiduePosition = iPositionA;
+            _proteinInfo.sPeffOrigResidues = sOriginalResidues;
+            _proteinInfo.iPeffNewResidueCount = (int)sResidues.size();
 
-         int iLenChange = (int)sResidues.size() - (int)sOriginalResidues.size();
-         _proteinInfo.iTmpProteinSeqLength += iLenChange;
+            int iLenChange = (int)sResidues.size() - (int)sOriginalResidues.size();
+            _proteinInfo.iTmpProteinSeqLength += iLenChange;
 
-         SearchForPeptides(dbe, (char *)sVariantSeq.c_str(), false, pbDuplFragment);
+            SearchForPeptides(dbe, (char *)sVariantSeq.c_str(), 0, pbDuplFragment);
 
-         // FIX: with change to how bClibNtermMet is implemented in SearchForPeptides, validate
-         // that it's still functional with PEFF variant.
-         // MH: I think this is fixed for Complex Variants now (Feb 22, 2022).
-         if (g_staticParams.options.bClipNtermMet && iPositionA == 0)
-           if ((sResidues.size()>0 && sResidues[0] == 'M') || (sResidues.size()==0 && sVariantSeq[0]=='M'))
-             SearchForPeptides(dbe, (char*)sVariantSeq.c_str() + 1, true, pbDuplFragment);
+            if (g_staticParams.options.bClipNtermMet && sVariantSeq[0] == 'M')
+            {
+               // Is variant putting 'M' at position 0 or is variant further along
+               // in the sequence?
+               // We want to analyze any peptide that contains new clipped position 0
+               // if (1) the peptide being analyzed contains the variant (iPositionA) or
+               // (2) variant puts 'M' at unclipped position 0.
+               // For case (2), _proteinInfo.iPeffOrigResiduePosition == 0 so it's fine
+               // still being this value after the start M is clipped.
 
-         _proteinInfo.iTmpProteinSeqLength -= iLenChange;
+               _proteinInfo.iTmpProteinSeqLength -= 1;
 
-       }
-     }
+               if (sResidues[0] == 'M' && iPositionA == 0)
+                  SearchForPeptides(dbe, (char*)sVariantSeq.c_str() + 1, 2, pbDuplFragment);
+               else
+               {
+                  _proteinInfo.iPeffOrigResiduePosition -= 1;
+                  SearchForPeptides(dbe, (char*)sVariantSeq.c_str() + 1, 1, pbDuplFragment);
+               }
+
+               _proteinInfo.iTmpProteinSeqLength += 1;
+            }
+
+            _proteinInfo.iTmpProteinSeqLength -= iLenChange;
+         }
+      }
    }
 }
 
@@ -2859,9 +2909,6 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
                                      int iStartPos,
                                      int iEndPos)
 {
-   if (g_staticParams.options.bClipNtermAA)
-      iStartPos -= 1;
-
    if (!g_staticParams.enzymeInformation.bNoEnzymeSelected || !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
       bool bBeginCleavage=0;
@@ -2893,7 +2940,6 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
                || (strchr(g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iOneMinusOffset2])
                   && !strchr(g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA, szProteinSeq[iEndPos + g_staticParams.enzymeInformation.iTwoMinusOffset2])));
       }
-
 
       if (g_staticParams.options.iEnzymeTermini == ENZYME_DOUBLE_TERMINI)      // Check full enzyme search.
       {
@@ -3463,7 +3509,7 @@ bool CometSearch::TranslateNA2AA(int *frame,
 
    //_proteinInfo.cPeffOrigResidue = '\0';
    _proteinInfo.sPeffOrigResidues.clear();
-   _proteinInfo.iPeffOrigResiduePosition = -127;
+   _proteinInfo.iPeffOrigResiduePosition = NO_PEFF_VARIANT;
    _proteinInfo.iPeffNewResidueCount = 0;
    _proteinInfo.iTmpProteinSeqLength = _proteinInfo.iProteinSeqLength;
 
@@ -3581,7 +3627,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
                              int iEndResidue,
                              int iStartPos,
                              int iEndPos,
-                             int iFoundVariableMod,    // 0=no mods,1 has variable mod, 2=phospho mod use NL peaks
+                             int iFoundVariableMod,    // 0=no mods, 1 has variable mod, 2=phospho mod use NL peaks
                              double dCalcPepMass,
                              bool bDecoyPep,
                              int iWhichQuery,
@@ -3922,19 +3968,17 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if (_proteinInfo.iPeffOrigResiduePosition != -127 
+      if (_proteinInfo.iPeffOrigResiduePosition != NO_PEFF_VARIANT
             && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition+_proteinInfo.iPeffNewResidueCount-1) 
             && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
-         //pQuery->_pDecoys[siLowestDecoySpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].sPeffOrigResidues = _proteinInfo.sPeffOrigResidues;
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffNewResidueCount = _proteinInfo.iPeffNewResidueCount;
       }
       else
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = -127;
-         //pQuery->_pDecoys[siLowestDecoySpScoreIndex].cPeffOrigResidue = '\0';
+         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].sPeffOrigResidues.clear();
          pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffNewResidueCount = 0;
       }
@@ -4059,7 +4103,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
-      if (_proteinInfo.iPeffOrigResiduePosition != -127
+      if (_proteinInfo.iPeffOrigResiduePosition != NO_PEFF_VARIANT
             && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition+_proteinInfo.iPeffNewResidueCount-1)
             && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {
@@ -4070,7 +4114,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       }
       else
       {
-         pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = -127;
+         pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
          //pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = '\0';
          pQuery->_pResults[siLowestSpScoreIndex].sPeffOrigResidues.clear();
          pQuery->_pResults[siLowestSpScoreIndex].iPeffNewResidueCount = 0;

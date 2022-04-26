@@ -618,7 +618,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
 
    // PEFF amino acid substitution
    //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
-   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != -127)
+   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != NO_PEFF_VARIANT)
    {
       if (!bFirst)
          fprintf(fpout, ",");

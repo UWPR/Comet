@@ -695,7 +695,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       bModified = 1;
 
    //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
-   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != -127)
+   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != NO_PEFF_VARIANT)
       bModified = 1;
 
    if (!bModified)
@@ -824,7 +824,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       }
 
       // Report PEFF substitution
-      if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != -127)
+      if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != NO_PEFF_VARIANT)
       {
          if (pOutput[iWhichResult].iPeffOrigResiduePosition < 0)
          {

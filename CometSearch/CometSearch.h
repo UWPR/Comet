@@ -196,7 +196,7 @@ private:
    void ReadDBIndexEntry(struct DBIndex *sDBI, FILE *fp);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
-                          bool bNtermPeptideOnly,
+                          int iNtermPeptideOnly,  // used in clipped methionine sequence
                           bool *pbDuplFragment);
    void SearchForVariants(struct sDBEntry dbe,
                           char *szProteinSeq,

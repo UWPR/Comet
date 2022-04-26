@@ -43,6 +43,8 @@ class CometSearchManager;
 
 #define HISTO_SIZE                  152      // some number greater than 150; chose 152 for byte alignment?
 
+#define NO_PEFF_VARIANT             -127
+
 #define VMODS                       9
 #define VMOD_1_INDEX                0
 #define VMOD_2_INDEX                1
