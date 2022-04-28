@@ -32,7 +32,8 @@ private:
    static bool PrintResults(int iWhichQuery,
                             FILE *fpOut,
                             FILE *fpdb,
-                            int iPrintTargetDecoy);
+                            int iPrintTargetDecoy,
+                            int iLenDecoyPrefix);
    static void PrintPercolatorSearchHit(int iWhichQuery,
                                     int iWhichResult,
                                     int iPrintTargetDecoy,

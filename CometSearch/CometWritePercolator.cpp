@@ -36,18 +36,19 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
                                            FILE *fpdb)
 {
    int i;
+   int iLenDecoyPrefix = strlen(g_staticParams.szDecoyPrefix);
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); i++)
    {
       if (g_pvQuery.at(i)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
       {
-         PrintResults(i, fpout, fpdb, 0);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+         PrintResults(i, fpout, fpdb, 0, iLenDecoyPrefix);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
       }
 
       if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr)
       {
-         PrintResults(i, fpout, fpdb, 2);  // print decoy hit
+         PrintResults(i, fpout, fpdb, 2, iLenDecoyPrefix);  // print decoy hit
       }
    }
 
@@ -92,7 +93,8 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
 bool CometWritePercolator::PrintResults(int iWhichQuery,
                                         FILE *fpout,
                                         FILE *fpdb,
-                                        int iPrintTargetDecoy)
+                                        int iPrintTargetDecoy,
+                                        int iLenDecoyPrefix)
 {
    int  i,
         iNumPrintLines,
@@ -132,11 +134,36 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
       CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
 
-      if (vProteinTargets.size() > 0)
-         fprintf(fpout, "1\t");   // target label
+      if (g_staticParams.options.iDecoySearch > 0) // using Comet's internal decoys
+      {
+         if (vProteinTargets.size() > 0)
+            fprintf(fpout, "1\t");   // target label
+         else
+            fprintf(fpout, "-1\t");  // decoy label
+      }
       else
-         fprintf(fpout, "-1\t");  // decoy label
+      {
+         // Standard database search with possible user supplied decoys in the fasta.
+         // So compare the protein string to see if any match g_staticParams.szDecoyPrefix.
+         // If so, annotate those with a decoy label.
+         bool bTarget = false;
+         std::vector<string>::iterator it;
 
+         for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
+         {
+            if (strncmp((*it).c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
+            {
+               // if any protein string does not match the decoy prefix then it's a target
+               bTarget = true;
+               break;
+            }
+         }
+
+         if (bTarget)
+            fprintf(fpout, "1\t");   // target label
+         else
+            fprintf(fpout, "-1\t");  // decoy label
+      }
 
       fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
       fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass);  //ExpMass
