@@ -1,5 +1,6 @@
 ### Comet Releases
 
+- [Release 2022.01, 2022/05/02](/Comet/releases/release_202201.html)
 - [Release 2021.02, 2021/12/09](/Comet/releases/release_202102.html)
 - [Release 2021.01, 2021/06/23](/Comet/releases/release_202101.html)
 - [Release 2020.01, 2020/11/09, last revised 2021/05/11](/Comet/releases/release_202001.html)
@@ -23,7 +24,6 @@ Comet is currently supported within the following software projects:
 - [Thermo Fischer Scientific Real-Time Search](https://www.thermofisher.com/us/en/home/industrial/mass-spectrometry/liquid-chromatography-mass-spectrometry-lc-ms/lc-ms-systems/orbitrap-lc-ms/orbitrap-tribrid-mass-spectrometers/orbitrap-eclipse-tribrid-mass-spectrometer.html#how-advanced)
 - [Trans-Proteomic Pipeline (TPP)](http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP)
 - [PatternLab](http://www.patternlabforproteomics.org/)
-- [LabKey](http://www.labkey.org)
 - [OpenMS](https://www.openms.de)
 - [Crux](https://crux.ms)
 - [Bio Docker](https://hub.docker.com/r/biocontainers/comet)

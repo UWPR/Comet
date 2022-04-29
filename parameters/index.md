@@ -1,5 +1,6 @@
 ### Comet Parameters
 
+- [Comet version 2022.01](/Comet/parameters/parameters_202201)
 - [Comet version 2021.02](/Comet/parameters/parameters_202102)
 - [Comet version 2021.01](/Comet/parameters/parameters_202101)
 - [Comet version 2020.01](http://comet-ms.sourceforge.net/parameters/parameters_202001/) (on old SourceForge site)
