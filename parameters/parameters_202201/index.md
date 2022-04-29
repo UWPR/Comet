@@ -1,6 +1,6 @@
-### Search parameters (2021.02)
+### Search parameters (2022.01)
 
-Comet search parameters are defined here. These are valid for Comet version 2021.02.?.
+Comet search parameters are defined here. These are valid for Comet version 2022.01.X.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
 Entries marked with an <font color="red">*</font> are new parameters.
