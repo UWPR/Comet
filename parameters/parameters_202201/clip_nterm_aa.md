@@ -7,6 +7,7 @@ the N-terminal amino acid from every digest peptide before analysis.
 rule and then the n-terminal amino acid will be removed before analysis.
 - Valid values are 0 and 1.
 - The default value is "0" if this parameter is missing.
+- Added in release [2022.01.0](/Comet/releases/release_202201.html).
 
 Example:
 ```
