@@ -8,15 +8,20 @@ Download release [here](https://github.com/UWPR/Comet/releases/tag/v2022.01.0).
 - Add support for the VariantComplex entries in PEFF databases.
   These are annotated as "sequence_substitution" elements in the pep.xml
   output.  This functionality was implemented by M. Hoopmann and was actually
-  present in the 2021.02 release.  Additional updates to correctly support
-  the clip_nterm_methionine parameter in conjunction with PEFF searches is
-  implemented with this release.
+  present in the 2021.02 release.
 - For the .pin output, decoy entries are now annotated with the "-1" decoy label
   under the "Label" column.  Previously, the decoy annotations were supported
-  only with Comet's internal decoy searches. With this change, for "decoy_search = 0"
-  searches,  any database entries that match the "decoy_prefix" text will be
-  annotated with the "-1" decoy label.
+  only with Comet's internal decoy searches. With this change, for
+  "[decoy_search = 0](/Comet/parameters/parameters_202201/decoy_search.html)"
+  searches,  any database entries that match the
+  "[decoy_prefix](/Comet/parameters/parameters_202201/decoy_prefix.html)"
+  text will be annotated with the "-1" decoy label.
 - Bug fix:  addressed ThreadPool code that was causing memory leaks and possible
-  segfaults observed under Linux.  Thanks to D. Shteynberg and M. Hoopmann.
-- There are no parameters changes so this version will work with comet.params files annotated as being
-  for versions 2022.01, 2021.01 and 2020.01.
+  segfaults observed under Linux.  Thanks to D. Shteynberg and M. Hoopmann for
+  the fix.
+- Bug fix:  correctly support the
+  (clip_nterm_methionine)[/https://uwpr.github.io/Comet/parameters/parameters_202201/decoy_prefix.html]
+  parameter in conjunction with PEFF searches is implemented with this release.
+  Previous versions (including the 2021.02) did not correctly handle this combination.
+- There are no parameters changes so this version will work with comet.params
+  files annotated as being for versions 2022.01, 2021.01 and 2020.01.
