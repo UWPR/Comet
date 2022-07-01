@@ -67,7 +67,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
    ThreadPool *pPreprocessThreadPool = tp;
    
-   
    // Load all input spectra.
    while (true)
    {

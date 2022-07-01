@@ -916,11 +916,11 @@ struct Query
 
       ppfSparseSpScoreData = NULL;
       ppfSparseFastXcorrData = NULL;
-      ppfSparseFastXcorrDataNL = NULL;          // pfFastXcorrData with NH3, H2O contributions
+      ppfSparseFastXcorrDataNL = NULL;          // ppfSparseFastXcorrData with NH3, H2O contributions
 
       pfSpScoreData = NULL;
       pfFastXcorrData = NULL;
-      pfFastXcorrDataNL = NULL;              // pfFastXcorrData with NH3, H2O contributions
+      pfFastXcorrDataNL = NULL;                 // pfFastXcorrData with NH3, H2O contributions
 
       _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;

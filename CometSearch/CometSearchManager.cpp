@@ -1145,6 +1145,53 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
 
+
+   // reduce variable modifications if entries are the same
+   for (int i=0; i<VMODS; i++)
+   {
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
+      {
+         for (int ii=i+1; ii<VMODS-1; ii++)
+         {
+            if (!isEqual(g_staticParams.variableModParameters.varModList[ii].dVarModMass, 0.0)
+                  && (g_staticParams.variableModParameters.varModList[ii].szVarModChar[0]!='-'))
+            {
+               // Merge the modifications (for better performance) if everything else is equal.
+               // There are cases where the mods should be merged even if the neutral loss value is 0.0
+               // in one entry and non-zero in another but it depends on the list of residues. I'll
+               // ignore that case is this will cover 99% of the utility.
+               if (     (g_staticParams.variableModParameters.varModList[i].dVarModMass== g_staticParams.variableModParameters.varModList[ii].dVarModMass)
+                     && (g_staticParams.variableModParameters.varModList[i].dNeutralLoss == g_staticParams.variableModParameters.varModList[ii].dNeutralLoss)
+                     && (g_staticParams.variableModParameters.varModList[i].iBinaryMod == g_staticParams.variableModParameters.varModList[ii].iBinaryMod)
+                     && (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMaxNumVarModAAPerMod)
+                     && (g_staticParams.variableModParameters.varModList[i].iMinNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMinNumVarModAAPerMod)
+                     && (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == g_staticParams.variableModParameters.varModList[ii].iVarModTermDistance)
+                     && (g_staticParams.variableModParameters.varModList[i].iWhichTerm == g_staticParams.variableModParameters.varModList[ii].iWhichTerm)
+                     && (g_staticParams.variableModParameters.varModList[i].bRequireThisMod == g_staticParams.variableModParameters.varModList[ii].bRequireThisMod))
+               {
+                  // everything the same merge the modifications
+                  strcat(g_staticParams.variableModParameters.varModList[i].szVarModChar, g_staticParams.variableModParameters.varModList[ii].szVarModChar);
+                  sprintf(g_staticParams.variableModParameters.varModList[ii].szVarModChar, "-");
+                  g_staticParams.variableModParameters.varModList[ii].dVarModMass = 0.0;
+               }
+      
+               if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+                  g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
+            }
+         }
+
+         // quick check  to make sure a residue isn't repeated in szVarModChar
+         if (strlen(g_staticParams.variableModParameters.varModList[i].szVarModChar) > 1)
+         {
+            string sTmp = g_staticParams.variableModParameters.varModList[i].szVarModChar;
+            std::sort(sTmp.begin(), sTmp.end());
+            sTmp.erase(std::unique(sTmp.begin(), sTmp.end()), sTmp.end());
+            strcpy(g_staticParams.variableModParameters.varModList[i].szVarModChar, sTmp.c_str());
+         }
+      }
+   }
+
    for (int i=0; i<VMODS; i++)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
@@ -1544,7 +1591,7 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
-    if (strstr(comet_version, version.c_str()) || strstr("2021.01", version.c_str()) || strstr("2020.01", version.c_str()))
+    if (strstr(comet_version, version.c_str()) || strstr("2021.02", version.c_str()) || strstr("2021.01", version.c_str()) || strstr("2020.01", version.c_str()))
        return true;
     else
        return false;
