@@ -130,7 +130,7 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
 
    fprintf(fpout, " <AnalysisSoftwareList>\n");
    fprintf(fpout, "  <AnalysisSoftware id=\"Comet\" name=\"Comet\" version=\"%s\">\n", g_sCometVersion.c_str());
-   fprintf(fpout, "   <SoftwareName><cvParam cvRef=\"MS\" accession=\"MS:1002251\" name=\"Comet\" value=\"\" /></SoftwareName>\n");
+   fprintf(fpout, "   <SoftwareName><cvParam cvRef=\"PSI-MS\" accession=\"MS:1002251\" name=\"Comet\" value=\"\" /></SoftwareName>\n");
    fprintf(fpout, "  </AnalysisSoftware>\n");
    fprintf(fpout, " </AnalysisSoftwareList>\n");
 
@@ -237,6 +237,9 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                break;
             case 18:
                Stmp.iWhichResult = std::stoi(field);
+               break;
+            case 19:
+               Stmp.dRTime = std::stod(field);
                break;
             default:
                char szErrorMsg[SIZE_ERROR];
@@ -1063,7 +1066,7 @@ void CometWriteMzIdentML::WriteTolerance(FILE *fpout)
    fprintf(fpout, "   </ParentTolerance>\n");
 
    fprintf(fpout, "   <Threshold>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"MS\" accession=\"MS:1001494\" name=\"no threshold\" value=\"\"/>\n");
+   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001494\" name=\"no threshold\" value=\"\"/>\n");
    fprintf(fpout, "   </Threshold>\n");
 }
 
@@ -1092,7 +1095,7 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
 
    fprintf(fpout, "     <userParam name=\"%s\" />\n", szNoPathDatabase);
    fprintf(fpout, "    </DatabaseName>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"MS\" accession=\"MS:1001073\" name=\"database type amino acid\" value=\"\" />\n");
+   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001073\" name=\"database type amino acid\" value=\"\" />\n");
    if (g_staticParams.options.iDecoySearch == 1)
    {
       fprintf(fpout, "    <cvParam accession=\"MS:XXXXXXX\" cvRef=\"PSI-MS\" name=\"Comet internal target+decoy\" />\n");
@@ -1265,14 +1268,18 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
          }
       }
 
-      fprintf(fpout, "      <cvParam cvRef=\"MS\" accession=\"MS:1001121\" name=\"number of matched peaks\" value=\"%d\" />\n", (*itMzid).iMatchedIons);
-      fprintf(fpout, "      <cvParam cvRef=\"MS\" accession=\"MS:1001362\" name=\"number of unmatched peaks\" value=\"%d\" />\n", (*itMzid).iTotalIons - (*itMzid).iMatchedIons);
-      fprintf(fpout, "      <cvParam cvRef=\"MS\" accession=\"MS:1002252\" name=\"Comet:xcorr\" value=\"%0.4f\" />\n", (*itMzid).fXcorr);
-      fprintf(fpout, "      <cvParam cvRef=\"MS\" accession=\"MS:1002253\" name=\"Comet:deltacn\" value=\"%0.4f\" />\n", (*itMzid).fCn);
-      fprintf(fpout, "      <cvParam cvRef=\"MS\" accession=\"MS:1002255\" name=\"Comet:spscore\" value=\"%0.4f\" />\n", (*itMzid).fSp);
-      fprintf(fpout, "      <cvParam cvRef=\"MS\" accession=\"MS:1002256\" name=\"Comet:sprank\" value=\"%d\" />\n", (*itMzid).iRankSp);
-      fprintf(fpout, "      <cvParam cvRef=\"MS\" accession=\"MS:1002257\" name=\"Comet:expectation value\" value=\"%0.2E\" />\n", (*itMzid).dExpect);
+      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001121\" name=\"number of matched peaks\" value=\"%d\" />\n", (*itMzid).iMatchedIons);
+      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001362\" name=\"number of unmatched peaks\" value=\"%d\" />\n", (*itMzid).iTotalIons - (*itMzid).iMatchedIons);
+      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002252\" name=\"Comet:xcorr\" value=\"%0.4f\" />\n", (*itMzid).fXcorr);
+      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002253\" name=\"Comet:deltacn\" value=\"%0.4f\" />\n", (*itMzid).fCn);
+      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002255\" name=\"Comet:spscore\" value=\"%0.4f\" />\n", (*itMzid).fSp);
+      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002256\" name=\"Comet:sprank\" value=\"%d\" />\n", (*itMzid).iRankSp);
+      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002257\" name=\"Comet:expectation value\" value=\"%0.2E\" />\n", (*itMzid).dExpect);
       fprintf(fpout, "     </SpectrumIdentificationItem>\n");
+
+      if ((*itMzid).dRTime > 0.0)
+         fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000894\" name=\"retention time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", (*itMzid).dRTime);
+
       fprintf(fpout, "    </SpectrumIdentificationResult>\n");
 
       lCount++;
@@ -1450,8 +1457,9 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
             fprintf(fpout, "-2;\t");
          }
 
-         fprintf(fpout, "%d\t%d", iWhichQuery, iWhichResult);
+         fprintf(fpout, "%d\t%d\t", iWhichQuery, iWhichResult);
 
+         fprintf(fpout, "%0.4f", pQuery->_spectrumInfoInternal.dRTime);
  
          fprintf(fpout, "\n");
       }

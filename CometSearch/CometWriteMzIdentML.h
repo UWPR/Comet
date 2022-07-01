@@ -33,6 +33,7 @@ class CometWriteMzIdentML
       double dExpMass;         // neutral experimental mass
       double dCalcMass;        // neutral calculated mass
       double dExpect;
+      double dRTime;
       float  fXcorr;
       float  fCn;
       float  fSp;
