@@ -460,29 +460,9 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    if (pQuery->_spectrumInfoInternal.szNativeID[0]!='\0')
    {
-      if (     strchr(pQuery->_spectrumInfoInternal.szNativeID, '&')
-            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '\"')
-            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '\'')
-            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '<')
-            || strchr(pQuery->_spectrumInfoInternal.szNativeID, '>'))
-      {
-         fprintf(fpout, " spectrumNativeID=\"");
-         for (i=0; i<(int)strlen(pQuery->_spectrumInfoInternal.szNativeID); i++)
-         {
-            switch(pQuery->_spectrumInfoInternal.szNativeID[i])
-            {
-               case '&':  fprintf(fpout, "&amp;");       break;
-               case '\"': fprintf(fpout, "&quot;");      break;
-               case '\'': fprintf(fpout, "&apos;");      break;
-               case '<':  fprintf(fpout, "&lt;");        break;
-               case '>':  fprintf(fpout, "&gt;");        break;
-               default:   fprintf(fpout, "%c", pQuery->_spectrumInfoInternal.szNativeID[i]); break;
-            }
-         }
-         fprintf(fpout, "\"");
-      }
-      else
-         fprintf(fpout, " spectrumNativeID=\"%s\"", pQuery->_spectrumInfoInternal.szNativeID);
+      string sNativeID = pQuery->_spectrumInfoInternal.szNativeID;
+      CometMassSpecUtils::EscapeString(sNativeID);
+      fprintf(fpout, " spectrumNativeID=\"%s\"", sNativeID.c_str());
    }
 
    fprintf(fpout, " start_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
@@ -608,6 +588,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    int iNumTotProteins = 0;
 
+   // iPrintTargetDecoy==0 is print both; ==1 print target only, ==2 print decoy only
    if (iPrintTargetDecoy == 0)
       iNumTotProteins = (int)(pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size());
    else if (iPrintTargetDecoy == 1)
@@ -626,31 +607,41 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[0]);
    fprintf(fpout, " peptide_next_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[1]);
 
+   string sTmp;
+
    if (iPrintTargetDecoy == 0)
    {
       if (vProteinTargets.size() > 0)
       {
          it = vProteinTargets.begin();
-         fprintf(fpout, " protein=\"%s\"", vProteinTargets.at(0).c_str());
+         sTmp = *it;
+         CometMassSpecUtils::EscapeString(sTmp);
+         fprintf(fpout, " protein=\"%s\"", sTmp.c_str());
          ++it;
       }
       else
       {
          it = vProteinDecoys.begin();
-         fprintf(fpout, " protein=\"%s\"", vProteinDecoys.at(0).c_str());
+         sTmp = *it;
+         CometMassSpecUtils::EscapeString(sTmp);
+         fprintf(fpout, " protein=\"%s\"", sTmp.c_str());
          ++it;
       }
    }
    else if (iPrintTargetDecoy == 1)
    {
       it = vProteinTargets.begin();
-      fprintf(fpout, " protein=\"%s\"", (*it).c_str());
+      sTmp = *it;
+      CometMassSpecUtils::EscapeString(sTmp);
+      fprintf(fpout, " protein=\"%s\"", sTmp.c_str());
       ++it;
    }
    else //if (iPrintTargetDecoy == 2)
    {
       it = vProteinDecoys.begin();
-      fprintf(fpout, " protein=\"%s\"", (*it).c_str());
+      sTmp = *it;
+      CometMassSpecUtils::EscapeString(sTmp);
+      fprintf(fpout, " protein=\"%s\"", sTmp.c_str());
       ++it;
    }
 
@@ -669,7 +660,11 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       if (vProteinTargets.size() > 0)
       {
          for (; it != vProteinTargets.end(); it++)
-            fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", (*it).c_str());
+         {
+            sTmp = *it;
+            CometMassSpecUtils::EscapeString(sTmp);
+            fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", sTmp.c_str());
+         }
       }
    }
 
@@ -677,8 +672,15 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    {
       if (vProteinDecoys.size() > 0)
       {
-         for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
-            fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", (*it).c_str());
+         it = vProteinDecoys.begin();
+         if (vProteinTargets.size() == 0)  // skip the first decoy entry if it would've been printed as main protein
+            ++it;
+         for (; it != vProteinDecoys.end(); it++)
+         {
+            sTmp = *it;
+            CometMassSpecUtils::EscapeString(sTmp);
+            fprintf(fpout, "    <alternative_protein protein=\"%s\"/>\n", sTmp.c_str());
+         }
       }
    }
 
@@ -701,6 +703,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    if (!bModified)
    {
       for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+
       {
          if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
                || pOutput[iWhichResult].piVarModSites[i] != 0)

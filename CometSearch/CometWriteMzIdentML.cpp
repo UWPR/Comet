@@ -308,14 +308,17 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
 
    // print DBSequence element
    std::vector<long>::iterator it;
-   char szProteinName[100];
+   char szProteinName[512];
+   string sProtein;
 
    for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
    {
       if (*it >= 0)
       {
          CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
-         fprintf(fpout, " <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB0\" />\n", szProteinName, szProteinName);
+         sProtein = szProteinName;
+         CometMassSpecUtils::EscapeString(sProtein);
+         fprintf(fpout, " <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB0\" />\n", sProtein.c_str(), sProtein.c_str());
       }
    }
    for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
@@ -323,8 +326,10 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
       if (*it >= 0)
       {
          CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         sProtein = szProteinName;
+         CometMassSpecUtils::EscapeString(sProtein);
          fprintf(fpout, " <DBSequence id=\"%s%s\" accession=\"%s%s\" searchDatabase_ref=\"DB0\" />\n",
-               g_staticParams.szDecoyPrefix, szProteinName, g_staticParams.szDecoyPrefix, szProteinName);
+               g_staticParams.sDecoyPrefix.c_str(), sProtein.c_str(), g_staticParams.sDecoyPrefix.c_str(), sProtein.c_str());
       }
    }
 
@@ -399,12 +404,14 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                      if (lOffset >= 0)
                      {
                         CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+                        sProtein = szProteinName;
+                        CometMassSpecUtils::EscapeString(sProtein);
 
                         fprintf(fpout, " <PeptideEvidence id=\"%s;%s\" isDecoy=\"%s\" dBSequence_Ref=\"%s\" />\n",
                               strPeptide.c_str(),
-                              szProteinName,
+                              sProtein.c_str(),
                               "false",
-                              szProteinName);
+                              sProtein.c_str());
                      }
                   }
                }
@@ -424,14 +431,16 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                      if (lOffset >= 0)
                      {
                         CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+                        sProtein = szProteinName;
+                        CometMassSpecUtils::EscapeString(sProtein);
 
                         fprintf(fpout, " <PeptideEvidence id=\"%s;%s%s\" isDecoy=\"%s\" dBSequence_Ref=\"%s%s\" />\n",
                               strPeptide.c_str(),
-                              g_staticParams.szDecoyPrefix,
-                              szProteinName,
+                              g_staticParams.sDecoyPrefix.c_str(),
+                              sProtein.c_str(),
                               "true",
-                              g_staticParams.szDecoyPrefix,
-                              szProteinName);
+                              g_staticParams.sDecoyPrefix.c_str(),
+                              sProtein.c_str());
                      }
                   }
                }
@@ -447,7 +456,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
 
    fprintf(fpout, " <AnalysisCollection>\n");
    fprintf(fpout, "  <SpectrumIdentification spectrumIdentificationList_ref=\"SIL\" spectrumIdentificationProtocol_ref=\"SIP\" id=\"SI\">\n");
-   fprintf(fpout, "   <InputSpectra spectraData_ref=\"SD1\" />\n");
+   fprintf(fpout, "   <InputSpectra spectraData_ref=\"SD\" />\n");
    fprintf(fpout, "   <SearchDatabaseRef searchDatabase_ref=\"DB0\" />\n");
    fprintf(fpout, "  </SpectrumIdentification>\n");
    fprintf(fpout, "  <ProteinDetection proteinDetectionProtocol_ref=\"Comet\" proteinDetectionList_ref=\"PDL\" id=\"PD\">\n");
@@ -491,7 +500,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    fprintf(fpout, "  </SpectrumIdentificationProtocol>\n");
    fprintf(fpout, " </AnalysisProtocolCollection>\n");
 
-   fprintf(fpout, " <DataCollection>\"\n");
+   fprintf(fpout, " <DataCollection>\n");
 
    WriteInputs(fpout);
 
@@ -1099,18 +1108,18 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
    if (g_staticParams.options.iDecoySearch == 1)
    {
       fprintf(fpout, "    <cvParam accession=\"MS:XXXXXXX\" cvRef=\"PSI-MS\" name=\"Comet internal target+decoy\" />\n");
-      fprintf(fpout, "    <cvParam accession=\"MS:1001283\" cvRef=\"PSI-MS\" value=\"^%s\" name=\"decoy DB accession regexp\" />\n", g_staticParams.szDecoyPrefix);
+      fprintf(fpout, "    <cvParam accession=\"MS:1001283\" cvRef=\"PSI-MS\" value=\"^%s\" name=\"decoy DB accession regexp\" />\n", g_staticParams.sDecoyPrefix.c_str());
       fprintf(fpout, "    <cvParam accession=\"MS:XXXXXXX\" cvRef=\"PSI-MS\" name=\"Comet internal reverse peptide\" />\n");
    }
    else if (g_staticParams.options.iDecoySearch == 2)
    {
       fprintf(fpout, "    <cvParam accession=\"MS:XXXXXXX\" cvRef=\"PSI-MS\" name=\"Comet internal separate target-decoy\" />\n");
-      fprintf(fpout, "    <cvParam accession=\"MS:1001283\" cvRef=\"PSI-MS\" value=\"^%s\" name=\"decoy DB accession regexp\" />\n", g_staticParams.szDecoyPrefix);
+      fprintf(fpout, "    <cvParam accession=\"MS:1001283\" cvRef=\"PSI-MS\" value=\"^%s\" name=\"decoy DB accession regexp\" />\n", g_staticParams.sDecoyPrefix.c_str());
       fprintf(fpout, "    <cvParam accession=\"MS:XXXXXXX\" cvRef=\"PSI-MS\" name=\"Comet internal reverse peptide\" />\n");
    }
    fprintf(fpout, "   </SearchDatabase>\n");
 
-   fprintf(fpout, "   <SpectraData location=\"%s\" id=\"SD_1\" >\n", g_staticParams.inputFile.szFileName);
+   fprintf(fpout, "   <SpectraData location=\"%s\" id=\"SD\" >\n", g_staticParams.inputFile.szFileName);
    fprintf(fpout, "    <FileFormat>\n");
 
    char szFormatAccession[24];
@@ -1189,7 +1198,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       FILE *fpdb,
       vector<MzidTmpStruct>* vMzid)
 {
-   fprintf(fpout, "   <SpectrumIdentificationList id=\"SIL_1\">\n");
+   fprintf(fpout, "   <SpectrumIdentificationList id=\"SIL\">\n");
 
    long lCount = 1;
 
@@ -1214,6 +1223,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
    for (std::vector<MzidTmpStruct>::iterator itMzid = (*vMzid).begin(); itMzid < (*vMzid).end(); itMzid++)
    {
       char szProteinName[512];
+      string sProtein;
       char szTmp[WIDTH_REFERENCE];
       long lOffset;
 
@@ -1242,8 +1252,10 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
                comet_fseek(fpdb, lOffset, SEEK_SET);
                fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
                sscanf(szTmp, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+               sProtein = szProteinName;
+               CometMassSpecUtils::EscapeString(sProtein);
 
-               fprintf(fpout, "      <PeptideEvidenceRef peptideEvidence_ref=\"%s;%s\" />\n", (*itMzid).strPeptide.c_str(), szProteinName);
+               fprintf(fpout, "      <PeptideEvidenceRef peptideEvidence_ref=\"%s;%s\" />\n", (*itMzid).strPeptide.c_str(), sProtein.c_str() );
             }
          }
       }
@@ -1262,8 +1274,9 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
                comet_fseek(fpdb, lOffset, SEEK_SET);
                fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
                sscanf(szTmp, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-
-               fprintf(fpout, "      <PeptideEvidenceRef peptideEvidence_ref=\"%s;%s%s\" />\n", (*itMzid).strPeptide.c_str(), g_staticParams.szDecoyPrefix, szProteinName);
+               sProtein = szProteinName;
+               CometMassSpecUtils::EscapeString(sProtein);
+               fprintf(fpout, "      <PeptideEvidenceRef peptideEvidence_ref=\"%s;%s%s\" />\n", (*itMzid).strPeptide.c_str(), g_staticParams.sDecoyPrefix.c_str(), sProtein.c_str() );
             }
          }
       }

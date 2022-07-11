@@ -598,6 +598,7 @@ struct StaticParams
    char            szDisplayLine[256]; // used for .out files
    char            szMod[512];         // used for .out files
    char            szDecoyPrefix[256]; // used for prefix to indicate decoys
+   string          sDecoyPrefix;       // escaped version of szDecoyPrefix for output within XML files
    char            szOutputSuffix[256]; // used for suffix to append to output file base names
    char            szTxtFileExt[256];  // text file extension; default "txt"
    int             iElapseTime;

@@ -53,6 +53,8 @@ public:
    static string GetField(std::string *s,
                           unsigned int n,
                           char cDelimeter);
+
+   static void EscapeString(std::string& data);
 };
 
 #endif // _COMETMASSSPECUTILS_H_

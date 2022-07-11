@@ -610,6 +610,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("decoy_prefix", strData))
       strcpy(g_staticParams.szDecoyPrefix, strData.c_str());
+   g_staticParams.sDecoyPrefix = g_staticParams.szDecoyPrefix;
+   CometMassSpecUtils::EscapeString(g_staticParams.sDecoyPrefix);
 
    if (GetParamValue("output_suffix", strData))
       strcpy(g_staticParams.szOutputSuffix, strData.c_str());
