@@ -160,7 +160,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
 
    if (!ifsTmpFile.is_open())
    {
-      printf(" Error cannot read tmp file \"%s\"\n", szTmpFile);  // FIX
+      printf(" Error cannot read tmp file \"%s\"\n", szTmpFile);
       exit(1);
    }
 
@@ -309,16 +309,16 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    // print DBSequence element
    std::vector<long>::iterator it;
    char szProteinName[512];
-   string sProtein;
+   string strProtein;
 
    for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
    {
       if (*it >= 0)
       {
          CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
-         sProtein = szProteinName;
-         CometMassSpecUtils::EscapeString(sProtein);
-         fprintf(fpout, " <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB0\" />\n", sProtein.c_str(), sProtein.c_str());
+         strProtein = szProteinName;
+         CometMassSpecUtils::EscapeString(strProtein);
+         fprintf(fpout, " <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB\" />\n", strProtein.c_str(), strProtein.c_str());
       }
    }
    for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
@@ -326,10 +326,10 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
       if (*it >= 0)
       {
          CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
-         sProtein = szProteinName;
-         CometMassSpecUtils::EscapeString(sProtein);
-         fprintf(fpout, " <DBSequence id=\"%s%s\" accession=\"%s%s\" searchDatabase_ref=\"DB0\" />\n",
-               g_staticParams.sDecoyPrefix.c_str(), sProtein.c_str(), g_staticParams.sDecoyPrefix.c_str(), sProtein.c_str());
+         strProtein = szProteinName;
+         CometMassSpecUtils::EscapeString(strProtein);
+         fprintf(fpout, " <DBSequence id=\"%s%s\" accession=\"%s%s\" searchDatabase_ref=\"DB\" />\n",
+               g_staticParams.sDecoyPrefix.c_str(), strProtein.c_str(), g_staticParams.sDecoyPrefix.c_str(), strProtein.c_str());
       }
    }
 
@@ -339,6 +339,10 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    // print Peptide element
    std::vector<string>::iterator it2;
    int iLen;
+   string strModID;
+   string strModRef;
+   string strModName;
+   string strTmpPeptide;
    for (it2 = vstrPeptides.begin(); it2 != vstrPeptides.end(); it2++)
    {
       std::istringstream isString(*it2);
@@ -346,7 +350,8 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
       fprintf(fpout, " <Peptide id=\"%s\">\n", (*it2).c_str());  // Note: id is "peptide;mod-string"
 
       std::getline(isString, strLocal, ';');
-      fprintf(fpout, "  <PeptideSequence>%s</PeptideSequence>\n", strLocal.c_str());
+      strTmpPeptide = strLocal;
+      fprintf(fpout, "  <PeptideSequence>%s</PeptideSequence>\n", strTmpPeptide.c_str());
       iLen = (int)strLocal.length();
 
       while ( std::getline(isString, strLocal, ';') )
@@ -365,7 +370,13 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
             else
                iPosition += 1;
 
-            fprintf(fpout, "  <Modification location=\"%d\" monoisotopicMassDelta=\"%f\"></Modification>\n", iPosition, dMass);
+            fprintf(fpout, "  <Modification location=\"%d\" monoisotopicMassDelta=\"%f\">\n", iPosition, dMass);
+         
+            GetModificationID(strTmpPeptide.at(iPosition-1), dMass, &strModID, &strModRef, &strModName);
+            fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
+                  strModRef.c_str(), strModID.c_str(), strModName.c_str());
+
+            fprintf(fpout, "  </Modification>\n");
          }
       }
 
@@ -404,14 +415,15 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                      if (lOffset >= 0)
                      {
                         CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
-                        sProtein = szProteinName;
-                        CometMassSpecUtils::EscapeString(sProtein);
+                        strProtein = szProteinName;
+                        CometMassSpecUtils::EscapeString(strProtein);
 
-                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s\" isDecoy=\"%s\" dBSequence_Ref=\"%s\" />\n",
+                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s\" isDecoy=\"%s\" peptide_ref=\"%s\" dBSequence_ref=\"%s\" />\n",
                               strPeptide.c_str(),
-                              sProtein.c_str(),
+                              strProtein.c_str(),
                               "false",
-                              sProtein.c_str());
+                              strPeptide.c_str(),
+                              strProtein.c_str());
                      }
                   }
                }
@@ -431,22 +443,21 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                      if (lOffset >= 0)
                      {
                         CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
-                        sProtein = szProteinName;
-                        CometMassSpecUtils::EscapeString(sProtein);
+                        strProtein = szProteinName;
+                        CometMassSpecUtils::EscapeString(strProtein);
 
-                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s%s\" isDecoy=\"%s\" dBSequence_Ref=\"%s%s\" />\n",
+                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s%s\" isDecoy=\"%s\" dBSequence_ref=\"%s%s\" />\n",
                               strPeptide.c_str(),
                               g_staticParams.sDecoyPrefix.c_str(),
-                              sProtein.c_str(),
+                              strProtein.c_str(),
                               "true",
                               g_staticParams.sDecoyPrefix.c_str(),
-                              sProtein.c_str());
+                              strProtein.c_str());
                      }
                   }
                }
                break;
          }
-         vProteinTargets.push_back(atol(strLocal.c_str()));
 
          n++;
       }
@@ -457,7 +468,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    fprintf(fpout, " <AnalysisCollection>\n");
    fprintf(fpout, "  <SpectrumIdentification spectrumIdentificationList_ref=\"SIL\" spectrumIdentificationProtocol_ref=\"SIP\" id=\"SI\">\n");
    fprintf(fpout, "   <InputSpectra spectraData_ref=\"SD\" />\n");
-   fprintf(fpout, "   <SearchDatabaseRef searchDatabase_ref=\"DB0\" />\n");
+   fprintf(fpout, "   <SearchDatabaseRef searchDatabase_ref=\"DB\" />\n");
    fprintf(fpout, "  </SpectrumIdentification>\n");
    fprintf(fpout, "  <ProteinDetection proteinDetectionProtocol_ref=\"Comet\" proteinDetectionList_ref=\"PDL\" id=\"PD\">\n");
    fprintf(fpout, "   <InputSpectrumIdentifications spectrumIdentificationList_ref=\"SIL\" />\n");
@@ -480,6 +491,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
       fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001256\" name=\"fragment mass type mono\" />\n");
    else
       fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001255\" name=\"fragment mass type average\" />\n");
+   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002495\" name=\"no special processing\" />\n");
 
    // write out all Comet parameters
    std::map<std::string, CometParam*> mapParams = searchMgr.GetParamsMap();
@@ -564,7 +576,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
          fprintf(fpout, "   </SpecificityRules>\n");
 
          GetModificationID('.', dMassDiff, &strModID, &strModRef, &strModName);
-         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\" />\n",
+         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
                strModRef.c_str(), strModID.c_str(), strModName.c_str());
 
          fprintf(fpout, "  </SearchModification>\n");
@@ -584,7 +596,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
          fprintf(fpout, "   </SpecificityRules>\n");
 
          GetModificationID('.', dMassDiff, &strModID, &strModRef, &strModName);
-         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\" />\n",
+         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
                strModRef.c_str(), strModID.c_str(), strModName.c_str());
 
          fprintf(fpout, "  </SearchModification>\n");
@@ -604,7 +616,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
          fprintf(fpout, "   </SpecificityRules>\n");
 
          GetModificationID('.', dMassDiff, &strModID, &strModRef, &strModName);
-         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\" />\n",
+         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
                strModRef.c_str(), strModID.c_str(), strModName.c_str());
 
          fprintf(fpout, "  </SearchModification>\n");
@@ -624,7 +636,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
          fprintf(fpout, "   </SpecificityRules>\n");
 
          GetModificationID('.', dMassDiff, &strModID, &strModRef, &strModName);
-         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\" />\n",
+         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
                strModRef.c_str(), strModID.c_str(), strModName.c_str());
 
          fprintf(fpout, "  </SearchModification>\n");
@@ -673,7 +685,7 @@ void CometWriteMzIdentML::WriteStaticMod(FILE *fpout,
 
          GetModificationID(paramName[4], dMass, &strModID, &strModRef, &strModName);
 
-         fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"UNIMOD:%s\" name=\"%s\" />\n",
+         fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
                strModRef.c_str(), strModID.c_str(), strModName.c_str());
          fprintf(fpout, "    </SearchModification>\n");
       }
@@ -1223,12 +1235,14 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
    for (std::vector<MzidTmpStruct>::iterator itMzid = (*vMzid).begin(); itMzid < (*vMzid).end(); itMzid++)
    {
       char szProteinName[512];
-      string sProtein;
+      string strProtein;
       char szTmp[WIDTH_REFERENCE];
       long lOffset;
 
-      fprintf(fpout, "    <SpectrumIdentificationResult id=\"SIR_%d\" spectrumID=\"scan=%d\" spectraData_ref=\"SD0\">\n", (*itMzid).iWhichQuery, (*itMzid).iScanNumber);
-      fprintf(fpout, "     <SpectrumIdentificationItem id=\"SII_%d\" rank=\"%d\" chargeState=\"%d\" peptide_ref=\"%s;%s\" experimentalMassToCharge=\"%f\" calculatedMassToCharge=\"%f\" passThreshold=\"true\">\n",
+      fprintf(fpout, "    <SpectrumIdentificationResult id=\"SIR_%d\" spectrumID=\"scan=%d\" spectraData_ref=\"SD\">\n",
+            (*itMzid).iWhichQuery, (*itMzid).iScanNumber);
+      fprintf(fpout, "     <SpectrumIdentificationItem id=\"SII_%d.%d\" rank=\"%d\" chargeState=\"%d\" peptide_ref=\"%s;%s\" experimentalMassToCharge=\"%f\" calculatedMassToCharge=\"%f\" passThreshold=\"false\">\n",
+            (*itMzid).iWhichQuery,
             (*itMzid).iWhichResult,
             (*itMzid).iWhichResult,
             (*itMzid).iCharge,
@@ -1236,6 +1250,9 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
             (*itMzid).strMods.c_str(),
             ((*itMzid).dExpMass + (*itMzid).iCharge * PROTON_MASS) / (*itMzid).iCharge,
             ((*itMzid).dCalcMass + (*itMzid).iCharge * PROTON_MASS) / (*itMzid).iCharge);
+
+//FIX need to use real residue start position
+      int iStartResidue = 0;
 
       if ((*itMzid).strProtsTarget.size() > 0)
       {
@@ -1252,10 +1269,14 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
                comet_fseek(fpdb, lOffset, SEEK_SET);
                fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
                sscanf(szTmp, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-               sProtein = szProteinName;
-               CometMassSpecUtils::EscapeString(sProtein);
+               strProtein = szProteinName;
+               CometMassSpecUtils::EscapeString(strProtein);
 
-               fprintf(fpout, "      <PeptideEvidenceRef peptideEvidence_ref=\"%s;%s\" />\n", (*itMzid).strPeptide.c_str(), sProtein.c_str() );
+               fprintf(fpout, "      <PeptideEvidenceRef start=\"%d\" end=\"%d\" isDecoy=\"false\" peptideEvidence_ref=\"%s;%s\" />\n",
+                     iStartResidue,
+                     iStartResidue + (int)(*itMzid).strPeptide.length() -1,
+                     (*itMzid).strPeptide.c_str(),
+                     strProtein.c_str() );
             }
          }
       }
@@ -1274,9 +1295,14 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
                comet_fseek(fpdb, lOffset, SEEK_SET);
                fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
                sscanf(szTmp, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-               sProtein = szProteinName;
-               CometMassSpecUtils::EscapeString(sProtein);
-               fprintf(fpout, "      <PeptideEvidenceRef peptideEvidence_ref=\"%s;%s%s\" />\n", (*itMzid).strPeptide.c_str(), g_staticParams.sDecoyPrefix.c_str(), sProtein.c_str() );
+               strProtein = szProteinName;
+               CometMassSpecUtils::EscapeString(strProtein);
+               fprintf(fpout, "      <PeptideEvidenceRef start=\"%d\" end=\"%d\" isDecoy=\"true\" peptideEvidence_ref=\"%s;%s%s\" />\n",
+                     iStartResidue,
+                     iStartResidue + (int)(*itMzid).strPeptide.length() -1,
+                     (*itMzid).strPeptide.c_str(),
+                     g_staticParams.sDecoyPrefix.c_str(), 
+                     strProtein.c_str() );
             }
          }
       }
@@ -1288,6 +1314,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002255\" name=\"Comet:spscore\" value=\"%0.4f\" />\n", (*itMzid).fSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002256\" name=\"Comet:sprank\" value=\"%d\" />\n", (*itMzid).iRankSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002257\" name=\"Comet:expectation value\" value=\"%0.2E\" />\n", (*itMzid).dExpect);
+      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002500\" name=\"peptide passes threshold\" value=\"false\" />\n");
       fprintf(fpout, "     </SpectrumIdentificationItem>\n");
 
       if ((*itMzid).dRTime > 0.0)
@@ -1444,6 +1471,8 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
 #else
                fprintf(fpout, "%ld;", (*it).lWhichProtein);
 #endif
+//             FIX need to store and then parse this
+//             fprintf(fpout, "%d", (*it).iStartResidue);
             }
             fprintf(fpout, "\t");
          }
