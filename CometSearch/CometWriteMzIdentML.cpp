@@ -255,14 +255,18 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
 
       vMzidTmp.push_back(Stmp);
 
+      string strProteinOffset;
+
       // first grab all of the target protein offsets
       if (Stmp.strProtsTarget.length() > 0)
       {
          std::istringstream isString(Stmp.strProtsTarget);
 
-         while ( std::getline(isString, strLocal, ';') )
+         while ( std::getline(isString, strLocal, ';') )  // strLocal contains "offset:iStartResidue" pair
          {
-            vProteinTargets.push_back(atol(strLocal.c_str()));
+            std::istringstream isString2(strLocal);
+            std::getline(isString2, strProteinOffset, ':');
+            vProteinTargets.push_back(atol(strProteinOffset.c_str()));
          }
       }
 
@@ -272,6 +276,8 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
 
          while ( std::getline(isString, strLocal, ';') )
          {
+            std::istringstream isString2(strLocal);
+            std::getline(isString2, strProteinOffset, ':');
             vProteinDecoys.push_back(atol(strLocal.c_str()));
          }
       }
@@ -282,8 +288,10 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
       strTmpPep.append(Stmp.strMods);
       vstrPeptides.push_back(strTmpPep);
 
-      // vstrPeptideEvidence contains "peptide delimtedtargetprots delimiteddecoyprots"
+      // vstrPeptideEvidence contains "peptide mods delimtedtargetprots delimiteddecoyprots"
       strTmpPep = Stmp.strPeptide;
+      strTmpPep.append(" ");
+      strTmpPep.append(Stmp.strMods);
       strTmpPep.append(" ");
       strTmpPep.append(Stmp.strProtsTarget);
       strTmpPep.append(" ");
@@ -388,6 +396,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    for (it2 = vstrPeptideEvidence.begin(); it2 != vstrPeptideEvidence.end(); it2++)
    {
       string strPeptide;
+      string strMods;
       string strTargets;
       string strDecoys;
 
@@ -402,55 +411,79 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                strPeptide = strLocal;
                break;
             case 1:
+               strMods = strLocal;
+               break;
+            case 2:
                if (strLocal.length() > 0)
                {
                   std::istringstream isTargets(strLocal);
-                  std::string strOffset;
+                  std::string strOffset;  // contains "offset:iStartResidue;" pair
+                  std::string strOffset2; // parse out just the "offset"
+                  int iStartResidue;
+                  long lOffset;
 
                   // Now parse out individual target entries (file offsets) delimited by ";"
                   while ( std::getline(isTargets, strOffset, ';') )
                   {
-                     long lOffset = stol(strOffset);
+                     std::istringstream isTargets2(strLocal);    // first get offset in "offset:iStartResidue;" pair
+                     std::getline(isTargets2, strOffset2, ':');
+                     lOffset = stol(strOffset2);
 
                      if (lOffset >= 0)
                      {
+                        std::getline(isTargets2, strOffset2, ':');
+                        iStartResidue = stoi(strOffset2);
+
                         CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
                         strProtein = szProteinName;
                         CometMassSpecUtils::EscapeString(strProtein);
 
-                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s\" isDecoy=\"%s\" peptide_ref=\"%s\" dBSequence_ref=\"%s\" />\n",
+                        fprintf(fpout, " <PeptideEvidence start=\"%d\" end=\"%d\" id=\"%s;%s\" isDecoy=\"false\" peptide_ref=\"%s;%s\" dBSequence_ref=\"%s\" />\n",
+                              iStartResidue,
+                              iStartResidue + (int)strPeptide.length() -1,
                               strPeptide.c_str(),
                               strProtein.c_str(),
-                              "false",
                               strPeptide.c_str(),
+                              strMods.c_str(),
                               strProtein.c_str());
                      }
                   }
                }
 
                break;
-            case 2:
+            case 3:
                if (strLocal.length() > 0)
                {
                   std::istringstream isDecoys(strLocal);
                   std::string strOffset;
+                  std::string strOffset2;
+                  int iStartResidue;
+                  long lOffset;
 
                   // Now parse out individual decoy entries (file offsets) delimited by ";"
                   while ( std::getline(isDecoys, strOffset, ';') )
                   {
-                     long lOffset = stol(strOffset);
+                     std::istringstream isDecoys2(strLocal);
+                     std::getline(isDecoys2, strOffset2, ':');
+                     lOffset = stol(strOffset2);
                      
                      if (lOffset >= 0)
                      {
+                        std::getline(isDecoys2, strOffset2, ':');
+                        iStartResidue = stoi(strOffset2);
+
                         CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
                         strProtein = szProteinName;
                         CometMassSpecUtils::EscapeString(strProtein);
 
-                        fprintf(fpout, " <PeptideEvidence id=\"%s;%s%s\" isDecoy=\"%s\" dBSequence_ref=\"%s%s\" />\n",
+                        fprintf(fpout, " <PeptideEvidence start=\"%d\" end=\"%d\" id=\"%s;%s%s\" isDecoy=\"true\" peptide_ref=\"%s;%s\" dBSequence_ref=\"%s%s\" />\n",
+                              iStartResidue,
+                              iStartResidue + (int)strPeptide.length() -1,
                               strPeptide.c_str(),
                               g_staticParams.sDecoyPrefix.c_str(),
                               strProtein.c_str(),
-                              "true",
+                              strPeptide.c_str(),  //FIX is this right??
+                              strMods.c_str(),
                               g_staticParams.sDecoyPrefix.c_str(),
                               strProtein.c_str());
                      }
@@ -1228,8 +1261,8 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
    string strPeptide;
    char   cPrevNext[3];
    string strMods;
-   string strProtsTarget;   // delimited list of file offsets
-   string strProtsDecoy;    // delimited list of file offsets
+   string strProtsTarget;   // delimited list of "offsets:iStartResidue;" pairs
+   string strProtsDecoy;    // delimited list of "offsets:iStartResidue;" pairs
 */
 
    for (std::vector<MzidTmpStruct>::iterator itMzid = (*vMzid).begin(); itMzid < (*vMzid).end(); itMzid++)
@@ -1252,17 +1285,19 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
             ((*itMzid).dCalcMass + (*itMzid).iCharge * PROTON_MASS) / (*itMzid).iCharge);
 
 //FIX need to use real residue start position
-      int iStartResidue = 0;
+      std::string field;
+      std::string field2;
 
       if ((*itMzid).strProtsTarget.size() > 0)
       {
          // walk through semi-colon delimited list to get each protein file offset
-         std::string field;
          std::istringstream isString((*itMzid).strProtsTarget);
 
          while ( std::getline(isString, field, ';') )
          {
-            lOffset = stol(field);
+            std::istringstream isString2(field);       // grab the offset in "offset:iStartResidue" string
+            std::getline(isString2, field2, ':');
+            lOffset = stol(field2);
 
             if (lOffset >= 0)
             {
@@ -1272,9 +1307,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
                strProtein = szProteinName;
                CometMassSpecUtils::EscapeString(strProtein);
 
-               fprintf(fpout, "      <PeptideEvidenceRef start=\"%d\" end=\"%d\" isDecoy=\"false\" peptideEvidence_ref=\"%s;%s\" />\n",
-                     iStartResidue,
-                     iStartResidue + (int)(*itMzid).strPeptide.length() -1,
+               fprintf(fpout, "      <PeptideEvidenceRef peptideEvidence_ref=\"%s;%s\" />\n",
                      (*itMzid).strPeptide.c_str(),
                      strProtein.c_str() );
             }
@@ -1283,11 +1316,12 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       if ((*itMzid).strProtsDecoy.size() > 0)
       {
          // walk through semi-colon delimited list to get each protein file offset
-         std::string field;
          std::istringstream isString((*itMzid).strProtsDecoy);
 
          while ( std::getline(isString, field, ';') )
          {
+            std::istringstream isString2(field);       // grab the offset in "offset:iStartResidue" string
+            std::getline(isString2, field2, ':');
             lOffset = stol(field);
 
             if (lOffset >= 0)
@@ -1297,9 +1331,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
                sscanf(szTmp, "%511s", szProteinName);  // WIDTH_REFERENCE-1
                strProtein = szProteinName;
                CometMassSpecUtils::EscapeString(strProtein);
-               fprintf(fpout, "      <PeptideEvidenceRef start=\"%d\" end=\"%d\" isDecoy=\"true\" peptideEvidence_ref=\"%s;%s%s\" />\n",
-                     iStartResidue,
-                     iStartResidue + (int)(*itMzid).strPeptide.length() -1,
+               fprintf(fpout, "      <PeptideEvidenceRef peptideEvidence_ref=\"%s;%s%s\" />\n",
                      (*itMzid).strPeptide.c_str(),
                      g_staticParams.sDecoyPrefix.c_str(), 
                      strProtein.c_str() );
@@ -1467,12 +1499,10 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
             for (it=pOutput[iWhichResult].pWhichProtein.begin(); it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
             {
 #ifdef _WIN32
-               fprintf(fpout, "%I64d;", (*it).lWhichProtein);
+               fprintf(fpout, "%I64d:%d;", (*it).lWhichProtein, (*it).iStartResidue);
 #else
-               fprintf(fpout, "%ld;", (*it).lWhichProtein);
+               fprintf(fpout, "%ld:%d;", (*it).lWhichProtein, (*it).iStartResidue);
 #endif
-//             FIX need to store and then parse this
-//             fprintf(fpout, "%d", (*it).iStartResidue);
             }
             fprintf(fpout, "\t");
          }
@@ -1487,9 +1517,9 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
             for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
             {
 #ifdef _WIN32
-               fprintf(fpout, "%I64d;", (*it).lWhichProtein);
+               fprintf(fpout, "%I64d:%d;", (*it).lWhichProtein, (*it).iStartResidue);
 #else
-               fprintf(fpout, "%ld;", (*it).lWhichProtein);
+               fprintf(fpout, "%ld:%d;", (*it).lWhichProtein, (*it).iStartResidue);
 #endif
             }
             fprintf(fpout, "\t");
