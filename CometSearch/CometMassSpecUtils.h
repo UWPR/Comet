@@ -43,6 +43,10 @@ public:
                               comet_fileoffset_t lFilePosition,
                               char *szProteinName);
 
+   static void GetProteinSequence(FILE *fpdb,
+                                  comet_fileoffset_t lFilePosition,
+                                  string &strSeq);
+
    static void GetProteinNameString(FILE *fpdb,
                                     int iWhichQuery,  // which search
                                     int iWhichResult, // which peptide within the search

@@ -164,6 +164,44 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
 }
 
 
+// return a single protein sequence as C++ string
+void CometMassSpecUtils::GetProteinSequence(FILE *fpdb,
+                                            comet_fileoffset_t lFilePosition,
+                                            string &strSeq)
+{
+   strSeq.clear();
+
+   if (!g_staticParams.bIndexDb)  // works only for regular FASTA
+   {
+      int iTmpCh;
+
+      comet_fseek(fpdb, lFilePosition, SEEK_SET);
+
+      // skip to end of description line
+      while (((iTmpCh = getc(fpdb)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF));
+
+      // load sequence
+      while (((iTmpCh=getc(fpdb)) != '>') && (iTmpCh != EOF))
+      {
+         if ('a'<=iTmpCh && iTmpCh<='z')
+         {
+            strSeq += iTmpCh - 32;  // convert toupper case so subtract 32 (i.e. 'A'-'a')
+            g_staticParams.databaseInfo.uliTotAACount++;
+         }
+         else if ('A'<=iTmpCh && iTmpCh<='Z')
+         {
+            strSeq += iTmpCh;
+            g_staticParams.databaseInfo.uliTotAACount++;
+         }
+         else if (iTmpCh == '*')  // stop codon
+         {
+            strSeq += iTmpCh;
+         }
+      }
+   }
+}
+
+
 // return all matched protein names in a vector of strings
 void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                                               int iWhichQuery,  // which search
