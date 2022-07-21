@@ -134,7 +134,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
       CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
 
-      if (g_staticParams.options.iDecoySearch > 0) // using Comet's internal decoys
+      if (g_staticParams.options.iDecoySearch) // using Comet's internal decoys
       {
          if (vProteinTargets.size() > 0)
             fprintf(fpout, "1\t");   // target label

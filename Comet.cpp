@@ -1511,7 +1511,7 @@ void PrintParams(void)
    fprintf(fp,
 "\n\
 database_name = /some/path/db.fasta\n\
-decoy_search = 0                       # 0=no (default), 1=concatenated search, 2=separate search\n\
+decoy_search = 0                       # 0=no (default), 1=internal decoy concatenated, 2=internal decoy separate\n\
 peff_format = 0                        # 0=no (normal fasta, default), 1=PEFF PSI-MOD, 2=PEFF Unimod\n\
 peff_obo =                             # path to PSI Mod or Unimod OBO file\n\
 \n\
