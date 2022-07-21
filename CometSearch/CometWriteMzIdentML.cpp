@@ -1192,7 +1192,7 @@ void CometWriteMzIdentML::WriteTolerance(FILE *fpout)
    fprintf(fpout, "   </ParentTolerance>\n");
 
    fprintf(fpout, "   <Threshold>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001494\" name=\"no threshold\" value=\"\"/>\n");
+   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001494\" name=\"no threshold\" />\n");
    fprintf(fpout, "   </Threshold>\n");
 }
 
@@ -1219,9 +1219,9 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
    else
       strcpy(szNoPathDatabase, g_staticParams.databaseInfo.szDatabase);
 
-   fprintf(fpout, "     <userParam name=\"%s\" />\n", szNoPathDatabase);
+   fprintf(fpout, "     <userParam type=\"string\" name=\"%s\" />\n", szNoPathDatabase);
    fprintf(fpout, "    </DatabaseName>\n");
-   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001073\" name=\"database type amino acid\" value=\"\" />\n");
+   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001073\" name=\"database type amino acid\" />\n");
    if (g_staticParams.options.iDecoySearch == 1)
    {
       fprintf(fpout, "    <cvParam accession=\"MS:XXXXXXX\" cvRef=\"PSI-MS\" name=\"Comet internal target+decoy\" />\n");
@@ -1428,6 +1428,12 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       lCount++;
    }
 
+   time_t tTime;
+   char szDate[48];
+   time(&tTime);
+   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", localtime(&tTime));
+
+   fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001035\" name=\"date / time search performed\" value=\"%s\" />\n", szDate);
    fprintf(fpout, "   </SpectrumIdentificationList>\n");
 }
 
