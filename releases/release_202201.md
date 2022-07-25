@@ -9,7 +9,7 @@ Download release [here](https://github.com/UWPR/Comet/releases/tag/v2022.01.0).
 This is a minor release that addresses these issues:
 
 - Fix mzid output; all known errors were addressed so that files now validate. Thanks to J. Uszkoreit and M. Riffle for assisting with this process.
-- The parameter entry "[output_mzidentml](/Comet/parameters/parameters_202201/output_mzidentml.html)" has been extended to allow control of whether the protein sequences in the &gt;Seq&lt; element are reported in the output mzid file.
+- The parameter entry "[output_mzidentml](/Comet/parameters/parameters_202201/output_mzidentml.html)" has been extended to allow control of whether the protein sequences in the [&lt;Seq&gt;](http://www.peptideatlas.org/PSI/schemas/mzIdentML/1.2/mzIdentML1.2.0.html#Seq) element are reported in the output mzid file.
 - When running a regular search not using Comet's internal decoy peptides, any protein sequence that begins with the parameter string set in "decoy_prefix" will be annotated as a decoy entry in the mzid output. This is the same behavior as the Percolator pin output for annotating decoy matches when searching against a user supplied target-decoy database.
 - A search with a single variable modification entry "79.99 STY" will run faster than if the modifications were specified separately, e.g. "79.99 S", "79.99 T", and "79.99 Y" as three separate variable modification entries. Comet will now automatically reduce/combine separate variable modifications to a single entry if possible. Thanks to C. Bielow/OpenMS for suggesting the optimization.
 

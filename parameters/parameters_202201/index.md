@@ -56,7 +56,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Output
 
-- [output_mzidentmlfile](output_mzidentmlfile.html)
+- [output_mzidentmlfile](output_mzidentmlfile.html) <font color="red">**</font>
 - [output_pepxmlfile](output_pepxmlfile.html)
 - [output_percolatorfile](output_percolatorfile.html)
 - [output_sqtfile](output_sqtfile.html)
