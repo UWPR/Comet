@@ -4,6 +4,15 @@ Documentation for parameters for release 2022.01 [can be found here](/Comet/para
 
 Download release [here](https://github.com/UWPR/Comet/releases/tag/v2022.01.0).
 
+#### release 2022.01 rev. 1 (2022.01.1), release date 2022/07/25
+
+This is a minor release that addresses these issues:
+
+- Fix mzid output; all known errors were addressed so that files now validate. Thanks to J. Uszkoreit and M. Riffle for assisting with this process.
+- The parameter entry "[output_mzidentml](/Comet/parameters/parameters_202201/output_mzidentml.html)" has been extended to allow control of whether the protein sequences in the &gt;Seq&lt; element are reported in the output mzid file.
+- When running a regular search not using Comet's internal decoy peptides, any protein sequence that begins with the parameter string set in "decoy_prefix" will be annotated as a decoy entry in the mzid output. This is the same behavior as the Percolator pin output for annotating decoy matches when searching against a user supplied target-decoy database.
+- A search with a single variable modification entry "79.99 STY" will run faster than if the modifications were specified separately, e.g. "79.99 S", "79.99 T", and "79.99 Y" as three separate variable modification entries. Comet will now automatically reduce/combine separate variable modifications to a single entry if possible. Thanks to C. Bielow/OpenMS for suggesting the optimization.
+
 #### release 2022.01 rev. 0 (2022.01.0), release date 2022/05/02
 - Add support for the VariantComplex entries in PEFF databases.  These are annotated as "sequence_substitution" elements in the pep.xml output.  This functionality was implemented by M. Hoopmann and was actually present in the 2021.02 release.
 - For the .pin output, decoy entries are now annotated with the “-1” decoy label under the “Label” column. Previously, the decoy annotations were supported only with Comet’s internal decoy searches. With this change, for “[decoy_search = 0](/Comet/parameters/parameters_202201/decoy_search.html)” searches (aka a user supplied target-decoy database), any database entry that matches the “[decoy_prefix](/Comet/parameters/parameters_202201/decoy_prefix.html)” text will be annotated with the “-1” decoy label.

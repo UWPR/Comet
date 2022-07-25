@@ -2,7 +2,7 @@
 
 <div id="sidebar">
   <h2>News</h2>
-  <h3>2022/05/02: <a href="/Comet/releases/release_202201.html">Release 2022.01 rev. 0</a> is now available.</h3>
+  <h3>2022/07/25: <a href="/Comet/releases/release_202201.html">Release 2022.01 rev. 1</a> is now available.</h3>
   <h3>2021/09/17: The Comet repository has migrated to GitHub.</h3>
   <h2>Keep Updated</h2>
   <h3>Subscribe to <a href="http://groups.google.com/group/comet-ms">Comet's Google group</a> for announcements, issues, questions.</h3>
