@@ -17,7 +17,7 @@ There are 8 fields/settings that are associated with these parameters:
     - non-zero value = binary modification analyzes peptides where all residues are either modified or all residues are not modified.
   - The fourth entry is an integer specifying the maximum number of modified residues
     possible in a peptide for this modification entry. With release 2020.01 rev. 3, this
-    field has been extended to allow specifying both a mininum and maximum number of
+    field has been extended to allow specifying both a minimum and maximum number of
     modified residues for this modification entry. A single integer, e.g. "3", would
     specify that up to 3 variable mods are allowed.  Comma separated values, e.g. "2,4"
     would specify that peptides must have between 2 and 4 of this variable modification.
