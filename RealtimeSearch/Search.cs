@@ -68,7 +68,7 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int iMaxElapsedTime = 30;
+               int iMaxElapsedTime = 60;
                int[] piTimeSearch = new int[iMaxElapsedTime];  // histogram of search times
                int[] piTimeMatch = new int[iMaxElapsedTime];  // histogram of search times
                for (int i = 0; i < iMaxElapsedTime; i++)
@@ -82,6 +82,7 @@
 
                SearchMgr.InitializeSingleSpectrumSearch();
 
+//               for (int iScanNumber = 536; iScanNumber <= 536; iScanNumber++)
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
                {
                   var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
@@ -154,22 +155,23 @@
                         watch.Stop();
 
                         double xcorr = score.xCorr;
+                        double dExpect = score.dExpect;
+                        double dCn = score.dCn;
                         int iIonsMatch = score.MatchedIons;
                         int iIonsTotal = score.TotalIons;
-                        double dCn = score.dCn;
 
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
                         // do not decode peptide/proteins strings unless xcorr>0
                         if (xcorr > 0)
                         {
-                           if ((iScanNumber % 100) == 0)
+                           if ((iScanNumber % 1) == 0)
                            {
                               if (protein.Length > 10)
                                  protein = protein.Substring(0, 10);  // trim to avoid printing long protein description string
 
-                              Console.WriteLine("{0}\t{1}\t{2}\t{3:0.0000}\t{4:0.0000}\t{5}\t{6}\t{7}",
-                                 iScanNumber, peptide, protein, xcorr, dPepMass, iIonsMatch, iIonsTotal, iPass);
+                              Console.WriteLine("{0}\t{1}\t{2}\t{3:0.0000}\t{4:E4}\t{5:0.0000}\t{6}\t{7}\t{8}",
+                                 iScanNumber, peptide, protein, xcorr, dExpect, dPepMass, iIonsMatch, iIonsTotal, iPass);
 
 /*
                               Console.WriteLine("pass {12}\t{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.0000}\t{8}\t{10}/{11}",
@@ -248,7 +250,7 @@
             sTmp = "DECOY_";
             SearchMgr.SetParam("decoy_prefix", sTmp, sTmp);
 
-            iTmp = 1; // 0=no internal decoys, 1=concatenated target/decoy
+            iTmp = 0; // 0=no internal decoys, 1=concatenated target/decoy
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("decoy_search", sTmp, iTmp);
 
@@ -260,7 +262,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
 
-            iTmp = 30; // search time cutoff in milliseconds
+            iTmp = 100; // search time cutoff in milliseconds
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 

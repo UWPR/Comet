@@ -42,6 +42,7 @@ public:
    static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
                                       ThreadPool* tp);
    static void AnalyzeSP(int i);
+   static bool CalculateEValue(int iWhichQuery);
    static bool SortFnXcorr(const Results &a,
                            const Results &b);
 private:
@@ -53,7 +54,6 @@ private:
 
    static bool SortFnMod(const Results &a,
                          const Results &b);
-   static bool CalculateEValue(int iWhichQuery);
    static bool GenerateXcorrDecoys(int iWhichQuery);
    static void LinearRegression(int *pHistogram,
                                 double *dSlope,

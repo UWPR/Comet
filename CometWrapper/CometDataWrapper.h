@@ -288,9 +288,14 @@ namespace CometWrapper {
             double get() { return pScores->xCorr; }
         }
 
-        property double dCn 
+        property double dCn
         {
-            double get() { return pScores->dCn; }
+           double get() { return pScores->dCn; }
+        }
+
+        property double dExpect
+        {
+            double get() { return pScores->dExpect; }
         }
 
         property double mass

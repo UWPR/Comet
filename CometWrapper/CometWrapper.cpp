@@ -259,7 +259,6 @@ bool CometSearchManagerWrapper::GetParamValue(System::String^ name, double% valu
     {
         return false;
     }
-    
 
     value = dValue; 
 

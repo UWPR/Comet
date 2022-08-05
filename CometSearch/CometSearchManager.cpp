@@ -2672,6 +2672,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 {
    score.dCn = 0;
    score.xCorr = 0;
+   score.dExpect = 0;
    score.matchedIons = 0;
    score.totalIons = 0;
    
@@ -2736,7 +2737,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    bSucceeded = CometSearch::RunSearch();
 
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
-      CometPostAnalysis::AnalyzeSP(0);
+   {
+//    CometPostAnalysis::AnalyzeSP(0);
+      CometPostAnalysis::CalculateEValue(0);
+   }
    else
       goto cleanup_results;
 
@@ -2799,6 +2803,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       strReturnProtein = pOutput[0].strSingleSearchProtein;            //protein
 
       score.xCorr         = pOutput[0].fXcorr;                        // xcorr
+      score.dExpect       = pOutput[0].dExpect;                       // E-value
       score.mass          = pOutput[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
       score.matchedIons   = pOutput[0].iMatchedIons;                  // ions matched
       score.totalIons     = pOutput[0].iTotalIons;                    // ions tot
@@ -3019,6 +3024,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       strReturnPeptide = "";  // peptide
       strReturnProtein = "";  // protein
       score.xCorr         = -1;       // xcorr
+      score.dExpect       = 999;      // E-value
       score.mass          = 0;        // calc neutral pep mass
       score.matchedIons   = 0;        // ions matched
       score.totalIons     = 0;        // ions tot

@@ -101,6 +101,7 @@ struct IntRange
 struct Scores
 {
     double xCorr;
+    double dExpect;
     double dCn;
     double mass;
     int matchedIons;
@@ -108,15 +109,17 @@ struct Scores
 
     Scores() :
         xCorr(0),
+        dExpect(0),
         dCn(0),
         mass(0),
         matchedIons(0),
         totalIons(0)
     { }
 
-    Scores(double xCorr, double dCn, double mass, int matchedIons, int totalIons) :
+    Scores(double xCorr, double dCn, double dExpect, double mass, int matchedIons, int totalIons) :
         xCorr(xCorr),
         dCn(dCn),
+        dExpect(dExpect),
         mass(mass),
         matchedIons(matchedIons),
         totalIons(totalIons)
@@ -125,6 +128,7 @@ struct Scores
     Scores(const Scores& a) :
         xCorr(a.xCorr),
         dCn(a.dCn),
+        dExpect(a.dExpect),
         mass(a.mass),
         matchedIons(a.matchedIons),
         totalIons(a.totalIons)
@@ -134,6 +138,7 @@ struct Scores
     {
         xCorr = a.xCorr;
         dCn = a.dCn;
+        dExpect = a.dExpect;
         mass = a.mass;
         matchedIons = a.matchedIons;
         totalIons = a.totalIons;
