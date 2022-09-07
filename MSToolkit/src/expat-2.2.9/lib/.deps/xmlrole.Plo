@@ -1,0 +1,19 @@
+xmlrole.lo: xmlrole.c /usr/include/stdc-predef.h \
+ /net/gs/vol3/software/modules-sw/gcc/8.1.0/Linux/CentOS7/x86_64/lib/gcc/x86_64-pc-linux-gnu/8.1.0/include/stddef.h \
+ ../expat_config.h expat_external.h internal.h xmlrole.h xmltok.h ascii.h
+
+/usr/include/stdc-predef.h:
+
+/net/gs/vol3/software/modules-sw/gcc/8.1.0/Linux/CentOS7/x86_64/lib/gcc/x86_64-pc-linux-gnu/8.1.0/include/stddef.h:
+
+../expat_config.h:
+
+expat_external.h:
+
+internal.h:
+
+xmlrole.h:
+
+xmltok.h:
+
+ascii.h:
