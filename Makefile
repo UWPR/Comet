@@ -20,7 +20,7 @@ ifdef MSYSTEM
 endif
 
 comet.exe: $(OBJS)
-	cd $(MSTOOLKIT) && make arlib
+	cd $(MSTOOLKIT) && make all
 	cd $(COMETSEARCH) && make
 
 ifeq ($(UNAME_S),Darwin)
@@ -34,7 +34,7 @@ Comet.o: Comet.cpp $(DEPS)
 
 clean:
 	rm -f *.o ${EXECNAME}
-	cd $(MSTOOLKIT) ; make clean ; cd ../CometSearch ; make clean
+	cd $(MSTOOLKIT) ; make realclean ; cd ../CometSearch ; make clean
 
 cclean:
 	rm -f *.o ${EXECNAME}

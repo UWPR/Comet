@@ -101,16 +101,16 @@ struct IntRange
 struct Scores
 {
     double xCorr;
-    double dExpect;
     double dCn;
+    double dExpect;
     double mass;
     int matchedIons;
     int totalIons;
 
     Scores() :
         xCorr(0),
-        dExpect(0),
         dCn(0),
+        dExpect(0),
         mass(0),
         matchedIons(0),
         totalIons(0)

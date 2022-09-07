@@ -4678,8 +4678,6 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
    else
       iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
-   long lNumIterations = 0;
-
    int iSize = (int)dbe->vectorPeffMod.size();
 
    // do not apply PEFF mods to a PEFF variant peptide
@@ -4897,9 +4895,6 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
 
                               int piTmpVarModCounts[] = {i1, i2, i3, i4, i5, i6, i7, i8, i9};
 
-
-//                            if (g_staticParams.options.lMaxIterations > 0 && lNumIterations >= g_staticParams.options.lMaxIterations)
-//                               break;
 
                               if (i1>0 || i2>0 || i3>0 || i4>0 || i5>0 || i6>0 || i7>0 || i8>0 || i9>0 || bPeffMod)
                               {
@@ -5343,7 +5338,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                 _varModInfo.dCalcPepMass = dCalcPepMass;
 
                                                 // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-                                                PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe, &lNumIterations);
+                                                PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe);
 
                                              }
                                           }
@@ -5394,13 +5389,9 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
                               bool *pbDuplFragment,
                               bool *bDoPeffAnalysis,
                               vector <PeffPositionStruct>* vPeffArray,
-                              struct sDBEntry *dbe,
-                              long *lNumIterations)
+                              struct sDBEntry *dbe)
 {
    int iModIndex;
-
-// if (g_staticParams.options.lMaxIterations > 0 && *lNumIterations >= g_staticParams.options.lMaxIterations)
-//    return false;
 
    switch (iWhichMod)
    {
@@ -5468,12 +5459,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
       if (iWhichMod == 9)
       {
-         if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, lNumIterations))
+         if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, lNumIterations))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
 
@@ -5487,12 +5478,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
          if (iWhichMod == 9)
          {
-            if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, lNumIterations))
+            if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
                return false;
          }
          else
          {
-            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, lNumIterations))
+            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
                return false;
          }
       }
@@ -5501,12 +5492,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
    {
       if (iWhichMod == 9)
       {
-         if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, lNumIterations))
+         if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe, lNumIterations))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
    }
@@ -5647,16 +5638,12 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                                bool *pbDuplFragment,
                                bool *bDoPeffAnalysis,
                                vector <PeffPositionStruct>* vPeffArray,
-                               struct sDBEntry *dbe,
-                               long *lNumIterations)
+                               struct sDBEntry *dbe)
 {
    int piVarModSites[MAX_PEPTIDE_LEN_P2];
    int piVarModCharIdx[VMODS];
    int i;
    int j;
-
-// if (g_staticParams.options.lMaxIterations > 0 && *lNumIterations >= g_staticParams.options.lMaxIterations)
-//    return false;  // this will stop all further permutations of peptide
 
    // at this point, need to compare current modified peptide
    // against all relevant entries
@@ -5930,7 +5917,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                      if (iWhichQuery != -1)
                      {
                         // FIX: add test here as piVarModSites must contain a negative PEFF value
-                        CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dTmpCalcPepMass, iLenPeptide, dbe, lNumIterations);
+                        CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dTmpCalcPepMass, iLenPeptide, dbe);
                      }
                   }
                }
@@ -5998,7 +5985,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          }
          else
          {
-            CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dCalcPepMass, iLenPeptide, dbe, lNumIterations);
+            CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dCalcPepMass, iLenPeptide, dbe);
          }
       }
    }
@@ -6013,8 +6000,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                                  int *piVarModSites,
                                  double dCalcPepMass,
                                  int iLenPeptide,
-                                 struct sDBEntry *dbe,
-                                 long *lNumIterations)
+                                 struct sDBEntry *dbe)
 {
    int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
    char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];  // allow for prev/next AA in string
@@ -6030,8 +6016,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
    bool bFirstTimeThroughLoopForPeptide = true;
 
    int iLenProteinMinus1;
-
-// *lNumIterations += 1;
 
    iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 

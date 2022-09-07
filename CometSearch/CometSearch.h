@@ -173,8 +173,7 @@ private:
                     bool *pbDuplFragments,
                     bool *bDoPeffAnalysis,
                     vector <PeffPositionStruct>* vPeffArray,
-                    struct sDBEntry *dbe,
-                    long *lNumIterations);
+                    struct sDBEntry *dbe);
    int  twiddle( int *x, int *y, int *z, int *p);
    void inittwiddle(int m, int n, int *p);
    bool MergeVarMods(char *szProteinSeq,
@@ -182,16 +181,14 @@ private:
                      bool *pbDuplFragments,
                      bool *bDoPeffAnalysis,
                      vector <PeffPositionStruct>* vPeffArray,
-                     struct sDBEntry *dbe,
-                     long *lNumIterations);
+                     struct sDBEntry *dbe);
    bool CalcVarModIons(char *szProteinSeq,
                        int iWhichQuery,
                        bool *pbDuplFragment,
                        int *piVarModSites,
                        double dCalcPepMass,
                        int iLenPeptide,
-                       struct sDBEntry *dbe,
-                       long *lNumIterations);
+                       struct sDBEntry *dbe);
    bool IndexSearch(void);
    void ReadDBIndexEntry(struct DBIndex *sDBI, FILE *fp);
    bool SearchForPeptides(struct sDBEntry dbe,
