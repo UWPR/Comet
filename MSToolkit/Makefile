@@ -13,7 +13,7 @@ SFLAGS = -O3 -shared -fPIC -g -I. -I./include -D_LARGEFILE_SOURCE -D_FILE_OFFSET
 LITEFLAGS = -D_NOSQLITE
 
 UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
+ifneq ($(UNAME_S),Darwin)
 SFLAGS += -Wl,-z,norelro
 endif
 
