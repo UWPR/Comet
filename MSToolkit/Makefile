@@ -12,7 +12,8 @@ CFLAGS = -O3 -static -I. -I./include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 
 SFLAGS = -O3 -shared -fPIC -g -I. -I./include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H
 LITEFLAGS = -D_NOSQLITE
 
-ifneq ($(OS), Darwin)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
 SFLAGS += -Wl,-z,norelro
 endif
 
