@@ -63,6 +63,7 @@ EXPAT_LIC := $(BUILD_LIC)/$(EXPAT_VER)/COPYING
 expat : $(EXPAT_DST) $(EXPAT_LIC)
 
 $(EXPAT_DST) : | $(BUILD_DIR)/ $(EXPAT_SRC)/
+	cd $(BUILD_SRC); tar -xzf $(EXPAT_VER).tar.gz
 	cd $(EXPAT_SRC); ./configure --prefix=$(BUILD_DIR) \
 	   --enable-shared=yes --enable-static=yes \
 	   --without-xmlwf --without-examples --without-tests \
@@ -104,6 +105,7 @@ ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRCB))
 zlib : $(ZLIB_DST) $(ZLIB_LIC)
 
 $(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
+	cd $(BUILD_SRC); unzip -o zlib1211.zip
 	cd $(ZLIB_SRC); ./configure --prefix=$(BUILD_DIR) --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR) 
 	make -C $(ZLIB_SRC) install
 
