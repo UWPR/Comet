@@ -9,6 +9,7 @@ Version 1.1, March 14, 2012.
 */
 #include "mzParser.h"
 using namespace std;
+using namespace mzParser;
 
 MzParser::MzParser(BasicSpectrum* s){
   spec=s;
@@ -107,7 +108,7 @@ int MzParser::highScan(){
   return 0;
 }
 
-bool MzParser::load(char* fname){
+bool MzParser::load(const char* fname){
   if(mzML!=NULL) {
     delete mzML;
     mzML=NULL;
@@ -233,7 +234,7 @@ bool MzParser::readSpectrumHeader(int num){
   return false;
 }
 
-int MzParser::checkFileType(char* fname){
+int MzParser::checkFileType(const char* fname){
   char file[256];
   char ext[256];
   char *tok;

@@ -111,7 +111,7 @@ typedef off_t f_off;
 
 // this define should work for most LINUX and UNIX platforms
 
-
+namespace mzParser {
 
 //------------------------------------------------
 // mzMLParser structures, definitions, and enums
@@ -126,6 +126,14 @@ typedef struct TimeIntensityPair{
   double time;
   double intensity;
 } TimeIntensityPair;
+
+typedef struct MZIntensityPair {
+  double mz;
+  double intensity;
+  MZIntensityPair() : mz(0), intensity(0) {}
+  MZIntensityPair(double mz, double intensity) : mz(mz), intensity(intensity) {}
+  bool operator==(const MZIntensityPair& that) const;
+} MZIntensityPair;
 
 enum enumActivation {
   none=0,
@@ -256,7 +264,7 @@ public:
 
   //Operator overloads
   BasicSpectrum& operator=(const BasicSpectrum& s);
-  specDP& operator[ ](const unsigned int index);
+  specDP& operator[ ](const size_t index);
 
   //Modifiers
   void addDP(specDP dp);
@@ -444,7 +452,7 @@ private:
 // X!Tandem borrowed headers
 //------------------------------------------------
 
-int b64_decode_mio (char *dest, char *src, size_t size);
+int b64_decode_mio (char *dest, const char *src, size_t size);
 int b64_encode (char *dest, const char *src, int len);
 
 class mzpSAXHandler{
@@ -543,7 +551,6 @@ private:
   void  pushChromatogram();
   void  pushSpectrum();  // Load current data into pvSpec, may have to guess charge
   f_off readIndexOffset();
-  bool generateIndexOffset();
   void  stopParser();
 
   //  mzpSAXMzmlHandler Base64 conversion functions
@@ -642,7 +649,6 @@ private:
   //  mzpSAXMzxmlHandler private functions
   void  pushSpectrum();  // Load current data into pvSpec, may have to guess charge
   f_off readIndexOffset();
-  bool generateIndexOffset();
   void  stopParser();
 
   //  mzpSAXMzxmlHandler Base64 conversion functions
@@ -1457,6 +1463,42 @@ private:
 };
 typedef class ChromatogramList* ChromatogramListPtr;
 
+class Spectrum {
+public:
+  Spectrum();
+  ~Spectrum();
+
+  BasicSpectrum* bs;
+  std::string              id;
+
+  //void getTimeIntensityPairs(std::vector<TimeIntensityPair>& v);
+};
+typedef class Spectrum* SpectrumPtr;
+
+class SpectrumList {
+public:
+  SpectrumList();
+  SpectrumList(mzpSAXMzmlHandler* ml, void* m5, BasicSpectrum* bs);
+  ~SpectrumList();
+
+  SpectrumPtr    spectrum(int index, bool binaryData = false);
+  bool           get();
+  size_t         size();
+
+  std::vector<cindex>* vSpecIndex;
+#ifdef MZP_MZ5
+  std::vector<cMz5Index>* vMz5Index;
+#endif
+
+private:
+  mzpSAXMzmlHandler* mzML;
+#ifdef MZP_MZ5
+  mzpMz5Handler* mz5;
+#endif
+  SpectrumPtr      spec;
+};
+typedef class SpectrumList* SpectrumListPtr;
+
 class PwizRun{
 public:
   PwizRun();
@@ -1464,7 +1506,9 @@ public:
   ~PwizRun();
 
   ChromatogramListPtr chromatogramListPtr;
+  SpectrumListPtr     spectrumListPtr;
 
+  bool get();
   void set(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b);
 
 private:
@@ -1492,6 +1536,41 @@ private:
   #endif
 };
 
+class SpectrumInfo {
+public:
+  SpectrumInfo();
+  void update(const Spectrum& spectrum, bool getBinaryData = false);
+
+  struct PrecursorInfo {
+    size_t index;
+    double mz;
+    double intensity;
+    double charge;
+    PrecursorInfo() : index((size_t)-1), mz(0), intensity(0), charge(0) {}
+  };
+
+  size_t index;
+  std::string id;
+  int scanNumber;
+  int scanEvent;
+  int msLevel;
+  bool isZoomScan;
+  double retentionTime; // seconds
+  std::string filterString;
+  double mzLow;
+  double mzHigh;
+  double basePeakMZ;
+  double basePeakIntensity;
+  double totalIonCurrent;
+  double thermoMonoisotopicMZ;
+  double ionInjectionTime;
+  std::vector<PrecursorInfo> precursors;
+  size_t dataSize;
+  std::vector<MZIntensityPair> data;
+
+};
+
+
 //------------------------------------------------
 // MzParser Interface
 //------------------------------------------------
@@ -1506,7 +1585,7 @@ public:
   std::vector<cindex>*  getChromatIndex();
   int   highChromat();
   int   highScan();
-  bool  load(char* fname);
+  bool  load(const char* fname);
   int   lowScan();
   bool  readChromatogram(int num=-1);
   bool  readSpectrum(int num=-1);
@@ -1522,7 +1601,7 @@ protected:
 
 private:
   //private functions
-  int checkFileType(char* fname);
+  int checkFileType(const char* fname);
 
   //private data members
   BasicChromatogram*  chromat;
@@ -1530,5 +1609,7 @@ private:
   BasicSpectrum*      spec;
 
 };
+
+}
 
 #endif

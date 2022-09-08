@@ -42,6 +42,7 @@ class Spectrum {
   void            addEZState(int,double,float,float);
   void            addEZState(EZState&);
 	void						addMZ(double, double mono=0);
+  void            addSPS(double);
   void    				addZState(int,double);
   void		    		addZState(ZState&);
   Peak_T&			    at(const int&);
@@ -72,6 +73,7 @@ class Spectrum {
   double          getConversionD();
   double          getConversionE();
   double          getConversionI();
+  std::string     getFileID();
   MSSpectrumType  getFileType();
   float           getIonInjectionTime();
   double    			getMonoMZ(int index=0);
@@ -85,6 +87,7 @@ class Spectrum {
   double          getScanWindowUpper();
   double          getSelWindowLower();
   double          getSelWindowUpper();
+  double    			getSPS(size_t index = 0);
   double          getTIC();
   int             getMsLevel();
   void            setActivationMethod(MSActivation);
@@ -100,10 +103,11 @@ class Spectrum {
   void            setConversionD(double);
   void            setConversionE(double);
   void            setConversionI(double);
+  void            setFileID(std::string);
   void    				setFileType(MSSpectrumType);
   void            setIonInjectionTime(float);
   void		    		setMZ(double, double mono=0);
-  void            setNativeID(char*);
+  void            setNativeID(const char*);
   void            setRawFilter(char*);
   void				    setRTime(float);
   void            setRTimeApex(float);
@@ -115,6 +119,7 @@ class Spectrum {
   int			      	size();
   int             sizeEZ();
 	int							sizeMZ();   //also returns size of monoMZ
+  int             sizeSPS();
   int     				sizeZ();
   void		    		sortIntensity();
   void				    sortIntensityRev();
@@ -147,6 +152,8 @@ class Spectrum {
   int              msLevel;
   std::vector<double>   *monoMZ;     //the monoisotopic m/z of the selected ion(s)
   std::vector<double>   *mz;         //the selected ion(s) in m/z
+  std::vector<double>   *sps;        //SPS masses
+  std::string      fileID;
   MSSpectrumType   fileType;
   MSActivation     actMethod;
   int              scanID;       //index for sqlite

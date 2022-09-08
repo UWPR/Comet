@@ -7,6 +7,7 @@
 
 #include "mzParser.h"
 using namespace std;
+using namespace mzParser;
 
 //------------------------------------------
 //  Constructors & Destructors
@@ -115,7 +116,7 @@ BasicSpectrum& BasicSpectrum::operator=(const BasicSpectrum& s){
   }
   return *this;
 }
-specDP& BasicSpectrum::operator[ ](const unsigned int index) {
+specDP& BasicSpectrum::operator[ ](const size_t index) {
   return vData->at(index);
 }
 

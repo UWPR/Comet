@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,33 +13,36 @@ limitations under the License.
 
 #include "CProteinDetectionProtocol.h"
 
-CProteinDetectionProtocol::CProteinDetectionProtocol(){
-  analysisSoftwareRef = "null";
-  id = "null";
-  name.clear();
-}
+using namespace std;
+
+//CProteinDetectionProtocol::CProteinDetectionProtocol(){
+//  analysisSoftwareRef = "null";
+//  id = "null";
+//  name.clear();
+//}
 
 void CProteinDetectionProtocol::writeOut(FILE* f, int tabs){
-  int i;
+  if (analysisSoftwareRef.empty()){
+    cerr << "ProteinDetectionProtocol::analysisSoftware_ref is required." << endl;
+    exit(69);
+  }
+  if (id.empty()){
+    cerr << "ProteinDetectionProtocol::id is required." << endl;
+    exit(69);
+  }
 
-  if (id.compare("null")==0) return;
+  int i;
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<ProteinDetectionProtocol id=\"%s\" analysisSoftware_ref=\"%s\"",&id[0],&analysisSoftwareRef[0]);
-  if (name.size()>0) fprintf(f, " name=\"%s\"", &name[0]);
+  if (!name.empty()) fprintf(f, " name=\"%s\"", &name[0]);
   fprintf(f, ">\n");
 
-  if (tabs > -1){
-    if (analysisParams.cvParam->at(0).name.compare("null") != 0 || analysisParams.userParam->at(0).name.compare("null") != 0){
-      analysisParams.writeOut(f,tabs+1);
-    }
-    threshold.writeOut(f, tabs + 1);
-  } else {
-    if (analysisParams.cvParam->at(0).name.compare("null") != 0 || analysisParams.userParam->at(0).name.compare("null") != 0){
-      analysisParams.writeOut(f);
-    }
-    threshold.writeOut(f);
-  }
+  int t = tabs;
+  if (t>-1)t++;
+
+  for(size_t j=0;j<analysisParams.size();j++) analysisParams[j].writeOut(f,t);
+  threshold.writeOut(f,t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</ProteinDetectionProtocol>\n");

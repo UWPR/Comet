@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,6 +15,7 @@ limitations under the License.
 #define _CENZYME_H
 
 #include "CEnzymeName.h"
+#include "CSiteRegexp.h"
 #include "mzIMLStructs.h"
 #include <string>
 #include <vector>
@@ -34,8 +35,8 @@ public:
   std::string name;
   bool semiSpecific;
   
-  //CSiteRegexp siteRegexp;
-  CEnzymeName enzymeName;
+  std::vector<CSiteRegexp> siteRegexp;
+  std::vector<CEnzymeName> enzymeName;
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

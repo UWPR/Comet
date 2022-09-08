@@ -16,9 +16,13 @@ limitations under the License.
 
 #include "CAnalysisCollection.h"
 #include "CAnalysisProtocolCollection.h"
+#include "CAnalysisSampleCollection.h"
 #include "CAnalysisSoftwareList.h"
+#include "CAuditCollection.h"
+#include "CBibliographicReference.h"
 #include "CCvList.h"
 #include "CDataCollection.h"
+#include "CProvider.h"
 #include "CPSM.h"
 #include "CSequenceCollection.h"
 #include "expat.h"
@@ -49,15 +53,21 @@ public:
   //Data members
   CCvList cvList;
   CAnalysisSoftwareList analysisSoftwareList;
-  //CAnalysisSampleCollection analysisSampleCollection;
   CSequenceCollection sequenceCollection;
   CAnalysisCollection analysisCollection;
   CAnalysisProtocolCollection analysisProtocolCollection;
+  std::vector<CAnalysisSampleCollection> analysisSampleCollection;
   CDataCollection dataCollection;
+  CProvider provider;
+  std::vector<CAuditCollection> auditCollection;
+  std::vector<CBibliographicReference> bibliographicReference;
 
   sMzIDDateTime creationDate;
   std::string id;
   std::string name;
+  std::string versionStr;
+  std::string xmlns;
+  std::string schema;
 
   std::string fileBase;
   std::string fileFull;
@@ -65,19 +75,21 @@ public:
 
   //Functions
   std::string addAnalysisSoftware(std::string software, std::string version);
-  std::string addDatabase(std::string s);
   std::string addDBSequence(std::string acc, std::string sdbRef, std::string desc = "");
   std::string addPeptide(std::string seq, std::vector<CModification>& mods);
   sPeptideEvidenceRef addPeptideEvidence(std::string dbRef, std::string pepRef, int start=0, int end=0, char pre='?', char post='?', bool isDecoy="false");
   CProteinAmbiguityGroup* addProteinAmbiguityGroup();
-  std::string addSpectraData(std::string s);
-  CSpectrumIdentification* addSpectrumIdentification(std::string& spectraDataRef, std::string& searchDatabaseRef);
+  CProteinDetection* addProteinDetection(std::vector<std::string>& specIdentListRef, std::string protDetectProtRef, CProteinDetectionList*& pdl);
+  CSpectrumIdentification* addSpectrumIdentification(std::string spectraDataRef, std::string searchDatabaseRef, std::string specIdentProtRef, CSpectrumIdentificationList*& sil);
   bool addXLPeptides(std::string seq1, std::vector<CModification>& mods1, std::string& ref1, std::string seq2, std::vector<CModification>& mods2, std::string& ref2, std::string& value);
-  void consolidateSpectrumIdentificationProtocol();
+  //void consolidateSpectrumIdentificationProtocol();
   
   CDBSequence       getDBSequence(std::string& dBSequence_ref);
   CDBSequence       getDBSequenceByAcc(std::string acc);
+  void              getDBSequenceByAcc(std::string acc, std::vector<CDBSequence>& v);
   CPeptide          getPeptide(std::string peptide_ref);
+  bool              getPeptide(std::string peptide_ref, CPeptide& p);
+  bool              getPeptide(std::string peptide_ref, CPeptide*& p);
   CPeptideEvidence  getPeptideEvidence(std::string& peptideEvidence_ref);
   CPSM              getPSM(int index, int rank=1);
   int               getPSMCount();
@@ -86,7 +98,9 @@ public:
   CSpectrumIdentificationList*      getSpectrumIdentificationList(std::string& spectrumIdentificationList_ref);
   CSpectrumIdentificationProtocol*  getSpectrumIdentificationProtocol(std::string& spectrumIdentificationProtocol_ref);
   CSpectrumIdentificationResult&    getSpectrumIdentificationResult(std::string& spectrumIdentificationResult_ref);
+  CSpectrumIdentificationResult*    getSpectrumIdentificationResultBySpectrumID(std::string& spectrumIdentificationList_ref, std::string& spectrumIdentificationResult_spectrumID);
 
+  std::string getMzIMLToolsVersion();
   int getVersion();
   bool readFile(const char* fn);
   void setVersion(int ver);

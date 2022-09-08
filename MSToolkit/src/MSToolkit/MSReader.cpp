@@ -388,6 +388,7 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
   double mz;
   float intensity;
   char* ret;
+  bool bMono=false;
 
   //clear any spectrum data
   s.clear();
@@ -435,7 +436,9 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
           }
           tok=strtok(NULL," \t\n\r");
         }
-      } 
+      } else if (!strncmp(strMGF, "MASS", 5)){
+
+      }
 
       if(!strncmp(strMGF,"BEGIN IONS", 10)) break;
       if(!fgets(strMGF,1024,fileIn)) break;
@@ -480,6 +483,7 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
        *pStr = '\0';         
        ch = -atoi(strMGF+7); 
      } 
+     s.setCharge(ch);
    } else if(!strncmp(strMGF, "PEPMASS=", 8)) { 
      s.setMZ(atof(strMGF+8)); 
    } else if(!strncmp(strMGF, "SCANS=", 6)) { 
@@ -553,11 +557,173 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
   //Sanity check
   if(strstr(strMGF,"END IONS")==NULL){
     cout << "WARNING: Unexpected lines at end of MGF spectrum." << endl;
+    bMono=false;
   }
 
   if(mgfOnePlus) s.sortMZ();
 
   return true;
+}
+
+bool MSReader::readMGFFile2(const char* c, Spectrum& s){
+
+  char* tok;
+  char str[1024];
+  char num[6];
+  unsigned int i;
+  int ch = 0;
+  double mz;
+  float intensity;
+  bool bMono = false;
+  vector<string> tokens;
+
+  //clear any spectrum data
+  s.clear();
+
+  s.setCentroidStatus(2); //unknown if centroided with MGF format.
+
+  //check for valid file and if we can access it
+  //Supplying a file name always resets file pointer to the start of the file
+  //Otherwise, next scan is read.
+  if (c != NULL){
+    closeFile();
+    if (openFile(c, true) == 1) return false;
+    mgfIndex = 1;
+    mgfFiles.clear();
+  } else if (fileIn == NULL) {
+    cout << "fileIn is NULL" << endl;
+    return false;
+  }
+
+  s.setFileType(MS2);
+
+  //Read global header information
+  while(!feof(fileIn)){
+    if (!fgets(strMGF, 1024, fileIn)) return false;
+    if(strlen(strMGF)<2) continue; //skip blank lines
+    if (strMGF[0] == '#' || strMGF[0] == ';' || strMGF[0] == '!' || strMGF[0] == '/') continue; //skip comment lines
+    tokens.clear();
+    tok=strtok(strMGF,"=\n\r");
+    while(tok!=NULL){
+      tokens.push_back(string(tok));
+      tok=strtok(NULL,"=\n\r");
+    }
+    if(tokens[0].compare("BEGIN IONS")==0) break;
+    else if(tokens[0].compare("MASS")==0){
+      if(tokens[1].compare("Monoisotopic")==0) bMono=true;
+      else bMono=false;
+    } else if (tokens[0].compare("CHARGE") == 0){
+      mgfGlobalCharge.clear();
+      strcpy(str,tokens[1].c_str());
+      tok = strtok(str, " \t\n\r");
+      while (tok != NULL){
+        for (i = 0; i<strlen(tok); i++){
+          if (isdigit(tok[i])) {
+            num[i] = tok[i];
+            continue;
+          }
+          if (tok[i] == '+') {
+            num[i] = '\0';
+            mgfGlobalCharge.push_back(atoi(num));
+          }
+          if (tok[i] == '-') {
+            num[i] = '\0';
+            mgfGlobalCharge.push_back(-atoi(num));
+          }
+          break;
+        }
+        tok = strtok(NULL, " \t\n\r");
+      }
+    } else if(tokens[0][0]=='_') { //user and reserved parameters
+      if(tokens[0].find("_DISTILLER_RAWFILE")==0){
+        size_t pos=tokens[1].find_last_of('\\');
+        if(pos==string::npos) pos=tokens[1].find_last_of('/');
+        if(pos==string::npos) pos=0;
+        else pos++;
+        mgfFiles.push_back(tokens[1].substr(pos));
+      }
+    }
+  }
+  if (feof(fileIn)) return false;
+
+  //read spectrum block
+  while (!feof(fileIn)){
+    if (!fgets(strMGF, 1024, fileIn)) return false;
+    if (strlen(strMGF)<2) continue; //skip blank lines
+    if (strMGF[0] == '#' || strMGF[0] == ';' || strMGF[0] == '!' || strMGF[0] == '/') continue; //skip comment lines
+    tokens.clear();
+    tok = strtok(strMGF, "=\n\r");
+    while (tok != NULL){
+      tokens.push_back(string(tok));
+      tok = strtok(NULL, "=\n\r");
+    }
+    if (tokens[0].find("END IONS") != string::npos) {
+      //convert any header information to MST spectrum information
+      if (s.getMZ() == 0) {
+        cout << "Error in MGF file: no PEPMASS found." << endl;
+        exit(-12);
+      }
+      if (ch != 0){
+        s.addZState(ch, s.getMZ()*ch - 1.007276466*(ch - 1));
+      } else {
+        for (i = 0; i<mgfGlobalCharge.size(); i++){
+          s.addZState(mgfGlobalCharge[i], s.getMZ()*mgfGlobalCharge[i] - 1.007276466*(mgfGlobalCharge[i] - 1));
+        }
+      }
+      if (s.getScanNumber() == 0){
+        //attempt to obtain scan number from title using ISB/ProteoWizard format
+        if (s.getNativeID(str, 1024)){
+          tok = strtok(str, ".");
+          tok = strtok(NULL, ".");
+          if (tok != NULL) {
+            s.setScanNumber(atoi(tok));
+            s.setScanNumber(atoi(tok), true);
+          }
+        }
+        if (s.getScanNumber() == 0){
+          s.setScanNumber(mgfIndex);
+          s.setScanNumber(mgfIndex, true);
+          mgfIndex++;
+        }
+      }
+      if (mgfOnePlus) s.sortMZ();
+      return true;
+    } else if (tokens[0].compare("CHARGE")==0) {
+      ch=atoi(tokens[1].c_str());
+      if(tokens[1].find('-')!=string::npos) ch=-ch;
+      s.setCharge(ch);
+    } else if (tokens[0].compare("PEPMASS")==0) {
+      s.setMZ(atof(tokens[1].c_str()));
+    } else if (tokens[0].find("SCANS")==0) {
+      s.setScanNumber(atoi(tokens[1].c_str()));
+      if(tokens[0].size()>5){ //only process file identifier from SCANS parameter
+        size_t fIndex=(size_t)atoi(&tokens[0][6]);
+        s.setFileID(mgfFiles[fIndex]);
+      }
+    } else if (tokens[0].find("RTINSECONDS")==0) {
+      s.setRTime((float)(atof(tokens[1].c_str()) / 60.0));
+    } else if (tokens[0].compare("TITLE")==0) {
+      s.setNativeID(tokens[1].c_str());
+    } else if(isdigit(tokens[0][0])){
+      strcpy(str, tokens[0].c_str());
+      tok = strtok(str, " \t\n\r");
+      mz = atof(tok);
+      tok = strtok(NULL, " \t\n\r");
+      intensity = (float)atof(tok);
+      if (!mgfOnePlus){
+        tok = strtok(NULL, " \t\n\r");
+        if (tok != NULL) {
+          ch = atoi(tok);
+          mz *= ch;                  // if fragment charge specified, convert m/z to 1+
+          mz -= (ch - 1)*1.007276466;
+        }
+      }
+      s.add(mz, intensity);
+    }
+
+  }
+
+  return false;
 }
 
 bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
@@ -1375,7 +1541,7 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 		break;
   case mgf:
     if(scNum!=0) cout << "Warning: random-access or previous spectrum reads not allowed with MGF format." << endl;
-    return readMGFFile(c,s);
+    return readMGFFile2(c,s);
     break;
 	case raw:
 		#ifdef _MSC_VER
@@ -1674,10 +1840,9 @@ void MSReader::sql_stmt(const char* stmt)
 #endif
 
 bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
-
-	ramp_fileoffset_t indexOffset;
-	ScanHeaderStruct scanHeader;
-	RAMPREAL *pPeaks;
+	mzParser::ramp_fileoffset_t indexOffset;
+  mzParser::ScanHeaderStruct scanHeader;
+  mzParser::RAMPREAL *pPeaks;
 	int i,j,k;
   double d,d2,d3;
   int *charges=NULL;
@@ -1686,7 +1851,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 	if(c!=NULL) {
 		//open the file if new file was requested
 		if(rampFileOpen) closeFile();
-		rampFileIn = rampOpenFile(c);
+		rampFileIn = mzParser::rampOpenFile(c);
 		if (rampFileIn == NULL) {
       cerr << "ERROR: Failure reading input file " << c << endl;
       return false;
@@ -1786,8 +1951,6 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
   s.setScanWindow(scanHeader.lowMZ,scanHeader.highMZ);
   s.setBPI((float)scanHeader.basePeakIntensity);
   s.setRawFilter(scanHeader.filterLine);
-
-
 	if(strlen(scanHeader.activationMethod)>1){
 		if(strcmp(scanHeader.activationMethod,"CID")==0) s.setActivationMethod(mstCID);
       else if(strcmp(scanHeader.activationMethod,"ECD")==0) s.setActivationMethod(mstECD);
@@ -1798,10 +1961,6 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
       else if(strcmp(scanHeader.activationMethod,"HCD")==0) s.setActivationMethod(mstHCD);
 		else s.setActivationMethod(mstNA);
 	}
-
-   if (strstr(scanHeader.filterLine, " sid=")) // OK; hack for "activation_method = SID" filter
-      s.setActivationMethod(mstSID);
-
 	if(scanHeader.msLevel>1) {
 		s.setMZ(scanHeader.precursorMZ,scanHeader.precursorMonoMZ);
 		s.setCharge(scanHeader.precursorCharge);

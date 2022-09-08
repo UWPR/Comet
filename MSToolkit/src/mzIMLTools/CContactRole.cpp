@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,12 +13,14 @@ limitations under the License.
 
 #include "CContactRole.h"
 
-CContactRole::CContactRole(){
-  contactRef = "null";
-}
+using namespace std;
 
 void CContactRole::writeOut(FILE* f, int tabs){
-  if (contactRef.compare("null")==0) return;
+  if (contactRef.empty()){
+    cerr << "ContactRole::contact_ref required" << endl;
+    exit(69);
+  }
+
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<ContactRole contact_ref=\"%s\">\n",&contactRef[0]);

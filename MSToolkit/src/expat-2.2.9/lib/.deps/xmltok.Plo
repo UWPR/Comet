@@ -1,0 +1,78 @@
+xmltok.lo: xmltok.c /usr/include/stdc-predef.h \
+ /net/gs/vol3/software/modules-sw/gcc/8.1.0/Linux/CentOS7/x86_64/lib/gcc/x86_64-pc-linux-gnu/8.1.0/include/stddef.h \
+ /usr/include/string.h /usr/include/features.h /usr/include/sys/cdefs.h \
+ /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h \
+ /usr/include/gnu/stubs-64.h /usr/include/xlocale.h \
+ /usr/include/bits/string.h /usr/include/bits/string2.h \
+ /usr/include/endian.h /usr/include/bits/endian.h \
+ /usr/include/bits/byteswap.h /usr/include/bits/types.h \
+ /usr/include/bits/typesizes.h /usr/include/bits/byteswap-16.h \
+ /usr/include/stdlib.h \
+ /net/gs/vol3/software/modules-sw/gcc/8.1.0/Linux/CentOS7/x86_64/lib/gcc/x86_64-pc-linux-gnu/8.1.0/include/stdbool.h \
+ ../expat_config.h expat_external.h internal.h xmltok.h nametab.h \
+ xmltok_impl.h ascii.h xmltok_impl.c asciitab.h utf8tab.h iasciitab.h \
+ latin1tab.h xmltok_ns.c
+
+/usr/include/stdc-predef.h:
+
+/net/gs/vol3/software/modules-sw/gcc/8.1.0/Linux/CentOS7/x86_64/lib/gcc/x86_64-pc-linux-gnu/8.1.0/include/stddef.h:
+
+/usr/include/string.h:
+
+/usr/include/features.h:
+
+/usr/include/sys/cdefs.h:
+
+/usr/include/bits/wordsize.h:
+
+/usr/include/gnu/stubs.h:
+
+/usr/include/gnu/stubs-64.h:
+
+/usr/include/xlocale.h:
+
+/usr/include/bits/string.h:
+
+/usr/include/bits/string2.h:
+
+/usr/include/endian.h:
+
+/usr/include/bits/endian.h:
+
+/usr/include/bits/byteswap.h:
+
+/usr/include/bits/types.h:
+
+/usr/include/bits/typesizes.h:
+
+/usr/include/bits/byteswap-16.h:
+
+/usr/include/stdlib.h:
+
+/net/gs/vol3/software/modules-sw/gcc/8.1.0/Linux/CentOS7/x86_64/lib/gcc/x86_64-pc-linux-gnu/8.1.0/include/stdbool.h:
+
+../expat_config.h:
+
+expat_external.h:
+
+internal.h:
+
+xmltok.h:
+
+nametab.h:
+
+xmltok_impl.h:
+
+ascii.h:
+
+xmltok_impl.c:
+
+asciitab.h:
+
+utf8tab.h:
+
+iasciitab.h:
+
+latin1tab.h:
+
+xmltok_ns.c:

@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -17,23 +17,25 @@ limitations under the License.
 #include "CFragmentArray.h"
 #include "mzIMLStructs.h"
 #include <vector>
+#include <string>
 
 class CIonType {
 public:
 
   //Constructor
   CIonType();
-  CIonType(const CIonType& c);
-  ~CIonType();
+  //CIonType(const CIonType& c);
+  //~CIonType();
 
   //Data members
   int charge;
-  std::vector<int>* index;
-  std::vector<CFragmentArray>* fragmentArray;
-  sCvParam cvParam;
+  std::string index; //list of integers in the string
+  std::vector<CFragmentArray> fragmentArray;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //operators
-  CIonType& operator=(const CIonType& c);
+  //CIonType& operator=(const CIonType& c);
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

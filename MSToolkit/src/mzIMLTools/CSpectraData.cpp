@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,25 +13,37 @@ limitations under the License.
 
 #include "CSpectraData.h"
 
-CSpectraData::CSpectraData(){
-  id = "null";
-  location = "null";
-  name.clear();
-}
+using namespace std;
+
+//CSpectraData::CSpectraData(){
+//  id = "null";
+//  location = "null";
+//  name.clear();
+//}
 
 void CSpectraData::writeOut(FILE* f, int tabs){
+  if (id.empty()){
+    cerr << "SpectraData::id is required." << endl;
+    exit(69);
+  }
+  if (location.empty()){
+    cerr << "SpectraData::location is required." << endl;
+    exit(69);
+  }
+
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<SpectraData location=\"%s\" id=\"%s\"", location.c_str(), id.c_str());
   if(name.size()>0) fprintf(f," name=\"%s\"",name.c_str());
   fprintf(f,">\n");
-  if (tabs>-1){
-    fileFormat.writeOut(f,tabs+1);
-    spectrumIDFormat.writeOut(f,tabs+1);
-  } else {
-    fileFormat.writeOut(f);
-    spectrumIDFormat.writeOut(f);
-  }
+
+  int t = tabs;
+  if (t>-1) t++;
+
+  if(!externalFormatDocumentation.text.empty()) externalFormatDocumentation.writeOut(f,t);
+  fileFormat.writeOut(f,t);
+  spectrumIDFormat.writeOut(f,t);
+
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</SpectraData>\n");
 }

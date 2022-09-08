@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -24,11 +24,11 @@ public:
 
   //Constructors & Destructors
   CProteinDetectionHypothesis();
-  CProteinDetectionHypothesis(const CProteinDetectionHypothesis& c);
-  ~CProteinDetectionHypothesis();
+  //CProteinDetectionHypothesis(const CProteinDetectionHypothesis& c);
+  //~CProteinDetectionHypothesis();
 
   //Operators
-  CProteinDetectionHypothesis& operator=(const CProteinDetectionHypothesis& c);
+  //CProteinDetectionHypothesis& operator=(const CProteinDetectionHypothesis& c);
   //bool operator==(const CProteinAmbiguityGroup& c);
 
   //Data members
@@ -36,9 +36,9 @@ public:
   std::string id;
   std::string name;
   bool passThreshold;
-  std::vector<CPeptideHypothesis>* peptideHypothesis;
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<CPeptideHypothesis> peptideHypothesis;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //Functions
   void addParamValue(std::string alg, std::string scoreID, double value);

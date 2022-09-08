@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -17,23 +17,24 @@ limitations under the License.
 #include "CSpecificityRules.h"
 #include "mzIMLStructs.h"
 #include <vector>
+#include <math.h>
 
 class CSearchModification{
 public:
   //Constructors & Destructor
   CSearchModification();
-  CSearchModification(const CSearchModification& c);
-  ~CSearchModification();
+  //CSearchModification(const CSearchModification& c);
+  //~CSearchModification();
 
   //Data members
   bool fixedMod;
   double massDelta;
   std::string residues;
-  CSpecificityRules specificityRules;
-  std::vector<sCvParam>* cvParam;
+  std::vector<CSpecificityRules> specificityRules;
+  std::vector<sCvParam> cvParam;
 
   //operators
-  CSearchModification& operator=(const CSearchModification& c);
+  //CSearchModification& operator=(const CSearchModification& c);
   bool operator==(const CSearchModification& c);
   bool operator!=(const CSearchModification& c);
 

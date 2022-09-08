@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,37 +15,38 @@ limitations under the License.
 
 using namespace std;
 
-CProteinDetectionList::CProteinDetectionList(){
-  id = "null";
-  name.clear();
-  
-  proteinAmbiguityGroup = new vector<CProteinAmbiguityGroup>;
-  cvParam = new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
-}
-
-CProteinDetectionList::~CProteinDetectionList(){
-  delete proteinAmbiguityGroup;
-  delete cvParam;
-  delete userParam;
-}
+//CProteinDetectionList::CProteinDetectionList(){
+//  id = "null";
+//  name.clear();
+//  
+//  proteinAmbiguityGroup = new vector<CProteinAmbiguityGroup>;
+//  cvParam = new vector<sCvParam>;
+//  userParam = new vector<sUserParam>;
+//}
+//
+//CProteinDetectionList::~CProteinDetectionList(){
+//  delete proteinAmbiguityGroup;
+//  delete cvParam;
+//  delete userParam;
+//}
 
 void CProteinDetectionList::writeOut(FILE* f, int tabs){
+  if (id.empty()){
+    cerr << "ProteinDetectionList::id is required." << endl;
+    exit(69);
+  }
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<ProteinDetectionList id=\"%s\">\n",&id[0]);
-  for (size_t j = 0; j < proteinAmbiguityGroup->size(); j++){
-    if (tabs>-1) proteinAmbiguityGroup->at(j).writeOut(f, tabs + 1);
-    else proteinAmbiguityGroup->at(j).writeOut(f);
-  }
-  for (size_t j = 0; j < cvParam->size(); j++){
-    if (tabs>-1) cvParam->at(j).writeOut(f, tabs + 1);
-    else cvParam->at(j).writeOut(f);
-  }
-  for (size_t j = 0; j < userParam->size(); j++){
-    if (tabs>-1) userParam->at(j).writeOut(f, tabs + 1);
-    else userParam->at(j).writeOut(f);
-  }
+
+  int t = tabs;
+  if (t>-1)t++;
+
+  size_t j;
+  for (j = 0; j < proteinAmbiguityGroup.size(); j++) proteinAmbiguityGroup[j].writeOut(f, t);
+  for (j = 0; j < cvParam.size(); j++) cvParam[j].writeOut(f, t);
+  for (j = 0; j < userParam.size(); j++) userParam[j].writeOut(f, t);
+
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</ProteinDetectionList>\n");
 }

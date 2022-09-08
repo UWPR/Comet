@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -20,18 +20,19 @@ limitations under the License.
 #include <algorithm>
 #include <vector>
 #include <iostream>
+#include <map>
 
 class CSequenceCollection{
 public:
 
   //Constructors & Destructors
-  CSequenceCollection();
-  ~CSequenceCollection();
+  //CSequenceCollection();
+  //~CSequenceCollection();
 
   //Data members
-  std::vector<CDBSequence>* dbSequence;
-  std::vector<CPeptide>* peptide;
-  std::vector<CPeptideEvidence>* peptideEvidence;
+  std::vector<CDBSequence> dbSequence;
+  std::vector<CPeptide> peptide;
+  std::vector<CPeptideEvidence> peptideEvidence;
 
   //Functions
   std::string addDBSequence(CDBSequence& dbs);
@@ -40,33 +41,30 @@ public:
   bool addXLPeptides(std::string ID, CPeptide& p1, CPeptide& p2, std::string& ref1, std::string& ref2, std::string& value);
   CDBSequence  getDBSequence(std::string id);
   CDBSequence* getDBSequenceByAcc(std::string acc);
+  void getDBSequenceByAcc(std::string acc, std::vector<CDBSequence>& v);
   CPeptide* getPeptide(std::string peptideRef);
   CPeptideEvidence  getPeptideEvidence(std::string& id);
-  std::string getPeptideEvidenceFromPeptideAndProtein(CPeptide& p, std::string dbSequenceRef);
+  bool getPeptideEvidenceFromPeptideAndProtein(CPeptide& p, std::string dbSequenceRef, std::vector<std::string>& vPE);
   std::string getProtein(sPeptideEvidenceRef& s);
   void writeOut(FILE* f, int tabs = -1);
-
-private:
-  //Data members
-  bool sortDBSequence;
-  bool sortDBSequenceAcc;
-  bool sortPeptide;
-  bool sortPeptideSeq;
-  bool sortPeptideEvidence;
-  bool sortPeptideEvidencePepRef;
-  std::vector<sPepTable> vPepEvTable;
-  std::vector<sPepTable> vPepTable;
-  std::vector<sXLPepTable> vXLPepTable;
-
-  //Functions
-  void doDBSequenceSort();
-  void doDBSequenceSortAcc();
-  void doPeptideSort();
-  void doPeptideSeqSort();
-  void doPeptideEvidenceSort();
-  void doPeptideEvidencePepRefSort();
+  
+  void rebuildDBTable();
   void rebuildPepEvTable();
   void rebuildPepTable();
+
+
+private:
+  //std::vector<sPepTable> vPepEvTable;
+  //std::vector<sPepTable> vPepTable;
+  //std::vector<sPepTable> vPepIDTable;
+  std::vector<sXLPepTable> vXLPepTable;  //TODO? Update this?
+  std::multimap<std::string,size_t> mmDBTable;
+  std::map<std::string, size_t> mDBIDTable;
+  std::multimap<std::string,size_t> mmPepTable;
+  std::map<std::string,size_t> mPepIDTable;
+  std::multimap<std::string, size_t> mmPepEvTable;
+  std::map<std::string, size_t> mPepEvIDTable;
+
 
   //Sorting Functions
   static bool compareDBSequence(const CDBSequence& a, const CDBSequence& b);

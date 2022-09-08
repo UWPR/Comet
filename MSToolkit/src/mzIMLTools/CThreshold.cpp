@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,58 +15,58 @@ limitations under the License.
 
 using namespace std;
 
-CThreshold::CThreshold(){
-  sCvParam cv;
-  cvParam=new vector<sCvParam>;
-  cvParam->push_back(cv);
-
-  sUserParam u;
-  userParam = new vector<sUserParam>;
-  userParam->push_back(u);
-}
-
-CThreshold::CThreshold(const CThreshold& c){
-  size_t i;
-  cvParam = new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
-  for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-  for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
-}
-
-CThreshold::~CThreshold(){
-  delete cvParam;
-  delete userParam;
-}
-
-CThreshold& CThreshold::operator=(const CThreshold& c){
-  if (this != &c){
-    size_t i;
-    delete cvParam;
-    delete userParam;
-    cvParam = new vector<sCvParam>;
-    userParam = new vector<sUserParam>;
-    for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-    for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
-  }
-  return *this;
-}
+//CThreshold::CThreshold(){
+//  sCvParam cv;
+//  cvParam=new vector<sCvParam>;
+//  cvParam->push_back(cv);
+//
+//  sUserParam u;
+//  userParam = new vector<sUserParam>;
+//  userParam->push_back(u);
+//}
+//
+//CThreshold::CThreshold(const CThreshold& c){
+//  size_t i;
+//  cvParam = new vector<sCvParam>;
+//  userParam = new vector<sUserParam>;
+//  for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//  for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
+//}
+//
+//CThreshold::~CThreshold(){
+//  delete cvParam;
+//  delete userParam;
+//}
+//
+//CThreshold& CThreshold::operator=(const CThreshold& c){
+//  if (this != &c){
+//    size_t i;
+//    delete cvParam;
+//    delete userParam;
+//    cvParam = new vector<sCvParam>;
+//    userParam = new vector<sUserParam>;
+//    for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//    for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
+//  }
+//  return *this;
+//}
 
 bool CThreshold::operator==(const CThreshold& c){
   if (this == &c) return true;
-  if (cvParam->size() != c.cvParam->size()) return false;
-  if (userParam->size() != c.userParam->size()) return false;
+  if (cvParam.size() != c.cvParam.size()) return false;
+  if (userParam.size() != c.userParam.size()) return false;
   size_t i, j;
-  for (i = 0; i < cvParam->size(); i++){
-    for (j = 0; j < c.cvParam->size(); j++) {
-      if (cvParam->at(i) == c.cvParam->at(j)) break;
+  for (i = 0; i < cvParam.size(); i++){
+    for (j = 0; j < c.cvParam.size(); j++) {
+      if (cvParam[i] == c.cvParam[j]) break;
     }
-    if (j == c.cvParam->size()) return false;
+    if (j == c.cvParam.size()) return false;
   }
-  for (i = 0; i < userParam->size(); i++){
-    for (j = 0; j < c.userParam->size(); j++) {
-      if (userParam->at(i) == c.userParam->at(j)) break;
+  for (i = 0; i < userParam.size(); i++){
+    for (j = 0; j < c.userParam.size(); j++) {
+      if (userParam[i] == c.userParam[j]) break;
     }
-    if (j == c.userParam->size()) return false;
+    if (j == c.userParam.size()) return false;
   }
   return true;
 }
@@ -76,18 +76,21 @@ bool CThreshold::operator!=(const CThreshold& c){
 }
 
 void CThreshold::writeOut(FILE* f, int tabs){
+  if (cvParam.empty() && userParam.empty()){
+    cerr << "Threshold::cvParam or Threshold::userParam is required." << endl;
+    exit(69);
+  }
+
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<Threshold>\n");
 
+  int t = tabs;
+  if (t>-1)t++;
+
   size_t j;
-  if (tabs > -1){
-    for(j=0;j<cvParam->size(); j++) cvParam->at(j).writeOut(f, tabs + 1);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f, tabs + 1);
-  } else {
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f);
-  }
+  for(j=0;j<cvParam.size(); j++) cvParam[j].writeOut(f, t);
+  for (j = 0; j<userParam.size(); j++) userParam[j].writeOut(f, t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</Threshold>\n");

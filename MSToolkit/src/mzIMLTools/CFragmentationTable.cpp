@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,31 +15,46 @@ limitations under the License.
 
 using namespace std;
 
-CFragmentationTable::CFragmentationTable(){
-  CMeasure m;
-  measure = new vector<CMeasure>;
-  measure->push_back(m);
-}
-
-CFragmentationTable::CFragmentationTable(const CFragmentationTable& c){
-  measure = new vector<CMeasure>;
-  for(size_t i=0;i<c.measure->size();i++) measure->push_back(c.measure->at(i));
-}
-
-CFragmentationTable::~CFragmentationTable(){
-  delete measure;
-}
-
-CFragmentationTable& CFragmentationTable::operator=(const CFragmentationTable& c){
-  if (this != &c){
-    delete measure;
-    measure = new vector<CMeasure>;
-    for (size_t i = 0; i<c.measure->size(); i++) measure->push_back(c.measure->at(i));
-  }
-  return *this;
-}
+//CFragmentationTable::CFragmentationTable(){
+//  //CMeasure m;
+//  measure = new vector<CMeasure>;
+//  //measure->push_back(m);
+//}
+//
+//CFragmentationTable::CFragmentationTable(const CFragmentationTable& c){
+//  measure = new vector<CMeasure>(*c.measure);
+//  //for(size_t i=0;i<c.measure->size();i++) measure->push_back(c.measure->at(i));
+//}
+//
+//CFragmentationTable::~CFragmentationTable(){
+//  delete measure;
+//}
+//
+//CFragmentationTable& CFragmentationTable::operator=(const CFragmentationTable& c){
+//  if (this != &c){
+//    delete measure;
+//    measure = new vector<CMeasure>(*c.measure);
+//    //for (size_t i = 0; i<c.measure->size(); i++) measure->push_back(c.measure->at(i));
+//  }
+//  return *this;
+//}
 
 void CFragmentationTable::writeOut(FILE* f, int tabs){
+  if (measure.empty()){
+    cerr << "FragmentationTable::Measure is required." << endl;
+    exit(69);
+  }
 
+  int i;
+  for (i = 0; i<tabs; i++) fprintf(f, " ");
+  fprintf(f, "<FragmentationTable>\n");
+
+  int t = tabs;
+  if (t>-1)t++;
+
+  for(size_t j=0;j<measure.size();j++) measure[j].writeOut(f, t);
+
+  for (i = 0; i<tabs; i++) fprintf(f, " ");
+  fprintf(f, "</FragmentationTable>\n");
 }
 

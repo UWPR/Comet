@@ -234,9 +234,9 @@ public:
     proteins = new std::vector<pxwProtein>;
     searchScores = new std::vector<pxwBasicXMLTag>;
     xlScores = new std::vector<pxwBasicXMLTag>;
+    altModInfo = new std::vector<PXWModInfo>;
   }
   PXWSearchHit(const PXWSearchHit& s){
-    size_t i;
     hit_rank=s.hit_rank;
     peptide=s.peptide;
     num_tot_proteins=s.num_tot_proteins;
@@ -246,21 +246,19 @@ public:
     xl_massdiff=s.xl_massdiff;
     modInfo=s.modInfo;
     xlink_type=s.xlink_type;
-    proteins = new std::vector<pxwProtein>;
-    searchScores = new std::vector<pxwBasicXMLTag>;
-    xlScores = new std::vector<pxwBasicXMLTag>;
-    for(i=0;i<s.proteins->size();i++) proteins->push_back(s.proteins->at(i));
-    for(i=0;i<s.searchScores->size();i++) searchScores->push_back(s.searchScores->at(i));
-    for(i=0;i<s.xlScores->size();i++) xlScores->push_back(s.xlScores->at(i));
+    proteins = new std::vector<pxwProtein>(*s.proteins);
+    searchScores = new std::vector<pxwBasicXMLTag>(*s.searchScores);
+    xlScores = new std::vector<pxwBasicXMLTag>(*s.xlScores);
+    altModInfo=new std::vector<PXWModInfo>(*s.altModInfo);
   }
   ~PXWSearchHit(){
     delete proteins;
     delete searchScores;
     delete xlScores;
+    delete altModInfo;
   }
   PXWSearchHit& operator=(const PXWSearchHit& s){
     if(this!=&s){
-      size_t i;
       hit_rank=s.hit_rank;
       peptide=s.peptide;
       num_tot_proteins=s.num_tot_proteins;
@@ -273,16 +271,18 @@ public:
       delete proteins;
       delete searchScores;
       delete xlScores;
-      proteins = new std::vector<pxwProtein>;
-      searchScores = new std::vector<pxwBasicXMLTag>;
-      xlScores = new std::vector<pxwBasicXMLTag>;
-      for(i=0;i<s.proteins->size();i++) proteins->push_back(s.proteins->at(i));
-      for(i=0;i<s.searchScores->size();i++) searchScores->push_back(s.searchScores->at(i));
-      for(i=0;i<s.xlScores->size();i++) xlScores->push_back(s.xlScores->at(i));
+      delete altModInfo;
+      proteins = new std::vector<pxwProtein>(*s.proteins);
+      searchScores = new std::vector<pxwBasicXMLTag>(*s.searchScores);
+      xlScores = new std::vector<pxwBasicXMLTag>(*s.xlScores);
+      altModInfo = new std::vector<PXWModInfo>(*s.altModInfo);
     }
     return *this;
   }
 
+  void addAltModInfo(PXWModInfo& m){
+    altModInfo->push_back(m);
+  }
   void addProtein(pxwProtein& p){
     proteins->push_back(p);
   }
@@ -349,6 +349,13 @@ public:
     proteins->clear();
     searchScores->clear();
     xlScores->clear();
+    altModInfo->clear();
+  }
+  PXWModInfo& getAltModInfo(int index){
+    return altModInfo->at(index);
+  }
+  PXWModInfo& getAltModInfo(size_t index){
+    return altModInfo->at(index);
   }
   pxwProtein& getProtein(int index){
     return proteins->at(index);
@@ -368,6 +375,9 @@ public:
   pxwBasicXMLTag& getXLScore(size_t index){
     return xlScores->at(index);
   }
+  size_t sizeAltModInfo(){
+    return altModInfo->size();
+  }
   size_t sizeProteins(){
     return proteins->size();
   }
@@ -382,6 +392,7 @@ private:
   std::vector<pxwProtein>* proteins;
   std::vector<pxwBasicXMLTag>* searchScores;
   std::vector<pxwBasicXMLTag>* xlScores;
+  std::vector<PXWModInfo>* altModInfo;
 };
 
 typedef struct pxwSearchHitPair{
@@ -537,7 +548,7 @@ private:
   void resetTabs            ();
   void writeAltProtein      (pxwProtein& s);
   void writeModAAMass       (pxwModAA& s);
-  void writeModInfo         (PXWModInfo& s);
+  void writeModInfo         (PXWModInfo& s, bool alt=false);
   void writeLine            (const char* str);
   void writeLinkedPeptide   (PXWSearchHit& s, bool alpha=true);
   void writeSearchHit       (pxwSearchHitPair& s);

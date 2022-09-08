@@ -14,8 +14,8 @@ limitations under the License.
 #ifndef _MZIMLTOOLS_H
 #define _MZIMLTOOLS_H
 
-#define mziVersion "1.2.4"
-#define mziDate "Nov 6 2018"
+#define mziVersion "1.2.6"
+#define mziDate "Mar 21 2022"
 
 #include <iostream>
 #include <cstring>

@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -23,8 +23,8 @@ public:
 
   //Constructors & Destructors
   CPeptideEvidence();
-  CPeptideEvidence(const CPeptideEvidence& p);
-  ~CPeptideEvidence();
+  //CPeptideEvidence(const CPeptideEvidence& p);
+  //~CPeptideEvidence();
 
   //Data members
   std::string dbSequenceRef;
@@ -38,11 +38,11 @@ public:
   char pre;
   int start;
   std::string translationTableRef;
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //operators
-  CPeptideEvidence& operator=(const CPeptideEvidence& p);
+  //CPeptideEvidence& operator=(const CPeptideEvidence& p);
   bool operator==(const CPeptideEvidence& p);
 
   //Functions

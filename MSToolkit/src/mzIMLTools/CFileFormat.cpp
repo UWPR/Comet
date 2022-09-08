@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,13 +13,21 @@ limitations under the License.
 
 #include "CFileFormat.h"
 
+using namespace std;
+
 void CFileFormat::writeOut(FILE* f, int tabs){
-  if (cvParam.accession.compare("null")==0) return;
+  if (cvParam.accession.compare("null")==0) {
+    cerr << "FileFormat::cvParam is required." << endl;
+    exit(69);
+  }
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<FileFormat>\n");
-  if (tabs>-1) cvParam.writeOut(f,tabs+1);
-  else cvParam.writeOut(f);
+
+  int t = tabs;
+  if (t>-1) t++;
+  cvParam.writeOut(f,t);
+
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</FileFormat>\n");
 }

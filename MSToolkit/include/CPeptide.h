@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -24,22 +24,22 @@ class CPeptide{
 public:
 
   //Constructors & Destructors
-  CPeptide();
-  CPeptide(const CPeptide& p);
-  ~CPeptide();
+  //CPeptide();
+  //CPeptide(const CPeptide& p);
+  //~CPeptide();
 
   //Operators
-  CPeptide& operator=(const CPeptide& p);
+  //CPeptide& operator=(const CPeptide& p);
   bool operator==(const CPeptide& p);
 
   //Data members
   std::string id;
   std::string name;
   sPeptideSequence peptideSequence;
-  std::vector<CModification>* modification;
-  std::vector<sSubstitutionModification>* substitutionModification;
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<CModification> modification;
+  std::vector<sSubstitutionModification> substitutionModification;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //Functions
   bool compareModsSoft(CPeptide& p);

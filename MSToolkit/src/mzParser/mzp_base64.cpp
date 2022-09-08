@@ -42,7 +42,7 @@ static void encode_group (unsigned char output[],
 
 }
 
-int b64_encode (char *dest,
+int mzParser::b64_encode (char *dest,
                 const char *src,
                 int len)
 {
@@ -115,7 +115,7 @@ inline int getPosition( char buf )
 
 
 // Returns the total number of bytes decoded
-int b64_decode_mio ( char *dest,  char *src, size_t size )
+int mzParser::b64_decode_mio ( char *dest,  const char *src, size_t size )
 {
 	char *temp = dest;
 	char *end = dest + size;

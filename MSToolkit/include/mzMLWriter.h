@@ -47,18 +47,18 @@ public:
   bool  writeRunInformation();
   bool  writeSpectra(MSObject& o);
   bool  writeSpectra(Spectrum& s);
-  bool  writeChromatogram(BasicChromatogram& c);
+  bool  writeChromatogram(mzParser::BasicChromatogram& c);
   bool  writeIndex();
 
 private:
   bool exportActivation(Spectrum& s, int tabs=0);
   bool exportAnalyzer();
   bool exportBinary(char* str, int len, int tabs=0);
-  bool exportBinaryDataArray(BasicChromatogram& c, bool bRT, int tabs = 0);
+  bool exportBinaryDataArray(mzParser::BasicChromatogram& c, bool bRT, int tabs = 0);
   bool exportBinaryDataArray(Spectrum& s, bool bMZ, int tabs=0);
-  bool exportBinaryDataArrayList(BasicChromatogram& c, int tabs = 0);
+  bool exportBinaryDataArrayList(mzParser::BasicChromatogram& c, int tabs = 0);
   bool exportBinaryDataArrayList(Spectrum& s, int tabs=0);
-  bool exportChromatogram(BasicChromatogram& c, int tabs);
+  bool exportChromatogram(mzParser::BasicChromatogram& c, int tabs);
   bool exportChromatogramList();
   bool exportComponentList();
   bool exportContact();
@@ -71,15 +71,15 @@ private:
   bool exportFileDescription();
   bool exportInstrumentConfiguration();
   bool exportInstrumentConfigurationList();
-  bool exportIsolationWindow(BasicChromatogram& c, bool bPre, int tabs = 0);
+  bool exportIsolationWindow(mzParser::BasicChromatogram& c, bool bPre, int tabs = 0);
   bool exportIsolationWindow(Spectrum& s, int tabs=0);
   bool exportMzML();
   bool exportOffset(std::string idRef, f_off offset, int tabs = 0);
-  bool exportPrecursor(BasicChromatogram& c, int tabs = 0);
+  bool exportPrecursor(mzParser::BasicChromatogram& c, int tabs = 0);
   bool exportPrecursor(Spectrum& s, int tabs=0);
   bool exportPrecursorList(Spectrum& s, int tabs=0);
   bool exportProcessingMethod();
-  bool exportProduct(BasicChromatogram&c, int tabs = 0);
+  bool exportProduct(mzParser::BasicChromatogram&c, int tabs = 0);
   bool exportProductList();
   bool exportReferencableParamGroup();
   bool exportReferenceableParamGroupList();
@@ -93,9 +93,9 @@ private:
   bool exportScanSettingsList();
   bool exportScanWindow(Spectrum& s, int tabs = 0);
   bool exportScanWindowList(Spectrum& s, int tabs = 0);
-  bool exportSelectedIon(BasicChromatogram& c, int tabs = 0);
+  bool exportSelectedIon(mzParser::BasicChromatogram& c, int tabs = 0);
   bool exportSelectedIon(Spectrum& s, int tabs=0);
-  bool exportSelectedIonList(BasicChromatogram& c, int tabs = 0);
+  bool exportSelectedIonList(mzParser::BasicChromatogram& c, int tabs = 0);
   bool exportSelectedIonList(Spectrum& s, int tabs=0);
   bool exportSoftware();
   bool exportSoftwareList();

@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,9 +22,9 @@ class CSpectrumIdentification {
 public:
 
   //Constructors & Destructor
-  CSpectrumIdentification();
-  CSpectrumIdentification(const CSpectrumIdentification& c);
-  ~CSpectrumIdentification();
+  //CSpectrumIdentification();
+  //CSpectrumIdentification(const CSpectrumIdentification& c);
+  //~CSpectrumIdentification();
 
   //Data members
   std::string activityDate;
@@ -32,12 +32,12 @@ public:
   std::string name;
   std::string spectrumIdentificationListRef;
   std::string spectrumIdentificationProtocolRef;
-  std::vector<sInputSpectra>* inputSpectra;
-  std::vector<sSearchDatabaseRef>* searchDatabaseRef;
+  std::vector<sInputSpectra> inputSpectra;
+  std::vector<sSearchDatabaseRef> searchDatabaseRef;
 
   //operators
-  CSpectrumIdentification& operator=(const CSpectrumIdentification& c);
-  bool operator==(const CSpectrumIdentification& c);
+  //CSpectrumIdentification& operator=(const CSpectrumIdentification& c);
+  //bool operator==(const CSpectrumIdentification& c);
 
   //Functions
   bool compare(const CSpectrumIdentification& c);

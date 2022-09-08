@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,16 +21,16 @@ class CThreshold {
 public:
 
   //Constructors & Destructor
-  CThreshold();
-  CThreshold(const CThreshold& c);
-  ~CThreshold();
+  //CThreshold();
+  //CThreshold(const CThreshold& c);
+  //~CThreshold();
 
   //Data members
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //operators
-  CThreshold& operator=(const CThreshold& c);
+  //CThreshold& operator=(const CThreshold& c);
   bool operator==(const CThreshold& c);
   bool operator!=(const CThreshold& c);
 

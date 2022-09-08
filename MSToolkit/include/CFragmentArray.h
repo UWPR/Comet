@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -14,23 +14,18 @@ limitations under the License.
 #ifndef _CFRAGMENTARRAY_H
 #define _CFRAGMENTARRAY_H
 
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
 #include <string>
 #include <vector>
 
 class CFragmentArray {
 public:
 
-  //Constructor
-  CFragmentArray();
-  CFragmentArray(const CFragmentArray& c);
-  ~CFragmentArray();
-
   //Data members
   std::string measureRef;
-  std::vector<float>* values;
-
-  //operators
-  CFragmentArray& operator=(const CFragmentArray& c);
+  std::string values; //really a list of floats
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

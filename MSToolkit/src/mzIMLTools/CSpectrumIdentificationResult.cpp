@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,61 +15,61 @@ limitations under the License.
 
 using namespace std;
 
-CSpectrumIdentificationResult::CSpectrumIdentificationResult(){
-  id = "null";
-  name.clear();
-  spectraDataRef = "null";
-  spectrumID = "null";
-
-  CSpectrumIdentificationItem sii;
-  spectrumIdentificationItem = new vector<CSpectrumIdentificationItem>;
-  spectrumIdentificationItem->push_back(sii);
-
-  cvParam = new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
-}
-
-CSpectrumIdentificationResult::CSpectrumIdentificationResult(const CSpectrumIdentificationResult& s){
-  id = s.id;
-  name = s.name;
-  spectraDataRef = s.spectraDataRef;
-  spectrumID = s.spectrumID;
-
-  size_t i;
-  spectrumIdentificationItem = new vector<CSpectrumIdentificationItem>;
-  cvParam = new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
-  for (i = 0; i<s.spectrumIdentificationItem->size(); i++) spectrumIdentificationItem->push_back(s.spectrumIdentificationItem->at(i));
-  for (i = 0; i<s.cvParam->size(); i++) cvParam->push_back(s.cvParam->at(i));
-  for (i = 0; i<s.userParam->size(); i++) userParam->push_back(s.userParam->at(i));
-}
-
-CSpectrumIdentificationResult::~CSpectrumIdentificationResult(){
-  delete spectrumIdentificationItem;
-  delete cvParam;
-  delete userParam;
-}
-
-CSpectrumIdentificationResult& CSpectrumIdentificationResult::operator=(const CSpectrumIdentificationResult& s){
-  if (this != &s){
-    id = s.id;
-    name = s.name;
-    spectraDataRef = s.spectraDataRef;
-    spectrumID = s.spectrumID;
-
-    size_t i;
-    delete spectrumIdentificationItem;
-    delete cvParam;
-    delete userParam;
-    spectrumIdentificationItem = new vector<CSpectrumIdentificationItem>;
-    cvParam = new vector<sCvParam>;
-    userParam = new vector<sUserParam>;
-    for (i = 0; i<s.spectrumIdentificationItem->size(); i++) spectrumIdentificationItem->push_back(s.spectrumIdentificationItem->at(i));
-    for (i = 0; i<s.cvParam->size(); i++) cvParam->push_back(s.cvParam->at(i));
-    for (i = 0; i<s.userParam->size(); i++) userParam->push_back(s.userParam->at(i));
-  }
-  return *this;
-}
+//CSpectrumIdentificationResult::CSpectrumIdentificationResult(){
+//  id = "null";
+//  name.clear();
+//  spectraDataRef = "null";
+//  spectrumID = "null";
+//
+//  CSpectrumIdentificationItem sii;
+//  spectrumIdentificationItem = new vector<CSpectrumIdentificationItem>;
+//  spectrumIdentificationItem->push_back(sii);
+//
+//  cvParam = new vector<sCvParam>;
+//  userParam = new vector<sUserParam>;
+//}
+//
+//CSpectrumIdentificationResult::CSpectrumIdentificationResult(const CSpectrumIdentificationResult& s){
+//  id = s.id;
+//  name = s.name;
+//  spectraDataRef = s.spectraDataRef;
+//  spectrumID = s.spectrumID;
+//
+//  size_t i;
+//  spectrumIdentificationItem = new vector<CSpectrumIdentificationItem>;
+//  cvParam = new vector<sCvParam>;
+//  userParam = new vector<sUserParam>;
+//  for (i = 0; i<s.spectrumIdentificationItem->size(); i++) spectrumIdentificationItem->push_back(s.spectrumIdentificationItem->at(i));
+//  for (i = 0; i<s.cvParam->size(); i++) cvParam->push_back(s.cvParam->at(i));
+//  for (i = 0; i<s.userParam->size(); i++) userParam->push_back(s.userParam->at(i));
+//}
+//
+//CSpectrumIdentificationResult::~CSpectrumIdentificationResult(){
+//  delete spectrumIdentificationItem;
+//  delete cvParam;
+//  delete userParam;
+//}
+//
+//CSpectrumIdentificationResult& CSpectrumIdentificationResult::operator=(const CSpectrumIdentificationResult& s){
+//  if (this != &s){
+//    id = s.id;
+//    name = s.name;
+//    spectraDataRef = s.spectraDataRef;
+//    spectrumID = s.spectrumID;
+//
+//    size_t i;
+//    delete spectrumIdentificationItem;
+//    delete cvParam;
+//    delete userParam;
+//    spectrumIdentificationItem = new vector<CSpectrumIdentificationItem>;
+//    cvParam = new vector<sCvParam>;
+//    userParam = new vector<sUserParam>;
+//    for (i = 0; i<s.spectrumIdentificationItem->size(); i++) spectrumIdentificationItem->push_back(s.spectrumIdentificationItem->at(i));
+//    for (i = 0; i<s.cvParam->size(); i++) cvParam->push_back(s.cvParam->at(i));
+//    for (i = 0; i<s.userParam->size(); i++) userParam->push_back(s.userParam->at(i));
+//  }
+//  return *this;
+//}
 
 void CSpectrumIdentificationResult::addCvParam(string id, int value){
   char str[32];
@@ -102,53 +102,70 @@ void CSpectrumIdentificationResult::addCvParam(string id, string value){
     sUserParam u;
     u.name = id;
     u.value = value;
-    userParam->push_back(u);
+    userParam.push_back(u);
   } else {
     cv.value = value;
-    cvParam->push_back(cv);
+    cvParam.push_back(cv);
   }
 }
 
 //iterate through sequences to see if we have it already
 //if so, return the existing id, else add this new one
-CSpectrumIdentificationItem* CSpectrumIdentificationResult::addSpectrumIdentificationItem(int z, double expMZ, int rnk, vector<sPeptideEvidenceRef>& peRef, bool pass, string pRef) {
-  //get rid of any null placeholders
-  if (spectrumIdentificationItem->at(0).id.compare("null") == 0) spectrumIdentificationItem->clear();
-
-  //add new result
-  CSpectrumIdentificationItem sii;
-  char dbid[32];
-  sprintf(dbid, "%s_%zu", &id[0], spectrumIdentificationItem->size());
-  sii.id = dbid;
-  sii.chargeState=z;
-  sii.experimentalMassToCharge=expMZ;
-  sii.passThreshold=pass;
-  sii.rank=rnk;
-  sii.peptideRef=pRef;
-  sii.peptideEvidenceRef->clear();
-  for (size_t i = 0; i<peRef.size(); i++) sii.peptideEvidenceRef->push_back(peRef[i]);
-
-  //TODO: add optional information
-
-  spectrumIdentificationItem->push_back(sii);
-  return &spectrumIdentificationItem->at(spectrumIdentificationItem->size()-1);
-}
-
-CSpectrumIdentificationItem* CSpectrumIdentificationResult::addSpectrumIdentificationItem(CSpectrumIdentificationItem& s) {
-  //get rid of any null placeholders
-  if (spectrumIdentificationItem->at(0).id.compare("null") == 0) spectrumIdentificationItem->clear();
-
-  //add new result
-  if (s.id.compare("null") == 0){
-    char dbid[32];
-    sprintf(dbid, "%s_%zu", &id[0], spectrumIdentificationItem->size());
-    s.id = dbid;
-  }
-  spectrumIdentificationItem->push_back(s);
-  return &spectrumIdentificationItem->back();
-}
+//CSpectrumIdentificationItem* CSpectrumIdentificationResult::addSpectrumIdentificationItem(int z, double expMZ, int rnk, vector<sPeptideEvidenceRef>& peRef, bool pass, string pRef) {
+//  //get rid of any null placeholders
+//  if (spectrumIdentificationItem->at(0).id.compare("null") == 0) spectrumIdentificationItem->clear();
+//
+//  //add new result
+//  CSpectrumIdentificationItem sii;
+//  char dbid[32];
+//  sprintf(dbid, "%s_%zu", &id[0], spectrumIdentificationItem->size());
+//  sii.id = dbid;
+//  sii.chargeState=z;
+//  sii.experimentalMassToCharge=expMZ;
+//  sii.passThreshold=pass;
+//  sii.rank=rnk;
+//  sii.peptideRef=pRef;
+//  sii.peptideEvidenceRef.clear();
+//  for (size_t i = 0; i<peRef.size(); i++) sii.peptideEvidenceRef.push_back(peRef[i]);
+//
+//  //TODO: add optional information
+//
+//  spectrumIdentificationItem->push_back(sii);
+//  return &spectrumIdentificationItem->at(spectrumIdentificationItem->size()-1);
+//}
+//
+//CSpectrumIdentificationItem* CSpectrumIdentificationResult::addSpectrumIdentificationItem(CSpectrumIdentificationItem& s) {
+//  //get rid of any null placeholders
+//  if (spectrumIdentificationItem->at(0).id.compare("null") == 0) spectrumIdentificationItem->clear();
+//
+//  //add new result
+//  if (s.id.compare("null") == 0){
+//    char dbid[32];
+//    sprintf(dbid, "%s_%zu", &id[0], spectrumIdentificationItem->size());
+//    s.id = dbid;
+//  }
+//  spectrumIdentificationItem->push_back(s);
+//  return &spectrumIdentificationItem->back();
+//}
 
 void CSpectrumIdentificationResult::writeOut(FILE* f, int tabs){
+  if(id.empty()){
+    cerr << "SpectrumIdentificationResult::id is required." << endl;
+    exit(69);
+  }
+  if (spectraDataRef.empty()){
+    cerr << "SpectrumIdentificationResult::spectraData_ref is required." << endl;
+    exit(69);
+  }
+  if (spectrumID.empty()){
+    cerr << "SpectrumIdentificationResult::spectrumID is required." << endl;
+    exit(69);
+  }
+  if (spectrumIdentificationItem.empty()){
+    cerr << "SpectrumIdentificationResult::SpectrumIdentificationItem is required." << endl;
+    exit(69);
+  }
+
   int i;
   size_t j;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
@@ -156,15 +173,12 @@ void CSpectrumIdentificationResult::writeOut(FILE* f, int tabs){
   if (name.size()>0) fprintf(f, " name=\"%s\"", &name[0]);
   fprintf(f, ">\n");
 
-  if (tabs > -1){
-    for (j = 0; j<spectrumIdentificationItem->size(); j++) spectrumIdentificationItem->at(j).writeOut(f,tabs+1);
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f, tabs + 1);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f, tabs + 1);
-  } else {
-    for (j = 0; j<spectrumIdentificationItem->size(); j++) spectrumIdentificationItem->at(j).writeOut(f);
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f);
-  }
+  int t=tabs;
+  if(t>-1) t++;
+
+  for (j = 0; j<spectrumIdentificationItem.size(); j++) spectrumIdentificationItem[j].writeOut(f,t);
+  for (j = 0; j<cvParam.size(); j++) cvParam[j].writeOut(f, t);
+  for (j = 0; j<userParam.size(); j++) userParam[j].writeOut(f, t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</SpectrumIdentificationResult>\n");

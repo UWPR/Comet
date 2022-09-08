@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,28 +15,17 @@ limitations under the License.
 
 using namespace std;
 
-CFragmentArray::CFragmentArray(){
-  measureRef = "null";
-  values = new vector<float>;
-}
-
-CFragmentArray::CFragmentArray(const CFragmentArray& c){
-  measureRef=c.measureRef;
-  values = new vector<float>;
-  for (size_t i = 0; i<c.values->size(); i++) values->push_back(c.values->at(i));
-}
-
-CFragmentArray::~CFragmentArray(){
-  delete values;
-}
-
-CFragmentArray& CFragmentArray::operator=(const CFragmentArray& c){
-  if (this != &c){
-    measureRef = c.measureRef;
-    delete values;
-    values = new vector<float>;
-    for (size_t i = 0; i<c.values->size(); i++) values->push_back(c.values->at(i));
+void CFragmentArray::writeOut(FILE* f, int tabs){
+  if (measureRef.empty()){
+    cerr << "FragmentArray::measure_ref required." << endl;
+    exit(69);
   }
-  return *this;
-}
+  if (values.empty()){
+    cerr << "FragmentArray::values required." << endl;
+    exit(69);
+  }
 
+  for (int i = 0; i<tabs; i++) fprintf(f, " ");
+  fprintf(f, "<FragmentArray measure_ref=\"%s\" values=\"%s\" />\n", measureRef.c_str(),values.c_str());
+
+}

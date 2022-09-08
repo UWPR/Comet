@@ -21,9 +21,6 @@ limitations under the License.
 class CContactRole {
 public:
 
-  //Constructors & Destructor
-  CContactRole();
-
   //Data members
   std::string contactRef;
   CRole role;

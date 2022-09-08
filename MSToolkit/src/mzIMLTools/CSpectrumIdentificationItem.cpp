@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -20,77 +20,63 @@ CSpectrumIdentificationItem::CSpectrumIdentificationItem(){
   calculatedPI=0;
   chargeState=0;
   experimentalMassToCharge=0;
-  id = "null";
-  massTableRef.clear();
-  name.clear();
   passThreshold=true;
-  peptideRef.clear();
   rank=0;
-  sampleRef.clear();
-
-  sPeptideEvidenceRef per;
-  peptideEvidenceRef=new vector<sPeptideEvidenceRef>;
-
-  sCvParam cv;
-  cvParam=new vector<sCvParam>;
-
-  sUserParam up;
-  userParam = new vector<sUserParam>;
 }
 
-CSpectrumIdentificationItem::CSpectrumIdentificationItem(const CSpectrumIdentificationItem& s){
-  calculatedMassToCharge = s.calculatedMassToCharge;
-  calculatedPI = s.calculatedPI;
-  chargeState = s.chargeState;
-  experimentalMassToCharge = s.experimentalMassToCharge;
-  id = s.id;
-  massTableRef = s.massTableRef;
-  name = s.name;
-  passThreshold = s.passThreshold;
-  peptideRef = s.peptideRef;
-  rank = s.rank;
-  sampleRef = s.sampleRef;
-  fragmentation = s.fragmentation;
-
-  peptideEvidenceRef = new vector<sPeptideEvidenceRef>(*s.peptideEvidenceRef);
-  cvParam = new vector<sCvParam>(*s.cvParam);
-  userParam = new vector<sUserParam>(*s.userParam);
-}
-
-CSpectrumIdentificationItem::~CSpectrumIdentificationItem(){
-  delete peptideEvidenceRef;
-  delete cvParam;
-  delete userParam;
-}
-
-CSpectrumIdentificationItem& CSpectrumIdentificationItem::operator=(const CSpectrumIdentificationItem& s){
-  if (this != &s){
-    calculatedMassToCharge = s.calculatedMassToCharge;
-    calculatedPI = s.calculatedPI;
-    chargeState = s.chargeState;
-    experimentalMassToCharge = s.experimentalMassToCharge;
-    id = s.id;
-    massTableRef = s.massTableRef;
-    name = s.name;
-    passThreshold = s.passThreshold;
-    peptideRef = s.peptideRef;
-    rank = s.rank;
-    sampleRef = s.sampleRef;
-    fragmentation = s.fragmentation;
-
-    delete peptideEvidenceRef;
-    delete cvParam;
-    delete userParam;
-    peptideEvidenceRef = new vector<sPeptideEvidenceRef>(*s.peptideEvidenceRef);
-    cvParam = new vector<sCvParam>(*s.cvParam);
-    userParam = new vector<sUserParam>(*s.userParam);
-  }
-  return *this;
-}
+//CSpectrumIdentificationItem::CSpectrumIdentificationItem(const CSpectrumIdentificationItem& s){
+//  calculatedMassToCharge = s.calculatedMassToCharge;
+//  calculatedPI = s.calculatedPI;
+//  chargeState = s.chargeState;
+//  experimentalMassToCharge = s.experimentalMassToCharge;
+//  id = s.id;
+//  massTableRef = s.massTableRef;
+//  name = s.name;
+//  passThreshold = s.passThreshold;
+//  peptideRef = s.peptideRef;
+//  rank = s.rank;
+//  sampleRef = s.sampleRef;
+//  fragmentation = s.fragmentation;
+//
+//  peptideEvidenceRef = new vector<sPeptideEvidenceRef>(*s.peptideEvidenceRef);
+//  cvParam = new vector<sCvParam>(*s.cvParam);
+//  userParam = new vector<sUserParam>(*s.userParam);
+//}
+//
+//CSpectrumIdentificationItem::~CSpectrumIdentificationItem(){
+//  delete peptideEvidenceRef;
+//  delete cvParam;
+//  delete userParam;
+//}
+//
+//CSpectrumIdentificationItem& CSpectrumIdentificationItem::operator=(const CSpectrumIdentificationItem& s){
+//  if (this != &s){
+//    calculatedMassToCharge = s.calculatedMassToCharge;
+//    calculatedPI = s.calculatedPI;
+//    chargeState = s.chargeState;
+//    experimentalMassToCharge = s.experimentalMassToCharge;
+//    id = s.id;
+//    massTableRef = s.massTableRef;
+//    name = s.name;
+//    passThreshold = s.passThreshold;
+//    peptideRef = s.peptideRef;
+//    rank = s.rank;
+//    sampleRef = s.sampleRef;
+//    fragmentation = s.fragmentation;
+//
+//    delete peptideEvidenceRef;
+//    delete cvParam;
+//    delete userParam;
+//    peptideEvidenceRef = new vector<sPeptideEvidenceRef>(*s.peptideEvidenceRef);
+//    cvParam = new vector<sCvParam>(*s.cvParam);
+//    userParam = new vector<sUserParam>(*s.userParam);
+//  }
+//  return *this;
+//}
 
 void CSpectrumIdentificationItem::addCvParam(sCvParam& s){
   //if (cvParam->at(0).accession.compare("null") == 0) cvParam->clear();
-  cvParam->push_back(s);
+  cvParam.push_back(s);
 }
 
 void CSpectrumIdentificationItem::addCvParam(string accession, string cvRef, string name, string unitAccession, string unitCvRef, string unitName, string value){
@@ -107,7 +93,7 @@ void CSpectrumIdentificationItem::addCvParam(string accession, string cvRef, str
 
 void CSpectrumIdentificationItem::addPeptideEvidenceRef(sPeptideEvidenceRef& s){
   //if (peptideEvidenceRef->at(0).peptideEvidenceRef.size() == 0) peptideEvidenceRef->clear();
-  peptideEvidenceRef->push_back(s);
+  peptideEvidenceRef.push_back(s);
 }
 
 void CSpectrumIdentificationItem::addPSMValue(string alg, string scoreID, int value,string prefix){
@@ -165,15 +151,32 @@ void CSpectrumIdentificationItem::addPSMValue(string alg, string scoreID, string
     u.name+=scoreID;
     u.value=value;
     //if(userParam->at(0).name.compare("null")==0) userParam->clear();
-    userParam->push_back(u);
+    userParam.push_back(u);
   } else {
     cv.value=value;
     //if (cvParam->at(0).name.compare("null") == 0) cvParam->clear();
-    cvParam->push_back(cv);
+    cvParam.push_back(cv);
   }
 }
 
 void CSpectrumIdentificationItem::writeOut(FILE* f, int tabs){
+  if(id.empty()) {
+    cerr << "SpectrumIdentificationItem::id required" << endl;
+    exit(69);
+  }
+  if (peptideRef.empty()) {
+    cerr << "SpectrumIdentificationItem::peptide_ref required" << endl;
+    exit(69);
+  }
+  if (experimentalMassToCharge==0) {
+    cerr << "SpectrumIdentificationItem::experimentalMassToCharge required" << endl;
+    exit(69);
+  }
+  if (chargeState == 0) {
+    cerr << "SpectrumIdentificationItem::chargeState required" << endl;
+    exit(69);
+  }
+
   int i;
   size_t j;
 
@@ -185,21 +188,16 @@ void CSpectrumIdentificationItem::writeOut(FILE* f, int tabs){
   if (calculatedPI>0) fprintf(f, " calculatedPI=\"%.4f\"", calculatedPI);
   if (massTableRef.size()>0) fprintf(f, " massTable_ref=\"%s\"", &massTableRef[0]);
   if (name.size()>0) fprintf(f, " name=\"%s\"", &name[0]);
-  if (peptideRef.size()>0) fprintf(f, " peptide_ref=\"%s\"", &peptideRef[0]);
+  fprintf(f, " peptide_ref=\"%s\"", peptideRef.c_str());
   if (sampleRef.size()>0) fprintf(f, " sample_ref=\"%s\"", &sampleRef[0]);
   fprintf(f, ">\n");
 
-  if (tabs > -1){
-    for (j = 0; j<peptideEvidenceRef->size(); j++) peptideEvidenceRef->at(j).writeOut(f, tabs + 1);
-    fragmentation.writeOut(f,tabs+1);
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f, tabs + 1);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f, tabs + 1);
-  } else {
-    for (j = 0; j<peptideEvidenceRef->size(); j++) peptideEvidenceRef->at(j).writeOut(f);
-    fragmentation.writeOut(f);
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f);
-  }
+  int t = tabs;
+  if (t>-1) t++;
+  for (j = 0; j<peptideEvidenceRef.size(); j++) peptideEvidenceRef[j].writeOut(f, t);
+  for(j=0;j<fragmentation.size();j++) fragmentation[j].writeOut(f,t);
+  for (j = 0; j<cvParam.size(); j++) cvParam.at(j).writeOut(f, t);
+  for (j = 0; j<userParam.size(); j++) userParam.at(j).writeOut(f, t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</SpectrumIdentificationItem>\n");

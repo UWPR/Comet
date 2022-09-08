@@ -9,6 +9,7 @@ Version 1.1, March 14, 2012.
 */
 #include "mzParser.h"
 using namespace std;
+using namespace mzParser;
 
 Chromatogram::Chromatogram(){
   bc = NULL;
@@ -62,6 +63,7 @@ ChromatogramPtr ChromatogramList::chromatogram(int index, bool binaryData) {
   }
   return NULL;
 }
+
 bool ChromatogramList::get() {
   if(mzML!=NULL) vChromatIndex = mzML->getChromatIndex();
   #ifdef MZP_MZ5
@@ -103,6 +105,14 @@ PwizRun::~PwizRun(){
 #endif
   bc=NULL;
   delete chromatogramListPtr;
+}
+
+bool PwizRun::get(){
+  if (mzML != NULL) return chromatogramListPtr->get();
+#ifdef MZP_MZ5
+  else if (mz5 != NULL) vMz5Index = mz5->getChromatIndex();
+#endif
+  else return false;
 }
 
 void PwizRun::set(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b){
@@ -176,4 +186,61 @@ MSDataFile::~MSDataFile(){
 #endif
   delete bs;
   delete bc;
+}
+
+SpectrumInfo::SpectrumInfo(){
+}
+
+void SpectrumInfo::update(const Spectrum& spectrum, bool getBinaryData){
+
+  msLevel = spectrum.bs->getMSLevel();
+  retentionTime = spectrum.bs->getRTime(false); // seconds
+
+  //slow and always data
+  MZIntensityPair p;
+  data.clear();
+  for(size_t i=0;i<spectrum.bs->size();i++){
+    p.mz=spectrum.bs->operator[](i).mz;
+    p.intensity=spectrum.bs->operator[](i).intensity;
+    data.push_back(p);
+  }
+}
+
+bool SpectrumList::get() {
+  if (mzML != NULL) vSpecIndex = mzML->getSpecIndex();
+#ifdef MZP_MZ5
+  else if (mz5 != NULL) vMz5Index = mz5->getSpecIndex();
+#endif
+  else return false;
+  return true;
+}
+
+size_t SpectrumList::size() {
+  if (vSpecIndex == NULL) {
+    cerr << "Get spectrum list first." << endl;
+    return 0;
+  }
+  if (mzML != NULL) return vSpecIndex->size();
+#ifdef MZP_MZ5
+  else if (mz5 != NULL) return vMz5Index->size();
+#endif
+  else return 0;
+}
+
+SpectrumPtr SpectrumList::spectrum(int index, bool binaryData) {
+  char str[128];
+  if (mzML != NULL) {
+    mzML->readSpectrum(index);
+    spec->bs->getIDString(str);
+    spec->id = str;
+    return spec;
+#ifdef MZP_MZ5
+  } else if (mz5 != NULL) {
+    mz5->readSpectrum(index);
+    spec->bc->getIDString(str);
+    spec->id = str;
+    return spec;
+#endif
+  }
+  return NULL;
 }

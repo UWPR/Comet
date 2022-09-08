@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -23,28 +23,28 @@ class CSpectrumIdentificationResult {
 public:
 
   //Constructors & Destructor
-  CSpectrumIdentificationResult();
-  CSpectrumIdentificationResult(const CSpectrumIdentificationResult& s);
-  ~CSpectrumIdentificationResult();
+  //CSpectrumIdentificationResult();
+  //CSpectrumIdentificationResult(const CSpectrumIdentificationResult& s);
+  //~CSpectrumIdentificationResult();
 
   //Data members
   std::string id;
   std::string name;
   std::string spectraDataRef;
   std::string spectrumID;
-  std::vector<CSpectrumIdentificationItem>* spectrumIdentificationItem;
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<CSpectrumIdentificationItem> spectrumIdentificationItem;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //operators
-  CSpectrumIdentificationResult& operator=(const CSpectrumIdentificationResult& s);
+  //CSpectrumIdentificationResult& operator=(const CSpectrumIdentificationResult& s);
 
   //Functions
   void addCvParam(std::string id, int value);
   void addCvParam(std::string id, double value);
   void addCvParam(std::string id, std::string value);
-  CSpectrumIdentificationItem* addSpectrumIdentificationItem(int z, double expMZ, int rnk, std::vector<sPeptideEvidenceRef>& peRef, bool pass = true, std::string pRef = "");
-  CSpectrumIdentificationItem* addSpectrumIdentificationItem(CSpectrumIdentificationItem& s);
+  //CSpectrumIdentificationItem* addSpectrumIdentificationItem(int z, double expMZ, int rnk, std::vector<sPeptideEvidenceRef>& peRef, bool pass = true, std::string pRef = "");
+  //CSpectrumIdentificationItem* addSpectrumIdentificationItem(CSpectrumIdentificationItem& s);
   void writeOut(FILE* f, int tabs = -1);
 
 private:

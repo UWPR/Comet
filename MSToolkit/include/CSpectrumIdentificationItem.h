@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -24,8 +24,8 @@ public:
 
   //Constructors & Destructor
   CSpectrumIdentificationItem();
-  CSpectrumIdentificationItem(const CSpectrumIdentificationItem& s);
-  ~CSpectrumIdentificationItem();
+  //CSpectrumIdentificationItem(const CSpectrumIdentificationItem& s);
+  //~CSpectrumIdentificationItem();
 
   //Data members
   double calculatedMassToCharge;
@@ -39,13 +39,13 @@ public:
   std::string peptideRef;
   int rank;
   std::string sampleRef;
-  std::vector<sPeptideEvidenceRef>* peptideEvidenceRef;
-  CFragmentation fragmentation;
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<sPeptideEvidenceRef> peptideEvidenceRef;
+  std::vector<CFragmentation> fragmentation;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //operators
-  CSpectrumIdentificationItem& operator=(const CSpectrumIdentificationItem& s);
+  //CSpectrumIdentificationItem& operator=(const CSpectrumIdentificationItem& s);
 
   //Functions
   void addCvParam(sCvParam& s);

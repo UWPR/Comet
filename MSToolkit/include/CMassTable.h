@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,6 +15,7 @@ limitations under the License.
 #define _CMASSTABLE_H
 
 #include "mzIMLStructs.h"
+#include "CAmbiguousResidue.h"
 #include "CResidue.h"
 #include <string>
 #include <vector>
@@ -23,21 +24,21 @@ class CMassTable {
 public:
 
   //Constructors & Destructor
-  CMassTable();
-  CMassTable(const CMassTable& m);
-  ~CMassTable();
+  //CMassTable();
+  //CMassTable(const CMassTable& m);
+  //~CMassTable();
 
   //Data members
-  //std::vector<CAmbiguousResidue>* ambiguousResidue;
-  std::vector<sCvParam>* cvParam;
+  std::vector<CAmbiguousResidue> ambiguousResidue;
+  std::vector<sCvParam> cvParam;
   std::string id;
-  std::vector<int>* msLevel;
+  std::string msLevel;
   std::string name;
-  std::vector<CResidue>* residue;
-  std::vector<sUserParam>* userParam;
+  std::vector<CResidue> residue;
+  std::vector<sUserParam> userParam;
 
   //operators
-  CMassTable& operator=(const CMassTable& c);
+  //CMassTable& operator=(const CMassTable& c);
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

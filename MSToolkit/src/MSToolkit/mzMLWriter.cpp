@@ -161,7 +161,7 @@ void MzMLWriter::setZlib(bool b){
   bZlib=b;
 }
 
-bool MzMLWriter::writeChromatogram(BasicChromatogram& c){
+bool MzMLWriter::writeChromatogram(mzParser::BasicChromatogram& c){
   if (!bFileOpen){
     cout << "Error: writeChromatogram() - cannot write chromatogram, mzML file not open." << endl;
     return false;
@@ -256,8 +256,12 @@ bool MzMLWriter::writeSpectra(Spectrum& s){
 
 bool MzMLWriter::writeSpectra(MSObject& o){
   for (int i = 0; i < o.size(); i++){
-    writeSpectra(o.at(i));
+    bool result = writeSpectra(o.at(i));
+    if(!result) {
+      return result;
+    }
   }
+  return true;
 }
 
 bool MzMLWriter::exportBinary(char* str, int len, int tabs){
@@ -273,7 +277,7 @@ bool MzMLWriter::exportBinary(char* str, int len, int tabs){
   return true;
 }
 
-bool MzMLWriter::exportBinaryDataArray(BasicChromatogram& c, bool bRT, int tabs){
+bool MzMLWriter::exportBinaryDataArray(mzParser::BasicChromatogram& c, bool bRT, int tabs){
 
   int i;
   string tbs = "";
@@ -344,13 +348,13 @@ bool MzMLWriter::exportBinaryDataArray(BasicChromatogram& c, bool bRT, int tabs)
 
   arr64 = new char[sz64];
   if (bNumpress){
-    if (bZlib) i = b64_encode(arr64, (char*)zCompr, zLen);
-    else i = b64_encode(arr64, (char*)numpr, (int)numprLen);
+    if (bZlib) i = mzParser::b64_encode(arr64, (char*)zCompr, zLen);
+    else i = mzParser::b64_encode(arr64, (char*)numpr, (int)numprLen);
   } else {
-    if (bZlib) i = b64_encode(arr64, (char*)zCompr, zLen);
+    if (bZlib) i = mzParser::b64_encode(arr64, (char*)zCompr, zLen);
     else {
-      if (bRT) i = b64_encode(arr64, (char*)&d[0], (int)(d.size()*sizeof(double)));
-      else i = b64_encode(arr64, (char*)&f[0], (int)(f.size()*sizeof(float)));
+      if (bRT) i = mzParser::b64_encode(arr64, (char*)&d[0], (int)(d.size()*sizeof(double)));
+      else i = mzParser::b64_encode(arr64, (char*)&f[0], (int)(f.size()*sizeof(float)));
     }
   }
 
@@ -453,13 +457,13 @@ bool MzMLWriter::exportBinaryDataArray(Spectrum& s, bool bMZ, int tabs){
 
   arr64=new char[sz64];
   if(bNumpress){
-    if(bZlib) i=b64_encode(arr64,(char*)zCompr,zLen);
-    else i=b64_encode(arr64,(char*)numpr,(int)numprLen);
+    if(bZlib) i= mzParser::b64_encode(arr64,(char*)zCompr,zLen);
+    else i= mzParser::b64_encode(arr64,(char*)numpr,(int)numprLen);
   } else {
-    if(bZlib) i=b64_encode(arr64,(char*)zCompr,zLen);
+    if(bZlib) i= mzParser::b64_encode(arr64,(char*)zCompr,zLen);
     else {
-      if(bMZ) i=b64_encode(arr64,(char*)&d[0],(int)(d.size()*sizeof(double)));
-      else i=b64_encode(arr64,(char*)&f[0],(int)(f.size()*sizeof(float)));
+      if(bMZ) i= mzParser::b64_encode(arr64,(char*)&d[0],(int)(d.size()*sizeof(double)));
+      else i= mzParser::b64_encode(arr64,(char*)&f[0],(int)(f.size()*sizeof(float)));
     }
   }
 
@@ -491,7 +495,7 @@ bool MzMLWriter::exportBinaryDataArray(Spectrum& s, bool bMZ, int tabs){
   return true;
 }
 
-bool MzMLWriter::exportBinaryDataArrayList(BasicChromatogram& c, int tabs){
+bool MzMLWriter::exportBinaryDataArrayList(mzParser::BasicChromatogram& c, int tabs){
   string tbs = "";
   if (bTabs) {
     tbs.append(tabs, ' ');
@@ -547,7 +551,7 @@ bool MzMLWriter::exportActivation(Spectrum& s, int tabs){
   return true;
 }
 
-bool MzMLWriter::exportChromatogram(BasicChromatogram& c, int tabs){
+bool MzMLWriter::exportChromatogram(mzParser::BasicChromatogram& c, int tabs){
   char tmp[128];
   string value;
   string tbs = "";
@@ -589,7 +593,7 @@ bool MzMLWriter::exportCvParam(string ac, string ref, string name, string unitAc
   return true;
 }
 
-bool MzMLWriter::exportIsolationWindow(BasicChromatogram& c, bool bPre, int tabs){
+bool MzMLWriter::exportIsolationWindow(mzParser::BasicChromatogram& c, bool bPre, int tabs){
   char tmp[128];
   string value;
   string tbs = "";
@@ -647,7 +651,7 @@ bool MzMLWriter::exportOffset(string idRef, f_off offset, int tabs){
   return true;
 }
 
-bool MzMLWriter::exportPrecursor(BasicChromatogram& c, int tabs){
+bool MzMLWriter::exportPrecursor(mzParser::BasicChromatogram& c, int tabs){
   string tbs = "";
   if (bTabs) {
     tbs.append(tabs, ' ');
@@ -700,7 +704,7 @@ bool MzMLWriter::exportPrecursorList(Spectrum& s, int tabs){
   return true;
 }
 
-bool MzMLWriter::exportProduct(BasicChromatogram& c, int tabs){
+bool MzMLWriter::exportProduct(mzParser::BasicChromatogram& c, int tabs){
   if (bTabs) exportTabs(tabs);
   fprintf(fptr, "<product>\n");
   if (!exportIsolationWindow(c, false, tabs + 1)) return false;
@@ -774,7 +778,7 @@ bool MzMLWriter::exportScanWindowList(Spectrum& s, int tabs){
   return true;
 }
 
-bool MzMLWriter::exportSelectedIon(BasicChromatogram& c, int tabs){
+bool MzMLWriter::exportSelectedIon(mzParser::BasicChromatogram& c, int tabs){
   char tmp[128];
   string value;
   
@@ -823,7 +827,7 @@ bool MzMLWriter::exportSelectedIon(Spectrum& s, int tabs){
   return true;
 }
 
-bool MzMLWriter::exportSelectedIonList(BasicChromatogram& c, int tabs){
+bool MzMLWriter::exportSelectedIonList(mzParser::BasicChromatogram& c, int tabs){
   if (bTabs) exportTabs(tabs);
   fprintf(fptr, "<selectedIonList count=\"1\">\n");
   if (!exportSelectedIon(c, tabs + 1)) return false;

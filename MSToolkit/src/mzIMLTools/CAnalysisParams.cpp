@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,57 +15,59 @@ limitations under the License.
 
 using namespace std;
 
-CAnalysisParams::CAnalysisParams(){
-  cvParam=new vector<sCvParam>;
-  userParam=new vector<sUserParam>;
-
-  sCvParam cv;
-  sUserParam u;
-
-  cvParam->push_back(cv);
-  userParam->push_back(u);
-}
-CAnalysisParams::CAnalysisParams(const CAnalysisParams& c){
-  size_t i;
-  cvParam = new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
-  for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-  for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
-}
-
-CAnalysisParams::~CAnalysisParams(){
-  delete cvParam;
-  delete userParam;
-}
-
-//operators
-CAnalysisParams& CAnalysisParams::operator=(const CAnalysisParams& c){
-  if (this != &c){
-    size_t i;
-    delete cvParam;
-    delete userParam;
-    cvParam = new vector<sCvParam>;
-    userParam = new vector<sUserParam>;
-    for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-    for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
-  }
-  return *this;
-}
+//CAnalysisParams::CAnalysisParams(){
+//  cvParam=new vector<sCvParam>;
+//  userParam=new vector<sUserParam>;
+//
+//  sCvParam cv;
+//  sUserParam u;
+//
+//  cvParam->push_back(cv);
+//  userParam->push_back(u);
+//}
+//CAnalysisParams::CAnalysisParams(const CAnalysisParams& c){
+//  size_t i;
+//  cvParam = new vector<sCvParam>;
+//  userParam = new vector<sUserParam>;
+//  for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//  for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
+//}
+//
+//CAnalysisParams::~CAnalysisParams(){
+//  delete cvParam;
+//  delete userParam;
+//}
+//
+////operators
+//CAnalysisParams& CAnalysisParams::operator=(const CAnalysisParams& c){
+//  if (this != &c){
+//    size_t i;
+//    delete cvParam;
+//    delete userParam;
+//    cvParam = new vector<sCvParam>;
+//    userParam = new vector<sUserParam>;
+//    for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//    for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
+//  }
+//  return *this;
+//}
 
 void CAnalysisParams::writeOut(FILE* f, int tabs){
+  if (cvParam.empty() && userParam.empty()){
+    cerr << "AnalysisParams::cvParam or AnalysisParams::userParam required." << endl;
+    exit(69);
+  }
+  
   int i;
-  size_t j;
-
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<AnalysisParams>\n");
 
-  if (tabs > -1){
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f, tabs + 1);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f, tabs + 1);
-  } else {
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f);
-  }
+  int t = tabs;
+  if (t>-1) t++;
+
+  size_t j;
+  for (j = 0; j<cvParam.size(); j++) cvParam[j].writeOut(f, t);
+  for (j = 0; j<userParam.size(); j++) userParam[j].writeOut(f, t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</AnalysisParams>\n");

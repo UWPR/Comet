@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -25,8 +25,8 @@ public:
 
   //Constructors & Destructor
   CSearchDatabase();
-  CSearchDatabase(const CSearchDatabase& c);
-  ~CSearchDatabase();
+  //CSearchDatabase(const CSearchDatabase& c);
+  //~CSearchDatabase();
 
   //Data members
   std::string id;
@@ -36,13 +36,13 @@ public:
   int numResidues;
   std::string releaseDate;
   std::string version;
-  sExternalFormatDocumentation externalFormatDocumentation;
+  std::vector<sExternalFormatDocumentation> externalFormatDocumentation;
   CFileFormat fileFormat;
   CDatabaseName databaseName;
-  std::vector<sCvParam>* cvParam;
+  std::vector<sCvParam> cvParam;
 
   //operators
-  CSearchDatabase& operator=(const CSearchDatabase& c);
+  //CSearchDatabase& operator=(const CSearchDatabase& c);
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

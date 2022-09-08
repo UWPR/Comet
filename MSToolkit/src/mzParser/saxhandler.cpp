@@ -130,6 +130,7 @@ The End
 
 #include "mzParser.h"
 using namespace std;
+using namespace mzParser;
 
 // Static callback handlers
 static void mzp_startElementCallback(void *data, const XML_Char *el, const XML_Char **attr)

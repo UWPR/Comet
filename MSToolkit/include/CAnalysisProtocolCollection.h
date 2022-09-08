@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,16 +21,16 @@ limitations under the License.
 class CAnalysisProtocolCollection{
 public:
   //Constructors & Destructor
-  CAnalysisProtocolCollection();
-  ~CAnalysisProtocolCollection();
+  //CAnalysisProtocolCollection();
+  //~CAnalysisProtocolCollection();
 
   //Data members
-  std::vector<CSpectrumIdentificationProtocol>* spectrumIdentificationProtocol;
-  CProteinDetectionProtocol proteinDetectionProtocol;
+  std::vector<CSpectrumIdentificationProtocol> spectrumIdentificationProtocol;
+  std::vector<CProteinDetectionProtocol> proteinDetectionProtocol;
 
   //Functions
-  std::string addProteinDetectionProtocol(std::string analysisSoftwareRef);
-  std::string addSpectrumIdentificationProtocol(std::string analysisSoftwareRef);
+  CProteinDetectionProtocol* addProteinDetectionProtocol(std::string analysisSoftwareRef);
+  CSpectrumIdentificationProtocol* addSpectrumIdentificationProtocol(std::string analysisSoftwareRef);
   std::string addSpectrumIdentificationProtocol(CSpectrumIdentificationProtocol& c);
   void writeOut(FILE* f, int tabs = -1);
 

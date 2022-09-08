@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -25,24 +25,24 @@ public:
 
   //Constructors & Destructor
   CSpectrumIdentificationList();
-  CSpectrumIdentificationList(const CSpectrumIdentificationList& s);
-  ~CSpectrumIdentificationList();
+  //CSpectrumIdentificationList(const CSpectrumIdentificationList& s);
+  //~CSpectrumIdentificationList();
 
   //Data members
   std::string id;
   std::string name;
   int numSequencesSearched;
-  CFragmentationTable fragmentationTable;
-  std::vector<CSpectrumIdentificationResult>* spectrumIdentificationResult;
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<CFragmentationTable> fragmentationTable;
+  std::vector<CSpectrumIdentificationResult> spectrumIdentificationResult;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //operators
-  CSpectrumIdentificationList& operator=(const CSpectrumIdentificationList& s);
+  //CSpectrumIdentificationList& operator=(const CSpectrumIdentificationList& s);
 
   //Functions
-  CSpectrumIdentificationResult* addSpectrumIdentificationResult(std::string specID, std::string& sdRef);
-  CSpectrumIdentificationResult* addSpectrumIdentificationResult(CSpectrumIdentificationResult& c);
+  //CSpectrumIdentificationResult* addSpectrumIdentificationResult(std::string specID, std::string& sdRef);
+  //CSpectrumIdentificationResult* addSpectrumIdentificationResult(CSpectrumIdentificationResult& c);
   void writeOut(FILE* f, int tabs = -1);
 
 private:

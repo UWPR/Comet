@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,20 +22,20 @@ class CPeptideHypothesis{
 public:
 
   //Constructors & Destructors
-  CPeptideHypothesis();
-  CPeptideHypothesis(const CPeptideHypothesis& c);
-  ~CPeptideHypothesis();
+  //CPeptideHypothesis();
+  //CPeptideHypothesis(const CPeptideHypothesis& c);
+  //~CPeptideHypothesis();
 
   //Operators
-  CPeptideHypothesis& operator=(const CPeptideHypothesis& c);
+  //CPeptideHypothesis& operator=(const CPeptideHypothesis& c);
   //bool operator==(const CProteinAmbiguityGroup& c);
 
   //Data members
   std::string peptideEvidenceRef;
-  std::vector<sSpectrumIdentificationItemRef>* spectrumIdentificationItemRef;
+  std::vector<sSpectrumIdentificationItemRef> spectrumIdentificationItemRef;
 
   //Functions
-  void addSpectrumIdentificationItemRef(std::string& ref);
+  //void addSpectrumIdentificationItemRef(std::string& ref);
   void writeOut(FILE* f, int tabs = -1);
 
 private:

@@ -14,45 +14,76 @@ limitations under the License.
 #ifndef _MZIMLSTRUCTS_H
 #define _MZIMLSTRUCTS_H
 
+#include <iostream>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
 enum mzidElement{
   AdditionalSearchParams,
+  Affiliation,
+  AmbiguousResidue,
   AnalysisCollection,
   AnalysisData,
+  AnalysisParams,
   AnalysisProtocolCollection,
+  AnalysisSampleCollection,
   AnalysisSoftware,
   AnalysisSoftwareList,
+  AuditCollection,
+  BibliographicReference,
+  ContactRole,
+  Customizations,
   CvList,
   DBSequence,
   DataCollection,
+  DatabaseFilters,
   DatabaseName,
   Enzyme,
   EnzymeName,
   Enzymes,
+  ExternalFormatDocumentation,
   FileFormat,
+  Filter,
+  FilterType,
+  FragmentArray,
+  Fragmentation,
+  FragmentationTable,
+  FragmentTolerance,
+  Include,
   Inputs,
+  IonType,
   MassTable,
+  Measure,
   Modification,
   ModificationParams,
   MzIdentML,
+  Organization,
+  Parent,
+  ParentTolerance,
   Peptide,
   PeptideEvidence,
   PeptideHypothesis,
   PeptideSequence,
+  Person,
   ProteinAmbiguityGroup,
   ProteinDetection,
   ProteinDetectionHypothesis,
   ProteinDetectionList,
   ProteinDetectionProtocol,
+  Provider,
   Residue,
+  Role,
+  Sample,
   SearchDatabase,
   SearchModification,
   SearchType,
+  Seq,
   SequenceCollection,
+  SiteRegexp,
   SoftwareName,
+  SourceFile,
   SpecificityRules,
   SpectraData,
   SpectrumIDFormat,
@@ -61,6 +92,7 @@ enum mzidElement{
   SpectrumIdentificationList,
   SpectrumIdentificationProtocol,
   SpectrumIdentificationResult,
+  SubSample,
   Threshold
 };
 
@@ -99,7 +131,19 @@ typedef struct sCvParam{
     if (unitAccession.size()>0) fprintf(f, " unitAccession=\"%s\"", &unitAccession[0]);
     if (unitCvRef.size()>0) fprintf(f, " unitCvRef=\"%s\"", &unitCvRef[0]);
     if (unitName.size()>0) fprintf(f, " unitName=\"%s\"", &unitName[0]);
-    if (value.size()>0) fprintf(f, " value=\"%s\"", &value[0]);
+    //testing code to export predefined xml entities
+    if (value.size()>0) {
+      fprintf(f, " value=\"");
+      for(size_t a=0;a<value.size();a++){
+        if(value[a]=='\"') fprintf(f,"&quot;");
+        else if (value[a] == '\'') fprintf(f, "&apos;");
+        else if (value[a] == '>') fprintf(f, "&gt;");
+        else if (value[a] == '<') fprintf(f, "&lt;");
+        else if (value[a] == '&') fprintf(f, "&amp;");
+        else fprintf(f,"%c", value[a]);
+      }
+      fprintf(f,"\"");
+    }
     fprintf(f, "/>\n");
   }
 } sCvParam;
@@ -148,11 +192,7 @@ typedef struct sCustomizations{
     if (text.size()==0) return;
     int i;
     for (i = 0; i<tabs; i++) fprintf(f, " ");
-    fprintf(f,"<Customizations>\n");
-    for (i = 0; i<tabs+1; i++) fprintf(f, " ");
-    fprintf(f,"%s\n",&text[0]);
-    for (i = 0; i<tabs; i++) fprintf(f, " ");
-    fprintf(f, "</Customizations>\n");
+    fprintf(f,"<Customizations>%s</Customizations>\n",text.c_str());
   }
 } sCustomizations;
 
@@ -171,33 +211,25 @@ typedef struct sCV{
 
 typedef struct sInputSpectra{
   std::string spectraDataRef;
-  sInputSpectra(){
-    spectraDataRef="null";
-  }
   bool operator==(const sInputSpectra& s){
     if (spectraDataRef.compare(s.spectraDataRef)!=0) return false;
     return true;
   }
   void writeOut(FILE* f, int tabs = -1){
-    if (spectraDataRef.size() == 0) return;
     for (int i = 0; i<tabs; i++) fprintf(f, " ");
-    fprintf(f, "<InputSpectra spectraData_ref=\"%s\"/>\n",&spectraDataRef[0]);
+    fprintf(f, "<InputSpectra spectraData_ref=\"%s\"/>\n",spectraDataRef.c_str());
   }
 } sInputSpectra;
 
 typedef struct sSearchDatabaseRef{
   std::string searchDatabaseRef;
-  sSearchDatabaseRef(){
-    searchDatabaseRef = "null";
-  }
   bool operator==(const sSearchDatabaseRef& s){
     if (searchDatabaseRef.compare(s.searchDatabaseRef) != 0) return false;
     return true;
   }
   void writeOut(FILE* f, int tabs = -1){
-    if (searchDatabaseRef.size() == 0) return;
     for (int i = 0; i<tabs; i++) fprintf(f, " ");
-    fprintf(f, "<SearchDatabaseRef searchDatabase_ref=\"%s\"/>\n", &searchDatabaseRef[0]);
+    fprintf(f, "<SearchDatabaseRef searchDatabase_ref=\"%s\"/>\n", searchDatabaseRef.c_str());
   }
 } sSearchDatabaseRef;
 
@@ -216,11 +248,7 @@ typedef struct sExternalFormatDocumentation{
     if (text.size() == 0) return;
     int i;
     for (i = 0; i<tabs; i++) fprintf(f, " ");
-    fprintf(f, "<ExternalFormatDocumentation>\n");
-    for (i = 0; i<tabs + 1; i++) fprintf(f, " ");
-    fprintf(f, "%s\n", &text[0]);
-    for (i = 0; i<tabs; i++) fprintf(f, " ");
-    fprintf(f, "</ExternalFormatDocumentation>\n");
+    fprintf(f, "<ExternalFormatDocumentation>%s</ExternalFormatDocumentation>\n",text.c_str());
   }
 } sExternalFormatDocumentation;
 

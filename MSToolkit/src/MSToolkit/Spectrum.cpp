@@ -30,6 +30,7 @@ Spectrum::Spectrum(){
   msLevel = 2;
   monoMZ=new vector<double>;
   mz=new vector<double>;
+  sps=new vector<double>;
   TIC=0;
   IIT=0;
   compensationVoltage=0;
@@ -63,6 +64,7 @@ Spectrum::~Spectrum(){
   if(vZ) delete vZ;
 	if(mz) delete mz;
   if(monoMZ) delete monoMZ;
+  if(sps) delete sps;
 }
 
 Spectrum::Spectrum(const Spectrum& s){
@@ -82,6 +84,7 @@ Spectrum::Spectrum(const Spectrum& s){
 	for(i=0;i<s.mz->size();i++){
 		mz->push_back(s.mz->at(i));
 	}
+  sps = new vector<double>(*s.sps);
   fileType = s.fileType;
   IIT = s.IIT;
   TIC = s.TIC;
@@ -122,6 +125,7 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
     delete vZ;
     delete monoMZ;
 		delete mz;
+    delete sps;
     monoMZ = new vector<double>;
     for(i=0;i<s.monoMZ->size();i++){
 		  monoMZ->push_back(s.monoMZ->at(i));
@@ -130,6 +134,7 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
 		for(i=0;i<s.mz->size();i++){
 			mz->push_back(s.mz->at(i));
 		}
+    sps = new vector<double>(*s.sps);
     vPeaks = new vector<Peak_T>;
     for(i=0;i<s.vPeaks->size();i++){
       vPeaks->push_back(s.vPeaks->at(i));
@@ -206,6 +211,10 @@ void Spectrum::addMZ(double d, double mono){
   monoMZ->push_back(mono);
 }
 
+void Spectrum::addSPS(double d) {
+  sps->push_back(d);
+}
+
 void Spectrum::addZState(ZState& z){
 	vZ->push_back(z);
 }
@@ -254,6 +263,8 @@ void Spectrum::clear(){
 	mz = new vector<double>;
   delete monoMZ;
   monoMZ = new vector<double>;
+  delete sps;
+  sps = new vector<double>;
 	scanNumber = 0;
   scanNumber2 = 0;
 	rTime = 0;
@@ -267,6 +278,7 @@ void Spectrum::clear(){
   BPM = 0;
   selectionWinLower=0;
   selectionWinUpper=0;
+  fileID.clear();
 	fileType = Unspecified;
   actMethod=mstNA;
 }
@@ -377,6 +389,10 @@ double Spectrum::getConversionI(){
   return convI;
 }
 
+string Spectrum::getFileID(){
+  return fileID;
+}
+
 MSSpectrumType Spectrum::getFileType(){
 	return fileType;
 }
@@ -442,6 +458,11 @@ double Spectrum::getSelWindowUpper(){
   return selectionWinUpper;
 }
 
+double Spectrum::getSPS(size_t index) {
+  if (index >= sps->size()) return 0;
+  return sps->at(index);
+}
+
 double Spectrum::getTIC(){
   return TIC;
 }
@@ -491,6 +512,10 @@ void Spectrum::setConversionI(double d){
   convI=d;
 }
 
+void Spectrum::setFileID(string s){
+  fileID=s;
+}
+
 void Spectrum::setFileType(MSSpectrumType f){
 	fileType=f;
 }
@@ -505,7 +530,7 @@ void Spectrum::setMZ(double d, double mono){
   monoMZ->push_back(mono);
 }
 
-void Spectrum::setNativeID(char* c){
+void Spectrum::setNativeID(const char* c){
   if(strlen(c)>256) cout << "Error - spectrumNativeID filter larger than 256 characters." << endl;
   else strcpy(nativeID,c);
 }
@@ -565,6 +590,10 @@ int Spectrum::sizeEZ(){
 
 int Spectrum::sizeMZ(){
 	return (int)mz->size();
+}
+
+int Spectrum::sizeSPS() {
+  return (int)sps->size();
 }
 
 int Spectrum::sizeZ(){

@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -23,20 +23,20 @@ class CProteinAmbiguityGroup{
 public:
 
   //Constructors & Destructors
-  CProteinAmbiguityGroup();
-  CProteinAmbiguityGroup(const CProteinAmbiguityGroup& c);
-  ~CProteinAmbiguityGroup();
+  //CProteinAmbiguityGroup();
+  //CProteinAmbiguityGroup(const CProteinAmbiguityGroup& c);
+  //~CProteinAmbiguityGroup();
 
   //Operators
-  CProteinAmbiguityGroup& operator=(const CProteinAmbiguityGroup& c);
+  //CProteinAmbiguityGroup& operator=(const CProteinAmbiguityGroup& c);
   //bool operator==(const CProteinAmbiguityGroup& c);
 
   //Data members
   std::string id;
   std::string name;
-  std::vector<CProteinDetectionHypothesis>* proteinDetectionHypothesis;
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<CProteinDetectionHypothesis> proteinDetectionHypothesis;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //Functions
   void addParamValue(std::string alg, std::string scoreID, double value);

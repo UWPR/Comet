@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,17 +22,17 @@ class CMeasure {
 public:
 
   //Constructors & Destructor
-  CMeasure();
-  CMeasure(const CMeasure& m);
-  ~CMeasure();
+  //CMeasure();
+  //CMeasure(const CMeasure& m);
+  //~CMeasure();
 
   //Data members
   std::string id;
   std::string name;
-  std::vector<sCvParam>* cvParam;
+  std::vector<sCvParam> cvParam;
 
   //operators
-  CMeasure& operator=(const CMeasure& m);
+  //CMeasure& operator=(const CMeasure& m);
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

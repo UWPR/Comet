@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,60 +15,60 @@ limitations under the License.
 
 using namespace std;
 
-CProteinAmbiguityGroup::CProteinAmbiguityGroup(){
-  id="null";
-  name.clear();
-
-  CProteinDetectionHypothesis p;
-  proteinDetectionHypothesis =  new vector<CProteinDetectionHypothesis>;
-  proteinDetectionHypothesis->push_back(p);
-
-  cvParam = new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
-}
-
-CProteinAmbiguityGroup::CProteinAmbiguityGroup(const CProteinAmbiguityGroup& c){
-  id = c.id;
-  name = c.name;
-
-  size_t i;
-  proteinDetectionHypothesis = new vector<CProteinDetectionHypothesis>;
-  for(i=0;i<c.proteinDetectionHypothesis->size();i++) proteinDetectionHypothesis->push_back(c.proteinDetectionHypothesis->at(i));
-
-  cvParam = new vector<sCvParam>;
-  for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-
-  userParam = new vector<sUserParam>;
-  for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
-}
-
-CProteinAmbiguityGroup::~CProteinAmbiguityGroup(){
-  delete proteinDetectionHypothesis;
-  delete cvParam;
-  delete userParam;
-}
-
-CProteinAmbiguityGroup& CProteinAmbiguityGroup::operator=(const CProteinAmbiguityGroup& c){
-  if (this != &c){
-    id = c.id;
-    name = c.name;
-
-    delete proteinDetectionHypothesis;
-    delete cvParam;
-    delete userParam;
-
-    size_t i;
-    proteinDetectionHypothesis = new vector<CProteinDetectionHypothesis>;
-    for (i = 0; i<c.proteinDetectionHypothesis->size(); i++) proteinDetectionHypothesis->push_back(c.proteinDetectionHypothesis->at(i));
-
-    cvParam = new vector<sCvParam>;
-    for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-
-    userParam = new vector<sUserParam>;
-    for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
-  }
-  return *this;
-}
+//CProteinAmbiguityGroup::CProteinAmbiguityGroup(){
+//  id="null";
+//  name.clear();
+//
+//  CProteinDetectionHypothesis p;
+//  proteinDetectionHypothesis =  new vector<CProteinDetectionHypothesis>;
+//  proteinDetectionHypothesis->push_back(p);
+//
+//  cvParam = new vector<sCvParam>;
+//  userParam = new vector<sUserParam>;
+//}
+//
+//CProteinAmbiguityGroup::CProteinAmbiguityGroup(const CProteinAmbiguityGroup& c){
+//  id = c.id;
+//  name = c.name;
+//
+//  size_t i;
+//  proteinDetectionHypothesis = new vector<CProteinDetectionHypothesis>;
+//  for(i=0;i<c.proteinDetectionHypothesis->size();i++) proteinDetectionHypothesis->push_back(c.proteinDetectionHypothesis->at(i));
+//
+//  cvParam = new vector<sCvParam>;
+//  for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//
+//  userParam = new vector<sUserParam>;
+//  for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
+//}
+//
+//CProteinAmbiguityGroup::~CProteinAmbiguityGroup(){
+//  delete proteinDetectionHypothesis;
+//  delete cvParam;
+//  delete userParam;
+//}
+//
+//CProteinAmbiguityGroup& CProteinAmbiguityGroup::operator=(const CProteinAmbiguityGroup& c){
+//  if (this != &c){
+//    id = c.id;
+//    name = c.name;
+//
+//    delete proteinDetectionHypothesis;
+//    delete cvParam;
+//    delete userParam;
+//
+//    size_t i;
+//    proteinDetectionHypothesis = new vector<CProteinDetectionHypothesis>;
+//    for (i = 0; i<c.proteinDetectionHypothesis->size(); i++) proteinDetectionHypothesis->push_back(c.proteinDetectionHypothesis->at(i));
+//
+//    cvParam = new vector<sCvParam>;
+//    for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//
+//    userParam = new vector<sUserParam>;
+//    for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
+//  }
+//  return *this;
+//}
 
 void CProteinAmbiguityGroup::addParamValue(string alg, string scoreID, double value){
   char str[32];
@@ -104,44 +104,51 @@ void CProteinAmbiguityGroup::addParamValue(string alg, string scoreID, string va
     u.name += ":";
     u.name += scoreID;
     u.value = value;
-    userParam->push_back(u);
+    userParam.push_back(u);
   } else {
     cv.value = value;
-    cvParam->push_back(cv);
+    cvParam.push_back(cv);
   }
 }
 
 CProteinDetectionHypothesis* CProteinAmbiguityGroup::addProteinDetectionHypothesis(string baseRef, string dbSequenceRef, bool passThreshold){
-  //get rid of any null placeholders
-  if (proteinDetectionHypothesis->at(0).id.compare("null") == 0) proteinDetectionHypothesis->clear();
 
   //add new
   CProteinDetectionHypothesis p;
   char dbid[32];
-  sprintf(dbid, "%s_%zu", baseRef.c_str(), proteinDetectionHypothesis->size());
+  sprintf(dbid, "%s_%d", baseRef.c_str(), (int)proteinDetectionHypothesis.size());
   p.id = dbid;
   p.dbSequenceRef = dbSequenceRef;
-  proteinDetectionHypothesis->push_back(p);
+  proteinDetectionHypothesis.push_back(p);
 
-  return &proteinDetectionHypothesis->back();
+  return &proteinDetectionHypothesis.back();
 }
 
 void CProteinAmbiguityGroup::writeOut(FILE* f, int tabs){
+  if (id.empty()){
+    cerr << "ProteinAmbiguityGroup::id is required." << endl;
+    exit(69);
+  }
+  if (proteinDetectionHypothesis.empty()){
+    cerr << "ProteinAmbiguityGroup::ProteinDetectionHypothesis is required." << endl;
+    exit(69);
+  }
+
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
-  fprintf(f, "<ProteinAmbiguityGroup id=\"%s\">\n",&id[0]);
-  for (size_t j = 0; j < proteinDetectionHypothesis->size(); j++){
-    if (tabs>-1) proteinDetectionHypothesis->at(j).writeOut(f, tabs + 1);
-    else proteinDetectionHypothesis->at(j).writeOut(f);
-  }
-  for (size_t j = 0; j < cvParam->size(); j++){
-    if (tabs>-1) cvParam->at(j).writeOut(f, tabs + 1);
-    else cvParam->at(j).writeOut(f);
-  }
-  for (size_t j = 0; j < userParam->size(); j++){
-    if (tabs>-1) userParam->at(j).writeOut(f, tabs + 1);
-    else userParam->at(j).writeOut(f);
-  }
+  fprintf(f, "<ProteinAmbiguityGroup");
+  fprintf(f, " id=\"%s\"",id.c_str());
+  if(!name.empty()) fprintf(f, " name=\"%s\"",name.c_str());
+  fprintf(f, ">\n");
+
+  int t = tabs;
+  if (t>-1)t++;
+
+  size_t j;
+  for (j = 0; j < proteinDetectionHypothesis.size(); j++) proteinDetectionHypothesis[j].writeOut(f, t);
+  for (j = 0; j < cvParam.size(); j++) cvParam[j].writeOut(f, t);
+  for (j = 0; j < userParam.size(); j++) userParam[j].writeOut(f, t);
+
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</ProteinAmbiguityGroup>\n");
 

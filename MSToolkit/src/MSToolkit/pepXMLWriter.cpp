@@ -251,12 +251,13 @@ void PepXMLWriter::writeModAAMass(pxwModAA& s){
 
 }
 
-void PepXMLWriter::writeModInfo(PXWModInfo& s){
+void PepXMLWriter::writeModInfo(PXWModInfo& s, bool alt){
   string st;
   char nStr[64];
   size_t i;
 
-  st="<modification_info";
+  if(alt) st="<alternative_modification_info";
+  else st="<modification_info";
   if(s.modified_peptide.size()>0){
     st+=" modified_peptide=\"";
     st+=s.modified_peptide;
@@ -279,7 +280,8 @@ void PepXMLWriter::writeModInfo(PXWModInfo& s){
   }
 
   deleteTab();
-  st="</modification_info>\n";
+  if(alt) st="</alternative_modification_info>\n";
+  else st="</modification_info>\n";
   writeLine(&st[0]);
 }
 
@@ -339,6 +341,9 @@ void PepXMLWriter::writeLinkedPeptide(PXWSearchHit& s, bool alpha){
 
   if(s.modInfo.sizeMods()>0 || s.modInfo.mod_cterm_mass!=0 || s.modInfo.mod_nterm_mass!=0){
     writeModInfo(s.modInfo);
+  }
+  for(i=0;i<s.sizeAltModInfo();i++){
+    writeModInfo(s.getAltModInfo(i),true);
   }
 
   for(i=0;i<s.sizeXLScores();i++){
@@ -417,6 +422,9 @@ void PepXMLWriter::writeSearchHit(pxwSearchHitPair& s) {
 
     if(s.a->modInfo.sizeMods()>0 || s.a->modInfo.mod_cterm_mass!=0 || s.a->modInfo.mod_nterm_mass!=0){
       writeModInfo(s.a->modInfo);
+    }
+    for (i = 0; i<s.a->sizeAltModInfo(); i++){
+      writeModInfo(s.a->getAltModInfo(i), true);
     }
   }
 

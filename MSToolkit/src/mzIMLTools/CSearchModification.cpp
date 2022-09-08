@@ -18,52 +18,55 @@ using namespace std;
 CSearchModification::CSearchModification(){
   fixedMod=false;
   massDelta=0;
-  residues = "null";
-
-  sCvParam cv;
-  cvParam = new vector<sCvParam>;
-  cvParam->push_back(cv);
 }
-
-CSearchModification::CSearchModification(const CSearchModification& c){
-  fixedMod = c.fixedMod;
-  massDelta = c.massDelta;
-  residues = c.residues;
-  specificityRules=c.specificityRules;
-  cvParam = new vector<sCvParam>;
-  for(size_t i=0;i<c.cvParam->size();i++) cvParam->push_back(c.cvParam->at(i));
-}
-
-CSearchModification::~CSearchModification(){
-  delete cvParam;
-}
-
-CSearchModification& CSearchModification::operator=(const CSearchModification& c){
-  if (this != &c){
-    fixedMod = c.fixedMod;
-    massDelta = c.massDelta;
-    residues = c.residues;
-    specificityRules = c.specificityRules;
-    delete cvParam;
-    cvParam = new vector<sCvParam>;
-    for (size_t i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-  }
-  return *this;
-}
+//
+//CSearchModification::CSearchModification(const CSearchModification& c){
+//  fixedMod = c.fixedMod;
+//  massDelta = c.massDelta;
+//  residues = c.residues;
+//  specificityRules=c.specificityRules;
+//  cvParam = new vector<sCvParam>;
+//  for(size_t i=0;i<c.cvParam->size();i++) cvParam->push_back(c.cvParam->at(i));
+//}
+//
+//CSearchModification::~CSearchModification(){
+//  delete cvParam;
+//}
+//
+//CSearchModification& CSearchModification::operator=(const CSearchModification& c){
+//  if (this != &c){
+//    fixedMod = c.fixedMod;
+//    massDelta = c.massDelta;
+//    residues = c.residues;
+//    specificityRules = c.specificityRules;
+//    delete cvParam;
+//    cvParam = new vector<sCvParam>;
+//    for (size_t i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//  }
+//  return *this;
+//}
 
 bool CSearchModification::operator==(const CSearchModification& c){
   if (this == &c) return true;
   if(fixedMod!=c.fixedMod) return false;
-  if(massDelta!=c.massDelta) return false;
+  if(fabs(massDelta-c.massDelta)>0.001) return false; //fuzzy maths here because people use different precisions
   if(residues.compare(c.residues)!=0) return false;
-  if (specificityRules!=c.specificityRules) return false;
-  if (cvParam->size() != c.cvParam->size()) return false;
+  if (specificityRules.size()!=c.specificityRules.size()) return false;
+  if (cvParam.size() != c.cvParam.size()) return false;
   size_t i,j;
-  for (i = 0; i < cvParam->size(); i++){
-    for (j = 0; j < c.cvParam->size(); j++) {
-      if (cvParam->at(i) == c.cvParam->at(j)) break;
+
+  for (i = 0; i < specificityRules.size(); i++){
+    for (j = 0; j < c.specificityRules.size(); j++) {
+      if (specificityRules[i] == c.specificityRules[j]) break;
     }
-    if (j == c.cvParam->size()) return false;
+    if (j == c.specificityRules.size()) return false;
+  }
+
+  for (i = 0; i < cvParam.size(); i++){
+    for (j = 0; j < c.cvParam.size(); j++) {
+      if (cvParam[i] == c.cvParam[j]) break;
+    }
+    if (j == c.cvParam.size()) return false;
   }
   return true;
 }
@@ -75,19 +78,24 @@ bool CSearchModification::operator!=(const CSearchModification& c){
 void CSearchModification::clear(){
   fixedMod = false;
   massDelta = 0;
-  residues = "null";
-
-  delete cvParam;
-  sCvParam cv;
-  cvParam = new vector<sCvParam>;
-  cvParam->push_back(cv);
-
+  residues.clear();
+  cvParam.clear();
   specificityRules.clear();
 }
 
 void CSearchModification::writeOut(FILE* f, int tabs){
-
-  if (cvParam->at(0).accession.compare("null")==0) return;
+  //if (massDelta==0){ //allowing this to be zero.
+  //  cerr << "SearchModification::massDelta is required." << endl;
+  //  exit(69);
+  //}
+  if (cvParam.empty()){
+    cerr << "SearchModification::cvParam is required." << endl;
+    exit(69);
+  }
+  if (residues.empty()){
+    cerr << "SearchModification::residues is required." << endl;
+    exit(69);
+  }
 
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
@@ -95,14 +103,12 @@ void CSearchModification::writeOut(FILE* f, int tabs){
   if (fixedMod) fprintf(f, " fixedMod=\"true\">\n");
   else fprintf(f, " fixedMod=\"false\">\n");
 
+  int t = tabs;
+  if (t>-1)t++;
+
   size_t j;
-  if (tabs>-1) {
-    specificityRules.writeOut(f,tabs+1);
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f,tabs+1);
-  } else {
-    specificityRules.writeOut(f);
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f);
-  }
+  for(j=0;j<specificityRules.size();j++) specificityRules[j].writeOut(f,t);
+  for (j = 0; j<cvParam.size(); j++) cvParam[j].writeOut(f,t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</SearchModification>\n");

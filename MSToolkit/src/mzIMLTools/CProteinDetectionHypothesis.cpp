@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -16,63 +16,63 @@ limitations under the License.
 using namespace std;
 
 CProteinDetectionHypothesis::CProteinDetectionHypothesis(){
-  dbSequenceRef = "null";
-  id = "null";
-  name.clear();
+  ///*dbSequenceRef = "null";
+  //id = "null";
+  //name.clear();*/
   passThreshold = true;
-
-  CPeptideHypothesis ph;
-  peptideHypothesis = new vector<CPeptideHypothesis>;
-  peptideHypothesis->push_back(ph);
-  
-  cvParam = new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
+///*
+//  CPeptideHypothesis ph;
+//  peptideHypothesis = new vector<CPeptideHypothesis>;
+//  peptideHypothesis->push_back(ph);
+//  
+//  cvParam = new vector<sCvParam>;
+//  userParam = new vector<sUserParam>;*/
 }
 
-CProteinDetectionHypothesis::CProteinDetectionHypothesis(const CProteinDetectionHypothesis& c){
-  dbSequenceRef=c.dbSequenceRef;
-  id=c.id;
-  name=c.name;
-  passThreshold=c.passThreshold;
-
-  size_t i;
-  peptideHypothesis = new vector<CPeptideHypothesis>;
-  for (i = 0; i<c.peptideHypothesis->size(); i++) peptideHypothesis->push_back(c.peptideHypothesis->at(i));
-  cvParam = new vector<sCvParam>;
-  for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-  userParam = new vector<sUserParam>;
-  for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
-
-}
-
-CProteinDetectionHypothesis::~CProteinDetectionHypothesis(){
-  delete peptideHypothesis;
-  delete cvParam;
-  delete userParam;
-}
-
-//Operators
-CProteinDetectionHypothesis& CProteinDetectionHypothesis::operator=(const CProteinDetectionHypothesis& c){
-  if (this != &c){
-    dbSequenceRef = c.dbSequenceRef;
-    id = c.id;
-    name = c.name;
-    passThreshold = c.passThreshold;
-
-    delete peptideHypothesis;
-    delete cvParam;
-    delete userParam;
-
-    size_t i;
-    peptideHypothesis = new vector<CPeptideHypothesis>;
-    for (i = 0; i<c.peptideHypothesis->size(); i++) peptideHypothesis->push_back(c.peptideHypothesis->at(i));
-    cvParam = new vector<sCvParam>;
-    for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
-    userParam = new vector<sUserParam>;
-    for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
-  }
-  return *this;
-}
+//CProteinDetectionHypothesis::CProteinDetectionHypothesis(const CProteinDetectionHypothesis& c){
+//  dbSequenceRef=c.dbSequenceRef;
+//  id=c.id;
+//  name=c.name;
+//  passThreshold=c.passThreshold;
+//
+//  size_t i;
+//  peptideHypothesis = new vector<CPeptideHypothesis>;
+//  for (i = 0; i<c.peptideHypothesis->size(); i++) peptideHypothesis->push_back(c.peptideHypothesis->at(i));
+//  cvParam = new vector<sCvParam>;
+//  for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//  userParam = new vector<sUserParam>;
+//  for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
+//
+//}
+//
+//CProteinDetectionHypothesis::~CProteinDetectionHypothesis(){
+//  delete peptideHypothesis;
+//  delete cvParam;
+//  delete userParam;
+//}
+//
+////Operators
+//CProteinDetectionHypothesis& CProteinDetectionHypothesis::operator=(const CProteinDetectionHypothesis& c){
+//  if (this != &c){
+//    dbSequenceRef = c.dbSequenceRef;
+//    id = c.id;
+//    name = c.name;
+//    passThreshold = c.passThreshold;
+//
+//    delete peptideHypothesis;
+//    delete cvParam;
+//    delete userParam;
+//
+//    size_t i;
+//    peptideHypothesis = new vector<CPeptideHypothesis>;
+//    for (i = 0; i<c.peptideHypothesis->size(); i++) peptideHypothesis->push_back(c.peptideHypothesis->at(i));
+//    cvParam = new vector<sCvParam>;
+//    for (i = 0; i<c.cvParam->size(); i++) cvParam->push_back(c.cvParam->at(i));
+//    userParam = new vector<sUserParam>;
+//    for (i = 0; i<c.userParam->size(); i++) userParam->push_back(c.userParam->at(i));
+//  }
+//  return *this;
+//}
 
 void CProteinDetectionHypothesis::addParamValue(string alg, string scoreID, double value){
   char str[32];
@@ -115,25 +115,41 @@ void CProteinDetectionHypothesis::addParamValue(string alg, string scoreID, stri
     u.name += ":";
     u.name += scoreID;
     u.value = value;
-    userParam->push_back(u);
+    userParam.push_back(u);
   } else {
     cv.value = value;
-    cvParam->push_back(cv);
+    cvParam.push_back(cv);
   }
 }
 
 CPeptideHypothesis* CProteinDetectionHypothesis::addPeptideHypothesis(string& pe){
-  if (peptideHypothesis->at(0).peptideEvidenceRef.compare("null") == 0) peptideHypothesis->clear();
-
+  for(size_t i=0;i<peptideHypothesis.size();i++){
+    if(peptideHypothesis[i].peptideEvidenceRef.compare(pe)==0) return &peptideHypothesis[i];
+  }
   CPeptideHypothesis ph;
   ph.peptideEvidenceRef=pe;
-  peptideHypothesis->push_back(ph);
-  return &peptideHypothesis->back();
+  peptideHypothesis.push_back(ph);
+  return &peptideHypothesis.back();
 }
 
 void CProteinDetectionHypothesis::writeOut(FILE* f, int tabs){
+  if (id.empty()){
+    cerr << "ProteinDetectionHypothesis::id is required." << endl;
+    exit(69);
+  }
+  if (dbSequenceRef.empty()){
+    cerr << "ProteinDetectionHypothesis::dBSequence_ref is required." << endl;
+    exit(69);
+  }
+  if(peptideHypothesis.empty()){
+    cerr << "ProteinDetectionHypothesis::PeptideHypothesis is required." << endl;
+    exit(69);
+  }
   int i;
   size_t j;
+
+  int t = tabs;
+  if (t>-1)t++;
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<ProteinDetectionHypothesis id=\"%s\" dBSequence_ref=\"%s\"", &id[0], &dbSequenceRef[0]);
@@ -141,15 +157,9 @@ void CProteinDetectionHypothesis::writeOut(FILE* f, int tabs){
   if (passThreshold) fprintf(f, " passThreshold=\"true\">\n");
   else fprintf(f, " passThreshold=\"false\">\n");
 
-  if (tabs > -1){
-    for (j = 0; j<peptideHypothesis->size(); j++) peptideHypothesis->at(j).writeOut(f, tabs + 1);
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f, tabs + 1);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f, tabs + 1);
-  } else {
-    for (j = 0; j<peptideHypothesis->size(); j++) peptideHypothesis->at(j).writeOut(f);
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f);
-  }
+  for (j = 0; j<peptideHypothesis.size(); j++) peptideHypothesis[j].writeOut(f, t);
+  for (j = 0; j<cvParam.size(); j++) cvParam[j].writeOut(f, t);
+  for (j = 0; j<userParam.size(); j++) userParam[j].writeOut(f, t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</ProteinDetectionHypothesis>\n");

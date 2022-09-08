@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,68 +15,69 @@ limitations under the License.
 
 using namespace std;
 
-CAnalysisProtocolCollection::CAnalysisProtocolCollection(){
-  CSpectrumIdentificationProtocol sip;
-  spectrumIdentificationProtocol=new vector<CSpectrumIdentificationProtocol>;
-  spectrumIdentificationProtocol->push_back(sip);
+//CAnalysisProtocolCollection::CAnalysisProtocolCollection(){
+//  CSpectrumIdentificationProtocol sip;
+//  spectrumIdentificationProtocol=new vector<CSpectrumIdentificationProtocol>;
+//  spectrumIdentificationProtocol->push_back(sip);
+//}
+//
+//CAnalysisProtocolCollection::~CAnalysisProtocolCollection(){
+//  delete spectrumIdentificationProtocol;
+//}
+
+CProteinDetectionProtocol* CAnalysisProtocolCollection::addProteinDetectionProtocol(string analysisSoftwareRef){
+  CProteinDetectionProtocol pdp;
+  pdp.analysisSoftwareRef=analysisSoftwareRef;
+
+  char cID[32];
+  sprintf(cID, "PDP%d", (int)proteinDetectionProtocol.size());
+  pdp.id = cID;
+
+  proteinDetectionProtocol.push_back(pdp);
+  return &proteinDetectionProtocol.back();
 }
 
-CAnalysisProtocolCollection::~CAnalysisProtocolCollection(){
-  delete spectrumIdentificationProtocol;
-}
-
-string CAnalysisProtocolCollection::addProteinDetectionProtocol(string analysisSoftwareRef){
-  proteinDetectionProtocol.id = "PDP0";
-  proteinDetectionProtocol.analysisSoftwareRef=analysisSoftwareRef;
-  return proteinDetectionProtocol.id;
-}
-
-string CAnalysisProtocolCollection::addSpectrumIdentificationProtocol(string analysisSoftwareRef){
-  //remove any placeholder
-  if (spectrumIdentificationProtocol->at(0).id.compare("null") == 0) spectrumIdentificationProtocol->clear();
-
+CSpectrumIdentificationProtocol* CAnalysisProtocolCollection::addSpectrumIdentificationProtocol(string analysisSoftwareRef){
   CSpectrumIdentificationProtocol sip;
   sip.analysisSoftwareRef=analysisSoftwareRef;
 
   char cID[32];
-  sprintf(cID, "SIP%zu", spectrumIdentificationProtocol->size());
+  sprintf(cID, "SIP%d", (int)spectrumIdentificationProtocol.size());
   sip.id = cID;
 
   //TODO: add optional information
 
-  spectrumIdentificationProtocol->push_back(sip);
-  return sip.id;
+  spectrumIdentificationProtocol.push_back(sip);
+  return &spectrumIdentificationProtocol.back();
 
 }
 
 string CAnalysisProtocolCollection::addSpectrumIdentificationProtocol(CSpectrumIdentificationProtocol& c){
-  //remove any placeholder
-  if (spectrumIdentificationProtocol->at(0).id.compare("null") == 0) spectrumIdentificationProtocol->clear();
+  char cID[32];
+  sprintf(cID, "SIP%d", (int)spectrumIdentificationProtocol.size());
+  c.id = cID;
 
-  if (c.id.compare("null") == 0){
-    char cID[32];
-    sprintf(cID, "SIP%zu", spectrumIdentificationProtocol->size());
-    c.id = cID;
-  }
-  spectrumIdentificationProtocol->push_back(c);
+  spectrumIdentificationProtocol.push_back(c);
   return c.id;
 
 }
 
 void CAnalysisProtocolCollection::writeOut(FILE* f, int tabs){
+  if (spectrumIdentificationProtocol.empty()) {
+    cerr << "AnalysisProtocolCollection::spectrumIdentificationProtocol required" << endl;
+    exit(69);
+  }
 
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<AnalysisProtocolCollection>\n");
 
+  int t=tabs;
+  if(t>-1)t++;
+
   size_t j;
-  if (tabs>-1) {
-    for (j = 0; j<spectrumIdentificationProtocol->size(); j++) spectrumIdentificationProtocol->at(j).writeOut(f, tabs + 1);
-    proteinDetectionProtocol.writeOut(f,tabs+1);
-  } else {
-    for (j = 0; j<spectrumIdentificationProtocol->size(); j++) spectrumIdentificationProtocol->at(j).writeOut(f);
-    proteinDetectionProtocol.writeOut(f);
-  }
+  for (j = 0; j<spectrumIdentificationProtocol.size(); j++) spectrumIdentificationProtocol[j].writeOut(f, t);
+  for (j = 0; j<proteinDetectionProtocol.size(); j++) proteinDetectionProtocol[j].writeOut(f, t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</AnalysisProtocolCollection>\n");

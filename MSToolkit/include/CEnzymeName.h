@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -20,17 +20,17 @@ limitations under the License.
 class CEnzymeName {
 public:
 
-  //Constructors
-  CEnzymeName();
-  CEnzymeName(const CEnzymeName& c);
-  ~CEnzymeName();
+  ////Constructors
+  //CEnzymeName();
+  //CEnzymeName(const CEnzymeName& c);
+  //~CEnzymeName();
 
-  //Operators
-  CEnzymeName& operator=(const CEnzymeName& c);
+  ////Operators
+  //CEnzymeName& operator=(const CEnzymeName& c);
 
   //Data members
-  std::vector<sCvParam>* cvParam;
-  std::vector<sUserParam>* userParam;
+  std::vector<sCvParam> cvParam;
+  std::vector<sUserParam> userParam;
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

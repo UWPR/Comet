@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,24 +21,24 @@ limitations under the License.
 class CModificationParams{
 public:
   //Constructors & Destructor
-  CModificationParams();
-  CModificationParams(const CModificationParams& c);
-  ~CModificationParams();
+  //CModificationParams();
+  //CModificationParams(const CModificationParams& c);
+  //~CModificationParams();
 
   //Data members
-  std::vector<CSearchModification>* searchModification;
+  std::vector<CSearchModification> searchModification;
 
   //operators
-  CModificationParams& operator=(const CModificationParams& c);
+  //CModificationParams& operator=(const CModificationParams& c);
   bool operator==(const CModificationParams& c);
   bool operator!=(const CModificationParams& c);
 
   //Functions
   void addSearchModification(bool fixed, double mass, std::string residues, bool protTerm = false);
-  void addSearchModification(CSearchModification& c);
+  //void addSearchModification(CSearchModification& c);
   void addSearchModificationXL(double mass, std::string residues, std::string residues2);
   sCvParam findCvParam(double mass, std::string residues);
-  sCvParam getModificationCvParam(double monoisotopicMassDelta, std::string& residues, bool nTerm = false, bool cTerm = false);
+  sCvParam getModificationCvParam(double monoisotopicMassDelta, std::string residues, bool nTerm = false, bool cTerm = false);
   void writeOut(FILE* f, int tabs = -1);
 
 private:

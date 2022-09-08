@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -23,19 +23,15 @@ limitations under the License.
 class CInputs {
 public:
 
-  //Constructors & Destructor
-  CInputs();
-  ~CInputs();
 
   //Data members
-  std::vector<CSourceFile>* sourceFile;
-  std::vector<CSearchDatabase>* searchDatabase;
-  std::vector<CSpectraData>* spectraData;
+  std::vector<CSourceFile> sourceFile;
+  std::vector<CSearchDatabase> searchDatabase;
+  std::vector<CSpectraData> spectraData;
 
   //Functions
-  std::string addSearchDatabase(std::string& sd);
-  std::string addSpectraData(std::string& sd);
-  std::string addSpectraData(CSpectraData& c);
+  CSearchDatabase* addSearchDatabase(std::string loc);
+  CSpectraData* addSpectraData(std::string loc);  //quick add if minimum information for spectradata is met
   sCvParam checkFileFormat(std::string s);
   sCvParam checkSpectrumIDFormat(sCvParam& s);
   void writeOut(FILE* f, int tabs = -1);

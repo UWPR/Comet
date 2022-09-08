@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,61 +15,62 @@ limitations under the License.
 
 using namespace std;
 
-CAnalysisCollection::CAnalysisCollection(){
-  CSpectrumIdentification si;
-  spectrumIdentification = new vector<CSpectrumIdentification>;
-  spectrumIdentification->push_back(si);
-}
-
-CAnalysisCollection::CAnalysisCollection(const CAnalysisCollection& c){
-  spectrumIdentification = new vector<CSpectrumIdentification>;
-  for(size_t i=0;i<c.spectrumIdentification->size();i++) spectrumIdentification->push_back(c.spectrumIdentification->at(i));
-}
-
-CAnalysisCollection::~CAnalysisCollection(){
-  delete spectrumIdentification;
-}
-
-CAnalysisCollection& CAnalysisCollection::operator=(const CAnalysisCollection& c){
-  if (this != &c){
-    delete spectrumIdentification;
-    spectrumIdentification = new vector<CSpectrumIdentification>;
-    for (size_t i = 0; i<c.spectrumIdentification->size(); i++) spectrumIdentification->push_back(c.spectrumIdentification->at(i));
-  }
-  return *this;
-}
-
-void CAnalysisCollection::addProteinDetection(CProteinDetection& c){
-  proteinDetection=c;
-}
-
-void CAnalysisCollection::addSpectrumIdentification(CSpectrumIdentification& c){
-  //remove any placeholder
-  if (spectrumIdentification->at(0).id.compare("null") == 0) spectrumIdentification->clear();
-
-  if (c.id.compare("null") == 0){
-    char cID[32];
-    sprintf(cID, "SI%zu", spectrumIdentification->size());
-    c.id = cID;
-  }
-  spectrumIdentification->push_back(c);
-  //return &spectrumIdentification->back();
-}
+//CAnalysisCollection::CAnalysisCollection(){
+//  CSpectrumIdentification si;
+//  spectrumIdentification = new vector<CSpectrumIdentification>;
+//  spectrumIdentification->push_back(si);
+//}
+//
+//CAnalysisCollection::CAnalysisCollection(const CAnalysisCollection& c){
+//  spectrumIdentification = new vector<CSpectrumIdentification>;
+//  for(size_t i=0;i<c.spectrumIdentification->size();i++) spectrumIdentification->push_back(c.spectrumIdentification->at(i));
+//}
+//
+//CAnalysisCollection::~CAnalysisCollection(){
+//  delete spectrumIdentification;
+//}
+//
+//CAnalysisCollection& CAnalysisCollection::operator=(const CAnalysisCollection& c){
+//  if (this != &c){
+//    delete spectrumIdentification;
+//    spectrumIdentification = new vector<CSpectrumIdentification>;
+//    for (size_t i = 0; i<c.spectrumIdentification->size(); i++) spectrumIdentification->push_back(c.spectrumIdentification->at(i));
+//  }
+//  return *this;
+//}
+//
+//void CAnalysisCollection::addProteinDetection(CProteinDetection& c){
+//  proteinDetection.push_back(c);
+//}
+//
+//void CAnalysisCollection::addSpectrumIdentification(CSpectrumIdentification& c){
+//
+//  if (c.id.compare("null") == 0){
+//    char cID[32];
+//    sprintf(cID, "SI%zu", spectrumIdentification->size());
+//    c.id = cID;
+//  }
+//  spectrumIdentification->push_back(c);
+//  //return &spectrumIdentification->back();
+//}
 
 void CAnalysisCollection::writeOut(FILE* f, int tabs){
+
+  if(spectrumIdentification.size()<1){
+    cerr << "AnalysisCollection::SpectrumIdentification is required." << endl;
+    exit(69);
+  }
 
   int i;
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "<AnalysisCollection>\n");
 
+  int t=tabs;
+  if(t>-1) t++;
+
   size_t j;
-  if (tabs>-1) {
-    for (j = 0; j<spectrumIdentification->size(); j++) spectrumIdentification->at(j).writeOut(f,tabs+1);
-    if (proteinDetection.id.compare("null") != 0) proteinDetection.writeOut(f,tabs+1);
-  } else {
-    for (j = 0; j<spectrumIdentification->size(); j++) spectrumIdentification->at(j).writeOut(f);
-    if (proteinDetection.id.compare("null") != 0) proteinDetection.writeOut(f);
-  }
+  for (j = 0; j<spectrumIdentification.size(); j++) spectrumIdentification[j].writeOut(f,t);
+  for (j=0; j<proteinDetection.size(); j++) proteinDetection[j].writeOut(f,t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</AnalysisCollection>\n");

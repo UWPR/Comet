@@ -71,9 +71,9 @@ enum MSActivation {
   mstETDSA,
   mstPQD,
   mstHCD,
-  mstIRMPD,
-  mstNA,
+	mstIRMPD,
   mstSID,
+  mstNA
 };
 
 struct MSHeader {

@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -23,15 +23,16 @@ class CAnalysisData {
 public:
 
   //Constructors & Destructor
-  CAnalysisData();
-  ~CAnalysisData();
+  //CAnalysisData();
+  //~CAnalysisData();
 
   //Data members
-  std::vector<CSpectrumIdentificationList>* spectrumIdentificationList;
-  CProteinDetectionList proteinDetectionList;
-  std::vector<sXRefSIIPE>* peptideEvidenceTable;
+  std::vector<CSpectrumIdentificationList> spectrumIdentificationList;
+  std::vector<CProteinDetectionList> proteinDetectionList;
+  std::vector<sXRefSIIPE> peptideEvidenceTable;
 
   //Functions
+  std::string addProteinDetectionList();
   std::string addSpectrumIdentificationList();
   std::string addSpectrumIdentificationList(CSpectrumIdentificationList& c);
   void buildPeptideEvidenceTable();

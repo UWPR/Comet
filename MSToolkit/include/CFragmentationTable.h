@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,15 +21,15 @@ class CFragmentationTable {
 public:
 
   //Constructors & Destructor
-  CFragmentationTable();
-  CFragmentationTable(const CFragmentationTable& c);
-  ~CFragmentationTable();
+  //CFragmentationTable();
+  //CFragmentationTable(const CFragmentationTable& c);
+  //~CFragmentationTable();
 
   //Data members
-  std::vector<CMeasure>* measure;
+  std::vector<CMeasure> measure;
 
   //operators
-  CFragmentationTable& operator=(const CFragmentationTable& c);
+  //CFragmentationTable& operator=(const CFragmentationTable& c);
 
   //Functions
   void writeOut(FILE* f, int tabs = -1);

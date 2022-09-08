@@ -16,68 +16,61 @@ limitations under the License.
 using namespace std;
 
 CPeptideEvidence::CPeptideEvidence(){
-  dbSequenceRef = "null";
   end=0;
-  id="null";
   isDecoy=false;
-  name.clear();
-  peptideRef="null";
   post='?';
   pre='?';
   start=0;
-  translationTableRef.clear();
-  cvParam= new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
 }
 
-CPeptideEvidence::CPeptideEvidence(const CPeptideEvidence& p){
-  dbSequenceRef=p.dbSequenceRef;
-  end=p.end;
-  id=p.id;
-  isDecoy=p.isDecoy;
-  name=p.name;
-  peptideRef=p.peptideRef;
-  post=p.post;
-  pre=p.pre;
-  start=p.start;
-  translationTableRef=p.translationTableRef;
-  
-  size_t i;
-  cvParam = new vector<sCvParam>;
-  userParam = new vector<sUserParam>;
-  for (i = 0; i<p.cvParam->size(); i++) cvParam->push_back(p.cvParam->at(i));
-  for (i = 0; i<p.userParam->size(); i++) userParam->push_back(p.userParam->at(i));
-
-}
-
-CPeptideEvidence::~CPeptideEvidence(){
-  delete cvParam;
-  delete userParam;
-}
-
-CPeptideEvidence& CPeptideEvidence::operator=(const CPeptideEvidence& p){
-  if (this != &p){
-    dbSequenceRef = p.dbSequenceRef;
-    end = p.end;
-    id = p.id;
-    isDecoy = p.isDecoy;
-    name = p.name;
-    peptideRef = p.peptideRef;
-    post = p.post;
-    pre = p.pre;
-    start = p.start;
-    translationTableRef = p.translationTableRef;
-
-    size_t i;
-    delete cvParam;
-    delete userParam;
-    cvParam = new vector<sCvParam>;
-    userParam = new vector<sUserParam>;
-    for (i = 0; i<p.cvParam->size(); i++) cvParam->push_back(p.cvParam->at(i));
-    for (i = 0; i<p.userParam->size(); i++) userParam->push_back(p.userParam->at(i));
-  }
-  return *this;
-}
+//CPeptideEvidence::CPeptideEvidence(const CPeptideEvidence& p){
+//  dbSequenceRef=p.dbSequenceRef;
+//  end=p.end;
+//  id=p.id;
+//  isDecoy=p.isDecoy;
+//  name=p.name;
+//  peptideRef=p.peptideRef;
+//  post=p.post;
+//  pre=p.pre;
+//  start=p.start;
+//  translationTableRef=p.translationTableRef;
+//  
+//  size_t i;
+//  cvParam = new vector<sCvParam>;
+//  userParam = new vector<sUserParam>;
+//  for (i = 0; i<p.cvParam->size(); i++) cvParam->push_back(p.cvParam->at(i));
+//  for (i = 0; i<p.userParam->size(); i++) userParam->push_back(p.userParam->at(i));
+//
+//}
+//
+//CPeptideEvidence::~CPeptideEvidence(){
+//  delete cvParam;
+//  delete userParam;
+//}
+//
+//CPeptideEvidence& CPeptideEvidence::operator=(const CPeptideEvidence& p){
+//  if (this != &p){
+//    dbSequenceRef = p.dbSequenceRef;
+//    end = p.end;
+//    id = p.id;
+//    isDecoy = p.isDecoy;
+//    name = p.name;
+//    peptideRef = p.peptideRef;
+//    post = p.post;
+//    pre = p.pre;
+//    start = p.start;
+//    translationTableRef = p.translationTableRef;
+//
+//    size_t i;
+//    delete cvParam;
+//    delete userParam;
+//    cvParam = new vector<sCvParam>;
+//    userParam = new vector<sUserParam>;
+//    for (i = 0; i<p.cvParam->size(); i++) cvParam->push_back(p.cvParam->at(i));
+//    for (i = 0; i<p.userParam->size(); i++) userParam->push_back(p.userParam->at(i));
+//  }
+//  return *this;
+//}
 
 bool CPeptideEvidence::operator==(const CPeptideEvidence& p){
   if (this == &p) return true;
@@ -87,6 +80,18 @@ bool CPeptideEvidence::operator==(const CPeptideEvidence& p){
 }
 
 void CPeptideEvidence::writeOut(FILE* f, int tabs){
+  if (id.empty()) {
+    cerr << "PeptideEvidence::id required" << endl;
+    exit(69);
+  }
+  if (dbSequenceRef.empty()) {
+    cerr << "PeptideEvidence::dBSequence_ref required" << endl;
+    exit(69);
+  }
+  if (peptideRef.empty()) {
+    cerr << "PeptideEvidence::peptide_ref required" << endl;
+    exit(69);
+  }
   int i;
   size_t j;
 
@@ -100,15 +105,17 @@ void CPeptideEvidence::writeOut(FILE* f, int tabs){
   if (pre>0) fprintf(f, " pre=\"%c\"", pre);
   if (start>0) fprintf(f, " start=\"%d\"", start);
   if (translationTableRef.size()>0) fprintf(f, " translationTable_ref=\"%s\"", &translationTableRef[0]);
+  if(cvParam.size()==0 && userParam.size()==0) { //save the file size
+    fprintf(f,"/>\n");
+    return;
+  }
   fprintf(f, ">\n");
 
-  if (tabs > -1){
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f, tabs + 1);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f, tabs + 1);
-  } else {
-    for (j = 0; j<cvParam->size(); j++) cvParam->at(j).writeOut(f);
-    for (j = 0; j<userParam->size(); j++) userParam->at(j).writeOut(f);
-  }
+  int t=tabs;
+  if(t>-1) t++;
+
+  for (j = 0; j<cvParam.size(); j++) cvParam[j].writeOut(f, t);
+  for (j = 0; j<userParam.size(); j++) userParam[j].writeOut(f, t);
 
   for (i = 0; i<tabs; i++) fprintf(f, " ");
   fprintf(f, "</PeptideEvidence>\n");

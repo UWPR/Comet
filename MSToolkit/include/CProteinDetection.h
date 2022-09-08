@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,12 +22,12 @@ class CProteinDetection {
 public:
 
   //Constructors & Destructor
-  CProteinDetection();
-  CProteinDetection(const CProteinDetection& c);
-  ~CProteinDetection();
+  //CProteinDetection();
+  //CProteinDetection(const CProteinDetection& c);
+  //~CProteinDetection();
 
   //Operators
-  CProteinDetection& operator=(const CProteinDetection& c);
+  //CProteinDetection& operator=(const CProteinDetection& c);
 
   //Data members
   std::string activityDate;
@@ -35,7 +35,7 @@ public:
   std::string name;
   std::string proteinDetectionListRef;
   std::string proteinDetectionProtocolRef;
-  std::vector<sInputSpectrumIdentifications>* inputSpectrumidentifications;
+  std::vector<sInputSpectrumIdentifications> inputSpectrumidentifications;
 
   //Functions
   void addInputSpectrumIdentification(std::string s);

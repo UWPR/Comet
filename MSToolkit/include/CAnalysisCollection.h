@@ -1,5 +1,5 @@
 /*
-Copyright 2017, Michael R. Hoopmann, Institute for Systems Biology
+Copyright 2020, Michael R. Hoopmann, Institute for Systems Biology
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,20 +22,20 @@ class CAnalysisCollection {
 public:
 
   //Constructors & Destructor
-  CAnalysisCollection();
-  CAnalysisCollection(const CAnalysisCollection& c);
-  ~CAnalysisCollection();
+  //CAnalysisCollection();
+  //CAnalysisCollection(const CAnalysisCollection& c);
+  //~CAnalysisCollection();
 
   //Data members
-  std::vector<CSpectrumIdentification>* spectrumIdentification;
-  CProteinDetection proteinDetection;
+  std::vector<CSpectrumIdentification> spectrumIdentification;
+  std::vector<CProteinDetection> proteinDetection;
 
   //operators
-  CAnalysisCollection& operator=(const CAnalysisCollection& c);
+  //CAnalysisCollection& operator=(const CAnalysisCollection& c);
 
   //Functions
-  void addProteinDetection(CProteinDetection& c);
-  void addSpectrumIdentification(CSpectrumIdentification& c);
+  //void addProteinDetection(CProteinDetection& c);
+  //void addSpectrumIdentification(CSpectrumIdentification& c);
   CSpectrumIdentification& spectrumIdent(const size_t& index);
   void writeOut(FILE* f, int tabs = -1);
 
