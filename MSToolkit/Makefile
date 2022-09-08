@@ -40,9 +40,9 @@ $(BUILD_DIR)/ :
 #
 
 .PHONY: all clean realclean
-all       : expat zlib mstoolkit mzparser sqlite lib
-clean     : expat-clean zlib-clean mstoolkit-clean mzparser-clean mzimltools-clean sqlite-clean lib-clean
-realclean : expat-realclean zlib-realclean mstoolkit-realclean mzparser-realclean mzimltools-realclean sqlite-realclean lib-realclean rc
+all       : expat zlib mstoolkit mzparser lib
+clean     : expat-clean zlib-clean mstoolkit-clean mzparser-clean mzimltools-clean lib-clean
+realclean : expat-realclean zlib-realclean mstoolkit-realclean mzparser-realclean mzimltools-realclean lib-realclean rc
 
 # -- Expat XML Parser ---------------------------------------------------------
 #
@@ -221,41 +221,6 @@ mzimltools-realclean : mzimltools-clean
 	rm -rf $(MZIMLTOOLS_DST) $(MZIMLTOOLS_DSO) $(BUILD_DIR)/libmzimltools.a
 	
 
-# -- SQLite  ---------------------------------------------------------------
-#
-# SQLite is a C-language library that implements a small, fast, 
-# self-contained, high-reliability, full-featured, SQL database engine.
-# It is public domain (no license), and I don't know if its features are
-# still needed by the folks who asked for it in the MSToolkit.
-#
-# https://www.sqlite.org/
-#
-SQLITE_VER := sqlite-3.32.1
-SQLITE_SRCDIR = $(BUILD_SRC)/$(SQLITE_VER)/
-SQLITE_DSTDIR = $(BUILD_DIR)/
-SQLITE_SRC = $(filter-out $(SQLITE_SRCDIR)shell.c, $(wildcard $(SQLITE_SRCDIR)*.c))
-SQLITE_DST = $(patsubst $(SQLITE_SRCDIR)%.c, ${SQLITE_DSTDIR}%.o, $(SQLITE_SRC))
-SQLITE_DSO = $(patsubst ${SQLITE_SRCDIR}%.c, ${SQLITE_DSTDIR}%.lo, $(SQLITE_SRC))
-
-.PHONY : sqlite
-
-sqlite : $(SQLITE_DST) $(SQLITE_DSO)
-	ar rcs $(BUILD_DIR)/libsqlite.a $(SQLITE_DST)
-	
-$(SQLITE_DST) : | $(BUILD_DIR)/
-$(SQLITE_DST) : $(SQLITE_DSTDIR)%.o : $(SQLITE_SRCDIR)%.c
-	$(C) $(CFLAGS) $< -c -o $@
-	
-$(SQLITE_DSO) : $(SQLITE_DSTDIR)%.lo : $(SQLITE_SRCDIR)%.c
-	$(C) $(SFLAGS) $< -c -o $@
-	
-sqlite-clean :
-	rm -rf $(SQLITE_DST) $(SQLITE_DSO)
-
-sqlite-realclean : sqlite-clean
-	rm -rf $(SQLITE_DST) $(SQLITE_DSO) $(BUILD_DIR)/libsqlite.a
-	
-
 # -- Libraries  ----------------------------------------------------------
 #
 # The static libmstoolkit.a and shared libmstoolkit.so (I think)
@@ -264,8 +229,12 @@ sqlite-realclean : sqlite-clean
 #
 .PHONY : lib
 
-lib : expat zlib mstoolkit mzparser mzimltools sqlite
+lib : expat zlib mstoolkit mzparser mzimltools
+ifneq ($(UNAME_S),Darwin)
+	ar -M <mstoolkitlite.mri
+else
 	ar -qc libmstoolkitlite.a obj/*.o src/expat-2.2.9/lib/*.o src/zlib-1.2.11/*.o
+endif
 
 
 lib-clean :
