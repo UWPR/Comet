@@ -265,7 +265,8 @@ sqlite-realclean : sqlite-clean
 .PHONY : lib
 
 lib : expat zlib mstoolkit mzparser mzimltools sqlite
-	ar -rc libmstoolkitlite.a obj/libexpat.a obj/libz.a obj/libmstlite.a obj/libmzparser.a obj/libmzimltools.a
+	ar -qc libmstoolkitlite.a obj/*.o src/expat-2.2.9/lib/*.o src/zlib-1.2.11/*.o
+
 
 lib-clean :
 	rm -rf libmstoolkitlite.a
