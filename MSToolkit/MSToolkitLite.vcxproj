@@ -128,7 +128,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>./include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./include;./src/expat-2.2.9/lib;./src/zlib-1.2.11;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;COMPILED_FROM_DSP;_NOSQLITE;XML_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -333,8 +333,6 @@
     <ClInclude Include="src\expat-2.2.9\xmlwf\xmlfile.h" />
     <ClInclude Include="src\expat-2.2.9\xmlwf\xmlmime.h" />
     <ClInclude Include="src\expat-2.2.9\xmlwf\xmltchar.h" />
-    <ClInclude Include="src\sqlite-3.32.1\sqlite3.h" />
-    <ClInclude Include="src\sqlite-3.32.1\sqlite3ext.h" />
     <ClInclude Include="src\zlib-1.2.11\contrib\blast\blast.h" />
     <ClInclude Include="src\zlib-1.2.11\contrib\infback9\infback9.h" />
     <ClInclude Include="src\zlib-1.2.11\contrib\infback9\inffix9.h" />

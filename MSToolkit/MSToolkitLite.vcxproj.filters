@@ -290,12 +290,6 @@
     <ClInclude Include="src\zlib-1.2.11\contrib\blast\blast.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\sqlite-3.32.1\sqlite3ext.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\sqlite-3.32.1\sqlite3.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\expat-2.2.9\xmlwf\xmlmime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
