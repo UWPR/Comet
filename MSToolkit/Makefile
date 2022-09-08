@@ -174,9 +174,6 @@ MZPARSER_DSO = $(patsubst ${MZPARSER_SRCDIR}%.cpp, ${MZPARSER_DSTDIR}%.lo, $(MZP
 
 mzparser : $(MZPARSER_DST) $(MZPARSER_DSO)
 	ar rcs $(BUILD_DIR)/libmzparser.a $(MZPARSER_DST)
-	$(CXX) $(SFLAGS) -o $(BUILD_DIR)/libmzparser.so.$(RELVER) -Wl,-soname,libmzparser.so.$(SOVER) $(MZPARSER_DSO)
-	ln -sf $(BUILD_DIR)/libmzparser.so.$(RELVER) $(BUILD_DIR)/libmzparser.so.$(SOVER)
-	ln -sf $(BUILD_DIR)/libmzparser.so.$(SOVER) $(BUILD_DIR)/libmzparser.so
 	
 $(MZPARSER_DST) : | $(BUILD_DIR)/
 $(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp
