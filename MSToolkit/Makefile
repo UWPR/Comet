@@ -55,7 +55,6 @@ realclean : expat-realclean zlib-realclean mstoolkit-realclean mzparser-realclea
 EXPAT_VER := expat-2.2.9
 EXPAT_SRC := $(BUILD_SRC)/$(EXPAT_VER)
 EXPAT_DST := include/expat_config.h $(BUILD_DIR)/libexpat.a
-EXPAT_DSO := $(BUILD_SRC)/$(EXPAT_VER)/lib/.libs/xmlparse.o $(BUILD_SRC)/$(EXPAT_VER)/lib/.libs/xmlrole.o $(BUILD_SRC)/$(EXPAT_VER)/lib/.libs/xmltok.o
 EXPAT_LIC := $(BUILD_LIC)/$(EXPAT_VER)/COPYING
 
 .PHONY : expat expat-clean expat-realclean
@@ -98,7 +97,6 @@ ZLIB_SRC := $(BUILD_SRC)/$(ZLIB_VER)
 ZLIB_SRCB := $(wildcard $(ZLIB_SRC)/*.c)
 ZLIB_DST := $(BUILD_DIR)/libz.a
 ZLIB_LIC := $(BUILD_LIC)/$(ZLIB_VER)/README
-ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRCB))
 
 .PHONY : zlib zlib-clean zlib-realclean
 
@@ -130,35 +128,21 @@ zlib-realclean : zlib-clean
 MSTOOLKIT_SRCDIR = $(BUILD_SRC)/MSToolkit/
 MSTOOLKIT_DSTDIR = $(BUILD_DIR)/
 MSTOOLKIT_SRC = $(filter-out $(BUILD_SRC)/MSToolkit/RAWReader.cpp, $(wildcard $(BUILD_SRC)/MSToolkit/*.cpp))
-MSTOOLKIT_DST = $(patsubst ${MSTOOLKIT_SRCDIR}%.cpp, ${MSTOOLKIT_DSTDIR}%.o, $(MSTOOLKIT_SRC))
-MSTOOLKIT_DSO = $(patsubst ${MSTOOLKIT_SRCDIR}%.cpp, ${MSTOOLKIT_DSTDIR}%.lo, $(MSTOOLKIT_SRC))
 MSTOOLKIT_DSTLITE = $(patsubst ${MSTOOLKIT_SRCDIR}%.cpp, ${MSTOOLKIT_DSTDIR}%_lite.o, $(MSTOOLKIT_SRC))
-MSTOOLKIT_DSOLITE = $(patsubst ${MSTOOLKIT_SRCDIR}%.cpp, ${MSTOOLKIT_DSTDIR}%_lite.lo, $(MSTOOLKIT_SRC))
 
 .PHONY : mstoolkit
 
-mstoolkit : $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(MSTOOLKIT_DSTLITE) $(MSTOOLKIT_DSOLITE)
-	ar rcs $(BUILD_DIR)/libmst.a $(MSTOOLKIT_DST)
+mstoolkit : $(MSTOOLKIT_DSTLITE)
 	ar rcs $(BUILD_DIR)/libmstlite.a $(MSTOOLKIT_DSTLITE)
 
-$(MSTOOLKIT_DST) : | $(BUILD_DIR)/
-$(MSTOOLKIT_DST) : $(MSTOOLKIT_DSTDIR)%.o : $(MSTOOLKIT_SRCDIR)%.cpp
-	$(CXX) $(CFLAGS) $< -c -o $@
-
-$(MSTOOLKIT_DSO) : $(MSTOOLKIT_DSTDIR)%.lo : $(MSTOOLKIT_SRCDIR)%.cpp
-	$(CXX) $(SFLAGS) $< -c -o $@
-	
 $(MSTOOLKIT_DSTLITE) : $(MSTOOLKIT_DSTDIR)%_lite.o : $(MSTOOLKIT_SRCDIR)%.cpp
 	$(CXX) $(CFLAGS) $(LITEFLAGS) $< -c -o $@
 	
-$(MSTOOLKIT_DSOLITE) : $(MSTOOLKIT_DSTDIR)%_lite.lo : $(MSTOOLKIT_SRCDIR)%.cpp
-	$(CXX) $(SFLAGS) $(LITEFLAGS) $< -c -o $@
-	
 mstoolkit-clean :
-	rm -rf $(MSTOOLKIT_DST) $(MSTOOLKIT_DSTLITE) $(MSTOOLKIT_DSO) $(MSTOOLKIT_DSOLITE)
+	rm -rf $(MSTOOLKIT_DSTLITE)
 
 mstoolkit-realclean : mstoolkit-clean
-	rm -rf $(MSTOOLKIT_DST) $(MSTOOLKIT_DSTLITE) $(MSTOOLKIT_DSO) $(MSTOOLKIT_DSOLITE) $(BUILD_DIR)/libmst.a $(BUILD_DIR)/libmstlite.a
+	rm -rf $(MSTOOLKIT_DSTLITE) $(BUILD_DIR)/libmstlite.a
 	
 
 # -- mzParser  ---------------------------------------------------------------
@@ -170,25 +154,21 @@ MZPARSER_SRCDIR = $(BUILD_SRC)/mzParser/
 MZPARSER_DSTDIR = $(BUILD_DIR)/
 MZPARSER_SRC = $(filter-out $(BUILD_SRC)/mzParser/mzMLReader.cpp, $(wildcard $(BUILD_SRC)/mzParser/*.cpp))
 MZPARSER_DST = $(patsubst ${MZPARSER_SRCDIR}%.cpp, ${MZPARSER_DSTDIR}%.o, $(MZPARSER_SRC))
-MZPARSER_DSO = $(patsubst ${MZPARSER_SRCDIR}%.cpp, ${MZPARSER_DSTDIR}%.lo, $(MZPARSER_SRC))
 
 .PHONY : mzparser
 
-mzparser : $(MZPARSER_DST) $(MZPARSER_DSO)
+mzparser : $(MZPARSER_DST)
 	ar rcs $(BUILD_DIR)/libmzparser.a $(MZPARSER_DST)
 	
 $(MZPARSER_DST) : | $(BUILD_DIR)/
 $(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp
 	$(CXX) $(CFLAGS) $< -c -o $@
 	
-$(MZPARSER_DSO) : $(MZPARSER_DSTDIR)%.lo : $(MZPARSER_SRCDIR)%.cpp
-	$(CXX) $(SFLAGS) $< -c -o $@
-	
 mzparser-clean :
-	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO)
+	rm -rf $(MZPARSER_DST)
 
 mzparser-realclean : mzparser-clean
-	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO) $(BUILD_DIR)/libmzparser.a $(BUILD_DIR)/libmzparser.so*
+	rm -rf $(MZPARSER_DST) $(BUILD_DIR)/libmzparser.a
 	
 
 # -- mzIMLTools  ---------------------------------------------------------------
@@ -200,25 +180,21 @@ MZIMLTOOLS_SRCDIR = $(BUILD_SRC)/mzIMLTools/
 MZIMLTOOLS_DSTDIR = $(BUILD_DIR)/
 MZIMLTOOLS_SRC = $(wildcard $(BUILD_SRC)/mzIMLTools/*.cpp)
 MZIMLTOOLS_DST = $(patsubst ${MZIMLTOOLS_SRCDIR}%.cpp, ${MZIMLTOOLS_DSTDIR}%.o, $(MZIMLTOOLS_SRC))
-MZIMLTOOLS_DSO = $(patsubst ${MZIMLTOOLS_SRCDIR}%.cpp, ${MZIMLTOOLS_DSTDIR}%.lo, $(MZIMLTOOLS_SRC))
 
 .PHONY : mzimltools
 
-mzimltools : $(MZIMLTOOLS_DST) $(MZIMLTOOLS_DSO)
+mzimltools : $(MZIMLTOOLS_DST)
 	ar rcs $(BUILD_DIR)/libmzimltools.a $(MZIMLTOOLS_DST)
 
 $(MZIMLTOOLS_DST) : | $(BUILD_DIR)/
 $(MZIMLTOOLS_DST) : $(MZIMLTOOLS_DSTDIR)%.o : $(MZIMLTOOLS_SRCDIR)%.cpp
 	$(CXX) $(CFLAGS) $< -c -o $@
 	
-$(MZIMLTOOLS_DSO) : $(MZIMLTOOLS_DSTDIR)%.lo : $(MZIMLTOOLS_SRCDIR)%.cpp
-	$(CXX) $(SFLAGS) $< -c -o $@
-	
 mzimltools-clean :
-	rm -rf $(MZIMLTOOLS_DST) $(MZIMLTOOLS_DSO) 
+	rm -rf $(MZIMLTOOLS_DST)
 
 mzimltools-realclean : mzimltools-clean
-	rm -rf $(MZIMLTOOLS_DST) $(MZIMLTOOLS_DSO) $(BUILD_DIR)/libmzimltools.a
+	rm -rf $(MZIMLTOOLS_DST) $(BUILD_DIR)/libmzimltools.a
 	
 
 # -- Libraries  ----------------------------------------------------------
