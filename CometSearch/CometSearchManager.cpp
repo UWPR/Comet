@@ -2141,6 +2141,12 @@ bool CometSearchManager::DoSearch()
             return false;
          }
 
+         if (g_staticParams.options.iSpectrumBatchSize == 0)
+         {
+            logout("   - Reading all spectra into memory; set \"spectrum_batch_size\" if search terminates here.\n");
+            fflush(stdout);
+         }
+
          int iBatchNum = 0;
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
          {
