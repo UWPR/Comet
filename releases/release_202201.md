@@ -2,7 +2,7 @@
 
 Documentation for parameters for release 2022.01 [can be found here](/Comet/parameters/parameters_202201/).
 
-Download release [here](https://github.com/UWPR/Comet/releases/tag/v2022.01.2).
+Download release [here](https://github.com/UWPR/Comet/releases).
 
 #### release 2022.01 rev. 2 (2022.01.2), release date 2022/09/12
 This is a minor release that addresses these issues:
