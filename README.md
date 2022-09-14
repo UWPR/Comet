@@ -4,7 +4,7 @@
 
 Comet is an open source tandem mass spectrometry (MS/MS) sequence database search tool written primarily in C/C++. The original Comet repository lived on [SourceForge](https://sourceforge.net/projects/comet-ms/) since 2012. It was migrated to GitHub on September 2021.
 
-The project website, including release notes and search parameters documentation, [can be found here](https://uwpr.github.io/Comet/).
+The project website [can be found here](https://uwpr.github.io/Comet/). This includes release notes and search parameters documentation.
 
 To compile on linux and macOS:
 
