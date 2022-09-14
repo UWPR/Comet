@@ -646,12 +646,23 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
   }
   if (feof(fileIn)) return false;
 
+  char strTitle[1024];
+  strTitle[0]='\0';
+
   //read spectrum block
   while (!feof(fileIn)){
     if (!fgets(strMGF, 1024, fileIn)) return false;
     if (strlen(strMGF)<2) continue; //skip blank lines
     if (strMGF[0] == '#' || strMGF[0] == ';' || strMGF[0] == '!' || strMGF[0] == '/') continue; //skip comment lines
     tokens.clear();
+    if (strstr(strMGF, "TITLE=")) {
+       strcpy(strTitle, strMGF+6);  // grab full TITLE string for nativeID
+       strTitle[256]='\0';          // setNativeID requires the string to be <= 256
+       if (strTitle[strlen(strTitle)-1]=='\n')
+          strTitle[strlen(strTitle)-1]='\0';
+       if (strTitle[strlen(strTitle)-1]=='\r')
+          strTitle[strlen(strTitle)-1]='\0';
+    }
     tok = strtok(strMGF, "=\n\r");
     while (tok != NULL){
       tokens.push_back(string(tok));
@@ -703,7 +714,8 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
     } else if (tokens[0].find("RTINSECONDS")==0) {
       s.setRTime((float)(atof(tokens[1].c_str()) / 60.0));
     } else if (tokens[0].compare("TITLE")==0) {
-      s.setNativeID(tokens[1].c_str());
+      const char* cc = strTitle;
+      s.setNativeID(cc);
     } else if(isdigit(tokens[0][0])){
       strcpy(str, tokens[0].c_str());
       tok = strtok(str, " \t\n\r");
