@@ -9,6 +9,7 @@ This is a minor release that addresses these issues:
 - MSToolkit update to [b57509b](https://github.com/mhoopmann/mstoolkit/commit/b57509b07139ae43cdb5049d40402f87a8db417b). Thanks to M. Hoopmann for addressing the MGF issue in the MSToolkit repo. Addresses issue 23.
 - Add user message/warning when "spectrum_batch_size = 0" is set. Addresses issue 27.
 - Add/return expectation value scores within real-time search interface.
+- 2022/09/14: update release to address MSToolkit issue with MGF TITLE lines (commit c75bc2).
 
 #### release 2022.01 rev. 1 (2022.01.1), release date 2022/07/25
 
