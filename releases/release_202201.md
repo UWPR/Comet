@@ -6,10 +6,9 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 
 #### release 2022.01 rev. 2 (2022.01.2), release date 2022/09/12
 This is a minor release that addresses these issues:
-- MSToolkit update to [b57509b](https://github.com/mhoopmann/mstoolkit/commit/b57509b07139ae43cdb5049d40402f87a8db417b). Thanks to M. Hoopmann for addressing the MGF issue in the MSToolkit repo. Addresses issue 23.
+- MSToolkit update to [20e99ce](https://github.com/mhoopmann/mstoolkit/commit/20e99ce4c28c726cdd81513fcccfdaa9e12bc4a3). Thanks to M. Hoopmann for addressing the MGF issue in the MSToolkit repo. Addresses issue 23.
 - Add user message/warning when "spectrum_batch_size = 0" is set. Addresses issue 27.
 - Add/return expectation value scores within real-time search interface.
-- 2022/09/14: update release to address issue with MGF TITLE lines (commit c75bc2).
 
 #### release 2022.01 rev. 1 (2022.01.1), release date 2022/07/25
 
