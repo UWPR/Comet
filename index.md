@@ -34,8 +34,7 @@ software suites](/Comet/releases/) that Comet is integrated into.
 
 ### Publications
 - [Comet: an open source tandem mass spectrometry sequence database search tool](http://onlinelibrary.wiley.com/doi/10.1002/pmic.201200439/abstract).
-Eng JK, Jahan TA, Hoopmann MR. Proteomics. 2012 Nov 12.  doi:
-10.1002/pmic.201200439
+Eng JK, Jahan TA, Hoopmann MR. Proteomics. 2012 Nov 12.  doi: 10.1002/pmic.201200439
 - [A Deeper Look into Comet - Implementation and Features](http://link.springer.com/article/10.1007%2Fs13361-015-1179-x).  Eng
 JK, Hoopmann MR, Jahan TA, Egertson JD, Noble WS, MacCoss MJ. J Am Soc Mass
 Spectrom. 2015 Jun 27.  doi: 10.1007/s13361-015-1179-x
@@ -43,6 +42,10 @@ Spectrom. 2015 Jun 27.  doi: 10.1007/s13361-015-1179-x
 Schweppe DK, Eng JK, Yu Q, Bailey D, Rad R, Navarrete-Perea J, Huttlin EL,
 Erickson BK, Paulo JA, Gygi SP.  J Proteome Res. 2020 May 1;19(5):2026-2034.
 doi: 10.1021/acs.jproteome.9b00860
+- [Extending Comet for Global Amino Acid Variant and Post-Translational Modification Analysis Using the PSI Extended FASTA Format](https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/pmic.201900362).
+Eng JK and Deutsch EW. Proteomics. Proteomics. 2020 Nov;20(21-22):e1900362. 
+doi: 10.1002/pmic.201900362.
+
 
 
 *I know you're smart. But everyone here is smart. Smart isn't enough. The kind
