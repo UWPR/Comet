@@ -21,7 +21,8 @@
 <img src="/Comet/images/cometlogo_2_small.png" alt="Comet logo" style="float:right" height="80">
 Comet is currently supported within the following software projects:
 
-- [Thermo Fischer Scientific Real-Time Search](https://www.thermofisher.com/us/en/home/industrial/mass-spectrometry/liquid-chromatography-mass-spectrometry-lc-ms/lc-ms-systems/orbitrap-lc-ms/orbitrap-tribrid-mass-spectrometers/orbitrap-eclipse-tribrid-mass-spectrometer.html#how-advanced)
+- [Thermo Fischer Scientific Real-Time Search](https://www.thermofisher.com/us/en/home/industrial/mass-spectrometry/liquid-chromatography-mass-spectrometry-lc-ms/lc-ms-systems/orbitrap-lc-ms/orbitrap-tribrid-mass-spectrometers/orbitrap-eclipse-tribrid-mass-spectrometer.html#how-advanced) and as a Proteome Discoverer 3.0 node.
+- [Bruker Daltonics Integrated Proteomics Pipeline (IP2)](https://www.manula.com/manuals/ip2/ip2/1/en/topic/7-2-comet-search-engine)
 - [Trans-Proteomic Pipeline (TPP)](http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP)
 - [PatternLab](http://www.patternlabforproteomics.org/)
 - [OpenMS](https://www.openms.de)
