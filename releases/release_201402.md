@@ -60,11 +60,11 @@ range will be searched.
 terminal distance constraint and which terminus that distance constraint is
 applied to. And the nubmer of variable mods has been extended to 9. The
 modification character codes for mods 1 through 9 are: *#@^~$%!+
-- New parameter "output_percolator". Percolator, I believe as of version 2.08,
+- New parameter "output_percolatorfile". Percolator, I believe as of version 2.08,
 no longer supports the Percolator-in or pin.xml format. The supported input
 format is now a tab-delimited file hence the parameter name change.
 - Removed the parameter "output_pinxml". See the replacement parameter
-"output_percolator".
+"output_percolatorfile".
 - Removed the parameter "precursor_tolerance_type". The implementation of this
 parameter had a bug and it turns out this parameter was simply not needed.
 - Update MSToolkit to version r72.
