@@ -2513,8 +2513,8 @@ bool CometSearchManager::DoSearch()
       }
 
       // Clean up the input files vector
-      g_staticParams.vectorMassOffsets.clear();
-      g_staticParams.precursorNLIons.clear();
+//    g_staticParams.vectorMassOffsets.clear();
+//    g_staticParams.precursorNLIons.clear();
 
       //MH: Deallocate spectral processing memory.
 //    CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
