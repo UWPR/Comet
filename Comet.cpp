@@ -604,7 +604,7 @@ void LoadParameters(char *pszParamsFile,
                char szTmp[512];
 
                varModsParam.szVarModChar[0] = '\0';
-               sscanf(szParamVal, "%lf %19s %d %511s %d %d %d %lf",
+               sscanf(szParamVal, "%lf %31s %d %511s %d %d %d %lf",
                      &varModsParam.dVarModMass,
                      varModsParam.szVarModChar,
                      &varModsParam.iBinaryMod,

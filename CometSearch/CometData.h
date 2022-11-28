@@ -24,7 +24,7 @@
 #define MAX_THREADS                 128
 
 #define MAX_ENZYME_AA               20       // max # of AA for enzyme break point
-#define MAX_VARMOD_AA               20       // max # of modified AAs in a peptide per variable modification
+#define MAX_VARMOD_AA               32       // max # of modified AAs in a peptide per variable modification
 
 #define ENZYME_NAME_LEN             48
 
