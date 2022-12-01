@@ -16,7 +16,9 @@ endif
 override CXXFLAGS += -O3 -static -std=c++11 -fpermissive -Wall -Wextra -Wno-write-strings -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
 
 COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o\
-				  CometWriteSqt.o CometWritePepXML.o CometWriteMzIdentML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o
+				  CometWriteSqt.o CometWritePepXML.o CometWriteMzIdentML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o\
+				  CombinatoricsUtils.o ModificationsPermuter.o ModificationNumber.o
+
 
 all:  $(COMETSEARCH)
 	ar rcs libcometsearch.a $(COMETSEARCH)
@@ -52,3 +54,9 @@ CometSearchManager.o:     CometSearchManager.cpp Common.h CometData.h CometDataI
 	${CXX} ${CXXFLAGS} CometSearchManager.cpp -c
 CometInterfaces.o:      CometInterfaces.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometInterfaces.cpp -c
+CombinatoricsUtils.o:   CombinatoricsUtils.cpp CombinatoricsUtils.h Common.h
+	${CXX} ${CXXFLAGS} CombinatoricsUtils.cpp -c
+ModificationNumber.o:   ModificationNumber.cpp ModificationNumber.h Common.h
+	${CXX} ${CXXFLAGS} ModificationNumber.cpp -c
+ModificationsPermuter.o:   ModificationsPermuter.cpp ModificationsPermuter.h Common.h
+	${CXX} ${CXXFLAGS} ModificationsPermuter.cpp -c

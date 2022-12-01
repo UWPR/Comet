@@ -3042,7 +3042,7 @@ cleanup_results:
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometDataInternal.h).
    if (g_pvQuery.size() > 0)
-	   delete g_pvQuery.at(0);
+      delete g_pvQuery.at(0);
 
    g_pvQuery.clear();
 
@@ -3072,6 +3072,7 @@ bool CometSearchManager::CompareByPeptide(const DBIndex &lhs,
             return false;
       }
 
+/*
       // same sequences and masses here so next look at mod state
       int iLen = (int)strlen(lhs.szPeptide)+2;
       for (int i=0; i<iLen; i++)
@@ -3085,6 +3086,7 @@ bool CometSearchManager::CompareByPeptide(const DBIndex &lhs,
                return false;
          }
       }
+*/
 
       // at this point, same peptide, same mass, same mods so return first protein
       if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)
@@ -3206,8 +3208,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    logout(szOut);
    fflush(stdout);
 
-   // keep unique entries only; sort by peptide/modification state and protein
-   // first sort by peptide, then mod state, then protein file position
+   // first sort by peptide then protein file position
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByPeptide);
 
    // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
@@ -3231,10 +3232,10 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       }
       else
       {
-         // each unique peptide, irregardless of mod state, will have the same list
-         // of matched proteins
+         // each unique peptide will have the same list of matched proteins
          if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide))
          {
+            // store protein as peptides are the same
             temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
             g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
          }
@@ -3311,15 +3312,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddNterminusProtein);
    fprintf(fptr, " %lf\n", g_staticParams.staticModifications.dAddCterminusProtein);
 
-   // write out variable mod params
-   fprintf(fptr, "VariableMod:");
-   for (int x = 0; x < VMODS; x++)
-   {
-      fprintf(fptr, " %s %lf:%lf", g_staticParams.variableModParameters.varModList[x].szVarModChar,
-            g_staticParams.variableModParameters.varModList[x].dVarModMass,
-            g_staticParams.variableModParameters.varModList[x].dNeutralLoss);
-   }
-   fprintf(fptr, "\n\n");
+   fprintf(fptr, "\n");
 
    int iTmp = (int)g_pvProteinNames.size();
    comet_fileoffset_t *lProteinIndex = new comet_fileoffset_t[iTmp];
@@ -3331,7 +3324,10 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    for (auto it = g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
    {
       lProteinIndex[ctProteinNames] = comet_ftell(fptr);
+
+      // Write out file position in orig fasta; this requires orig fasta to read these
       fwrite(it->second.szProt, sizeof(char)*WIDTH_REFERENCE, 1, fptr);
+
       it->second.iWhichProtein = ctProteinNames;
       ctProteinNames++;
    }
@@ -3359,32 +3355,6 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       int iLen = (int)strlen((*it).szPeptide);
       fwrite(&iLen, sizeof(int), 1, fptr);
       fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
-//    fwrite((*it).szPrevNextAA, sizeof(char), 2, fptr);
-
-      // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod)
-      int iLen2 = iLen + 2;
-      unsigned char cNumMods = 0; 
-      for (unsigned char x=0; x<iLen2; x++)
-      {
-         if ((*it).pcVarModSites[x] != 0)
-            cNumMods++;
-      }
-      fwrite(&cNumMods, sizeof(unsigned char), 1, fptr);
-
-      if (cNumMods > 0)
-      {
-         for (unsigned char x=0; x<iLen2; x++)
-         {
-            if ((*it).pcVarModSites[x] != 0)
-            {
-               char cWhichMod = (*it).pcVarModSites[x];
-               fwrite(&x, sizeof(unsigned char), 1, fptr);
-               fwrite(&cWhichMod , sizeof(char), 1, fptr);
-            }
-         }
-      }
-
-      // done writing out mod sites
 
       fwrite(&((*it).dPepMass), sizeof(double), 1, fptr);
       fwrite(&((*it).lIndexProteinFilePosition), sizeof(comet_fileoffset_t), 1, fptr);
@@ -3412,18 +3382,18 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    comet_fileoffset_t lEndOfPeptides = comet_ftell(fptr);
 
-   int iTmpCh = (int)(g_staticParams.options.dPeptideMassLow);
+   int iTmpCh = (int)(g_massRange.dMinMass);
    fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
    fwrite(&iMaxPeptideMass, sizeof(int), 1, fptr);  // write max mass
    uint64_t tNumPeptides = g_pvDBIndex.size();
    fwrite(&tNumPeptides, sizeof(uint64_t), 1, fptr);  // write # of peptides
-   fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fptr); // write index
+   fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fptr); // write precursor mass index
    fwrite(&lEndOfPeptides, sizeof(comet_fileoffset_t), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
 
    fclose(fptr);
 
-   sprintf(szOut, " - done\n");
-   logout(" - done\n");
+   sprintf(szOut, " - done.  # peps %ld\n", tNumPeptides);
+   logout(szOut);
    fflush(stdout);
 
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);

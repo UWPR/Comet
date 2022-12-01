@@ -17,7 +17,6 @@
 #ifndef _COMETSEARCH_H_
 #define _COMETSEARCH_H_
 
-
 #include "Common.h"
 #include "CometDataInternal.h"
 
@@ -27,7 +26,6 @@ struct SearchThreadData
    bool *pbSearchMemoryPool;
    ThreadPool *tp;
   
-
    SearchThreadData()
    {
    }
@@ -190,7 +188,11 @@ private:
                        int iLenPeptide,
                        struct sDBEntry *dbe);
    bool IndexSearch(void);
-   void ReadDBIndexEntry(struct DBIndex *sDBI, FILE *fp);
+   void ReadDBIndexEntry(struct DBIndex *sDBI,
+                         FILE *fp);
+   void ReadPlainPeptideIndexEntry(struct PlainPeptideIndex *sDBI,
+                                   FILE *fp);
+   void PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptides);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence
@@ -213,7 +215,6 @@ private:
    // Cleaning up
    void CleanUp();
 
-private:
    struct VarModStat
    {
        int iTotVarModCt;                     // # mod positions in peptide
