@@ -27,9 +27,14 @@ class CometSearchManager;
 #define C13_DIFF                    1.00335483
 
 #define FLOAT_ZERO                  1e-6     // 0.000001
+
 #define MIN_PEPTIDE_LEN             1        // min # of AA for a petpide
-#define MAX_PEPTIDE_LEN             64       // max # of AA for a peptide; one less to account for terminating char
-#define MAX_PEPTIDE_LEN_P2          66       // max # of AA for a peptide plus 2 for N/C-term
+#define MAX_PEPTIDE_LEN             50       // max # of AA for a peptide; one less to account for terminating char
+#define MAX_PEPTIDE_LEN_P2          52       // max # of AA for a peptide plus 2 for N/C-term
+
+#define MAX_COMBINATIONS            65534
+#define MAX_MODS_PER_MOD            5
+
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
 #define SIZE_NATIVEID               256      // max length of nativeID string
@@ -375,7 +380,8 @@ struct DBIndex
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
-   comet_fileoffset_t   lIndexProteinFilePosition;         // file position index to protein reference
+   comet_fileoffset_t   lIndexProteinFilePosition;         // file position in orig fasta to each protein reference 
+   comet_fileoffset_t   lIndexPeptideFilePosition;         // file position each peptide in the indexdb
    double dPepMass;                          // MH+ pep mass
 
    bool operator==(const DBIndex &rhs) const
@@ -406,6 +412,32 @@ struct DBIndex
       // peptides are different
       return false;
    }
+};
+
+// This is used for fragment indexing; plain peptides are stored in index
+// file and read in to this data struct.  Same as DBIndex w/o mods
+struct PlainPeptideIndex
+{
+   string sPeptide;
+   char   szPrevNextAA[2];
+   comet_fileoffset_t   lIndexProteinFilePosition;  // orig fasta file position to each protein reference
+   comet_fileoffset_t   lIndexPeptideFilePosition;  // file position to each peptide in the indexdb
+   double dPepMass;                          // MH+ pep mass
+
+   bool operator==(const PlainPeptideIndex &rhs) const
+   {
+      if (!sPeptide.compare(rhs.sPeptide))
+         return true;
+      else
+      return false; // peptides are different
+   }
+};
+
+struct PermutedPeptides
+{
+   int iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndex
+   double dModPepMass;  // modified peptide mass
+   vector<pair<int,int>> vpMod;   // int pair <position, which mod> accessed thru .first/.second
 };
 
 struct IndexProteinStruct  // for indexed database

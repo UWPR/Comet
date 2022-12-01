@@ -118,6 +118,7 @@ void SetOptions(char *arg,
       ICometSearchManager *pSearchMgr)
 {
    char szTmp[512];
+   char szParamStringVal[512];
 
    switch (arg[1])
    {
@@ -153,7 +154,6 @@ void SetOptions(char *arg,
             logerr("Missing text for parameter option -F<num>.  Ignored.\n");
          else
          {
-            char szParamStringVal[512];
             IntRange iScanRange;
             pSearchMgr->GetParamValue("scan_range", iScanRange);
             iScanRange.iStart = atoi(szTmp);
@@ -167,7 +167,6 @@ void SetOptions(char *arg,
             logerr("Missing text for parameter option -L<num>.  Ignored.\n");
          else
          {
-            char szParamStringVal[512];
             IntRange iScanRange;
             pSearchMgr->GetParamValue("scan_range", iScanRange);
             iScanRange.iEnd = atoi(szTmp);
@@ -181,7 +180,6 @@ void SetOptions(char *arg,
             logerr("Missing text for parameter option -B<num>.  Ignored.\n");
          else
          {
-            char szParamStringVal[512];
             int iSpectrumBatchSize = atoi(szTmp);
             szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%d", iSpectrumBatchSize);
@@ -192,7 +190,6 @@ void SetOptions(char *arg,
          *bPrintParams = true;
          break;
       case 'i':
-         char szParamStringVal[512];
          sprintf(szParamStringVal, "1");
          pSearchMgr->SetParam("create_index", szParamStringVal, 1);
          break;
