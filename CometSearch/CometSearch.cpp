@@ -1660,7 +1660,7 @@ void CometSearch::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptide
    std::vector<ModificationNumber> MOD_NUMBERS;
 
 // const string modifiedAas = "M*S#T@";
-   const string modifiedAas = "M1S2T3Y4";
+   const string modifiedAas = "M1S2";
    MOD_CNT = modifiedAas.length() / 2;
    ALL_MODS = new char[MOD_CNT];
    ALL_MODS_SYM = new char[MOD_CNT];
@@ -1671,6 +1671,22 @@ void CometSearch::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptide
       ALL_MODS_SYM[i] = modifiedAas[(i * 2) + 1];
    }
 
+/*
+   MOD_CNT = 0;
+   for (int i=0; i<VMODS; i++)
+   {
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+         && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
+      {
+         ALL_MODS.push_back(szVarModChar);
+         ALL_MODS_SYM[MOD_CNT] = static_cast<char>(MOD_CNT);
+
+         MOD_CNT++;
+      }
+   }
+*/
+
+
    for (int i = 0; i < MOD_CNT; i++)
    {
       cout << ALL_MODS[i] << " --> " << ALL_MODS_SYM[i] << endl;
@@ -1679,7 +1695,7 @@ void CometSearch::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptide
    // 2. Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    ModificationsPermuter::initCombinations(MAX_PEPTIDE_LEN, MAX_MODS_PER_MOD);
 
-   vector <string> peptides;
+   vector<string> peptides;
    for (auto it=vRawPeptides.begin(); it !=vRawPeptides.end(); ++it)
       peptides.push_back( (*it).sPeptide);
 
@@ -1691,7 +1707,7 @@ void CometSearch::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptide
    // 4. Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(MOD_SEQS, MAX_MODS_PER_MOD, ALL_MODS, MOD_CNT);
 
-   ModificationsPermuter::printModifiedPeptides(peptides, MOD_SEQS, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS_SYM);
+// ModificationsPermuter::printModifiedPeptides(peptides, MOD_SEQS, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS_SYM);
 }
 
 
