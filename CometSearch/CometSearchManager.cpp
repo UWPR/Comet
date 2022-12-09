@@ -1646,6 +1646,12 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
+/*
+// test permuting code w/o invoking anything else
+CometSearch::RunSearch(); 
+exit(1);
+*/
+
    // add git hash to version string if present
    // repeated here from Comet main() as main() is skipped when search invoked via DLL
    if (strlen(GITHUBSHA) > 0)
@@ -3343,6 +3349,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    int iPrevMass10 = 0;
    int iWhichProtein = 0;
    long lNumMatchedProteins = 0;
+
    for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
    {
       if ((int)((*it).dPepMass * 10.0) > iPrevMass10)

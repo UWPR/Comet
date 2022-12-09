@@ -228,6 +228,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
    pPreprocessThreadPool->wait_on_threads();
 
+
    Threading::DestroyMutex(_maxChargeMutex);
 
    bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
