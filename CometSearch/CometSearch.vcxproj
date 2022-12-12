@@ -192,7 +192,7 @@
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CombinatoricsUtils.cpp" />
+    <ClCompile Include="CombinatoricsUtils.cpp" />
     <ClCompile Include="CometInterfaces.cpp" />
     <ClCompile Include="CometMassSpecUtils.cpp" />
     <ClCompile Include="CometPostAnalysis.cpp" />
@@ -205,8 +205,8 @@
     <ClCompile Include="CometWritePercolator.cpp" />
     <ClCompile Include="CometWriteSqt.cpp" />
     <ClCompile Include="CometWriteTxt.cpp" />
-    <ClInclude Include="ModificationNumber.txt" />
-    <ClInclude Include="ModificationsPermuter.txt" />
+    <ClCompile Include="ModificationNumber.cpp" />
+    <ClCompile Include="ModificationsPermuter.cpp" />
     <ClCompile Include="Threading.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
