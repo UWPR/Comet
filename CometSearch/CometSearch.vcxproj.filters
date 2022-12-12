@@ -75,13 +75,13 @@
     <ClInclude Include="CometWriteMzIdentML.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CombinatoricsUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="ModificationNumber.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ModificationsPermuter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CombinatoricsUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -125,15 +125,14 @@
     <ClCompile Include="CometWriteMzIdentML.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CombinatoricsUtils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ModificationNumber.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ModificationsPermuter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-
+    <ClCompile Include="CombinatoricsUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
