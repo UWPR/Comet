@@ -1646,12 +1646,6 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
-/*
-// test permuting code w/o invoking anything else
-CometSearch::RunSearch(); 
-exit(1);
-*/
-
    // add git hash to version string if present
    // repeated here from Comet main() as main() is skipped when search invoked via DLL
    if (strlen(GITHUBSHA) > 0)

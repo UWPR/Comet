@@ -21,7 +21,7 @@ public:
    static vector<string> readPeptides(string file);
    static string getModifiableAas(std::string peptide, char* ALL_MODS, int MOD_CNT);
    static vector<string> getModifiableSequences(vector<string> peptides, int* PEPTIDE_MOD_SEQ_IDXS, char* ALL_MODS, int MOD_CNT);
-   static long getModBitmask(string modSeq, char modChar);
+   static unsigned long long getModBitmask(string* modSeq, char modChar);
    static vector<vector<int>> getCombinationSets(int modCount);
    static int getTotalCombinationCount(vector<int> combinationCounts, vector<vector<int>> combinationSets);
    static bool combine(int* modNumbers,
@@ -31,7 +31,7 @@ public:
                        int *MOD_NUM);
    static void testCombine();
    static void testCombine2();
-   static void generateModifications(string sequence,
+   static void generateModifications(string* sequence,
                                      int max_mods_per_mod,
                                      int* ret_modNumStart,
                                      int* ret_modNumCount,

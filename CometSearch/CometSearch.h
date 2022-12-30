@@ -76,7 +76,6 @@ public:
                                 ThreadPool *tp);
    bool DoSearch(sDBEntry dbe,
                  bool *pbDuplFragment);
-   bool IndexSearch(void);
 
 private:
 
@@ -188,6 +187,7 @@ private:
                        double dCalcPepMass,
                        int iLenPeptide,
                        struct sDBEntry *dbe);
+   bool IndexSearch(void);
    void ReadDBIndexEntry(struct DBIndex *sDBI,
                          FILE *fp);
    void ReadPlainPeptideIndexEntry(struct PlainPeptideIndex *sDBI,
