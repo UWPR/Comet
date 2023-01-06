@@ -873,6 +873,18 @@ extern vector<DBIndex> g_pvDBIndex;
 
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
+struct ModificationNumber
+{
+   int modificationNumber;
+   char* modifications;
+};
+
+extern vector<ModificationNumber> MOD_NUMBERS;
+extern vector<string> MOD_SEQS;    // Unique modifiable sequences.
+extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
+extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
+extern int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
+
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
 struct Query

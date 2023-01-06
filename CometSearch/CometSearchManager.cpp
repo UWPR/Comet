@@ -348,7 +348,7 @@ static bool compareByScanNumber(Query const* a, Query const* b)
 
 static void CalcRunTime(time_t tStartTime)
 {
-   char szOutFileTimeString[512];
+   char szOutFileTimeString[600];
    time_t tEndTime;
    int iTmp;
 
@@ -369,7 +369,7 @@ static void CalcRunTime(time_t tStartTime)
    sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " on %s", g_staticParams.szHostName);
 
    g_staticParams.iElapseTime = iElapseTime;
-   strncpy(g_staticParams.szOutFileTimeString, szOutFileTimeString, 256);
+   strncpy(g_staticParams.szOutFileTimeString, szOutFileTimeString, 255);
    g_staticParams.szOutFileTimeString[255]='\0';
 }
 

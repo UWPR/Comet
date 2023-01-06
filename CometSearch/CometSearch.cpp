@@ -20,7 +20,6 @@
 #include "CometStatus.h"
 #include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
-#include "ModificationNumber.h"
 #include "ModificationsPermuter.h"
 
 #include <stdio.h>
@@ -29,6 +28,12 @@
 
 bool *CometSearch::_pbSearchMemoryPool;
 bool **CometSearch::_ppbDuplFragmentArr;
+
+vector<ModificationNumber> MOD_NUMBERS;
+vector<string> MOD_SEQS;    // Unique modifiable sequences.
+int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
+int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
+int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
 
 // https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
 chrono::time_point<chrono::steady_clock> startTime()
@@ -1334,10 +1339,8 @@ bool CometSearch::IndexSearch(void)
    if (iEnd > iMaxMass)
       iEnd = iMaxMass;
 
-
    int iStart10 = (int)(g_massRange.dMinMass*10.0 - 0.5);  // lReadIndex is at 0.1 resolution for index value so scale iStart/iEnd to be same
    int iEnd10 = (int)(g_massRange.dMaxMass*10.0 + 0.5);
-
 
    if (iStart10 < iMinMass*10)
       iStart10 = iMinMass*10;
@@ -1351,10 +1354,6 @@ bool CometSearch::IndexSearch(void)
 // size_t lNumPeps;
 // int iFragmentMass;
    g_massRange.iMaxFragmentCharge = 1; // until we figure out how to deal with frag charge
-
-// FIX:  set the start/end range to analyze all indexed peptides while debugging 
-iStart10 = 1;
-iEnd10 = 100000;
 
    // Loop through all lReadIndex until you hit a mass index value that's not -1
    while (lReadIndex[iStart10] == -1)
@@ -1375,11 +1374,17 @@ iEnd10 = 100000;
          break;
    }
 
+   delete [] lReadIndex;
+   fclose(fp);
+
    // now permute mods on the peptides
    PermuteIndexPeptideMods(vRawPeptides);
 
-   delete [] lReadIndex;
-   fclose(fp);
+   // generate the modified peptides to calculate the fragment index
+   GenerateFragmentIndex(vRawPeptides);
+
+// SearchFragmentIndex();
+
    return true;
 }
 
@@ -1392,82 +1397,146 @@ void CometSearch::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptide
    // - modification encoding
 
    vector<struct PermutedPeptides> vPermutedPeptides;
-
-   char* ALL_MODS; // An array of all the user specified amino acids that can be modified
-   char* ALL_MODS_SYM; // Symbols representing the modifications
-   int MOD_CNT; // Size of ALL_MODS array
+   vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up to MAX_MODS_PER_MOD modified amino acids.
 
    // Maximum number of bits that can be set in a modifiable sequence for a given modification.
    // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than MAX_COMBINATIONS (65,534)
 
-   vector<string> MOD_SEQS; // Unique modifiable sequences.
-   int* PEPTIDE_MOD_SEQ_IDXS; // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
-   std::vector<ModificationNumber> MOD_NUMBERS;
-
-// const string modifiedAas = "M*S#T@";
-   const string modifiedAas = "M1S2T3";
-   MOD_CNT = modifiedAas.length() / 2;
-   ALL_MODS = new char[MOD_CNT];
-   ALL_MODS_SYM = new char[MOD_CNT];
-
-   for (int i = 0; i < MOD_CNT; i++)
-   {
-      ALL_MODS[i] = modifiedAas[i * 2];
-      ALL_MODS_SYM[i] = modifiedAas[(i * 2) + 1];
-   }
-
-/*
-   MOD_CNT = 0;
    for (int i=0; i<VMODS; i++)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
          && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
-         ALL_MODS.push_back(szVarModChar);
-         ALL_MODS_SYM[MOD_CNT] = static_cast<char>(MOD_CNT);
-
-         MOD_CNT++;
+         ALL_MODS.push_back(g_staticParams.variableModParameters.varModList[i].szVarModChar);
       }
    }
-*/
 
+   int MOD_CNT = (int)ALL_MODS.size();
 
    for (int i = 0; i < MOD_CNT; i++)
    {
-      cout << ALL_MODS[i] << " --> " << ALL_MODS_SYM[i] << endl;
+      cout << " mods: " << ALL_MODS[i] << endl;
    }
 
-   unsigned long* ALL_COMBINATIONS; 
+   unsigned long long* ALL_COMBINATIONS; 
    int ALL_COMBINATION_CNT = 0;
 
-   // 2. Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
+   // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    ModificationsPermuter::initCombinations(MAX_PEPTIDE_LEN, MAX_MODS_PER_MOD, &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
-/*
-printf("\nOK ALL_COMBINATION_CNT %d\n", ALL_COMBINATION_CNT);
-for (int i = 0; i < 10; i++)
-{
-   cout << ALL_COMBINATIONS[i] << " - ";
-   std::bitset<64> x(ALL_COMBINATIONS[i]);
-   cout << x << endl;
-}
-*/
+   // Get the unique modifiable sequences from the peptides
+   PEPTIDE_MOD_SEQ_IDXS = new int[(int)vRawPeptides.size()];
 
-   vector<string> peptides;
-   for (auto it=vRawPeptides.begin(); it !=vRawPeptides.end(); ++it)
-      peptides.push_back( (*it).sPeptide);
+   MOD_SEQS = ModificationsPermuter::getModifiableSequences(vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
-   // 3. Get the unique modifiable sequences from the peptides
-   PEPTIDE_MOD_SEQ_IDXS = new int[(int)peptides.size()];
-
-   MOD_SEQS = ModificationsPermuter::getModifiableSequences(peptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, MOD_CNT);
-
-   // 4. Get the modification combinations for each unique modifiable substring
+   // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(MOD_SEQS, MAX_MODS_PER_MOD, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+}
 
-   ModificationsPermuter::printModifiedPeptides(peptides, MOD_SEQS, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS_SYM);
+
+void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
+{
+   std::string buffer;
+   const int BUFFER_SIZE = 1024 * 10 * 10;
+   buffer.reserve(BUFFER_SIZE);
+
+   ofstream output;
+   output.open("modified_peptides.txt");
+
+   cout << "Printing " << vRawPeptides.size() << " modified peptides to modified_peptides.txt" << endl;
+
+   int i = 0;
+   int iNoModificationNumbers = 0;
+
+   for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
+   {
+      string peptide = (*it).sPeptide;
+
+      int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[i];
+      i++;
+
+      if (modSeqIdx == -1)
+      {
+//       if (DEBUG)
+//          cout << "Not modified - " << to_string(i) << ". " << peptide << endl;
+         continue;
+      }
+      int startIdx = MOD_SEQ_MOD_NUM_START[modSeqIdx];
+
+      if (startIdx == -1)
+      {
+//       if (DEBUG)
+//          cout << "No modification numbers - " << to_string(i) << ". " << peptide << endl;
+         iNoModificationNumbers++;
+         continue;
+      }
+
+      string modSeq = MOD_SEQS.at(modSeqIdx);
+      int modSeqLen = modSeq.size();
+      int* indexInPep = new int[modSeqLen];
+      int pepLen = peptide.length();
+      int k = 0;
+      for (int j = 0; j < modSeqLen; j++)
+      {
+         char mod_aa = modSeq[j];
+         while(k < pepLen)
+         {
+            char aa = peptide[k];
+            if (mod_aa == aa)
+            {
+               indexInPep[j] = k++;
+               break;
+            }
+            k++;
+         }
+      }
+
+      buffer.append("--------------------------------------\n");
+      buffer.append(to_string(i) + ". " + peptide + " -->" + modSeq + "\n");
+
+      int modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
+
+      for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
+      {
+         ModificationNumber modNum = MOD_NUMBERS.at(modNumIdx);
+         char* mods = modNum.modifications;
+         string modifiedPep = "";
+         int last = 0;
+         for (int l = 0; l < modSeqLen; l++)
+         {
+            int iInPep = indexInPep[l];
+            modifiedPep += peptide.substr(last, iInPep - last + 1);
+            if (mods[l] != -1)
+            {
+               modifiedPep += '*';
+            }
+            last = iInPep + 1;
+         }
+         if (last < pepLen)
+         {
+            modifiedPep += peptide.substr(last);
+         }
+
+         if (buffer.length() + modifiedPep.length() + 1 > BUFFER_SIZE)
+         {
+            output << buffer;
+            buffer.resize(0);
+         }
+         buffer.append(modifiedPep.append("\n"));
+         // output << modifiedPep << endl;
+
+         if (modNumIdx == startIdx+2)
+            break;
+      }
+
+      delete[] indexInPep;
+   }
+
+   output << buffer;
+   output.close();
+   cout << iNoModificationNumbers << " have no modification numbers; need to fix??" << endl;
 }
 
 

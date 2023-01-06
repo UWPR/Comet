@@ -113,7 +113,7 @@ $(ZLIB_LIC) : $(ZLIB_SRC)/$(notdir $(ZLIB_LIC))| $(MKDIR)
 
 zlib-clean :
 ifneq (,$(wildcard $(ZLIB_SRC)/Makefile))
-	make -C $(ZLIB_SRC) clean
+	make -C $(ZLIB_SRC) distclean
 endif
 
 zlib-realclean : zlib-clean
