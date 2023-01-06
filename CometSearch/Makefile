@@ -17,7 +17,7 @@ override CXXFLAGS += -O3 -static -std=c++11 -fpermissive -Wall -Wextra -Wno-writ
 
 COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o\
 				  CometWriteSqt.o CometWritePepXML.o CometWriteMzIdentML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o\
-				  CombinatoricsUtils.o ModificationsPermuter.o ModificationNumber.o
+				  CombinatoricsUtils.o ModificationsPermuter.o
 
 
 all:  $(COMETSEARCH)
@@ -56,7 +56,5 @@ CometInterfaces.o:      CometInterfaces.cpp Common.h CometData.h CometDataIntern
 	${CXX} ${CXXFLAGS} CometInterfaces.cpp -c
 CombinatoricsUtils.o:   CombinatoricsUtils.cpp CombinatoricsUtils.h Common.h
 	${CXX} ${CXXFLAGS} CombinatoricsUtils.cpp -c
-ModificationNumber.o:   ModificationNumber.cpp ModificationNumber.h Common.h
-	${CXX} ${CXXFLAGS} ModificationNumber.cpp -c
 ModificationsPermuter.o:   ModificationsPermuter.cpp ModificationsPermuter.h Common.h
 	${CXX} ${CXXFLAGS} ModificationsPermuter.cpp -c

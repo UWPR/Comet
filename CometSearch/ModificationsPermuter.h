@@ -9,44 +9,54 @@ class ModificationsPermuter
 public:
 
    static chrono::time_point<chrono::steady_clock> startTime();
-   static void endTime(chrono::time_point<chrono::steady_clock> start, string message);
+   static void endTime(chrono::time_point<chrono::steady_clock> start,
+                       string message);
    static long duration(chrono::time_point<chrono::steady_clock> start);
-   static bool isModifiable(char aa, char* ALL_MODS, int MOD_CNT);
-   static void printBits(long number);
-   static void getCombinations(int n, int k, int nck, unsigned long* bitmasks);
+   static bool isModifiable(char aa,
+                            vector<string>& ALL_MODS);
+   static void printBits(unsigned long long number);
+   static void getCombinations(int n,
+                               int k,
+                               int nck,
+                               unsigned long long* bitmasks);
    static void initCombinations(int maxPeptideLen,
                                 int maxMods,
-                                unsigned long** ALL_COMBINATIONS,
+                                unsigned long long** ALL_COMBINATIONS,
                                 int* ALL_COMBINATION_CNT);
    static vector<string> readPeptides(string file);
-   static string getModifiableAas(std::string peptide, char* ALL_MODS, int MOD_CNT);
-   static vector<string> getModifiableSequences(vector<string> peptides, int* PEPTIDE_MOD_SEQ_IDXS, char* ALL_MODS, int MOD_CNT);
-   static unsigned long long getModBitmask(string* modSeq, char modChar);
+   static string getModifiableAas(std::string peptide,
+                                  vector<string>& ALL_MODS);
+   static vector<string> getModifiableSequences(vector<PlainPeptideIndex>& vRawPeptides,
+                                                int* PEPTIDE_MOD_SEQ_IDXS,
+                                                vector<string>& ALL_MODS);
+   static unsigned long long getModBitmask(string* modSeq,
+                                           string sModChars);
    static vector<vector<int>> getCombinationSets(int modCount);
-   static int getTotalCombinationCount(vector<int> combinationCounts, vector<vector<int>> combinationSets);
+   static int getTotalCombinationCount(vector<int> combinationCounts,
+                                       vector<vector<int>> combinationSets);
    static bool combine(int* modNumbers,
-                       unsigned long* bitmasks,
+                       unsigned long long* bitmasks,
                        int modNumCount,
                        int modStringLen,
                        int *MOD_NUM);
-   static void testCombine();
-   static void testCombine2();
    static void generateModifications(string* sequence,
                                      int max_mods_per_mod,
                                      int* ret_modNumStart,
                                      int* ret_modNumCount,
-                                     char* ALL_MODS,
+                                     vector<string>& ALL_MODS,
                                      int MOD_CNT,
                                      int ALL_COMBINATION_CNT,
-                                     unsigned long* ALL_COMBINATIONS,
+                                     unsigned long long* ALL_COMBINATIONS,
                                      int *MOD_NUM);
    static void getModificationCombinations(const vector<string> modifiableSeqs,
                                            int max_mods_per_mod,
-                                           char* ALL_MODS,
+                                           vector<string>& ALL_MODS,
                                            int MOD_CNT,
                                            int ALL_COMBINATION_CNT,
-                                           unsigned long* ALL_COMBINATIONS);
-   static void printModifiedPeptides(vector<string> peptides, vector<string> MOD_SEQS, int* PEPTIDE_MOD_SEQ_IDXS, char* ALL_MODS_SYM); //, string outputFile);
+                                           unsigned long long* ALL_COMBINATIONS);
+   static void printModifiedPeptides(vector<PlainPeptideIndex>& vRawPeptides,
+                                     vector<string>& MOD_SEQS,
+                                     int* PEPTIDE_MOD_SEQ_IDXS);
 
    ModificationsPermuter();
    ~ModificationsPermuter();
