@@ -9,7 +9,7 @@ This is a minor release that addresses these issues:
 - MSToolkit update to [20e99ce](https://github.com/mhoopmann/mstoolkit/commit/20e99ce4c28c726cdd81513fcccfdaa9e12bc4a3). Thanks to M. Hoopmann for addressing the MGF issue in the MSToolkit repo. Addresses issue 23.
 - Add user message/warning when "spectrum_batch_size = 0" is set. Addresses issue 27.
 - Add/return expectation value scores within real-time search interface.
-- Known bug:  When applying [add_Cterm_protein](https://uwpr.github.io/Comet/parameters/parameters_202201/add_Cterm_protein.html), the static modificaton is not applied for the peptide mass calculation for peptides that contain a variable modification.  This bug has been addressed with commit [c0b6187](https://github.com/UWPR/Comet/commit/c0b61873a5b1b1006949bbd70c760b9dc49d8516).
+- Known bug:  When applying [add_Cterm_protein](https://uwpr.github.io/Comet/parameters/parameters_202201/add_Cterm_protein.html), the static modificaton is not applied for the peptide mass calculation for peptides that contain a variable modification.  This bug has been addressed with commit [c0b6187](https://github.com/UWPR/Comet/commit/c0b61873a5b1b1006949bbd70c760b9dc49d8516). Thanks to M. Hoopmann for reporting the issue.
 
 #### release 2022.01 rev. 1 (2022.01.1), release date 2022/07/25
 
