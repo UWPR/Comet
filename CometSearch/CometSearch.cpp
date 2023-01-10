@@ -34,6 +34,7 @@ vector<string> MOD_SEQS;    // Unique modifiable sequences.
 int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
 int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
+int MOD_NUM = 0; 
 
 // https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
 chrono::time_point<chrono::steady_clock> startTime()
@@ -1347,7 +1348,7 @@ bool CometSearch::IndexSearch(void)
    if (iEnd10 > iMaxMass*10)
       iEnd10 = iMaxMass*10;
 
-   // At this point, have read in the peptide index
+   // At this point, have read in the peptide index; now read in unmodified peptides
 
 // comet_fileoffset_t pWhichPeptide;
    std::map<comet_fileoffset_t, int> mPeptides;
@@ -1450,26 +1451,29 @@ void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
    int i = 0;
    int iNoModificationNumbers = 0;
 
-   for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
+   size_t iWhichPeptide = 0;
+   size_t iEndSize = vRawPeptides.size();
+
+   for (iWhichPeptide = 0; iWhichPeptide < iEndSize; ++iWhichPeptide)
    {
-      string peptide = (*it).sPeptide;
+      string peptide = vRawPeptides.at(iWhichPeptide).sPeptide;
 
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[i];
       i++;
 
       if (modSeqIdx == -1)
       {
-//       if (DEBUG)
-//          cout << "Not modified - " << to_string(i) << ". " << peptide << endl;
+         buffer.append("--------------------------------------\n");
+         buffer.append(to_string(i) + ". " + peptide + " --> not modified\n");
          continue;
       }
       int startIdx = MOD_SEQ_MOD_NUM_START[modSeqIdx];
 
       if (startIdx == -1)
       {
-//       if (DEBUG)
-//          cout << "No modification numbers - " << to_string(i) << ". " << peptide << endl;
          iNoModificationNumbers++;
+         buffer.append("--------------------------------------\n");
+         buffer.append(to_string(i) + ". " + peptide + " --> no mod number\n");
          continue;
       }
 
@@ -1501,7 +1505,9 @@ void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
       for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
       {
          ModificationNumber modNum = MOD_NUMBERS.at(modNumIdx);
+
          char* mods = modNum.modifications;
+
          string modifiedPep = "";
          int last = 0;
          for (int l = 0; l < modSeqLen; l++)
@@ -1510,7 +1516,7 @@ void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
             modifiedPep += peptide.substr(last, iInPep - last + 1);
             if (mods[l] != -1)
             {
-               modifiedPep += '*';
+               modifiedPep += to_string(mods[l]);
             }
             last = iInPep + 1;
          }
@@ -1524,11 +1530,12 @@ void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
             output << buffer;
             buffer.resize(0);
          }
-         buffer.append(modifiedPep.append("\n"));
-         // output << modifiedPep << endl;
 
-         if (modNumIdx == startIdx+2)
-            break;
+         buffer.append(to_string(iWhichPeptide));
+         buffer.append(" ");
+         buffer.append(to_string(modNumIdx));
+         buffer.append(" ");
+         buffer.append(modifiedPep.append("\n"));
       }
 
       delete[] indexInPep;
@@ -1536,7 +1543,7 @@ void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
 
    output << buffer;
    output.close();
-   cout << iNoModificationNumbers << " have no modification numbers; need to fix??" << endl;
+   cout << iNoModificationNumbers << " peptides have no modification numbers." << endl;
 }
 
 

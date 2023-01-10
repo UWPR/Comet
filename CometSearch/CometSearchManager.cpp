@@ -3265,25 +3265,6 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // sort by mass;
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByMass);
 
-/*
-   for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
-   {
-      printf("OK after unique ");
-      if ((*it).pcVarModSites[strlen((*it).szPeptide)] != 0)
-         printf("n*");
-      for (unsigned int x = 0; x < strlen((*it).szPeptide); x++)
-      {
-         printf("%c", (*it).szPeptide[x]);
-         if ((*it).pcVarModSites[x] != 0)
-            printf("*");
-      }
-      if ((*it).pcVarModSites[strlen((*it).szPeptide) + 1] != 0)
-         printf("c*");
-      printf("   %f   %lld\n", (*it).dPepMass, (*it).lIndexProteinFilePosition);
-   }
-   printf("\n");
-*/
-
    sprintf(szOut, " - writing file\n");
    logout(szOut);
    fflush(stdout);
