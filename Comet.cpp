@@ -103,7 +103,7 @@ void Usage(char *pszCmd)
    logout(szTmp);
    sprintf(szTmp, "            or   %s -F1000 -L1500 file1.mzXML    <- to search scans 1000 through 1500\n", pszCmd);
    logout(szTmp);
-   sprintf(szTmp, "            or   %s -pParams.txt *.mzXML         <- use parameters in the file 'Params.txt'\n", pszCmd);
+   sprintf(szTmp, "            or   %s -PParams.txt *.mzXML         <- use parameters in the file 'Params.txt'\n", pszCmd);
    logout(szTmp);
 
    logout("\n");
