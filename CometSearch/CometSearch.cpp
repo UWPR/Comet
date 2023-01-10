@@ -5661,6 +5661,9 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    else
       iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
+   if (_varModInfo.iEndPos == iLenProteinMinus1)
+      dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+
    // contains positional coding of a variable mod at each index which equals an AA residue
    memset(piVarModSites, 0, _iSizepiVarModSites);
    memset(piVarModCharIdx, 0, sizeof(piVarModCharIdx));
