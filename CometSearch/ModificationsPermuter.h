@@ -37,8 +37,7 @@ public:
    static bool combine(int* modNumbers,
                        unsigned long long* bitmasks,
                        int modNumCount,
-                       int modStringLen,
-                       int *MOD_NUM);
+                       int modStringLen);
    static void generateModifications(string* sequence,
                                      int max_mods_per_mod,
                                      int* ret_modNumStart,
@@ -46,17 +45,13 @@ public:
                                      vector<string>& ALL_MODS,
                                      int MOD_CNT,
                                      int ALL_COMBINATION_CNT,
-                                     unsigned long long* ALL_COMBINATIONS,
-                                     int *MOD_NUM);
+                                     unsigned long long* ALL_COMBINATIONS);
    static void getModificationCombinations(const vector<string> modifiableSeqs,
                                            int max_mods_per_mod,
                                            vector<string>& ALL_MODS,
                                            int MOD_CNT,
                                            int ALL_COMBINATION_CNT,
                                            unsigned long long* ALL_COMBINATIONS);
-   static void printModifiedPeptides(vector<PlainPeptideIndex>& vRawPeptides,
-                                     vector<string>& MOD_SEQS,
-                                     int* PEPTIDE_MOD_SEQ_IDXS);
 
    ModificationsPermuter();
    ~ModificationsPermuter();

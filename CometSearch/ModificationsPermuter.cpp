@@ -27,26 +27,12 @@ ModificationsPermuter::~ModificationsPermuter()
 
 //bool DEBUG = false;
 
-//char* ALL_MODS; // An array of all the user specified amino acids that can be modified
-//char* ALL_MODS_SYM; // Symbols representing the modifications
-//int MOD_CNT; // Size of ALL_MODS array
-
-// Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up to MAX_MODS_PER_MOD modified amino acids.
-//unsigned long* ALL_COMBINATIONS; 
-//int ALL_COMBINATION_CNT;
-
 // Maximum number of bits that can be set in a modifiable sequence for a given modification.
 // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than MAX_COMBINATIONS (65,534)
 int MAX_BITCOUNT = 24;
 int MAX_K_VAL = 10;
 
 int IGNORED_SEQ_CNT = 0; // Sequences that were ignored because they would generate more than MAX_COMBINATIONS combinations.
-//vector<string> MOD_SEQS; // Unique modifiable sequences.
-//int* PEPTIDE_MOD_SEQ_IDXS; // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
-//int MOD_NUM = 0;
-//std::vector<ModificationNumber> MOD_NUMBERS;
-//int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
-//int* MOD_SEQ_MOD_NUM_CNT; // Total modifications numbers for a modifiable sequence.
 
 long TIME_IN_COMBINE = 0;
 long TIME_GEN_MODS = 0;
@@ -101,19 +87,18 @@ void ModificationsPermuter::getCombinations(int n,
 
    for (int i = 0; i < nck; i++)
    {
-      unsigned long long bitmask = 0;
+      unsigned long long bitmask = 0ULL;
       int *combination = combinations[i];
       for (int j = 0; j < k; j++)
       {
-         int toOr = 1 << (combination[j]);
+         unsigned long long toOr = 1ULL << (combination[j]);
          // cout << combination[j] << " " << toOr << endl;
          bitmask = bitmask | toOr;
       }
       bitmasks[i] = bitmask;
 
-      // cout << bitmasks.at(i) << " - ";
       // std::bitset<64> x(bitmasks.at(i));
-      // cout << x << endl;
+      // cout << x << " - "  << allCombos[i] << endl;
    }
    for (int i = 0; i < nck; i++)
    {
@@ -202,9 +187,8 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
    {
       for (int i = 0; i < totalCount; i++)
       {
-         cout << allCombos[i] << " - ";
          std::bitset<64> x(allCombos[i]);
-         cout << x << endl;
+         cout << allCombos[i] << " - " << x << endl;
       }
    }
 */
@@ -230,7 +214,6 @@ vector<string> ModificationsPermuter::readPeptides(string file)
       {
          peptides.push_back(line);
          pepCnt++;
-         // if (pepCnt >= 2000) break;
       }
       myfile.close();
       endTime(start, "Read " + std::to_string(peptides.size()) + " peptides");
@@ -247,6 +230,7 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
    string modifiableAas = "";
 
    int i = 0;
+
    for (char aa : peptide)
    {
       if (isModifiable(aa, ALL_MODS))
@@ -255,7 +239,10 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
       }
       i++;
    }
-   if (modifiableAas.size() == 0) return {};
+
+   if (modifiableAas.size() == 0)
+      return {};
+
    return modifiableAas;
 }
 
@@ -307,11 +294,11 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
 unsigned long long ModificationsPermuter::getModBitmask(string* modSeq,
                                                         string sModChars)
 {
-   unsigned long long bitMask = 0L;
+   unsigned long long bitMask = 0ULL;
    long len = (*modSeq).size();
    for (int i = 0; i < len; i++)
    {
-      if (sModChars.find((*modSeq)[i]))
+      if (sModChars.find((*modSeq)[i]) != string::npos)
       {
          bitMask |= (static_cast <unsigned __int64> (1ULL) << (len - i - 1));
       }
@@ -383,8 +370,7 @@ int ModificationsPermuter::getTotalCombinationCount(vector<int> combinationCount
 bool ModificationsPermuter::combine(int* modNumbers,
                                     unsigned long long* bitmasks,
                                     int modNumCount,
-                                    int modStringLen,
-                                    int* MOD_NUM)
+                                    int modStringLen)
 {
    const auto start = startTime();
 
@@ -400,26 +386,27 @@ bool ModificationsPermuter::combine(int* modNumbers,
          {
             // If any two modification combinations have the same bit set then this is not a valid combination.
             // This can happen when more than one modification is defined on the same amino acid.
-            return false; 
+            return false;
          }
       }
    }
 
    char *mods = new char[modStringLen];
+   char modNum;
+
    for (int i = 0; i < modStringLen; i++)
       mods[i] = -1;
 
-   char modNum;
    for (int i = 0; i < modStringLen; i++)
    {
       int idx = modStringLen - i - 1;
       for (int j = 0; j < modNumCount; j++)
       {
-         long btm = bitmasks[j];
+         unsigned long long btm = bitmasks[j];
          modNum = modNumbers[j];
 
          // extract the i-th bit in the bitmask
-         const unsigned long long b = (btm & 1L << i);
+         const unsigned long long b = (btm & 1ULL << i);
          if (b > 0)
          {
             mods[idx] = modNum;
@@ -427,9 +414,9 @@ bool ModificationsPermuter::combine(int* modNumbers,
          }
       }
    }
-   
+
    ModificationNumber modification;
-   modification.modificationNumber = (*MOD_NUM)++;
+   modification.modificationNumber = MOD_NUM++;
    modification.modifications = mods;
    MOD_NUMBERS.push_back(modification);
 
@@ -446,8 +433,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
                                                   vector<string>& ALL_MODS,
                                                   int MOD_CNT,
                                                   int ALL_COMBINATION_CNT,
-                                                  unsigned long long* ALL_COMBINATIONS,
-                                                  int* MOD_NUM)
+                                                  unsigned long long* ALL_COMBINATIONS)
 {
    auto startGenMods = startTime();
 
@@ -462,7 +448,9 @@ void ModificationsPermuter::generateModifications(string* sequence,
    for (int m = 0; m < MOD_CNT; m++)
    {
       string sModChars = ALL_MODS[m];
+
       const unsigned long long bitmask = getModBitmask(sequence, sModChars); // Example: CMHQQQMK -> 01000010 (for modChar = 'M')
+
       if (bitmask != 0)
       {
          std::bitset<64> x(bitmask);
@@ -480,6 +468,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
          }
 
          modIndices.push_back(m);
+
          modBitmasks.push_back(bitmask);
          combinationCounts.push_back(combinationCount);
       }
@@ -489,7 +478,6 @@ void ModificationsPermuter::generateModifications(string* sequence,
    int idx = 0;
    unsigned long long ** combinationsForAllMods = new unsigned long long*[modIndices.size()];
    // Iterate over the bitmasks for the modifications found in the given sequence
-// for (vector<unsigned long long>::iterator it = modBitmasks.begin(); it != modBitmasks.end(); ++it)
    for (auto it = modBitmasks.begin(); it != modBitmasks.end(); ++it)
    {
       unsigned long long modBitmask = *it; // bitmask for a modification
@@ -522,16 +510,17 @@ void ModificationsPermuter::generateModifications(string* sequence,
       }
       if (comboForModIdx != combinationsCount) // Number of combinations found should be the same as the expected number.
       {
-         cout << "ERROR: Unexpected combination count; comboForModIdx is " << to_string(comboForModIdx) 
-              << "; combinationsCount is " << to_string(combinationsCount) << "; sequence " << *sequence << endl;
+         cout << "ERROR: Unexpected combination count; Found combination count " << to_string(comboForModIdx) 
+              << "; Expected calculated count is " << to_string(combinationsCount) << "; sequence " << *sequence << endl;
       }
       combinationsForAllMods[idx++] = combinationsForMod;
    }
 
+
 /*
    if (DEBUG)
    {
-      for (int i = 0; i < modIndex.size(); i++)
+      for (auto i = 0; i < (int)modBitmasks.size(); i++)
       {
          unsigned long long* bitmasks = combinationsForAllMods[i];
          int combinationCount = combinationCounts[i];
@@ -540,7 +529,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
             unsigned long long bitmask = bitmasks[j];
             // cout << bitmasks.at(i) << " - ";
             std::bitset<64> x(bitmask);
-            cout << x << endl;
+            cout << "OK " << i << " " << x << endl;
          }
       }
    }
@@ -555,7 +544,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
    if (combinationCount != -1)
    {
       int totalModNumCount = 0;
-      const int startModNum = *MOD_NUM;
+      const int startModNum = MOD_NUM;
 
       for (vector<vector<int>>::iterator it = combinationSets.begin(); it != combinationSets.end(); ++it)
       {
@@ -599,7 +588,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
                modNumbers[k] = modIndices.at(modIndicesToMerge[k]);
             }
 
-            if (combine(modNumbers, toCombine, modNumCount, (*sequence).length(), MOD_NUM))
+            if (combine(modNumbers, toCombine, modNumCount, (*sequence).length()))
             {
                modNumCalculated++;
             }
@@ -612,7 +601,8 @@ void ModificationsPermuter::generateModifications(string* sequence,
             {
                next--;
             }
-            if (next < 0) break; // We are done
+            if (next < 0)
+               break; // We are done
 
             currIdx[next]++;  // Go on to the next element in the list
 
@@ -623,7 +613,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
          }
 
 //       if (DEBUG)
-//       cout << "merged" << endl;
+//          cout << "merged" << endl;
 
          totalModNumCount += modNumCalculated;
 
@@ -631,10 +621,12 @@ void ModificationsPermuter::generateModifications(string* sequence,
          delete[] modIndicesToMerge;
          delete[] combinationCountsToMerge;
       }
-      if (*MOD_NUM != startModNum + totalModNumCount)
+
+      if (MOD_NUM != startModNum + totalModNumCount)
       {
-         cout << "Unexpected end index: " + std::to_string(*MOD_NUM) << "; Expected: " << std::to_string(startModNum + totalModNumCount) << endl;
+         cout << "Unexpected end index: " + std::to_string(MOD_NUM) << "; Expected: " << std::to_string(startModNum + totalModNumCount) << endl;
       }
+
       *ret_modNumStart = startModNum;
       *ret_modNumCount = totalModNumCount;
    }
@@ -665,7 +657,6 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
                                                         unsigned long long* ALL_COMBINATIONS)
 {
    const auto start = startTime();
-   int MOD_NUM = 0;
 
    MOD_SEQ_MOD_NUM_START = new int[modifiableSeqs.size()];
    MOD_SEQ_MOD_NUM_CNT = new int[modifiableSeqs.size()];
@@ -682,7 +673,7 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
       int modNumStart = -1;
       int modNumCount = 0;
 
-      generateModifications(&modSeq, max_mods_per_mod, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS, &MOD_NUM);
+      generateModifications(&modSeq, max_mods_per_mod, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
 
       MOD_SEQ_MOD_NUM_START[i] = modNumStart;
       MOD_SEQ_MOD_NUM_CNT[i] = modNumCount;
@@ -700,123 +691,3 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
    cout << "Total time generating mods: " << to_string(TIME_GEN_MODS) << endl;
    cout << "ModificationNumber number count: " << std::to_string(MOD_NUM) << endl;
 }
-
-
-void ModificationsPermuter::printModifiedPeptides(vector<PlainPeptideIndex>& vRawPeptides,
-                                                  vector<string>& MOD_SEQS,
-                                                  int* PEPTIDE_MOD_SEQ_IDXS)
-{
-   std::string buffer;
-   const int BUFFER_SIZE = 1024 * 10 * 10;
-   buffer.reserve(BUFFER_SIZE);
-
-   const auto start = startTime();
-   ofstream output;
-   output.open("modified_peptides.txt");
-
-   cout << "Printing " << vRawPeptides.size() << " modified peptides to modified_peptides.txt" << endl;
-
-   int i = 0;
-   int iNoModificationNumbers = 0;
-
-   for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
-   {
-      string peptide = (*it).sPeptide;
-      
-      int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[i];
-      i++;
-
-      if (modSeqIdx == -1)
-      {
-//       if (DEBUG)
-//          cout << "Not modified - " << to_string(i) << ". " << peptide << endl;
-         continue;
-      }
-      int startIdx = MOD_SEQ_MOD_NUM_START[modSeqIdx];
-
-      if (startIdx == -1)
-      {
-//       if (DEBUG)
-            cout << "No modification numbers - " << to_string(i) << ". " << peptide << endl;
-         iNoModificationNumbers++;
-         continue;
-      }
-
-      string modSeq = MOD_SEQS.at(modSeqIdx);
-      int modSeqLen = modSeq.size();
-      int* indexInPep = new int[modSeqLen];
-      int pepLen = peptide.length();
-      int k = 0;
-      for (int j = 0; j < modSeqLen; j++)
-      {
-         char mod_aa = modSeq[j];
-         while(k < pepLen)
-         {
-            char aa = peptide[k];
-            if (mod_aa == aa)
-            {
-               indexInPep[j] = k++;
-               break;
-            }
-            k++;
-         }
-      }
-
-      buffer.append("--------------------------------------\n");
-      buffer.append(to_string(i) + ". " + peptide + " -->" + modSeq + "\n");
-
-      int modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
-
-      for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
-      {
-         ModificationNumber modNum = MOD_NUMBERS.at(modNumIdx);
-         char* mods = modNum.modifications;
-         string modifiedPep = "";
-         int last = 0;
-         for (int l = 0; l < modSeqLen; l++)
-         {
-            int iInPep = indexInPep[l];
-            modifiedPep += peptide.substr(last, iInPep - last + 1);
-            if (mods[l] != -1)
-            {
-               modifiedPep += '*';
-            }
-            last = iInPep + 1;
-         }
-         if (last < pepLen)
-         {
-            modifiedPep += peptide.substr(last);
-         }
-
-         if (buffer.length() + modifiedPep.length() + 1 > BUFFER_SIZE)
-         {
-            output << buffer;
-            buffer.resize(0);
-         }
-         buffer.append(modifiedPep.append("\n"));
-         // output << modifiedPep << endl;
-
-         if (modNumIdx == startIdx+2)
-            break;
-      }
-
-      delete[] indexInPep;
-   }
-
-   output << buffer;
-   output.close();
-   endTime(start, "Done printing");
-   cout << iNoModificationNumbers << " have no modification numbers; need to fix??" << endl;
-}
-
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
