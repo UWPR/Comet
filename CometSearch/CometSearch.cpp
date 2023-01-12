@@ -1437,7 +1437,7 @@ void CometSearch::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptide
 }
 
 
-void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
+void CometSearch::PrintFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
 {
    std::string buffer;
    const int BUFFER_SIZE = 1024 * 10 * 10;
@@ -1547,7 +1547,151 @@ void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
 }
 
 
-void CometSearch::ReadDBIndexEntry(struct DBIndex *sDBI, FILE *fp)
+void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
+{
+   int iNoModificationNumbers = 0;
+
+   size_t iWhichPeptide = 0;
+   size_t iEndSize = vRawPeptides.size();
+
+   for (iWhichPeptide = 0; iWhichPeptide < iEndSize; ++iWhichPeptide)
+   {
+      string peptide = vRawPeptides.at(iWhichPeptide).sPeptide;
+
+      int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+
+      // AddFragments(iWhichPeptide, modNumIdx)
+      AddFragments(vRawPeptides, iWhichPeptide, -1);
+
+      if (modSeqIdx == -1)
+      {
+         // peptide is not modified, skip following permuting code
+         continue;
+      }
+      int startIdx = MOD_SEQ_MOD_NUM_START[modSeqIdx];
+
+      if (startIdx == -1)
+      {
+         // should always permute to MAX_COMBINATIONS of mods for the peptide
+//       cout << " ERROR should not get here; modseqIdx " << modSeqIdx << ", peptide " << peptide << endl;
+         continue;
+      }
+
+      string modSeq = MOD_SEQS.at(modSeqIdx);
+      int modSeqLen = modSeq.size();
+      int* indexInPep = new int[modSeqLen];
+      int pepLen = peptide.length();
+      int k = 0;
+      for (int j = 0; j < modSeqLen; j++)
+      {
+         char mod_aa = modSeq[j];
+         while(k < pepLen)
+         {
+            char aa = peptide[k];
+            if (mod_aa == aa)
+            {
+               indexInPep[j] = k++;
+               break;
+            }
+            k++;
+         }
+      }
+
+      int modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
+
+      for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
+      {
+         // add fragment ions for each modification permutation
+         AddFragments(vRawPeptides, iWhichPeptide, modNumIdx);
+      }
+
+      delete[] indexInPep;
+   }
+
+   cout << iNoModificationNumbers << " peptides have no modification numbers." << endl;
+}
+
+
+void CometSearch::AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
+                               int iWhichPeptide,
+                               int modNumIdx)
+{
+   string sPeptide = vRawPeptides.at(iWhichPeptide).sPeptide;
+
+   ModificationNumber modNum;
+   char* mods = NULL;
+   int modSeqIdx;
+   string modSeq;
+
+   if (modNumIdx != -1)  // set modified peptide info
+   {
+      modNum = MOD_NUMBERS.at(modNumIdx);
+      mods = modNum.modifications;
+      modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+      modSeq = MOD_SEQS.at(modSeqIdx);
+   }      
+
+   double dBion = g_staticParams.precalcMasses.dNtermProton;
+   double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+   int iPosReverse;  // points to residue in reverse order
+
+   int j = 0; // track count of each modifiable residue
+   int k = 0; // track count of each modifiable residue in reverse
+   int iStartPos = 0;   
+   int iEndPos = (int)sPeptide.length() - 1;
+
+/*
+   for (int i = iStartPos; i <= iEndPos; i++)
+   {
+      printf("%c", (char)sPeptide[i]);
+      if (sPeptide[i] == modSeq[j])
+      {
+         if (modNumIdx != -1 && mods[j] != -1)
+         {
+            printf("%s", to_string(mods[j]).c_str());
+         }
+         j++;
+      }
+   }
+   printf(" ... modified peptide %d, modnumidx %d\n", iWhichPeptide, modNumIdx);
+*/
+
+   j = 0;
+   k = modSeq.size() - 1;
+   for (int i = iStartPos; i < iEndPos; i++)
+   {
+      iPosReverse = iEndPos - i;
+
+      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
+      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[iPosReverse]];
+
+      if (modNumIdx != -1) // handle the variable mods if present on peptide
+      {
+         if (sPeptide[i] == modSeq[j])
+         {
+            if (modNumIdx != -1 && mods[j] != -1)
+            {
+               dBion += g_staticParams.variableModParameters.varModList[(int)mods[j]].dVarModMass;
+            }
+            j++;
+         }
+
+         if (sPeptide[iPosReverse] == modSeq[k])
+         {
+            if (modNumIdx != -1 && mods[k] != -1)
+            {
+               dYion += g_staticParams.variableModParameters.varModList[(int)mods[k]].dVarModMass;
+            }
+            k--;
+         }
+      }
+
+//    printf("%c\t%f\t%f\n", (char)sPeptide[i], dBion, dYion);
+   }
+}
+
+void CometSearch::ReadDBIndexEntry(struct DBIndex *sDBI,
+                                   FILE *fp)
 {
    int iLen;
    fread(&iLen, sizeof(int), 1, fp);
