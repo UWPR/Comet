@@ -194,6 +194,10 @@ private:
                                    FILE *fp);
    void PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptides);
    void GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides);
+   void PrintFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides);
+   void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
+                     int iWhichPeptide,
+                     int modNumIdx);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence
