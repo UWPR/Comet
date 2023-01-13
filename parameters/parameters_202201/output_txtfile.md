@@ -18,7 +18,7 @@ a leucine before the PEFF substitution.
 - The "modifications" string can be appended with:
   - "\_N" to denote a N-term protein modification, e.g. "1\_S\_-17.0265\_N"
   - "\_n" to denote a N-term peptide modification, e.g. "1\_A\_42.0146\_n"
-  - "\_C" to denote a C-term protein modification, e.g. "9\_R\_356.1882]_C"
+  - "\_C" to denote a C-term protein modification, e.g. "9\_R\_356.1882_C"
   - "\_c" to denote a C-term peptide modification, e.g. "12\_K\_42.0106\_c"
 
 Example:
