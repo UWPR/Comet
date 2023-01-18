@@ -111,6 +111,7 @@ struct Options             // output parameters
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
 // int bSkipUpdateCheck;         // 0=do not check for updates; 1=check for updates
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
+   int bScaleFragmentNL;         // 0=no; 1=scale fragment NL for each modified residue contained in fragment
    int bCreateIndex;             // 0=normal search; 1=create peptide index file
    int bVerboseOutput;
    int bShowFragmentIons;
@@ -161,6 +162,7 @@ struct Options             // output parameters
       bSkipAlreadyDone = a.bSkipAlreadyDone;
 //    bSkipUpdateCheck = a.bSkipUpdateCheck;
       bMango = a.bMango;
+      bScaleFragmentNL = a.bScaleFragmentNL;
       bCreateIndex = a.bCreateIndex;
       bVerboseOutput = a.bVerboseOutput;
       bShowFragmentIons = a.bShowFragmentIons;
@@ -779,6 +781,7 @@ struct StaticParams
       options.bSkipAlreadyDone = 1;
 //    options.bSkipUpdateCheck = 0;
       options.bMango = 0;
+      options.bScaleFragmentNL = 0;
       options.bCreateIndex = 0;
       options.bVerboseOutput = 0;
       options.iDecoySearch = 0;

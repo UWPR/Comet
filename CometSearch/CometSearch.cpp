@@ -6046,8 +6046,10 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
             // Really tracking if n-term and c-term fragment ions contain the variable mod
-            int  iPositionNLB[VMODS];   // track list of b-ion fragments that contain NL mod; first residue that contains mod
-            int  iPositionNLY[VMODS];   // track list of y-ion fragments that contain NL mod; last residue that contains mod
+            int iPositionNLB[VMODS];   // track list of b-ion fragments that contain NL mod; first residue that contains mod
+            int iPositionNLY[VMODS];   // track list of y-ion fragments that contain NL mod; last residue that contains mod
+            int iCountNLB[VMODS][MAX_PEPTIDE_LEN];  // sum/count of # of varmods counting from n-term at each residue position
+            int iCountNLY[VMODS][MAX_PEPTIDE_LEN];  // sum/count of # of varmods counting from c-term at each position
 
             if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
             {
@@ -6055,6 +6057,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                {
                   iPositionNLB[i] = 999;    // default to greater than last residue position
                   iPositionNLY[i] = -1;     // default to less that first residue position
+                  memset(iCountNLB[i], 0, sizeof(int)*MAX_PEPTIDE_LEN);
+                  memset(iCountNLY[i], 0, sizeof(int)*MAX_PEPTIDE_LEN);
                }
             }
 
@@ -6078,6 +6082,18 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                int iPosReverse = _varModInfo.iEndPos - iPosForward;
                int iPosReverseModSite = _varModInfo.iEndPos - i;
 
+               if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
+               {
+                  if (i > _varModInfo.iStartPos)
+                  {
+                     for (int x = 0 ; x < VMODS; x++)
+                     {
+                        iCountNLB[x][i] = iCountNLB[x][i-1]; // running sum/count of # of var mods contained at position i
+                        iCountNLY[x][i] = iCountNLY[x][i-1]; // running sum/count of # of var mods contained at position i (R to L in sequence)
+                     }
+                  }
+               }
+
                dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
 
                if (piVarModSites[iPosForward] > 0)
@@ -6093,6 +6109,11 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                      if (iPositionNLB[iMod] == 999)
                         iPositionNLB[iMod] = iPosForward;
+
+                     if (g_staticParams.options.bScaleFragmentNL)
+                        iCountNLB[iMod][iPosForward] += 1;
+                     else
+                        iCountNLB[iMod][iPosForward] = 1;
                   }
                }
                else if (piVarModSites[iPosForward] < 0)
@@ -6117,6 +6138,11 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                      if (iPositionNLY[iMod] == -1)
                         iPositionNLY[iMod] = iPosReverseModSite;
+
+                     if (g_staticParams.options.bScaleFragmentNL)
+                        iCountNLY[iMod][iPosForward] += 1;
+                     else
+                        iCountNLY[iMod][iPosForward] = 1;
                   }
                }
                else if (piVarModSites[iPosReverseModSite] < 0)
@@ -6151,7 +6177,14 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                            if ((iWhichIonSeries <= 2 && ctLen >= iPositionNLB[x])  // 0/1/2 is a/b/c ions
                                  || (iWhichIonSeries >= 3 && iWhichIonSeries <= 5 && iLenMinus1-ctLen <= iPositionNLY[x])) // 3/4/5 is x/y/z ions
                            {
-                              double dNewMass = dFragMass - g_staticParams.variableModParameters.varModList[x].dNeutralLoss/ctCharge;
+                              int iScaleFactor;
+
+                              if (iWhichIonSeries <= 2)
+                                 iScaleFactor = iCountNLB[x][ctLen];
+                              else
+                                 iScaleFactor = iCountNLY[x][ctLen];
+
+                              double dNewMass = dFragMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[x].dNeutralLoss / ctCharge);
 
                               if (dNewMass >= 0.0)
                               {
@@ -6194,6 +6227,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   for (ctLen=0; ctLen<iLenMinus1; ctLen++)
                   {
                      double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse);
+
                      int iVal = BIN(dFragMass);
 
                      if (pbDuplFragment[iVal] == false)
@@ -6209,7 +6243,14 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                            if ((iWhichIonSeries <= 2 && ctLen >= iPositionNLB[x])  // 0/1/2 is a/b/c ions
                                  || (iWhichIonSeries >= 3 && iWhichIonSeries <= 5 && iLenMinus1-ctLen <= iPositionNLY[x])) // 3/4/5 is x/y/z ions
                            {
-                              double dNewMass = dFragMass - g_staticParams.variableModParameters.varModList[x].dNeutralLoss/ctCharge;
+                              int iScaleFactor;
+
+                              if (iWhichIonSeries <= 2)
+                                 iScaleFactor = iCountNLB[x][ctLen];
+                              else
+                                 iScaleFactor = iCountNLY[x][ctLen];
+
+                              double dNewMass = dFragMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[x].dNeutralLoss / ctCharge);
 
                               if (dNewMass >= 0.0)
                               {
@@ -6234,6 +6275,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
                {
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
+
                   int iVal = BIN(dNLMass);
 
                   if (iVal > 0 && pbDuplFragment[iVal] == false)

@@ -1205,6 +1205,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("mango_search", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "scale_fragmentNL"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("scale_fragmentNL", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "max_iterations"))
             {
                sscanf(szParamVal, "%ld", &lLongParam);
@@ -1553,6 +1560,7 @@ variable_mod08 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0 0.0\n\
 max_variable_mods_in_peptide = 5\n\
 require_variable_mod = 0\n\
+scale_fragmentNL = 0\n\
 \n\
 #\n\
 # fragment ions\n\
