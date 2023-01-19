@@ -777,6 +777,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("mango_search", g_staticParams.options.bMango);
 
+   GetParamValue("scale_fragmentNL", g_staticParams.options.bScaleFragmentNL);
+
    GetParamValue("create_index", g_staticParams.options.bCreateIndex);
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
