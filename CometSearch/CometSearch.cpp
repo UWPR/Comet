@@ -3710,12 +3710,11 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 */
             x = bin / SPARSE_MATRIX_SIZE;
 
-            if (bin <= 0 || x>iMax || ppSparseFastXcorrData[x]==NULL) // x should never be > iMax so this is just a safety check
-               continue;
-
-            y = bin - (x*SPARSE_MATRIX_SIZE);
-
-            dXcorr += ppSparseFastXcorrData[x][y];
+            if (!(bin <= 0 || x>iMax || ppSparseFastXcorrData[x]==NULL)) // x should never be > iMax so this is just a safety check
+            {
+               y = bin - (x*SPARSE_MATRIX_SIZE);
+               dXcorr += ppSparseFastXcorrData[x][y];
+            }
 
             if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss && iFoundVariableMod==2)
             {
@@ -3739,12 +3738,11 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 */
                      x = bin / SPARSE_MATRIX_SIZE;
 
-                     if (bin <= 0 || x>iMax || ppSparseFastXcorrData[x]==NULL) // x should never be > iMax so this is just a safety check
-                        continue;
-
-                     y = bin - (x*SPARSE_MATRIX_SIZE);
-
-                     dXcorr += ppSparseFastXcorrData[x][y];
+                     if (!(bin <= 0 || x>iMax || ppSparseFastXcorrData[x]==NULL)) // x should never be > iMax so this is just a safety check
+                     {
+                        y = bin - (x*SPARSE_MATRIX_SIZE);
+                        dXcorr += ppSparseFastXcorrData[x][y];
+                     }
                   }
                }
             }
@@ -6088,8 +6086,8 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                   {
                      for (int x = 0 ; x < VMODS; x++)
                      {
-                        iCountNLB[x][i] = iCountNLB[x][i-1]; // running sum/count of # of var mods contained at position i
-                        iCountNLY[x][i] = iCountNLY[x][i-1]; // running sum/count of # of var mods contained at position i (R to L in sequence)
+                        iCountNLB[x][iPosForward] = iCountNLB[x][iPosForward - 1]; // running sum/count of # of var mods contained at position i
+                        iCountNLY[x][iPosForward] = iCountNLY[x][iPosForward - 1]; // running sum/count of # of var mods contained at position i (R to L in sequence)
                      }
                   }
                }
