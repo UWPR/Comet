@@ -297,11 +297,35 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
          }
 
+         int iCountNLB[VMODS][MAX_PEPTIDE_LEN];  // sum/count of # of varmods counting from n-term at each residue position
+         int iCountNLY[VMODS][MAX_PEPTIDE_LEN];  // sum/count of # of varmods counting from c-term at each position
+
+         if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
+         {
+            for (int x=0; x<VMODS; x++)
+            {
+               memset(iCountNLB[x], 0, sizeof(int)*MAX_PEPTIDE_LEN);
+               memset(iCountNLY[x], 0, sizeof(int)*MAX_PEPTIDE_LEN);
+            }
+         }
+
          // Generate pdAAforward for _pResults[0].szPeptide.
          int iLenMinus1 = pOutput[i].iLenPeptide - 1;
          for (ii=0; ii<iLenMinus1; ii++)
          {
             int iPos = iLenMinus1 - ii;
+
+            if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
+            {
+               if (ii > 0)
+               {
+                  for (int x = 0 ; x < VMODS; x++)
+                  {
+                     iCountNLB[x][ii] = iCountNLB[x][ii-1]; // running sum/count of # of var mods contained at position i
+                     iCountNLY[x][ii] = iCountNLY[x][ii-1]; // running sum/count of # of var mods contained at position i (R to L in sequence)
+                  }
+               }
+            }
 
             dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
             dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
@@ -309,10 +333,28 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             if (g_staticParams.variableModParameters.bVarModSearch)
             {
                if (pOutput[i].piVarModSites[ii] != 0)
+               {
                   dBion += pOutput[i].pdVarModSites[ii];
 
+                  int iMod = pOutput[i].piVarModSites[ii];
+
+                  if (g_staticParams.options.bScaleFragmentNL)
+                     iCountNLB[iMod-1][ii] += 1;
+                  else
+                     iCountNLB[iMod-1][ii] = 1;
+               }
+
                if (pOutput[i].piVarModSites[iPos] != 0)
+               {
                   dYion += pOutput[i].pdVarModSites[iPos];
+
+                  int iMod = pOutput[i].piVarModSites[iPos];
+
+                  if (g_staticParams.options.bScaleFragmentNL)
+                     iCountNLY[iMod-1][ii] += 1;
+                  else
+                     iCountNLY[iMod-1][ii] = 1;
+               }
             }
 
             pdAAforward[ii] = dBion;
@@ -339,18 +381,21 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                      int iFragmentIonMass = BIN(dFragmentIonMass);
                      float fSpScore;
 
+                     double dAddConsecutive = 0.0;
+                     int iAddMatchedFragment = 0;
+
                      fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iMax);
 
                      if (fSpScore > FLOAT_ZERO)
                      {
-                        iMatchedFragmentIonCt++;
+                        iAddMatchedFragment = 1;
 
                         // Simple sum intensity.
                         dTmpIntenMatch += fSpScore;
 
                         // Increase score for consecutive fragment ion series matches.
                         if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
-                           dConsec += 0.075;
+                           dAddConsecutive = 0.075;
 
                         ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
                      }
@@ -358,10 +403,87 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                      {
                         ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
                      }
+
+                     if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
+                     {
+                        for (int iMod=0; iMod < VMODS; iMod++)
+                        {
+                           if (iWhichIonSeries <= 2)  // abc ions
+                           {
+                              if (iCountNLB[iMod][iii] > 0)
+                              {
+                                 int iScaleFactor = iCountNLB[iMod][iii];
+                                 double dNewMass = dFragmentIonMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss / ctCharge);
+
+                                 if (dNewMass >= 0)
+                                 {
+                                    int iFragmentIonMass = BIN(dNewMass);
+
+                                    fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iMax);
+
+                                    if (fSpScore > FLOAT_ZERO)
+                                    {
+                                       iAddMatchedFragment = 1;
+
+                                       // Simple sum intensity.
+                                       dTmpIntenMatch += fSpScore;
+
+                                       // Increase score for consecutive fragment ion series matches.
+                                       if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
+                                          dAddConsecutive = 0.075;
+
+                                       ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                                    }
+                                    else
+                                    {
+                                       ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                                    }
+                                 }
+                              }
+                           }
+                           else // xyz ions
+                           {
+                              if (iCountNLY[iMod][iii] > 0)
+                              {
+                                 int iScaleFactor = iCountNLY[iMod][iii];
+                                 double dNewMass = dFragmentIonMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss / ctCharge);
+                              
+                                 if (dNewMass >= 0)
+                                 {
+                                    int iFragmentIonMass = BIN(dNewMass);
+
+                                    fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iMax);
+
+                                    if (fSpScore > FLOAT_ZERO)
+                                    {
+                                       iAddMatchedFragment = 1;
+
+                                       // Simple sum intensity.
+                                       dTmpIntenMatch += fSpScore;
+
+                                       // Increase score for consecutive fragment ion series matches.
+                                       if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
+                                          dAddConsecutive = 0.075;
+
+                                       ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                                    }
+                                    else
+                                    {
+                                       ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                                    }
+                                 }
+                              }
+                           }
+                        }
+                     }
+
+                     dConsec += dAddConsecutive;  // move this here after fragment neutral loss analysis
+                     iMatchedFragmentIonCt += iAddMatchedFragment;
                   }
                }
             }
          }
+
 
          pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) /
                ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
