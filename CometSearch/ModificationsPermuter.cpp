@@ -125,7 +125,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
    while (i >= 1)
    {
       int nck = CombinatoricsUtils::nChooseK(maxPeptideLen, i);
-      cout << maxPeptideLen << " choose " << i << ": " << nck << endl;
+//    cout << maxPeptideLen << " choose " << i << ": " << nck << endl;
       totalCount += nck;
 
       unsigned long long* combos = new unsigned long long[nck];
@@ -663,7 +663,7 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
 
    CombinatoricsUtils::initBinomialCoefficients(MAX_BITCOUNT, MAX_K_VAL);
 
-   endTime(start, "after initBinomialCoefficients");
+// endTime(start, "after initBinomialCoefficients");
 
    int i = 0;
    for (auto it = modifiableSeqs.begin(); it != modifiableSeqs.end(); ++it)
@@ -689,5 +689,5 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
    endTime(start, "Generated modification combinations");
    cout << "Time in combine: " << to_string(TIME_IN_COMBINE) << endl;
    cout << "Total time generating mods: " << to_string(TIME_GEN_MODS) << endl;
-   cout << "ModificationNumber number count: " << std::to_string(MOD_NUM) << endl;
+   cout << "ModificationNumber count: " << std::to_string(MOD_NUM) << endl;
 }

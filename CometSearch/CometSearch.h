@@ -198,6 +198,7 @@ private:
    void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
                      int iWhichPeptide,
                      int modNumIdx);
+   void SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence
@@ -212,6 +213,9 @@ private:
                         DBIndex sTmp,
                         bool *pbDuplFragment,
                         struct sDBEntry *dbe);
+   static bool SortFragmentsByPepMass(unsigned int x,
+                                      unsigned int y);
+
 
    char GetAA(int i,
               int iDirection,

@@ -32,7 +32,7 @@ class CometSearchManager;
 #define MAX_PEPTIDE_LEN             50       // max # of AA for a peptide; one less to account for terminating char
 #define MAX_PEPTIDE_LEN_P2          52       // max # of AA for a peptide plus 2 for N/C-term
 
-#define MAX_COMBINATIONS            65534
+#define MAX_COMBINATIONS            2000 
 #define MAX_MODS_PER_MOD            5
 
 #define MAX_PEFFMOD_LEN             16
@@ -422,7 +422,7 @@ struct PlainPeptideIndex
    char   szPrevNextAA[2];
    comet_fileoffset_t   lIndexProteinFilePosition;  // orig fasta file position to each protein reference
    comet_fileoffset_t   lIndexPeptideFilePosition;  // file position to each peptide in the indexdb
-   double dPepMass;                          // MH+ pep mass
+   double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptideStruct
 
    bool operator==(const PlainPeptideIndex &rhs) const
    {
@@ -433,12 +433,21 @@ struct PlainPeptideIndex
    }
 };
 
-struct PermutedPeptides
+struct FragmentPeptidesStruct
 {
    int iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndex
-   double dModPepMass;  // modified peptide mass
-   vector<pair<int,int>> vpMod;   // int pair <position, which mod> accessed thru .first/.second
+   int modNumIdx;
+   double dPepMass;     // peptide mass (modified or unmodified) after permuting mods
+
+   bool operator<(const FragmentPeptidesStruct& a) const
+   {
+      return dPepMass < a.dPepMass;
+   }
 };
+
+extern vector<vector<unsigned int>> g_vFragmentIndex;  // [BIN(fragment mass)][which entry in g_vFragmentPeptides]
+extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
+
 
 struct IndexProteinStruct  // for indexed database
 {
@@ -878,7 +887,7 @@ extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
 struct ModificationNumber
 {
-   int modificationNumber;  // not used anywhere?? delete?
+   int modificationNumber;
    char* modifications;
 };
 
@@ -888,6 +897,7 @@ extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for 
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 extern int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
 extern int MOD_NUM; 
+extern int g_iMaxFragmentArrayIndex;  // BIN(maximum peptide mass); used as fragment array index
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
