@@ -138,6 +138,12 @@ public:
             this->UNLOCK(&this->lock_);
             //Threading::ThreadSleep(100);
             // When threads are still busy and no jobs to do wait ...
+#ifdef _WIN32
+            std::this_thread::yield();
+#else
+            sched_yield();
+#endif
+/* 
 #if !defined(_WIN32) && !defined(__APPLE__)
             pthread_yield();
 #elif __APPLE__
@@ -145,6 +151,7 @@ public:
 #else
             std::this_thread::yield();
 #endif
+*/
          }
          else
          {
@@ -180,6 +187,12 @@ public:
       while(data_.size() > 0 && running_count_ >= (int)data_.size())
       {
          this->UNLOCK(&countlock_);
+#ifdef _WIN32
+            std::this_thread::yield();
+#else
+            sched_yield();
+#endif
+/*
 #if !defined(_WIN32) && !defined(__APPLE__)
          pthread_yield();
 #elif __APPLE__
@@ -187,6 +200,7 @@ public:
 #else
          std::this_thread::yield();
 #endif
+*/
          this->LOCK(&countlock_);
       }
       this->UNLOCK(&countlock_);
@@ -331,6 +345,12 @@ inline void* threadStart(void* ptr)
       {
          tp->UNLOCK(&tp->lock_);
 
+#ifdef _WIN32
+            std::this_thread::yield();
+#else
+            sched_yield();
+#endif
+/*
 #if !defined(_WIN32) && !defined(__APPLE__)
          pthread_yield();
 #elif __APPLE__
@@ -338,6 +358,7 @@ inline void* threadStart(void* ptr)
 #else
          std::this_thread::yield();
 #endif
+*/
 
          if (tp->threads_.capacity() == 0)
 #ifdef _WIN32

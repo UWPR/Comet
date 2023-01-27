@@ -348,7 +348,7 @@ static bool compareByScanNumber(Query const* a, Query const* b)
 
 static void CalcRunTime(time_t tStartTime)
 {
-   char szOutFileTimeString[512];
+   char szOutFileTimeString[600];
    time_t tEndTime;
    int iTmp;
 

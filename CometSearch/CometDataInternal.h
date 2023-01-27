@@ -866,6 +866,8 @@ struct Query
    double dLowestXcorrScore;
    double dLowestDecoyXcorrScore;
 
+   int iMinXcorrHisto;    // min xcorr score for xcorr histogram to address good E-values for poor/sparse spectra
+
    double dMangoIndex;      // scan number decimal precursor value i.e. 2401.001 for scan 2401, first precursor/z pair
 
    unsigned long int  _uliNumMatchedPeptides;  // # of peptides that get scored

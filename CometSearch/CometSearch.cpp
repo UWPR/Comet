@@ -3798,12 +3798,16 @@ void CometSearch::XcorrScore(char *szProteinSeq,
       iTmp = (int)(dXcorr * 10.0 + 0.5);
 
       if (iTmp < 0) // possible for CRUX compiled option to have a negative xcorr
-         iTmp = 0;  // lump these all in the zero bin of the histogram
-
+         iTmp = 0;  // lump these all in the mininum score bin of the histogram
+                    //
+      if (!(iStartPos%2) && iTmp < pQuery->iMinXcorrHisto) // lump some zero decoy entries into iMinXcorrHisto bin
+         iTmp = pQuery->iMinXcorrHisto;
+  
       if (iTmp >= HISTO_SIZE)
          iTmp = HISTO_SIZE - 1;
 
       pQuery->iXcorrHistogram[iTmp] += 1;
+
       if (pQuery->iHistogramCount < DECOY_SIZE)
          pQuery->iHistogramCount += 1;
    }

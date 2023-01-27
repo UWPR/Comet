@@ -907,7 +907,11 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
       if (k < 0)
          k = 0;
-      else if (k >= HISTO_SIZE)
+
+      if (!(i%2) && k < pQuery->iMinXcorrHisto)  // lump some zero decoys into iMinXcorrHisto bin
+         k = pQuery->iMinXcorrHisto;
+
+      if (k >= HISTO_SIZE)
          k = HISTO_SIZE-1;
 
       piHistogram[k] += 1;
