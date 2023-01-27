@@ -59,6 +59,11 @@ long ModificationsPermuter::duration(chrono::time_point<chrono::steady_clock> st
    return static_cast<long>(duration.count());
 }
 
+bool ModificationsPermuter::ignorePeptidesWithTooManyMods()
+{
+   return (KEEP_ALL_PEPTIDES == 1);
+}
+
 bool ModificationsPermuter::isModifiable(char aa,
                                          vector<string>& ALL_MODS)
 {
@@ -357,14 +362,14 @@ int ModificationsPermuter::getTotalCombinationCount(vector<int> combinationCount
       {
          int s = set.at(j);
          combos *= combinationCounts.at(s);
-         if (combos > MAX_COMBINATIONS)
+         if (ignorePeptidesWithTooManyMods() && combos > MAX_COMBINATIONS)
          {
             return -1;
          }
       }
       allCombos += combos;
    }
-   return allCombos > MAX_COMBINATIONS ? -1 : allCombos;
+   return ignorePeptidesWithTooManyMods() && allCombos > MAX_COMBINATIONS ? -1 : allCombos; 
 }
 
 bool ModificationsPermuter::combine(int* modNumbers,
@@ -454,14 +459,17 @@ void ModificationsPermuter::generateModifications(string* sequence,
       if (bitmask != 0)
       {
          std::bitset<64> x(bitmask);
-         long bitCount = x.count();
-         if (bitCount > MAX_BITCOUNT)
+         unsigned long long bitCount = x.count();
+
+         if (ignorePeptidesWithTooManyMods() && bitCount > MAX_BITCOUNT)
          {
             IGNORED_SEQ_CNT++;
             return; 
          }
+
          int combinationCount = CombinatoricsUtils::getCombinationCount(int(bitCount), max_mods_per_mod); // nCk + nCk-1 +...+nC1
-         if (combinationCount > MAX_COMBINATIONS)
+
+         if (ignorePeptidesWithTooManyMods() && combinationCount > MAX_COMBINATIONS)
          {
             IGNORED_SEQ_CNT++;
             return;
@@ -481,9 +489,22 @@ void ModificationsPermuter::generateModifications(string* sequence,
    for (auto it = modBitmasks.begin(); it != modBitmasks.end(); ++it)
    {
       unsigned long long modBitmask = *it; // bitmask for a modification
-      const int combinationsCount = combinationCounts[idx]; // number of possible combinations
 
-      unsigned long long * combinationsForMod = new unsigned long long[combinationsCount];
+      const int calculatedCombinationsCount = combinationCounts[idx]; // number of calculated possible combinations
+
+      if (ignorePeptidesWithTooManyMods() && calculatedCombinationsCount > MAX_COMBINATIONS)
+      {
+         // If we are ignoring peptides with > MAX_COMBINATIONS or reducing MAX_MODS_PER_MOD to get the number of
+         // modified peptides withing the threshold, then the calculated combinations should not exceed MAX_COMBINATIONS
+         cout << "ERROR: calculated combination count exceeds MAX_COMBINATIONS (" << to_string(MAX_COMBINATIONS) +
+            ") but KEEP_ALL_PEPTIDES is set to " << to_string(KEEP_ALL_PEPTIDES);
+         // TODO: exit here?
+      }
+
+      // Some peptides will have > MAX_COMBINATION modification combinations if we are
+      // considering all peptides. In this case, keep only up to MAX_COMBINATIONS
+      int combinationsForModArrLen = KEEP_ALL_PEPTIDES && calculatedCombinationsCount > MAX_COMBINATIONS ? MAX_COMBINATIONS : calculatedCombinationsCount;
+      unsigned long long *combinationsForMod = new unsigned long long[combinationsForModArrLen];
 
       unsigned long long notMod = ~modBitmask;
       // Iterate over the pre-computed bitmask combinations. Keep the ones where one or more of bits set in the given bitmask
@@ -498,20 +519,25 @@ void ModificationsPermuter::generateModifications(string* sequence,
       // 10000010
       // 10010000
       // 10010010
-      int comboForModIdx = 0;
+      int combinationsFound = 0;
+
       for (int j = 0; j < ALL_COMBINATION_CNT; j++)
       {
+         if (combinationsFound >= MAX_COMBINATIONS)
+            break;
+
          const unsigned long long combination = ALL_COMBINATIONS[j];
+
          if (combination > modBitmask)
             break;
 
          if ((combination & notMod) == 0) // Only the bits set in the modification bitmask should be set in the combination.
-            combinationsForMod[comboForModIdx++] = combination;
+            combinationsForMod[combinationsFound++] = combination;
       }
-      if (comboForModIdx != combinationsCount) // Number of combinations found should be the same as the expected number.
+      if (combinationsFound != combinationsForModArrLen) // Number of combinations found should be the same as the expected number.
       {
-         cout << "ERROR: Unexpected combination count; Found combination count " << to_string(comboForModIdx) 
-              << "; Expected calculated count is " << to_string(combinationsCount) << "; sequence " << *sequence << endl;
+         cout << "ERROR: Unexpected combination count; Found combination count " << to_string(combinationsFound) 
+              << "; Expected calculated count is " << to_string(combinationsForModArrLen) << "; sequence " << *sequence << endl;
       }
       combinationsForAllMods[idx++] = combinationsForMod;
    }
@@ -610,6 +636,10 @@ void ModificationsPermuter::generateModifications(string* sequence,
             {
                currIdx[i] = 0;
             }
+            if (KEEP_ALL_PEPTIDES && totalModNumCount + modNumCalculated >= MAX_COMBINATIONS)
+            {
+               break; // Don't keep more than MAX_COMBINATIONS modifications
+            }
          }
 
 //       if (DEBUG)
@@ -620,11 +650,14 @@ void ModificationsPermuter::generateModifications(string* sequence,
          delete[] currIdx;
          delete[] modIndicesToMerge;
          delete[] combinationCountsToMerge;
+
+         if (KEEP_ALL_PEPTIDES && totalModNumCount >= MAX_COMBINATIONS)
+            break; // Don't keep more than MAX_COMBINATIONS modifications
       }
 
       if (MOD_NUM != startModNum + totalModNumCount)
       {
-         cout << "Unexpected end index: " + std::to_string(MOD_NUM) << "; Expected: " << std::to_string(startModNum + totalModNumCount) << endl;
+         cout << "Error: Unexpected end index: " + std::to_string(MOD_NUM) << "; Expected: " << std::to_string(startModNum + totalModNumCount) << endl;
       }
 
       *ret_modNumStart = startModNum;
@@ -661,7 +694,7 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
    MOD_SEQ_MOD_NUM_START = new int[modifiableSeqs.size()];
    MOD_SEQ_MOD_NUM_CNT = new int[modifiableSeqs.size()];
 
-   CombinatoricsUtils::initBinomialCoefficients(MAX_BITCOUNT, MAX_K_VAL);
+   CombinatoricsUtils::initBinomialCoefficients(MAX_PEPTIDE_LEN, MAX_K_VAL);
 
 // endTime(start, "after initBinomialCoefficients");
 
@@ -673,7 +706,9 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
       int modNumStart = -1;
       int modNumCount = 0;
 
-      generateModifications(&modSeq, max_mods_per_mod, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+      int maxModsPerModForSeq = max_mods_per_mod;
+
+      generateModifications(&modSeq, maxModsPerModForSeq, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
 
       MOD_SEQ_MOD_NUM_START[i] = modNumStart;
       MOD_SEQ_MOD_NUM_CNT[i] = modNumCount;

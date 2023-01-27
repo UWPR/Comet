@@ -35,6 +35,8 @@ class CometSearchManager;
 #define MAX_COMBINATIONS            2000 
 #define MAX_MODS_PER_MOD            5
 
+#define KEEP_ALL_PEPTIDES           1        // 1 = print up to MAX_COMBINATIONS of peptides; 0 = ignore mods for peptide that exceed MAX_COMBINATIONS
+
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
 #define SIZE_NATIVEID               256      // max length of nativeID string

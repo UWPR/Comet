@@ -52,6 +52,7 @@ public:
                                            int MOD_CNT,
                                            int ALL_COMBINATION_CNT,
                                            unsigned long long* ALL_COMBINATIONS);
+   static bool ignorePeptidesWithTooManyMods(void);
 
    ModificationsPermuter();
    ~ModificationsPermuter();
