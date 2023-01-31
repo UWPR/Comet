@@ -1560,7 +1560,7 @@ variable_mod08 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0 0.0\n\
 max_variable_mods_in_peptide = 5\n\
 require_variable_mod = 0\n\
-scale_fragmentNL = 0\n\
+scale_fragmentNL = 0                   # 0=no, 1=yes; fragment neutral loss mass is multipled by number of modified residues in the fragment\n\
 \n\
 #\n\
 # fragment ions\n\
