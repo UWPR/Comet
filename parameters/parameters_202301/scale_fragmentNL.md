@@ -13,7 +13,7 @@ contained in the fragment.  So this parameter controls whether or not to
 scale/multiply the neutral loss mass by the nubmer of modified residues.
 - Valid values are 0 and 1.
 - The default value is "0" if this parameter is missing.
-- This parameter was introduced in Comet version 2023.01 rev. 0.
+- This parameter was added in Comet release [2023.01.0](Comet/releases/release_202301.html).
 
 Example:
 ```

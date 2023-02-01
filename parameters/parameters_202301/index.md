@@ -56,7 +56,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Output
 
-- [output_mzidentmlfile](output_mzidentmlfile.html) <font color="red">**</font>
+- [output_mzidentmlfile](output_mzidentmlfile.html)
 - [output_pepxmlfile](output_pepxmlfile.html)
 - [output_percolatorfile](output_percolatorfile.html)
 - [output_sqtfile](output_sqtfile.html)
@@ -77,7 +77,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Misc. parameters
 
-- [clip_nterm_aa](clip_nterm_aa.html) <font color="red">*</font>
+- [clip_nterm_aa](clip_nterm_aa.html)
 - [clip_nterm_methionine](clip_nterm_methionine.html)
 - [decoy_prefix](decoy_prefix.html)
 - [digest_mass_range](digest_mass_range.html)
@@ -87,7 +87,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [max_fragment_charge](max_fragment_charge.html)
 - [max_index_runtime](max_index_runtime.html)
 - [max_precursor_charge](max_precursor_charge.html)
-- [minimum_xcorr](minimum_xcorr.html) <font color="red">*</font>
+- [minimum_xcorr](minimum_xcorr.html)
 - [num_results](num_results.html)
 - [nucleotide_reading_frame](nucleotide_reading_frame.html)
 - [output_suffix](output_suffix.html)
