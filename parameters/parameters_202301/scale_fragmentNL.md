@@ -1,6 +1,6 @@
 ### Comet parameter: scale_fragmentNL
 
-- The fragment neutral loss field is the 8th entry in the (variable_mod0X)[/Comet/parameters/parameters_202301/variable_mod01.md]
+- The fragment neutral loss field is the 8th entry in the [variable_mod0X](/Comet/parameters/parameters_202301/variable_mod01.md)
 parameter.
 - If this parameter is set to 0, any fragment ion that contains the modified
 residue will also have the neutral loss mass subtracted from the fragment ion
