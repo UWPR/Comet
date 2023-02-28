@@ -36,7 +36,7 @@ bool CometWriteOut::WriteOut(FILE *fpdb)
    int i;
 
    // Print results.
-   for (i=0; i<(int)g_pvQuery.size(); i++)
+   for (i=0; i<(int)g_pvQuery.size(); ++i)
    {
       if (!PrintResults(i, false, fpdb))
       {
@@ -47,7 +47,7 @@ bool CometWriteOut::WriteOut(FILE *fpdb)
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      for (i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); ++i)
       {
          if (!PrintResults(i, true, fpdb))
          {
@@ -218,7 +218,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    bool bPrintDecoyPrefix = false;
 
-   for (i=0; i<iNumPrintLines; i++)
+   for (i=0; i<iNumPrintLines; ++i)
    {
       char szProteinName[WIDTH_REFERENCE];
       vector<ProteinEntryStruct>::iterator it;
@@ -279,10 +279,10 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    else
       sprintf(szBuf, "  #   Rank/Sp    (M+H)+   deltCn   Xcorr    Sp    Ions  Reference");
 
-   for (i=0; i<iMaxWidthReference-9; i++)
+   for (i=0; i<iMaxWidthReference-9; ++i)
       sprintf(szBuf+strlen(szBuf), " ");
 
-   for (i=0; i<iLenMaxDuplicates; i++)
+   for (i=0; i<iLenMaxDuplicates; ++i)
       sprintf(szBuf+strlen(szBuf), " ");
 
    sprintf(szBuf+strlen(szBuf), "  ");
@@ -293,10 +293,10 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    else
       sprintf(szBuf+strlen(szBuf), " ---  -------  ---------  ------  ------   ----   ----  ---------");
 
-   for (i=0; i<iMaxWidthReference-9; i++)
+   for (i=0; i<iMaxWidthReference-9; ++i)
       sprintf(szBuf+strlen(szBuf), " ");
 
-   for (i=0; i<iLenMaxDuplicates; i++)
+   for (i=0; i<iLenMaxDuplicates; ++i)
       sprintf(szBuf+strlen(szBuf), " ");
 
    sprintf(szBuf+strlen(szBuf), "  ");
@@ -307,7 +307,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
-   for (i=0; i<iNumPrintLines; i++)
+   for (i=0; i<iNumPrintLines; ++i)
    {
       if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
          iRankXcorr++;
@@ -338,7 +338,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
             (int)pQuery->fPar[3]);
 
       // iXcorrHistogram is already cummulative here.
-      for (i=0; i<=pQuery->siMaxXcorr; i++)
+      for (i=0; i<=pQuery->siMaxXcorr; ++i)
       {
          if (pQuery->iXcorrHistogram[i]> 0)
          {
@@ -476,7 +476,7 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    {
       iWidthSize = iMaxWidthReference-iWidthPrintRef;
 
-      for (i=0; i<iWidthSize; i++)
+      for (i=0; i<iWidthSize; ++i)
          sprintf(szBuf+strlen(szBuf), " ");
    }
 
@@ -491,12 +491,12 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
 
       iEnd = iLenMaxDuplicates - (int)strlen(szTemp) - 1;
 
-      for (i=0; i<iEnd; i++)
+      for (i=0; i<iEnd; ++i)
          sprintf(szBuf+strlen(szBuf), " ");
    }
    else if (iLenMaxDuplicates > 0)
    {
-      for (i=0; i<iLenMaxDuplicates; i++)
+      for (i=0; i<iLenMaxDuplicates; ++i)
          sprintf(szBuf+strlen(szBuf), " ");
    }
    sprintf(szBuf+strlen(szBuf), "  ");
@@ -511,7 +511,7 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
    }
 
    // Print peptide sequence.
-   for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+   for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
    {
       sprintf(szBuf+strlen(szBuf), "%c", (int)pOutput[iWhichResult].szPeptide[i]);
 
@@ -578,7 +578,7 @@ void CometWriteOut::PrintIons(int iWhichQuery,
    }
 
    // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
-   for (i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
+   for (i=0; i<pQuery->_pResults[0].iLenPeptide; ++i)
    {
       int iPos = pQuery->_pResults[0].iLenPeptide - i - 1;
 
@@ -601,14 +601,14 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       _pdAAreverse[iPos] = dYion;
    }
 
-   for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+   for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
    {
       if (ctCharge > 1)
          sprintf(szBuf, "\n");
 
       sprintf(szBuf, "\n Seq  #  ");
 
-      for (i=0; i<g_staticParams.ionInformation.iNumIonSeriesUsed; i++)
+      for (i=0; i<g_staticParams.ionInformation.iNumIonSeriesUsed; ++i)
       {
          int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[i];
 
@@ -622,18 +622,18 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       }
       sprintf(szBuf+strlen(szBuf), "(%d+)\n --- --  ", ctCharge);
 
-      for (i=0; i<g_staticParams.ionInformation.iNumIonSeriesUsed; i++)
+      for (i=0; i<g_staticParams.ionInformation.iNumIonSeriesUsed; ++i)
       {
          sprintf(szBuf+strlen(szBuf), "---------  ");
       }
 
       fprintf(fpout, "%s --", szBuf);
 
-      for (i=0; i<pQuery->_pResults[0].iLenPeptide; i++)
+      for (i=0; i<pQuery->_pResults[0].iLenPeptide; ++i)
       {
          sprintf(szBuf, "\n  %c  %2d  ", pQuery->_pResults[0].szPeptide[i], i+1);
 
-         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
          {
             int iWhichIonSeries;
 

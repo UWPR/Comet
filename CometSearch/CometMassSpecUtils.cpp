@@ -141,13 +141,13 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
 
       fread(&lSize, sizeof(long), 1, fpdb);
       vector<comet_fileoffset_t> vOffsets;
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lSize; ++x)
       {
          comet_fileoffset_t tmpoffset;
          fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
          vOffsets.push_back(tmpoffset);
       }
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lSize; ++x)
       {
          char szTmp[WIDTH_REFERENCE];
          comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
@@ -233,16 +233,17 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       comet_fseek(fpdb, it->lWhichProtein, SEEK_SET);
 
       fread(&lSize, sizeof(long), 1, fpdb);
+
       vector<comet_fileoffset_t> vOffsets;
 
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lSize; ++x)
       {
          comet_fileoffset_t tmpoffset;
          fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
          vOffsets.push_back(tmpoffset);
       }
 
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lSize; ++x)
       {
          if (x > g_staticParams.options.iMaxDuplicateProteins)
             break;

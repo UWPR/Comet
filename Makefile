@@ -19,7 +19,7 @@ DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/Comet
 		 CometSearch/CometSearch.cpp CometSearch/CometWritePepXML.cpp CometSearch/CometWriteMzIdentML.cpp CometSearch/CometWriteTxt.cpp\
 		 CometSearch/CometPostAnalysis.cpp CometSearch/CometSearchManager.cpp CometSearch/CometWritePercolator.cpp CometSearch/Threading.cpp\
 		 CometSearch/CometPreprocess.cpp CometSearch/CometWriteOut.cpp CometSearch/CometWriteSqt.cpp CometSearch/CombinatoricsUtils.cpp\
-		 CometSearch/ModificationsPermuter.cpp
+		 CometSearch/ModificationsPermuter.cpp CometSearch/CometInterfaces.h CometSearch/CometInterfaces.cpp
 
 LIBPATHS = -L$(MSTOOLKIT) -L$(COMETSEARCH)
 LIBS = -lcometsearch -lmstoolkitlite -lm -lpthread 

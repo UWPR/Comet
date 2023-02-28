@@ -286,7 +286,7 @@ static bool AllocateResultsMem()
          }
       }
 
-      for (int j=0; j<g_staticParams.options.iNumStored; j++)
+      for (int j=0; j<g_staticParams.options.iNumStored; ++j)
       {
          pQuery->_pResults[j].dPepMass = 0.0;
          pQuery->_pResults[j].dExpect = 0.0;
@@ -1132,7 +1132,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    // Load ion series to consider, useA, useB, useY are for neutral losses.
    g_staticParams.ionInformation.iNumIonSeriesUsed = 0;
-   for (int i=0; i<NUM_ION_SERIES; i++)
+   for (int i=0; i<NUM_ION_SERIES; ++i)
    {
       if (g_staticParams.ionInformation.iIonVal[i] > 0)
          g_staticParams.ionInformation.piSelectedIonSeries[g_staticParams.ionInformation.iNumIonSeriesUsed++] = i;
@@ -1149,12 +1149,12 @@ bool CometSearchManager::InitializeStaticParams()
 
 
    // reduce variable modifications if entries are the same
-   for (int i=0; i<VMODS; i++)
+   for (int i=0; i<VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
-         for (int ii=i+1; ii<VMODS-1; ii++)
+         for (int ii=i+1; ii<VMODS-1; ++ii)
          {
             if (!isEqual(g_staticParams.variableModParameters.varModList[ii].dVarModMass, 0.0)
                   && (g_staticParams.variableModParameters.varModList[ii].szVarModChar[0]!='-'))
@@ -1194,7 +1194,7 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   for (int i=0; i<VMODS; i++)
+   for (int i=0; i<VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
@@ -1253,7 +1253,7 @@ bool CometSearchManager::InitializeStaticParams()
             g_staticParams.staticModifications.dAddNterminusProtein);
    }
 
-   for (int i=65; i<=90; i++)  // 65-90 represents upper case letters in ASCII
+   for (int i=65; i<=90; ++i)  // 65-90 represents upper case letters in ASCII
    {
       if (!isEqual(g_staticParams.staticModifications.pdStaticMods[i], 0.0))
       {
@@ -1335,7 +1335,7 @@ void CometSearchManager::AddInputFiles(vector<InputFileInfo*> &pvInputFiles)
 {
    int numInputFiles = (int)pvInputFiles.size();
 
-   for (int i = 0; i < numInputFiles; i++)
+   for (int i = 0; i < numInputFiles; ++i)
       g_pvInputFiles.push_back(pvInputFiles.at(i));
 }
 
@@ -1627,7 +1627,7 @@ bool CometSearchManager::DoSearch()
 {
    char szOut[256];
 
-   ThreadPool * tp = _tp;
+   ThreadPool *tp = _tp;
 
    if (!InitializeStaticParams())
       return false;
@@ -1723,7 +1723,7 @@ bool CometSearchManager::DoSearch()
       }
    }
 
-   for (int i=0; i<(int)g_pvInputFiles.size(); i++)
+   for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
    {
       bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
       if (!bSucceeded)
@@ -2141,7 +2141,7 @@ bool CometSearchManager::DoSearch()
             return false;
          }
 
-         if (g_staticParams.options.iSpectrumBatchSize == 0)
+         if (g_staticParams.options.iSpectrumBatchSize == 0 && !g_staticParams.bIndexDb)
          {
             logout("   - Reading all spectra into memory; set \"spectrum_batch_size\" if search terminates here.\n");
             fflush(stdout);
@@ -2303,6 +2303,7 @@ bool CometSearchManager::DoSearch()
 
             // Now that spectra are loaded to memory and sorted, do search.
             bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
+
             if (!bSucceeded)
                goto cleanup_results;
 
@@ -2342,6 +2343,7 @@ bool CometSearchManager::DoSearch()
 
             // Sort each entry by xcorr, calculate E-values, etc.
             bSucceeded = CometPostAnalysis::PostAnalysis(tp);
+
             if (!bSucceeded)
                goto cleanup_results;
 
@@ -2365,22 +2367,24 @@ bool CometSearchManager::DoSearch()
 
             CalcRunTime(tStartTime);
 
+/*
             // Now set szPrevNextAA
             if (g_staticParams.options.iDecoySearch == 2)
             {
-               for (int x=0; x<(int)g_pvQuery.size(); x++)
+               for (int x=0; x<(int)g_pvQuery.size(); ++x)
                   UpdatePrevNextAA(x, 1);
-               for (int x=0; x<(int)g_pvQuery.size(); x++)
+               for (int x=0; x<(int)g_pvQuery.size(); ++x)
                   UpdatePrevNextAA(x, 2);
             }
             else
             {
-               for (int x=0; x<(int)g_pvQuery.size(); x++)
+               for (int x=0; x<(int)g_pvQuery.size(); ++x)
                {
                   UpdatePrevNextAA(x, 0);
                }
             }
             // done setting szPrevNextAA
+*/
 
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
@@ -2418,6 +2422,7 @@ bool CometSearchManager::DoSearch()
                CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, fpdb);
 
    cleanup_results:
+
             // Deleting each Query object in the vector calls its destructor, which
             // frees the spectral memory (see definition for Query in CometData.h).
             for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
@@ -2676,6 +2681,9 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 vector<Fragment> & matchedFragments,
                                                 Scores & score)
 {
+   ThreadPool *tp = _tp;
+   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
+
    score.dCn = 0;
    score.xCorr = 0;
    score.dExpect = 0;
@@ -2740,7 +2748,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       g_sCometVersion = comet_version;
 
    // Now that spectra are loaded to memory and sorted, do search.
-   bSucceeded = CometSearch::RunSearch();
+   bSucceeded = CometSearch::RunSearch(tp);
 
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
    {
@@ -2784,7 +2792,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          strReturnPeptide += ss.str();
       }
 
-      for (int i=0; i< pOutput[0].iLenPeptide; i++)
+      for (int i=0; i< pOutput[0].iLenPeptide; ++i)
       {
          strReturnPeptide += pOutput[0].szPeptide[i];
 
@@ -2815,7 +2823,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       score.totalIons     = pOutput[0].iTotalIons;                    // ions tot
 
       int iMinLength = MAX_PEPTIDE_LEN;
-      for (int x = 0; x < iSize; x++)
+      for (int x = 0; x < iSize; ++x)
       {
          int iLen = (int)strlen(pOutput[x].szPeptide);
          if (iLen == 0)
@@ -2828,14 +2836,14 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
       if (iSize > 1)
       {
-         for (int j = 1; j < iSize; j++)
+         for (int j = 1; j < iSize; ++j)
          {
             // very poor way of calculating peptide similarity but it's what we have for now
             int iDiffCt = 0;
 
             if (!g_staticParams.options.bExplicitDeltaCn)
             {
-               for (int k = 0; k < iMinLength; k++)
+               for (int k = 0; k < iMinLength; ++k)
                {
                   // I-L and Q-K are same for purposes here
                   if (pOutput[0].szPeptide[k] != pOutput[j].szPeptide[k])
@@ -2912,14 +2920,14 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       bool bAddNtermFragmentNeutralLoss[VMODS];
       bool bAddCtermFragmentNeutralLoss[VMODS];
 
-      for (int iMod = 0; iMod < VMODS; iMod++)
+      for (int iMod = 0; iMod < VMODS; ++iMod)
       {
          bAddNtermFragmentNeutralLoss[iMod] = false;
          bAddCtermFragmentNeutralLoss[iMod] = false;
       }
 
       // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
-      for (int i = 0; i < pQuery->_pResults[0].iLenPeptide - 1; i++)
+      for (int i = 0; i < pQuery->_pResults[0].iLenPeptide - 1; ++i)
       {
          int iPos = pQuery->_pResults[0].iLenPeptide - i - 1;
 
@@ -2936,10 +2944,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          }
 
          map<int, double>::iterator it;
-         for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ctCharge++)
+         for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
          {
             // calculate every ion series the user specified
-            for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ionSeries++)
+            for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ++ionSeries)
             {
                // skip ion series that are not enabled.
                if (!g_staticParams.ionInformation.iIonVal[ionSeries])
@@ -2974,7 +2982,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
                if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
                {
-                  for (int iMod = 0; iMod < VMODS; iMod++)
+                  for (int iMod = 0; iMod < VMODS; ++iMod)
                   {
                      double dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss;
 
@@ -3075,7 +3083,7 @@ bool CometSearchManager::CompareByPeptide(const DBIndex &lhs,
 /*
       // same sequences and masses here so next look at mod state
       int iLen = (int)strlen(lhs.szPeptide)+2;
-      for (int i=0; i<iLen; i++)
+      for (int i=0; i<iLen; ++i)
       {
          if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
          {
@@ -3121,7 +3129,7 @@ bool CometSearchManager::CompareByMass(const DBIndex &lhs,
    if (!strcmp(lhs.szPeptide, rhs.szPeptide))
    {
       // same sequences and masses here so next look at mod state
-      for (unsigned int i=0; i<strlen(lhs.szPeptide)+2; i++)
+      for (unsigned int i=0; i<strlen(lhs.szPeptide)+2; ++i)
       {
          if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
          {
@@ -3154,7 +3162,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    bool bSucceeded;
    char szOut[256];
 
-   ThreadPool * tp = _tp;
+   ThreadPool *tp = _tp;
 
    const int iIndex_SIZE_FILE=SIZE_FILE+4;
    char szIndexFile[iIndex_SIZE_FILE];
@@ -3223,7 +3231,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // is assigned lProtCount to lIndexProteinFilePosition.  This is used later to look up
    // the right vector element of duplicate proteins later.
    long lProtCount = 0;
-   for (size_t i = 0; i < g_pvDBIndex.size(); i++)
+   for (size_t i = 0; i < g_pvDBIndex.size(); ++i)
    {
       if (i == 0)
       {
@@ -3286,7 +3294,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    // write out static mod params A to Z is ascii 65 to 90 then terminal mods
    fprintf(fptr, "StaticMod:");
-   for (int x = 65; x <= 90; x++)
+   for (int x = 65; x <= 90; ++x)
       fprintf(fptr, " %lf", g_staticParams.staticModifications.pdStaticMods[x]);
    fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddNterminusPeptide);
    fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddCterminusPeptide);
@@ -3297,7 +3305,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    int iTmp = (int)g_pvProteinNames.size();
    comet_fileoffset_t *lProteinIndex = new comet_fileoffset_t[iTmp];
-   for (int i = 0; i < iTmp; i++)
+   for (int i = 0; i < iTmp; ++i)
       lProteinIndex[i] = -1;
 
    // first just write out protein names. Track file position of each protein name
@@ -3317,7 +3325,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
    int iMaxPeptideMass10 = iMaxPeptideMass * 10;  // make mass index at resolution of 0.1 Da
    comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass10 + 1];
-   for (int x = 0; x <= iMaxPeptideMass10; x++)
+   for (int x = 0; x <= iMaxPeptideMass10; ++x)
       lIndex[x] = -1;
 
    // write out peptide entry here
@@ -3349,7 +3357,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
       fwrite(&lNumMatchedProteins, sizeof(long), 1, fptr);
 
-      for (long x = 0; x < lNumMatchedProteins; x++)
+      for (long x = 0; x < lNumMatchedProteins; ++x)
       {
          // find protein by matching g_pvProteinNames.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
          auto result = g_pvProteinNames.find((g_pvProteinsList.at((*it).lIndexProteinFilePosition)).at(x));
@@ -3411,7 +3419,7 @@ void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
    if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
       iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
-   for (int i=0; i<iNumPrintLines; i++)
+   for (int i=0; i<iNumPrintLines; ++i)
    {
       if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
       {

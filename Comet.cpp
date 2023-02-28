@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 
    bool bSearchSucceeded = pCometSearchMgr->DoSearch();
 
-   ReleaseCometSearchManager();
+   CometInterfaces::ReleaseCometSearchManager();
 
    if (!bSearchSucceeded)
    {

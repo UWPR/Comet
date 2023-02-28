@@ -42,7 +42,7 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
    //Reuse existing ThreadPool
    ThreadPool *pPostAnalysisThreadPool = tp;
 
-   for (int i=0; i<(int)g_pvQuery.size(); i++)
+   for (int i=0; i<(int)g_pvQuery.size(); ++i)
    {
       PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
 
@@ -114,7 +114,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
 
    pQuery->_pResults[0].iRankSp = 1;
 
-   for (int ii=1; ii<iSize; ii++)
+   for (int ii=1; ii<iSize; ++ii)
    {
       // Determine score rankings
       if (isEqual(pQuery->_pResults[ii].fScoreSp, pQuery->_pResults[ii-1].fScoreSp))
@@ -129,7 +129,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
    // if mod search, now sort peptides with same score but different mod locations
    if (g_staticParams.variableModParameters.bVarModSearch)
    {
-      for (int ii=0; ii<iSize; ii++)
+      for (int ii=0; ii<iSize; ++ii)
       {
          int j=ii+1;
 
@@ -163,7 +163,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
       std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, SortFnSp);
       pQuery->_pDecoys[0].iRankSp = 1;
 
-      for (int ii=1; ii<iSize; ii++)
+      for (int ii=1; ii<iSize; ++ii)
       {
          // Determine score rankings
          if (isEqual(pQuery->_pDecoys[ii].fScoreSp, pQuery->_pDecoys[ii-1].fScoreSp))
@@ -178,7 +178,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
       // if mod search, now sort peptides with same score but different mod locations
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
-         for (int ii=0; ii<iSize; ii++)
+         for (int ii=0; ii<iSize; ++ii)
          {
             int j=ii+1;
 
@@ -211,7 +211,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    int  _iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
 
-   for (i=0; i<iSize; i++)
+   for (i=0; i<iSize; ++i)
    {
       // hijack here to make protein vector unique
       if (pOutput[i].pWhichProtein.size() > 1)
@@ -289,17 +289,17 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             dYion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].iLenPeptide+1]-1].dVarModMass;
          }
 
-         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
          {
             int iii;
 
-            for (iii=1; iii<=iMaxFragCharge; iii++)
+            for (iii=1; iii<=iMaxFragCharge; ++iii)
                ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
          }
 
          // Generate pdAAforward for _pResults[0].szPeptide.
          int iLenMinus1 = pOutput[i].iLenPeptide - 1;
-         for (ii=0; ii<iLenMinus1; ii++)
+         for (ii=0; ii<iLenMinus1; ++ii)
          {
             int iPos = iLenMinus1 - ii;
 
@@ -321,15 +321,15 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          int iMax = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE;
 
-         for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
+         for (ctCharge=1; ctCharge<=iMaxFragCharge; ++ctCharge)
          {
-            for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+            for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
             {
                int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
 
                // As both _pdAAforward and _pdAAreverse are increasing, loop through
                // iLenPeptide-1 to complete set of internal fragment ions.
-               for (int iii=0; iii<pOutput[i].iLenPeptide-1; iii++)
+               for (int iii=0; iii<pOutput[i].iLenPeptide-1; ++iii)
                {
                   // Gets fragment ion mass.
                   dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
@@ -410,7 +410,7 @@ bool CometPostAnalysis::SortFnMod(const Results &a,
    // must compare character at a time
    // actually not sure why strcmp doesn't work
    // as piVarModSites is a char array
-   for (int i=0; i<MAX_PEPTIDE_LEN_P2; i++)
+   for (int i=0; i<MAX_PEPTIDE_LEN_P2; ++i)
    {
       if (a.piVarModSites[i] < b.piVarModSites[i])
          return true;
@@ -461,7 +461,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
    if (iLoopCount > g_staticParams.options.iNumPeptideOutputLines)
       iLoopCount = g_staticParams.options.iNumPeptideOutputLines;
 
-   for (i=0; i<iLoopCount; i++)
+   for (i=0; i<iLoopCount; ++i)
    {
       if (dSlope >= 0.0)
       {
@@ -528,7 +528,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    iNextCorr = 0;
    bool bFoundFirstNonZeroEntry = false;
 
-   for (i=0; i<iMaxCorr; i++)
+   for (i=0; i<iMaxCorr; ++i)
    {
       if (piHistogram[i] == 0 && bFoundFirstNonZeroEntry)
       {
@@ -585,7 +585,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
    iStartCorr = iNextCorr - 5;
    int iNumZeroes = 0;
-   for (i=iStartCorr; i<=iNextCorr; i++)
+   for (i=iStartCorr; i<=iNextCorr; ++i)
       if (pdCumulative[i] == 0)
          iNumZeroes++;
 
@@ -602,7 +602,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       iNumPoints=0;
 
       // Calculate means.
-      for (i=iStartCorr; i<=iNextCorr; i++)
+      for (i=iStartCorr; i<=iNextCorr; ++i)
       {
          if (piHistogram[i] > 0)
          {
@@ -621,7 +621,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
          Mx = My = 0.0;
 
       // Calculate sum of squares.
-      for (i=iStartCorr; i<=iNextCorr; i++)
+      for (i=iStartCorr; i<=iNextCorr; ++i)
       {
          if (pdCumulative[i] > 0)
          {
@@ -697,16 +697,16 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
       iLastEntry = g_staticParams.options.iNumStored;
 
    j=0;
-   for (i=0; i<iLoopMax; i++)  // iterate through required # decoys
+   for (i=0; i<iLoopMax; ++i)  // iterate through required # decoys
    {
       dFastXcorr = 0.0;
 
-      for (j=0; j<MAX_DECOY_PEP_LEN; j++)  // iterate through decoy fragment ions
+      for (j=0; j<MAX_DECOY_PEP_LEN; ++j)  // iterate through decoy fragment ions
       {
          dBion = decoyIons[i].pdIonsN[j];
          dYion = decoyIons[i].pdIonsC[j];
 
-         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
          {
             int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
 
@@ -743,7 +743,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   break;
             }
 
-            for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
+            for (ctCharge=1; ctCharge<=iMaxFragCharge; ++ctCharge)
             {
                dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
 

@@ -16,7 +16,7 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
    N = n;
    K = k;
    BINOM_COEF = new int*[n + 1];
-   for (int i = 0; i <= n; i++)
+   for (int i = 0; i <= n; ++i)
    {
       const auto coeffs = new int[k + 1];
       if (i == 0)
@@ -26,7 +26,7 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
       else
       {
 
-         for (int j = 0; j <= i && j <= k; j++)
+         for (int j = 0; j <= i && j <= k; ++j)
          {
             if (j == 0 || j == i)
             {
@@ -40,10 +40,10 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
       BINOM_COEF[i] = coeffs;
    }
 
-   // for (int i = 0; i <= n; i++)
+   // for (int i = 0; i <= n; ++i)
    // {
    //    int* arr = BINOM_COEF[i];
-   //    for (int j = 0; j <= i && j <= k; j++)
+   //    for (int j = 0; j <= i && j <= k; ++j)
    //    {
    //       cout << to_string(arr[j]) << " ";
    //    }
@@ -63,7 +63,7 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
    if (r == n)
    {
       int* combination = new int[n];
-      for (int i = 0; i < n; i++)
+      for (int i = 0; i < n; ++i)
       {
          combination[i] = i;
       }
@@ -77,7 +77,7 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
    int *c = new int[k + 3];
 
    c[0] = 0;
-   for (int i = 1; i <= k; i++) {
+   for (int i = 1; i <= k; ++i) {
       c[i] = i - 1;
    }
    // Initialize sentinels
@@ -93,7 +93,7 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
       int *ret = new int[k];
       // Copy return value (prepared by last activation)
       // System.arraycopy(c, 1, ret, 0, k);
-      for (int i = 0; i < k; i++)
+      for (int i = 0; i < k; ++i)
       {
          ret[i] = c[i + 1];
       }

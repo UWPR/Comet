@@ -32,8 +32,8 @@ class CometSearchManager;
 #define MAX_PEPTIDE_LEN             50       // max # of AA for a peptide; one less to account for terminating char
 #define MAX_PEPTIDE_LEN_P2          52       // max # of AA for a peptide plus 2 for N/C-term
 
-#define MAX_COMBINATIONS            2000 
-#define MAX_MODS_PER_MOD            5
+#define MAX_COMBINATIONS            2000
+#define MAX_MODS_PER_MOD            3
 
 #define KEEP_ALL_PEPTIDES           1        // 1 = print up to MAX_COMBINATIONS of peptides; 0 = ignore mods for peptide that exceed MAX_COMBINATIONS
 
@@ -122,7 +122,7 @@ struct Options             // output parameters
    int bCreateIndex;             // 0=normal search; 1=create peptide index file
    int bVerboseOutput;
    int bShowFragmentIons;
-   int bExplicitDeltaCn;         // if set to 1, do not use sequence similarity logic 
+   int bExplicitDeltaCn;         // if set to 1, do not use sequence similarity logic
    int bPrintExpectScore;
    int bOverrideCharge;
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
@@ -316,7 +316,7 @@ struct PeffVariantComplexStruct  // stores info read from PEFF header
 {
   int    iPositionA;       // start position of variant
   int    iPositionB;       // end position of variant
-  string sResidues;        // if !empty(), insertion replacing aa from pos A to B; 
+  string sResidues;        // if !empty(), insertion replacing aa from pos A to B;
                            // if empty(), deletion of aa from pos A to B
 
   bool operator<(const PeffVariantComplexStruct& a) const
@@ -382,7 +382,7 @@ struct DBIndex
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
-   comet_fileoffset_t   lIndexProteinFilePosition;         // file position in orig fasta to each protein reference 
+   comet_fileoffset_t   lIndexProteinFilePosition;         // file position in orig fasta to each protein reference
    comet_fileoffset_t   lIndexPeptideFilePosition;         // file position each peptide in the indexdb
    double dPepMass;                          // MH+ pep mass
 
@@ -898,7 +898,7 @@ extern vector<string> MOD_SEQS;    // Unique modifiable sequences.
 extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 extern int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
-extern int MOD_NUM; 
+extern int MOD_NUM;
 extern int g_iMaxFragmentArrayIndex;  // BIN(maximum peptide mass); used as fragment array index
 
 // Query stores information for peptide scoring and results
@@ -939,6 +939,9 @@ struct Query
    float *pfSpScoreData;
    float *pfFastXcorrData;
    float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
+
+   // List of binned peaks masses for fragment indexing
+   vector<int> viBinnedFragmentPeaks;
 
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;
@@ -982,6 +985,8 @@ struct Query
       pfSpScoreData = NULL;
       pfFastXcorrData = NULL;
       pfFastXcorrDataNL = NULL;                 // pfFastXcorrData with NH3, H2O contributions
+
+      viBinnedFragmentPeaks.clear();
 
       _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;

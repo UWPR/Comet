@@ -49,7 +49,9 @@ void ModificationsPermuter::endTime(chrono::time_point<chrono::steady_clock> sta
 {
    const auto stop = chrono::steady_clock::now();
    auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
-   cout << message << " in " << duration.count() << "ms" << endl;
+   long minutes = duration.count() / 60000;
+   long seconds = (duration.count() - minutes*60000) / 1000;
+   cout << message << " in " << minutes << " minutes " << seconds  << " seconds" << endl;
 }
 
 long ModificationsPermuter::duration(chrono::time_point<chrono::steady_clock> start)
@@ -90,11 +92,11 @@ void ModificationsPermuter::getCombinations(int n,
 {
    int** combinations = CombinatoricsUtils::makeCombinations(n, k, nck);
 
-   for (int i = 0; i < nck; i++)
+   for (int i = 0; i < nck; ++i)
    {
       unsigned long long bitmask = 0ULL;
       int *combination = combinations[i];
-      for (int j = 0; j < k; j++)
+      for (int j = 0; j < k; ++j)
       {
          unsigned long long toOr = 1ULL << (combination[j]);
          // cout << combination[j] << " " << toOr << endl;
@@ -105,7 +107,7 @@ void ModificationsPermuter::getCombinations(int n,
       // std::bitset<64> x(bitmasks.at(i));
       // cout << x << " - "  << allCombos[i] << endl;
    }
-   for (int i = 0; i < nck; i++)
+   for (int i = 0; i < nck; ++i)
    {
       delete[] combinations[i];
    }
@@ -190,7 +192,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
 /*
    if (DEBUG)
    {
-      for (int i = 0; i < totalCount; i++)
+      for (int i = 0; i < totalCount; ++i)
       {
          std::bitset<64> x(allCombos[i]);
          cout << allCombos[i] << " - " << x << endl;
@@ -301,7 +303,7 @@ unsigned long long ModificationsPermuter::getModBitmask(string* modSeq,
 {
    unsigned long long bitMask = 0ULL;
    long len = (*modSeq).size();
-   for (int i = 0; i < len; i++)
+   for (int i = 0; i < len; ++i)
    {
       if (sModChars.find((*modSeq)[i]) != string::npos)
       {
@@ -323,18 +325,18 @@ vector<vector<int>> ModificationsPermuter::getCombinationSets(int modCount)
       int nck = CombinatoricsUtils::nChooseK(modCount, i);
 
       int** combinationSets = CombinatoricsUtils::makeCombinations(modCount, i, nck);
-      for (int j = 0; j < nck; j++)
+      for (int j = 0; j < nck; ++j)
       {
          int *combination = combinationSets[j];
          vector<int> set;
-         for (int k = 0; k < i; k++)
+         for (int k = 0; k < i; ++k)
          {
             set.push_back(combination[k]);
          }
          allSets.push_back(set);
       }
 
-      for (int j = 0; j < nck; j++)
+      for (int j = 0; j < nck; ++j)
       {
          delete[] combinationSets[j];
       }
@@ -358,7 +360,7 @@ int ModificationsPermuter::getTotalCombinationCount(vector<int> combinationCount
    {
       int combos = 1;
       vector<int> set = *it;
-      for (unsigned int j = 0; j < set.size(); j++)
+      for (unsigned int j = 0; j < set.size(); ++j)
       {
          int s = set.at(j);
          combos *= combinationCounts.at(s);
@@ -379,9 +381,9 @@ bool ModificationsPermuter::combine(int* modNumbers,
 {
    const auto start = startTime();
 
-   for (int j = 0; j < modNumCount; j++)
+   for (int j = 0; j < modNumCount; ++j)
    {
-      for (int k = j+1; k < modNumCount; k++)
+      for (int k = j+1; k < modNumCount; ++k)
       {
          // cout << "1: "; printBits(bitmasks[j]);
          // cout << "2: "; printBits(bitmasks[k]);
@@ -399,13 +401,13 @@ bool ModificationsPermuter::combine(int* modNumbers,
    char *mods = new char[modStringLen];
    char modNum;
 
-   for (int i = 0; i < modStringLen; i++)
+   for (int i = 0; i < modStringLen; ++i)
       mods[i] = -1;
 
-   for (int i = 0; i < modStringLen; i++)
+   for (int i = 0; i < modStringLen; ++i)
    {
       int idx = modStringLen - i - 1;
-      for (int j = 0; j < modNumCount; j++)
+      for (int j = 0; j < modNumCount; ++j)
       {
          unsigned long long btm = bitmasks[j];
          modNum = modNumbers[j];
@@ -450,7 +452,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
    *ret_modNumCount = 0;
 
    // Step 1: Get a bitmask representing each user specified modification found in the sequence.
-   for (int m = 0; m < MOD_CNT; m++)
+   for (int m = 0; m < MOD_CNT; ++m)
    {
       string sModChars = ALL_MODS[m];
 
@@ -521,7 +523,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
       // 10010010
       int combinationsFound = 0;
 
-      for (int j = 0; j < ALL_COMBINATION_CNT; j++)
+      for (int j = 0; j < ALL_COMBINATION_CNT; ++j)
       {
          if (combinationsFound >= MAX_COMBINATIONS)
             break;
@@ -546,11 +548,11 @@ void ModificationsPermuter::generateModifications(string* sequence,
 /*
    if (DEBUG)
    {
-      for (auto i = 0; i < (int)modBitmasks.size(); i++)
+      for (auto i = 0; i < (int)modBitmasks.size(); ++i)
       {
          unsigned long long* bitmasks = combinationsForAllMods[i];
          int combinationCount = combinationCounts[i];
-         for (int j = 0; j < combinationCount; j++)
+         for (int j = 0; j < combinationCount; ++j)
          {
             unsigned long long bitmask = bitmasks[j];
             // cout << bitmasks.at(i) << " - ";
@@ -589,7 +591,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
          }
          
          int *currIdx = new int[modNumCount]; // Current index for each modification
-         for (int i = 0; i < modNumCount; i++)
+         for (int i = 0; i < modNumCount; ++i)
             currIdx[i] = 0;
 
          int modNumCalculated = 0;
@@ -599,7 +601,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
             unsigned long long* toCombine = new unsigned long long[modNumCount];
 
             int c = 0;
-            for (int i = 0; i < modNumCount; i++)
+            for (int i = 0; i < modNumCount; ++i)
             {
                const int modIdx = modIndicesToMerge[i];
                unsigned long long* combinationsForModIdx = combinationsForAllMods[modIdx];
@@ -609,7 +611,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
             }
 
             int *modNumbers = new int[modNumCount]; // index of the modification in ALL_MODS
-            for (int k = 0; k < modNumCount; k++)
+            for (int k = 0; k < modNumCount; ++k)
             {
                modNumbers[k] = modIndices.at(modIndicesToMerge[k]);
             }
@@ -632,7 +634,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
 
             currIdx[next]++;  // Go on to the next element in the list
 
-            for (int i = next + 1; i < modNumCount; i++)
+            for (int i = next + 1; i < modNumCount; ++i)
             {
                currIdx[i] = 0;
             }
