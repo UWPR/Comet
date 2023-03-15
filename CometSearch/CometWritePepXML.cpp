@@ -506,13 +506,13 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
-   for (i=0; i<iNumPrintLines; i++)
+   for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
    {
       int j;
       bool bNoDeltaCnYet = true;
       double dDeltaCn = 0.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
 
-      for (j=i+1; j<iNumPrintLines; j++)
+      for (j=iWhichResult+1; j<iNumPrintLines+1; j++)
       {
          if (j<g_staticParams.options.iNumStored)
          {
@@ -524,7 +524,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
                for (int k=0; k<iMinLength; k++)
                {
                   // I-L and Q-K are same for purposes here
-                  if (pOutput[i].szPeptide[k] != pOutput[j].szPeptide[k])
+                  if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
                   {
                      if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
                               && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
@@ -540,14 +540,14 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
             // calculate deltaCn only if sequences are less than 0.75 similar
             if (g_staticParams.options.bExplicitDeltaCn || ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
             {
-               if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[i].fXcorr;
-               else if (pOutput[i].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+               if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
+                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[iWhichResult].fXcorr;
+               else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
                   dDeltaCn = 1.0;
                else
                   dDeltaCn = 0.0;
 
-               bNoDeltaCnYet = 0;
+               bNoDeltaCnYet = false;
 
                break;
             }
@@ -557,11 +557,11 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       if (bNoDeltaCnYet)
          dDeltaCn = 1.0;
 
-      if (i > 0 && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
+      if (iWhichResult > 0 && !isEqual(pOutput[iWhichResult].fXcorr, pOutput[iWhichResult-1].fXcorr))
          iRankXcorr++;
 
-      if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
-         PrintPepXMLSearchHit(iWhichQuery, i, iRankXcorr, iPrintTargetDecoy, pOutput, fpout, fpdb, dDeltaCn);
+      if (pOutput[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
+         PrintPepXMLSearchHit(iWhichQuery, iWhichResult, iRankXcorr, iPrintTargetDecoy, pOutput, fpout, fpdb, dDeltaCn);
    }
 
    fprintf(fpout, "  </search_result>\n");
