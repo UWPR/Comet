@@ -13,10 +13,10 @@ using namespace std;
 using namespace mzParser;
 
 int mzParser::checkFileType(const char* fname){
-  char file[256];
-  char ext[256];
+  char file[4096];
+  char ext[496];
   char *tok;
-  char preExt[256];
+  char preExt[4096];
   unsigned int i;
 
   if (strlen(fname) < 4) {
@@ -364,8 +364,8 @@ RAMPFILE* mzParser::rampOpenFile(const char* filename){
 }
 
 char* mzParser::rampValidFileType(const char *buf){
-  char ext[256];
-  char preExt[256];
+  char ext[4096];
+  char preExt[4096];
 
   const char* result=NULL;
   const char* result2=NULL;
