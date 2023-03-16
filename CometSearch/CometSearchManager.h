@@ -34,6 +34,7 @@ public:
    // Methods inherited from ICometSearchManager
    virtual bool CreateIndex();
    virtual bool DoSearch();
+// virtual bool DoIndexSearch();
    virtual bool InitializeSingleSpectrumSearch();
    virtual void FinalizeSingleSpectrumSearch();
    virtual bool DoSingleSpectrumSearch(const int iPrecursorCharge,

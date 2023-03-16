@@ -940,8 +940,8 @@ struct Query
    float *pfFastXcorrData;
    float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
 
-   // List of binned peaks masses for fragment indexing
-   vector<int> viBinnedFragmentPeaks;
+   // List of ms/ms masses for fragment index search; intensity not important at this stage
+   vector<double> vdRawFragmentPeakMass;
 
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;
@@ -986,7 +986,7 @@ struct Query
       pfFastXcorrData = NULL;
       pfFastXcorrDataNL = NULL;                 // pfFastXcorrData with NH3, H2O contributions
 
-      viBinnedFragmentPeaks.clear();
+      vdRawFragmentPeakMass.clear();
 
       _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;

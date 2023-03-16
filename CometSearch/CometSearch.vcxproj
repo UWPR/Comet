@@ -185,7 +185,6 @@
     <ClInclude Include="CometWriteSqt.h" />
     <ClInclude Include="CometWriteTxt.h" />
     <ClInclude Include="Common.h" />
-    <ClInclude Include="ModificationNumber.h" />
     <ClInclude Include="ModificationsPermuter.h" />
     <ClInclude Include="OSSpecificThreading.h" />
     <ClInclude Include="Threading.h" />
@@ -205,7 +204,6 @@
     <ClCompile Include="CometWritePercolator.cpp" />
     <ClCompile Include="CometWriteSqt.cpp" />
     <ClCompile Include="CometWriteTxt.cpp" />
-    <ClCompile Include="ModificationNumber.cpp" />
     <ClCompile Include="ModificationsPermuter.cpp" />
     <ClCompile Include="Threading.cpp" />
   </ItemGroup>

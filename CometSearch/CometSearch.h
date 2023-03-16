@@ -19,6 +19,7 @@
 
 #include "Common.h"
 #include "CometDataInternal.h"
+#include <functional>
 
 struct SearchThreadData
 {
@@ -127,8 +128,6 @@ private:
                    int *piVarModSites,
                    struct sDBEntry *dbe);
    static void XcorrScoreI(char *szProteinSeq,
-                   int iStartResidue,
-                   int iEndResidue,
                    int iStartPos,
                    int iEndPos,
                    int iFoundVariableMod,
@@ -176,7 +175,6 @@ private:
                      int *piVarModSites,
                      struct sDBEntry *dbe);
    static void StorePeptideI(int iWhichQuery,
-                     int iStartResidue,
                      int iStartPos,
                      int iEndPos,
                      int iFoundVariableMod,
@@ -228,7 +226,7 @@ private:
                             int iWhichPeptide,
                             int modNumIdx);
    static void SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
-                            int iWhichQuery,
+                            size_t iWhichQuery,
                             ThreadPool *tp);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
@@ -247,6 +245,10 @@ private:
    static bool SortFragmentsByPepMass(unsigned int x,
                                       unsigned int y);
    static void SortFragmentThreadProc(int i,
+                                      ThreadPool *tp);
+   static void AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,
+                                      size_t iWhichPeptide,
+                                      int& iNoModificationNumbers,
                                       ThreadPool *tp);
 
 
@@ -335,6 +337,10 @@ private:
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
+
+   static Mutex _vFragmentIndexMutex;
+   static Mutex _vFragmentPeptidesMutex;
+
 };
 
 #endif // _COMETSEARCH_H_

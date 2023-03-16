@@ -1614,6 +1614,7 @@ void CometSearchManager::ResetSearchStatus()
     g_cometStatus.ResetStatus();
 }
 
+
 bool CometSearchManager::CreateIndex()
 {
     // Override the Create Index flag to force it to create
@@ -1622,6 +1623,7 @@ bool CometSearchManager::CreateIndex()
     // The DoSearch will create the index and exit
     return DoSearch();
 }
+
 
 bool CometSearchManager::DoSearch()
 {

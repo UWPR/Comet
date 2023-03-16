@@ -29,7 +29,7 @@ ModificationsPermuter::~ModificationsPermuter()
 
 // Maximum number of bits that can be set in a modifiable sequence for a given modification.
 // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than MAX_COMBINATIONS (65,534)
-int MAX_BITCOUNT = 24;
+unsigned int MAX_BITCOUNT = 24;
 int MAX_K_VAL = 10;
 
 int IGNORED_SEQ_CNT = 0; // Sequences that were ignored because they would generate more than MAX_COMBINATIONS combinations.
@@ -126,7 +126,6 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
    int totalCount = 0;
    int i = maxMods;
 
-   auto start = startTime();
    unsigned long long* allCombos = new unsigned long long[0];
    int currentAllCount = 0;
    while (i >= 1)
@@ -200,7 +199,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
    }
 */
 
-   endTime(start, "Combinations initialized");
+//   endTime(start, "Combinations initialized");
    
    *ALL_COMBINATIONS =  allCombos;
    *ALL_COMBINATION_CNT = totalCount;
@@ -257,7 +256,6 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
                                                              int* PEPTIDE_MOD_SEQ_IDXS,
                                                              vector<string>& ALL_MODS)
 {
-   const auto start = startTime();
    std::unordered_map<string, int> modifiableSeqMap;
    vector<string> ret;
    int pepIdx = 0;
@@ -291,8 +289,7 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
       pepIdx++;
    }
 
-   cout << "Modifiable peptides - " << std::to_string(modifiablePeptides) << endl;
-   endTime(start, "Found " + std::to_string(ret.size()) + " unique modifiable sequences");
+   cout << "Modifiable peptides: " << std::to_string(modifiablePeptides) << "; " << std::to_string(ret.size()) << " unique modifiable sequences" << endl;
    return ret;
 }
 
@@ -691,14 +688,10 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
                                                         int ALL_COMBINATION_CNT,
                                                         unsigned long long* ALL_COMBINATIONS)
 {
-   const auto start = startTime();
-
    MOD_SEQ_MOD_NUM_START = new int[modifiableSeqs.size()];
    MOD_SEQ_MOD_NUM_CNT = new int[modifiableSeqs.size()];
 
    CombinatoricsUtils::initBinomialCoefficients(MAX_PEPTIDE_LEN, MAX_K_VAL);
-
-// endTime(start, "after initBinomialCoefficients");
 
    int i = 0;
    for (auto it = modifiableSeqs.begin(); it != modifiableSeqs.end(); ++it)
@@ -715,16 +708,6 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
       MOD_SEQ_MOD_NUM_START[i] = modNumStart;
       MOD_SEQ_MOD_NUM_CNT[i] = modNumCount;
 
-      if (i > 0 && i % 10000 == 0)
-         cout << "Done " << to_string(i) << " (" << modSeq << ")" << endl;
-
       i++;
    }
-   cout << "Done " << to_string(i) << endl;
-
-   cout << "Ignored sequences: " << to_string(IGNORED_SEQ_CNT) << endl;
-   endTime(start, "Generated modification combinations");
-   cout << "Time in combine: " << to_string(TIME_IN_COMBINE) << endl;
-   cout << "Total time generating mods: " << to_string(TIME_GEN_MODS) << endl;
-   cout << "ModificationNumber count: " << std::to_string(MOD_NUM) << endl;
 }

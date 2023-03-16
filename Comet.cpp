@@ -61,7 +61,14 @@ int main(int argc, char *argv[])
    ProcessCmdLine(argc, argv, szParamsFile, pvInputFiles, pCometSearchMgr);
    pCometSearchMgr->AddInputFiles(pvInputFiles);
 
-   bool bSearchSucceeded = pCometSearchMgr->DoSearch();
+   bool bSearchSucceeded;
+
+/*
+   if (g_staticParams.bIndexDb)
+      bSearchSucceeded = pCometSearchMgr->IndexSearch();  //fragment index search
+   else
+*/
+      bSearchSucceeded = pCometSearchMgr->DoSearch();
 
    CometInterfaces::ReleaseCometSearchManager();
 

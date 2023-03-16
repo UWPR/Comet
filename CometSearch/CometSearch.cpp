@@ -26,6 +26,8 @@
 #include <sstream>
 #include <bitset>
 
+#define USEFRAGMENTTHREADS 2
+
 bool *CometSearch::_pbSearchMemoryPool;
 bool **CometSearch::_ppbDuplFragmentArr;
 
@@ -40,6 +42,8 @@ unsigned int g_uiMaxFragmentArrayIndex;
 vector<vector<unsigned int>> g_vFragmentIndex;  // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 
+Mutex CometSearch::_vFragmentIndexMutex;
+Mutex CometSearch::_vFragmentPeptidesMutex;
 
 CometSearch::CometSearch()
 {
@@ -1377,18 +1381,16 @@ bool CometSearch::IndexSearch(ThreadPool *tp)
    long minutes = duration.count() / 60000;
    long seconds = (duration.count() - minutes*60000) / 1000;
 
-   cout << "Done generating fragment index in " << minutes << " minutes " << seconds  << " seconds" << endl;
+   cout << "*** Done, time generating fragment index: " << minutes << " minutes " << seconds  << " seconds" << endl;
 
-
-   cout << endl << "Searching fragment index ..." << endl;
+   cout << endl << "Searching fragment index ..." << endl;;
    tStartTime= chrono::steady_clock::now();
 
-   int iEnd = (int)g_pvQuery.size();
-
+   size_t iEnd = g_pvQuery.size();
 
    ThreadPool *pSearchFragmentIndexPool = tp;
 
-   for (int iWhichQuery=0; iWhichQuery<(int)g_pvQuery.size(); ++iWhichQuery)
+   for (size_t iWhichQuery=0; iWhichQuery<iEnd; ++iWhichQuery)
    {
 //    pSearchFragmentIndexPool->doJob(std::bind(SearchFragmentIndex, vRawPeptides, iWhichQuery, tp));
       SearchFragmentIndex(vRawPeptides, iWhichQuery, tp);
@@ -1403,7 +1405,7 @@ bool CometSearch::IndexSearch(ThreadPool *tp)
    duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
    minutes = duration.count() / 60000;
    seconds = (duration.count() - minutes*60000) / 1000;
-   cout << "Done searching spectra in " << minutes << " minutes " << seconds  << " seconds" << endl;
+   cout << "*** Done, time spent in searching: " << minutes << " minutes " << seconds  << " seconds" << endl;
 
    return true;
 }
@@ -1567,7 +1569,6 @@ void CometSearch::PrintFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides)
    cout << " " << iNoModificationNumbers << " peptides have no modification numbers." << endl;
 }
 
-
 void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
                                         ThreadPool *tp)
 {
@@ -1577,51 +1578,111 @@ void CometSearch::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
 
    cout << endl << "Generating fragment index ..." << endl;
 
+   auto tStartTime = chrono::steady_clock::now();
+
+   // Create the mutex we will use to protect vFragmentIndex
+   Threading::CreateMutex(&_vFragmentIndexMutex);
+   Threading::CreateMutex(&_vFragmentPeptidesMutex);
+
+   ThreadPool *pFragmentIndexPool = tp;
+
    for (iWhichPeptide = 0; iWhichPeptide < iEndSize; ++iWhichPeptide)
    {
-      // AddFragments(iWhichPeptide, modNumIdx) for unmodified peptide
-      // FIX: if require variable mod is set, this would not be called here
-      AddFragments(vRawPeptides, iWhichPeptide, -1);
+//    if (!(iWhichPeptide%100000)) { printf("OK fragmenting peptide %d of %d\n", iWhichPeptide, iEndSize); }
 
-      int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
-
-      if (modSeqIdx == -1)
-      {
-         iNoModificationNumbers++;
-         // peptide is not modified, skip following permuting code
-         continue;
-      }
-
-      int startIdx = MOD_SEQ_MOD_NUM_START[modSeqIdx];
-      if (startIdx == -1)
-      {
-         // should always permute to MAX_COMBINATIONS of mods for the peptide
-//       cout << " ERROR should not get here if peptide contains mod residues; modSeqIdx " << modSeqIdx << ", peptide " << peptide << endl;
-         continue;
-      }
-
-      int modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
-
-      for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
-      {
-         // add fragment ions for each modification permutation
-         AddFragments(vRawPeptides, iWhichPeptide, modNumIdx);
-      }
+#if USEFRAGMENTTHREADS == 1
+      pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, std::ref(vRawPeptides), iWhichPeptide, std::ref(iNoModificationNumbers), pFragmentIndexPool));
+#else
+      AddFragmentsThreadProc(std::ref(vRawPeptides), iWhichPeptide, std::ref(iNoModificationNumbers), pFragmentIndexPool);
+#endif
    }
 
-   cout << "peptides have no modification numbers or exceed MAX_COMBINATIONS: " << iNoModificationNumbers << endl;
+#if USEFRAGMENTTHREADS == 1
+   printf(" Waiting on threads to process fragment ions for %ld peptides ...\n", iEndSize);
+   pFragmentIndexPool->wait_on_threads();
+#endif
+
+   auto tEndTime = chrono::steady_clock::now();
+   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
+   long minutes = duration.count() / 60000;
+   long seconds = (duration.count() - minutes*60000) / 1000;
+   cout << "*** Done with adding fragment ions to index: " << minutes << " minutes " << seconds  << " seconds" << endl;
+
+// cout << endl << endl;
+// cout << "peptides have no modification numbers or exceed MAX_COMBINATIONS: " << iNoModificationNumbers << " " << endl;
+// cout << "size of gv_FragmentPeptides is " << g_vFragmentPeptides.size() << endl;
 
    // Walk through each g_vFragmentIndex[] and sort entries by increasing peptide mass
 
-   ThreadPool *pSortFragmentIndexPool = tp;
+   tStartTime = chrono::steady_clock::now();
+
+   printf("OK before sorting peptide masses per fragments\n");
+
    for (unsigned int i = 0; i < g_uiMaxFragmentArrayIndex; i++)
    {
+//    if (!(i%500)) { printf("OK sorting pepmasses for fragment %d of %d\n", i, g_uiMaxFragmentArrayIndex); }
+
       if (g_vFragmentIndex[i].size() > 0)
       {
-         pSortFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, i, tp));
+#if USEFRAGMENTTHREADS > 0
+         pFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, i, pFragmentIndexPool));
+#else
+         SortFragmentThreadProc(i, pFragmentIndexPool);
+#endif
       }
    }
-   pSortFragmentIndexPool->wait_on_threads();
+
+printf("OK after sort loop, before wait_on_threads\n");
+#if USEFRAGMENTTHREADS > 0
+   pFragmentIndexPool->wait_on_threads();
+#endif
+printf("OK after sort loop, after wait_on_threads\n");
+
+   // Destroy the mutex we will use to protect vFragmentIndex
+   Threading::DestroyMutex(_vFragmentIndexMutex);
+   Threading::DestroyMutex(_vFragmentPeptidesMutex);
+
+   tEndTime = chrono::steady_clock::now();
+   duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
+   minutes = duration.count() / 60000;
+   seconds = (duration.count() - minutes*60000) / 1000;
+   cout << "*** Done with sorting fragment index: " << minutes << " minutes " << seconds  << " seconds" << endl;
+}
+
+
+void CometSearch::AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,
+                                         size_t iWhichPeptide,
+                                         int& iNoModificationNumbers,
+                                         ThreadPool *tp)
+{
+   // AddFragments(iWhichPeptide, modNumIdx) for unmodified peptide
+   // FIX: if require variable mod is set, this would not be called here
+   AddFragments(vRawPeptides, iWhichPeptide, -1);
+
+   int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+
+   if (modSeqIdx == -1)
+   {
+      iNoModificationNumbers += 1;
+      // peptide is not modified, skip following permuting code
+      return;
+   }
+
+   int startIdx = MOD_SEQ_MOD_NUM_START[modSeqIdx];
+   if (startIdx == -1)
+   {
+      // should always permute to MAX_COMBINATIONS of mods for the peptide
+//    cout << " ERROR should not get here if peptide contains mod residues; modSeqIdx " << modSeqIdx << ", peptide " << peptide << endl;
+      return;
+   }
+
+   int modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
+
+   for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
+   {
+      // add fragment ions for each modification permutation
+      AddFragments(vRawPeptides, iWhichPeptide, modNumIdx);
+   }
 }
 
 
@@ -1693,11 +1754,18 @@ void CometSearch::AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
    sTmp.modNumIdx = modNumIdx;
    sTmp.dPepMass = dCalcPepMass;
 
+#if USEFRAGMENTTHREADS == 1
+   Threading::LockMutex(_vFragmentPeptidesMutex);
+#endif
+
    // store peptide representation based on sequence (iWhichPeptide), modification state (iModNumIdx), and mass (dPepMass)
    g_vFragmentPeptides.push_back(sTmp);
    unsigned int uiCurrentFragmentPeptide = g_vFragmentPeptides.size() - 1;  // index of current peptide in g_vFragmentPeptides
+                                                                            //
 
 /*
+if (!(iWhichPeptide%5000))
+{
    // print out the peptide
    printf("OK in AddFragments: ");
    j=0;
@@ -1714,6 +1782,7 @@ void CometSearch::AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
       }
    }
    printf("\t%f\t%d\t%s\n", dCalcPepMass, modNumIdx, modSeq.c_str());
+}
 */
 
    j = 0;
@@ -1749,6 +1818,8 @@ void CometSearch::AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
 
       if (i > 1)  // skip first two low mass b- and y-ions ala sage
       {
+//       Threading::LockMutex(_vFragmentIndexMutex);
+
          uiBinIon = BIN(dBion);
 
          if (uiBinIon < g_uiMaxFragmentArrayIndex)
@@ -1762,19 +1833,26 @@ void CometSearch::AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
             g_vFragmentIndex[uiBinIon].push_back(uiCurrentFragmentPeptide);
          else
             printf("ERROR in AddFragments: pep %s, dYion %f, bin %d >= max %d\n", sPeptide.c_str(), dYion, uiBinIon, g_uiMaxFragmentArrayIndex);
+
+//       Threading::UnlockMutex(_vFragmentIndexMutex);
       }
    }
-}
 
+#if USEFRAGMENTTHREADS == 1
+   Threading::UnlockMutex(_vFragmentPeptidesMutex);
+#endif
+}
 
 // g_vFragmentIndex[BIN(fragment mass)] = uiWhichPeptide
 // g_vFragmentPeptides[uiWhichPeptide] contains vRawPeptides.at(iWhichPeptide).sPeptide, iModNumIdx in, and dPepMass
+
+
 void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
-                                      int iWhichQuery,
+                                      size_t iWhichQuery,
                                       ThreadPool *tp)
 {
 
-   int iEnd = (int)g_pvQuery.size();
+   size_t iEnd = g_pvQuery.size();
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
 
@@ -1812,10 +1890,10 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
    {
       // Walk through the binned peaks in the spectrum and map them to the fragment index
       // to count all peptides that contain each fragment peak.
-      for (auto it2 = g_pvQuery.at(iWhichQuery)->viBinnedFragmentPeaks.begin();
-            it2 != g_pvQuery.at(iWhichQuery)->viBinnedFragmentPeaks.end(); ++it2)
+      for (auto it2 = g_pvQuery.at(iWhichQuery)->vdRawFragmentPeakMass.begin();
+            it2 != g_pvQuery.at(iWhichQuery)->vdRawFragmentPeakMass.end(); ++it2)
       {
-         iFragmentMass = *it2;
+         iFragmentMass = BIN(*it2);
 
          // We can consider higher charged fragments by simply
          // assuming each fragment mass is higher charged and convert to
@@ -1826,14 +1904,13 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
          {
             // FIX: the resolution of BINS probably not good enough
             // to translate to 1+ fragment bins
-            iFragmentMass = iFragmentMass * iChg - (iChg - 1);
+            iFragmentMass = BIN( (*it2) * iChg - (iChg - 1) );
 
             // number of peptides that contain this fragment mass
             lNumPeps = g_vFragmentIndex[iFragmentMass].size();
 
             if (lNumPeps > 0)
             {
-               // FIX: need to perform binary search to first entry where 
                // g_vFragmentPeptides[g_vFragmentIndex[iFragmentMass][ix]].dPepMass
                // is >= to g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
                size_t iFirst = BinarySearchIndexMass(0, lNumPeps, g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus, &iFragmentMass);
@@ -1855,7 +1932,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
 
       int iMinFragIons = 3;
 
-/*
+
       // copy mPeptides map to a vector of pairs and sort in
       // descending order of matched fragment ions
       std::vector<std::pair<comet_fileoffset_t, int>> vPeptides;
@@ -1865,9 +1942,8 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
             vPeptides.push_back(*ix);
       }
 
-
       sort(vPeptides.begin(), vPeptides.end(), [=](const std::pair<comet_fileoffset_t, int>& a, const std::pair<comet_fileoffset_t, int>& b) { return a.second > b.second; });
-*/
+
       // Now that all peptides are determined based on mapping fragment ions,
       // re-score highest matches with xcorr. Let use cutoff of at least
       // iMinFragIons fragment ion matches.
@@ -1882,16 +1958,20 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
       int piVarModSites[MAX_PEPTIDE_LEN_P2];
       int iPositionNLB[VMODS];
       int iPositionNLY[VMODS];
-      int iUnused = 0;
       int iStartPos = 0;
       int iEndPos = 0;
 
       int iNumScoredPeptides = 0;
+      int iNumTmp = 0;
 
-      for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ix++)
+//    for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ix++)
+      for (auto ix = vPeptides.begin(); ix != vPeptides.end(); ix++)
       {
          // ix->first references peptide entry in g_vFragmentPeptides[ix->first].iWhichPeptide/.modnumIdx
          // ix->second is matched fragment count
+
+         if (++iNumTmp > 100) // set some cutoff to score only N top peptides based on fragment ion match
+            break;
 
          if (ix->second >= iMinFragIons)
          {
@@ -1946,7 +2026,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
 
             double dBion = g_staticParams.precalcMasses.dNtermProton;
             double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
-            bool pbDuplFragment[iArraySize];
+            bool* pbDuplFragment = new bool[iArraySize];
 
             //FIX: set fragment neutral loss correctly
             if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
@@ -2066,13 +2146,15 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
                }
             }
 
+            delete[] pbDuplFragment;
+
             struct sDBEntry dbe;
 
             dbe.strName = "prot";
             dbe.strSeq = szPeptide;
             dbe.lProteinFilePosition = vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).lIndexProteinFilePosition;
 
-            XcorrScoreI(szPeptide, iUnused, iUnused, iStartPos, iEndPos, iFoundVariableMod,
+            XcorrScoreI(szPeptide, iStartPos, iEndPos, iFoundVariableMod,
                   dPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses);
          }
       }
@@ -4517,8 +4599,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
 // Compares sequence to MSMS spectrum by matching ion intensities.
 void CometSearch::XcorrScoreI(char *szProteinSeq,
-                             int iStartResidue,        // needed for decoy peptide; otherwise just duplicate of iStartPos
-                             int iEndResidue,
                              int iStartPos,
                              int iEndPos,
                              int iFoundVariableMod,    // 0=no mods, 1 has variable mod, 2=phospho mod use NL peaks
@@ -4600,7 +4680,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
          pQuery->iHistogramCount += 1;
    }
 
-   StorePeptideI(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
+   StorePeptideI(iWhichQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
                   dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
 
    Threading::UnlockMutex(pQuery->accessMutex);
@@ -4953,7 +5033,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
 
 void CometSearch::StorePeptideI(int iWhichQuery,
-                               int iStartResidue,
                                int iStartPos,
                                int iEndPos,
                                int iFoundVariableMod,

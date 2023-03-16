@@ -225,9 +225,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    }
 
    // Wait for active preprocess threads to complete processing.
-
    pPreprocessThreadPool->wait_on_threads();
-
 
    Threading::DestroyMutex(_maxChargeMutex);
 
@@ -445,11 +443,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
          }
       }
-
-      // populate list of fragment mass bins for fragment search
-      double dTmpCutoff = pPre.dHighestIntensity * 0.10;
-      if (pdTmpRawData[i] > dTmpCutoff) // FIX to set some cutoff
-         pScoring->viBinnedFragmentPeaks.push_back(i);
    }
 
    pScoring->iFastXcorrDataSize = (pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE) + 1;
@@ -1266,6 +1259,9 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
       {
+         // store spectra for fragment index search
+         pScoring->vdRawFragmentPeakMass.push_back(dIon);
+
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
          {
             int iBinIon = BIN(dIon);
