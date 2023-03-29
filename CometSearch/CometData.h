@@ -19,7 +19,8 @@
 
 #define SIZE_BUF                    8192
 #define SIZE_FILE                   4096
-#define SIZE_ERROR                  1408
+#define SIZE_FILE2                  SIZE_FILE + 600
+#define SIZE_ERROR                  SIZE_FILE2 + 400
 
 #define MAX_THREADS                 128
 

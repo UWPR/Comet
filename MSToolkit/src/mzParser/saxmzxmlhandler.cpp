@@ -597,7 +597,7 @@ f_off mzpSAXMzxmlHandler::readIndexOffset() {
   }
 
   if(start==NULL || stop==NULL) {
-    cerr << "No index list offset found. File will not be read." << endl;
+//  cerr << "No index list offset found. File will not be read." << endl;
     return 0;
   }
 
@@ -613,13 +613,12 @@ bool mzpSAXMzxmlHandler::load(const char* fileName){
   if(!open(fileName)) return false;
   indexOffset = readIndexOffset();
   if(indexOffset==0){
-    m_bNoIndex=true;
-    return false;
+    m_bNoIndex=false;
+    generateIndexOffset();
   } else {
     m_bNoIndex=false;
     if(!parseOffset(indexOffset)){
-      cerr << "Cannot parse index. Make sure index offset is correct or rebuild index." << endl;
-      return false;
+      generateIndexOffset();
     }
     posIndex=-1;
   }
@@ -628,6 +627,48 @@ bool mzpSAXMzxmlHandler::load(const char* fileName){
   return true;
 }
 
+//Parse file from top to bottom to generate index offset if not present
+bool mzpSAXMzxmlHandler::generateIndexOffset() {
+  char chunk[CHUNK];
+  int readBytes;
+  long lOffset = 0;
+
+  if(!m_bGZCompression){
+    FILE* f=fopen(&m_strFileName[0],"r");
+    char *pStr;
+
+    if (f==NULL){
+      cout << "Error cannot open file " << m_strFileName[0] << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    bool bReadingFirstSpectrum = true;
+
+    while (fgets(chunk, CHUNK, f)){
+      if (strstr(chunk, "<scan")){
+        long scanNum;
+        bool bSuccessfullyReadScan = false;
+        do{
+          // "<scan" and "num=" can be on different lines
+          if ((pStr = strstr(chunk, " num=\"")) != NULL){
+            sscanf(pStr+6, "%ld", &scanNum);
+            bSuccessfullyReadScan = true;
+            curIndex.scanNum = scanNum;
+            curIndex.idRef = "";
+            curIndex.offset = lOffset;
+            m_vIndex.push_back(curIndex);
+            break;
+          }
+        } while (fgets(chunk, CHUNK, f));
+      }
+      lOffset = ftell(f);  // position of file pointer before fgets in loop
+    }
+  } else {
+    readBytes = gzObj.extract(fptr, gzObj.getfilesize()-200, (unsigned char*)chunk, CHUNK);
+  }
+
+   return true;
+}
 
 void mzpSAXMzxmlHandler::stopParser(){
   m_bStopParse=true;

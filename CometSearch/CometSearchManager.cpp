@@ -186,7 +186,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       }
       if (g_staticParams.options.iDecoySearch == 2)
       {
-         char szDecoyDir[SIZE_FILE];
+         char szDecoyDir[SIZE_FILE2];
          sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
 
          if (_mkdir(szDecoyDir) == -1)
@@ -217,7 +217,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       }
       if (g_staticParams.options.iDecoySearch == 2)
       {
-         char szDecoyDir[1024];
+         char szDecoyDir[SIZE_FILE2];
          sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
 
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
@@ -1770,17 +1770,17 @@ bool CometSearchManager::DoSearch()
       FILE *fpout_txt=NULL;
       FILE *fpoutd_txt=NULL;
 
-      char szOutputSQT[1024];
-      char szOutputDecoySQT[1024];
-      char szOutputPepXML[1024];
-      char szOutputDecoyPepXML[1024];
-      char szOutputMzIdentML[1024];
-      char szOutputDecoyMzIdentML[1024];
-      char szOutputMzIdentMLtmp[1032];  // intermediate tmp file
-      char szOutputDecoyMzIdentMLtmp[1032];  // intermediate tmp file
-      char szOutputPercolator[1024];
-      char szOutputTxt[1280];
-      char szOutputDecoyTxt[1280];
+      char szOutputSQT[SIZE_FILE2];
+      char szOutputDecoySQT[SIZE_FILE2];
+      char szOutputPepXML[SIZE_FILE2];
+      char szOutputDecoyPepXML[SIZE_FILE2];
+      char szOutputMzIdentML[SIZE_FILE2];
+      char szOutputDecoyMzIdentML[SIZE_FILE2];
+      char szOutputMzIdentMLtmp[SIZE_FILE2+8];  // intermediate tmp file
+      char szOutputDecoyMzIdentMLtmp[SIZE_FILE2+8];  // intermediate tmp file
+      char szOutputPercolator[SIZE_FILE2];
+      char szOutputTxt[SIZE_FILE2];
+      char szOutputDecoyTxt[SIZE_FILE2];
 
       if (g_staticParams.options.bOutputSqtFile)
       {
@@ -3160,8 +3160,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    ThreadPool * tp = _tp;
 
-   const int iIndex_SIZE_FILE=SIZE_FILE+4;
-   char szIndexFile[iIndex_SIZE_FILE];
+   char szIndexFile[SIZE_ERROR];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
    if ((fptr = fopen(szIndexFile, "wb")) == NULL)

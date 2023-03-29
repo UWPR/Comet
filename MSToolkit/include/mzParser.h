@@ -551,6 +551,7 @@ private:
   void  pushChromatogram();
   void  pushSpectrum();  // Load current data into pvSpec, may have to guess charge
   f_off readIndexOffset();
+  bool  generateIndexOffset();
   void  stopParser();
 
   //  mzpSAXMzmlHandler Base64 conversion functions
@@ -649,6 +650,7 @@ private:
   //  mzpSAXMzxmlHandler private functions
   void  pushSpectrum();  // Load current data into pvSpec, may have to guess charge
   f_off readIndexOffset();
+  bool  generateIndexOffset();
   void  stopParser();
 
   //  mzpSAXMzxmlHandler Base64 conversion functions

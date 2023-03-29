@@ -69,11 +69,11 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
         iLenMaxDuplicates,
         iMaxWidthReference,
         iRankXcorr;
-   char szDbLine[1024],
+   char szDbLine[SIZE_FILE2],
         szBuf[SIZE_BUF],
         szStatsBuf[512],
         szMassLine[200],
-        szOutput[1280],
+        szOutput[SIZE_FILE2],
         scan1[32],
         scan2[32];
    FILE *fpout;
