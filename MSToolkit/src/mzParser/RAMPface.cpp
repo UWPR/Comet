@@ -14,7 +14,7 @@ using namespace mzParser;
 
 int mzParser::checkFileType(const char* fname){
   char file[4096];
-  char ext[496];
+  char ext[4096];
   char *tok;
   char preExt[4096];
   unsigned int i;
