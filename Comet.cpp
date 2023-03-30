@@ -148,7 +148,7 @@ void SetOptions(char *arg,
          else
             pSearchMgr->SetOutputFileBaseName(szTmp);
          break;
-      case 'F':
+      case 'F':   // first scan
          if (sscanf(arg+2, "%511s", szTmp) == 0 )
             logerr("Missing text for parameter option -F<num>.  Ignored.\n");
          else
@@ -162,7 +162,7 @@ void SetOptions(char *arg,
             pSearchMgr->SetParam("scan_range", szParamStringVal, iScanRange);
          }
          break;
-      case 'L':
+      case 'L':  // last scan
          if (sscanf(arg+2, "%511s", szTmp) == 0 )
             logerr("Missing text for parameter option -L<num>.  Ignored.\n");
          else
@@ -176,7 +176,7 @@ void SetOptions(char *arg,
             pSearchMgr->SetParam("scan_range", szParamStringVal, iScanRange);
          }
          break;
-      case 'B':
+      case 'B':  // batch size
          if (sscanf(arg+2, "%511s", szTmp) == 0 )
             logerr("Missing text for parameter option -B<num>.  Ignored.\n");
          else
@@ -736,6 +736,13 @@ void LoadParameters(char *pszParamsFile,
                szParamStringVal[0] = '\0';
                sprintf(szParamStringVal, "%lf %lf", doubleRangeParam.dStart, doubleRangeParam.dEnd);
                pSearchMgr->SetParam("clear_mz_range", szParamStringVal, doubleRangeParam);
+            }
+            else if (!strcmp(szParamName, "export_additional_pepxml_scores"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("export_additional_pepxml_scores", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "print_expect_score"))
             {

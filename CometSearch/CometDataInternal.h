@@ -117,6 +117,7 @@ struct Options             // output parameters
    int bShowFragmentIons;
    int bExplicitDeltaCn;         // if set to 1, do not use sequence similarity logic 
    int bPrintExpectScore;
+   int bExportAdditionalScoresPepXML;  // if 1, also report lnrSp, lnExpect, IonFrac, lnNumSP to pepXML output
    int bOverrideCharge;
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
@@ -168,6 +169,7 @@ struct Options             // output parameters
       bShowFragmentIons = a.bShowFragmentIons;
       bExplicitDeltaCn = a.bExplicitDeltaCn;
       bPrintExpectScore = a.bPrintExpectScore;
+      bExportAdditionalScoresPepXML = a.bExportAdditionalScoresPepXML;
       bOverrideCharge = a.bOverrideCharge;
       bCorrectMass = a.bCorrectMass;
       bTreatSameIL = a.bTreatSameIL;
@@ -763,6 +765,7 @@ struct StaticParams
       options.bShowFragmentIons = 0;
       options.bExplicitDeltaCn = 0;
       options.bPrintExpectScore = 1;
+      options.bExportAdditionalScoresPepXML = 0;
       options.bOverrideCharge = 0;
       options.bCorrectMass = 0;
       options.bTreatSameIL = 1;

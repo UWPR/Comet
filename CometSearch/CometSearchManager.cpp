@@ -757,6 +757,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("print_expect_score", g_staticParams.options.bPrintExpectScore);
 
+   GetParamValue("export_additional_pepxml_scores", g_staticParams.options.bExportAdditionalScoresPepXML);
+
    GetParamValue("output_sqtstream", g_staticParams.options.bOutputSqtStream);
 
    GetParamValue("output_sqtfile", g_staticParams.options.bOutputSqtFile);
