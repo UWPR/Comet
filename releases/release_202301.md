@@ -4,6 +4,10 @@ Documentation for parameters for release 2023.01 [can be found here](/Comet/para
 
 Download release [here](https://github.com/UWPR/Comet/releases).
 
+#### release 2023.01 rev. 2 (2023.01.2), release date 2023/03/30
+- mzML/mzXML files without the optional scan index would not be searched because their spectra could not be read. Support for this functionality was implemented in v2019.01.4 thru v2022.01.1 but was lost as of v2022.01.2 when MSToolkit code was updated from that [library's repository](https://github.com/mhoopmann/mstoolkit). This functionality is re-implemented in this release. Thanks to J. Wang for reporting the issue.
+- A parameter "[export_additional_pepxml_scores](https://uwpr.github.io/Comet/parameters/parameters_202301/export_additional_pepxml_scores.html)" has been implemented. This is an optional/hidden parameter in that it is not written by default in the comet.params files; it needs to be added manually. When this parameter is present and it's value set to "1", additional search scores (lnrSp, deltLCn, lnExpect, and IonFrac) are reported in the [pep.xml output](https://uwpr.github.io/Comet/parameters/parameters_202301/output_pepxmlfile.html). Feature request by J. Scheid, OpenMS group.
+
 #### release 2023.01 rev. 1 (2023.01.1), release date 2023/03/15
 - For pep.xml output when "[num_output_lines = 1](https://uwpr.github.io/Comet/parameters/parameters_202301/num_output_lines.html)", the deltaCn scores will always be reported as "1.0". This occurs when only the top hit is reported and has been this behavior since the original release of Comet. This update will correctly report the deltaCn value for this case. Thanks to J. Scheid for reporting this issue.
 - Comet and MSToolkit had input file name/path limits of 512 and 256 characters, respectively. Any input file strings longer than 256 would cause an error in reading the input spectra data. The file name buffer has been expanded to 4096 to mitigate this issue. Thanks to B. Connolly for reporting this issue.
