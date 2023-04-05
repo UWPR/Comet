@@ -28,7 +28,7 @@
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
-#include "CometCheckForUpdates.h"
+#include "CometFragmentIndex.h"
 #include <sstream>
 
 #undef PERF_DEBUG
@@ -46,6 +46,9 @@ Mutex                         g_searchMemoryPoolMutex;
 CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 
+vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+vector<vector<unsigned int>> g_vFragmentIndex;  // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
+vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 
 /******************************************************************************
 *
@@ -1673,7 +1676,16 @@ bool CometSearchManager::DoSearch()
 
    if (g_staticParams.options.bCreateIndex) //index
    {
+      // write out .idx file containing unmodified peptides and protein refs;
       bSucceeded = WriteIndexedDatabase();
+      if (!bSucceeded)
+         return bSucceeded;
+
+      // write out .idx2 file containing fragment index
+      bSucceeded = CometFragmentIndex::WriteFragmentIndex(tp);
+
+      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+
       return bSucceeded;
    }
 
@@ -3162,7 +3174,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 {
    FILE *fptr;
    bool bSucceeded;
-   char szOut[256];
+   char szOut[SIZE_FILE+30];
 
    ThreadPool *tp = _tp;
 
@@ -3176,7 +3188,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
       exit(1);
    }
 
-   sprintf(szOut, " Creating peptide index file: ");
+   sprintf(szOut, " Creating peptide/protein index file: ");
    logout(szOut);
    fflush(stdout);
 
@@ -3223,7 +3235,6 @@ bool CometSearchManager::WriteIndexedDatabase(void)
 
    // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
    // to every protein. g_pvDBIndex.at().lProteinFilePosition is now reference to protein vector entry
-   vector<vector<comet_fileoffset_t>> g_pvProteinsList;
    vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to g_pvProteinsList
 
    // Create g_pvProteinsList.  This is a vector of vectors.  Each element is vector list
@@ -3275,12 +3286,12 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    // sort by mass;
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByMass);
 
-   sprintf(szOut, " - writing file\n");
+   sprintf(szOut, " - writing file: %s\n", szIndexFile);
    logout(szOut);
    fflush(stdout);
 
    // write out index header
-   fprintf(fptr, "Comet indexed database.  Comet version %s\n", g_sCometVersion.c_str());
+   fprintf(fptr, "Comet peptide index.  Comet version %s\n", g_sCometVersion.c_str());
    fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
    fprintf(fptr, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
    fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
@@ -3388,7 +3399,7 @@ bool CometSearchManager::WriteIndexedDatabase(void)
    logout(szOut);
    fflush(stdout);
 
-   CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+// CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
    g_pvDBIndex.clear();
    g_pvProteinNames.clear();

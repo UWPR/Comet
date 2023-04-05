@@ -899,7 +899,7 @@ extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for 
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 extern int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
 extern int MOD_NUM;
-extern int g_iMaxFragmentArrayIndex;  // BIN(maximum peptide mass); used as fragment array index
+extern unsigned int g_uiMaxFragmentArrayIndex; // BIN(maximum peptide mass); used as fragment array index
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

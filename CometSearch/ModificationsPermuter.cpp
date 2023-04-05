@@ -120,7 +120,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
                                              unsigned long long** ALL_COMBINATIONS,
                                              int* ALL_COMBINATION_CNT)
 {
-   cout << "Initializing combinations for peptide length " << maxPeptideLen << " and max modifications " << maxMods << endl;
+   cout << " - initializing combinations for peptide length " << maxPeptideLen << " and max modifications " << maxMods << endl;
 
    vector<unsigned long long> allCombinations;
    int totalCount = 0;
@@ -186,7 +186,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
       i--;
    }
 
-   std::cout << "Total combinations: " << totalCount << endl;
+   std::cout << " - total combinations: " << totalCount << endl;
 
 /*
    if (DEBUG)
@@ -289,7 +289,7 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
       pepIdx++;
    }
 
-   cout << "Modifiable peptides: " << std::to_string(modifiablePeptides) << "; " << std::to_string(ret.size()) << " unique modifiable sequences" << endl;
+   cout << " - modifiable peptides: " << std::to_string(modifiablePeptides) << "; " << std::to_string(ret.size()) << " unique modifiable sequences" << endl;
    return ret;
 }
 

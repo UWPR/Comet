@@ -20,6 +20,7 @@
 #include "CometStatus.h"
 #include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
+#include "CometFragmentIndex.h"
 #include "ModificationsPermuter.h"
 
 #include <stdio.h>
@@ -31,6 +32,7 @@
 bool *CometSearch::_pbSearchMemoryPool;
 bool **CometSearch::_ppbDuplFragmentArr;
 
+/*
 vector<ModificationNumber> MOD_NUMBERS;
 vector<string> MOD_SEQS;    // Unique modifiable sequences.
 int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
@@ -38,12 +40,13 @@ int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequ
 int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
 int MOD_NUM = 0; 
 unsigned int g_uiMaxFragmentArrayIndex;
+*/
 
-vector<vector<unsigned int>> g_vFragmentIndex;  // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
-vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
+//vector<vector<unsigned int>> g_vFragmentIndex;  // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
+//vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 
-Mutex CometSearch::_vFragmentIndexMutex;
-Mutex CometSearch::_vFragmentPeptidesMutex;
+//Mutex CometSearch::_vFragmentIndexMutex;
+//Mutex CometSearch::_vFragmentPeptidesMutex;
 
 CometSearch::CometSearch()
 {
@@ -116,10 +119,13 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 }
 
 
+
+// called by DoSingleSpectrumSearch
 bool CometSearch::RunSearch(ThreadPool *tp)
 {
-   CometSearch sqSearch;
-   sqSearch.IndexSearch(tp);
+   CometFragmentIndex sqSearch;
+   sqSearch.ReadFragmentIndex(tp);
+
    return true;
 }
 
@@ -132,9 +138,10 @@ bool CometSearch::RunSearch(int iPercentStart,
 
    if (g_staticParams.bIndexDb)
    {
-      CometSearch sqSearch;
-      sqSearch.IndexSearch(tp);
-      tp->wait_on_threads();
+      CometFragmentIndex sqSearch;
+      sqSearch.ReadFragmentIndex(tp);
+
+      return bSucceeded;
    }
    else
    {
@@ -1185,7 +1192,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
    return true;
 }
 
-
+/*
 bool CometSearch::IndexSearch(ThreadPool *tp)
 {
    comet_fileoffset_t lEndOfPeptides;
@@ -1763,7 +1770,7 @@ void CometSearch::AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
    unsigned int uiCurrentFragmentPeptide = g_vFragmentPeptides.size() - 1;  // index of current peptide in g_vFragmentPeptides
                                                                             //
 
-/*
+ *
 if (!(iWhichPeptide%5000))
 {
    // print out the peptide
@@ -1783,7 +1790,7 @@ if (!(iWhichPeptide%5000))
    }
    printf("\t%f\t%d\t%s\n", dCalcPepMass, modNumIdx, modSeq.c_str());
 }
-*/
+* 
 
    j = 0;
    k = modSeq.size() - 1;
@@ -1856,7 +1863,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
 
-/*
+ *
    // print out fragment masses at each fragment index
    int x=0;
 
@@ -1878,7 +1885,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
       if (x == 10)
          break;
    }
-*/
+* 
 
    std::map<comet_fileoffset_t, int> mPeptides;
    size_t lNumPeps = 0;
@@ -2077,7 +2084,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
                      pbDuplFragment[BIN(dFragMass)] = false;
                      uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
 
-/*
+ *
                      if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
                      {
                         for (int x=0; x<VMODS; x++)  // should be within this if() because only looking for NL masses from each mod
@@ -2097,7 +2104,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
                            }
                         }
                      }
-*/
+* 
                   }
                }
             }
@@ -2121,7 +2128,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
                         pbDuplFragment[iVal] = true;
                      }
 
-/*
+ *
                      if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
                      {
                         for (int x=0; x<VMODS; x++)
@@ -2141,7 +2148,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
                            }
                         }
                      }
-*/
+* 
                   }
                }
             }
@@ -2166,7 +2173,7 @@ void CometSearch::SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
       }
    }
 }
-
+*/
 
 void CometSearch::ReadDBIndexEntry(struct DBIndex *sDBI,
                                    FILE *fp)
@@ -3812,7 +3819,7 @@ int CometSearch::BinarySearchMass(int start,
    }
 }
 
-
+/*
 int CometSearch::BinarySearchIndexMass(int start,
                                        int end,
                                        double dQueryMass,
@@ -3857,7 +3864,7 @@ double dUpperTol = 5.0;
       return middle;
    }
 }
-
+*/
 
 bool CometSearch::CheckMassMatch(int iWhichQuery,
                                  double dCalcPepMass)
