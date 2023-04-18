@@ -49,6 +49,9 @@ string                        g_sCometVersion;
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 vector<vector<unsigned int>> g_vFragmentIndex;  // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
+vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
+bool g_bIndexFilesRead = false;
+
 
 /******************************************************************************
 *
@@ -1677,12 +1680,13 @@ bool CometSearchManager::DoSearch()
    if (g_staticParams.options.bCreateIndex) //index
    {
       // write out .idx file containing unmodified peptides and protein refs;
-      bSucceeded = WriteIndexedDatabase();
+      // this calls RunSearch just to query fasta and generate uniq peptide list
+      bSucceeded = CometFragmentIndex::WritePlainPeptideIndex(tp);
       if (!bSucceeded)
          return bSucceeded;
 
       // write out .idx2 file containing fragment index
-      bSucceeded = CometFragmentIndex::WriteFragmentIndex(tp);
+      bSucceeded = CometFragmentIndex::WriteFragmentIndex(tp); // calls CreateFragmentIndex
 
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
@@ -2145,10 +2149,13 @@ bool CometSearchManager::DoSearch()
          CometPreprocess::Reset();
 
          FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
-         if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+         string sTmpDB = g_staticParams.databaseInfo.szDatabase;
+         if (g_staticParams.bIndexDb)
+            sTmpDB = sTmpDB.erase(sTmpDB.size()-4); // need plain fasta if indexdb input
+         if ((fpdb=fopen(sTmpDB.c_str(), "r")) == NULL)
          {
             char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error (3) - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+            sprintf(szErrorMsg, " Error (3) - cannot read database file \"%s\".\n", sTmpDB.c_str());
             string strErrorMsg(szErrorMsg);
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(szErrorMsg);
@@ -3073,338 +3080,6 @@ cleanup_results:
    g_staticParams.precursorNLIons.clear();
 
    delete[] pdTmpSpectrum;
-
-   return bSucceeded;
-}
-
-
-// this sort function needs to compare peptide, modification state, and protein file pointer
-bool CometSearchManager::CompareByPeptide(const DBIndex &lhs,
-                                          const DBIndex &rhs)
-{
-   if (!strcmp(lhs.szPeptide, rhs.szPeptide))
-   {
-      // peptides are same here so look at mass next
-      if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
-      {
-         // masses are different
-         if (lhs.dPepMass < rhs.dPepMass)
-            return true;
-         else
-            return false;
-      }
-
-/*
-      // same sequences and masses here so next look at mod state
-      int iLen = (int)strlen(lhs.szPeptide)+2;
-      for (int i=0; i<iLen; ++i)
-      {
-         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
-         {
-            // different mod state
-            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
-               return true;
-            else
-               return false;
-         }
-      }
-*/
-
-      // at this point, same peptide, same mass, same mods so return first protein
-      if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)
-         return true;
-      else
-         return false;
-   }
-
-   // peptides are different
-   if (strcmp(lhs.szPeptide, rhs.szPeptide)<0)
-      return true;
-   else
-      return false;
-};
-
-
-// sort by mass, then peptide, then modification state, then protein fp location
-bool CometSearchManager::CompareByMass(const DBIndex &lhs,
-                                       const DBIndex &rhs)
-{
-   if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
-   {
-      // masses are different
-      if (lhs.dPepMass < rhs.dPepMass)
-         return true;
-      else
-         return false;
-   }
-
-   // at this point, peptides are same mass so next need to compare sequences
-
-   if (!strcmp(lhs.szPeptide, rhs.szPeptide))
-   {
-      // same sequences and masses here so next look at mod state
-      for (unsigned int i=0; i<strlen(lhs.szPeptide)+2; ++i)
-      {
-         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
-         {
-            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
-               return true;
-            else
-               return false;
-         }
-      }
-
-      // at this point, same peptide, same mass, same mods so return first protein
-      if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)
-         return true;
-      else
-         return false;
-   }
-
-   // if here, peptide sequences are different (but w/same mass) so sort alphabetically
-   if (strcmp(lhs.szPeptide, rhs.szPeptide) < 0)
-      return true;
-   else
-      return false;
-
-}
-
-
-bool CometSearchManager::WriteIndexedDatabase(void)
-{
-   FILE *fptr;
-   bool bSucceeded;
-   char szOut[SIZE_FILE+30];
-
-   ThreadPool *tp = _tp;
-
-   const int iIndex_SIZE_FILE=SIZE_FILE+4;
-   char szIndexFile[iIndex_SIZE_FILE];
-   sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
-
-   if ((fptr = fopen(szIndexFile, "wb")) == NULL)
-   {
-      printf(" Error - cannot open index file %s to write\n", szIndexFile);
-      exit(1);
-   }
-
-   sprintf(szOut, " Creating peptide/protein index file: ");
-   logout(szOut);
-   fflush(stdout);
-
-   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
-
-   g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
-   g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
-
-   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
-   if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
-      g_massRange.bNarrowMassRange = true;
-   else
-      g_massRange.bNarrowMassRange = false;
-
-   if (bSucceeded)
-     bSucceeded = CometSearch::RunSearch(0, 0, tp);
-
-   if (!bSucceeded)
-   {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error performing RunSearch() to create indexed database. \n");
-      logerr(szErrorMsg);
-      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
-      return false;
-   }
-
-   // sanity check
-   if (g_pvDBIndex.size() == 0)
-   {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - no peptides in index; check the input database file.\n");
-      logerr(szErrorMsg);
-      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
-      return false;
-   }
-
-   // remove duplicates
-   sprintf(szOut, " - removing duplicates\n");
-   logout(szOut);
-   fflush(stdout);
-
-   // first sort by peptide then protein file position
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByPeptide);
-
-   // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
-   // to every protein. g_pvDBIndex.at().lProteinFilePosition is now reference to protein vector entry
-   vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to g_pvProteinsList
-
-   // Create g_pvProteinsList.  This is a vector of vectors.  Each element is vector list
-   // of duplicate proteins (generated as "temp") ... these are generated by looping
-   // through g_pvDBIndex and looking for consecutive, same peptides.  Once the "temp"
-   // vector is assigned the lIndexProteinFilePosition offset, the g_pvDBIndex entry is
-   // is assigned lProtCount to lIndexProteinFilePosition.  This is used later to look up
-   // the right vector element of duplicate proteins later.
-   long lProtCount = 0;
-   for (size_t i = 0; i < g_pvDBIndex.size(); ++i)
-   {
-      if (i == 0)
-      {
-         temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-         g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-      }
-      else
-      {
-         // each unique peptide will have the same list of matched proteins
-         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide))
-         {
-            // store protein as peptides are the same
-            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-         }
-         else
-         {
-            // different peptide + mod state so go ahead and push temp onto g_pvProteinsList
-            // and store current protein reference into new temp
-            // temp can have duplicates due to mod forms of peptide so make unique here
-            sort(temp.begin(), temp.end());
-            temp.erase(unique(temp.begin(), temp.end()), temp.end() );
-            g_pvProteinsList.push_back(temp);
-
-            lProtCount++; // start new row in g_pvProteinsList
-            temp.clear();
-            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-         }
-      }
-   }
-   // now at end of loop, push last temp onto g_pvProteinsList
-   sort(temp.begin(), temp.end());
-   temp.erase(unique(temp.begin(), temp.end()), temp.end() );
-   g_pvProteinsList.push_back(temp);
-
-   g_pvDBIndex.erase(unique(g_pvDBIndex.begin(), g_pvDBIndex.end()), g_pvDBIndex.end());
-
-   // sort by mass;
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByMass);
-
-   sprintf(szOut, " - writing file: %s\n", szIndexFile);
-   logout(szOut);
-   fflush(stdout);
-
-   // write out index header
-   fprintf(fptr, "Comet peptide index.  Comet version %s\n", g_sCometVersion.c_str());
-   fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
-   fprintf(fptr, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
-   fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
-   fprintf(fptr, "Enzyme: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzymeName,
-      g_staticParams.enzymeInformation.iSearchEnzymeOffSet, 
-      g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, 
-      g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
-   fprintf(fptr, "Enzyme2: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzyme2Name,
-      g_staticParams.enzymeInformation.iSearchEnzyme2OffSet, 
-      g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, 
-      g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
-   fprintf(fptr, "NumPeptides: %ld\n", (long)g_pvDBIndex.size());
-
-   // write out static mod params A to Z is ascii 65 to 90 then terminal mods
-   fprintf(fptr, "StaticMod:");
-   for (int x = 65; x <= 90; ++x)
-      fprintf(fptr, " %lf", g_staticParams.staticModifications.pdStaticMods[x]);
-   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddNterminusPeptide);
-   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddCterminusPeptide);
-   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddNterminusProtein);
-   fprintf(fptr, " %lf\n", g_staticParams.staticModifications.dAddCterminusProtein);
-
-   fprintf(fptr, "\n");
-
-   int iTmp = (int)g_pvProteinNames.size();
-   comet_fileoffset_t *lProteinIndex = new comet_fileoffset_t[iTmp];
-   for (int i = 0; i < iTmp; ++i)
-      lProteinIndex[i] = -1;
-
-   // first just write out protein names. Track file position of each protein name
-   int ctProteinNames = 0;
-   for (auto it = g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
-   {
-      lProteinIndex[ctProteinNames] = comet_ftell(fptr);
-
-      // Write out file position in orig fasta; this requires orig fasta to read these
-      fwrite(it->second.szProt, sizeof(char)*WIDTH_REFERENCE, 1, fptr);
-
-      it->second.iWhichProtein = ctProteinNames;
-      ctProteinNames++;
-   }
-
-   // next write out the peptides and track peptide mass index
-   int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
-   int iMaxPeptideMass10 = iMaxPeptideMass * 10;  // make mass index at resolution of 0.1 Da
-   comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass10 + 1];
-   for (int x = 0; x <= iMaxPeptideMass10; ++x)
-      lIndex[x] = -1;
-
-   // write out peptide entry here
-   int iPrevMass10 = 0;
-   int iWhichProtein = 0;
-   long lNumMatchedProteins = 0;
-
-   for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
-   {
-      if ((int)((*it).dPepMass * 10.0) > iPrevMass10)
-      {
-         iPrevMass10 = (int)((*it).dPepMass * 10.0);
-         if (iPrevMass10 < iMaxPeptideMass10)
-            lIndex[iPrevMass10] = comet_ftell(fptr);
-      }
-
-      int iLen = (int)strlen((*it).szPeptide);
-      fwrite(&iLen, sizeof(int), 1, fptr);
-      fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
-
-      fwrite(&((*it).dPepMass), sizeof(double), 1, fptr);
-      fwrite(&((*it).lIndexProteinFilePosition), sizeof(comet_fileoffset_t), 1, fptr);
-
-      // now write out all duplicate proteins file positions
-      lNumMatchedProteins = (long)g_pvProteinsList.at((*it).lIndexProteinFilePosition).size();
-
-      if (lNumMatchedProteins > g_staticParams.options.iMaxDuplicateProteins)
-         lNumMatchedProteins = g_staticParams.options.iMaxDuplicateProteins;
-
-      fwrite(&lNumMatchedProteins, sizeof(long), 1, fptr);
-
-      for (long x = 0; x < lNumMatchedProteins; ++x)
-      {
-         // find protein by matching g_pvProteinNames.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
-         auto result = g_pvProteinNames.find((g_pvProteinsList.at((*it).lIndexProteinFilePosition)).at(x));
-         if (result != g_pvProteinNames.end())
-         {
-            iWhichProtein = result->second.iWhichProtein;
-         }
-
-         fwrite(&(lProteinIndex[iWhichProtein]), sizeof(comet_fileoffset_t), 1, fptr);
-      }
-   }
-
-   comet_fileoffset_t lEndOfPeptides = comet_ftell(fptr);
-
-   int iTmpCh = (int)(g_massRange.dMinMass);
-   fwrite(&iTmpCh, sizeof(int), 1, fptr);  // write min mass
-   fwrite(&iMaxPeptideMass, sizeof(int), 1, fptr);  // write max mass
-   uint64_t tNumPeptides = g_pvDBIndex.size();
-   fwrite(&tNumPeptides, sizeof(uint64_t), 1, fptr);  // write # of peptides
-   fwrite(lIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fptr); // write precursor mass index
-   fwrite(&lEndOfPeptides, sizeof(comet_fileoffset_t), 1, fptr);  // write ftell position of min/max mass, # peptides, peptide index
-
-   fclose(fptr);
-
-   sprintf(szOut, " - done.  # peps %ld\n", tNumPeptides);
-   logout(szOut);
-   fflush(stdout);
-
-// CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
-
-   g_pvDBIndex.clear();
-   g_pvProteinNames.clear();
-   delete[] lProteinIndex;
-   delete[] lIndex;
 
    return bSucceeded;
 }

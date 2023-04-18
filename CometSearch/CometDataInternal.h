@@ -203,8 +203,9 @@ struct Results
    int    iLenPeptide;
    int    iRankSp;
    int    iMatchedIons;
-   int    iTotalIons;
-   comet_fileoffset_t   lProteinFilePosition;
+   int    iTotalIons;  
+   comet_fileoffset_t   lProteinFilePosition;  // for indexdb, this is the entry in g_pvProteinsList
+   long   lWhichProtein;
    int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
@@ -377,13 +378,14 @@ struct DBInfo
    }
 };
 
+// will need to retire this soon as it's a duplicate of PlainPeptideIndex
+// now that mods aren't stored
 struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   szPrevNextAA[2];
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
-   comet_fileoffset_t   lIndexProteinFilePosition;         // file position in orig fasta to each protein reference
-   comet_fileoffset_t   lIndexPeptideFilePosition;         // file position each peptide in the indexdb
+   comet_fileoffset_t   lIndexProteinFilePosition;         // points to entry in g_pvProteinsList
    double dPepMass;                          // MH+ pep mass
 
    bool operator==(const DBIndex &rhs) const
@@ -417,13 +419,12 @@ struct DBIndex
 };
 
 // This is used for fragment indexing; plain peptides are stored in index
-// file and read in to this data struct.  Same as DBIndex w/o mods
+// file and read in to this data struct.  Same as DBIndex w/o pcVarModSites[]
 struct PlainPeptideIndex
 {
    string sPeptide;
    char   szPrevNextAA[2];
-   comet_fileoffset_t   lIndexProteinFilePosition;  // orig fasta file position to each protein reference
-   comet_fileoffset_t   lIndexPeptideFilePosition;  // file position to each peptide in the indexdb
+   comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptideStruct
 
    bool operator==(const PlainPeptideIndex &rhs) const
@@ -449,6 +450,7 @@ struct FragmentPeptidesStruct
 
 extern vector<vector<unsigned int>> g_vFragmentIndex;  // [BIN(fragment mass)][which entry in g_vFragmentPeptides]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
+extern vector<PlainPeptideIndex> g_vRawPeptides;
 
 
 struct IndexProteinStruct  // for indexed database
@@ -900,6 +902,7 @@ extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiab
 extern int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
 extern int MOD_NUM;
 extern unsigned int g_uiMaxFragmentArrayIndex; // BIN(maximum peptide mass); used as fragment array index
+extern bool g_bIndexFilesRead;     // set to true when index files have been read
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

@@ -214,10 +214,6 @@ private:
                        int iLenPeptide,
                        struct sDBEntry *dbe);
    bool IndexSearch(ThreadPool *tp);
-   void ReadDBIndexEntry(struct DBIndex *sDBI,
-                         FILE *fp);
-   void ReadPlainPeptideIndexEntry(struct PlainPeptideIndex *sDBI,
-                                   FILE *fp);
    void PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptides);
    void GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
                               ThreadPool *tp);
@@ -225,8 +221,7 @@ private:
    static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
                             int iWhichPeptide,
                             int modNumIdx);
-   static void SearchFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
-                            size_t iWhichQuery,
+   static void SearchFragmentIndex(size_t iWhichQuery,
                             ThreadPool *tp);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,

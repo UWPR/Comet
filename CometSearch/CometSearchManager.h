@@ -78,11 +78,6 @@ public:
 
 private:
    bool InitializeStaticParams();
-   static bool CompareByPeptide(const DBIndex &lhs,
-                                const DBIndex &rhs);
-   static bool CompareByMass(const DBIndex &lhs,
-                             const DBIndex &rhs);
-   static bool WriteIndexedDatabase(void);
    static void UpdatePrevNextAA(int iWhichQuery,
                                 int iPrintTargetDecoy);
    bool singleSearchInitializationComplete;

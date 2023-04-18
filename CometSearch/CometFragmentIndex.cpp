@@ -44,6 +44,17 @@ unsigned int g_uiMaxFragmentArrayIndex;
 Mutex CometFragmentIndex::_vFragmentIndexMutex;
 Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
 
+//comet_fileoffset_t clSizeCometFileOffset;
+#ifdef _WIN32
+#ifdef _WIN64
+comet_fileoffset_t   clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //win64
+#else
+comet_fileoffset_t   clSizeCometFileOffset = (long long)sizeof(comet_fileoffset_t);   //win32
+#endif
+#else
+comet_fileoffset_t   clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //linux
+#endif
+
 CometFragmentIndex::CometFragmentIndex()
 {
 }
@@ -56,125 +67,24 @@ CometFragmentIndex::~CometFragmentIndex()
 bool CometFragmentIndex::CreateFragmentIndex(size_t *tSizevRawPeptides,
                                              ThreadPool *tp)
 {
-   comet_fileoffset_t lEndOfPeptides;
-   FILE *fp;
-
    auto tStartTime= chrono::steady_clock::now();
 
-   char szIDX1[SIZE_FILE+4];
-   sprintf(szIDX1, "%s.idx", g_staticParams.databaseInfo.szDatabase);
-
-   if ((fp = fopen(szIDX1, "rb")) == NULL)
-   {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\" %s.\n", szIDX1, strerror(errno));
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return false;
-   }
-
-   // read fp of index
-   comet_fileoffset_t clTmp;
-#ifdef _WIN32
-#ifdef _WIN64
-   clTmp = sizeof(comet_fileoffset_t);              //win64
-#else
-   clTmp = (long long)sizeof(comet_fileoffset_t);   //win32
-#endif
-#else
-   clTmp = sizeof(comet_fileoffset_t);              //linux
-#endif
-
-   comet_fseek(fp, -clTmp, SEEK_END);
-   fread(&lEndOfPeptides, sizeof(comet_fileoffset_t), 1, fp);
-// fread(&lEndOfFragmentIndex, sizeof(comet_fileoffset_t), 1, fp);
-
-   // read database params
-   int iMinMass = 0;
-   int iMaxMass = 0;
-   uint64_t tNumPeptides = 0;
-   comet_fseek(fp, lEndOfPeptides, SEEK_SET);
-   fread(&iMinMass, sizeof(int), 1, fp);
-   fread(&iMaxMass, sizeof(int), 1, fp);
-   fread(&tNumPeptides, sizeof(uint64_t), 1, fp);
-
-   // sanity checks
-   if (iMinMass < 0 || iMinMass > 20000 || iMaxMass < 0 || iMaxMass > 20000)
-   {
-      char szErr[256];
-      sprintf(szErr, " Error reading .idx database:  min mass %d, max mass %d, num peptides %zu\n", iMinMass, iMaxMass, tNumPeptides);
-      logerr(szErr);
-      fclose(fp);
-      return false;
-   }
-
-   // read precursor index
-   int iMaxPeptideMass10 = iMaxMass * 10;
-   comet_fileoffset_t *lReadIndex = new comet_fileoffset_t[iMaxPeptideMass10];
-   for (int i=0; i< iMaxPeptideMass10; i++)
-      lReadIndex[i] = -1;
-   fread(lReadIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fp);
-
-   int iStart = (int)(g_massRange.dMinMass - 0.5);  // smallest mass/index start
-
-   if (iStart > iMaxMass)  // Nothing to search as smallest input mass is greater than what's stored in index.
-   {                       // Presumably should report this somehow if not using RTS.
-      delete[] lReadIndex;
-      fclose(fp);
-      return true;
-   }
-
-   int iStart10 = (int)(g_massRange.dMinMass*10.0 - 0.5);  // lReadIndex is at 0.1 resolution for index value so scale iStart/iEnd to be same
-   int iEnd10 = (int)(g_massRange.dMaxMass*10.0 + 0.5);
-
-   if (iStart10 < iMinMass*10)
-      iStart10 = iMinMass*10;
-   if (iEnd10 > iMaxMass*10)
-      iEnd10 = iMaxMass*10;
-
-   // At this point, have read in the peptide index; now read in unmodified peptides
-
-   // Loop through all lReadIndex until you hit a mass index value that's not -1
-   while (lReadIndex[iStart10] == -1)
-      iStart10++;
-
-   comet_fseek(fp, lReadIndex[iStart10], SEEK_SET);
-   struct PlainPeptideIndex sDBI;
-   vector<PlainPeptideIndex> vRawPeptides;
-
-   // Even though we just generated this plain peptide index; we're reading
-   // it back in here, vs. just storing/using what was previously generated,
-   // 'cause this was how it was originally developed as a separate step.
-   ReadPlainPeptideIndexEntry(&sDBI, fp);
-
-   while ((int)(sDBI.dPepMass * 10) <= iEnd10)
-   {
-      vRawPeptides.push_back(sDBI);
- 
-      if (ftell(fp) < lEndOfPeptides)
-         ReadPlainPeptideIndexEntry(&sDBI, fp);
-      else
-         break;
-   }
-
-   delete [] lReadIndex;
-   fclose(fp);
+   ReadPlainPeptideIndex();
 
    // now permute mods on the peptides
-   PermuteIndexPeptideMods(vRawPeptides);
+   PermuteIndexPeptideMods(g_vRawPeptides);
 
    // vector of modified peptides
-   // - raw peptide via iWhichPeptide referencing entry in vRawPeptides to access peptide and protein(s)
+   // - raw peptide via iWhichPeptide referencing entry in g_vRawPeptides to access peptide and protein(s)
    // - modification encoding index
    // - modification mass
    g_uiMaxFragmentArrayIndex = BIN(g_massRange.dMaxMass);
-   g_vFragmentIndex.resize(g_uiMaxFragmentArrayIndex);
+   g_vFragmentIndex.reserve(g_uiMaxFragmentArrayIndex);
+
+   *tSizevRawPeptides = g_vRawPeptides.size();
 
    // generate the modified peptides to calculate the fragment index
-   GenerateFragmentIndex(vRawPeptides, tp);
-
-   *tSizevRawPeptides = vRawPeptides.size();
+   GenerateFragmentIndex(g_vRawPeptides, tp);
 
    auto tEndTime = chrono::steady_clock::now();
    auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
@@ -187,38 +97,7 @@ bool CometFragmentIndex::CreateFragmentIndex(size_t *tSizevRawPeptides,
 }
 
 
-void CometFragmentIndex::ReadPlainPeptideIndexEntry(struct PlainPeptideIndex *sDBI,
-                                                    FILE *fp)
-{
-   int iLen;
-   char szPeptide[MAX_PEPTIDE_LEN];
-
-   fread(&iLen, sizeof(int), 1, fp);
-   fread(szPeptide, sizeof(char), iLen, fp);
-   szPeptide[iLen] = '\0';
-
-   sDBI->sPeptide = szPeptide;
-   sDBI->szPrevNextAA[0] = '-';  // currently not storing prev & next AA so set to '-' here
-   sDBI->szPrevNextAA[1] = '-';
-
-   fread(&(sDBI->dPepMass), sizeof(double), 1, fp);
-   fread(&(sDBI->lIndexProteinFilePosition), sizeof(comet_fileoffset_t), 1, fp);
-
-   // Now read in the protein file positions here
-   sDBI->lIndexProteinFilePosition = comet_ftell(fp);
-
-   long lSize;
-   fread(&lSize, sizeof(long), 1, fp);
-
-   for (long x = 0; x < lSize; x++)
-   {
-      comet_fileoffset_t tmpoffset;
-      fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fp);
-   }
-}
-
-
-void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptides)
+void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vRawPeptides)
 {
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
 
@@ -253,9 +132,9 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRaw
          &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
    // Get the unique modifiable sequences from the peptides
-   PEPTIDE_MOD_SEQ_IDXS = new int[(int)vRawPeptides.size()];
+   PEPTIDE_MOD_SEQ_IDXS = new int[g_vRawPeptides.size()];
 
-   MOD_SEQS = ModificationsPermuter::getModifiableSequences(vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
+   MOD_SEQS = ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(MOD_SEQS, MAX_MODS_PER_MOD, ALL_MODS,
@@ -263,11 +142,11 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRaw
 }
 
 
-void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
+void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRawPeptides,
                                                ThreadPool *tp)
 {
    size_t iWhichPeptide = 0;
-   size_t iEndSize = vRawPeptides.size();
+   size_t iEndSize = g_vRawPeptides.size();
    int iNoModificationNumbers = 0;
 
    cout <<  " - calculating the bazillion peptide fragments ..." << endl;
@@ -283,9 +162,9 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPe
    for (iWhichPeptide = 0; iWhichPeptide < iEndSize; ++iWhichPeptide)
    {
 #if USEFRAGMENTTHREADS == 1
-      pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, std::ref(vRawPeptides), iWhichPeptide, std::ref(iNoModificationNumbers), pFragmentIndexPool));
+      pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, std::ref(g_vRawPeptides), iWhichPeptide, std::ref(iNoModificationNumbers), pFragmentIndexPool));
 #else
-      AddFragmentsThreadProc(std::ref(vRawPeptides), iWhichPeptide, std::ref(iNoModificationNumbers), pFragmentIndexPool);
+      AddFragmentsThreadProc(std::ref(g_vRawPeptides), iWhichPeptide, std::ref(iNoModificationNumbers), pFragmentIndexPool);
 #endif
    }
 
@@ -336,14 +215,14 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPe
 }
 
 
-void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,
+void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& g_vRawPeptides,
                                                 size_t iWhichPeptide,
                                                 int& iNoModificationNumbers,
                                                 ThreadPool *tp)
 {
    // AddFragments(iWhichPeptide, modNumIdx) for unmodified peptide
    // FIX: if require variable mod is set, this would not be called here
-   AddFragments(vRawPeptides, iWhichPeptide, -1);
+   AddFragments(g_vRawPeptides, iWhichPeptide, -1);
 
    int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
 
@@ -367,7 +246,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawP
    for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
    {
       // add fragment ions for each modification permutation
-      AddFragments(vRawPeptides, iWhichPeptide, modNumIdx);
+      AddFragments(g_vRawPeptides, iWhichPeptide, modNumIdx);
    }
 }
 
@@ -385,11 +264,11 @@ bool CometFragmentIndex::SortFragmentsByPepMass(unsigned int x, unsigned int y)
 }
 
 
-void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
+void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
                                       int iWhichPeptide,
                                       int modNumIdx)
 {
-   string sPeptide = vRawPeptides.at(iWhichPeptide).sPeptide;
+   string sPeptide = g_vRawPeptides.at(iWhichPeptide).sPeptide;
 
    ModificationNumber modNum;
    char* mods = NULL;
@@ -530,13 +409,224 @@ if (!(iWhichPeptide%5000))
 }
 
 
+bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
+{
+   FILE *fptr;
+   bool bSucceeded;
+   char szOut[SIZE_FILE+30];
+
+   const int iIndex_SIZE_FILE=SIZE_FILE+4;
+   char szIndexFile[iIndex_SIZE_FILE];
+   sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
+
+   if ((fptr = fopen(szIndexFile, "wb")) == NULL)
+   {
+      printf(" Error - cannot open index file %s to write\n", szIndexFile);
+      exit(1);
+   }
+
+   sprintf(szOut, " Creating peptide/protein index file: ");
+   logout(szOut);
+   fflush(stdout);
+
+   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+
+   g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
+   g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
+
+   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
+   if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
+      g_massRange.bNarrowMassRange = true;
+   else
+      g_massRange.bNarrowMassRange = false;
+
+   if (bSucceeded)
+     bSucceeded = CometSearch::RunSearch(0, 0, tp);
+
+   if (!bSucceeded)
+   {
+      char szErrorMsg[SIZE_ERROR];
+      sprintf(szErrorMsg, " Error performing RunSearch() to create indexed database. \n");
+      logerr(szErrorMsg);
+      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+      return false;
+   }
+
+   // sanity check
+   if (g_pvDBIndex.size() == 0)
+   {
+      char szErrorMsg[SIZE_ERROR];
+      sprintf(szErrorMsg, " Error - no peptides in index; check the input database file.\n");
+      logerr(szErrorMsg);
+      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+      return false;
+   }
+
+   // remove duplicates
+   sprintf(szOut, " - removing duplicates\n");
+   logout(szOut);
+   fflush(stdout);
+
+   // first sort by peptide then protein file position
+   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByPeptide);
+
+   // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
+   // to every protein. g_pvDBIndex.at().lProteinFilePosition is now reference to protein vector entry
+   vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to g_pvProteinsList
+
+   // Create g_pvProteinsList.  This is a vector of vectors.  Each element is vector list
+   // of duplicate proteins (generated as "temp") ... these are generated by looping
+   // through g_pvDBIndex and looking for consecutive, same peptides.  Once the "temp"
+   // vector is assigned the lIndexProteinFilePosition offset, the g_pvDBIndex entry is
+   // is assigned lProtCount to lIndexProteinFilePosition.  This is used later to look up
+   // the right vector element of duplicate proteins later.
+   long lProtCount = 0;
+   for (size_t i = 0; i < g_pvDBIndex.size(); ++i)
+   {
+      if (i == 0)
+      {
+         temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
+         g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
+      }
+      else
+      {
+         // each unique peptide will have the same list of matched proteins
+         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide))
+         {
+            // store protein as peptides are the same
+            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
+            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
+         }
+         else
+         {
+            // different peptide so go ahead and push temp onto g_pvProteinsList
+            // and store current protein reference into new temp
+                // (deprecated, raw peptides only) temp can have duplicates due to mod forms of peptide so make unique here
+                //sort(temp.begin(), temp.end());
+                //temp.erase(unique(temp.begin(), temp.end()), temp.end() );
+            g_pvProteinsList.push_back(temp);
+
+            lProtCount++; // start new row in g_pvProteinsList
+            temp.clear();
+            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
+            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
+         }
+      }
+   }
+   // now at end of loop, push last temp onto g_pvProteinsList
+   sort(temp.begin(), temp.end());
+   temp.erase(unique(temp.begin(), temp.end()), temp.end() );
+   g_pvProteinsList.push_back(temp);
+
+   g_pvDBIndex.erase(unique(g_pvDBIndex.begin(), g_pvDBIndex.end()), g_pvDBIndex.end());
+
+   // sort by mass;
+   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByMass);
+
+   sprintf(szOut, " - writing file: %s\n", szIndexFile);
+   logout(szOut);
+   fflush(stdout);
+
+   // write out index header
+   fprintf(fptr, "Comet peptide index.  Comet version %s\n", g_sCometVersion.c_str());
+   fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
+   fprintf(fptr, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
+   fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
+   fprintf(fptr, "Enzyme: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzymeName,
+      g_staticParams.enzymeInformation.iSearchEnzymeOffSet, 
+      g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, 
+      g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+   fprintf(fptr, "Enzyme2: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzyme2Name,
+      g_staticParams.enzymeInformation.iSearchEnzyme2OffSet, 
+      g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, 
+      g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+   fprintf(fptr, "NumPeptides: %ld\n", (long)g_pvDBIndex.size());
+
+   // write out static mod params A to Z is ascii 65 to 90 then terminal mods
+   fprintf(fptr, "StaticMod:");
+   for (int x = 65; x <= 90; ++x)
+      fprintf(fptr, " %lf", g_staticParams.staticModifications.pdStaticMods[x]);
+   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddNterminusPeptide);
+   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddCterminusPeptide);
+   fprintf(fptr, " %lf", g_staticParams.staticModifications.dAddNterminusProtein);
+   fprintf(fptr, " %lf\n", g_staticParams.staticModifications.dAddCterminusProtein);
+
+   fprintf(fptr, "\n");
+
+   //FIX write VariableMod:
+
+   size_t tTmp = (int)g_pvProteinNames.size();
+   comet_fileoffset_t *lProteinIndex = new comet_fileoffset_t[tTmp];
+   for (size_t i = 0; i < tTmp; ++i)
+      lProteinIndex[i] = -1;
+
+//FIX: get rid of writing out protein names; read from original fasta
+/*
+   // first just write out protein names. Track file position of each protein name
+   int ctProteinNames = 0;
+   for (auto it = g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
+   {
+      lProteinIndex[ctProteinNames] = comet_ftell(fptr);
+
+      // Write out file position in orig fasta; this requires orig fasta to read these
+      fwrite(it->second.szProt, sizeof(char)*WIDTH_REFERENCE, 1, fptr);
+
+      it->second.iWhichProtein = ctProteinNames;
+      ctProteinNames++;
+   }
+*/
+
+   comet_fileoffset_t lPeptidesFilePos = comet_ftell(fptr);
+   size_t tNumPeptides = g_pvDBIndex.size();
+   fwrite(&tNumPeptides, sizeof(size_t), 1, fptr);  // write # of peptides
+
+   for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
+   {
+      int iLen = (int)strlen((*it).szPeptide);
+      fwrite(&iLen, sizeof(int), 1, fptr);
+      fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
+      fwrite(&((*it).dPepMass), sizeof(double), 1, fptr);
+      fwrite(&((*it).lIndexProteinFilePosition), sizeof(comet_fileoffset_t), 1, fptr);
+   }
+
+   // Now write out: vector<vector<comet_fileoffset_t>> g_pvProteinsList
+   comet_fileoffset_t lProteinsFilePos = comet_ftell(fptr);
+   tTmp = g_pvProteinsList.size();
+   fwrite(&tTmp, sizeof(comet_fileoffset_t), 1, fptr);
+   for (auto it = g_pvProteinsList.begin(); it != g_pvProteinsList.end(); ++it)
+   {
+      tTmp = (*it).size();
+      fwrite(&tTmp, sizeof(size_t), 1, fptr);
+      for (size_t it2 = 0; it2 < tTmp; ++it2)
+         fwrite(&((*it).at(it2)), sizeof(comet_fileoffset_t), 1, fptr);
+   }
+
+   fwrite(&lPeptidesFilePos, sizeof(comet_fileoffset_t), 1, fptr);
+   fwrite(&lProteinsFilePos, sizeof(comet_fileoffset_t), 1, fptr);
+
+   fclose(fptr);
+
+   sprintf(szOut, " - done.  # peps %ld\n", tNumPeptides);
+   logout(szOut);
+   fflush(stdout);
+
+// CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+
+   g_pvDBIndex.clear();
+   g_pvProteinNames.clear();
+   delete[] lProteinIndex;
+
+   return bSucceeded;
+}
+
+
 bool CometFragmentIndex::WriteFragmentIndex(ThreadPool *tp)
 {
    FILE *fp;
    bool bSucceeded;
    char szOut[SIZE_FILE+60];
    char szIndexFile[SIZE_FILE+30];
-   size_t tSizevRawPeptides;
+   size_t tSizevRawPeptides = 0;
 
    sprintf(szIndexFile, "%s.idx2", g_staticParams.databaseInfo.szDatabase);
 
@@ -546,7 +636,7 @@ bool CometFragmentIndex::WriteFragmentIndex(ThreadPool *tp)
       exit(1);
    }
 
-   sprintf(szOut, "\n Creating fragment index file: ");
+   sprintf(szOut, "\n Creating fragment index file:\n");
    logout(szOut);
    fflush(stdout);
 
@@ -605,6 +695,7 @@ bool CometFragmentIndex::WriteFragmentIndex(ThreadPool *tp)
    string strTmp;
 
    tSize = MOD_SEQS.size();
+
    fwrite(&tSize, sizeof(size_t), 1, fp); // write # vector elements
    for (size_t i = 0; i < tSize; ++i)
    {
@@ -627,7 +718,18 @@ bool CometFragmentIndex::WriteFragmentIndex(ThreadPool *tp)
       fwrite(&iTmp, sizeof(int), 1, fp);
    }
 
-   // write PEPTIDE_MOD_SEQ_IDXS; size is vRawPeptides.size()
+   // write MOD_NUMBERS
+   tSize = MOD_NUMBERS.size();
+   fwrite(&tSize, sizeof(size_t), 1, fp); // write # vector elements
+   for (size_t i = 0; i < tSize; ++i)
+   {
+      fwrite(&(MOD_NUMBERS[i].modificationNumber), sizeof(int), 1, fp);
+      iTmp = strlen(MOD_NUMBERS[i].modifications);
+      fwrite(&iTmp, sizeof(int), 1, fp);
+      fwrite(MOD_NUMBERS[i].modifications, sizeof(char), iTmp, fp);
+   }
+
+   // write PEPTIDE_MOD_SEQ_IDXS; size is g_vRawPeptides.size()
    fwrite(&tSizevRawPeptides, sizeof(size_t), 1, fp);
    for (size_t i = 0; i < tSizevRawPeptides; ++i)
    {
@@ -652,7 +754,16 @@ bool CometFragmentIndex::WriteFragmentIndex(ThreadPool *tp)
       }
    }
 
-   fwrite(&clPosition, sizeof(comet_fileoffset_t), 1, fp);  //write beginning of fragment index at array size
+   // write g_vFragmentPeptides
+   tSize = g_vFragmentPeptides.size();
+   fwrite(&tSize, sizeof(size_t), 1, fp);
+   size_t tSizeFragmentPepStruct = sizeof(struct FragmentPeptidesStruct);
+   for (size_t i = 0; i < tSize; ++i)
+   {
+      fwrite(&(g_vFragmentPeptides[i]), tSizeFragmentPepStruct, 1, fp);
+   }
+
+   fwrite(&clPosition, clSizeCometFileOffset, 1, fp);  //write beginning of fragment index at array size
 
    fclose(fp);
 
@@ -686,10 +797,8 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
       exit(1);
    }
 
-
    auto tStartTime = chrono::steady_clock::now();
-   sprintf(szOut, " - reading file: %s\n", szIndexFile);
-   logout(szOut);
+   printf(" - reading file: %s\n", szIndexFile);
 
    bool bFoundStatic = false;
    bool bFoundVariable = false;
@@ -745,7 +854,6 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
       }
       else if (!strncmp(szBuf, "VariableMod:", 12)) // read in variable mods
       {
-
          bFoundVariable = true;
          break;
       }
@@ -754,7 +862,7 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
    if (!bFoundStatic || !bFoundVariable)  // check to make sure mod entries are present & parsed in indexdb
    {
       char szErr[256];
-      sprintf(szErr, " Error with index database format. Modifications (%d/%d) not parsed.", bFoundStatic, bFoundVariable);
+      sprintf(szErr, " Error with fragment index database format. Modifications (%d/%d) not parsed.", bFoundStatic, bFoundVariable);
       logerr(szErr);
       fclose(fp);
       return false;
@@ -762,20 +870,10 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 
 
    // read fp of index
-   comet_fileoffset_t clTmp;
    comet_fileoffset_t clPosition;  // position to start reading fragment index elements
-#ifdef _WIN32
-#ifdef _WIN64
-   clTmp = sizeof(comet_fileoffset_t);              //win64
-#else
-   clTmp = (long long)sizeof(comet_fileoffset_t);   //win32
-#endif
-#else
-   clTmp = sizeof(comet_fileoffset_t);              //linux
-#endif
 
-   comet_fseek(fp, -clTmp, SEEK_END);
-   fread(&clPosition, sizeof(comet_fileoffset_t), 1, fp);
+   comet_fseek(fp, -clSizeCometFileOffset, SEEK_END);
+   fread(&clPosition, clSizeCometFileOffset, 1, fp);
 
    comet_fseek(fp, clPosition, SEEK_SET);
 
@@ -809,13 +907,27 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
       fread(&(MOD_SEQ_MOD_NUM_START[i]), sizeof(int), 1, fp);
    }
 
-   // write MOD_SEQ_MOD_NUM_CNT; size is MOD_SEQS.size()
+   // read MOD_SEQ_MOD_NUM_CNT; size is MOD_SEQS.size()
    for (size_t i = 0; i < tSize; ++i)
    {
       fread(&(MOD_SEQ_MOD_NUM_CNT[i]), sizeof(int), 1, fp);
    }
 
-   // write PEPTIDE_MOD_SEQ_IDXS; size is vRawPeptides.size()
+   // read MOD_NUMBERS
+   fread(&tSize, sizeof(size_t), 1, fp); // write # vector elements
+   struct ModificationNumber sModNumTmp;
+   int iTmp;
+   for (size_t i = 0; i < tSize; ++i)
+   {
+      fread(&(sModNumTmp.modificationNumber), sizeof(int), 1, fp);
+      fread(&iTmp, sizeof(int), 1, fp);
+      char *mods = new char[iTmp];
+      fread(mods, sizeof(char), iTmp, fp);
+      sModNumTmp.modifications = mods;
+      MOD_NUMBERS.push_back(sModNumTmp);
+   }
+
+   // read PEPTIDE_MOD_SEQ_IDXS; size is g_vRawPeptides.size()
    fread(&tTmp, sizeof(size_t), 1, fp);
    PEPTIDE_MOD_SEQ_IDXS = new int[tTmp];
    for (size_t i = 0; i < tTmp; ++i)
@@ -827,7 +939,7 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
    fread(&g_uiMaxFragmentArrayIndex, sizeof(unsigned int), 1, fp); // array size
 
    g_vFragmentIndex.clear();
-   g_vFragmentIndex.resize(g_uiMaxFragmentArrayIndex);
+   g_vFragmentIndex.reserve(g_uiMaxFragmentArrayIndex);
    for (unsigned int i = 0; i < g_uiMaxFragmentArrayIndex; ++i)
    {
       fread(&tTmp, sizeof(size_t), 1, fp); // index
@@ -843,6 +955,17 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
       }
    }
 
+   // size of g_vFragmentPeptides which is g_uiMaxFragmentIndexArray
+   fread(&tSize, sizeof(size_t), 1, fp); // size of g_vFragmentPeptides
+   g_vFragmentPeptides.clear();
+   g_vFragmentPeptides.reserve(tSize);
+   FragmentPeptidesStruct sTmp;
+   for (size_t i = 0; i < tSize; ++i)
+   {
+      fread(&sTmp, sizeof(struct FragmentPeptidesStruct), 1, fp);
+      g_vFragmentPeptides.push_back(sTmp);
+   }
+
    fclose(fp);
 
    auto tEndTime = chrono::steady_clock::now();
@@ -854,3 +977,249 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 
    return bSucceeded;
 }
+
+
+// read the raw peptides from disk
+bool CometFragmentIndex::ReadPlainPeptideIndex(void)
+{
+   FILE *fp;
+   char szIndexFile[SIZE_FILE+30];
+   size_t tTmp;
+   char szBuf[SIZE_BUF];
+
+
+   if (g_staticParams.options.bCreateIndex)
+      sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
+   else // database already is .idx
+      sprintf(szIndexFile, "%s", g_staticParams.databaseInfo.szDatabase);
+
+   auto tStartTime = chrono::steady_clock::now();
+   printf(" - reading file: %s\n", szIndexFile);
+
+   if ((fp = fopen(szIndexFile, "rb")) == NULL)
+   {
+      printf(" Error - cannot open index file %s to read\n", szIndexFile);
+      exit(1);
+   }
+
+   bool bFoundStatic = false;
+   bool bFoundVariable= false;
+
+   while (fgets(szBuf, SIZE_BUF, fp))
+   {
+      if (!strncmp(szBuf, "MassType:", 9))
+      {
+         sscanf(szBuf + 9, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
+      }
+      else if (!strncmp(szBuf, "StaticMod:", 10)) // read in static mods
+      {
+         char *tok;
+         char delims[] = " ";
+         int x=65;
+
+         // FIX:  hack here for setting static mods; need to reset masses ... fix later
+         CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
+            g_staticParams.massUtility.bMonoMassesFragment,
+            &g_staticParams.massUtility.dOH2fragment);
+
+         bFoundStatic = true;
+         tok=strtok(szBuf+11, delims);
+         while (tok != NULL)
+         {
+            sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
+            g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
+            tok = strtok(NULL, delims);
+            x++;
+            if (x==95)  // 65-90 stores A-Z then next 4 (ascii 91-94) are n/c term peptide, n/c term protein
+               break;
+         }
+
+         g_staticParams.staticModifications.dAddNterminusPeptide = g_staticParams.staticModifications.pdStaticMods[91];
+         g_staticParams.staticModifications.dAddCterminusPeptide = g_staticParams.staticModifications.pdStaticMods[92];
+         g_staticParams.staticModifications.dAddNterminusProtein = g_staticParams.staticModifications.pdStaticMods[93];
+         g_staticParams.staticModifications.dAddCterminusProtein = g_staticParams.staticModifications.pdStaticMods[94];
+
+         // have to set these here again once static mods are read
+         g_staticParams.precalcMasses.dNtermProton = g_staticParams.staticModifications.dAddNterminusPeptide
+            + PROTON_MASS;
+
+         g_staticParams.precalcMasses.dCtermOH2Proton = g_staticParams.staticModifications.dAddCterminusPeptide
+            + g_staticParams.massUtility.dOH2fragment
+            + PROTON_MASS;
+
+         g_staticParams.precalcMasses.dOH2ProtonCtermNterm = g_staticParams.massUtility.dOH2parent
+            + PROTON_MASS
+            + g_staticParams.staticModifications.dAddCterminusPeptide
+            + g_staticParams.staticModifications.dAddNterminusPeptide;
+      }
+      else if (!strncmp(szBuf, "VariableMod:", 12)) // read in variable mods
+      {
+         bFoundVariable = true;
+         break;
+      }
+   }
+
+   if (!bFoundStatic) // || !bFoundVariable)  // check to make sure mod entries are present & parsed in indexdb
+   {
+      char szErr[256];
+      sprintf(szErr, " Error with raw peptide index database format. Modifications (%d/%d) not parsed.", bFoundStatic, bFoundVariable);
+      logerr(szErr);
+      fclose(fp);
+      return false;
+   }
+
+   comet_fileoffset_t clTmp;
+   comet_fileoffset_t clPeptidesFilePos;  // file position of raw peptides
+   comet_fileoffset_t clProteinsFilePos;  // file position of g_pvProteinsList
+
+   comet_fseek(fp, -clSizeCometFileOffset*2, SEEK_END);
+   fread(&clPeptidesFilePos, clSizeCometFileOffset, 1, fp);
+   fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
+
+   comet_fseek(fp, clPeptidesFilePos, SEEK_SET);
+
+   size_t tNumPeptides;
+   fread(&tNumPeptides, sizeof(size_t), 1, fp);  // read # of peptides
+
+   struct PlainPeptideIndex sTmp;
+   int iLen;
+// long lNumMatchedProteins;
+   char szPeptide[MAX_PEPTIDE_LEN];
+   for (size_t it = 0; it < tNumPeptides; ++it)
+   {
+      fread(&iLen, sizeof(int), 1, fp);
+      fread(szPeptide, sizeof(char), iLen, fp);
+      szPeptide[iLen] = '\0';
+      sTmp.sPeptide = szPeptide;
+      fread(&(sTmp.dPepMass), sizeof(double), 1, fp);
+      fread(&(sTmp.lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
+
+      g_vRawPeptides.push_back(sTmp);
+   }
+
+   comet_fseek(fp, clProteinsFilePos, SEEK_SET);  // should be at this file position here anyways already
+
+   // now read in: vector<vector<comet_fileoffset_t>> g_pvProteinsList
+   size_t tSize;
+   fread(&tSize, clSizeCometFileOffset, 1, fp);
+   vector<comet_fileoffset_t> vTmp;
+
+   g_pvProteinsList.clear();
+   g_pvProteinsList.reserve(tSize);
+
+   for (size_t it = 0; it < tSize; ++it)
+   {
+      fread(&tTmp, clSizeCometFileOffset, 1, fp);
+      
+      vTmp.clear();
+      for (size_t it2 = 0; it2 < tTmp; ++it2)
+      {
+         fread(&clTmp, clSizeCometFileOffset, 1, fp);
+         vTmp.push_back(clTmp);
+      }
+      g_pvProteinsList.push_back(vTmp);
+   }
+
+   fclose(fp);
+
+   auto tEndTime = chrono::steady_clock::now();
+   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
+   long minutes = duration.count() / 60000;
+   long seconds = (duration.count() - minutes*60000) / 1000;
+
+   cout << " - time reading plain peptide index file: " << minutes << " minutes " << seconds  << " seconds" << endl;
+
+   return true;
+}
+
+
+bool CometFragmentIndex::CompareByPeptide(const DBIndex &lhs,
+                                          const DBIndex &rhs)
+{
+   if (!strcmp(lhs.szPeptide, rhs.szPeptide))
+   {
+      // peptides are same here so look at mass next
+      if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
+      {
+         // masses are different
+         if (lhs.dPepMass < rhs.dPepMass)
+            return true;
+         else
+            return false;
+      }
+
+/*
+      // same sequences and masses here so next look at mod state
+      int iLen = (int)strlen(lhs.szPeptide)+2;
+      for (int i=0; i<iLen; ++i)
+      {
+         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
+         {
+            // different mod state
+            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
+               return true;
+            else
+               return false;
+         }
+      }
+*/
+
+      // at this point, same peptide, same mass, same mods so return first protein
+      if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)
+         return true;
+      else
+         return false;
+   }
+
+   // peptides are different
+   if (strcmp(lhs.szPeptide, rhs.szPeptide)<0)
+      return true;
+   else
+      return false;
+};
+
+
+// sort by mass, then peptide, then modification state, then protein fp location
+bool CometFragmentIndex::CompareByMass(const DBIndex &lhs,
+                                       const DBIndex &rhs)
+{
+   if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
+   {
+      // masses are different
+      if (lhs.dPepMass < rhs.dPepMass)
+         return true;
+      else
+         return false;
+   }
+
+   // at this point, peptides are same mass so next need to compare sequences
+
+   if (!strcmp(lhs.szPeptide, rhs.szPeptide))
+   {
+      // same sequences and masses here so next look at mod state
+      for (unsigned int i=0; i<strlen(lhs.szPeptide)+2; ++i)
+      {
+         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
+         {
+            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
+               return true;
+            else
+               return false;
+         }
+      }
+
+      // at this point, same peptide, same mass, same mods so return first protein
+      if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)
+         return true;
+      else
+         return false;
+   }
+
+   // if here, peptide sequences are different (but w/same mass) so sort alphabetically
+   if (strcmp(lhs.szPeptide, rhs.szPeptide) < 0)
+      return true;
+   else
+      return false;
+
+}
+

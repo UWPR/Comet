@@ -31,8 +31,12 @@ public:
    // Manages memory in the search memory pool
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
+   static bool WritePlainPeptideIndex(ThreadPool *tp);
    static bool WriteFragmentIndex(ThreadPool *tp);
    static bool ReadFragmentIndex(ThreadPool *tp);
+   static bool ReadPlainPeptideIndex(void);
+   static bool CreateFragmentIndex(size_t *tSizevRawPeptides,
+                                   ThreadPool *tp);
 
 private:
 
@@ -76,8 +80,8 @@ private:
    static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
                             int iWhichPeptide,
                             int modNumIdx);
-   static void ReadPlainPeptideIndexEntry(struct PlainPeptideIndex *sDBI,
-                                          FILE *fp);
+// static void ReadPlainPeptideIndexEntry(struct PlainPeptideIndex *sDBI,
+//                                        FILE *fp);
    static void AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,
                                       size_t iWhichPeptide,
                                       int& iNoModificationNumbers,
@@ -86,8 +90,10 @@ private:
                                       unsigned int y);
    static void SortFragmentThreadProc(int i,
                                       ThreadPool *tp);
-   static bool CreateFragmentIndex(size_t *tSizevRawPeptides,
-                                   ThreadPool *tp);
+   static bool CompareByPeptide(const DBIndex &lhs,
+                                const DBIndex &rhs);
+   static bool CompareByMass(const DBIndex &lhs,
+                             const DBIndex &rhs);
 
 
    // Cleaning up
