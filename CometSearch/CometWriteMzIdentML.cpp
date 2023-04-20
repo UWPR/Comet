@@ -440,7 +440,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
       std::istringstream isString(*it2);
 
       bool bDecoy;
-      int iLenDecoyPrefix = strlen(g_staticParams.szDecoyPrefix);
+      int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
       int n=0;
       while ( std::getline(isString, strLocal, ' ') )

@@ -90,7 +90,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
       if (g_pvQuery.at(iQueryIndex)->iMatchPeptideCount > 0
             || g_pvQuery.at(iQueryIndex)->iDecoyMatchPeptideCount > 0)
       {
-         CalculateEValue(iQueryIndex);
+         CalculateEValue(iQueryIndex, 0);
       }
    }
    delete pThreadData;
@@ -422,7 +422,8 @@ bool CometPostAnalysis::SortFnMod(const Results &a,
 }
 
 
-bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
+bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
+                                        bool bTopHitOnly)
 {
    int i;
    int *piHistogram;
@@ -440,7 +441,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
    {
       if (!GenerateXcorrDecoys(iWhichQuery))
       {
-          return false;
+         return false;
       }
    }
 
@@ -473,7 +474,6 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
       else
       {
          double dExpect;
-
          if (i<pQuery->iMatchPeptideCount)
          {
             dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
@@ -490,6 +490,9 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
             pQuery->_pDecoys[i].dExpect = dExpect;
          }
       }
+
+      if (bTopHitOnly)
+         break;
    }
 
    return true;

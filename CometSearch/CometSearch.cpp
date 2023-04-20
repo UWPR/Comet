@@ -4334,96 +4334,92 @@ void CometSearch::StorePeptideI(int iWhichQuery,
 
    iLenPeptide = iEndPos - iStartPos + 1;
 
-   {
-      short siLowestSpScoreIndex;
+   short siLowestSpScoreIndex = pQuery->siLowestSpScoreIndex;
 
-      siLowestSpScoreIndex = pQuery->siLowestSpScoreIndex;
+   pQuery->iMatchPeptideCount++;
+   pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide = iLenPeptide;
 
-      pQuery->iMatchPeptideCount++;
-      pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide = iLenPeptide;
-
-      memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
-      pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
-      pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
+   memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
+   pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
+   pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
                   
-      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
-      {
-         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
-            * pQuery->_spectrumInfoInternal.iMaxFragCharge
-            * g_staticParams.ionInformation.iNumIonSeriesUsed;
-      }
-      else
-      {
-         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
-            * g_staticParams.ionInformation.iNumIonSeriesUsed;
-      }
+   if (pQuery->_spectrumInfoInternal.iChargeState > 2)
+   {
+      pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
+         * pQuery->_spectrumInfoInternal.iMaxFragCharge
+         * g_staticParams.ionInformation.iNumIonSeriesUsed;
+   }
+   else
+   {
+      pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
+         * g_staticParams.ionInformation.iNumIonSeriesUsed;
+   }
 
-      pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
+   pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
 
-      pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
-      pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = '-';
+   pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
+   pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = '-';
 
-      pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
-      pQuery->_pResults[siLowestSpScoreIndex].sPeffOrigResidues.clear();
-      pQuery->_pResults[siLowestSpScoreIndex].iPeffNewResidueCount = 0;
+   pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
+   pQuery->_pResults[siLowestSpScoreIndex].sPeffOrigResidues.clear();
+   pQuery->_pResults[siLowestSpScoreIndex].iPeffNewResidueCount = 0;
 
-      pQuery->_pResults[siLowestSpScoreIndex].pWhichProtein.clear();
-      pQuery->_pResults[siLowestSpScoreIndex].pWhichDecoyProtein.clear();
-      pQuery->_pResults[siLowestSpScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
+   pQuery->_pResults[siLowestSpScoreIndex].pWhichProtein.clear();
+   pQuery->_pResults[siLowestSpScoreIndex].pWhichDecoyProtein.clear();
+   pQuery->_pResults[siLowestSpScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
-      int iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
-      int iSizepdVarModSites = sizeof(double)*MAX_PEPTIDE_LEN_P2;
-      if (g_staticParams.variableModParameters.bVarModSearch)
-      {
-         if (!iFoundVariableMod)  // Normal peptide in variable mod search.
-         {
-            memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, iSizepiVarModSites);
-            memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, iSizepdVarModSites);
-         }
-         else
-         {
-            memcpy(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, piVarModSites, iSizepiVarModSites);
-
-            int iVal;
-            for (i=0; i<iLenPeptide + 2; i++)
-            {
-               iVal = pQuery->_pResults[siLowestSpScoreIndex].piVarModSites[i];
-
-               if (iVal > 0)
-               {
-                  pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i]
-                     = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
-               }
-               else
-                  pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = 0.0;
-            }
-         }
-      }
-      else
+   int iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
+   int iSizepdVarModSites = sizeof(double)*MAX_PEPTIDE_LEN_P2;
+   if (g_staticParams.variableModParameters.bVarModSearch)
+   {
+      if (!iFoundVariableMod)  // Normal peptide in variable mod search.
       {
          memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, iSizepiVarModSites);
          memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, iSizepdVarModSites);
       }
-
-      // Get new lowest score.
-      pQuery->dLowestXcorrScore = pQuery->_pResults[0].fXcorr;
-      siLowestSpScoreIndex=0;
-
-      for (i=g_staticParams.options.iNumStored-1; i>0; i--)
+      else
       {
-         if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
+         memcpy(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, piVarModSites, iSizepiVarModSites);
+
+         int iVal;
+         for (i=0; i<iLenPeptide + 2; i++)
          {
-            pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
-            siLowestSpScoreIndex = i;
+            iVal = pQuery->_pResults[siLowestSpScoreIndex].piVarModSites[i];
+
+            if (iVal > 0)
+            {
+               pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i]
+                  = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
+            }
+            else
+               pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = 0.0;
          }
       }
-
-      pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
-
-      // round lowest score to 6 significant digits
-      int iTmp = (int)(pQuery->dLowestXcorrScore * 1000000);
-      pQuery->dLowestXcorrScore = (double)iTmp / 1000000.0;
    }
+   else
+   {
+      memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, iSizepiVarModSites);
+      memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, iSizepdVarModSites);
+   }
+
+   // Get new lowest score.
+   pQuery->dLowestXcorrScore = pQuery->_pResults[0].fXcorr;
+   siLowestSpScoreIndex=0;
+
+   for (i=g_staticParams.options.iNumStored-1; i>0; i--)
+   {
+      if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
+      {
+         pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
+         siLowestSpScoreIndex = i;
+      }
+   }
+
+   pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
+
+   // round lowest score to 6 significant digits
+   int iTmp = (int)(pQuery->dLowestXcorrScore * 1000000);
+   pQuery->dLowestXcorrScore = (double)iTmp / 1000000.0;
 }
 
 

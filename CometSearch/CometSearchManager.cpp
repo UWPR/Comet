@@ -29,6 +29,9 @@
 #include "CometSearchManager.h"
 #include "CometStatus.h"
 #include "CometFragmentIndex.h"
+
+
+
 #include <sstream>
 
 #undef PERF_DEBUG
@@ -295,7 +298,7 @@ static bool AllocateResultsMem()
       for (int j=0; j<g_staticParams.options.iNumStored; ++j)
       {
          pQuery->_pResults[j].dPepMass = 0.0;
-         pQuery->_pResults[j].dExpect = 0.0;
+         pQuery->_pResults[j].dExpect = 999;
          pQuery->_pResults[j].fScoreSp = 0.0;
          pQuery->_pResults[j].fXcorr = g_staticParams.options.dMinimumXcorr;
          pQuery->_pResults[j].iLenPeptide = 0;
@@ -315,7 +318,7 @@ static bool AllocateResultsMem()
          if (g_staticParams.options.iDecoySearch==2)
          {
             pQuery->_pDecoys[j].dPepMass = 0.0;
-            pQuery->_pDecoys[j].dExpect = 0.0;
+            pQuery->_pDecoys[j].dExpect = 999;
             pQuery->_pDecoys[j].fScoreSp = 0.0;
             pQuery->_pDecoys[j].fXcorr = g_staticParams.options.dMinimumXcorr;
             pQuery->_pDecoys[j].iLenPeptide = 0;
@@ -2771,21 +2774,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(tp);
 
-   if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
-   {
-//    CometPostAnalysis::AnalyzeSP(0);
-      CometPostAnalysis::CalculateEValue(0);
-   }
-   else
-      goto cleanup_results;
-
-   bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-
-   if (!bSucceeded)
-      goto cleanup_results;
-
-   int iSize;
-   iSize  = g_pvQuery.at(0)->iMatchPeptideCount;
+   int iSize = g_pvQuery.at(0)->iMatchPeptideCount;
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
@@ -2794,6 +2783,19 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    {
       std::sort(g_pvQuery.at(0)->_pResults, g_pvQuery.at(0)->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
+
+   if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
+   {
+//    CometPostAnalysis::AnalyzeSP(0);
+      CometPostAnalysis::CalculateEValue(0, 1);
+   }
+   else
+      goto cleanup_results;
+
+   bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+
+   if (!bSucceeded)
+      goto cleanup_results;
 
    Query* pQuery;
    pQuery = g_pvQuery.at(0);  // return info for top hit only

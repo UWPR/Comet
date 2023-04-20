@@ -1747,6 +1747,8 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       dIon = pdMass[i];
       dIntensity = pdInten[i];
 
+      pScoring->vdRawFragmentPeakMass.push_back(dIon);
+
       if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
       {
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))

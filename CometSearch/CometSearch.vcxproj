@@ -171,6 +171,7 @@
     <ClInclude Include="CometData.h" />
     <ClInclude Include="CometDataInternal.h" />
     <ClInclude Include="CometDecoys.h" />
+    <ClInclude Include="CometFragmentIndex.h" />
     <ClInclude Include="CometInterfaces.h" />
     <ClInclude Include="CometMassSpecUtils.h" />
     <ClInclude Include="CometPostAnalysis.h" />
@@ -192,6 +193,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CombinatoricsUtils.cpp" />
+    <ClCompile Include="CometFragmentIndex.cpp" />
     <ClCompile Include="CometInterfaces.cpp" />
     <ClCompile Include="CometMassSpecUtils.cpp" />
     <ClCompile Include="CometPostAnalysis.cpp" />

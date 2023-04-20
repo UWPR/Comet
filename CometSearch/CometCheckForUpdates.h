@@ -26,18 +26,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <stdarg.h>
-#ifdef _WIN32
-#include <io.h>
-#include <stdio.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <unistd.h>
-#include <err.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#endif
 
 class CometCheckForUpdates
 {

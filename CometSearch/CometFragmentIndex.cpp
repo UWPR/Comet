@@ -606,7 +606,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fptr);
 
-   sprintf(szOut, " - done.  # peps %ld\n", tNumPeptides);
+   sprintf(szOut, " - done.  # peps %zd\n", tNumPeptides);
    logout(szOut);
    fflush(stdout);
 
@@ -782,7 +782,7 @@ bool CometFragmentIndex::WriteFragmentIndex(ThreadPool *tp)
 bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 {
    FILE *fp;
-   bool bSucceeded;
+   bool bSucceeded = true;
    char szOut[SIZE_FILE+60];
    char szIndexFile[SIZE_FILE+30];
    size_t tTmp;
@@ -867,7 +867,6 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
       fclose(fp);
       return false;
    }
-
 
    // read fp of index
    comet_fileoffset_t clPosition;  // position to start reading fragment index elements
