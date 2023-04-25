@@ -50,7 +50,7 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-vector<vector<unsigned int>> g_vFragmentIndex;  // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
+vector<unsigned int>* g_arrvFragmentIndex;                     // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
 bool g_bIndexFilesRead = false;

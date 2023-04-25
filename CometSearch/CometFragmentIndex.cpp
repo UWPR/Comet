@@ -36,10 +36,6 @@ int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modif
 int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
 int MOD_NUM = 0;
-unsigned int g_uiMaxFragmentArrayIndex;
-
-//vector<vector<unsigned int>> g_vFragmentIndex;  // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
-//vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 
 Mutex CometFragmentIndex::_vFragmentIndexMutex;
 Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
@@ -78,8 +74,9 @@ bool CometFragmentIndex::CreateFragmentIndex(size_t *tSizevRawPeptides,
    // - raw peptide via iWhichPeptide referencing entry in g_vRawPeptides to access peptide and protein(s)
    // - modification encoding index
    // - modification mass
-   g_uiMaxFragmentArrayIndex = BIN(g_massRange.dMaxMass);
-   g_vFragmentIndex.reserve(g_uiMaxFragmentArrayIndex);
+g_massRange.dMaxFragmentMass = 2500; //FIX
+   g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_massRange.dMaxFragmentMass) + 1;
+   g_arrvFragmentIndex = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
 
    *tSizevRawPeptides = g_vRawPeptides.size();
 
@@ -183,13 +180,13 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 // cout << "peptides have no modification numbers or exceed MAX_COMBINATIONS: " << iNoModificationNumbers << " " << endl;
 // cout << "size of gv_FragmentPeptides is " << g_vFragmentPeptides.size() << endl;
 
-   // Walk through each g_vFragmentIndex[] and sort entries by increasing peptide mass
+   // Walk through each g_arrvFragmentIndex[] and sort entries by increasing peptide mass
 
    tStartTime = chrono::steady_clock::now();
 
-   for (unsigned int i = 0; i < g_uiMaxFragmentArrayIndex; i++)
+   for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; i++)
    {
-      if (g_vFragmentIndex[i].size() > 0)
+      if (g_arrvFragmentIndex[i].size() > 0)
       {
 #if USEFRAGMENTTHREADS > 0
          pFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, i, pFragmentIndexPool));
@@ -254,7 +251,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& g_vRa
 void CometFragmentIndex::SortFragmentThreadProc(int i,
                                                 ThreadPool *tp)
 {
-   sort(g_vFragmentIndex[i].begin(), g_vFragmentIndex[i].end(), SortFragmentsByPepMass);
+   sort(g_arrvFragmentIndex[i].begin(), g_arrvFragmentIndex[i].end(), SortFragmentsByPepMass);
 }
 
 
@@ -387,17 +384,13 @@ if (!(iWhichPeptide%5000))
 
          uiBinIon = BIN(dBion);
 
-         if (uiBinIon < g_uiMaxFragmentArrayIndex)
-            g_vFragmentIndex[uiBinIon].push_back(uiCurrentFragmentPeptide);
-         else
-            printf("ERROR in AddFragments: pep %s, dBion %f, bin %d >= max %d\n", sPeptide.c_str(), dBion, uiBinIon, g_uiMaxFragmentArrayIndex);
+         if (uiBinIon < g_massRange.g_uiMaxFragmentArrayIndex)
+            g_arrvFragmentIndex[uiBinIon].push_back(uiCurrentFragmentPeptide);
 
          uiBinIon = BIN(dYion);
 
-         if (uiBinIon < g_uiMaxFragmentArrayIndex)
-            g_vFragmentIndex[uiBinIon].push_back(uiCurrentFragmentPeptide);
-         else
-            printf("ERROR in AddFragments: pep %s, dYion %f, bin %d >= max %d\n", sPeptide.c_str(), dYion, uiBinIon, g_uiMaxFragmentArrayIndex);
+         if (uiBinIon < g_massRange.g_uiMaxFragmentArrayIndex)
+            g_arrvFragmentIndex[uiBinIon].push_back(uiCurrentFragmentPeptide);
 
 //       Threading::UnlockMutex(_vFragmentIndexMutex);
       }
@@ -737,17 +730,17 @@ bool CometFragmentIndex::WriteFragmentIndex(ThreadPool *tp)
       fwrite(&iTmp, sizeof(int), 1, fp);
    }
     
-   // size of g_vFragmentIndex which is g_uiMaxFragmentIndexArray
-   fwrite(&g_uiMaxFragmentArrayIndex, sizeof(unsigned int), 1, fp); // array size
+   // size of g_arrvFragmentIndex which is g_uiMaxFragmentIndexArray
+   fwrite(&g_massRange.g_uiMaxFragmentArrayIndex, sizeof(unsigned int), 1, fp); // array size
 
-   for (unsigned int i = 0; i < g_uiMaxFragmentArrayIndex; ++i)
+   for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
    {
-      size_t tNumEntries = g_vFragmentIndex[i].size();
+      size_t tNumEntries = g_arrvFragmentIndex[i].size();
       fwrite(&tNumEntries, sizeof(size_t), 1, fp); // index
 
       if (tNumEntries > 0)
       {
-         for (auto it=g_vFragmentIndex[i].begin(); it!=g_vFragmentIndex[i].end(); ++it)
+         for (auto it=g_arrvFragmentIndex[i].begin(); it!=g_arrvFragmentIndex[i].end(); ++it)
          {
             fwrite(&(*it), sizeof(unsigned int), 1, fp);
          }
@@ -783,7 +776,6 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 {
    FILE *fp;
    bool bSucceeded = true;
-   char szOut[SIZE_FILE+60];
    char szIndexFile[SIZE_FILE+30];
    size_t tTmp;
    char szBuf[SIZE_BUF];
@@ -934,22 +926,22 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
       fread(&(PEPTIDE_MOD_SEQ_IDXS[i]), sizeof(int), 1, fp);
    }
 
-   // size of g_vFragmentIndex which is g_uiMaxFragmentIndexArray
-   fread(&g_uiMaxFragmentArrayIndex, sizeof(unsigned int), 1, fp); // array size
+   // size of g_arrvFragmentIndex which is g_uiMaxFragmentIndexArray
+   fread(&g_massRange.g_uiMaxFragmentArrayIndex, sizeof(unsigned int), 1, fp); // array size
 
-   g_vFragmentIndex.clear();
-   g_vFragmentIndex.reserve(g_uiMaxFragmentArrayIndex);
-   for (unsigned int i = 0; i < g_uiMaxFragmentArrayIndex; ++i)
+   delete[] g_arrvFragmentIndex;  // shouldn't be needed; hope it doesn't hurt
+   g_arrvFragmentIndex = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
+   for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
    {
       fread(&tTmp, sizeof(size_t), 1, fp); // index
 
       if (tTmp> 0)
       {
-         g_vFragmentIndex[i].reserve(tTmp);
+         g_arrvFragmentIndex[i].reserve(tTmp);
          for (size_t it = 0; it != tTmp; ++it)
          {
             fread(&uiTmp, sizeof(unsigned int), 1, fp);
-            g_vFragmentIndex[i].push_back(uiTmp);
+            g_arrvFragmentIndex[i].push_back(uiTmp);
          }
       }
    }

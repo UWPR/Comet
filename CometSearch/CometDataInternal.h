@@ -248,8 +248,10 @@ struct MassRange
 {
    double dMinMass;
    double dMaxMass;
+   double dMaxFragmentMass;    // max fragment mass for fragment index
    int    iMaxFragmentCharge;  // global maximum fragment charge
    bool   bNarrowMassRange;    // used to determine how to parse peptides in SearchForPeptides
+   unsigned int g_uiMaxFragmentArrayIndex; // BIN(dMaxFragmentMass); used as fragment array index
 };
 
 extern MassRange g_massRange;
@@ -448,7 +450,7 @@ struct FragmentPeptidesStruct
    }
 };
 
-extern vector<vector<unsigned int>> g_vFragmentIndex;  // [BIN(fragment mass)][which entry in g_vFragmentPeptides]
+extern vector<unsigned int>* g_arrvFragmentIndex;       // array of vectors: [BIN(fragment mass)][which entries in g_vFragmentPeptides]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndex> g_vRawPeptides;
 
@@ -901,7 +903,6 @@ extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for 
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 extern int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
 extern int MOD_NUM;
-extern unsigned int g_uiMaxFragmentArrayIndex; // BIN(maximum peptide mass); used as fragment array index
 extern bool g_bIndexFilesRead;     // set to true when index files have been read
 
 // Query stores information for peptide scoring and results
