@@ -126,7 +126,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
    int totalCount = 0;
    int i = maxMods;
 
-   unsigned long long* allCombos = new unsigned long long[0];
+   unsigned long long* allCombos;  // = new unsigned long long[0]; // FIX: confirm no need for this init allocation
    int currentAllCount = 0;
    while (i >= 1)
    {
@@ -181,6 +181,8 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
          }
          
          allCombos = temp;
+
+         delete[] combos;  //FIX: confirm this is correct delete to avoid memory leak
       }
       currentAllCount = totalCount;
       i--;

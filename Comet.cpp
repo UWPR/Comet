@@ -33,7 +33,8 @@ void SetOptions(char *arg,
                 char *szParamsFile,
                 bool *bPrintParams,
                 ICometSearchManager *pSearchMgr);
-void LoadParameters(char *pszParamsFile, ICometSearchManager *pSearchMgr);
+void LoadParameters(char *pszParamsFile,
+                    ICometSearchManager *pSearchMgr);
 void PrintParams();
 bool ValidateInputFile(char *pszInputFileName);
 
@@ -208,7 +209,7 @@ void SetOptions(char *arg,
 
 // Reads comet.params parameter file.
 void LoadParameters(char *pszParamsFile,
-      ICometSearchManager *pSearchMgr)
+                    ICometSearchManager *pSearchMgr)
 {
    double dTempMass,
           dDoubleParam;

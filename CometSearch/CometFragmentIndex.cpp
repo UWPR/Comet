@@ -115,7 +115,6 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 
    int MOD_CNT = (int)ALL_MODS.size();
 
-   cout << endl;
    for (int i = 0; i < MOD_CNT; i++)
    {
       cout << " - mods: " << ALL_MODS[i] << endl;
@@ -579,23 +578,23 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       fwrite(&iLen, sizeof(int), 1, fptr);
       fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
       fwrite(&((*it).dPepMass), sizeof(double), 1, fptr);
-      fwrite(&((*it).lIndexProteinFilePosition), sizeof(comet_fileoffset_t), 1, fptr);
+      fwrite(&((*it).lIndexProteinFilePosition), clSizeCometFileOffset, 1, fptr);
    }
 
    // Now write out: vector<vector<comet_fileoffset_t>> g_pvProteinsList
    comet_fileoffset_t lProteinsFilePos = comet_ftell(fptr);
    tTmp = g_pvProteinsList.size();
-   fwrite(&tTmp, sizeof(comet_fileoffset_t), 1, fptr);
+   fwrite(&tTmp, clSizeCometFileOffset, 1, fptr);
    for (auto it = g_pvProteinsList.begin(); it != g_pvProteinsList.end(); ++it)
    {
       tTmp = (*it).size();
       fwrite(&tTmp, sizeof(size_t), 1, fptr);
       for (size_t it2 = 0; it2 < tTmp; ++it2)
-         fwrite(&((*it).at(it2)), sizeof(comet_fileoffset_t), 1, fptr);
+         fwrite(&((*it).at(it2)), clSizeCometFileOffset, 1, fptr);
    }
 
-   fwrite(&lPeptidesFilePos, sizeof(comet_fileoffset_t), 1, fptr);
-   fwrite(&lProteinsFilePos, sizeof(comet_fileoffset_t), 1, fptr);
+   fwrite(&lPeptidesFilePos, clSizeCometFileOffset, 1, fptr);
+   fwrite(&lProteinsFilePos, clSizeCometFileOffset, 1, fptr);
 
    fclose(fptr);
 
@@ -750,10 +749,9 @@ bool CometFragmentIndex::WriteFragmentIndex(ThreadPool *tp)
    // write g_vFragmentPeptides
    tSize = g_vFragmentPeptides.size();
    fwrite(&tSize, sizeof(size_t), 1, fp);
-   size_t tSizeFragmentPepStruct = sizeof(struct FragmentPeptidesStruct);
    for (size_t i = 0; i < tSize; ++i)
    {
-      fwrite(&(g_vFragmentPeptides[i]), tSizeFragmentPepStruct, 1, fp);
+      fwrite(&(g_vFragmentPeptides[i]), sizeof(struct FragmentPeptidesStruct), 1, fp);
    }
 
    fwrite(&clPosition, clSizeCometFileOffset, 1, fp);  //write beginning of fragment index at array size
