@@ -422,8 +422,11 @@ bool ModificationsPermuter::combine(int* modNumbers,
    }
 
    ModificationNumber modification;
-   modification.modificationNumber = MOD_NUM++;
+//   modification.modificationNumber = MOD_NUM++;
+   MOD_NUM++;  //FIX:  confirm this is not needed either
    modification.modifications = mods;
+   modification.modStringLen = modStringLen;
+
    MOD_NUMBERS.push_back(modification);
 
    TIME_IN_COMBINE += duration(start);

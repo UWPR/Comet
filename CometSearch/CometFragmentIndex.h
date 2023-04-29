@@ -35,8 +35,7 @@ public:
    static bool WriteFragmentIndex(ThreadPool *tp);
    static bool ReadFragmentIndex(ThreadPool *tp);
    static bool ReadPlainPeptideIndex(void);
-   static bool CreateFragmentIndex(size_t *tSizevRawPeptides,
-                                   ThreadPool *tp);
+   static bool CreateFragmentIndex(ThreadPool *tp);
 
 private:
 

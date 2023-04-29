@@ -68,22 +68,18 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int iMaxElapsedTime = 60;
+               int iMaxElapsedTime = 100;
                int[] piTimeSearch = new int[iMaxElapsedTime];  // histogram of search times
-               int[] piTimeMatch = new int[iMaxElapsedTime];  // histogram of search times
-               for (int i = 0; i < iMaxElapsedTime; i++)
+               for (int i = 0; i < iMaxElapsedTime; ++i)
                {
                   piTimeSearch[i] = 0;
-                  piTimeMatch[i] = 0;
                }
                int iPass = 1;  // count number of passes/loops through raw file
 
                int iTime = 0;
 
                SearchMgr.InitializeSingleSpectrumSearch();
-
-//               for (int iScanNumber = 536; iScanNumber <= 536; iScanNumber++)
-               for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; iScanNumber++)
+               for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {
                   var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
                   //double dRT = rawFile.RetentionTimeFromScanNumber(iScanNumber);
@@ -143,12 +139,6 @@
                         string peptide;
                         string protein;
 
-                        iTime = (int)watch.ElapsedMilliseconds;
-                        if (iTime >= iMaxElapsedTime)
-                           iTime = iMaxElapsedTime - 1;
-                        if (iTime >= 0)
-                           piTimeMatch[iTime] += 1;
-
                         watch.Start();
                         SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
                            out peptide, out protein, out matchingFragments, out score);
@@ -163,12 +153,12 @@
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
                         // do not decode peptide/proteins strings unless xcorr>0
-                        if (xcorr > 0)
+                        if (xcorr > 4.5)
                         {
                            if ((iScanNumber % 1) == 0)
                            {
-                              if (protein.Length > 10)
-                                 protein = protein.Substring(0, 10);  // trim to avoid printing long protein description string
+                              if (protein.Length > 20)
+                                 protein = protein.Substring(0, 20);  // trim to avoid printing long protein description string
 
                               Console.WriteLine("{0}\t{1}\t{2}\t{3:0.0000}\t{4:E4}\t{5:0.0000}\t{6}\t{7}\t{8}",
                                  iScanNumber, peptide, protein, xcorr, dExpect, dPepMass, iIonsMatch, iIonsTotal, iPass);
@@ -213,7 +203,7 @@
 
                // write out histogram of spectrum search times
                for (int i = 0; i < iMaxElapsedTime; i++)
-                  Console.WriteLine("{0}\t{1}", i, piTimeSearch[i], piTimeMatch[i]);
+                  Console.WriteLine("{0}\t{1}", i, piTimeSearch[i]);
 
                rawFile.Dispose();
             }

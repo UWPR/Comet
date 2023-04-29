@@ -53,7 +53,9 @@ vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 vector<unsigned int>* g_arrvFragmentIndex;                     // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
-bool g_bIndexFilesRead = false;
+bool g_vPlainPeptideIndexRead = false;
+bool g_vFragmentIndexRead = false;
+FILE* fpfasta;
 
 
 /******************************************************************************
@@ -2675,6 +2677,35 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    if (!bSucceeded)
       return bSucceeded;
 
+   ThreadPool* tp = _tp;
+   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+
+   // Load databases
+   if (!g_vFragmentIndexRead)
+   {
+      CometFragmentIndex::ReadFragmentIndex(tp);
+      g_vFragmentIndexRead = true;
+   }
+   if (!g_vPlainPeptideIndexRead)
+   {
+      CometFragmentIndex::ReadPlainPeptideIndex();
+      g_vPlainPeptideIndexRead = true;
+   }
+
+   // open FASTA for retrieving protein names
+   string sTmpDB = g_staticParams.databaseInfo.szDatabase;
+   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+      sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
+   if ((fpfasta = fopen(sTmpDB.c_str(), "r")) == NULL)
+   {
+      char szErrorMsg[SIZE_ERROR];
+      sprintf(szErrorMsg, " Error (3) - cannot read database file \"%s\".\n", sTmpDB.c_str());
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+
    singleSearchInitializationComplete = true;
    return true;
 }
@@ -2689,6 +2720,8 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
 
       // Deallocate search memory
       CometSearch::DeallocateMemory(singleSearchThreadCount);
+
+      fclose(fpfasta);
 
       singleSearchInitializationComplete = false;
    }
@@ -2705,15 +2738,13 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                                                 vector<Fragment> & matchedFragments,
                                                 Scores & score)
 {
-   ThreadPool *tp = _tp;
-   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
 
    score.dCn = 0;
    score.xCorr = 0;
    score.dExpect = 0;
    score.matchedIons = 0;
    score.totalIons = 0;
-   
+
    if (iNumPeaks == 0)
       return false;
 
@@ -2770,6 +2801,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    }
    else
       g_sCometVersion = comet_version;
+
+   ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
 
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(tp);
@@ -2835,9 +2868,14 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          strReturnPeptide += ss.str();
       }
 
+      // retrieve protein name from fasta; need to fopen just once
+      char szProtein[512];
+      comet_fseek(fpfasta, g_pvProteinsList.at(pOutput[0].lProteinFilePosition).at(0), SEEK_SET);
+      fscanf(fpfasta, "%511s", szProtein);  // WIDTH_REFERENCE-1
+      szProtein[511] = '\0';
       strReturnPeptide += "." + std::string(1, pOutput[0].szPrevNextAA[1]);
 
-      strReturnProtein = pOutput[0].strSingleSearchProtein;            //protein
+      strReturnProtein = szProtein;            //protein
 
       score.xCorr         = pOutput[0].fXcorr;                        // xcorr
       score.dExpect       = pOutput[0].dExpect;                       // E-value
