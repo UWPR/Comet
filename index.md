@@ -24,7 +24,7 @@ GitHub](https://github.com/UWPR/Comet) in September 2021.
 
 Comet is multithreaded, supports multiple input and output formats, and
 binaries are available for both Windows and Linux operating systems.  Note that
-Comet is just a single command line binary that perfoms  MS/MS database search.
+Comet is just a single command line binary that performs  MS/MS database search.
 It takes in spectra in various supported input formats, using the [MSToolkit
 C++ library](https://github.com/mhoopmann/mstoolkit), and writes .pep.xml,
 .pin, .sqt and/or .txt files. You will need some other support tool(s) to
