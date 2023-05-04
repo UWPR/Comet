@@ -477,6 +477,8 @@ struct VarModParams
    int     iMaxPermutations;
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
+   string  sCompoundModsFile;        // file containing list of variable mod masses to apply to residue J
+   vector<double> vdCompoundMasses;  // list of modification masses on J read from sCompoundModsFile
 
    VarModParams& operator=(VarModParams& a)
    {

@@ -2138,7 +2138,23 @@ bool CometSearchManager::DoSearch()
          // We need to reset some of the static variables in-between input files
          CometPreprocess::Reset();
 
-         FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
+         FILE *fpdb;
+
+         // see if compoundmods.txt is present, if so, read in the list of masses.
+         if ((fpdb=fopen("compoundmods.txt", "r")) != NULL)
+         {
+            char szBuf[512];
+            double dTmp;
+
+            while (fgets(szBuf, 512, fpdb))
+            {
+               sscanf(szBuf, "%lf", &dTmp);
+               g_staticParams.variableModParameters.vdCompoundMasses.push_back(dTmp);
+            }
+            fclose(fpdb);
+         }
+
+         // need FASTA file again to grab headers for output (currently just store file positions)
          if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
          {
             char szErrorMsg[SIZE_ERROR];

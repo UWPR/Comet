@@ -205,10 +205,13 @@ private:
                         DBIndex sTmp,
                         bool *pbDuplFragment,
                         struct sDBEntry *dbe);
-
    char GetAA(int i,
               int iDirection,
               char *sDNASequence);
+   void CompoundModSearch(char *szPeptide,
+                          double dCalcPepMass,
+                          bool *pbDuplFragment,
+                          struct sDBEntry *dbe);
 
    // Cleaning up
    void CleanUp();
