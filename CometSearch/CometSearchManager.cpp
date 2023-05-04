@@ -2152,6 +2152,10 @@ bool CometSearchManager::DoSearch()
                g_staticParams.variableModParameters.vdCompoundMasses.push_back(dTmp);
             }
             fclose(fpdb);
+
+            sort(g_staticParams.variableModParameters.vdCompoundMasses.begin(), g_staticParams.variableModParameters.vdCompoundMasses.end());
+            for( vector<double>::iterator  it=g_staticParams.variableModParameters.vdCompoundMasses.begin();
+                  it != g_staticParams.variableModParameters.vdCompoundMasses.end(); ++it)
          }
 
          // need FASTA file again to grab headers for output (currently just store file positions)
