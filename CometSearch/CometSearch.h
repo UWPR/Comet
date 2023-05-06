@@ -208,8 +208,9 @@ private:
    char GetAA(int i,
               int iDirection,
               char *sDNASequence);
-   void CompoundModSearch(char *szPeptide,
-                          double dCalcPepMass,
+   void CompoundModSearch(char *szProtein,
+                          int iStartPos,
+                          int iEndPos,
                           bool *pbDuplFragment,
                           struct sDBEntry *dbe);
 

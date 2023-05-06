@@ -180,6 +180,13 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    WriteVariableMod(fpout, searchMgr, "variable_mod08", 0);
    WriteVariableMod(fpout, searchMgr, "variable_mod09", 0);
 
+   for (size_t iWhichCompoundMass = 0; iWhichCompoundMass < g_staticParams.variableModParameters.iNumCompoundMasses; ++iWhichCompoundMass)
+   {
+      fprintf(fpout, "  <aminoacid_modification aminoacid=\"J\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" symbol=\"\"/>\n",
+            g_staticParams.variableModParameters.vdCompoundMasses.at(iWhichCompoundMass),
+            g_staticParams.massUtility.pdAAMassParent['J'] + g_staticParams.variableModParameters.vdCompoundMasses.at(iWhichCompoundMass));
+   }
+
    WriteStaticMod(fpout, searchMgr, "add_G_glycine");
    WriteStaticMod(fpout, searchMgr, "add_A_alanine");
    WriteStaticMod(fpout, searchMgr, "add_S_serine");

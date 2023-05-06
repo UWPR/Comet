@@ -479,6 +479,7 @@ struct VarModParams
    char    cModCode[VMODS];          // mod characters
    string  sCompoundModsFile;        // file containing list of variable mod masses to apply to residue J
    vector<double> vdCompoundMasses;  // list of modification masses on J read from sCompoundModsFile
+   size_t  iNumCompoundMasses;
 
    VarModParams& operator=(VarModParams& a)
    {
@@ -747,6 +748,8 @@ struct StaticParams
       variableModParameters.iMaxVarModPerPeptide = 5;
       variableModParameters.iMaxPermutations = MAX_PERMUTATIONS;
       variableModParameters.bUseFragmentNeutralLoss = false;
+
+      variableModParameters.iNumCompoundMasses = 0;
 
       ionInformation.bUseWaterAmmoniaLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks

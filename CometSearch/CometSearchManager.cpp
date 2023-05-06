@@ -1690,10 +1690,10 @@ bool CometSearchManager::DoSearch()
 
    tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
 
+   FILE *fp;
+
    if (strlen(g_staticParams.szDIAWindowsFile) > 0)
    {
-      FILE *fp;
-
       if ((fp=fopen(g_staticParams.szDIAWindowsFile, "r")) != NULL)
       {
          // read DIA windows
@@ -1730,6 +1730,28 @@ bool CometSearchManager::DoSearch()
          logerr(szErrorMsg);
       }
    }
+
+   // see if compoundmods.txt is present, if so, read in the list of masses.
+   if ((fp=fopen("compoundmods.txt", "r")) != NULL)
+   {
+      char szBuf[512];
+      double dTmp;
+
+      while (fgets(szBuf, 512, fp))
+      {
+         sscanf(szBuf, "%lf", &dTmp);
+         g_staticParams.variableModParameters.vdCompoundMasses.push_back(dTmp);
+      }
+      fclose(fp);
+
+      g_staticParams.variableModParameters.iNumCompoundMasses = g_staticParams.variableModParameters.vdCompoundMasses.size();
+
+      sort(g_staticParams.variableModParameters.vdCompoundMasses.begin(), g_staticParams.variableModParameters.vdCompoundMasses.end());
+
+      if (g_staticParams.variableModParameters.iNumCompoundMasses > 0)
+         g_staticParams.variableModParameters.bVarModSearch = true;
+   }
+
 
    for (int i=0; i<(int)g_pvInputFiles.size(); i++)
    {
@@ -2139,24 +2161,6 @@ bool CometSearchManager::DoSearch()
          CometPreprocess::Reset();
 
          FILE *fpdb;
-
-         // see if compoundmods.txt is present, if so, read in the list of masses.
-         if ((fpdb=fopen("compoundmods.txt", "r")) != NULL)
-         {
-            char szBuf[512];
-            double dTmp;
-
-            while (fgets(szBuf, 512, fpdb))
-            {
-               sscanf(szBuf, "%lf", &dTmp);
-               g_staticParams.variableModParameters.vdCompoundMasses.push_back(dTmp);
-            }
-            fclose(fpdb);
-
-            sort(g_staticParams.variableModParameters.vdCompoundMasses.begin(), g_staticParams.variableModParameters.vdCompoundMasses.end());
-            for( vector<double>::iterator  it=g_staticParams.variableModParameters.vdCompoundMasses.begin();
-                  it != g_staticParams.variableModParameters.vdCompoundMasses.end(); ++it)
-         }
 
          // need FASTA file again to grab headers for output (currently just store file positions)
          if ((fpdb=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
