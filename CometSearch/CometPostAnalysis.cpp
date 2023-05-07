@@ -218,10 +218,6 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
       {
          sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
 
-//       Sadly this erase(unique()) code doesn't work; it leaves only first entry in vector
-//       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
-//             pOutput[i].pWhichProtein.end());
-
          comet_fileoffset_t lPrev=0;
          for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
          {
@@ -336,24 +332,30 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                {
                   dBion += pOutput[i].pdVarModSites[ii];
 
-                  int iMod = pOutput[i].piVarModSites[ii];
+                  if (pOutput[i].piVarModSites[ii] < 100)
+                  {
+                     int iMod = pOutput[i].piVarModSites[ii];
 
-                  if (g_staticParams.options.bScaleFragmentNL)
-                     iCountNLB[iMod-1][ii] += 1;
-                  else
-                     iCountNLB[iMod-1][ii] = 1;
+                     if (g_staticParams.options.bScaleFragmentNL)
+                        iCountNLB[iMod-1][ii] += 1;
+                     else
+                        iCountNLB[iMod-1][ii] = 1;
+                  }
                }
 
                if (pOutput[i].piVarModSites[iPos] != 0)
                {
                   dYion += pOutput[i].pdVarModSites[iPos];
 
-                  int iMod = pOutput[i].piVarModSites[iPos];
+                  if (pOutput[i].piVarModSites[iPos] < 100)
+                  {
+                     int iMod = pOutput[i].piVarModSites[iPos];
 
-                  if (g_staticParams.options.bScaleFragmentNL)
-                     iCountNLY[iMod-1][ii] += 1;
-                  else
-                     iCountNLY[iMod-1][ii] = 1;
+                     if (g_staticParams.options.bScaleFragmentNL)
+                        iCountNLY[iMod-1][ii] += 1;
+                     else
+                        iCountNLY[iMod-1][ii] = 1;
+                  }
                }
             }
 
@@ -483,7 +485,6 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                }
             }
          }
-
 
          pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) /
                ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));

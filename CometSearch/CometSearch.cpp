@@ -6755,6 +6755,9 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
 
                               _pdAAreverse[iPosForward] = dYion;
 
+#ifdef _WIN32
+printf(" \b"); fflush(stdout);  // FIX: while debugging Windows build, this mysteriously allows program to run to completion
+#endif
                            }
 
                            // loop through i<=iEndPos as need to count modified residue for neutral loss
