@@ -1664,6 +1664,10 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    if (iEndPos == iProteinSeqLengthMinus1)
       dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
 
+   bool bProteinHasJ = false;
+   if (g_staticParams.variableModParameters.iNumCompoundMasses > 0 && strchr(szProteinSeq, 'J'))
+      bProteinHasJ = true;
+
    // Search through entire protein.
    while (iStartPos < iLenProtein)
    {
@@ -2148,27 +2152,21 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             if (g_massRange.bNarrowMassRange)
                SubtractVarMods(piVarModCounts, szProteinSeq[iStartPos], iStartPos);
          }
-         
-         if ( g_staticParams.variableModParameters.iNumCompoundMasses > 0 && strchr(szProteinSeq, 'J'))
+
+         if (bProteinHasJ)  // compoundmasses present and protein contains a "J"
          {
-            char szPeptide[MAX_PEPTIDE_LEN_P2];
-            int iLen = iEndPos - iStartPos + 1;
-
-            if (iLen < MAX_PEPTIDE_LEN_P2)
+            bool bHasJ = false;
+            for (int x = iStartPos; x <= iEndPos; ++x)
             {
-               strncpy(szPeptide, szProteinSeq + iStartPos, iLen);
-
-               szPeptide[iLen] = '\0';
-          
-               // see if the J is in the peptide in question
-               if (strchr(szPeptide, 'J'))
+               if (szProteinSeq[x] == 'J')
                {
-                  // assume full length peptide here ... no need to walk from iStart to iEnd
-                  CompoundModSearch(szProteinSeq, iStartPos, iEndPos, pbDuplFragment, &dbe);
+                  bHasJ = true;
+                  break;
                }
             }
-            else
-               printf(" Warning:  compoundmod length %d, start %d, end %d, prot %s\n", iLen, iStartPos, iEndPos, dbe.strName.c_str());
+
+            if (bHasJ)  // does this peptide region contain the "J"?
+               CompoundModSearch(szProteinSeq, iStartPos, iEndPos, pbDuplFragment, &dbe);
          }
 
          if (iNtermPeptideOnly)
@@ -6650,7 +6648,7 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
    int piVarModSites[MAX_PEPTIDE_LEN_P2];
    int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
 
-   for (int iEndPos = iStartPos+1; iEndPos <= iInputEndPos; ++iEndPos)
+   for (int iEndPos = iStartPos; iEndPos <= iInputEndPos; ++iEndPos)
    {
       iLenPeptide = iEndPos - iStartPos + 1;
 
@@ -6675,6 +6673,7 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
          if (!bHasJ)
             continue;
 
+         // for this start and end, first calculate the peptide mass
          double dCalcPepMass = g_staticParams.precalcMasses.dNtermProton + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
          if (iStartPos == 0)
             dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
@@ -6686,20 +6685,20 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
          memset(piVarModSites, 0, _iSizepiVarModSites);
          memset(piVarModSitesDecoy, 0, _iSizepiVarModSites);
 
-
          // szProteinSeq is full peptide with a J in the sequence.
          // Loop through the list of masses as variable mod on J
          for (size_t iWhichCompoundMass = 0; iWhichCompoundMass < g_staticParams.variableModParameters.iNumCompoundMasses; ++iWhichCompoundMass)
          {
-            double dModMass = dCalcPepMass +  g_staticParams.variableModParameters.vdCompoundMasses[iWhichCompoundMass];
+            // dModMass is the calculated peptide mass + each compound modification mass
+            double dModMass = dCalcPepMass +  g_staticParams.variableModParameters.vdCompoundMasses.at(iWhichCompoundMass);
 
             if (dModMass > g_massRange.dMaxMass)
                break;
 
-            int iFoundVariableMod = 100 + iWhichCompoundMass;  // modification entries >= 100 in piVarModsites is compoundmods
+            int iVarModCode = 100 + iWhichCompoundMass;  // modification entries >= 100 in piVarModsites is compoundmods
          
-            piVarModSites[iJPosition] = iFoundVariableMod;
-            piVarModSitesDecoy[iEndPos - iJPosition] = iFoundVariableMod;
+            piVarModSites[iJPosition] = iVarModCode;
+            piVarModSitesDecoy[iEndPos - iJPosition] = iVarModCode;
 
             int iWhichQuery = WithinMassTolerance(dModMass, szProteinSeq, iStartPos, iEndPos);
 
@@ -6712,7 +6711,8 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
                {
                   if (dModMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
                   {
-                     // If calculated mass is smaller than low mass range.
+                     // If calculated mass is smaller than low mass range then don't continue as
+                     // it will be smaller than all subsequent iWhichQuery entries
                      break;
                   }
 
@@ -6755,8 +6755,8 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
 
                               _pdAAreverse[iPosForward] = dYion;
 
-#ifdef _WIN32
-printf(" \b"); fflush(stdout);  // FIX: while debugging Windows build, this mysteriously allows program to run to completion
+#ifdef _WIN32                   // FIX: while debugging Windows build, this mysteriously allows program
+printf(" \b"); fflush(stdout);  // to run to completion until I can figure out what the issue is.
 #endif
                            }
 
@@ -6833,6 +6833,7 @@ printf(" \b"); fflush(stdout);  // FIX: while debugging Windows build, this myst
                               }
                            }
                         }
+
                      }
 
                      if (bFirstTimeThroughLoopForPeptide)
