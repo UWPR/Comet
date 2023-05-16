@@ -6674,7 +6674,8 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
             continue;
 
          // for this start and end, first calculate the peptide mass
-         double dCalcPepMass = g_staticParams.precalcMasses.dNtermProton + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
+         double dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+
          if (iStartPos == 0)
             dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
          if (iEndPos == iProteinSeqLengthMinus1)
@@ -6998,3 +6999,4 @@ printf(" \b"); fflush(stdout);  // to run to completion until I can figure out w
       }
    }
 }
+

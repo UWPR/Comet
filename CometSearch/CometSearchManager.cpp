@@ -1744,9 +1744,14 @@ bool CometSearchManager::DoSearch()
       }
       fclose(fp);
 
-      g_staticParams.variableModParameters.iNumCompoundMasses = g_staticParams.variableModParameters.vdCompoundMasses.size();
-
+      // sort masses
       sort(g_staticParams.variableModParameters.vdCompoundMasses.begin(), g_staticParams.variableModParameters.vdCompoundMasses.end());
+
+      // remove duplicates
+      g_staticParams.variableModParameters.vdCompoundMasses.erase( unique( g_staticParams.variableModParameters.vdCompoundMasses.begin(),
+               g_staticParams.variableModParameters.vdCompoundMasses.end() ), g_staticParams.variableModParameters.vdCompoundMasses.end() );
+
+      g_staticParams.variableModParameters.iNumCompoundMasses = g_staticParams.variableModParameters.vdCompoundMasses.size();
 
       if (g_staticParams.variableModParameters.iNumCompoundMasses > 0)
          g_staticParams.variableModParameters.bVarModSearch = true;
