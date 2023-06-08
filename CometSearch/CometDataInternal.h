@@ -427,7 +427,7 @@ struct PlainPeptideIndex
    string sPeptide;
    char   szPrevNextAA[2];
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
-   double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptideStruct
+   double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
 
    bool operator==(const PlainPeptideIndex &rhs) const
    {
@@ -443,6 +443,8 @@ struct FragmentPeptidesStruct
    int iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndex
    int modNumIdx;
    double dPepMass;     // peptide mass (modified or unmodified) after permuting mods
+   short siNtermMod;
+   short siCtermMod;
 
    bool operator<(const FragmentPeptidesStruct& a) const
    {
@@ -515,6 +517,7 @@ struct PrecalcMasses
 struct VarModParams
 {
    bool    bVarModSearch;            // set to true if variable mods are specified
+   bool    bVarTermModSearch;        // set to true if any n-term/c-term variable mods are specified
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
    bool    bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
@@ -526,6 +529,7 @@ struct VarModParams
    VarModParams& operator=(VarModParams& a)
    {
       bVarModSearch = a.bVarModSearch;
+      bVarTermModSearch = a.bVarTermModSearch;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;
       bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
@@ -902,7 +906,12 @@ extern vector<ModificationNumber> MOD_NUMBERS;
 extern vector<string> MOD_SEQS;    // Unique modifiable sequences.
 extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
-extern int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
+
+// Index into the MOD_SEQS vector
+// -1 for peptides that have no modifiable amino acids
+// -2 for peptides with no modifiable amino acids but contain n/c-term mods
+extern int* PEPTIDE_MOD_SEQ_IDXS;
+
 extern int MOD_NUM;
 extern bool g_vFragmentIndexRead;       // set to true when fragment index file is read
 extern bool g_vPlainPeptideIndexRead;   // set to true if plain peptide index file is read

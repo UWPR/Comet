@@ -215,11 +215,42 @@ void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& g_vRa
 {
    // AddFragments(iWhichPeptide, modNumIdx) for unmodified peptide
    // FIX: if require variable mod is set, this would not be called here
-   AddFragments(g_vRawPeptides, iWhichPeptide, -1);
+   AddFragments(g_vRawPeptides, iWhichPeptide, -1, -1, -1);
 
    int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
 
-   if (modSeqIdx == -1)
+   // Possibly analyze peptides with a terminal mod and no variable mod on any residue
+   if (g_staticParams.variableModParameters.bVarTermModSearch)
+   {
+      // Add any n-term variable mods
+      for (short ctNtermMod=0; ctNtermMod<VMODS; ++ctNtermMod)
+      {
+         if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod)
+            AddFragments(g_vRawPeptides, iWhichPeptide, -1, ctNtermMod, -1);
+      }
+
+      // Add any c-term variable mods
+      for (short ctCtermMod=0; ctCtermMod<VMODS; ++ctCtermMod)
+      {
+         if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
+            AddFragments(g_vRawPeptides, iWhichPeptide, -1, -1, ctCtermMod);
+      }
+
+      // Now consider combinations of n-term and c-term variable mods
+      for (short ctNtermMod=0; ctNtermMod<VMODS; ++ctNtermMod)
+      {
+         for (short ctCtermMod=0; ctCtermMod<VMODS; ++ctCtermMod)
+         {
+            if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
+                  && g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
+            {
+               AddFragments(g_vRawPeptides, iWhichPeptide, -1, ctNtermMod, ctCtermMod);
+            }
+         }
+      }
+   }
+
+   if (modSeqIdx < 0)
    {
       iNoModificationNumbers += 1;
       // peptide is not modified, skip following permuting code
@@ -238,8 +269,37 @@ void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& g_vRa
 
    for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
    {
-      // add fragment ions for each modification permutation
-      AddFragments(g_vRawPeptides, iWhichPeptide, modNumIdx);
+      AddFragments(g_vRawPeptides, iWhichPeptide, modNumIdx, -1, -1);
+
+      if (g_staticParams.variableModParameters.bVarTermModSearch)
+      {
+         // Add any n-term variable mods
+         for (short ctNtermMod=0; ctNtermMod<VMODS; ++ctNtermMod)
+         {
+            if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod)
+               AddFragments(g_vRawPeptides, iWhichPeptide, modNumIdx, ctNtermMod, -1);
+         }
+
+         // Add any c-term variable mods
+         for (short ctCtermMod=0; ctCtermMod<VMODS; ++ctCtermMod)
+         {
+            if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
+               AddFragments(g_vRawPeptides, iWhichPeptide, modNumIdx, -1, ctCtermMod);
+         }
+
+         // Now consider combinations of n-term and c-term variable mods
+         for (short ctNtermMod=0; ctNtermMod<VMODS; ++ctNtermMod)
+         {
+            for (short ctCtermMod=0; ctCtermMod<VMODS; ++ctCtermMod)
+            {
+               if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
+                     && g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
+               {
+                  AddFragments(g_vRawPeptides, iWhichPeptide, modNumIdx, ctNtermMod, ctCtermMod);
+               }
+            }
+         }
+      }
    }
 }
 
@@ -259,16 +319,18 @@ bool CometFragmentIndex::SortFragmentsByPepMass(unsigned int x, unsigned int y)
 
 void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
                                       int iWhichPeptide,
-                                      int modNumIdx)
+                                      int modNumIdx,
+                                      short siNtermMod,
+                                      short siCtermMod)
 {
    string sPeptide = g_vRawPeptides.at(iWhichPeptide).sPeptide;
 
    ModificationNumber modNum;
    char* mods = NULL;
-   int modSeqIdx;
+   int modSeqIdx = -1;
    string modSeq;
 
-   if (modNumIdx != -1)  // set modified peptide info
+   if (modNumIdx >= 0)  // set modified peptide info
    {
       modNum = MOD_NUMBERS.at(modNumIdx);
       mods = modNum.modifications;
@@ -291,7 +353,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    {
       dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
 
-      if (modNumIdx != -1) // handle the variable mods if present on peptide
+      if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
          if (sPeptide[i] == modSeq[j])
          {
@@ -304,6 +366,22 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
       }
    }
 
+   if (siNtermMod >= 0)  // if -1, unused
+   {
+      dBion += g_staticParams.variableModParameters.varModList[(int)siNtermMod].dVarModMass;
+      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)siNtermMod].dVarModMass;
+   }
+   if (siCtermMod >= 0)  // if -1, unused
+   {
+      dYion += g_staticParams.variableModParameters.varModList[(int)siCtermMod].dVarModMass;
+      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)siCtermMod].dVarModMass;
+   }
+
+   if (dCalcPepMass > 99999.9)
+   {
+      printf(" Error, pepmass in AddFragments is %f, peptide %s, modNumIdx %d\n", dCalcPepMass, sPeptide.c_str(), modNumIdx);
+      exit(1);
+   }
    if (dCalcPepMass > g_massRange.dMaxMass)
       return;
 
@@ -311,15 +389,17 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    sTmp.iWhichPeptide = iWhichPeptide;
    sTmp.modNumIdx = modNumIdx;
    sTmp.dPepMass = dCalcPepMass;
+   sTmp.siNtermMod = siNtermMod;
+   sTmp.siCtermMod = siCtermMod;
 
 #if USEFRAGMENTTHREADS == 1
    Threading::LockMutex(_vFragmentPeptidesMutex);
 #endif
 
-   // store peptide representation based on sequence (iWhichPeptide), modification state (iModNumIdx), and mass (dPepMass)
+   // store peptide representation based on sequence (iWhichPeptide), modification state (modNumIdx), and mass (dPepMass)
    g_vFragmentPeptides.push_back(sTmp);
    unsigned int uiCurrentFragmentPeptide = g_vFragmentPeptides.size() - 1;  // index of current peptide in g_vFragmentPeptides
-                                                                            //
+
 
 /*
 if (!(iWhichPeptide%5000))
@@ -353,7 +433,7 @@ if (!(iWhichPeptide%5000))
       dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
       dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[iPosReverse]];
 
-      if (modNumIdx != -1) // handle the variable mods if present on peptide
+      if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
          if (sPeptide[i] == modSeq[j])
          {

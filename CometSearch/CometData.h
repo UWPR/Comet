@@ -225,6 +225,9 @@ struct VarMods
    int    iWhichTerm;
    int    bRequireThisMod;
    char   szVarModChar[MAX_VARMOD_AA];
+   bool   bNtermMod;  // set to true if n-term mod
+   bool   bCtermMod;  // set to true if c-term mod
+   bool   bUseMod;    // set to true if non-zero mod mass
 
    VarMods()
    {
@@ -237,6 +240,9 @@ struct VarMods
       dVarModMass = 0.0;
       dNeutralLoss = 0.0;
       szVarModChar[0] = '\0';
+      bNtermMod = false;
+      bCtermMod = false;
+      bUseMod = false;
    }
 
    VarMods(const VarMods& a)
@@ -250,6 +256,9 @@ struct VarMods
       dVarModMass = a.dVarModMass;
       dNeutralLoss = a.dNeutralLoss;
       strcpy(szVarModChar, a.szVarModChar);
+      bNtermMod  = a.bNtermMod;
+      bCtermMod  = a.bCtermMod;
+      bUseMod  = a.bUseMod;
    }
 
    VarMods& operator=(VarMods& a)
@@ -263,6 +272,9 @@ struct VarMods
       dVarModMass = a.dVarModMass;
       strcpy(szVarModChar, a.szVarModChar);
       dNeutralLoss = a.dNeutralLoss;
+      bNtermMod  = a.bNtermMod;
+      bCtermMod  = a.bCtermMod;
+      bUseMod  = a.bUseMod;
 
       return *this;
    }

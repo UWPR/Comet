@@ -1152,6 +1152,7 @@ bool CometSearchManager::InitializeStaticParams()
    // Variable mod search for AAs listed in szVarModChar.
    g_staticParams.szMod[0] = '\0';
    g_staticParams.variableModParameters.bVarModSearch = false;
+   g_staticParams.variableModParameters.bVarTermModSearch = false;
    g_staticParams.variableModParameters.bBinaryModSearch = false;
 // g_staticParams.variableModParameters.bRequireVarMod = false;  // this is initialized above with require_var_mod parameter
 
@@ -1216,6 +1217,20 @@ bool CometSearchManager::InitializeStaticParams()
                g_staticParams.variableModParameters.varModList[i].dVarModMass);
 
          g_staticParams.variableModParameters.bVarModSearch = true;
+
+         g_staticParams.variableModParameters.varModList[i].bUseMod = true;
+
+         if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n'))
+         {
+            g_staticParams.variableModParameters.varModList[i].bNtermMod = true;
+            g_staticParams.variableModParameters.bVarTermModSearch = true;
+         }
+
+         if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
+         {
+            g_staticParams.variableModParameters.varModList[i].bCtermMod = true;
+            g_staticParams.variableModParameters.bVarTermModSearch = true;
+         }
 
          if (g_staticParams.variableModParameters.varModList[i].iBinaryMod)
             g_staticParams.variableModParameters.bBinaryModSearch = true;

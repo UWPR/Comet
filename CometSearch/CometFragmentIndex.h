@@ -78,7 +78,9 @@ private:
    static void PrintFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides);
    static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
                             int iWhichPeptide,
-                            int modNumIdx);
+                            int modNumIdx,
+                            short siNtermMod,
+                            short siCtermMod);
 // static void ReadPlainPeptideIndexEntry(struct PlainPeptideIndex *sDBI,
 //                                        FILE *fp);
    static void AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,

@@ -45,6 +45,7 @@ chrono::time_point<chrono::steady_clock> ModificationsPermuter::startTime()
    return chrono::steady_clock::now();
 }
 
+
 void ModificationsPermuter::endTime(chrono::time_point<chrono::steady_clock> start, string message)
 {
    const auto stop = chrono::steady_clock::now();
@@ -54,6 +55,7 @@ void ModificationsPermuter::endTime(chrono::time_point<chrono::steady_clock> sta
    cout << message << " in " << minutes << " minutes " << seconds  << " seconds" << endl;
 }
 
+
 long ModificationsPermuter::duration(chrono::time_point<chrono::steady_clock> start)
 {
    const auto stop = chrono::steady_clock::now();
@@ -61,10 +63,12 @@ long ModificationsPermuter::duration(chrono::time_point<chrono::steady_clock> st
    return static_cast<long>(duration.count());
 }
 
+
 bool ModificationsPermuter::ignorePeptidesWithTooManyMods()
 {
    return (KEEP_ALL_PEPTIDES == 1);
 }
+
 
 bool ModificationsPermuter::isModifiable(char aa,
                                          vector<string>& ALL_MODS)
@@ -78,11 +82,13 @@ bool ModificationsPermuter::isModifiable(char aa,
    return false;
 }
 
+
 void ModificationsPermuter::printBits(unsigned long long number)
 {
    std::bitset<64> x(number);
    cout << x << endl;
 }
+
 
 // Generate all the n-choose-k bitmask combinations for sequences of length 'n' with 'k' modified residues
 void ModificationsPermuter::getCombinations(int n,
@@ -113,6 +119,7 @@ void ModificationsPermuter::getCombinations(int n,
    }
    delete[] combinations;
 }
+
 
 // Generate all the bitmask combinations for sequences of length 'maxPeptideLen' with up to 'maxMods' modified residues
 void ModificationsPermuter::initCombinations(int maxPeptideLen,
@@ -207,6 +214,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
    *ALL_COMBINATION_CNT = totalCount;
 }
 
+
 vector<string> ModificationsPermuter::readPeptides(string file)
 {
    vector <string> peptides;
@@ -231,6 +239,7 @@ vector<string> ModificationsPermuter::readPeptides(string file)
    return peptides;
 }
 
+
 // Return a sequence comprising the amino acids in the given peptide that can have a modification. 
 string ModificationsPermuter::getModifiableAas(std::string peptide,
                                                vector<string>& ALL_MODS)
@@ -253,6 +262,7 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
 
    return modifiableAas;
 }
+
 
 vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptideIndex>& vRawPeptides,
                                                              int* PEPTIDE_MOD_SEQ_IDXS,
@@ -284,16 +294,23 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
             PEPTIDE_MOD_SEQ_IDXS[pepIdx] = idx;
          }
       }
+      else if (g_staticParams.variableModParameters.bVarTermModSearch)
+      {
+         PEPTIDE_MOD_SEQ_IDXS[pepIdx] = -2;
+      }
       else
       {
          PEPTIDE_MOD_SEQ_IDXS[pepIdx] = -1;
       }
+
       pepIdx++;
    }
+
 
    cout << " - modifiable peptides: " << std::to_string(modifiablePeptides) << "; " << std::to_string(ret.size()) << " unique modifiable sequences" << endl;
    return ret;
 }
+
 
 // Iterate over the modSeq and set the bit to 1 if the amino acid at an index matches the given modChar
 // Example: CMHQQQMK -> 01000010 (for modChar = 'M')
@@ -312,6 +329,7 @@ unsigned long long ModificationsPermuter::getModBitmask(string* modSeq,
 
    return bitMask;
 }
+
 
 // Return the number of ways we can combine the given number of modifications. 
 // Example: modCount = 3
@@ -345,6 +363,7 @@ vector<vector<int>> ModificationsPermuter::getCombinationSets(int modCount)
    return allSets;
 }
 
+
 // Returns the number of possible modification combinations.
 // Sequence: MSMSK
 // combinationCounts: 1(M) -> 3 {10000, 00100, 10100}
@@ -372,6 +391,7 @@ int ModificationsPermuter::getTotalCombinationCount(vector<int> combinationCount
    }
    return ignorePeptidesWithTooManyMods() && allCombos > MAX_COMBINATIONS ? -1 : allCombos; 
 }
+
 
 bool ModificationsPermuter::combine(int* modNumbers,
                                     unsigned long long* bitmasks,
@@ -422,7 +442,6 @@ bool ModificationsPermuter::combine(int* modNumbers,
    }
 
    ModificationNumber modification;
-//   modification.modificationNumber = MOD_NUM++;
    MOD_NUM++;  //FIX:  confirm this is not needed either
    modification.modifications = mods;
    modification.modStringLen = modStringLen;
@@ -666,6 +685,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
 
       *ret_modNumStart = startModNum;
       *ret_modNumCount = totalModNumCount;
+
    }
    else
    {
@@ -685,6 +705,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
 
    TIME_GEN_MODS += duration(startGenMods);
 }
+
 
 void ModificationsPermuter::getModificationCombinations(const vector<string> modifiableSeqs,
                                                         int max_mods_per_mod,
