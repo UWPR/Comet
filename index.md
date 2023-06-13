@@ -24,12 +24,14 @@ GitHub](https://github.com/UWPR/Comet) in September 2021.
 
 Comet is multithreaded, supports multiple input and output formats, and
 binaries are available for both Windows and Linux operating systems.  Note that
-Comet is just a single command line binary that perfoms  MS/MS database search.
+Comet is just a single command line binary that performs  MS/MS database search.
 It takes in spectra in various supported input formats, using the [MSToolkit
 C++ library](https://github.com/mhoopmann/mstoolkit), and writes .pep.xml,
 .pin, .sqt and/or .txt files. You will need some other support tool(s) to
-actually make use of Comet results. Consider using [one of the many proteomics
-software suites](/Comet/releases/) that Comet is integrated into.
+actually make use of Comet results. Unless you specifically know that you want
+to use the standalone Comet command line binary available from this repository,
+you should start with [one of the many proteomics software suites](/Comet/releases/)
+that Comet is integrated into.
 
 
 ### Publications
