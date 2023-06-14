@@ -724,7 +724,26 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
 
-   GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerance);
+   if (GetParamValue("peptide_mass_tolerance", doubleRangeData))
+   {
+      if ((doubleRangeData.dEnd > doubleRangeData.dStart))
+      {
+         g_staticParams.tolerances.dInputToleranceMinus = doubleRangeData.dStart;
+         g_staticParams.tolerances.dInputTolerancePlus = doubleRangeData.dEnd;
+      }
+      else if ( doubleRangeData.dEnd == 0.0 && doubleRangeData.dStart > 0.0)
+      {
+         g_staticParams.tolerances.dInputToleranceMinus = -doubleRangeData.dStart;  // if only 1 entry entered, use -/+ value for tolerance
+         g_staticParams.tolerances.dInputTolerancePlus = doubleRangeData.dStart;
+      }
+      else
+      {
+         string strErrorMsg = " Error - with the \"peptide_mass_tolerance\" parameter entry.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(szErrorMsg);
+         return false;
+      }
+   }
 
    GetParamValue("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
    if ((g_staticParams.tolerances.iMassToleranceType < 0)
@@ -2779,9 +2798,11 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
 
-   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
+   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth);
    double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
    bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
+   int iSize;
+   ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
 
    if (!bSucceeded)
       goto cleanup_results;
@@ -2817,12 +2838,10 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    else
       g_sCometVersion = comet_version;
 
-   ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
-
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(tp);
 
-   int iSize = g_pvQuery.at(0)->iMatchPeptideCount;
+   iSize = g_pvQuery.at(0)->iMatchPeptideCount;
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 

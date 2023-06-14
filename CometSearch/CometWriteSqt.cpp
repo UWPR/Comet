@@ -78,7 +78,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    fprintf(fpout, "H\tDatabase\t%s\n", g_staticParams.databaseInfo.szDatabase );
    fprintf(fpout, "H\tFragmentMasses\t%s\n", g_staticParams.massUtility.bMonoMassesFragment?"MONO":"AVG");
    fprintf(fpout, "H\tPrecursorMasses\t%s\n", g_staticParams.massUtility.bMonoMassesParent?"MONO":"AVG");
-   fprintf(fpout, "H\tPrecursorMassTolerance\t%0.6f\n", g_staticParams.tolerances.dInputTolerance);
+   fprintf(fpout, "H\tPrecursorMassTolerance\t%0.6f\t%0.6f\n", g_staticParams.tolerances.dInputToleranceMinus, g_staticParams.tolerances.dInputTolerancePlus);
    fprintf(fpout, "H\tFragmentMassTolerance\t%0.6f\n", g_staticParams.tolerances.dFragmentBinSize);
    fprintf(fpout, "H\tEnzymeName\t%s\n", g_staticParams.enzymeInformation.szSearchEnzymeName);
    fprintf(fpout, "H\tAlgo-IonSeries\t 0 0 0 %0.1f %0.1f %0.1f 0.0 0.0 0.0 %0.1f %0.1f %0.1f\n",

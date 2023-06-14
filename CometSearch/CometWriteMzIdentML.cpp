@@ -1175,18 +1175,18 @@ void CometWriteMzIdentML::WriteTolerance(FILE *fpout)
 
    if (g_staticParams.tolerances.iMassToleranceUnits == 0)
    {
-      fprintf(fpout, "    <cvParam accession=\"MS:1001412\" name=\"search tolerance plus value\" value=\"%lf\" cvRef=\"PSI-MS\" unitAccession=\"UO:0000221\" unitName=\"dalton\" unitCvRef=\"UO\" />\n", g_staticParams.tolerances.dInputTolerance);
-      fprintf(fpout, "    <cvParam accession=\"MS:1001413\" name=\"search tolerance minus value\" value=\"%lf\" cvRef=\"PSI-MS\" unitAccession=\"UO:0000221\" unitName=\"dalton\" unitCvRef=\"UO\" />\n", g_staticParams.tolerances.dInputTolerance);
+      fprintf(fpout, "    <cvParam accession=\"MS:1001412\" name=\"search tolerance plus value\" value=\"%lf\" cvRef=\"PSI-MS\" unitAccession=\"UO:0000221\" unitName=\"dalton\" unitCvRef=\"UO\" />\n", g_staticParams.tolerances.dInputToleranceMinus);
+      fprintf(fpout, "    <cvParam accession=\"MS:1001413\" name=\"search tolerance minus value\" value=\"%lf\" cvRef=\"PSI-MS\" unitAccession=\"UO:0000221\" unitName=\"dalton\" unitCvRef=\"UO\" />\n", g_staticParams.tolerances.dInputTolerancePlus);
    }
    else if (g_staticParams.tolerances.iMassToleranceUnits == 2)
    {
-      fprintf(fpout, "   <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001412\" name=\"search tolerance plus value\" value=\"%lf\" unitAccession=\"UO:0000169\" unitName=\"parts per million\" unitCvRef=\"UO\"></cvParam>\n", g_staticParams.tolerances.dInputTolerance);
-      fprintf(fpout, "   <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001413\" name=\"search tolerance minus value\" value=\"%lf\" unitAccession=\"UO:0000169\" unitName=\"parts per million\" unitCvRef=\"UO\"></cvParam>\n", g_staticParams.tolerances.dInputTolerance);
+      fprintf(fpout, "   <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001412\" name=\"search tolerance plus value\" value=\"%lf\" unitAccession=\"UO:0000169\" unitName=\"parts per million\" unitCvRef=\"UO\"></cvParam>\n", g_staticParams.tolerances.dInputToleranceMinus);
+      fprintf(fpout, "   <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001413\" name=\"search tolerance minus value\" value=\"%lf\" unitAccession=\"UO:0000169\" unitName=\"parts per million\" unitCvRef=\"UO\"></cvParam>\n", g_staticParams.tolerances.dInputTolerancePlus);
    }
    else  // invalid
    {
-      fprintf(fpout, "   <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001412\" name=\"search tolerance plus value\" value=\"%lf\"></cvParam>\n", g_staticParams.tolerances.dInputTolerance);
-      fprintf(fpout, "   <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001413\" name=\"search tolerance minus value\" value=\"%lf\"></cvParam>\n", g_staticParams.tolerances.dInputTolerance);
+      fprintf(fpout, "   <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001412\" name=\"search tolerance plus value\" value=\"%lf\"></cvParam>\n", g_staticParams.tolerances.dInputToleranceMinus);
+      fprintf(fpout, "   <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001413\" name=\"search tolerance minus value\" value=\"%lf\"></cvParam>\n", g_staticParams.tolerances.dInputTolerancePlus);
    }
 
    fprintf(fpout, "   </ParentTolerance>\n");

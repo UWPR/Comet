@@ -672,10 +672,12 @@ void LoadParameters(char *pszParamsFile,
             }
             else if (!strcmp(szParamName, "peptide_mass_tolerance"))
             {
-               sscanf(szParamVal, "%lf", &dDoubleParam);
+               doubleRangeParam.dStart = 0.0;
+               doubleRangeParam.dEnd = 0.0;
+               sscanf(szParamVal, "%lf %lf", &doubleRangeParam.dStart, &doubleRangeParam.dEnd);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, dDoubleParam);
+               sprintf(szParamStringVal, "%lf %lf", doubleRangeParam.dStart, doubleRangeParam.dEnd);
+               pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, doubleRangeParam);
             }
             else if (!strcmp(szParamName, "precursor_tolerance_type"))
             {
@@ -1534,7 +1536,7 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 "#\n\
 # masses\n\
 #\n\
-peptide_mass_tolerance = 20.00\n\
+peptide_mass_tolerance = -20.00 20.0   # lower and upper bound of the precursor mass tolerance\n\
 peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm\n\
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\

@@ -585,7 +585,8 @@ struct ToleranceParams
    int    iMassToleranceUnits;    // 0=amu, 1=mmu, else ppm (2)
    int    iMassToleranceType;     // 0=MH+ (default), 1=precursor m/z; only valid if iMassToleranceUnits > 0
    int    iIsotopeError;
-   double dInputTolerance;        // tolerance from param file
+   double dInputToleranceMinus;   // raw tolerance value from param file, lower bound; gets converted to dPeptideMassToleranceMinus
+   double dInputTolerancePlus;    // raw tolerance value from param file, upper bound; gets converted to dPeptideMassTolerancePlus
    double dFragmentBinSize;
    double dFragmentBinStartOffset;
    double dMatchPeakTolerance;
@@ -595,7 +596,8 @@ struct ToleranceParams
       iMassToleranceUnits = a.iMassToleranceUnits;
       iMassToleranceType = a.iMassToleranceType;
       iIsotopeError = a.iIsotopeError;
-      dInputTolerance = a.dInputTolerance;
+      dInputToleranceMinus = a.dInputToleranceMinus;
+      dInputTolerancePlus = a.dInputTolerancePlus;
       dFragmentBinSize = a.dFragmentBinSize;
       dFragmentBinStartOffset = a.dFragmentBinStartOffset;
       dMatchPeakTolerance = a.dMatchPeakTolerance;
@@ -874,7 +876,8 @@ struct StaticParams
       tolerances.iMassToleranceUnits = 0;
       tolerances.iMassToleranceType = 0;
       tolerances.iIsotopeError = 0;
-      tolerances.dInputTolerance = 3.0;                     // peptide_mass_tolerance
+      tolerances.dInputToleranceMinus = -3.0;               // peptide_mass_tolerance minus
+      tolerances.dInputTolerancePlus = 3.0;                 // peptide_mass_tolerance plus
       tolerances.dFragmentBinSize = 1.0005;
       tolerances.dFragmentBinStartOffset = 0.4;
       tolerances.dMatchPeakTolerance = 0.5;
