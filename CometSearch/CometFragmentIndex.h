@@ -32,7 +32,10 @@ public:
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
    static bool WritePlainPeptideIndex(ThreadPool *tp);
-   static bool WriteFragmentIndex(ThreadPool *tp);
+   static bool WriteFragmentIndex(char *szIndexFile,
+                                  comet_fileoffset_t lPeptidesFilePos,
+                                  comet_fileoffset_t lProteinsFilePos,
+                                  ThreadPool *tp);
    static bool ReadFragmentIndex(ThreadPool *tp);
    static bool ReadPlainPeptideIndex(void);
    static bool CreateFragmentIndex(ThreadPool *tp);

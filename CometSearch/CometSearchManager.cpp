@@ -738,6 +738,7 @@ bool CometSearchManager::InitializeStaticParams()
       }
       else
       {
+         char szErrorMsg[SIZE_ERROR];
          string strErrorMsg = " Error - with the \"peptide_mass_tolerance\" parameter entry.\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(szErrorMsg);
@@ -1725,7 +1726,7 @@ bool CometSearchManager::DoSearch()
          return bSucceeded;
 
       // write out .idx2 file containing fragment index
-      bSucceeded = CometFragmentIndex::WriteFragmentIndex(tp); // calls CreateFragmentIndex
+//    bSucceeded = CometFragmentIndex::WriteFragmentIndex(tp); // calls CreateFragmentIndex
 
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
