@@ -40,7 +40,8 @@ CometWriteMzIdentML::~CometWriteMzIdentML()
 
 
 void CometWriteMzIdentML::WriteMzIdentMLTmp(FILE *fpout,
-                                            FILE *fpoutd)
+                                            FILE *fpoutd,
+                                            int iBatchNum)
 {
    int i;
 
@@ -48,14 +49,14 @@ void CometWriteMzIdentML::WriteMzIdentMLTmp(FILE *fpout,
    if (g_staticParams.options.iDecoySearch == 2)
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
-         PrintTmpPSM(i, 1, fpout);
+         PrintTmpPSM(i, 1, iBatchNum, fpout);
       for (i=0; i<(int)g_pvQuery.size(); i++)
-         PrintTmpPSM(i, 2, fpoutd);
+         PrintTmpPSM(i, 2, iBatchNum, fpoutd);
    }
    else
    {
       for (i=0; i<(int)g_pvQuery.size(); i++)
-         PrintTmpPSM(i, 0, fpout);
+         PrintTmpPSM(i, 0, iBatchNum, fpout);
    }
 
    fflush(fpout);
@@ -184,61 +185,64 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                Stmp.iScanNumber = std::stoi(field);
                break;
             case 1:
-               Stmp.iXcorrRank = std::stoi(field);
+               Stmp.iBatchNum = std::stoi(field);
                break;
             case 2:
-               Stmp.iCharge = std::stoi(field);
+               Stmp.iXcorrRank = std::stoi(field);
                break;
             case 3:
-               Stmp.dExpMass= std::stod(field);
+               Stmp.iCharge = std::stoi(field);
                break;
             case 4:
-               Stmp.dCalcMass = std::stod(field);
+               Stmp.dExpMass= std::stod(field);
                break;
             case 5:
-               Stmp.dExpect = std::stod(field);
+               Stmp.dCalcMass = std::stod(field);
                break;
             case 6:
-               Stmp.fXcorr = std::stof(field);
+               Stmp.dExpect = std::stod(field);
                break;
             case 7:
-               Stmp.fCn = std::stof(field);
+               Stmp.fXcorr = std::stof(field);
                break;
             case 8:
-               Stmp.fSp = std::stof(field);
+               Stmp.fCn = std::stof(field);
                break;
             case 9:
-               Stmp.iRankSp = std::stoi(field);
+               Stmp.fSp = std::stof(field);
                break;
             case 10:
-               Stmp.iMatchedIons = std::stoi(field);
+               Stmp.iRankSp = std::stoi(field);
                break;
             case 11:
-               Stmp.iTotalIons = std::stoi(field);
+               Stmp.iMatchedIons = std::stoi(field);
                break;
             case 12:
-               Stmp.strPeptide = field;
+               Stmp.iTotalIons = std::stoi(field);
                break;
             case 13:
+               Stmp.strPeptide = field;
+               break;
+            case 14:
                Stmp.cPrevNext[0] = field.at(0);
                Stmp.cPrevNext[1] = field.at(1);
                break;
-            case 14:
+            case 15:
                Stmp.strMods = field;
                break;
-            case 15:
+            case 16:
                Stmp.strProtsTarget = field;
                break;
-            case 16:
+            case 17:
                Stmp.strProtsDecoy = field;
                break;
-            case 17:
+            case 18:
                Stmp.iWhichQuery = std::stoi(field);
                break;
-            case 18:
+            case 19:
                Stmp.iWhichResult = std::stoi(field);
                break;
-            case 19:
+            case 20:
                Stmp.dRTime = std::stod(field);
                break;
             default:
@@ -1343,13 +1347,15 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       string strProteinName;
       long lOffset;
 
-      fprintf(fpout, "    <SpectrumIdentificationResult id=\"SIR_%d.%d\" spectrumID=\"%d\" spectraData_ref=\"SD\">\n",
+      fprintf(fpout, "    <SpectrumIdentificationResult id=\"SIR_%d.%d.%d\" spectrumID=\"%d\" spectraData_ref=\"SD\">\n",
             (*itMzid).iWhichQuery,
             (*itMzid).iWhichResult + 1,
+            (*itMzid).iBatchNum,
             (*itMzid).iScanNumber);
-      fprintf(fpout, "     <SpectrumIdentificationItem id=\"SII_%d.%d\" rank=\"%d\" chargeState=\"%d\" peptide_ref=\"%s;%s\" experimentalMassToCharge=\"%f\" calculatedMassToCharge=\"%f\" passThreshold=\"false\">\n",
+      fprintf(fpout, "     <SpectrumIdentificationItem id=\"SII_%d.%d.%d\" rank=\"%d\" chargeState=\"%d\" peptide_ref=\"%s;%s\" experimentalMassToCharge=\"%f\" calculatedMassToCharge=\"%f\" passThreshold=\"false\">\n",
             (*itMzid).iWhichQuery,
             (*itMzid).iWhichResult + 1,
+            (*itMzid).iBatchNum,
             (*itMzid).iWhichResult + 1,
             (*itMzid).iCharge,
             (*itMzid).strPeptide.c_str(),
@@ -1440,6 +1446,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
 
 void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
                                       int iPrintTargetDecoy,
+                                      int iBatchNum,
                                       FILE *fpout)
 {
    if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
@@ -1529,6 +1536,7 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
             iRankXcorr++;
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
+         fprintf(fpout, "%d\t", iBatchNum);
          fprintf(fpout, "%d\t", iRankXcorr);
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iChargeState);
          fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);

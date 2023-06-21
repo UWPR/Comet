@@ -23,6 +23,7 @@ class CometWriteMzIdentML
    struct MzidTmpStruct        // stores the info from tab-delimited text file
    {
       int    iScanNumber;
+      int    iBatchNum;
       int    iXcorrRank;
       int    iCharge;
       int    iMatchedIons;
@@ -50,7 +51,8 @@ public:
 
 
    static void WriteMzIdentMLTmp(FILE *fpout,
-                                 FILE *fpoutd);
+                                 FILE *fpoutd,
+                                 int iBatchNum);
 
    static void WriteMzIdentML(FILE *fpout,
                               FILE *fpdb,
@@ -63,6 +65,7 @@ private:
 
    static void PrintTmpPSM(int iWhichQuery,
                            int iPrintTargetDecoy,
+                           int iBatchNum,
                            FILE *fpOut);
 
    static void WriteMods(FILE *fpout,
