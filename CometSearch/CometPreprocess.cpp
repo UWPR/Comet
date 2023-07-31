@@ -997,7 +997,6 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             g_pvQuery.push_back(pScoring);
             Threading::UnlockMutex(g_pvQueryMutex);
          }
-         else
       }
    }
 
