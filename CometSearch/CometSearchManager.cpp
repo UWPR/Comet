@@ -705,7 +705,35 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.variableModParameters.iMaxVarModPerPeptide = iIntData;
    }
 
-   GetParamValue("require_variable_mod", g_staticParams.variableModParameters.bRequireVarMod);
+   // Note that g_staticParams.variableModParameters.iRequireVarMod could also
+   // be set by each mod's bRequireThisMod later on in this function
+   if (GetParamValue("require_variable_mod", strData) && strData.length() > 0)
+   {
+      if (strData != "0")
+      {
+         // parse out comma separated list, set iRequireVarMod to integer value
+         // where set bits are the varmod that is required
+         string delimiter = ",";
+
+         int iModNum;
+         size_t pos = 0;
+         std::string token;
+         while ((pos = strData.find(delimiter)) != std::string::npos)
+         {
+            token = strData.substr(0, pos);
+            iModNum = stoi(token);
+            if (iModNum > 0 && iModNum < 10)
+               g_staticParams.variableModParameters.iRequireVarMod |= 1UL << iModNum;
+            strData.erase(0, pos + delimiter.length());
+         }
+         iModNum = stoi(strData);
+         if (iModNum > 0 && iModNum < 10)
+            g_staticParams.variableModParameters.iRequireVarMod |= 1UL << iModNum;
+      }
+   }
+
+   if (GetParamValue("database_name", strData))
+      strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
 
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
    if (g_staticParams.tolerances.dFragmentBinSize < 0.01)
@@ -1146,7 +1174,6 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.szMod[0] = '\0';
    g_staticParams.variableModParameters.bVarModSearch = false;
    g_staticParams.variableModParameters.bBinaryModSearch = false;
-// g_staticParams.variableModParameters.bRequireVarMod = false;  // this is initialized above with require_var_mod parameter
 
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
@@ -1214,7 +1241,9 @@ bool CometSearchManager::InitializeStaticParams()
             g_staticParams.variableModParameters.bBinaryModSearch = true;
 
          if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
-            g_staticParams.variableModParameters.bRequireVarMod = true;
+         {
+            g_staticParams.variableModParameters.iRequireVarMod |= 1UL << (i+1);  // set i+1 bit for 1 thru 9
+         }
 
          if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
             g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
@@ -1331,6 +1360,9 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.iPrecursorNLSize = (int)g_staticParams.precursorNLIons.size();
    if (g_staticParams.iPrecursorNLSize > MAX_PRECURSOR_NL_SIZE)
       g_staticParams.iPrecursorNLSize = MAX_PRECURSOR_NL_SIZE;
+
+// for (int x=1; x<=9; ++x)
+//    printf("OK bit %d: %d\n", x, (g_staticParams.variableModParameters.iRequireVarMod >> x) & 1U);
 
    return true;
 }

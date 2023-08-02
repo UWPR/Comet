@@ -646,10 +646,10 @@ void LoadParameters(char *pszParamsFile,
             }
             else if (!strcmp(szParamName, "require_variable_mod"))
             {
-               sscanf(szParamVal, "%d", &iIntParam);
-               szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%d", iIntParam);
-               pSearchMgr->SetParam("require_variable_mod", szParamStringVal, iIntParam);
+               char szRequireVariableMod[256];
+               szRequireVariableMod[0] = '\0';
+               sscanf(szParamVal, "%255s", szRequireVariableMod);
+               pSearchMgr->SetParam("require_variable_mod", szRequireVariableMod, szRequireVariableMod);
             }
             else if (!strcmp(szParamName, "fragment_bin_tol"))
             {

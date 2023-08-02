@@ -472,7 +472,7 @@ struct VarModParams
    bool    bVarModSearch;            // set to true if variable mods are specified
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
-   bool    bRequireVarMod;           // also set to true if any individual bRequireThisMod is true
+   int     iRequireVarMod;           // 0=no; else use bits to determine which varmods are required
    int     iMaxVarModPerPeptide;
    int     iMaxPermutations;
    VarMods varModList[VMODS];
@@ -745,6 +745,7 @@ struct StaticParams
       variableModParameters.iMaxVarModPerPeptide = 5;
       variableModParameters.iMaxPermutations = MAX_PERMUTATIONS;
       variableModParameters.bUseFragmentNeutralLoss = false;
+      variableModParameters.iRequireVarMod = 0;
 
       ionInformation.bUseWaterAmmoniaLoss = 0;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks

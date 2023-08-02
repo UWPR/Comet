@@ -786,10 +786,6 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
    int iScanNumber = spec.getScanNumber();
 
-   int bPrecursorHasCharge = 0;
-   if (spec.sizeZ() > 0)
-      bPrecursorHasCharge = 1;
-
    int iSpectrumCharge = 0;
 
    // To run a search, all that's needed is MH+ and Z. So need to generate
@@ -799,13 +795,12 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    for (int i = 0 ; i < spec.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
    {
       double dMZ = 0.0;              // m/z to use for analysis
-      bool bIgnoreSpectrumCharge = false;  // if set to true, use param settings for charge
       vector<int> vChargeStates;
 
       if (spec.sizeMZ() != spec.sizeZ())
       {
          // need to ignore any spectrum charge as don't know which correspond charge to which precursor
-         bIgnoreSpectrumCharge = true;
+         iSpectrumCharge = 0;
       }
       else
          iSpectrumCharge = spec.atZ(i).z;

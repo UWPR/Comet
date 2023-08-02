@@ -1672,7 +1672,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
       if (iLenPeptide < MAX_PEPTIDE_LEN - 1)  // account for terminating char
       {
-         if (g_staticParams.options.bCreateIndex && !g_staticParams.variableModParameters.bRequireVarMod)
+         if (g_staticParams.options.bCreateIndex && !g_staticParams.variableModParameters.iRequireVarMod)
          {
             if (WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos) == 1)
             {
@@ -1703,7 +1703,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                Threading::UnlockMutex(g_pvQueryMutex);
             }
          }
-         else if (!g_staticParams.variableModParameters.bRequireVarMod)
+         else if (!g_staticParams.variableModParameters.iRequireVarMod)
          {
             int iWhichQuery = WithinMassTolerance(dCalcPepMass, szProteinSeq, iStartPos, iEndPos);
 
@@ -5263,7 +5263,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                              }
                                           }
 
-                                          if (bValid && g_staticParams.variableModParameters.bRequireVarMod)
+                                          if (bValid && g_staticParams.variableModParameters.iRequireVarMod)
                                           {
                                              // Check to see if required mods are satisfied; here, we're just making
                                              // sure the number of possible modified residues for each mod is non-zero
@@ -5275,6 +5275,23 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                 {
                                                    bValid = false;
                                                    break;
+                                                }
+                                             }
+
+                                             if (!bValid)
+                                             {
+                                                // Above checked to see if any individual required variable mod is present.
+                                                // If we pass above, now check if logical OR of one from a set of mods
+                                                // is present.
+                                                bValid = false;
+                                                for (i=0; i<VMODS; ++i)
+                                                {
+                                                   if (((g_staticParams.variableModParameters.iRequireVarMod >> (i+1)) & 1U)
+                                                         && piTmpVarModCounts[i] > 0)
+                                                   {
+                                                      bValid = true;
+                                                      break;
+                                                   }
                                                 }
                                              }
                                           }
@@ -5809,7 +5826,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    }
 
    // Check to see if required mods are satisfied
-   if (g_staticParams.variableModParameters.bRequireVarMod)
+   if (g_staticParams.variableModParameters.iRequireVarMod)
    {
       for (j=0; j<VMODS; j++)
       {
@@ -5836,6 +5853,23 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                return true;
          }
       }
+
+      // above checked for required individual mods; now check if any of multiple mods is present
+      bool bValid = false;
+      int iSize = _varModInfo.iEndPos+2;
+      for (i=_varModInfo.iStartPos; i<=iSize; i++)
+      {
+         int iWhichMod = piVarModSites[i - _varModInfo.iStartPos];
+         if ((g_staticParams.variableModParameters.iRequireVarMod >> iWhichMod) & 1U)
+         {
+            bValid = true;
+            break;
+         }
+      }
+
+      if (!bValid)
+         return true;
+
    }
 
    // Check to see if variable mod cannot occur on c-term residue
