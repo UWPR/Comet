@@ -80,19 +80,20 @@ private:
                               ThreadPool *tp);
    static void PrintFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides);
    static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
+                            int iWhichThread,
                             int iWhichPeptide,
                             int modNumIdx,
                             short siNtermMod,
                             short siCtermMod);
-// static void ReadPlainPeptideIndexEntry(struct PlainPeptideIndex *sDBI,
-//                                        FILE *fp);
    static void AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,
-                                      size_t iWhichPeptide,
+                                      int iWhichThread,
+                                      int iNumIndexingThreads,
                                       int& iNoModificationNumbers,
                                       ThreadPool *tp);
    static bool SortFragmentsByPepMass(unsigned int x,
                                       unsigned int y);
    static void SortFragmentThreadProc(int i,
+                                      int iWhichThread,
                                       ThreadPool *tp);
    static bool CompareByPeptide(const DBIndex &lhs,
                                 const DBIndex &rhs);

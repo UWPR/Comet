@@ -333,8 +333,8 @@ private:
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
 
-   static Mutex _vFragmentIndexMutex;
-   static Mutex _vFragmentPeptidesMutex;
+// static Mutex _vFragmentIndexMutex;
+// static Mutex _vFragmentPeptidesMutex;
 
 };
 

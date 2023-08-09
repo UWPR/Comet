@@ -123,7 +123,6 @@ private:
                           int iArraySize);
    static bool SortByIon(const struct msdata &a,
                          const struct msdata &b);
-   static void StairStep(struct msdata *pTmpSpData);
    static bool IsValidInputType(int inputType);
 
 

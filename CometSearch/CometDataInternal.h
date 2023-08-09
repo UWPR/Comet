@@ -84,7 +84,7 @@ class CometSearchManager;
 
 struct msdata                    // used in the preprocessing
 {
-   double dIon;
+   int    iIon;
    double dIntensity;
 };
 
@@ -248,6 +248,7 @@ struct MassRange
 {
    double dMinMass;
    double dMaxMass;
+   double dMinFragmentMass;    // min fragment mass for fragment index
    double dMaxFragmentMass;    // max fragment mass for fragment index
    int    iMaxFragmentCharge;  // global maximum fragment charge
    bool   bNarrowMassRange;    // used to determine how to parse peptides in SearchForPeptides
@@ -452,7 +453,7 @@ struct FragmentPeptidesStruct
    }
 };
 
-extern vector<unsigned int>* g_arrvFragmentIndex;       // array of vectors: [BIN(fragment mass)][which entries in g_vFragmentPeptides]
+extern vector<unsigned int>* g_arrvFragmentIndex[8];       // array of vectors: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndex> g_vRawPeptides;
 

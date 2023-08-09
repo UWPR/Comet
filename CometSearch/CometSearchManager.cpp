@@ -50,7 +50,7 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-vector<unsigned int>* g_arrvFragmentIndex;                     // stores fragment index; g_pvFragmentIndex[BIN(mass)][which g_vFragmentPeptides entries]
+vector<unsigned int>* g_arrvFragmentIndex[8];               // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
 bool g_vPlainPeptideIndexRead = false;
@@ -1639,8 +1639,14 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
-    if (strstr(comet_version, version.c_str()) || strstr("2021.02", version.c_str()) || strstr("2021.01", version.c_str()) || strstr("2020.01", version.c_str()))
+    if (strstr(comet_version, version.c_str())
+          || strstr(version.c_str(), "2023.0")
+          || strstr(version.c_str(), "2022.0")
+          || strstr(version.c_str(), "2021.0")
+          || strstr(version.c_str(), "2020.0"))
+    {
        return true;
+    }
     else
        return false;
 }
@@ -1706,7 +1712,7 @@ bool CometSearchManager::DoSearch()
    else
       g_sCometVersion = std::string(comet_version);
 
-   if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+   if (!g_staticParams.options.bOutputSqtStream) // && !g_staticParams.bIndexDb)
    {
       sprintf(szOut, " Comet version \"%s\"", g_sCometVersion.c_str());
 //    if (!g_staticParams.options.bSkipUpdateCheck)
@@ -1717,6 +1723,9 @@ bool CometSearchManager::DoSearch()
       fflush(stdout);
    }
 
+   g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
+   g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
+
    if (g_staticParams.options.bCreateIndex) //index
    {
       // write out .idx file containing unmodified peptides and protein refs;
@@ -1724,9 +1733,6 @@ bool CometSearchManager::DoSearch()
       bSucceeded = CometFragmentIndex::WritePlainPeptideIndex(tp);
       if (!bSucceeded)
          return bSucceeded;
-
-      // write out .idx2 file containing fragment index
-//    bSucceeded = CometFragmentIndex::WriteFragmentIndex(tp); // calls CreateFragmentIndex
 
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
@@ -2206,6 +2212,23 @@ bool CometSearchManager::DoSearch()
          {
             logout("   - Reading all spectra into memory; set \"spectrum_batch_size\" if search terminates here.\n");
             fflush(stdout);
+
+         }
+
+         CometFragmentIndex sqSearch;
+
+         if (!g_vPlainPeptideIndexRead)
+         {
+            sqSearch.ReadPlainPeptideIndex();
+            g_vPlainPeptideIndexRead = true;
+
+//          sqSearch.CreateFragmentIndex(tp);
+//          g_vFragmentIndexRead = true;
+         }
+         if (!g_vFragmentIndexRead)
+         {
+            CometFragmentIndex::ReadFragmentIndex(tp);
+            g_vFragmentIndexRead = true;
          }
 
          int iBatchNum = 0;
@@ -2227,7 +2250,7 @@ bool CometSearchManager::DoSearch()
 #endif
 
             // Load and preprocess all the spectra.
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream)// && !g_staticParams.bIndexDb)
             {
                logout("   - Load spectra:");
 
@@ -2339,7 +2362,7 @@ bool CometSearchManager::DoSearch()
 
             g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
             g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
-            if(g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
+            if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
                g_massRange.bNarrowMassRange = true;
             else
                g_massRange.bNarrowMassRange = false;
