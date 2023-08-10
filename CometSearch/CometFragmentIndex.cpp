@@ -134,9 +134,18 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 
    MOD_SEQS = ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
+   cout << "   getModificationCombinations ";
+   auto tBeginTime = chrono::steady_clock::now();
+
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(MOD_SEQS, MAX_MODS_PER_MOD, ALL_MODS,
          MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+
+   auto tEndTime = chrono::steady_clock::now();
+   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tBeginTime);
+   long minutes = duration.count() / 60000;
+   long seconds = (duration.count() - minutes * 60000) / 1000;
+   cout << " (" << minutes << " minutes " << seconds  << " seconds)" << endl;
 }
 
 
@@ -157,7 +166,11 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    ThreadPool *pFragmentIndexPool = tp;
 
-   int iNumIndexingThreads = 4;
+   int iNumIndexingThreads = g_staticParams.options.iNumThreads;
+
+   if (iNumIndexingThreads > 8)
+      iNumIndexingThreads = 8;
+
    for (int iWhichThread = 0; iWhichThread<iNumIndexingThreads; ++iWhichThread)
    {
       pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, std::ref(g_vRawPeptides),
@@ -326,12 +339,18 @@ void CometFragmentIndex::SortFragmentThreadProc(int iBin,
                                                 ThreadPool *tp)
 {
    // first combine then sort
-   for (int iWhichThread = 1; iWhichThread < iNumIndexingThreads; ++iWhichThread)
+   if (iNumIndexingThreads > 1)
    {
-      if (g_arrvFragmentIndex[iWhichThread][iBin].size() > 0)
+      for (int iWhichThread = 1; iWhichThread < iNumIndexingThreads; ++iWhichThread)
       {
-         g_arrvFragmentIndex[0][iBin].insert(g_arrvFragmentIndex[0][iBin].begin(), g_arrvFragmentIndex[iWhichThread][iBin].begin(), g_arrvFragmentIndex[iWhichThread][iBin].end());
-         g_arrvFragmentIndex[iWhichThread][iBin].clear();
+         if (g_arrvFragmentIndex[iWhichThread][iBin].size() > 0)
+         {
+            g_arrvFragmentIndex[0][iBin].insert(g_arrvFragmentIndex[0][iBin].begin(),
+                  g_arrvFragmentIndex[iWhichThread][iBin].begin(),
+                  g_arrvFragmentIndex[iWhichThread][iBin].end());
+
+            g_arrvFragmentIndex[iWhichThread][iBin].clear();
+         }
       }
    }
 
@@ -524,7 +543,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       exit(1);
    }
 
-   sprintf(szOut, " Creating peptide/protein index file: ");
+   sprintf(szOut, " Creating plain peptide/protein index file: ");
    logout(szOut);
    fflush(stdout);
 
@@ -988,9 +1007,9 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    else // database already is .idx
       sprintf(szIndexFile, "%s", g_staticParams.databaseInfo.szDatabase);
 
-   auto tStartTime = chrono::steady_clock::now();
-   cout << " - reading file : " << szIndexFile;
-   fflush(stdout);
+// auto tStartTime = chrono::steady_clock::now();
+// cout << " - reading file : " << szIndexFile;
+// fflush(stdout);
 
    if ((fp = fopen(szIndexFile, "rb")) == NULL)
    {
@@ -1121,12 +1140,12 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    fclose(fp);
 
-   auto tEndTime = chrono::steady_clock::now();
-   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
-   long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes*60000) / 1000;
+// auto tEndTime = chrono::steady_clock::now();
+// auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
+// long minutes = duration.count() / 60000;
+// long seconds = (duration.count() - minutes*60000) / 1000;
 
-   cout << " (" << minutes << " minutes " << seconds  << " seconds)" << endl;
+// cout << " (" << minutes << " minutes " << seconds  << " seconds)" << endl;
 
    return true;
 }

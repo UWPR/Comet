@@ -2217,18 +2217,28 @@ bool CometSearchManager::DoSearch()
 
          CometFragmentIndex sqSearch;
 
-         if (!g_vPlainPeptideIndexRead)
+         if (g_staticParams.bIndexDb)
          {
-            sqSearch.ReadPlainPeptideIndex();
-            g_vPlainPeptideIndexRead = true;
+            if (!g_vPlainPeptideIndexRead)
+            {
+               sqSearch.ReadPlainPeptideIndex();
+               g_vPlainPeptideIndexRead = true;
 
-//          sqSearch.CreateFragmentIndex(tp);
-//          g_vFragmentIndexRead = true;
+//             sqSearch.CreateFragmentIndex(tp);
+//             g_vFragmentIndexRead = true;
+            }
+            if (!g_vFragmentIndexRead)
+            {
+               CometFragmentIndex::ReadFragmentIndex(tp);
+               g_vFragmentIndexRead = true;
+            }
          }
-         if (!g_vFragmentIndexRead)
+
+         auto tBeginTime = chrono::steady_clock::now();
+         if (g_staticParams.bIndexDb)
          {
-            CometFragmentIndex::ReadFragmentIndex(tp);
-            g_vFragmentIndexRead = true;
+            printf(" - searching : %s", g_staticParams.inputFile.szBaseName);
+            fflush(stdout);
          }
 
          int iBatchNum = 0;
@@ -2250,7 +2260,7 @@ bool CometSearchManager::DoSearch()
 #endif
 
             // Load and preprocess all the spectra.
-            if (!g_staticParams.options.bOutputSqtStream)// && !g_staticParams.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
                logout("   - Load spectra:");
 
@@ -2449,7 +2459,7 @@ bool CometSearchManager::DoSearch()
             // Sort g_pvQuery vector by scan.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
-            CalcRunTime(tStartTime);
+//          CalcRunTime(tStartTime);
 
 /*
             // Now set szPrevNextAA
@@ -2516,6 +2526,15 @@ bool CometSearchManager::DoSearch()
 
             if (!bSucceeded)
                break;
+         }
+
+         if (g_staticParams.bIndexDb)
+         {
+            auto tEndTime = chrono::steady_clock::now();
+            auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tBeginTime);
+            long minutes = duration.count() / 60000;
+            long seconds = (duration.count() - minutes * 60000) / 1000;
+            cout << " (" << minutes << " minutes " << seconds  << " seconds)" << endl;
          }
 
          if (bSucceeded)

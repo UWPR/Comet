@@ -35,7 +35,8 @@ public:
                              FILE *fpdb,
                              int iWhichQuery,
                              int iWhichResult,
-                             int iPrintTargetDecoy);
+                             int iPrintTargetDecoy,
+                             size_t *iNumProteins);
 
 private:
    static void PrintResults(int iWhichQuery,

@@ -148,17 +148,25 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       size_t iEnd = g_pvQuery.size();
 
-      auto tStartTime= chrono::steady_clock::now();
+      //Reuse existing ThreadPool
+      ThreadPool *pSearchThreadPool = tp;
+
+//    auto tStartTime= chrono::steady_clock::now();
 
       for (size_t iWhichQuery=0; iWhichQuery<iEnd; ++iWhichQuery)
-         SearchFragmentIndex(iWhichQuery, tp);
+         pSearchThreadPool->doJob(std::bind(SearchFragmentIndex, iWhichQuery, pSearchThreadPool));
+//       SearchFragmentIndex(iWhichQuery, tp);
 
+      pSearchThreadPool->wait_on_threads();
+
+/*
       auto tEndTime = chrono::steady_clock::now();
       auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
       long minutes = duration.count() / 60000;
       long seconds = (duration.count() - minutes*60000) / 1000;
 
       cout << " - time in search: " << minutes << " minutes " << seconds  << " seconds" << endl;
+*/
 
       return bSucceeded;
    }
@@ -178,7 +186,6 @@ bool CometSearch::RunSearch(int iPercentStart,
       comet_fileoffset_t iLen = 0;
 
       vector<OBOStruct> vectorPeffOBO;
-
 
       //Reuse existing ThreadPool
       ThreadPool *pSearchThreadPool = tp;
@@ -4695,7 +4702,7 @@ void CometSearch::SubtractVarMods(int *piVarModCounts,
    int i;
    for (i=0; i<VMODS; i++)
    {
-      if (!g_staticParams.variableModParameters.varModList[i].bUseMod
+      if (g_staticParams.variableModParameters.varModList[i].bUseMod
             && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
       {
          if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
@@ -4729,10 +4736,9 @@ void CometSearch::CountVarMods(int *piVarModCounts,
                                int cResidue,
                                int iResiduePosition)
 {
-   int i;
-   for (i=0; i<VMODS; i++)
+   for (int i=0; i<VMODS; ++i)
    {
-      if (!g_staticParams.variableModParameters.varModList[i].bUseMod
+      if (g_staticParams.variableModParameters.varModList[i].bUseMod
             && strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
       {
          if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
@@ -4778,7 +4784,7 @@ bool CometSearch::HasVariableMod(int *pVarModCounts,
    // next check n- and c-terminal residues
    for (i=0; i<VMODS; i++)
    {
-      if (!g_staticParams.variableModParameters.varModList[i].bUseMod)
+      if (g_staticParams.variableModParameters.varModList[i].bUseMod)
       {
          // if there's no distance contraint and an n- or c-term mod is specified
          // then return true because every peptide will have an n- or c-term
@@ -4987,7 +4993,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
 
       piVarModCountsNC[i] = piVarModCounts[i];
 
-      if (!g_staticParams.variableModParameters.varModList[i].bUseMod)
+      if (g_staticParams.variableModParameters.varModList[i].bUseMod)
       {
          if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
          {
@@ -5174,7 +5180,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
 
                                           for (i=0; i<VMODS; i++)
                                           {
-                                             if (!g_staticParams.variableModParameters.varModList[i].bUseMod)
+                                             if (g_staticParams.variableModParameters.varModList[i].bUseMod)
                                              {
                                                 // look at residues first
                                                 if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
@@ -5232,7 +5238,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                 bool bMatched=false;
 
                                                 if (g_staticParams.variableModParameters.varModList[i].iBinaryMod
-                                                      && !g_staticParams.variableModParameters.varModList[i].bUseMod
+                                                      && g_staticParams.variableModParameters.varModList[i].bUseMod
                                                       && !bMatched)
                                                 {
                                                    int ii;
@@ -5278,7 +5284,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                    {
                                                       for (ii=i+1; ii<VMODS; ii++)
                                                       {
-                                                         if (!g_staticParams.variableModParameters.varModList[ii].bUseMod
+                                                         if (g_staticParams.variableModParameters.varModList[ii].bUseMod
                                                                && (g_staticParams.variableModParameters.varModList[ii].iBinaryMod
                                                                   == g_staticParams.variableModParameters.varModList[i].iBinaryMod)
                                                                && strchr(g_staticParams.variableModParameters.varModList[ii].szVarModChar, cResidue))
@@ -5322,7 +5328,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                    // consider n-term mods only for start residue
                                                    if (iTmpEnd == iStartPos)
                                                    {
-                                                      if (!g_staticParams.variableModParameters.varModList[i].bUseMod
+                                                      if (g_staticParams.variableModParameters.varModList[i].bUseMod
                                                             && g_staticParams.variableModParameters.varModList[i].bNtermMod
                                                             && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
                                                                || (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0
@@ -5340,7 +5346,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                       {
                                                          for (ii=i+1; ii<VMODS; ii++)
                                                          {
-                                                            if (!g_staticParams.variableModParameters.varModList[ii].bUseMod
+                                                            if (g_staticParams.variableModParameters.varModList[ii].bUseMod
                                                                   && (g_staticParams.variableModParameters.varModList[ii].iBinaryMod
                                                                      == g_staticParams.variableModParameters.varModList[i].iBinaryMod)
                                                                   && g_staticParams.variableModParameters.varModList[ii].bNtermMod)
@@ -5377,7 +5383,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                 piTmpTotBinaryModCt[i] = _varModInfo.varModStatList[i].iTotBinaryModCt;
 
                                                 // Add in possible c-term variable mods
-                                                if (!g_staticParams.variableModParameters.varModList[i].bUseMod)
+                                                if (g_staticParams.variableModParameters.varModList[i].bUseMod)
                                                 {
                                                    if (g_staticParams.variableModParameters.varModList[i].bCtermMod
                                                          && ((g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0
@@ -5403,7 +5409,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
 
                                                 for (i=0; i<VMODS; i++)
                                                 {
-                                                   if (!g_staticParams.variableModParameters.varModList[i].bUseMod)
+                                                   if (g_staticParams.variableModParameters.varModList[i].bUseMod)
                                                    {
                                                       if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
                                                       {
@@ -5900,7 +5906,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    for (j=0; j<VMODS; j++)
    {
       if ( g_staticParams.variableModParameters.varModList[j].bNtermMod
-            && !g_staticParams.variableModParameters.varModList[j].bUseMod
+            && g_staticParams.variableModParameters.varModList[j].bUseMod
             && (_varModInfo.varModStatList[j].iMatchVarModCt > 0) )
       {
          if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
@@ -5920,7 +5926,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    for (j=0; j<VMODS; j++)
    {
       if ( g_staticParams.variableModParameters.varModList[j].bCtermMod
-            && !g_staticParams.variableModParameters.varModList[j].bUseMod
+            && g_staticParams.variableModParameters.varModList[j].bUseMod
             && (_varModInfo.varModStatList[j].iMatchVarModCt > 0) )
       {
          if (_varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]])
@@ -5946,7 +5952,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       // This loop is where all individual variable mods are combined
       for (j=0; j<VMODS; j++)
       {
-         if (!g_staticParams.variableModParameters.varModList[j].bUseMod
+         if (g_staticParams.variableModParameters.varModList[j].bUseMod
                && (_varModInfo.varModStatList[j].iMatchVarModCt > 0)
                && strchr(g_staticParams.variableModParameters.varModList[j].szVarModChar, szProteinSeq[i]))
          {
@@ -6040,7 +6046,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       for (j=0; j<VMODS; j++)
       {
          if (g_staticParams.variableModParameters.varModList[j].bRequireThisMod
-               && !g_staticParams.variableModParameters.varModList[j].bUseMod)
+               && g_staticParams.variableModParameters.varModList[j].bUseMod)
          {
             bool bPresent = false;
 
@@ -6068,7 +6074,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    for (j=0; j<VMODS; j++)
    {
       if (g_staticParams.variableModParameters.varModList[j].iVarModTermDistance == -2
-            && !g_staticParams.variableModParameters.varModList[j].bUseMod)
+            && g_staticParams.variableModParameters.varModList[j].bUseMod)
       {
          // not allowed for terminal residue to have this mod
          if (piVarModSites[_varModInfo.iEndPos - _varModInfo.iStartPos] == j+1)

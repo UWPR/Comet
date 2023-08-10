@@ -215,8 +215,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          // prints modification encoding
          PrintModifications(fpout, pOutput, iWhichResult);
 
+         size_t iNumTotProteins = 0;
          // print protein list
-         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy);
+         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &iNumTotProteins);
 
          // Cleavage type
          fprintf(fpout, "\t%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
@@ -415,17 +416,10 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[0]);
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
-         // print protein list
-         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy);
-
          size_t iNumTotProteins = 0;
 
-         if (iPrintTargetDecoy == 0)
-            iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
-         else if (iPrintTargetDecoy == 1)
-            iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size();
-         else //if (iPrintTargetDecoy == 2)
-            iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
+         // print protein list
+         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &iNumTotProteins);
 
          fprintf(fpout, "\t%zu\t", iNumTotProteins);
 
@@ -450,7 +444,8 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
                                   FILE *fpdb,
                                   int iWhichQuery,
                                   int iWhichResult,
-                                  int iPrintTargetDecoy)
+                                  int iPrintTargetDecoy,
+                                  size_t *iNumTotProteins)
 {
    std::vector<string> vProteinTargets;  // store vector of target protein names
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
@@ -468,6 +463,8 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintComma = true;
+
+         (*iNumTotProteins)++;
       }
    }
       
@@ -480,6 +477,8 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintComma = true;
+
+         (*iNumTotProteins)++;
       }
    }
 }
