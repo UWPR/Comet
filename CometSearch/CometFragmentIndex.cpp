@@ -764,6 +764,8 @@ bool CometFragmentIndex::WriteFragmentIndex(char *szIndexFile,
       exit(1);
    }
 
+   fseek(fp, 0, SEEK_END);
+
    comet_fileoffset_t clBeginFragIndexPosition = ftell(fp);
 
    // Write MOD_SEQS
@@ -1024,11 +1026,19 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    {
       if (!strncmp(szBuf, "MassType:", 9))
       {
-         sscanf(szBuf + 9, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
+         int iRet = sscanf(szBuf + 9, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
+         
+         if (iRet != 2)
+         {
+            char szErr[256];
+            sprintf(szErr, " Error with raw peptide index database format. MassType: did not parse 2 values.");
+            logerr(szErr);
+            fclose(fp);
+            return false;
+         }
       }
       else if (!strncmp(szBuf, "StaticMod:", 10)) // read in static mods
       {
-/*       // no need to re-parse as read from fragment index
          char *tok;
          char delims[] = " ";
          int x=65;
@@ -1067,11 +1077,61 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
             + PROTON_MASS
             + g_staticParams.staticModifications.dAddCterminusPeptide
             + g_staticParams.staticModifications.dAddNterminusPeptide;
-*/
+
          bFoundStatic = true;
       }
       else if (!strncmp(szBuf, "VariableMod:", 12)) // read in variable mods
       {
+         char szMod1[512];
+         char szMod2[512];
+         char szMod3[512];
+         char szMod4[512];
+         char szMod5[512];
+         char szMod6[512];
+         char szMod7[512];
+         char szMod8[512];
+         char szMod9[512];
+
+         int iRet;
+         iRet = sscanf(szBuf + 12, "%s %s %s %s %s %s %s %s %s",
+            szMod1, szMod2, szMod3, szMod4, szMod5, szMod6, szMod7, szMod8, szMod9);
+         
+         iRet = sscanf(szMod1, "%lf:%s", &(g_staticParams.variableModParameters.varModList[0].dVarModMass),
+            g_staticParams.variableModParameters.varModList[0].szVarModChar);
+
+         iRet = sscanf(szMod2, "%lf:%s", &(g_staticParams.variableModParameters.varModList[1].dVarModMass),
+            g_staticParams.variableModParameters.varModList[1].szVarModChar);
+
+         iRet = sscanf(szMod3, "%lf:%s", &(g_staticParams.variableModParameters.varModList[2].dVarModMass),
+            g_staticParams.variableModParameters.varModList[2].szVarModChar);
+
+         iRet = sscanf(szMod4, "%lf:%s", &(g_staticParams.variableModParameters.varModList[3].dVarModMass),
+            g_staticParams.variableModParameters.varModList[3].szVarModChar);
+
+         iRet = sscanf(szMod5, "%lf:%s", &(g_staticParams.variableModParameters.varModList[4].dVarModMass),
+            g_staticParams.variableModParameters.varModList[4].szVarModChar);
+
+         iRet = sscanf(szMod6, "%lf:%s", &(g_staticParams.variableModParameters.varModList[5].dVarModMass),
+            g_staticParams.variableModParameters.varModList[5].szVarModChar);
+
+         iRet = sscanf(szMod7, "%lf:%s", &(g_staticParams.variableModParameters.varModList[6].dVarModMass),
+            g_staticParams.variableModParameters.varModList[6].szVarModChar);
+
+         iRet = sscanf(szMod8, "%lf:%s", &(g_staticParams.variableModParameters.varModList[7].dVarModMass),
+            g_staticParams.variableModParameters.varModList[7].szVarModChar);
+
+         iRet = sscanf(szMod9, "%lf:%s", &(g_staticParams.variableModParameters.varModList[8].dVarModMass),
+            g_staticParams.variableModParameters.varModList[8].szVarModChar);
+
+         for (int x = 0; x < VMODS; ++x)
+         {
+            if (g_staticParams.variableModParameters.varModList[x].dVarModMass != 0.0)
+            {
+               g_staticParams.variableModParameters.bVarModSearch = true;
+               break;
+            }
+         }
+
          bFoundVariable = true;
          break;
       }

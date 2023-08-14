@@ -1222,7 +1222,6 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
 void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
                                       ThreadPool* tp)
 {
-
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
 
@@ -1417,7 +1416,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
          }
 
          // Generate pdAAforward for szPeptide
-         for (int i = 0; i < iLenPeptide; i++)
+         for (int i = 0; i < iLenMinus1; i++)
          {
             int iPos = i;
             int iPos2 = iLenMinus1 - i;

@@ -943,7 +943,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       // selection m/z as the precursor m/z. This also assumes zStop=1.  This should
       // be invoked when searching Thermo raw files and mzML converted from those.
       if (g_staticParams.options.bCorrectMass && dMonoMZ > 0.1 && dSelectionLower > 0.1 && zStop==1 && dMonoMZ+0.1 < dSelectionLower)
-         dMass = dSelectedMZ*iPrecursorCharge - (iPrecursorCharge-1)*PROTON_MASS;
+         dMass = dSelectedMZ*iPrecursorCharge - (iPrecursorCharge - 1)*PROTON_MASS;
 
       if (!g_staticParams.options.bOverrideCharge
             || g_staticParams.options.iStartCharge == 0

@@ -79,6 +79,7 @@
                int iTime = 0;
 
                SearchMgr.InitializeSingleSpectrumSearch();
+
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {
                   var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
@@ -121,7 +122,12 @@
                         for (int i = 0; i < trailerData.Length; i++)
                         {
                            if (trailerData.Labels[i] == "Monoisotopic M/Z:")
-                              dPrecursorMZ = double.Parse(trailerData.Values[i]);
+                           {
+                              double dTmp = double.Parse(trailerData.Values[i]);
+                              double dMassDiff = Math.Abs(dTmp - dPrecursorMZ);
+                              if (dTmp != 0.0 && dMassDiff < 10.0)
+                                 dPrecursorMZ = dTmp;
+                           }
                            else if (trailerData.Labels[i] == "Charge State:")
                               iPrecursorCharge = (int)double.Parse(trailerData.Values[i]);
                         }
@@ -234,6 +240,7 @@
             String sTmp;
             int iTmp;
             double dTmp;
+            DoubleRangeWrapper doubleRangeParam = new DoubleRangeWrapper();
 
             SearchMgr.SetParam("database_name", sDB, sDB);
 
@@ -244,9 +251,10 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("decoy_search", sTmp, iTmp);
 
-            dTmp = 20.0; //ppm window
-            sTmp = dTmp.ToString();
-            SearchMgr.SetParam("peptide_mass_tolerance", sTmp, dTmp);
+            doubleRangeParam.set_dStart(-20.0);
+            doubleRangeParam.set_dEnd(20.0);
+            sTmp = "-20.0 20.0";
+            SearchMgr.SetParam("peptide_mass_tolerance", sTmp, doubleRangeParam);
 
             iTmp = 2; // 0=Da, 2=ppm
             sTmp = iTmp.ToString();
@@ -272,7 +280,7 @@
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 1; // 0=use flanking peaks, 1=M peak only
+            iTmp = 0; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
@@ -287,7 +295,20 @@
             iTmp = 0; // 0=I and L are different, 1=I and L are same
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("equal_I_and_L", sTmp, iTmp);
+/*
+            // these are read from the indexed database but this is an example
+            // on how to set them here;
+            VarModsWrapper varMods = new VarModsWrapper();
+            sTmp = "15.9949 M 0 3 -1 0 0";
+            varMods.set_VarModMass(15.9949);
+            varMods.set_VarModChar("M");
+            SearchMgr.SetParam("variable_mod01", sTmp, varMods);
 
+            sTmp = "79.9663 STY 0 3 -1 0 0";
+            varMods.set_VarModMass(79.9663);
+            varMods.set_VarModChar("STY");
+            SearchMgr.SetParam("variable_mod02", sTmp, varMods);
+*/
             // Now actually open the .idx database to read mass range from it
             int iLineCount = 0;
             bool bFoundMassRange = false;
