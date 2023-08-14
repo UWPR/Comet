@@ -118,10 +118,8 @@ bool CometSearch::RunSearch(ThreadPool *tp)
       g_vFragmentIndexRead = true;
    }
 
-   size_t iEnd = g_pvQuery.size();
-
-   for (size_t iWhichQuery=0; iWhichQuery<iEnd; ++iWhichQuery)
-      SearchFragmentIndex(iWhichQuery, tp);
+   size_t iWhichQuery = 0;
+   SearchFragmentIndex(iWhichQuery, tp);
 
    return true;
 }
@@ -155,7 +153,6 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       for (size_t iWhichQuery=0; iWhichQuery<iEnd; ++iWhichQuery)
          pSearchThreadPool->doJob(std::bind(SearchFragmentIndex, iWhichQuery, pSearchThreadPool));
-//       SearchFragmentIndex(iWhichQuery, tp);
 
       pSearchThreadPool->wait_on_threads();
 
