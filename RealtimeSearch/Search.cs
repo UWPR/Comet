@@ -152,6 +152,7 @@
 
                         double xcorr = score.xCorr;
                         double dExpect = score.dExpect;
+                        double dSp = score.dSp;
                         double dCn = score.dCn;
                         int iIonsMatch = score.MatchedIons;
                         int iIonsTotal = score.TotalIons;
@@ -159,15 +160,15 @@
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
                         // do not decode peptide/proteins strings unless xcorr>0
-                        if (xcorr > 4.5)
+                        if (xcorr > 6)
                         {
                            if ((iScanNumber % 1) == 0)
                            {
                               if (protein.Length > 20)
                                  protein = protein.Substring(0, 20);  // trim to avoid printing long protein description string
 
-                              Console.WriteLine("{0}\t{1}\t{2}\t{3:0.0000}\t{4:E4}\t{5:0.0000}\t{6}\t{7}\t{8}",
-                                 iScanNumber, peptide, protein, xcorr, dExpect, dPepMass, iIonsMatch, iIonsTotal, iPass);
+                              Console.WriteLine("{0}\t{1}\t{2}\t{3:0.0000}\t{10:0.0000}\t{9:0.0}\t{4:E4}\t{5:0.0000}\t{6}\t{7}\t{8}",
+                                 iScanNumber, peptide, protein, xcorr, dExpect, dPepMass, iIonsMatch, iIonsTotal, iPass, dSp, dCn);
 
 /*
                               Console.WriteLine("pass {12}\t{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.0000}\t{8}\t{10}/{11}",

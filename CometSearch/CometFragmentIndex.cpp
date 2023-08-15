@@ -202,24 +202,6 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    pFragmentIndexPool->wait_on_threads();
 
-/*
-   for (int iWhichThread = 4; iWhichThread < 5; ++iWhichThread)
-   {
-      for (unsigned int i = 76228; i < 76229; ++i)
-      {
-         int iSize = g_arrvFragmentIndex[iWhichThread][i].size();
-         if (iSize > 0)
-         {
-printf("OKx thread %d, mass %d, size %d: ", iWhichThread, i, iSize);
-for (int ii=0 ; ii<iSize; ++ii)
-   printf("%d (%0.2f) ", g_arrvFragmentIndex[iWhichThread][i].at(ii), g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][i].at(ii)].dPepMass);
-// printf("%0.2f ", g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][i].at(ii)].dPepMass);
-printf("\n");
-         }
-      }
-   }
-*/
-
    // Destroy the mutex we will use to protect vFragmentIndex
    Threading::DestroyMutex(_vFragmentIndexMutex);
    Threading::DestroyMutex(_vFragmentPeptidesMutex);
@@ -227,7 +209,7 @@ printf("\n");
    tEndTime = chrono::steady_clock::now();
    duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
    minutes = duration.count() / 60000;
-   seconds = (duration.count() - minutes*60000) / 1000;
+   seconds = (duration.count() - minutes * 60000) / 1000;
    cout << " - done with sorting fragment index: " << minutes << " minutes " << seconds  << " seconds" << endl;
 }
 
@@ -281,18 +263,12 @@ void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& g_vRa
       {
          iNoModificationNumbers += 1;
          // peptide is not modified, skip following permuting code
-//       return;
          continue;
       }
 
       int startIdx = MOD_SEQ_MOD_NUM_START[modSeqIdx];
       if (startIdx == -1)
-      {
-         // should always permute to MAX_COMBINATIONS of mods for the peptide
-//       cout << " ERROR should not get here if peptide contains mod residues; modSeqIdx " << modSeqIdx << ", peptide " << peptide << endl;
-         return;
          continue;
-      }
 
       int modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
 
@@ -338,7 +314,7 @@ void CometFragmentIndex::SortFragmentThreadProc(int iBin,
                                                 int iNumIndexingThreads,
                                                 ThreadPool *tp)
 {
-   // first combine then sort
+   // first combine the individual fragment indexes from each thread then sort
    if (iNumIndexingThreads > 1)
    {
       for (int iWhichThread = 1; iWhichThread < iNumIndexingThreads; ++iWhichThread)
@@ -354,7 +330,11 @@ void CometFragmentIndex::SortFragmentThreadProc(int iBin,
       }
    }
 
-   sort(g_arrvFragmentIndex[0][iBin].begin(), g_arrvFragmentIndex[0][iBin].end(), SortFragmentsByPepMass);
+   if (g_arrvFragmentIndex[0][iBin].size() > 0) // unique sort
+   {
+      sort(g_arrvFragmentIndex[0][iBin].begin(), g_arrvFragmentIndex[0][iBin].end(), SortFragmentsByPepMass);
+      g_arrvFragmentIndex[0][iBin].erase(unique(g_arrvFragmentIndex[0][iBin].begin(), g_arrvFragmentIndex[0][iBin].end()), g_arrvFragmentIndex[0][iBin].end());
+   }
 }
 
 
@@ -505,7 +485,10 @@ if (!(iWhichPeptide%5000))
          }
       }
 
-      if (i > 1)  // skip first two low mass b- and y-ions ala sage
+      if (dBion > g_massRange.dMaxFragmentMass && dYion > g_massRange.dMaxFragmentMass)
+         break;
+
+      if (i > 1)  // skip first two low mass b- and y-ions
       {
          if (dBion > g_massRange.dMinFragmentMass && dBion < g_massRange.dMaxFragmentMass)
          {

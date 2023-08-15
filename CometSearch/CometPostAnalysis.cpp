@@ -214,7 +214,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
    for (i=0; i<iSize; ++i)
    {
       // hijack here to make protein vector unique
-      if (pOutput[i].pWhichProtein.size() > 1)
+      if (pOutput[i].pWhichProtein.size() > 1 && !g_staticParams.bIndexDb)
       {
          sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
 
@@ -235,7 +235,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          }
       }
 
-      if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
+      if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1 && !g_staticParams.bIndexDb)
       {
          sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
 
@@ -410,7 +410,7 @@ bool CometPostAnalysis::SortFnMod(const Results &a,
    // must compare character at a time
    // actually not sure why strcmp doesn't work
    // as piVarModSites is a char array
-   for (int i=0; i<MAX_PEPTIDE_LEN_P2; ++i)
+   for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
    {
       if (a.piVarModSites[i] < b.piVarModSites[i])
          return true;

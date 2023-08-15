@@ -717,7 +717,7 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
    MOD_SEQ_MOD_NUM_START = new int[modifiableSeqs.size()];
    MOD_SEQ_MOD_NUM_CNT = new int[modifiableSeqs.size()];
 
-   CombinatoricsUtils::initBinomialCoefficients(MAX_PEPTIDE_LEN, MAX_K_VAL);
+   CombinatoricsUtils::initBinomialCoefficients(g_staticParams.options.peptideLengthRange.iEnd, MAX_K_VAL);
 
    int i = 0;
    for (auto it = modifiableSeqs.begin(); it != modifiableSeqs.end(); ++it)

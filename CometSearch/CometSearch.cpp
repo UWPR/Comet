@@ -1611,7 +1611,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       double dMass;
 
       // quick distance check of PEFF variant from start of sequene
-      if (iPeffRequiredVariantPosition >= MAX_PEPTIDE_LEN)
+      if (iPeffRequiredVariantPosition >= g_staticParams.options.peptideLengthRange.iEnd)
          return true;
 
       // So find iStartPos that has to be near iPeffRequiredVariantPosition
@@ -1658,7 +1658,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       // Check to see if peptide is within global min/mass range for all queries.
       iLenPeptide = iEndPos-iStartPos+1;
 
-      if (iLenPeptide < MAX_PEPTIDE_LEN - 1)  // account for terminating char
+      if (iLenPeptide < g_staticParams.options.peptideLengthRange.iEnd - 1)  // account for terminating char
       {
          if (g_staticParams.options.bCreateIndex) // && !g_staticParams.variableModParameters.bRequireVarMod)
          {
@@ -2108,7 +2108,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       }
 
       // Increment end.
-      if (dCalcPepMass <= g_massRange.dMaxMass && iEndPos < iProteinSeqLengthMinus1 && iLenPeptide<MAX_PEPTIDE_LEN)
+      if (dCalcPepMass <= g_massRange.dMaxMass && iEndPos < iProteinSeqLengthMinus1 && iLenPeptide< g_staticParams.options.peptideLengthRange.iEnd)
       {
          iEndPos++;
 
@@ -2124,7 +2124,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
          }
       }
       // Increment start, reset end.
-      else if (dCalcPepMass > g_massRange.dMaxMass || iEndPos==iProteinSeqLengthMinus1 || iLenPeptide == MAX_PEPTIDE_LEN)
+      else if (dCalcPepMass > g_massRange.dMaxMass || iEndPos==iProteinSeqLengthMinus1 || iLenPeptide == g_staticParams.options.peptideLengthRange.iEnd)
       {
          // Run variable mod search before incrementing iStartPos.
          if (g_staticParams.variableModParameters.bVarModSearch && !g_staticParams.options.bCreateIndex)
@@ -2843,7 +2843,6 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
                                           int iEndPos)
 {
    int i;
-
 
 /*
    // Print out list of PEFF mods
@@ -4034,7 +4033,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
    iLenPeptide = iEndPos - iStartPos + 1;
    iLenPeptide2 = iLenPeptide + 2;
 
-   if (iLenPeptide >= MAX_PEPTIDE_LEN)
+   if (iLenPeptide >= g_staticParams.options.peptideLengthRange.iEnd)
       return;
 
    if (g_staticParams.options.iDecoySearch==2 && bDecoyPep)  // store separate decoys
@@ -5168,7 +5167,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                     // where the end of the peptide is.
                                     for (iTmpEnd=iStartPos; iTmpEnd<=iEndPos; iTmpEnd++)
                                     {
-                                       if (iTmpEnd-iStartPos+1 < MAX_PEPTIDE_LEN-1)
+                                       if (iTmpEnd - iStartPos + 1 < g_staticParams.options.peptideLengthRange.iEnd - 1)
                                        {
                                           cResidue = szProteinSeq[iTmpEnd];
 

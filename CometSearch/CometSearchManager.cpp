@@ -925,6 +925,12 @@ bool CometSearchManager::InitializeStaticParams()
       {
          g_staticParams.options.peptideLengthRange.iStart = intRangeData.iStart;
          g_staticParams.options.peptideLengthRange.iEnd = intRangeData.iEnd;
+
+         if (g_staticParams.options.peptideLengthRange.iStart < MIN_PEPTIDE_LEN)
+            g_staticParams.options.peptideLengthRange.iStart = MIN_PEPTIDE_LEN;
+
+         if (g_staticParams.options.peptideLengthRange.iEnd > MAX_PEPTIDE_LEN)
+            g_staticParams.options.peptideLengthRange.iEnd = MAX_PEPTIDE_LEN;
       }
    }
 
@@ -2818,6 +2824,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    score.dCn = 0;
    score.xCorr = 0;
+   score.dSp = 0;
    score.dExpect = 0;
    score.matchedIons = 0;
    score.totalIons = 0;
@@ -2896,7 +2903,12 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
    {
-//    CometPostAnalysis::AnalyzeSP(0);
+      int iSize = g_pvQuery.at(0)->iMatchPeptideCount;
+
+      if (iSize > g_staticParams.options.iNumStored)
+         iSize = g_staticParams.options.iNumStored;
+
+      CometPostAnalysis::CalculateSP(g_pvQuery.at(0)->_pResults, 0, iSize);
       CometPostAnalysis::CalculateEValue(0, 1);
    }
    else
@@ -2955,12 +2967,13 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       strReturnProtein = szProtein;            //protein
 
       score.xCorr         = pOutput[0].fXcorr;                        // xcorr
+      score.dSp           = pOutput[0].fScoreSp;                      // prelim score
       score.dExpect       = pOutput[0].dExpect;                       // E-value
       score.mass          = pOutput[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
       score.matchedIons   = pOutput[0].iMatchedIons;                  // ions matched
       score.totalIons     = pOutput[0].iTotalIons;                    // ions tot
 
-      int iMinLength = MAX_PEPTIDE_LEN;
+      int iMinLength = g_staticParams.options.peptideLengthRange.iEnd;
       for (int x = 0; x < iSize; ++x)
       {
          int iLen = (int)strlen(pOutput[x].szPeptide);
@@ -3176,6 +3189,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       strReturnPeptide = "";  // peptide
       strReturnProtein = "";  // protein
       score.xCorr         = -1;       // xcorr
+      score.dSp           = 0;        // prelim score
       score.dExpect       = 999;      // E-value
       score.mass          = 0;        // calc neutral pep mass
       score.matchedIons   = 0;        // ions matched
