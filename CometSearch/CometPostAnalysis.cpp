@@ -213,41 +213,44 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    for (i=0; i<iSize; ++i)
    {
-      // hijack here to make protein vector unique
-      if (pOutput[i].pWhichProtein.size() > 1 && !g_staticParams.bIndexDb)
+      if (!g_staticParams.bIndexDb)
       {
-         sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
-
-//       Sadly this erase(unique()) code doesn't work; it leaves only first entry in vector
-//       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
-//             pOutput[i].pWhichProtein.end());
-
-         comet_fileoffset_t lPrev=0;
-         for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
+         // hijack here to make protein vector unique
+         if (pOutput[i].pWhichProtein.size() > 1)
          {
-            if ( (*it).lWhichProtein == lPrev)
-               it = pOutput[i].pWhichProtein.erase(it);
-            else
+            sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
+
+            //       Sadly this erase(unique()) code doesn't work; it leaves only first entry in vector
+            //       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
+            //             pOutput[i].pWhichProtein.end());
+
+            comet_fileoffset_t lPrev = 0;
+            for (std::vector<ProteinEntryStruct>::iterator it = pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
             {
-               lPrev = (*it).lWhichProtein;
-               ++it;
+               if ((*it).lWhichProtein == lPrev)
+                  it = pOutput[i].pWhichProtein.erase(it);
+               else
+               {
+                  lPrev = (*it).lWhichProtein;
+                  ++it;
+               }
             }
          }
-      }
 
-      if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1 && !g_staticParams.bIndexDb)
-      {
-         sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
-
-         comet_fileoffset_t lPrev=0;
-         for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichDecoyProtein.begin(); it != pOutput[i].pWhichDecoyProtein.end(); )
+         if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
          {
-            if ( (*it).lWhichProtein == lPrev)
-               it = pOutput[i].pWhichDecoyProtein.erase(it);
-            else
+            sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
+
+            comet_fileoffset_t lPrev = 0;
+            for (std::vector<ProteinEntryStruct>::iterator it = pOutput[i].pWhichDecoyProtein.begin(); it != pOutput[i].pWhichDecoyProtein.end(); )
             {
-               lPrev = (*it).lWhichProtein;
-               ++it;
+               if ((*it).lWhichProtein == lPrev)
+                  it = pOutput[i].pWhichDecoyProtein.erase(it);
+               else
+               {
+                  lPrev = (*it).lWhichProtein;
+                  ++it;
+               }
             }
          }
       }

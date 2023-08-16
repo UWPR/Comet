@@ -2908,7 +2908,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       if (iSize > g_staticParams.options.iNumStored)
          iSize = g_staticParams.options.iNumStored;
 
-      CometPostAnalysis::CalculateSP(g_pvQuery.at(0)->_pResults, 0, iSize);
+      CometPostAnalysis::CalculateSP(g_pvQuery.at(0)->_pResults, 0, 1); // only do for top entry
       CometPostAnalysis::CalculateEValue(0, 1);
    }
    else

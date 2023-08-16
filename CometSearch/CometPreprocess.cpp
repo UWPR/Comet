@@ -291,7 +291,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    int i;
    int x;
    int y;
-   struct msdata pTmpSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
 
    pPre.iHighestIon = 0;
@@ -572,32 +571,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       return false;
    }
 
-   // Create data for sp scoring.
-
-   for (i=0; i<NUM_SP_IONS; ++i)
+   // Create data for sp scoring which is just the binned peaks normalized to max inten 100
+   for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      pTmpSpData[i].iIon = 0;
-      pTmpSpData[i].dIntensity = 0.0;
+      pScoring->pfSpScoreData[i] = 100.0 * pdTmpRawData[i] / pPre.dHighestIntensity;
    }
-
-   if (mstSpectrum.size() >= NUM_SP_IONS)
-   {
-      GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
-      for (i=0; i<NUM_SP_IONS; ++i)
-         pScoring->pfSpScoreData[pTmpSpData[i].iIon] = (float) pTmpSpData[i].dIntensity;
-   }
-   else
-   {
-      //FIX: test this
-      for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-      {
-         if (pdTmpRawData[i] > 0)
-         {
-            pScoring->pfSpScoreData[i] = (float)pdTmpRawData[i];
-         }
-      }
-   }
-
 
    // MH: Fill sparse matrix for SpScore
    pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
@@ -1418,51 +1396,6 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
 }
 
 
-// Pull out top # ions for intensity matching in search.
-void CometPreprocess::GetTopIons(double *pdTmpRawData,
-                                 struct msdata *pTmpSpData,
-                                 int iArraySize)
-{
-   int  i,
-        ii,
-        iLowestIntenIndex=0;
-   double dLowestInten=0.0,
-          dMaxInten=0.0;
-
-   for (i=0; i<iArraySize; ++i)
-   {
-      if (pdTmpRawData[i] > dLowestInten)
-      {
-         (pTmpSpData+iLowestIntenIndex)->dIntensity = (double)pdTmpRawData[i];
-         (pTmpSpData+iLowestIntenIndex)->iIon = i;
-
-         if ((pTmpSpData+iLowestIntenIndex)->dIntensity > dMaxInten)
-            dMaxInten = (pTmpSpData+iLowestIntenIndex)->dIntensity;
-
-         dLowestInten = (pTmpSpData+0)->dIntensity;
-         iLowestIntenIndex = 0;
-
-         for (ii=1; ii<NUM_SP_IONS; ++ii)
-         {
-            if ((pTmpSpData+ii)->dIntensity < dLowestInten)
-            {
-               dLowestInten = (pTmpSpData+ii)->dIntensity;
-               iLowestIntenIndex=ii;
-               if (dLowestInten == 0.0)
-                  break;
-            }
-         }
-      }
-   }
-
-   if (dMaxInten > FLOAT_ZERO)
-   {
-      for (i=0; i<NUM_SP_IONS; ++i)
-         (pTmpSpData+i)->dIntensity = (((pTmpSpData+i)->dIntensity)/dMaxInten)*100.0;
-   }
-}
-
-
 bool CometPreprocess::SortByIon(const struct msdata &a,
                                 const struct msdata &b)
 {
@@ -1643,7 +1576,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    int i;
    int x;
    int y;
-   struct msdata pTmpSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
 
    pPre.iHighestIon = 0;
@@ -1902,22 +1834,14 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    delete[] pScoring->pfFastXcorrData;
    pScoring->pfFastXcorrData = NULL;
 
-   // Create data for sp scoring.
-
-   for (i=0; i<NUM_SP_IONS; ++i)
-   {
-      pTmpSpData[i].iIon = 0;
-      pTmpSpData[i].dIntensity = 0.0;
-   }
-
-   GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
-
+   // Create data for sp scoring which is just the binned peaks normalized to max inten 100
    pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
    memset(pScoring->pfSpScoreData, 0, sizeof(float) * pScoring->_spectrumInfoInternal.iArraySize);
 
-   // note that pTmpSpData[].iIon values are already BIN'd
-   for (i=0; i<NUM_SP_IONS; ++i)
-      pScoring->pfSpScoreData[pTmpSpData[i].iIon] = (float) pTmpSpData[i].dIntensity;
+   for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+   {
+      pScoring->pfSpScoreData[i] = 100.0 * pdTmpRawData[i] / pPre.dHighestIntensity;
+   }
 
    // MH: Fill sparse matrix for SpScore
    pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
