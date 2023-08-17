@@ -42,13 +42,15 @@ public:
    static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
                                       ThreadPool* tp);
    static void AnalyzeSP(int i);
-   static bool CalculateEValue(int iWhichQuery);
-   static bool SortFnXcorr(const Results &a,
-                           const Results &b);
-private:
    static void CalculateSP(Results *pOutput,
                            int iWhichQuery,
                            int iSize);
+   static bool CalculateEValue(int iWhichQuery,
+                               bool bTopHitOnly);
+   static bool SortFnXcorr(const Results &a,
+                           const Results &b);
+private:
+
    static bool SortFnSp(const Results &a,
                         const Results &b);
 

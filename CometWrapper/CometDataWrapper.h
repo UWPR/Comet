@@ -288,6 +288,11 @@ namespace CometWrapper {
             double get() { return pScores->xCorr; }
         }
 
+        property double dSp
+        {
+           double get() { return pScores->dSp; }
+        }
+
         property double dCn
         {
            double get() { return pScores->dCn; }

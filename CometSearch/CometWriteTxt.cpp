@@ -39,14 +39,14 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      for (i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); ++i)
          PrintResults(i, 1, fpout, fpdb);
-      for (i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); ++i)
          PrintResults(i, 2, fpoutd, fpdb);
    }
    else
    {
-      for (i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); ++i)
          PrintResults(i, 0, fpout, fpdb);
    }
 }
@@ -113,8 +113,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                                  FILE *fpdb)  //fpdb is file pointer for either FASTA or .idx file
 {
 #ifdef CRUX
-   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
-         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
+   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
    {
       Query* pQuery = g_pvQuery.at(iWhichQuery);
 
@@ -142,9 +142,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
          iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
 
-      for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+      for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
       {
-         if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
+         if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
             continue;
 
          double dDeltaCn;
@@ -200,7 +200,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          // generate modified_peptide string
          if (bNterm)
             fprintf(fpout, "n[%0.4f]", dNterm);
-         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
@@ -215,8 +215,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          // prints modification encoding
          PrintModifications(fpout, pOutput, iWhichResult);
 
+         size_t iNumTotProteins = 0;
          // print protein list
-         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy);
+         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &iNumTotProteins);
 
          // Cleavage type
          fprintf(fpout, "\t%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
@@ -227,8 +228,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
    }
 
 #else
-   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > XCORR_CUTOFF)
-         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > XCORR_CUTOFF))
+   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
    {
       Query* pQuery = g_pvQuery.at(iWhichQuery);
 
@@ -250,7 +251,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
 
       int iMinLength = 999;
-      for (int i=0; i<iNumPrintLines; i++)
+      for (int i=0; i<iNumPrintLines; ++i)
       {
          int iLen = (int)strlen(pOutput[i].szPeptide);
          if (iLen == 0)
@@ -262,16 +263,16 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
       int iRankXcorr = 1;
       int iLineCount = 1;
 
-      for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+      for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
       {
          int j;
          double dDeltaCn = 1.0;
 
-         if (pOutput[iWhichResult].fXcorr <= XCORR_CUTOFF)
+         if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
             continue;
 
          // go one past iNumPrintLines to calculate deltaCn value
-         for (j=iWhichResult+1; j<iNumPrintLines+1; j++)
+         for (j=iWhichResult+1; j<iNumPrintLines+1; ++j)
          {
             if (j<g_staticParams.options.iNumStored)
             {
@@ -280,7 +281,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
                if (!g_staticParams.options.bExplicitDeltaCn)
                {
-                  for (int k=0; k<iMinLength; k++)
+                  for (int k=0; k<iMinLength; ++k)
                   {
                      // I-L and Q-K are same for purposes here
                      if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
@@ -379,7 +380,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
          if (bNterm)
             fprintf(fpout, "n[%0.4f]", dNterm);
-         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
@@ -397,7 +398,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
             if (bNterm)
                fprintf(fpout, "n[%0.4f]", dNterm);
-            for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+            for (int i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
             {  
                fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
             
@@ -415,17 +416,10 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[0]);
          fprintf(fpout, "%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
 
-         // print protein list
-         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy);
-
          size_t iNumTotProteins = 0;
 
-         if (iPrintTargetDecoy == 0)
-            iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
-         else if (iPrintTargetDecoy == 1)
-            iNumTotProteins = pOutput[iWhichResult].pWhichProtein.size();
-         else //if (iPrintTargetDecoy == 2)
-            iNumTotProteins = pOutput[iWhichResult].pWhichDecoyProtein.size();
+         // print protein list
+         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &iNumTotProteins);
 
          fprintf(fpout, "\t%zu\t", iNumTotProteins);
 
@@ -450,7 +444,8 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
                                   FILE *fpdb,
                                   int iWhichQuery,
                                   int iWhichResult,
-                                  int iPrintTargetDecoy)
+                                  int iPrintTargetDecoy,
+                                  size_t *iNumTotProteins)
 {
    std::vector<string> vProteinTargets;  // store vector of target protein names
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
@@ -461,25 +456,29 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
    bool bPrintComma = false;
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
-      for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
+      for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)
       {
          if (bPrintComma)
             fprintf(fpout, ",");
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintComma = true;
+
+         (*iNumTotProteins)++;
       }
    }
       
    if (iPrintTargetDecoy != 1)  // if not target only, print decoy proteins
    {
-      for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
+      for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); ++it)
       {
          if (bPrintComma)
             fprintf(fpout, ",");
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintComma = true;
+
+         (*iNumTotProteins)++;
       }
    }
 }
@@ -539,7 +538,7 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       bPrintMod = true;
    }
 
-   for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+   for (int i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
    {
       // static modification
       if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0))

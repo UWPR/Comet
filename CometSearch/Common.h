@@ -17,12 +17,6 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-#include <cmath>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <ctime>
-
 #ifdef _WIN32
 //socket
 #ifndef WIN32_LEAN_AND_MEAN
@@ -59,14 +53,17 @@ using namespace std;
 #include "MSReader.h"
 #include "Spectrum.h"
 #include "MSObject.h"
+
+#include <cmath>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <ctime>
 #include <vector>
 #include <utility>
 #include <set>
 #include <cfloat>
-
-#ifdef CRUX
 #include <iostream>
-#endif
 
 #ifndef GITHUBSHA          // value passed thru at compile time
    #define GITHUBSHA ""
@@ -78,7 +75,7 @@ extern string g_sCometVersion;   // version string including git hash
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
 // now between 0.0 and 1.0 and scales to the binWidth.
-#define BIN(dMass) (int)(dMass*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
+#define BIN(dMass) (int)((dMass)*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
 
 #define isEqual(x, y) (std::abs(x-y) <= ( (std::abs(x) > std::abs(y) ? std::abs(y) : std::abs(x)) * FLT_EPSILON))
 

@@ -225,7 +225,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    }
 
    // Wait for active preprocess threads to complete processing.
-
    pPreprocessThreadPool->wait_on_threads();
 
    Threading::DestroyMutex(_maxChargeMutex);
@@ -246,7 +245,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
 
-   for (i=0; i<g_staticParams.options.iNumThreads; i++)
+   for (i=0; i<g_staticParams.options.iNumThreads; ++i)
    {
       if (pbMemoryPool[i]==false)
       {
@@ -292,7 +291,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    int i;
    int x;
    int y;
-   struct msdata pTmpSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
 
    pPre.iHighestIon = 0;
@@ -303,7 +301,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    double dCushion = 0.0;
    if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
       {
@@ -312,7 +310,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
       {
@@ -321,7 +319,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    else // ppm
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dPeptideMassHigh / 1000000.0;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1000000.0;
    }
 
    // initialize these temporary arrays before re-using
@@ -393,9 +391,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    double dMinXcorrInten = 0.0;
 
    dSum=0.0;
-   for (i=0; i<g_staticParams.iXcorrProcessingOffset; i++)
+   for (i=0; i<g_staticParams.iXcorrProcessingOffset; ++i)
       dSum += pdTmpCorrelationData[i];
-   for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; i++)
+   for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
    {
       if (dMinXcorrInten < pdTmpCorrelationData[i])
          dMinXcorrInten = pdTmpCorrelationData[i];
@@ -410,7 +408,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
 
    pScoring->pfFastXcorrData[0] = 0.0;
-   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
       double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
 
@@ -450,7 +448,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          {
             pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
          }
-
       }
    }
 
@@ -480,7 +477,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          return false;
       }
 
-      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
       {
          if (pScoring->pfFastXcorrDataNL[i]>FLOAT_ZERO || pScoring->pfFastXcorrDataNL[i]<-FLOAT_ZERO)
          {
@@ -502,7 +499,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                   logerr(szErrorMsg);
                   return false;
                }
-               for (y=0; y<SPARSE_MATRIX_SIZE; y++)
+               for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
                   pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
             }
             y=i-(x*SPARSE_MATRIX_SIZE);
@@ -532,7 +529,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       return false;
    }
 
-   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
       if (pScoring->pfFastXcorrData[i]>FLOAT_ZERO || pScoring->pfFastXcorrData[i]<-FLOAT_ZERO)
       {
@@ -554,7 +551,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                logerr(szErrorMsg);
                return false;
             }
-            for (y=0; y<SPARSE_MATRIX_SIZE; y++)
+            for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
                pScoring->ppfSparseFastXcorrData[x][y]=0;
          }
          y=i-(x*SPARSE_MATRIX_SIZE);
@@ -564,16 +561,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    delete[] pScoring->pfFastXcorrData;
    pScoring->pfFastXcorrData = NULL;
-
-   // Create data for sp scoring.
-
-   for (i=0; i<NUM_SP_IONS; i++)
-   {
-      pTmpSpData[i].dIon = 0.0;
-      pTmpSpData[i].dIntensity = 0.0;
-   }
-
-   GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
 
    try
    {
@@ -591,9 +578,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       return false;
    }
 
-   // note that pTmpSpData[].dIon values are already BIN'd
-   for (i=0; i<NUM_SP_IONS; i++)
-      pScoring->pfSpScoreData[(int)(pTmpSpData[i].dIon)] = (float) pTmpSpData[i].dIntensity;
+   // Create data for sp scoring which is just the binned peaks normalized to max inten 100
+   for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+   {
+      pScoring->pfSpScoreData[i] = 100.0 * pdTmpRawData[i] / pPre.dHighestIntensity;
+   }
 
    // MH: Fill sparse matrix for SpScore
    pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
@@ -614,7 +603,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       return false;
    }
 
-   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
       if (pScoring->pfSpScoreData[i] > FLOAT_ZERO)
       {
@@ -636,7 +625,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                logerr(szErrorMsg);
                return false;
             }
-            for (y=0; y<SPARSE_MATRIX_SIZE; y++)
+            for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
                pScoring->ppfSparseSpScoreData[x][y]=0;
          }
          y=i-(x*SPARSE_MATRIX_SIZE);
@@ -833,7 +822,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          if (g_staticParams.options.bOverrideCharge == 1)
          {
             // ignore spectrum charge and use precursor_charge range
-            for (int z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
+            for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
             {
                vChargeStates.push_back(z);
             }
@@ -841,7 +830,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          else if (g_staticParams.options.bOverrideCharge == 2)
          {
             // only use spectrum charge if it's within the charge range
-            for (int z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
+            for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
             {
                if (z == iSpectrumCharge)
                   vChargeStates.push_back(z);
@@ -947,21 +936,21 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             double dCushion = 0.0;
             if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
             {
-               dCushion = g_staticParams.tolerances.dInputTolerance;
+               dCushion = g_staticParams.tolerances.dInputTolerancePlus;
 
                if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
                   dCushion *= pScoring->_spectrumInfoInternal.iChargeState;
             }
             else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
             {
-               dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
+               dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
 
                if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
                   dCushion *= pScoring->_spectrumInfoInternal.iChargeState;
             }
             else // ppm
             {
-               dCushion = g_staticParams.tolerances.dInputTolerance * dMass / 1000000.0;
+               dCushion = g_staticParams.tolerances.dInputTolerancePlus * dMass / 1000000.0;
             }
             pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
@@ -1049,92 +1038,72 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    {
       if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
       {
-         pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance;
-
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.tolerances.dInputToleranceMinus;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus  = g_staticParams.tolerances.dInputTolerancePlus;
+   
          if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
          {
-            pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
+            pScoring->_pepMassInfo.dPeptideMassToleranceMinus *= pScoring->_spectrumInfoInternal.iChargeState;
+            pScoring->_pepMassInfo.dPeptideMassTolerancePlus  *= pScoring->_spectrumInfoInternal.iChargeState;
          }
       }
       else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
       {
-         pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance * 0.001;
-
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.tolerances.dInputToleranceMinus * 0.001;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus  = g_staticParams.tolerances.dInputTolerancePlus  * 0.001;
+   
          if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
          {
-            pScoring->_pepMassInfo.dPeptideMassTolerance *= pScoring->_spectrumInfoInternal.iChargeState;
+            pScoring->_pepMassInfo.dPeptideMassToleranceMinus *= pScoring->_spectrumInfoInternal.iChargeState;
+            pScoring->_pepMassInfo.dPeptideMassTolerancePlus  *= pScoring->_spectrumInfoInternal.iChargeState;
          }
       }
       else // ppm
       {
-         pScoring->_pepMassInfo.dPeptideMassTolerance = g_staticParams.tolerances.dInputTolerance
-            * pScoring->_pepMassInfo.dExpPepMass / 1000000.0;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.tolerances.dInputToleranceMinus * pScoring->_pepMassInfo.dExpPepMass / 1E6;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus  = g_staticParams.tolerances.dInputTolerancePlus * pScoring->_pepMassInfo.dExpPepMass / 1E6;
       }
 
       if (g_staticParams.tolerances.iIsotopeError == 0)
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-            - pScoring->_pepMassInfo.dPeptideMassTolerance;
-
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-            + pScoring->_pepMassInfo.dPeptideMassTolerance;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 1) // search 0, +1 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-            - pScoring->_pepMassInfo.dPeptideMassTolerance - C13_DIFF * PROTON_MASS;
-
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-            + pScoring->_pepMassInfo.dPeptideMassTolerance;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 2) // search 0, +1, +2 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-            - pScoring->_pepMassInfo.dPeptideMassTolerance - 2.0 * C13_DIFF * PROTON_MASS;
-
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-            + pScoring->_pepMassInfo.dPeptideMassTolerance;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 2.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 3) // search 0, +1, +2, +3 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-            - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
-
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-            + pScoring->_pepMassInfo.dPeptideMassTolerance;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 3.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 4) // search -8, -4, 0, 4, 8 windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-            - pScoring->_pepMassInfo.dPeptideMassTolerance - 8.1;
-
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-            + pScoring->_pepMassInfo.dPeptideMassTolerance + 8.1;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 8.1;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + 8.1;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 5) // search -1, 0, +1, +2, +3 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-            - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
-
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-            + pScoring->_pepMassInfo.dPeptideMassTolerance + 1.0 * C13_DIFF * PROTON_MASS;
-
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 3.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + 1.0 * C13_DIFF * PROTON_MASS;
+   
       }
       else if (g_staticParams.tolerances.iIsotopeError == 6) // search -3, -2, -1, 0, +1, +2, +3 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-            - pScoring->_pepMassInfo.dPeptideMassTolerance - 3.0 * C13_DIFF * PROTON_MASS;
-
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-            + pScoring->_pepMassInfo.dPeptideMassTolerance + 3.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 3.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + 3.0 * C13_DIFF * PROTON_MASS;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 7) // search -1, 0, +1 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass
-            - pScoring->_pepMassInfo.dPeptideMassTolerance - C13_DIFF * PROTON_MASS;
-
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass
-            + pScoring->_pepMassInfo.dPeptideMassTolerance + C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + C13_DIFF * PROTON_MASS;
       }
       else  // Should not get here.
       {
@@ -1154,8 +1123,8 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
 
       if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < g_staticParams.options.dPeptideMassLow)
          pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.options.dPeptideMassLow;
-
-      if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)
+   
+      if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)   //FIX:  what is this? Need to annotate this logic
          pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 100.0;
    }
    else
@@ -1234,6 +1203,9 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
       {
+         // store spectra for fragment index search
+         pScoring->vdRawFragmentPeakMass.push_back(dIon);
+
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
          {
             int iBinIon = BIN(dIon);
@@ -1266,7 +1238,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                   int j;
                   int bNotPrec = 1;
 
-                  for (j=1; j <= pScoring->_spectrumInfoInternal.iChargeState; j++)
+                  for (j=1; j <= pScoring->_spectrumInfoInternal.iChargeState; ++j)
                   {
                      double dMZ;
 
@@ -1364,11 +1336,11 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
 
    iWindowSize = (int)((pPre->iHighestIon)/iNumWindows) + 1;
 
-   for (i=0; i<iNumWindows; i++)
+   for (i=0; i<iNumWindows; ++i)
    {
       dMaxWindowInten = 0.0;
 
-      for (ii=0; ii<iWindowSize; ii++)    // Find max inten. in window.
+      for (ii=0; ii<iWindowSize; ++ii)    // Find max inten. in window.
       {
          iBin = i*iWindowSize+ii;
          if (iBin < pScoring->_spectrumInfoInternal.iArraySize)
@@ -1383,7 +1355,7 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
          dTmp1 = 50.0 / dMaxWindowInten;
          dTmp2 = 0.05 * pPre->dHighestIntensity;
 
-         for (ii=0; ii<iWindowSize; ii++)    // Normalize to max inten. in window.
+         for (ii=0; ii<iWindowSize; ++ii)    // Normalize to max inten. in window.
          {
             iBin = i*iWindowSize+ii;
             if (iBin < pScoring->_spectrumInfoInternal.iArraySize)
@@ -1397,96 +1369,13 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
 }
 
 
-// Pull out top # ions for intensity matching in search.
-void CometPreprocess::GetTopIons(double *pdTmpRawData,
-                                 struct msdata *pTmpSpData,
-                                 int iArraySize)
-{
-   int  i,
-        ii,
-        iLowestIntenIndex=0;
-   double dLowestInten=0.0,
-          dMaxInten=0.0;
-
-   for (i=0; i<iArraySize; i++)
-   {
-      if (pdTmpRawData[i] > dLowestInten)
-      {
-         (pTmpSpData+iLowestIntenIndex)->dIntensity = (double)pdTmpRawData[i];
-         (pTmpSpData+iLowestIntenIndex)->dIon = (double)i;
-
-         if ((pTmpSpData+iLowestIntenIndex)->dIntensity > dMaxInten)
-            dMaxInten = (pTmpSpData+iLowestIntenIndex)->dIntensity;
-
-         dLowestInten = (pTmpSpData+0)->dIntensity;
-         iLowestIntenIndex = 0;
-
-         for (ii=1; ii<NUM_SP_IONS; ii++)
-         {
-            if ((pTmpSpData+ii)->dIntensity < dLowestInten)
-            {
-               dLowestInten = (pTmpSpData+ii)->dIntensity;
-               iLowestIntenIndex=ii;
-               if (dLowestInten == 0.0)
-                  break;
-            }
-         }
-      }
-   }
-
-   if (dMaxInten > FLOAT_ZERO)
-   {
-      for (i=0; i<NUM_SP_IONS; i++)
-         (pTmpSpData+i)->dIntensity = (((pTmpSpData+i)->dIntensity)/dMaxInten)*100.0;
-   }
-}
-
-
 bool CometPreprocess::SortByIon(const struct msdata &a,
                                 const struct msdata &b)
 {
-   if (a.dIon < b.dIon)
+   if (a.iIon < b.iIon)
       return true;
    else
       return false;
-}
-
-
-// Works on Sp data.
-void CometPreprocess::StairStep(struct msdata *pTmpSpData)
-{
-   int  i,
-        ii,
-        iii;
-   double dMaxInten,
-          dGap;
-
-   i=0;
-   while (i < NUM_SP_IONS-1)
-   {
-      ii = i;
-      dMaxInten = (pTmpSpData+i)->dIntensity;
-      dGap = 0.0;
-
-      while (dGap<=g_staticParams.tolerances.dFragmentBinSize && ii<NUM_SP_IONS-1)
-      {
-         ii++;
-         dGap = (pTmpSpData+ii)->dIon - (pTmpSpData+ii-1)->dIon;
-
-         // Finds the max intensity for adjacent points.
-         if (dGap<=g_staticParams.tolerances.dFragmentBinSize)
-         {
-            if ((pTmpSpData+ii)->dIntensity > dMaxInten)
-               dMaxInten = (pTmpSpData+ii)->dIntensity;
-         }
-      }
-
-      // Sets the adjacent points to the dMaxInten.
-      for (iii=i; iii<ii; iii++)
-         (pTmpSpData+iii)->dIntensity = dMaxInten;
-
-      i = ii;
-   }
 }
 
 
@@ -1500,7 +1389,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    double dCushion = 0.0;
    if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
       {
@@ -1509,7 +1398,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    }
    else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
       {
@@ -1518,7 +1407,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    }
    else // ppm
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dPeptideMassHigh / 1000000.0;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
    }
 
    //MH: Must be equal to largest possible array
@@ -1526,14 +1415,14 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
 
    //MH: Initally mark all arrays as available (i.e. false=not inuse).
    pbMemoryPool = new bool[maxNumThreads];
-   for (i=0; i<maxNumThreads; i++)
+   for (i=0; i<maxNumThreads; ++i)
    {
       pbMemoryPool[i] = false;
    }
 
    //MH: Allocate arrays
    ppdTmpRawDataArr = new double*[maxNumThreads]();
-   for (i=0; i<maxNumThreads; i++)
+   for (i=0; i<maxNumThreads; ++i)
    {
       try
       {
@@ -1554,7 +1443,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
 
    //MH: Allocate arrays
    ppdTmpFastXcorrDataArr = new double*[maxNumThreads]();
-   for (i=0; i<maxNumThreads; i++)
+   for (i=0; i<maxNumThreads; ++i)
    {
       try
       {
@@ -1575,7 +1464,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
 
    //MH: Allocate arrays
    ppdTmpCorrelationDataArr = new double*[maxNumThreads]();
-   for (i=0; i<maxNumThreads; i++)
+   for (i=0; i<maxNumThreads; ++i)
    {
       try
       {
@@ -1605,7 +1494,7 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
 
    delete [] pbMemoryPool;
 
-   for (i=0; i<maxNumThreads; i++)
+   for (i=0; i<maxNumThreads; ++i)
    {
       delete [] ppdTmpRawDataArr[i];
       delete [] ppdTmpFastXcorrDataArr[i];
@@ -1660,7 +1549,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    int i;
    int x;
    int y;
-   struct msdata pTmpSpData[NUM_SP_IONS];
    struct PreprocessStruct pPre;
 
    pPre.iHighestIon = 0;
@@ -1671,21 +1559,21 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    double dCushion = 0.0;
    if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
    }
    else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance * 0.001;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
          dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
    }
    else // ppm
    {
-      dCushion = g_staticParams.tolerances.dInputTolerance * g_staticParams.options.dPeptideMassHigh / 1000000.0;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
    }
 
    if (!AdjustMassTol(pScoring))
@@ -1711,13 +1599,15 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    double dIon=0,
           dIntensity=0;
 
-   int iTmpArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerance + 2.0) * g_staticParams.dInverseBinWidth);
+   int iTmpArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth);
    memset(pdTmpSpectrum, 0, iTmpArraySize*sizeof(double));
 
-   for (i=0; i<iNumPeaks; i++)
+   for (i=0; i<iNumPeaks; ++i)
    {
       dIon = pdMass[i];
       dIntensity = pdInten[i];
+
+      pScoring->vdRawFragmentPeakMass.push_back(dIon);
 
       if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
       {
@@ -1780,9 +1670,9 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    double dTmp = 1.0 / (double)(iTmpRange - 1);
 
    dSum=0.0;
-   for (i=0; i<g_staticParams.iXcorrProcessingOffset; i++)
+   for (i=0; i<g_staticParams.iXcorrProcessingOffset; ++i)
       dSum += pdTmpCorrelationData[i];
-   for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; i++)
+   for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
    {
       if (i<pScoring->_spectrumInfoInternal.iArraySize)
          dSum += pdTmpCorrelationData[i];
@@ -1792,7 +1682,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    }
 
    pScoring->pfFastXcorrData[0] = 0.0;
-   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
       double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
 
@@ -1860,7 +1750,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
          return false;
       }
 
-      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
       {
          if (pScoring->pfFastXcorrDataNL[i]>FLOAT_ZERO || pScoring->pfFastXcorrDataNL[i]<-FLOAT_ZERO)
          {
@@ -1882,7 +1772,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
                   logerr(szErrorMsg);
                   return false;
                }
-               for (y=0; y<SPARSE_MATRIX_SIZE; y++)
+               for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
                   pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
             }
             y=i-(x*SPARSE_MATRIX_SIZE);
@@ -1897,7 +1787,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    //MH: Fill sparse matrix
    pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
 
-   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
       if (pScoring->pfFastXcorrData[i]>FLOAT_ZERO || pScoring->pfFastXcorrData[i]<-FLOAT_ZERO)
       {
@@ -1906,7 +1796,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
          {
             pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
 
-            for (y=0; y<SPARSE_MATRIX_SIZE; y++)
+            for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
                pScoring->ppfSparseFastXcorrData[x][y]=0;
          }
          y=i-(x*SPARSE_MATRIX_SIZE);
@@ -1917,29 +1807,21 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    delete[] pScoring->pfFastXcorrData;
    pScoring->pfFastXcorrData = NULL;
 
-   // Create data for sp scoring.
-
-   for (i=0; i<NUM_SP_IONS; i++)
-   {
-      pTmpSpData[i].dIon = 0.0;
-      pTmpSpData[i].dIntensity = 0.0;
-   }
-
-   GetTopIons(pdTmpRawData, &(pTmpSpData[0]), pScoring->_spectrumInfoInternal.iArraySize);
-
+   // Create data for sp scoring which is just the binned peaks normalized to max inten 100
    pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
    memset(pScoring->pfSpScoreData, 0, sizeof(float) * pScoring->_spectrumInfoInternal.iArraySize);
 
-   // note that pTmpSpData[].dIon values are already BIN'd
-   for (i=0; i<NUM_SP_IONS; i++)
-      pScoring->pfSpScoreData[(int)(pTmpSpData[i].dIon)] = (float) pTmpSpData[i].dIntensity;
+   for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+   {
+      pScoring->pfSpScoreData[i] = 100.0 * pdTmpRawData[i] / pPre.dHighestIntensity;
+   }
 
    // MH: Fill sparse matrix for SpScore
    pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
 
    pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
 
-   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; i++)
+   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
       if (pScoring->pfSpScoreData[i] > FLOAT_ZERO)
       {

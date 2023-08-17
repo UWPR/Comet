@@ -39,7 +39,7 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
    int iLenDecoyPrefix = strlen(g_staticParams.szDecoyPrefix);
 
    // Print results.
-   for (i=0; i<(int)g_pvQuery.size(); i++)
+   for (i=0; i<(int)g_pvQuery.size(); ++i)
    {
       if (g_pvQuery.at(i)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
       {
@@ -75,7 +75,7 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "IonFrac\t");
    fprintf(fpout, "Mass\t");
    fprintf(fpout, "PepLen\t");
-   for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
+   for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; ++i)
       fprintf(fpout, "Charge%d\t", i);
    fprintf(fpout, "enzN\t");
    fprintf(fpout, "enzC\t");
@@ -118,7 +118,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
    if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
       iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
 
-   for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+   for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
    {
       if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
          continue;
@@ -149,7 +149,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          bool bTarget = false;
          std::vector<string>::iterator it;
 
-         for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
+         for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)
          {
             if (strncmp((*it).c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
             {
@@ -170,7 +170,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass);  //CalcMass
 
       iMinLength = 999;
-      for (i=0; i<iNumPrintLines; i++)
+      for (i=0; i<iNumPrintLines; ++i)
       {
          int iLen = (int)strlen(pOutput[i].szPeptide);
          if (iLen == 0)
@@ -185,7 +185,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       double dLastDeltaCn=1.0;   // this is deltaCn between first and last peptide in output list
 
       // go one past iNumPrintLines to calculate deltaCn value
-      for (j=iWhichResult+1; j<iNumPrintLines+1; j++)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
+      for (j=iWhichResult+1; j<iNumPrintLines+1; ++j)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
       {
          if (j<g_staticParams.options.iNumStored)
          {
@@ -194,7 +194,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
             if (!g_staticParams.options.bExplicitDeltaCn)
             {
-               for (int k=0; k<iMinLength; k++)
+               for (int k=0; k<iMinLength; ++k)
                {
                   // I-L and Q-K are same for purposes here
                   if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
@@ -286,7 +286,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass); // Mass is observed MH+
    fprintf(fpout, "%d\t", pOutput[iWhichResult].iLenPeptide); // PepLen
 
-   for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; i++)
+   for (int i=1 ; i<= g_staticParams.options.iMaxPrecursorCharge; ++i)
       fprintf(fpout, "%d\t", (pQuery->_spectrumInfoInternal.iChargeState==i?1:0) );
 
    fprintf(fpout, "%d\t", iNterm); // enzN
@@ -332,7 +332,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    if (bNterm)
       fprintf(fpout, "n[%0.4f]", dNterm);
    // Print peptide sequence.
-   for (int i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+   for (int i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
    {
       fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
@@ -348,7 +348,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    bool bPrintTab = false;
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
-      for (it = vProteinTargets.begin(); it != vProteinTargets.end(); it++)
+      for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)
       {
          if (bPrintTab)
          {
@@ -365,7 +365,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
 
    if (iPrintTargetDecoy != 1)  // if not target only, print decoy proteins
    {
-      for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); it++)
+      for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); ++it)
       {
          if (bPrintTab)
          {
@@ -441,7 +441,7 @@ void CometWritePercolator::CalcNTTNMC(Results *pOutput,
    // Calculate number of missed cleavage (NMC) sites based on sample_enzyme
    if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide-1; i++)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide-1; ++i)
       {
          if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
                && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i+1]))
@@ -452,7 +452,7 @@ void CometWritePercolator::CalcNTTNMC(Results *pOutput,
    }
    else
    {
-      for (i=1; i<pOutput[iWhichResult].iLenPeptide; i++)
+      for (i=1; i<pOutput[iWhichResult].iLenPeptide; ++i)
       {
          if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
                && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i-1]))

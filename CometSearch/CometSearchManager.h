@@ -21,6 +21,25 @@
 #include "CometDataInternal.h"
 #include "CometInterfaces.h"
 
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <stdarg.h>
+#ifdef _WIN32
+#include <io.h>
+#include <stdio.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <unistd.h>
+#include <err.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#endif
+
 using namespace CometInterfaces;
 
 class CometSearchManager : public ICometSearchManager
@@ -34,6 +53,7 @@ public:
    // Methods inherited from ICometSearchManager
    virtual bool CreateIndex();
    virtual bool DoSearch();
+// virtual bool DoIndexSearch();
    virtual bool InitializeSingleSpectrumSearch();
    virtual void FinalizeSingleSpectrumSearch();
    virtual bool DoSingleSpectrumSearch(const int iPrecursorCharge,
@@ -77,15 +97,8 @@ public:
 
 private:
    bool InitializeStaticParams();
-   static bool CompareByPeptide(const DBIndex &lhs,
-                                const DBIndex &rhs);
-   static bool CompareByMass(const DBIndex &lhs,
-                             const DBIndex &rhs);
-   static bool WriteIndexedDatabase(void);
-
    static void UpdatePrevNextAA(int iWhichQuery,
                                 int iPrintTargetDecoy);
-
    bool singleSearchInitializationComplete;
    int singleSearchThreadCount;
    std::map<std::string, CometParam*> _mapStaticParams;

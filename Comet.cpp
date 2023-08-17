@@ -33,7 +33,8 @@ void SetOptions(char *arg,
                 char *szParamsFile,
                 bool *bPrintParams,
                 ICometSearchManager *pSearchMgr);
-void LoadParameters(char *pszParamsFile, ICometSearchManager *pSearchMgr);
+void LoadParameters(char *pszParamsFile,
+                    ICometSearchManager *pSearchMgr);
 void PrintParams();
 bool ValidateInputFile(char *pszInputFileName);
 
@@ -61,9 +62,16 @@ int main(int argc, char *argv[])
    ProcessCmdLine(argc, argv, szParamsFile, pvInputFiles, pCometSearchMgr);
    pCometSearchMgr->AddInputFiles(pvInputFiles);
 
-   bool bSearchSucceeded = pCometSearchMgr->DoSearch();
+   bool bSearchSucceeded;
 
-   ReleaseCometSearchManager();
+/*
+   if (g_staticParams.bIndexDb)
+      bSearchSucceeded = pCometSearchMgr->IndexSearch();  //fragment index search
+   else
+*/
+      bSearchSucceeded = pCometSearchMgr->DoSearch();
+
+   CometInterfaces::ReleaseCometSearchManager();
 
    if (!bSearchSucceeded)
    {
@@ -118,6 +126,7 @@ void SetOptions(char *arg,
       ICometSearchManager *pSearchMgr)
 {
    char szTmp[512];
+   char szParamStringVal[512];
 
    switch (arg[1])
    {
@@ -153,7 +162,6 @@ void SetOptions(char *arg,
             logerr("Missing text for parameter option -F<num>.  Ignored.\n");
          else
          {
-            char szParamStringVal[512];
             IntRange iScanRange;
             pSearchMgr->GetParamValue("scan_range", iScanRange);
             iScanRange.iStart = atoi(szTmp);
@@ -167,7 +175,6 @@ void SetOptions(char *arg,
             logerr("Missing text for parameter option -L<num>.  Ignored.\n");
          else
          {
-            char szParamStringVal[512];
             IntRange iScanRange;
             pSearchMgr->GetParamValue("scan_range", iScanRange);
             iScanRange.iEnd = atoi(szTmp);
@@ -181,7 +188,6 @@ void SetOptions(char *arg,
             logerr("Missing text for parameter option -B<num>.  Ignored.\n");
          else
          {
-            char szParamStringVal[512];
             int iSpectrumBatchSize = atoi(szTmp);
             szParamStringVal[0] = '\0';
             sprintf(szParamStringVal, "%d", iSpectrumBatchSize);
@@ -192,7 +198,6 @@ void SetOptions(char *arg,
          *bPrintParams = true;
          break;
       case 'i':
-         char szParamStringVal[512];
          sprintf(szParamStringVal, "1");
          pSearchMgr->SetParam("create_index", szParamStringVal, 1);
          break;
@@ -204,7 +209,7 @@ void SetOptions(char *arg,
 
 // Reads comet.params parameter file.
 void LoadParameters(char *pszParamsFile,
-      ICometSearchManager *pSearchMgr)
+                    ICometSearchManager *pSearchMgr)
 {
    double dTempMass,
           dDoubleParam;
@@ -667,10 +672,12 @@ void LoadParameters(char *pszParamsFile,
             }
             else if (!strcmp(szParamName, "peptide_mass_tolerance"))
             {
-               sscanf(szParamVal, "%lf", &dDoubleParam);
+               doubleRangeParam.dStart = 0.0;
+               doubleRangeParam.dEnd = 0.0;
+               sscanf(szParamVal, "%lf %lf", &doubleRangeParam.dStart, &doubleRangeParam.dEnd);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, dDoubleParam);
+               sprintf(szParamStringVal, "%lf %lf", doubleRangeParam.dStart, doubleRangeParam.dEnd);
+               pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, doubleRangeParam);
             }
             else if (!strcmp(szParamName, "precursor_tolerance_type"))
             {
@@ -1536,7 +1543,7 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 "#\n\
 # masses\n\
 #\n\
-peptide_mass_tolerance = 20.00\n\
+peptide_mass_tolerance = -20.00 20.0   # lower and upper bound of the precursor mass tolerance\n\
 peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm\n\
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\

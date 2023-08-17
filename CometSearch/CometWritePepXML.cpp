@@ -48,14 +48,14 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      for (i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); ++i)
          PrintResults(i, 1, fpout, fpdb, iNumSpectraSearched);
-      for (i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); ++i)
          PrintResults(i, 2, fpoutd, fpdb, iNumSpectraSearched);
    }
    else
    {
-      for (i=0; i<(int)g_pvQuery.size(); i++)
+      for (i=0; i<(int)g_pvQuery.size(); ++i)
          PrintResults(i, 0, fpout, fpdb, iNumSpectraSearched);
    }
 
@@ -307,7 +307,7 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
       if (cSymbol != '-' && !isEqual(varModsParam.dVarModMass, 0.0))
       {
          int iLen = (int)strlen(varModsParam.szVarModChar);
-         for (int i=0; i<iLen; i++)
+         for (int i=0; i<iLen; ++i)
          {
             if (varModsParam.szVarModChar[i]=='n' && bWriteTerminalMods)
             {
@@ -477,6 +477,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       fprintf(fpout, ">\n");
 
    fprintf(fpout, "  <search_result>\n");
+fflush(fpout);
 
    Results *pOutput;
 
@@ -495,7 +496,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
    iMinLength = 999;
-   for (i=0; i<iNumPrintLines; i++)
+   for (i=0; i<iNumPrintLines; ++i)
    {
       int iLen = (int)strlen(pOutput[i].szPeptide);
       if (iLen == 0)
@@ -506,13 +507,13 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    iRankXcorr = 1;
 
-   for (int iWhichResult=0; iWhichResult<iNumPrintLines; iWhichResult++)
+   for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
    {
       int j;
       bool bNoDeltaCnYet = true;
       double dDeltaCn = 0.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
 
-      for (j=iWhichResult+1; j<iNumPrintLines+1; j++)
+      for (j=iWhichResult+1; j<iNumPrintLines+1; ++j)
       {
          if (j<g_staticParams.options.iNumStored)
          {
@@ -521,7 +522,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
             if (!g_staticParams.options.bExplicitDeltaCn)
             {
-               for (int k=0; k<iMinLength; k++)
+               for (int k=0; k<iMinLength; ++k)
                {
                   // I-L and Q-K are same for purposes here
                   if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
@@ -632,7 +633,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          fprintf(fpout, " protein=\"%s\"", sTmp.c_str());
          ++it;
       }
-      else
+      else if (vProteinTargets.size() > 0)
       {
          it = vProteinDecoys.begin();
          sTmp = *it;
@@ -672,7 +673,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    {
       if (vProteinTargets.size() > 0)
       {
-         for (; it != vProteinTargets.end(); it++)
+         for (; it != vProteinTargets.end(); ++it)
          {
             sTmp = *it;
             CometMassSpecUtils::EscapeString(sTmp);
@@ -688,7 +689,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          it = vProteinDecoys.begin();
          if (vProteinTargets.size() == 0)  // skip the first decoy entry if it would've been printed as main protein
             ++it;
-         for (; it != vProteinDecoys.end(); it++)
+         for (; it != vProteinDecoys.end(); ++it)
          {
             sTmp = *it;
             CometMassSpecUtils::EscapeString(sTmp);
@@ -715,7 +716,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    if (!bModified)
    {
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
 
       {
          if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
@@ -790,7 +791,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       // generate modified_peptide string
       if (bNtermVariable)
          sprintf(szModPep+strlen(szModPep), "n[%0.0f]", dNterm);
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
       {
          sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
 
@@ -810,7 +811,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          fprintf(fpout, " mod_cterm_mass=\"%0.6f\"", dCterm);
       fprintf(fpout, ">\n");
 
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide; i++)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
       {
          if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
                || pOutput[iWhichResult].piVarModSites[i] != 0)
@@ -1053,7 +1054,7 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    // Calculate number of missed cleavage (NMC) sites based on sample_enzyme
    if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide-1; i++)
+      for (i=0; i<pOutput[iWhichResult].iLenPeptide-1; ++i)
       {
          if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
                && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i+1]))
@@ -1064,7 +1065,7 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    }
    else
    {
-      for (i=1; i<pOutput[iWhichResult].iLenPeptide; i++)
+      for (i=1; i<pOutput[iWhichResult].iLenPeptide; ++i)
       {
          if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
                && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i-1]))
