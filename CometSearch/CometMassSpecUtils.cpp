@@ -141,13 +141,13 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
 
       fread(&lSize, sizeof(long), 1, fpdb);
       vector<comet_fileoffset_t> vOffsets;
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lSize; ++x)
       {
          comet_fileoffset_t tmpoffset;
          fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
          vOffsets.push_back(tmpoffset);
       }
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lSize; ++x)
       {
          char szTmp[WIDTH_REFERENCE];
          comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
@@ -219,48 +219,28 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
    if (g_staticParams.bIndexDb)  //index database
    {
-      long lSize;
-      bool bDecoy = false;
+      Results *pOutput;
 
-      if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].pWhichProtein.size() > 0)
-         it = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].pWhichProtein.begin();
+      if (iPrintTargetDecoy != 2)
+         pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
       else
+         pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+
+      // get target proteins
+      if (iPrintTargetDecoy != 2)  // if not decoy-only
       {
-         it = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].pWhichDecoyProtein.begin();
-         bDecoy = true;
-      }
-
-      comet_fseek(fpdb, it->lWhichProtein, SEEK_SET);
-
-      fread(&lSize, sizeof(long), 1, fpdb);
-      vector<comet_fileoffset_t> vOffsets;
-
-      for (long x = 0; x < lSize; x++)
-      {
-         comet_fileoffset_t tmpoffset;
-         fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
-         vOffsets.push_back(tmpoffset);
-      }
-
-      for (long x = 0; x < lSize; x++)
-      {
-         if (x > g_staticParams.options.iMaxDuplicateProteins)
-            break;
-
-         comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
-         fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-         szProteinName[511] = '\0';
-   
-         if (bDecoy)
+         comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+         for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
          {
-            if (strlen(szProteinName) + iLenDecoyPrefix >= WIDTH_REFERENCE)
-               szProteinName[strlen(szProteinName) - iLenDecoyPrefix] = '\0';
-            sprintf(szDecoyProteinName, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
-            vProteinTargets.push_back(szDecoyProteinName);
-         }
-         else
+            comet_fseek(fpdb, *it, SEEK_SET);
+            fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+            szProteinName[511] = '\0';
             vProteinTargets.push_back(szProteinName);
+         }
       }
+
+      // FIX need to handle decoys
+
    }
    else  // regular fasta database
    {

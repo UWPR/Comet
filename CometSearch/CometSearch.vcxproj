@@ -167,9 +167,11 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CombinatoricsUtils.h" />
     <ClInclude Include="CometData.h" />
     <ClInclude Include="CometDataInternal.h" />
     <ClInclude Include="CometDecoys.h" />
+    <ClInclude Include="CometFragmentIndex.h" />
     <ClInclude Include="CometInterfaces.h" />
     <ClInclude Include="CometMassSpecUtils.h" />
     <ClInclude Include="CometPostAnalysis.h" />
@@ -184,11 +186,14 @@
     <ClInclude Include="CometWriteSqt.h" />
     <ClInclude Include="CometWriteTxt.h" />
     <ClInclude Include="Common.h" />
+    <ClInclude Include="ModificationsPermuter.h" />
     <ClInclude Include="OSSpecificThreading.h" />
     <ClInclude Include="Threading.h" />
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CombinatoricsUtils.cpp" />
+    <ClCompile Include="CometFragmentIndex.cpp" />
     <ClCompile Include="CometInterfaces.cpp" />
     <ClCompile Include="CometMassSpecUtils.cpp" />
     <ClCompile Include="CometPostAnalysis.cpp" />
@@ -201,6 +206,7 @@
     <ClCompile Include="CometWritePercolator.cpp" />
     <ClCompile Include="CometWriteSqt.cpp" />
     <ClCompile Include="CometWriteTxt.cpp" />
+    <ClCompile Include="ModificationsPermuter.cpp" />
     <ClCompile Include="Threading.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

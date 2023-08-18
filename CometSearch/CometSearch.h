@@ -17,9 +17,9 @@
 #ifndef _COMETSEARCH_H_
 #define _COMETSEARCH_H_
 
-
 #include "Common.h"
 #include "CometDataInternal.h"
+#include <functional>
 
 struct SearchThreadData
 {
@@ -27,7 +27,6 @@ struct SearchThreadData
    bool *pbSearchMemoryPool;
    ThreadPool *tp;
   
-
    SearchThreadData()
    {
    }
@@ -72,8 +71,8 @@ public:
    static bool DeallocateMemory(int maxNumThreads);
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,
-                         ThreadPool* tp);
-   static bool RunSearch(void);    // for DoSingleSpectrumSearch() to call IndexSearch()
+                         ThreadPool *tp);
+   static bool RunSearch(ThreadPool *tp);    // for DoSingleSpectrumSearch() to call IndexSearch()
    static void SearchThreadProc(SearchThreadData *pSearchThreadData,
                                 ThreadPool *tp);
    bool DoSearch(sDBEntry dbe,
@@ -94,6 +93,10 @@ private:
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
+   static int BinarySearchIndexMass(int start,
+                                    int end,
+                                    double dQueryMass,
+                                    int *iFragmentMass);
    void SubtractVarMods(int *piVarModCounts,
                         int cResidue,
                         int iResiduePosition);
@@ -124,6 +127,17 @@ private:
                    int iLenPeptide,
                    int *piVarModSites,
                    struct sDBEntry *dbe);
+   static void XcorrScoreI(char *szProteinSeq,
+                   int iStartPos,
+                   int iEndPos,
+                   int iFoundVariableMod,
+                   double dCalcPepMass,
+                   bool bDecoyPep,
+                   int iWhichQuery,
+                   int iLenPeptide,
+                   int *piVarModSites,
+                   struct sDBEntry *dbe,
+                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT]);
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
@@ -133,7 +147,7 @@ private:
                               int iStartPos);
    bool CheckMassMatch(int iWhichQuery,
                        double dCalcPepMass);
-   double GetFragmentIonMass(int iWhichIonSeries,
+   static double GetFragmentIonMass(int iWhichIonSeries,
                              int i,
                              int ctCharge,
                              double *pdAAforward,
@@ -151,6 +165,16 @@ private:
                       struct sDBEntry *dbe);
    void StorePeptide(int iWhichQuery,
                      int iStartResidue,
+                     int iStartPos,
+                     int iEndPos,
+                     int iFoundVariableMod,
+                     char *szProteinSeq,
+                     double dCalcPepMass,
+                     double dXcorr,
+                     bool bStoreSeparateDecoy,
+                     int *piVarModSites,
+                     struct sDBEntry *dbe);
+   static void StorePeptideI(int iWhichQuery,
                      int iStartPos,
                      int iEndPos,
                      int iFoundVariableMod,
@@ -189,8 +213,16 @@ private:
                        double dCalcPepMass,
                        int iLenPeptide,
                        struct sDBEntry *dbe);
-   bool IndexSearch(void);
-   void ReadDBIndexEntry(struct DBIndex *sDBI, FILE *fp);
+   bool IndexSearch(ThreadPool *tp);
+   void PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptides);
+   void GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
+                              ThreadPool *tp);
+   void PrintFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides);
+   static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
+                            int iWhichPeptide,
+                            int modNumIdx);
+   static void SearchFragmentIndex(size_t iWhichQuery,
+                            ThreadPool *tp);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence
@@ -205,6 +237,15 @@ private:
                         DBIndex sTmp,
                         bool *pbDuplFragment,
                         struct sDBEntry *dbe);
+   static bool SortFragmentsByPepMass(unsigned int x,
+                                      unsigned int y);
+   static void SortFragmentThreadProc(int i,
+                                      ThreadPool *tp);
+   static void AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,
+                                      size_t iWhichPeptide,
+                                      int& iNoModificationNumbers,
+                                      ThreadPool *tp);
+
 
    char GetAA(int i,
               int iDirection,
@@ -213,7 +254,6 @@ private:
    // Cleaning up
    void CleanUp();
 
-private:
    struct VarModStat
    {
        int iTotVarModCt;                     // # mod positions in peptide
@@ -292,6 +332,10 @@ private:
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
+
+// static Mutex _vFragmentIndexMutex;
+// static Mutex _vFragmentPeptidesMutex;
+
 };
 
 #endif // _COMETSEARCH_H_

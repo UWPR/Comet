@@ -30,3 +30,5 @@ E. Use Windows style carriange returns ("\r\n") instead of Unix style returns ("
 
 F. Use '//' for comments.  This allows one to comment out large blocks of code,
    including these local comments, using /* */.
+
+G. Attempt to use Systems Hungarian Notation as the naming convention.

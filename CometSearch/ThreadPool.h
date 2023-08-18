@@ -42,6 +42,7 @@
 
 #ifndef _WIN32
 #include <pthread.h>
+#include <sched.h>
 #endif
 
 #define VERBOSE 0
@@ -120,14 +121,14 @@ public:
       
       for (int i = 0; i < threads; ++i)
       {
-	data = new thpldata();
-	data->setThreadNum(i);
-	data->tp = this;
-	data_.push_back(data);
+         data = new thpldata();
+         data->setThreadNum(i);
+         data->tp = this;
+         data_.push_back(data);
 
-	this->LOCK(&this->lock_);
+         this->LOCK(&this->lock_);
          threads_.push_back(pHandle[i]);
-	this->UNLOCK(&this->lock_);
+         this->UNLOCK(&this->lock_);
 #ifdef _WIN32
          threads_[i] = (HANDLE)_beginthreadex(0, 0, (_beginthreadex_proc_type) &threadStart, (void*) data_[i], 0,NULL);
 #else
@@ -146,14 +147,12 @@ public:
          if (this->jobs_.empty () || this->running_count_ < (int) this->threads_.size() )
          {
             this->UNLOCK(&this->lock_);
-            //Threading::ThreadSleep(100);
             // When threads are still busy and no jobs to do wait ...
 #ifdef _WIN32
-	    SwitchToThread();            
+            SwitchToThread();            
 #else
-	    sched_yield();
-#endif	    
-	    
+            sched_yield();
+#endif    
          }
          else
          {
@@ -190,10 +189,10 @@ public:
       {
          this->UNLOCK(&countlock_);
 #ifdef _WIN32
-	    SwitchToThread();            
+         SwitchToThread();            
 #else
-	    sched_yield();
-#endif	    
+         sched_yield();
+#endif    
          this->LOCK(&countlock_);
       }
       this->UNLOCK(&countlock_);
@@ -204,7 +203,6 @@ public:
       shutdown_ = true;
       for (size_t i =0 ; i < data_.size(); i++)
       {
-	
 #ifdef _WIN32
          WaitForSingleObject(threads_[i],INFINITE);
 #else
@@ -348,72 +346,72 @@ inline void* threadStart(void* ptr)
          tp->UNLOCK(&tp->lock_);
 
 #ifdef _WIN32
-	    SwitchToThread();            
+         SwitchToThread();            
 #else
-	    sched_yield();
-#endif	    
-	    
-	    tp->LOCK(&tp->lock_);
-	    if (tp->threads_.size() == 0) {
-	               tp->UNLOCK(&tp->lock_);
-#ifdef _WIN32
-		       return 1;
-#else
-		       return NULL;
+         sched_yield();
 #endif
-	    }
-	    
-	    //sleep some before reacquiring lock
-	    //Threading::ThreadSleep(100);
-	    
-	    if  (did_job)
-	      {
-		tp->running_count_ --;
-		did_job = false;
-	      }
+         tp->LOCK(&tp->lock_);
+         if (tp->threads_.size() == 0)
+         {
+            tp->UNLOCK(&tp->lock_);
+
+#ifdef _WIN32
+            return 1;
+#else
+            return NULL;
+#endif
+         }
+    
+         //sleep some before reacquiring lock
+         //Threading::ThreadSleep(100);
+         if  (did_job)
+         {
+            tp->running_count_ --;
+            did_job = false;
+         }
       }
       
       if (tp->jobs_.empty ())
-	{
-	  // No jobs to do and we are shutting down
-	  if (VERBOSE)
+      {
+         // No jobs to do and we are shutting down
+         if (VERBOSE)
             std::cerr << "Thread " << i << " terminates" << std::endl;
-	  tp->UNLOCK(&tp->lock_);
+
+         tp->UNLOCK(&tp->lock_);
 #ifdef _WIN32
-	  return 1;
+         return 1;
 #else
-	  return NULL;
+         return NULL;
 #endif
-	  break;
-	  
-	}
+         break;
+      }
       else
-	{
-	  //std::cerr << "Thread " << i << " does a job" << std::endl;
-	  job = std::move (tp->jobs_.front ());
-	  tp->jobs_.pop_front();
-	  
-	  if (!did_job)
+      {
+         //std::cerr << "Thread " << i << " does a job" << std::endl;
+         job = std::move (tp->jobs_.front ());
+         tp->jobs_.pop_front();
+
+         if (!did_job)
             tp->running_count_ ++;
-	  
-	  tp->UNLOCK(&tp->lock_);
-	  // Do the job without holding any locks
-	  try
-	    {
-	      job();
-	      did_job = true;
-	    }
-	  catch (std::exception& e)
-	    {
-	      cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
+
+         tp->UNLOCK(&tp->lock_);
+         // Do the job without holding any locks
+         try
+         {
+            job();
+            did_job = true;
+         }
+         catch (std::exception& e)
+         {
+            cerr << "WARNING: running job exception ... " << e.what() << " ... exiting ... " <<  endl;
 #ifdef _WIN32
-	      return 1;
+            return 1;
 #else
-	      return NULL;
+            return NULL;
 #endif
-	      break;
-	    }
-	}
+            break;
+         }
+      }
    }
 }
 
