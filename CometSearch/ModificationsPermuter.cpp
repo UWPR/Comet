@@ -317,13 +317,13 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
 unsigned long long ModificationsPermuter::getModBitmask(string* modSeq,
                                                         string sModChars)
 {
-   unsigned long long bitMask = 0ULL;
+   uint64_t bitMask = 0ULL;
    long len = (*modSeq).size();
    for (int i = 0; i < len; ++i)
    {
       if (sModChars.find((*modSeq)[i]) != string::npos)
       {
-         bitMask |= (static_cast <unsigned __int64> (1ULL) << (len - i - 1));
+         bitMask |= (static_cast <uint64_t> (1ULL) << (len - i - 1));
       }
    }
 
