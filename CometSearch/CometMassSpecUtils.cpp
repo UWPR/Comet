@@ -76,55 +76,55 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
 
    if (bMonoMasses) // monoisotopic masses
    {
-      H = pdAAMass['h'] = Hydrogen_Mono; // hydrogen
-      O = pdAAMass['o'] = Oxygen_Mono;  // oxygen
-      C = pdAAMass['c'] = Carbon_Mono;   // carbon
-      N = pdAAMass['n'] = Nitrogen_Mono;   // nitrogen
-//    P = pdAAMass['p'] = 30.973762;    // phosphorus
-      S = pdAAMass['s'] = 31.9720707;   // sulphur
-      Se = pdAAMass['e'] = 79.9165196;  // selenium
+      H = pdAAMass[(int)'h'] = Hydrogen_Mono; // hydrogen
+      O = pdAAMass[(int)'o'] = Oxygen_Mono;  // oxygen
+      C = pdAAMass[(int)'c'] = Carbon_Mono;   // carbon
+      N = pdAAMass[(int)'n'] = Nitrogen_Mono;   // nitrogen
+//    P = pdAAMass[(int)'p'] = 30.973762;    // phosphorus
+      S = pdAAMass[(int)'s'] = 31.9720707;   // sulphur
+      Se = pdAAMass[(int)'e'] = 79.9165196;  // selenium
    }
    else  // average masses
    {
-      H = pdAAMass['h'] =  1.00794;
-      O = pdAAMass['o'] = 15.9994;
-      C = pdAAMass['c'] = 12.0107;
-      N = pdAAMass['n'] = 14.0067;
-//    P = pdAAMass['p'] = 30.973761;
-      S = pdAAMass['s'] = 32.065;
-      Se = pdAAMass['e'] = 78.96;
+      H = pdAAMass[(int)'h'] =  1.00794;
+      O = pdAAMass[(int)'o'] = 15.9994;
+      C = pdAAMass[(int)'c'] = 12.0107;
+      N = pdAAMass[(int)'n'] = 14.0067;
+//    P = pdAAMass[(int)'p'] = 30.973761;
+      S = pdAAMass[(int)'s'] = 32.065;
+      Se = pdAAMass[(int)'e'] = 78.96;
    }
 
    *dOH2 = H + H + O;
 
-   pdAAMass['G'] = C*2  + H*3  + N   + O ;
-   pdAAMass['A'] = C*3  + H*5  + N   + O ;
-   pdAAMass['S'] = C*3  + H*5  + N   + O*2 ;
-   pdAAMass['P'] = C*5  + H*7  + N   + O ;
-   pdAAMass['V'] = C*5  + H*9  + N   + O ;
-   pdAAMass['T'] = C*4  + H*7  + N   + O*2 ;
-   pdAAMass['C'] = C*3  + H*5  + N   + O   + S ;
-   pdAAMass['U'] = C*3  + H*5  + N   + O   + Se ;
-   pdAAMass['L'] = C*6  + H*11 + N   + O ;
-   pdAAMass['I'] = C*6  + H*11 + N   + O ;
-   pdAAMass['N'] = C*4  + H*6  + N*2 + O*2 ;
-   pdAAMass['D'] = C*4  + H*5  + N   + O*3 ;
-   pdAAMass['Q'] = C*5  + H*8  + N*2 + O*2 ;
-   pdAAMass['K'] = C*6  + H*12 + N*2 + O ;
-   pdAAMass['E'] = C*5  + H*7  + N   + O*3 ;
-   pdAAMass['M'] = C*5  + H*9  + N   + O   + S ;
-   pdAAMass['H'] = C*6  + H*7  + N*3 + O ;
-   pdAAMass['F'] = C*9  + H*9  + N   + O ;
-   pdAAMass['R'] = C*6  + H*12 + N*4 + O ;
-   pdAAMass['Y'] = C*9  + H*9  + N   + O*2 ;
-   pdAAMass['W'] = C*11 + H*10 + N*2 + O ;
+   pdAAMass[(int)'G'] = C*2  + H*3  + N   + O ;
+   pdAAMass[(int)'A'] = C*3  + H*5  + N   + O ;
+   pdAAMass[(int)'S'] = C*3  + H*5  + N   + O*2 ;
+   pdAAMass[(int)'P'] = C*5  + H*7  + N   + O ;
+   pdAAMass[(int)'V'] = C*5  + H*9  + N   + O ;
+   pdAAMass[(int)'T'] = C*4  + H*7  + N   + O*2 ;
+   pdAAMass[(int)'C'] = C*3  + H*5  + N   + O   + S ;
+   pdAAMass[(int)'U'] = C*3  + H*5  + N   + O   + Se ;
+   pdAAMass[(int)'L'] = C*6  + H*11 + N   + O ;
+   pdAAMass[(int)'I'] = C*6  + H*11 + N   + O ;
+   pdAAMass[(int)'N'] = C*4  + H*6  + N*2 + O*2 ;
+   pdAAMass[(int)'D'] = C*4  + H*5  + N   + O*3 ;
+   pdAAMass[(int)'Q'] = C*5  + H*8  + N*2 + O*2 ;
+   pdAAMass[(int)'K'] = C*6  + H*12 + N*2 + O ;
+   pdAAMass[(int)'E'] = C*5  + H*7  + N   + O*3 ;
+   pdAAMass[(int)'M'] = C*5  + H*9  + N   + O   + S ;
+   pdAAMass[(int)'H'] = C*6  + H*7  + N*3 + O ;
+   pdAAMass[(int)'F'] = C*9  + H*9  + N   + O ;
+   pdAAMass[(int)'R'] = C*6  + H*12 + N*4 + O ;
+   pdAAMass[(int)'Y'] = C*9  + H*9  + N   + O*2 ;
+   pdAAMass[(int)'W'] = C*11 + H*10 + N*2 + O ;
 
-   pdAAMass['O'] = C*12  + H*19 + N*3 + O*2 ;
+   pdAAMass[(int)'O'] = C*12  + H*19 + N*3 + O*2 ;
 
-   pdAAMass['B'] = 0.0;
-   pdAAMass['J'] = 0.0;
-   pdAAMass['X'] = 0.0;
-   pdAAMass['Z'] = 0.0;
+   pdAAMass[(int)'B'] = 0.0;
+   pdAAMass[(int)'J'] = 0.0;
+   pdAAMass[(int)'X'] = 0.0;
+   pdAAMass[(int)'Z'] = 0.0;
 }
 
 

@@ -5800,7 +5800,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
 int CometSearch::twiddle(int *x, int *y, int *z, int *p)
 {
-   register int i, j, k;
+   int i, j, k;
    j = 1;
 
    while (p[j] <= 0)

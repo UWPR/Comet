@@ -133,7 +133,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
    int totalCount = 0;
    int i = maxMods;
 
-   unsigned long long* allCombos;  // = new unsigned long long[0]; // FIX: confirm no need for this init allocation
+   unsigned long long* allCombos = 0;  // = new unsigned long long[0]; // FIX: confirm no need for this init allocation
    int currentAllCount = 0;
    while (i >= 1)
    {

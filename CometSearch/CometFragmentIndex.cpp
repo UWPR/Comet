@@ -62,8 +62,6 @@ CometFragmentIndex::~CometFragmentIndex()
 
 bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 {
-   auto tStartTime= chrono::steady_clock::now();
-
    ReadPlainPeptideIndex();
 
    // now permute mods on the peptides
@@ -84,13 +82,6 @@ g_massRange.dMaxFragmentMass = 2500; //FIX
 
    // generate the modified peptides to calculate the fragment index
    GenerateFragmentIndex(g_vRawPeptides, tp);
-
-   auto tEndTime = chrono::steady_clock::now();
-   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
-   long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes*60000) / 1000;
-
-   cout << " - time generating fragment index: " << minutes << " minutes " << seconds  << " seconds" << endl;
 
    return true;
 }
@@ -117,16 +108,21 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 
    int MOD_CNT = (int)ALL_MODS.size();
 
+   cout << " - mods: ";
    for (int i = 0; i < MOD_CNT; i++)
    {
-      cout << " - mods: " << ALL_MODS[i] << endl;
+      if (i==0)
+         cout << ALL_MODS[i];
+      else
+         cout << ", " << ALL_MODS[i];
    }
+   cout << endl;
 
    unsigned long long* ALL_COMBINATIONS;
    int ALL_COMBINATION_CNT = 0;
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
-   ModificationsPermuter::initCombinations(MAX_PEPTIDE_LEN, MAX_MODS_PER_MOD,
+   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, MAX_MODS_PER_MOD,
          &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
    // Get the unique modifiable sequences from the peptides
@@ -134,29 +130,19 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 
    MOD_SEQS = ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
-   cout << "   getModificationCombinations ";
-   auto tBeginTime = chrono::steady_clock::now();
-
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(MOD_SEQS, MAX_MODS_PER_MOD, ALL_MODS,
          MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
-
-   auto tEndTime = chrono::steady_clock::now();
-   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tBeginTime);
-   long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes * 60000) / 1000;
-   cout << " (" << minutes << " minutes " << seconds  << " seconds)" << endl;
 }
 
 
 void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRawPeptides,
                                                ThreadPool *tp)
 {
-   size_t iWhichPeptide = 0;
    size_t iEndSize = g_vRawPeptides.size();
    int iNoModificationNumbers = 0;
 
-   cout <<  " - calculating the bazillion peptide fragments ..." << endl;
+   cout <<  " - calculate peptide fragments for " << iEndSize << " raw peptides ... "; fflush(stdout);
 
    auto tStartTime = chrono::steady_clock::now();
 
@@ -177,18 +163,19 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
                iWhichThread, iNumIndexingThreads, std::ref(iNoModificationNumbers), pFragmentIndexPool));
    }
 
-   printf("   Waiting on threads to process fragment ions for %ld peptides ...\n", iEndSize);
    pFragmentIndexPool->wait_on_threads();
 
    auto tEndTime = chrono::steady_clock::now();
    auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
    long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes*60000) / 1000;
-   cout << " - done with adding fragment ions to index: " << minutes << " minutes " << seconds  << " seconds" << endl;
+   long seconds = (duration.count() - minutes * 60000) / 1000;
+   cout << minutes << " min " << seconds  << " sec" << endl;
 
 // cout << endl << endl;
 // cout << "peptides have no modification numbers or exceed MAX_COMBINATIONS: " << iNoModificationNumbers << " " << endl;
 // cout << "size of gv_FragmentPeptides is " << g_vFragmentPeptides.size() << endl;
+
+   cout << " - sorting fragment index ... "; fflush(stdout);
 
    tStartTime = chrono::steady_clock::now();
 
@@ -210,7 +197,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
    minutes = duration.count() / 60000;
    seconds = (duration.count() - minutes * 60000) / 1000;
-   cout << " - done with sorting fragment index: " << minutes << " minutes " << seconds  << " seconds" << endl;
+   cout << minutes << " min " << seconds  << " sec" << endl;
 }
 
 
@@ -831,7 +818,7 @@ bool CometFragmentIndex::WriteFragmentIndex(char *szIndexFile,
    long minutes = duration.count() / 60000;
    long seconds = (duration.count() - minutes * 60000) / 1000;
 
-   cout << ": " << minutes << " minutes " << seconds  << " seconds" << endl;
+   cout << ": " << minutes << " min " << seconds  << " sec" << endl;
 
    return bSucceeded;
 }
@@ -968,9 +955,9 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
    auto tEndTime = chrono::steady_clock::now();
    auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
    long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes*60000) / 1000;
+   long seconds = (duration.count() - minutes * 60000) / 1000;
 
-   cout << " (" << minutes << " minutes " << seconds  << " seconds)" << endl;
+   cout << " (" << minutes << " min " << seconds  << " sec)" << endl;
 
    return bSucceeded;
 }
@@ -1075,35 +1062,34 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          char szMod8[512];
          char szMod9[512];
 
-         int iRet;
-         iRet = sscanf(szBuf + 12, "%s %s %s %s %s %s %s %s %s",
+         sscanf(szBuf + 12, "%s %s %s %s %s %s %s %s %s",
             szMod1, szMod2, szMod3, szMod4, szMod5, szMod6, szMod7, szMod8, szMod9);
          
-         iRet = sscanf(szMod1, "%lf:%s", &(g_staticParams.variableModParameters.varModList[0].dVarModMass),
+         sscanf(szMod1, "%lf:%s", &(g_staticParams.variableModParameters.varModList[0].dVarModMass),
             g_staticParams.variableModParameters.varModList[0].szVarModChar);
 
-         iRet = sscanf(szMod2, "%lf:%s", &(g_staticParams.variableModParameters.varModList[1].dVarModMass),
+         sscanf(szMod2, "%lf:%s", &(g_staticParams.variableModParameters.varModList[1].dVarModMass),
             g_staticParams.variableModParameters.varModList[1].szVarModChar);
 
-         iRet = sscanf(szMod3, "%lf:%s", &(g_staticParams.variableModParameters.varModList[2].dVarModMass),
+         sscanf(szMod3, "%lf:%s", &(g_staticParams.variableModParameters.varModList[2].dVarModMass),
             g_staticParams.variableModParameters.varModList[2].szVarModChar);
 
-         iRet = sscanf(szMod4, "%lf:%s", &(g_staticParams.variableModParameters.varModList[3].dVarModMass),
+         sscanf(szMod4, "%lf:%s", &(g_staticParams.variableModParameters.varModList[3].dVarModMass),
             g_staticParams.variableModParameters.varModList[3].szVarModChar);
 
-         iRet = sscanf(szMod5, "%lf:%s", &(g_staticParams.variableModParameters.varModList[4].dVarModMass),
+         sscanf(szMod5, "%lf:%s", &(g_staticParams.variableModParameters.varModList[4].dVarModMass),
             g_staticParams.variableModParameters.varModList[4].szVarModChar);
 
-         iRet = sscanf(szMod6, "%lf:%s", &(g_staticParams.variableModParameters.varModList[5].dVarModMass),
+         sscanf(szMod6, "%lf:%s", &(g_staticParams.variableModParameters.varModList[5].dVarModMass),
             g_staticParams.variableModParameters.varModList[5].szVarModChar);
 
-         iRet = sscanf(szMod7, "%lf:%s", &(g_staticParams.variableModParameters.varModList[6].dVarModMass),
+         sscanf(szMod7, "%lf:%s", &(g_staticParams.variableModParameters.varModList[6].dVarModMass),
             g_staticParams.variableModParameters.varModList[6].szVarModChar);
 
-         iRet = sscanf(szMod8, "%lf:%s", &(g_staticParams.variableModParameters.varModList[7].dVarModMass),
+         sscanf(szMod8, "%lf:%s", &(g_staticParams.variableModParameters.varModList[7].dVarModMass),
             g_staticParams.variableModParameters.varModList[7].szVarModChar);
 
-         iRet = sscanf(szMod9, "%lf:%s", &(g_staticParams.variableModParameters.varModList[8].dVarModMass),
+         sscanf(szMod9, "%lf:%s", &(g_staticParams.variableModParameters.varModList[8].dVarModMass),
             g_staticParams.variableModParameters.varModList[8].szVarModChar);
 
          for (int x = 0; x < VMODS; ++x)
@@ -1182,13 +1168,6 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    }
 
    fclose(fp);
-
-// auto tEndTime = chrono::steady_clock::now();
-// auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
-// long minutes = duration.count() / 60000;
-// long seconds = (duration.count() - minutes*60000) / 1000;
-
-// cout << " (" << minutes << " minutes " << seconds  << " seconds)" << endl;
 
    return true;
 }
