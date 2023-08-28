@@ -178,8 +178,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                //If there are no Z-lines, filter the spectrum for charge state
                //run filter here.
 
-               PreprocessThreadData *pPreprocessThreadData =
-                  new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
+               PreprocessThreadData *pPreprocessThreadData = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
                pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProc, pPreprocessThreadData, pPreprocessThreadPool));
             }
@@ -786,13 +785,28 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       double dMZ = 0.0;              // m/z to use for analysis
       vector<int> vChargeStates;
 
-      if (spec.sizeMZ() != spec.sizeZ())
+      if (spec.sizeMZ() == spec.sizeZ())
+      {
+         iSpectrumCharge = spec.atZ(i).z;
+      }
+      else if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
+      {
+         // example from ms2 file with one precursor and multiple Z lines?
+         // will need to include all spectrum charges below
+         iSpectrumCharge = spec.atZ(i).z;
+      }
+      else if (spec.sizeMZ() > spec.sizeZ())
       {
          // need to ignore any spectrum charge as don't know which correspond charge to which precursor
          iSpectrumCharge = 0;
       }
       else
-         iSpectrumCharge = spec.atZ(i).z;
+      {
+         // don't know what condition/spectrum type leads here
+         iSpectrumCharge = 0;
+         printf(" Warning, scan %d has %d precursors and %d precursor charges\n", spec.sizeMZ(), spec.sizeZ());
+      }
+
 
       // Thermo's monoisotopic m/z determine can fail sometimes. Assume that when
       // the mono m/z value is less than selection window, it is wrong and use the
@@ -812,7 +826,6 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
       if (dMZ == 0)
          dMZ = spec.getMZ(i);
-
 
       // 1.  Have spectrum charge from file.  It may be 0.
       // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
@@ -873,6 +886,13 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          if (iSpectrumCharge > 0) // use charge from file
          {
             vChargeStates.push_back(iSpectrumCharge);
+
+            // add in any other charge states for the single precursor m/z
+            if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
+            {
+               for (int ii = 1 ; ii < spec.sizeZ(); ++ii)
+                  vChargeStates.push_back(spec.atZ(ii).z);
+            }
          }
          else
          {
@@ -1040,7 +1060,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       {
          pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.tolerances.dInputToleranceMinus;
          pScoring->_pepMassInfo.dPeptideMassTolerancePlus  = g_staticParams.tolerances.dInputTolerancePlus;
-   
+
          if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
          {
             pScoring->_pepMassInfo.dPeptideMassToleranceMinus *= pScoring->_spectrumInfoInternal.iChargeState;
@@ -1051,7 +1071,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       {
          pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.tolerances.dInputToleranceMinus * 0.001;
          pScoring->_pepMassInfo.dPeptideMassTolerancePlus  = g_staticParams.tolerances.dInputTolerancePlus  * 0.001;
-   
+
          if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
          {
             pScoring->_pepMassInfo.dPeptideMassToleranceMinus *= pScoring->_spectrumInfoInternal.iChargeState;
@@ -1093,7 +1113,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       {
          pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 3.0 * C13_DIFF * PROTON_MASS;
          pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + 1.0 * C13_DIFF * PROTON_MASS;
-   
+
       }
       else if (g_staticParams.tolerances.iIsotopeError == 6) // search -3, -2, -1, 0, +1, +2, +3 isotope windows
       {
@@ -1123,7 +1143,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
 
       if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < g_staticParams.options.dPeptideMassLow)
          pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.options.dPeptideMassLow;
-   
+
       if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)   //FIX:  what is this? Need to annotate this logic
          pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 100.0;
    }

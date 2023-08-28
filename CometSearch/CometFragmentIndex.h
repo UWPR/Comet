@@ -39,6 +39,7 @@ public:
    static bool ReadFragmentIndex(ThreadPool *tp);
    static bool ReadPlainPeptideIndex(void);
    static bool CreateFragmentIndex(ThreadPool *tp);
+   static string ElapsedTime(auto tStartTime);
 
 private:
 

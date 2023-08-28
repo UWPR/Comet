@@ -62,7 +62,8 @@ CometFragmentIndex::~CometFragmentIndex()
 
 bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 {
-   ReadPlainPeptideIndex();
+   if (!g_vPlainPeptideIndexRead)
+      ReadPlainPeptideIndex();
 
    // now permute mods on the peptides
    PermuteIndexPeptideMods(g_vRawPeptides);
@@ -142,7 +143,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    size_t iEndSize = g_vRawPeptides.size();
    int iNoModificationNumbers = 0;
 
-   cout <<  " - calculate peptide fragments for " << iEndSize << " raw peptides ... "; fflush(stdout);
+   cout <<  " - calculate fragments for " << iEndSize << " raw peptides ... "; fflush(stdout);
 
    auto tStartTime = chrono::steady_clock::now();
 
@@ -165,17 +166,13 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    pFragmentIndexPool->wait_on_threads();
 
-   auto tEndTime = chrono::steady_clock::now();
-   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
-   long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes * 60000) / 1000;
-   cout << minutes << " min " << seconds  << " sec" << endl;
+   cout << ElapsedTime(tStartTime) << endl;
 
 // cout << endl << endl;
 // cout << "peptides have no modification numbers or exceed MAX_COMBINATIONS: " << iNoModificationNumbers << " " << endl;
 // cout << "size of gv_FragmentPeptides is " << g_vFragmentPeptides.size() << endl;
 
-   cout << " - sorting fragment index ... "; fflush(stdout);
+   cout << " - sorting each fragment mass index bin by peptide mass ... "; fflush(stdout);
 
    tStartTime = chrono::steady_clock::now();
 
@@ -193,11 +190,21 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    Threading::DestroyMutex(_vFragmentIndexMutex);
    Threading::DestroyMutex(_vFragmentPeptidesMutex);
 
-   tEndTime = chrono::steady_clock::now();
-   duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
-   minutes = duration.count() / 60000;
-   seconds = (duration.count() - minutes * 60000) / 1000;
-   cout << minutes << " min " << seconds  << " sec" << endl;
+   cout << ElapsedTime(tStartTime) << endl;
+}
+
+
+// will return string "XX min YY sec" of elasped time from tStartTime to now
+// pass in tStartTime = chrono::steady_clock::now();
+string CometFragmentIndex::ElapsedTime(auto tStartTime)
+{
+   auto tEndTime = chrono::steady_clock::now();
+   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
+   auto minutes = duration.count() / 60000;
+   auto seconds = (duration.count() - minutes * 60000) / 1000;
+
+   string sReturn = std::to_string(minutes) + " min " + std::to_string(seconds) + "sec";
+   return sReturn;
 }
 
 
@@ -308,11 +315,12 @@ void CometFragmentIndex::SortFragmentThreadProc(int iBin,
       {
          if (g_arrvFragmentIndex[iWhichThread][iBin].size() > 0)
          {
-            g_arrvFragmentIndex[0][iBin].insert(g_arrvFragmentIndex[0][iBin].begin(),
+            g_arrvFragmentIndex[0][iBin].insert(g_arrvFragmentIndex[0][iBin].end(),
                   g_arrvFragmentIndex[iWhichThread][iBin].begin(),
                   g_arrvFragmentIndex[iWhichThread][iBin].end());
 
             g_arrvFragmentIndex[iWhichThread][iBin].clear();
+            g_arrvFragmentIndex[iWhichThread][iBin].shrink_to_fit();
          }
       }
    }
@@ -320,7 +328,9 @@ void CometFragmentIndex::SortFragmentThreadProc(int iBin,
    if (g_arrvFragmentIndex[0][iBin].size() > 0) // unique sort
    {
       sort(g_arrvFragmentIndex[0][iBin].begin(), g_arrvFragmentIndex[0][iBin].end(), SortFragmentsByPepMass);
-      g_arrvFragmentIndex[0][iBin].erase(unique(g_arrvFragmentIndex[0][iBin].begin(), g_arrvFragmentIndex[0][iBin].end()), g_arrvFragmentIndex[0][iBin].end());
+
+      g_arrvFragmentIndex[0][iBin].erase(unique(g_arrvFragmentIndex[0][iBin].begin(),
+               g_arrvFragmentIndex[0][iBin].end()), g_arrvFragmentIndex[0][iBin].end());
    }
 }
 
@@ -687,7 +697,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-   bSucceeded = WriteFragmentIndex(szIndexFile, lPeptidesFilePos, lProteinsFilePos, tp);
+// bSucceeded = WriteFragmentIndex(szIndexFile, lPeptidesFilePos, lProteinsFilePos, tp);
 
    sprintf(szOut, " - done.  # peps %zd\n", tNumPeptides);
    logout(szOut);
@@ -725,7 +735,7 @@ bool CometFragmentIndex::WriteFragmentIndex(char *szIndexFile,
    }
 
    auto tStartTime = chrono::steady_clock::now();
-   cout <<  " - writing fragment index";
+   cout <<  " - writing fragment index ... ";
    fflush(stdout);
 
    if ((fp = fopen(szIndexFile, "ab")) == NULL)
@@ -813,12 +823,7 @@ bool CometFragmentIndex::WriteFragmentIndex(char *szIndexFile,
    fwrite(&lPeptidesFilePos, clSizeCometFileOffset, 1, fp);
    fwrite(&lProteinsFilePos, clSizeCometFileOffset, 1, fp);
 
-   auto tEndTime = chrono::steady_clock::now();
-   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
-   long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes * 60000) / 1000;
-
-   cout << ": " << minutes << " min " << seconds  << " sec" << endl;
+   cout << ElapsedTime(tStartTime) << endl;
 
    return bSucceeded;
 }
@@ -952,12 +957,7 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 
    fclose(fp);
 
-   auto tEndTime = chrono::steady_clock::now();
-   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
-   long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes * 60000) / 1000;
-
-   cout << " (" << minutes << " min " << seconds  << " sec)" << endl;
+   cout << " (" << ElapsedTime(tStartTime) << ")" << endl;
 
    return bSucceeded;
 }

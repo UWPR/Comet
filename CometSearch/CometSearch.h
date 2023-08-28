@@ -96,7 +96,7 @@ private:
    static int BinarySearchIndexMass(int start,
                                     int end,
                                     double dQueryMass,
-                                    int *iFragmentMass);
+                                    unsigned int *uiFragmentMass);
    void SubtractVarMods(int *piVarModCounts,
                         int cResidue,
                         int iResiduePosition);

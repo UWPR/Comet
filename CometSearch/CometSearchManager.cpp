@@ -2261,18 +2261,27 @@ bool CometSearchManager::DoSearch()
 
          if (g_staticParams.bIndexDb)
          {
+/*
             if (!g_vPlainPeptideIndexRead)
             {
                sqSearch.ReadPlainPeptideIndex();
                g_vPlainPeptideIndexRead = true;
 
-//             sqSearch.CreateFragmentIndex(tp);
-//             g_vFragmentIndexRead = true;
+               sqSearch.CreateFragmentIndex(tp);
+               g_vFragmentIndexRead = true;
             }
             if (!g_vFragmentIndexRead)
             {
                CometFragmentIndex::ReadFragmentIndex(tp);
                g_vFragmentIndexRead = true;
+            }
+*/
+            if (!g_vPlainPeptideIndexRead)
+            {
+               sqSearch.ReadPlainPeptideIndex();
+               g_vPlainPeptideIndexRead = true;
+
+               sqSearch.CreateFragmentIndex(tp);
             }
          }
 
@@ -2348,9 +2357,7 @@ bool CometSearchManager::DoSearch()
 
             if (g_pvQuery.empty())
                continue;    //FIX make sure continue instead of break makes sense
-                            // possible no spectrum in batch passes filters; do not want to break in that case;
- //              break; // no search to run
-            else
+            else            // possible no spectrum in batch passes filters; do not want to break in that case;
                iTotalSpectraSearched += (int)g_pvQuery.size();
 
             bSucceeded = AllocateResultsMem();
