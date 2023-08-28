@@ -196,7 +196,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
 // will return string "XX min YY sec" of elasped time from tStartTime to now
 // pass in tStartTime = chrono::steady_clock::now();
-string CometFragmentIndex::ElapsedTime(auto tStartTime)
+string CometFragmentIndex::ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime)
 {
    auto tEndTime = chrono::steady_clock::now();
    auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
