@@ -226,9 +226,10 @@ struct PepMassInfo
 {
    double dCalcPepMass;
    double dExpPepMass;                        // protonated MH+ experimental mass
-   double dPeptideMassTolerance;
-   double dPeptideMassToleranceMinus;
-   double dPeptideMassTolerancePlus;
+   double dPeptideMassToleranceLow;           // mass tolerance low in amu from experimental mass
+   double dPeptideMassToleranceHigh;          // mass tolerance high in amu from experimental mass
+   double dPeptideMassToleranceMinus;         // low end of mass tolerance range including isotope offsets
+   double dPeptideMassTolerancePlus;          // high end of mass tolerance range including isotope offsets
 };
 
 struct SpectrumInfoInternal
@@ -1015,7 +1016,8 @@ struct Query
 
       _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;
-      _pepMassInfo.dPeptideMassTolerance = 0.0;
+      _pepMassInfo.dPeptideMassToleranceLow = 0.0;
+      _pepMassInfo.dPeptideMassToleranceHigh = 0.0;
       _pepMassInfo.dPeptideMassToleranceMinus = 0.0;
       _pepMassInfo.dPeptideMassTolerancePlus = 0.0;
 

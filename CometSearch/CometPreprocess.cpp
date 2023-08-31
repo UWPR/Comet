@@ -318,7 +318,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    else // ppm
    {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1000000.0;
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
    }
 
    // initialize these temporary arrays before re-using
@@ -804,7 +804,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       {
          // don't know what condition/spectrum type leads here
          iSpectrumCharge = 0;
-         printf(" Warning, scan %d has %d precursors and %d precursor charges\n", spec.sizeMZ(), spec.sizeZ());
+         printf(" Warning, scan %d has %d precursors and %d precursor charges\n", iScanNumber, spec.sizeMZ(), spec.sizeZ());
       }
 
 
@@ -891,7 +891,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
             {
                for (int ii = 1 ; ii < spec.sizeZ(); ++ii)
+               {
                   vChargeStates.push_back(spec.atZ(ii).z);
+               }
             }
          }
          else
@@ -970,7 +972,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             }
             else // ppm
             {
-               dCushion = g_staticParams.tolerances.dInputTolerancePlus * dMass / 1000000.0;
+               dCushion = g_staticParams.tolerances.dInputTolerancePlus * dMass / 1E6;
             }
             pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
@@ -1058,72 +1060,72 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    {
       if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.tolerances.dInputToleranceMinus;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus  = g_staticParams.tolerances.dInputTolerancePlus;
+         pScoring->_pepMassInfo.dPeptideMassToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus;
+         pScoring->_pepMassInfo.dPeptideMassToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus;
 
          if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
          {
-            pScoring->_pepMassInfo.dPeptideMassToleranceMinus *= pScoring->_spectrumInfoInternal.iChargeState;
-            pScoring->_pepMassInfo.dPeptideMassTolerancePlus  *= pScoring->_spectrumInfoInternal.iChargeState;
+            pScoring->_pepMassInfo.dPeptideMassToleranceLow  *= pScoring->_spectrumInfoInternal.iChargeState;
+            pScoring->_pepMassInfo.dPeptideMassToleranceHigh *= pScoring->_spectrumInfoInternal.iChargeState;
          }
       }
       else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.tolerances.dInputToleranceMinus * 0.001;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus  = g_staticParams.tolerances.dInputTolerancePlus  * 0.001;
+         pScoring->_pepMassInfo.dPeptideMassToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus * 0.001;
+         pScoring->_pepMassInfo.dPeptideMassToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus  * 0.001;
 
          if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
          {
-            pScoring->_pepMassInfo.dPeptideMassToleranceMinus *= pScoring->_spectrumInfoInternal.iChargeState;
-            pScoring->_pepMassInfo.dPeptideMassTolerancePlus  *= pScoring->_spectrumInfoInternal.iChargeState;
+            pScoring->_pepMassInfo.dPeptideMassToleranceLow  *= pScoring->_spectrumInfoInternal.iChargeState;
+            pScoring->_pepMassInfo.dPeptideMassToleranceHigh *= pScoring->_spectrumInfoInternal.iChargeState;
          }
       }
       else // ppm
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.tolerances.dInputToleranceMinus * pScoring->_pepMassInfo.dExpPepMass / 1E6;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus  = g_staticParams.tolerances.dInputTolerancePlus * pScoring->_pepMassInfo.dExpPepMass / 1E6;
+         pScoring->_pepMassInfo.dPeptideMassToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus * pScoring->_pepMassInfo.dExpPepMass / 1E6;
+         pScoring->_pepMassInfo.dPeptideMassToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus * pScoring->_pepMassInfo.dExpPepMass / 1E6;
       }
 
       if (g_staticParams.tolerances.iIsotopeError == 0)
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 1) // search 0, +1 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - C13_DIFF * PROTON_MASS;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 2) // search 0, +1, +2 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 2.0 * C13_DIFF * PROTON_MASS;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 2.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 3) // search 0, +1, +2, +3 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 3.0 * C13_DIFF * PROTON_MASS;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 3.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 4) // search -8, -4, 0, 4, 8 windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 8.1;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + 8.1;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 8.1;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + 8.1;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 5) // search -1, 0, +1, +2, +3 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 3.0 * C13_DIFF * PROTON_MASS;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + 1.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 3.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + 1.0 * C13_DIFF * PROTON_MASS;
 
       }
       else if (g_staticParams.tolerances.iIsotopeError == 6) // search -3, -2, -1, 0, +1, +2, +3 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - 3.0 * C13_DIFF * PROTON_MASS;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + 3.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 3.0 * C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + 3.0 * C13_DIFF * PROTON_MASS;
       }
       else if (g_staticParams.tolerances.iIsotopeError == 7) // search -1, 0, +1 isotope windows
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceMinus - C13_DIFF * PROTON_MASS;
-         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassTolerancePlus + C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - C13_DIFF * PROTON_MASS;
+         pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + C13_DIFF * PROTON_MASS;
       }
       else  // Should not get here.
       {
@@ -1144,8 +1146,12 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < g_staticParams.options.dPeptideMassLow)
          pScoring->_pepMassInfo.dPeptideMassToleranceMinus = g_staticParams.options.dPeptideMassLow;
 
-      if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)   //FIX:  what is this? Need to annotate this logic
-         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 100.0;
+      if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)   // there should be no reason to have a peptide mass smaller than this
+         pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 100.0;    // why not a much larger cutoff??
+
+      // now set Low/High to mass range around ExpMass
+      pScoring->_pepMassInfo.dPeptideMassToleranceLow = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow;
+      pScoring->_pepMassInfo.dPeptideMassToleranceHigh = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh;
    }
    else
    {

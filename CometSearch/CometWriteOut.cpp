@@ -84,9 +84,10 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   sprintf(szMassLine, "(M+H)+ mass = %0.6f ~ %0.6f (+%d), fragment tol = %0.4f, binoffset = %0.3f",
+   sprintf(szMassLine, "(M+H)+ mass = %0.6f, tol %0.6f %0.6f, +%d, fragment tol = %0.4f, binoffset = %0.3f",
          pQuery->_pepMassInfo.dExpPepMass,
-         pQuery->_pepMassInfo.dPeptideMassTolerance,
+         pQuery->_pepMassInfo.dPeptideMassToleranceLow,
+         pQuery->_pepMassInfo.dPeptideMassToleranceHigh,
          pQuery->_spectrumInfoInternal.iChargeState,
          g_staticParams.tolerances.dFragmentBinSize,
          g_staticParams.tolerances.dFragmentBinStartOffset);

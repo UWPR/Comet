@@ -272,16 +272,19 @@ private:
 
    struct PepMassTolerance
    {
-       double dPeptideMassTolerance;
-       double dPeptideMassToleranceMinus;
-       double dPeptideMassTolerancePlus;
+       double dPeptideMassToleranceLow;           // mass tolerance low in amu from experimental mass
+       double dPeptideMassToleranceHigh;          // mass tolerance high in amu from experimental mass
+       double dPeptideMassToleranceMinus;         // low end of mass tolerance range including isotope offsets
+       double dPeptideMassTolerancePlus;          // high end of mass tolerance range including isotope offsets
    };
 
+/*
    struct PepMassInfo
    {
        double           dCalcPepMass;
        PepMassTolerance pepMassTol;
    };
+*/
 
    struct MatchedPeaksStruct
    {

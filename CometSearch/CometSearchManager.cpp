@@ -1113,7 +1113,7 @@ bool CometSearchManager::InitializeStaticParams()
       else
          g_staticParams.options.iNumThreads = iNumCPUCores;
 #else
-      iNumCPUCores= sysconf( _SC_NPROCESSORS_ONLN );
+      iNumCPUCores = sysconf( _SC_NPROCESSORS_ONLN );
 
       if (g_staticParams.options.iNumThreads < 0)
          g_staticParams.options.iNumThreads = iNumCPUCores + g_staticParams.options.iNumThreads;
@@ -2913,6 +2913,8 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
+
+printf("OK dMinMass %f, dMaxMass %f\n", g_massRange.dMinMass, g_massRange.dMaxMass);
 
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;  // unused in this context but setting here anyways
