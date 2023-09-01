@@ -22,8 +22,8 @@
 // to access the interface methods.
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _THREADING_H
-#define _THREADING_H
+#ifndef _THREADING_H_
+#define _THREADING_H_
 
 #include "OSSpecificThreading.h"
 
@@ -55,4 +55,4 @@ private:
     static ThreadId _threadId;
 };
 
-#endif // ifndef _THREADING_H
+#endif // ifndef _THREADING_H_

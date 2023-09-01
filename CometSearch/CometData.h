@@ -216,7 +216,7 @@ struct Fragment
 
     double ToMz()
     {
-        return (mass + (charge - 1)*1.00727646688) / charge;
+        return (mass + (charge - 1.0)*1.00727646688) / charge;
     }
 };
 

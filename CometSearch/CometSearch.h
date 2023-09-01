@@ -103,7 +103,7 @@ private:
    void CountVarMods(int *piVarModCounts,
                      int cResidue,
                      int iResiduePosition);
-   bool HasVariableMod(int varModCounts[],
+   bool HasVariableMod(int *varModCounts,
                        int iCVarModCount,
                        int iNVarModCount,
                        struct sDBEntry *dbe);
@@ -213,14 +213,6 @@ private:
                        double dCalcPepMass,
                        int iLenPeptide,
                        struct sDBEntry *dbe);
-   bool IndexSearch(ThreadPool *tp);
-   void PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptides);
-   void GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
-                              ThreadPool *tp);
-   void PrintFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides);
-   static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
-                            int iWhichPeptide,
-                            int modNumIdx);
    static void SearchFragmentIndex(size_t iWhichQuery,
                             ThreadPool *tp);
    bool SearchForPeptides(struct sDBEntry dbe,
@@ -237,22 +229,11 @@ private:
                         DBIndex sTmp,
                         bool *pbDuplFragment,
                         struct sDBEntry *dbe);
-   static bool SortFragmentsByPepMass(unsigned int x,
-                                      unsigned int y);
-   static void SortFragmentThreadProc(int i,
-                                      ThreadPool *tp);
-   static void AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,
-                                      size_t iWhichPeptide,
-                                      int& iNoModificationNumbers,
-                                      ThreadPool *tp);
 
 
    char GetAA(int i,
               int iDirection,
               char *sDNASequence);
-
-   // Cleaning up
-   void CleanUp();
 
    struct VarModStat
    {
@@ -277,14 +258,6 @@ private:
        double dPeptideMassToleranceMinus;         // low end of mass tolerance range including isotope offsets
        double dPeptideMassTolerancePlus;          // high end of mass tolerance range including isotope offsets
    };
-
-/*
-   struct PepMassInfo
-   {
-       double           dCalcPepMass;
-       PepMassTolerance pepMassTol;
-   };
-*/
 
    struct MatchedPeaksStruct
    {
@@ -335,10 +308,6 @@ private:
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
-
-// static Mutex _vFragmentIndexMutex;
-// static Mutex _vFragmentPeptidesMutex;
-
 };
 
 #endif // _COMETSEARCH_H_

@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-#ifndef _COMETWRITEMZIDENTML
+#ifndef _COMETWRITEMZIDENTML_
 #define _COMETWRITEMZIDENTML_
 
 

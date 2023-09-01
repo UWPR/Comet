@@ -28,9 +28,6 @@ public:
    CometFragmentIndex();
    ~CometFragmentIndex();
 
-   // Manages memory in the search memory pool
-   static bool AllocateMemory(int maxNumThreads);
-   static bool DeallocateMemory(int maxNumThreads);
    static bool WritePlainPeptideIndex(ThreadPool *tp);
    static bool WriteFragmentIndex(char *szIndexFile,
                                   comet_fileoffset_t lPeptidesFilePos,
@@ -43,43 +40,9 @@ public:
 
 private:
 
-   // Core search functions
-   static int BinarySearchIndexMass(int start,
-                                    int end,
-                                    double dQueryMass,
-                                    int *iFragmentMass);
-   static void XcorrScoreI(char *szProteinSeq,
-                   int iStartPos,
-                   int iEndPos,
-                   int iFoundVariableMod,
-                   double dCalcPepMass,
-                   bool bDecoyPep,
-                   int iWhichQuery,
-                   int iLenPeptide,
-                   int *piVarModSites,
-                   struct sDBEntry *dbe,
-                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT]);
-   bool CheckMassMatch(int iWhichQuery,
-                       double dCalcPepMass);
-   static double GetFragmentIonMass(int iWhichIonSeries,
-                             int i,
-                             int ctCharge,
-                             double *pdAAforward,
-                             double *pdAAreverse);
-   static void StorePeptideI(int iWhichQuery,
-                     int iStartPos,
-                     int iEndPos,
-                     int iFoundVariableMod,
-                     char *szProteinSeq,
-                     double dCalcPepMass,
-                     double dXcorr,
-                     bool bStoreSeparateDecoy,
-                     int *piVarModSites,
-                     struct sDBEntry *dbe);
    static void PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptides);
    static void GenerateFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides,
                               ThreadPool *tp);
-   static void PrintFragmentIndex(vector<PlainPeptideIndex>& vRawPeptides);
    static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
                             int iWhichThread,
                             int iWhichPeptide,
@@ -101,10 +64,6 @@ private:
    static bool CompareByMass(const DBIndex &lhs,
                              const DBIndex &rhs);
 
-
-   // Cleaning up
-   void CleanUp();
-
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
@@ -115,7 +74,6 @@ private:
 
    static Mutex _vFragmentIndexMutex;
    static Mutex _vFragmentPeptidesMutex;
-
 };
 
 #endif // _COMETFRAGMENTINDEX_H_

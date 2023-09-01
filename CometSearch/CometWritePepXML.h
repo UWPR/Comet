@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-#ifndef _COMETWRITEPEPXML
+#ifndef _COMETWRITEPEPXML_
 #define _COMETWRITEPEPXML_
 
 

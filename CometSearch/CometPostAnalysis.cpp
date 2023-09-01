@@ -487,9 +487,8 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             }
          }
 
-
-         pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) /
-               ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
+         pOutput[i].fScoreSp = (float)((dTmpIntenMatch * iMatchedFragmentIonCt * (1.0 + dConsec)) /
+            ((pOutput[i].iLenPeptide - 1.0) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
 
          pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
       }
@@ -873,7 +872,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
             for (ctCharge=1; ctCharge<=iMaxFragCharge; ++ctCharge)
             {
-               dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
+               dFragmentIonMass = (dFragmentIonMass + (ctCharge - 1.0) * PROTON_MASS) / ctCharge;
 
                if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
                {

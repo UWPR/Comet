@@ -385,8 +385,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Make fast xcorr spectrum.
    double dSum=0.0;
    int iTmpRange = 2*g_staticParams.iXcorrProcessingOffset + 1;
-   double dTmp = 1.0 / (double)(iTmpRange - 1);
-
+   double dTmp = 1.0 / (iTmpRange - 1.0);
    double dMinXcorrInten = 0.0;
 
    dSum=0.0;
@@ -925,7 +924,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       for (vector<int>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
       {
          int iPrecursorCharge = *iter;
-         double dMass = dMZ * iPrecursorCharge - (iPrecursorCharge - 1)*PROTON_MASS;
+         double dMass = dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS;
 
          if (CheckExistOutFile(iPrecursorCharge, iScanNumber)
                && (isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
@@ -935,7 +934,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          {
             Query *pScoring = new Query();
 
-            pScoring->dMangoIndex = iScanNumber + 0.001 * z;  // for Mango; used to sort by this value to get original file order
+            pScoring->dMangoIndex = iScanNumber + 0.001 * iPrecursorCharge;  // for Mango; used to sort by this value to get original file order
 
             pScoring->_pepMassInfo.dExpPepMass = dMass;
             pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
@@ -977,13 +976,11 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
             Threading::LockMutex(_maxChargeMutex);
-
             // g_massRange.iMaxFragmentCharge is global maximum fragment ion charge across all spectra.
             if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_massRange.iMaxFragmentCharge)
             {
                g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
             }
-
             Threading::UnlockMutex(_maxChargeMutex);
 
             if (!AdjustMassTol(pScoring))
@@ -1168,7 +1165,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
      
       iCharge = pScoring->_spectrumInfoInternal.iChargeState;
 
-      dPrecMZ =  (pScoring->_pepMassInfo.dExpPepMass + (iCharge-1)*PROTON_MASS)/iCharge;  //dExpPepMass is MH+
+      dPrecMZ = (pScoring->_pepMassInfo.dExpPepMass + (iCharge - 1.0) * PROTON_MASS) / iCharge;  //dExpPepMass is MH+
 
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 0.0;
       pScoring->_pepMassInfo.dPeptideMassTolerancePlus = 0.0;
@@ -1184,8 +1181,8 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
          if (dStartWindowMZ <= dPrecMZ && dPrecMZ <= dEndWindowMZ)
          {
             // translate windows to neutral mass space
-            dStartWindowMass = (dStartWindowMZ * iCharge) - (iCharge-1)*PROTON_MASS;
-            dEndWindowMass = (dEndWindowMZ * iCharge) - (iCharge-1)*PROTON_MASS;
+            dStartWindowMass = (dStartWindowMZ * iCharge) - (iCharge - 1.0) * PROTON_MASS;
+            dEndWindowMass = (dEndWindowMZ * iCharge) - (iCharge - 1.0) * PROTON_MASS;
 
             if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus == 0.0
                   || pScoring->_pepMassInfo.dPeptideMassToleranceMinus > dStartWindowMass)
@@ -1247,7 +1244,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                if (g_staticParams.options.iRemovePrecursor == 1)
                {
                   double dMZ = (pScoring->_pepMassInfo.dExpPepMass
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
                      / (double)(pScoring->_spectrumInfoInternal.iChargeState);
 
                   if (fabs(dIon - dMZ) > g_staticParams.options.dRemovePrecursorTol)
@@ -1268,7 +1265,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                   {
                      double dMZ;
 
-                     dMZ = (pScoring->_pepMassInfo.dExpPepMass + (j - 1)*PROTON_MASS) / (double)(j);
+                     dMZ = (pScoring->_pepMassInfo.dExpPepMass + (j - 1.0) * PROTON_MASS) / (double)(j);
                      if (fabs(dIon - dMZ) < g_staticParams.options.dRemovePrecursorTol)
                      {
                         bNotPrec = 0;
@@ -1287,10 +1284,10 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                else if (g_staticParams.options.iRemovePrecursor == 3)  //phosphate neutral loss
                {
                   double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 79.9799
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
                      / (double)(pScoring->_spectrumInfoInternal.iChargeState);
                   double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 97.9952
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
                      / (double)(pScoring->_spectrumInfoInternal.iChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
@@ -1306,15 +1303,15 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                else if (g_staticParams.options.iRemovePrecursor == 4)  //undocumented TMT
                {
                   double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 18.010565    // water
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
                      / (double)(pScoring->_spectrumInfoInternal.iChargeState);
 
                   double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 36.021129    // water x2
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
                      / (double)(pScoring->_spectrumInfoInternal.iChargeState);
 
                   double dMZ3 = (pScoring->_pepMassInfo.dExpPepMass - 63.997737    // methanesulfenic acid 
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1) * PROTON_MASS)
+                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
                      / (double)(pScoring->_spectrumInfoInternal.iChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
@@ -1548,7 +1545,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 {
    Query *pScoring = new Query();
 
-   pScoring->_pepMassInfo.dExpPepMass = (iPrecursorCharge*dMZ) - (iPrecursorCharge-1)*PROTON_MASS;
+   pScoring->_pepMassInfo.dExpPepMass = (iPrecursorCharge * dMZ) - (iPrecursorCharge - 1.0) * PROTON_MASS;
 
    if (pScoring->_pepMassInfo.dExpPepMass < g_staticParams.options.dPeptideMassLow
       || pScoring->_pepMassInfo.dExpPepMass > g_staticParams.options.dPeptideMassHigh)
@@ -1608,7 +1605,10 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    }
 
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
+
+   Threading::LockMutex(_maxChargeMutex);
    g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
+   Threading::UnlockMutex(_maxChargeMutex);
 
    // initialize these temporary arrays before re-using
    size_t iTmp= (size_t)(pScoring->_spectrumInfoInternal.iArraySize)*sizeof(double);
@@ -1693,7 +1693,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    // Make fast xcorr spectrum.
    double dSum=0.0;
    int iTmpRange = 2*g_staticParams.iXcorrProcessingOffset + 1;
-   double dTmp = 1.0 / (double)(iTmpRange - 1);
+   double dTmp = 1.0 / (iTmpRange - 1.0);
 
    dSum=0.0;
    for (i=0; i<g_staticParams.iXcorrProcessingOffset; ++i)
