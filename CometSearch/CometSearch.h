@@ -93,7 +93,8 @@ private:
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
-   static int BinarySearchIndexMass(int start,
+   static int BinarySearchIndexMass(int iWhichThread,
+                                    int start,
                                     int end,
                                     double dQueryMass,
                                     unsigned int *uiFragmentMass);

@@ -182,11 +182,9 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
       {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg, " Error (1) - cannot read database file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
-         string strErrorMsg(szErrorMsg);
+         string  strErrorMsg = " Error (1) - cannot read database file \"" +  string(g_staticParams.databaseInfo.szDatabase) + "\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
+         logerr(strErrorMsg.c_str());
          return false;
       }
 
@@ -204,11 +202,9 @@ bool CometSearch::RunSearch(int iPercentStart,
          szPeffLine = (char*)malloc( iLenSzLine* sizeof(char));
          if (szPeffLine == NULL)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error - malloc szPeffLine\n");
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - malloc szPeffLine\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg.c_str());
             return false;
          }
 
@@ -217,23 +213,19 @@ bool CometSearch::RunSearch(int iPercentStart,
          szMods = (char*)malloc( iLenAllocMods * sizeof(char));
          if (szMods == NULL)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error - malloc szMods\n");
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - malloc szMods\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg.c_str());
             return false;
          }
 
          // if PEFF database, make sure OBO file is specified
          if (strlen(g_staticParams.peffInfo.szPeffOBO)==0)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error: \"peff_format\" is specified but \"peff_obo\" is not set\n");
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error: \"peff_format\" is specified but \"peff_obo\" is not set\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
-            exit(1);
+            logerr(strErrorMsg.c_str());
+            return false;
          }
 
          // read in PSI or UniMod file and get a map of all mod codes and mod masses
@@ -361,11 +353,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                         pTmp = (char *)realloc(szPeffLine, iLenSzLine);
                         if (pTmp == NULL)
                         {
-                           char szErrorMsg[SIZE_ERROR];
-                           sprintf(szErrorMsg,  " Error realloc(szPeffLine[%d])\n", iLenSzLine);
-                           string strErrorMsg(szErrorMsg);
+                           string strErrorMsg = " Error realloc(szPeffLine[" + to_string(iLenSzLine) + "])\n";
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(szErrorMsg);
+                           logerr(strErrorMsg.c_str());
                            fclose(fp);
                            return false;
                         }
@@ -406,15 +396,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                            pTmp=(char *)realloc(szMods, iLenAllocMods);
                            if (pTmp == NULL)
                            {
-                              char szErrorMsg[SIZE_ERROR];
-#ifdef _WIN32
-                              sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
-#else
-                              sprintf(szErrorMsg,  " Error realloc(szMods[%ld])\n", iLenAllocMods);
-#endif
-                              string strErrorMsg(szErrorMsg);
+                              string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                              logerr(szErrorMsg);
+                              logerr(strErrorMsg.c_str());
                               fclose(fp);
                               return false;
                            }
@@ -431,11 +415,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                         }
                         else
                         {
-                           char szErrorMsg[SIZE_ERROR];
-                           sprintf(szErrorMsg,  " Error: PEFF entry '%s' missing mod closing parenthesis\n", dbe.strName.c_str()); 
-                           string strErrorMsg(szErrorMsg);
+                           string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing mod closing parenthesis\n"; 
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(szErrorMsg);
+                           logerr(strErrorMsg.c_str());
                            fclose(fp);
                            return false;
                         }
@@ -552,15 +534,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                            pTmp=(char *)realloc(szMods, iLenAllocMods);
                            if (pTmp == NULL)
                            {
-                              char szErrorMsg[SIZE_ERROR];
-#ifdef _WIN32
-                              sprintf(szErrorMsg,  " Error realloc(szMods[%lld])\n", iLenAllocMods);
-#else
-                              sprintf(szErrorMsg,  " Error realloc(szMods[%ld])\n", iLenAllocMods);
-#endif
-                              string strErrorMsg(szErrorMsg);
+                              string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                              logerr(szErrorMsg);
+                              logerr(strErrorMsg.c_str());
                               fclose(fp);
                               return false;
                            }
@@ -577,11 +553,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                         }
                         else
                         {
-                           char szErrorMsg[SIZE_ERROR];
-                           sprintf(szErrorMsg,  " Error: PEFF entry '%s' missing variant closing parenthesis\n", dbe.strName.c_str()); 
-                           string strErrorMsg(szErrorMsg);
+                           string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing variant closing parenthesis\n";
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(szErrorMsg);
+                           logerr(strErrorMsg.c_str());
                            fclose(fp);
                            return false;
                         }
@@ -654,38 +628,32 @@ bool CometSearch::RunSearch(int iPercentStart,
                        int iTmp = 0;  // count of number of open parenthesis
                        while (1)
                        {
-                         if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2 == '\n')
-                           break;
-                         else if (*pStr2 == '(')
-                           iTmp++;
-                         else if (*pStr2 == ')')
-                           iTmp--;
+                          if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2 == '\n')
+                             break;
+                          else if (*pStr2 == '(')
+                             iTmp++;
+                          else if (*pStr2 == ')')
+                             iTmp--;
 
-                         pStr2++;
+                          pStr2++;
                        }
 
                        iLen = pStr2 - pStr;
 
                        if (iLen > iLenAllocMods)
                        {
-                         char* pTmp;
-                         iLenAllocMods = iLen + 1000;
-                         pTmp = (char*)realloc(szMods, iLenAllocMods);
-                         if (pTmp == NULL)
-                         {
-                           char szErrorMsg[SIZE_ERROR];
-#ifdef _WIN32
-                           sprintf(szErrorMsg, " Error realloc(szMods[%lld])\n", iLenAllocMods);
-#else
-                           sprintf(szErrorMsg, " Error realloc(szMods[%ld])\n", iLenAllocMods);
-#endif
-                           string strErrorMsg(szErrorMsg);
-                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(szErrorMsg);
-                           fclose(fp);
-                           return false;
-                         }
-                         szMods = pTmp;
+                          char* pTmp;
+                          iLenAllocMods = iLen + 1000;
+                          pTmp = (char*)realloc(szMods, iLenAllocMods);
+                          if (pTmp == NULL)
+                          {
+                             string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
+                             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                             logerr(strErrorMsg.c_str());
+                             fclose(fp);
+                             return false;
+                          }
+                          szMods = pTmp;
                        }
 
                        strncpy(szMods, pStr, iLen);
@@ -695,13 +663,12 @@ bool CometSearch::RunSearch(int iPercentStart,
                        {
                          pStr2++;
                          *pStr2 = '\0';
-                       } else
+                       }
+                       else
                        {
-                         char szErrorMsg[SIZE_ERROR];
-                         sprintf(szErrorMsg, " Error: PEFF entry '%s' missing variant closing parenthesis\n", dbe.strName.c_str());
-                         string strErrorMsg(szErrorMsg);
+                         string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing variant closing parenthesis\n";
                          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                         logerr(szErrorMsg);
+                         logerr(strErrorMsg.c_str());
                          fclose(fp);
                          return false;
                        }
@@ -716,55 +683,56 @@ bool CometSearch::RunSearch(int iPercentStart,
 
                        while (!ssVariants.eof())
                        {
-                         string strVariantEntry;
-                         getline(ssVariants, strVariantEntry, ')');
+                          string strVariantEntry;
+                          getline(ssVariants, strVariantEntry, ')');
 
-                         //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
-                         if (strVariantEntry[0] == '(' && isdigit(strVariantEntry[1]))
-                         {
-                           // turn '|' to space
-                           std::string::iterator it;
-                           for (it = strVariantEntry.begin(); it != strVariantEntry.end(); ++it)
-                           {
-                             if (*it == '|' || *it == '(')
-                               *it = ' ';
-                           }
-                           
-                           // split "8 10 C" into "8" and "10" and "C"
-                           strVariant.clear();
-                           iPosA = -1;
-                           std::stringstream converter(strVariantEntry);
-                           converter >> iPosA >> iPosB >> strVariant >> strTag;
-                           
-                           // presence of a double space "  " indicates deletion with Tag (special case format)
-                           if (strVariantEntry.find("  ") != string::npos)
-                           {
-                             strTag = strVariant;
-                             strVariant.clear();
-                           }
-
-                           // sanity check: make sure position is correct.
-                           // TODO: add sanity check to make sure replacement AAs are A-Z or *
-                           if (iPosA < 0 || iPosB < 0 || iPosB < iPosA) 
-                           {
-                             if (g_staticParams.options.bVerboseOutput)
+                          //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
+                          if (strVariantEntry[0] == '(' && isdigit(strVariantEntry[1]))
+                          {
+                             // turn '|' to space
+                             std::string::iterator it;
+                             for (it = strVariantEntry.begin(); it != strVariantEntry.end(); ++it)
                              {
-                               char szErrorMsg[SIZE_ERROR];
-                               sprintf(szErrorMsg, "Warning:  %s, VariantComplex=(%d|%d|%s) ignored\n", dbe.strName.c_str(), iPosA, iPosB,strVariant.c_str());
-                               string strErrorMsg(szErrorMsg);
-                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                               logerr(szErrorMsg);
+                                if (*it == '|' || *it == '(')
+                                   *it = ' ';
                              }
-                           } else
-                           {
-                             struct PeffVariantComplexStruct pData;
 
-                             pData.iPositionA = iPosA - 1;   // represent PEFF variant position in 0 array index coordinates
-                             pData.iPositionB = iPosB - 1;
-                             pData.sResidues = strVariant;
-                             dbe.vectorPeffVariantComplex.push_back(pData);
-                           }
-                         }
+                             // split "8 10 C" into "8" and "10" and "C"
+                             strVariant.clear();
+                             iPosA = -1;
+                             std::stringstream converter(strVariantEntry);
+                             converter >> iPosA >> iPosB >> strVariant >> strTag;
+
+                             // presence of a double space "  " indicates deletion with Tag (special case format)
+                             if (strVariantEntry.find("  ") != string::npos)
+                             {
+                                strTag = strVariant;
+                                strVariant.clear();
+                             }
+
+                             // sanity check: make sure position is correct.
+                             // TODO: add sanity check to make sure replacement AAs are A-Z or *
+                             if (iPosA < 0 || iPosB < 0 || iPosB < iPosA)
+                             {
+                                if (g_staticParams.options.bVerboseOutput)
+                                {
+                                   char szErrorMsg[SIZE_ERROR];
+                                   sprintf(szErrorMsg, "Warning:  %s, VariantComplex=(%d|%d|%s) ignored\n", dbe.strName.c_str(), iPosA, iPosB, strVariant.c_str());
+                                   string strErrorMsg(szErrorMsg);
+                                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                                   logerr(szErrorMsg);
+                                }
+                             }
+                             else
+                             {
+                                struct PeffVariantComplexStruct pData;
+
+                                pData.iPositionA = iPosA - 1;   // represent PEFF variant position in 0 array index coordinates
+                                pData.iPositionB = iPosB - 1;
+                                pData.sResidues = strVariant;
+                                dbe.vectorPeffVariantComplex.push_back(pData);
+                             }
+                          }
                        }
                      }
 
@@ -776,11 +744,9 @@ bool CometSearch::RunSearch(int iPercentStart,
 
             if (dbe.strName.length() <= 0)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  "\n Error - zero length sequence description; wrong database file/format?\n");
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - zero length sequence description; wrong database file/format?\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg.c_str());
                return false;
             }
 
@@ -956,10 +922,8 @@ void CometSearch::ReadOBO(char *szOBO,
    }
    else
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg,  " Warning: cannot read PEFF OBO file \"%s\"\n", g_staticParams.peffInfo.szPeffOBO);
-      string strErrorMsg(szErrorMsg);
-      logout(szErrorMsg);
+      string strErrorMsg = " Warning: cannot read PEFF OBO file \"" + string(g_staticParams.peffInfo.szPeffOBO ) + "\"\n";
+      logout(strErrorMsg.c_str());
    }
 
 }
@@ -995,10 +959,8 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
    {
       if (g_staticParams.options.bVerboseOutput)
       {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg,  " Warning: cannot find \"%s\" in OBO\n", strMod.c_str());
-         string strErrorMsg(szErrorMsg);
-         logerr(szErrorMsg);
+         string strErrorMsg =  " Warning: cannot find \"" + strMod + "\" in OBO\n";
+         logerr(strErrorMsg.c_str());
       }
 
       return false;
@@ -1218,11 +1180,11 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    for (unsigned int i=0; i<g_uiMaxFragmentArrayIndex; i++)
    {
-      if (g_arrvFragmentIndex[i].size() > 0)
+      if (g_arrvFragmentIndex[iWhichThread][i].size() > 0)
       {
-         for (size_t ii=0; ii<g_arrvFragmentIndex[i].size(); ii++)
+         for (size_t ii=0; ii<g_arrvFragmentIndex[iWhichThread][i].size(); ii++)
          {
-            printf("%0.2f ", g_vFragmentPeptides[g_arrvFragmentIndex[ii]].dPepMass);
+            printf("%0.2f ", g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][ii]].dPepMass);
             if (ii==10)
                break;
          }
@@ -1240,7 +1202,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + 100.0) * g_staticParams.dInverseBinWidth);
    unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
 
-   int iWhichThread = 0;
+   int iNumFragmentThreads = (g_staticParams.options.iNumThreads > MAX_FRAGMENTINDEX_THREADS ? MAX_FRAGMENTINDEX_THREADS : g_staticParams.options.iNumThreads);
 
    // Walk through the binned peaks in the spectrum and map them to the fragment index
    // to count all peptides that contain each fragment peak.
@@ -1256,28 +1218,30 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
          if (uiFragmentMass < g_massRange.g_uiMaxFragmentArrayIndex)
          {
-
-            // number of peptides that contain this fragment mass
-            lNumPeps = g_arrvFragmentIndex[iWhichThread][uiFragmentMass].size();
-
-            if (lNumPeps > 0)
+            for (int iWhichThread = 0; iWhichThread < iNumFragmentThreads; ++iWhichThread)
             {
-               // g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass
-               // is >= to g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
-               // Each fragment index entry has lNumPeps peptides sort in increasing order by mass;
-               // find first entry that matches low tolerance of current query
-               size_t iFirst = BinarySearchIndexMass(0, lNumPeps, g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
+               // number of peptides that contain this fragment mass
+               lNumPeps = g_arrvFragmentIndex[iWhichThread][uiFragmentMass].size();
 
-               for (size_t ix = iFirst; ix < lNumPeps; ix++)
+               if (lNumPeps > 0)
                {
-                  if (g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
-                     && g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
-                  {
-                     mPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]] += 1;
-                  }
+                  // g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass
+                  // is >= to g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
+                  // Each fragment index entry has lNumPeps peptides sort in increasing order by mass;
+                  // find first entry that matches low tolerance of current query
+                  size_t iFirst = BinarySearchIndexMass(iWhichThread, 0, lNumPeps, g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
 
-                  if (g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
-                     break;
+                  for (size_t ix = iFirst; ix < lNumPeps; ix++)
+                  {
+                     if (g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
+                        && g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
+                     {
+                        mPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]] += 1;
+                     }
+
+                     if (g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
+                        break;
+                  }
                }
             }
          }
@@ -1645,7 +1609,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       // Check to see if peptide is within global min/mass range for all queries.
       iLenPeptide = iEndPos-iStartPos+1;
 
-      if (iLenPeptide < g_staticParams.options.peptideLengthRange.iEnd - 1)  // account for terminating char
+      if (iLenPeptide < g_staticParams.options.peptideLengthRange.iEnd)
       {
          if (g_staticParams.options.bCreateIndex) // && !g_staticParams.variableModParameters.bRequireVarMod)
          {
@@ -1654,7 +1618,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             // ignore mass check here for indexing; modifications added later
             // could put peptide into mass range so just use peptide length
             if (iPepLen >= g_staticParams.options.peptideLengthRange.iStart
-                && iPepLen <= g_staticParams.options.peptideLengthRange.iEnd
+                && iPepLen < g_staticParams.options.peptideLengthRange.iEnd
                 && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
             {
                Threading::LockMutex(g_pvQueryMutex);
@@ -2657,10 +2621,9 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
             if (g_staticParams.options.bVerboseOutput)
             {
                // Log a warning message here that the variant change didn't change the residue?
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg, " Warning: protein %s has variant '%c' at position %d with the same original AA residue.\n", 
-                     dbe.strName.c_str(), cResidue, iPosition);
-               logout(szErrorMsg);
+               string strErrorMsg = " Warning: protein " + dbe.strName + " has variant '" + to_string(cResidue)
+                     + "' at position " + to_string(iPosition) + " with the same original AA residue.\n";
+               logout(strErrorMsg.c_str());
             }
          }
          else
@@ -2728,10 +2691,9 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
             if (g_staticParams.options.bVerboseOutput)
             {
                // Log a warning message here that the variant change didn't change the residue?
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg, " Warning: protein %s has variant '%s' between positions %d and %d with the same original AA residue(s).\n",
-                     dbe.strName.c_str(), sResidues.c_str(), iPositionA, iPositionB);
-               logout(szErrorMsg);
+               string strErrorMsg = " Warning: protein " + dbe.strName + " has variant '" + sResidues
+                     + "' between positions " + to_string(iPositionA) + "and " + to_string(iPositionB) + " with the same original AA residue(s).\n";
+               logout(strErrorMsg.c_str());
             }
          }
          else
@@ -2790,7 +2752,7 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
    if (dCalcPepMass >= g_massRange.dMinMass
          && dCalcPepMass <= g_massRange.dMaxMass
          && iPepLen >= g_staticParams.options.peptideLengthRange.iStart
-         && iPepLen <= g_staticParams.options.peptideLengthRange.iEnd
+         && iPepLen < g_staticParams.options.peptideLengthRange.iEnd
          && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
    {
       // if creating indexed database, only care of peptide is within global mass range
@@ -3093,7 +3055,8 @@ int CometSearch::BinarySearchMass(int start,
 }
 
 
-int CometSearch::BinarySearchIndexMass(int start,
+int CometSearch::BinarySearchIndexMass(int iWhichThread,
+                                       int start,
                                        int end,
                                        double dQueryMass,
                                        unsigned int *uiFragmentMass)
@@ -3110,16 +3073,15 @@ int CometSearch::BinarySearchIndexMass(int start,
    // the array into two pieces.
    unsigned middle = start + ((end - start) / 2);
 
-   int iWhichThread = 0;
    double dArrayMass = g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][*uiFragmentMass][middle]].dPepMass;
 
    if (dArrayMass > dQueryMass)
    {
-      return BinarySearchIndexMass(start, middle - 1, dQueryMass, uiFragmentMass);
+      return BinarySearchIndexMass(iWhichThread, start, middle - 1, dQueryMass, uiFragmentMass);
    }
    else if (dArrayMass < dQueryMass)
    {
-      return BinarySearchIndexMass(middle + 1, end, dQueryMass, uiFragmentMass);
+      return BinarySearchIndexMass(iWhichThread, middle + 1, end, dQueryMass, uiFragmentMass);
    }
    else // this means (dArrayMass >= dQueryMass && dArrayMass <= dQueryMass)
    {
@@ -3226,11 +3188,9 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             }
             else
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!\n", g_staticParams.tolerances.iIsotopeError);
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - iIsotopeError=" + to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg.c_str());
                return false;
             }
          }
@@ -3291,11 +3251,9 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             // only deal with isotope offsets; no mass offsets
             else
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg, " Error - iIsotopeError=%d, should not be here!\n", g_staticParams.tolerances.iIsotopeError);
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - iIsotopeError=" + to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg.c_str());
                return false;
             }
          }
@@ -3335,15 +3293,12 @@ bool CometSearch::TranslateNA2AA(int *frame,
             pTmp=(char *)realloc(_proteinInfo.pszProteinSeq, ii + 100);
             if (pTmp == NULL)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
+               string strErrorMsg = " Error realloc(szProteinSeq) ... size=" + to_string(ii) + "\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
- the sequence into multiple, overlapping, smaller entries.\n", ii);
-
-               string strErrorMsg(szErrorMsg);
+ the sequence into multiple, overlapping, smaller entries.\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg.c_str());
                return false;
             }
 
@@ -3370,15 +3325,12 @@ bool CometSearch::TranslateNA2AA(int *frame,
             pTmp=(char *)realloc(_proteinInfo.pszProteinSeq, ii + 100);
             if (pTmp == NULL)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error realloc(szProteinSeq) ... size=%d\n\
+               string strErrorMsg = " Error realloc(szProteinSeq) ... size=" + to_string(ii) + "\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
- the sequence into multiple, overlapping, smaller entries.\n", ii);
-
-               string strErrorMsg(szErrorMsg);
+ the sequence into multiple, overlapping, smaller entries.\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg.c_str());
                return false;
             }
 
@@ -3997,8 +3949,9 @@ void CometSearch::StorePeptide(int iWhichQuery,
                }
                else if (iVal < 0)
                {
-                  pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(-iVal - 1).dMassDiffMono;
-                  strcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pszMod[i], dbe->vectorPeffMod.at(-iVal - 1).szMod);
+                  int iTmp = -iVal - 1;
+                  pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
+                  strcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
                }
                else
                   pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites[i] = 0.0;
@@ -4139,8 +4092,9 @@ void CometSearch::StorePeptide(int iWhichQuery,
                }
                else if (iVal < 0)
                {
-                  pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(-iVal - 1).dMassDiffMono;
-                  strcpy(pQuery->_pResults[siLowestSpScoreIndex].pszMod[i], dbe->vectorPeffMod.at(-iVal - 1).szMod);
+                  int iTmp = -iVal - 1;
+                  pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
+                  strcpy(pQuery->_pResults[siLowestSpScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
                }
                else
                   pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = 0.0;
@@ -5522,11 +5476,9 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          iModIndex = VMOD_9_INDEX;
          break;
       default:
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg,  " Error - in CometSearch::PermuteMods, iWhichIndex=%d (valid range 1 to 9)\n", iWhichMod);
-         string strErrorMsg(szErrorMsg);
+         string strErrorMsg = " Error - in CometSearch::PermuteMods, iWhichIndex=" + to_string(iWhichMod) + " (valid range 1 to 9)\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
+         logerr(strErrorMsg.c_str());
          return false;
    }
 
@@ -6054,11 +6006,10 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          // first make sure no negative piVarModSites entries as no PEFF here
          if (piVarModSites[x] < 0)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error, piVarModSites[%d]=%d; should not be less than zeros since no PEFF.\n", x, piVarModSites[x]);
-            string strErrorMsg(szErrorMsg);
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            string sErrorMsg;
+            sErrorMsg = " Error, piVarModSites[" + to_string(x) + "] = " + to_string(piVarModSites[x]) + " should not be less than zeros since no PEFF.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, sErrorMsg);
+            logerr(sErrorMsg.c_str());
             return true;
          }
 
@@ -6200,7 +6151,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
                else if (piVarModSites[iPosForward] < 0)
                {
-                  dBion += (dbe->vectorPeffMod.at(-piVarModSites[iPosForward]-1)).dMassDiffMono;
+                  dBion += (dbe->vectorPeffMod.at(-piVarModSites[iPosForward] - 1)).dMassDiffMono;
                }
 
                _pdAAforward[iPosForward] = dBion;
@@ -6448,7 +6399,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
 
                piTmpVarModSearchSites[iLenPeptide]   = piVarModSites[iLenPeptide];    // N-term
-               piTmpVarModSearchSites[iLenPeptide+1] = piVarModSites[iLenPeptide+1];  // C-term
+               piTmpVarModSearchSites[iLenPeptide + 1] = piVarModSites[iLenPeptide + 1];  // C-term
                memcpy(piVarModSitesDecoy, piTmpVarModSearchSites, (iLenPeptide + 2) * sizeof(int));
 
                // Now need to recalculate _pdAAforward and _pdAAreverse for decoy entry

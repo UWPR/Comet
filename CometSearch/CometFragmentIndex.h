@@ -29,7 +29,7 @@ public:
    ~CometFragmentIndex();
 
    static bool WritePlainPeptideIndex(ThreadPool *tp);
-   static bool WriteFragmentIndex(char *szIndexFile,
+   static bool WriteFragmentIndex(string strIndexFile,
                                   comet_fileoffset_t lPeptidesFilePos,
                                   comet_fileoffset_t lProteinsFilePos,
                                   ThreadPool *tp);

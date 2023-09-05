@@ -76,7 +76,7 @@ g_massRange.dMinFragmentMass = 180; //FIX
 g_massRange.dMaxFragmentMass = 2500; //FIX
    g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_massRange.dMaxFragmentMass) + 1;
 
-   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads>8?8:g_staticParams.options.iNumThreads) ; ++iWhichThread)
+   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGMENTINDEX_THREADS ? MAX_FRAGMENTINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
    {
       g_arrvFragmentIndex[iWhichThread] = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
    }
@@ -123,7 +123,8 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    int ALL_COMBINATION_CNT = 0;
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
-   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, MAX_MODS_PER_MOD,
+   // iEnd is one larger than max peptide length
+   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd - 1, MAX_MODS_PER_MOD,
          &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
    // Get the unique modifiable sequences from the peptides
@@ -203,7 +204,12 @@ string CometFragmentIndex::ElapsedTime(std::chrono::time_point<std::chrono::stea
    auto minutes = duration.count() / 60000;
    auto seconds = (duration.count() - minutes * 60000) / 1000;
 
-   string sReturn = std::to_string(minutes) + " min " + std::to_string(seconds) + "sec";
+   string sReturn;
+   if (minutes > 0)
+      sReturn = std::to_string(minutes) + " min " + std::to_string(seconds) + " sec";
+   else
+      sReturn = std::to_string(seconds) + " sec";
+
    return sReturn;
 }
 
@@ -308,29 +314,12 @@ void CometFragmentIndex::SortFragmentThreadProc(int iBin,
                                                 int iNumIndexingThreads,
                                                 ThreadPool *tp)
 {
-   // first combine the individual fragment indexes from each thread then sort
-   if (iNumIndexingThreads > 1)
+   for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
    {
-      for (int iWhichThread = 1; iWhichThread < iNumIndexingThreads; ++iWhichThread)
-      {
-         if (g_arrvFragmentIndex[iWhichThread][iBin].size() > 0)
-         {
-            g_arrvFragmentIndex[0][iBin].insert(g_arrvFragmentIndex[0][iBin].end(),
-                  g_arrvFragmentIndex[iWhichThread][iBin].begin(),
-                  g_arrvFragmentIndex[iWhichThread][iBin].end());
+      sort(g_arrvFragmentIndex[iWhichThread][iBin].begin(), g_arrvFragmentIndex[iWhichThread][iBin].end(), SortFragmentsByPepMass);
 
-            g_arrvFragmentIndex[iWhichThread][iBin].clear();
-            g_arrvFragmentIndex[iWhichThread][iBin].shrink_to_fit();
-         }
-      }
-   }
-
-   if (g_arrvFragmentIndex[0][iBin].size() > 0) // unique sort
-   {
-      sort(g_arrvFragmentIndex[0][iBin].begin(), g_arrvFragmentIndex[0][iBin].end(), SortFragmentsByPepMass);
-
-      g_arrvFragmentIndex[0][iBin].erase(unique(g_arrvFragmentIndex[0][iBin].begin(),
-               g_arrvFragmentIndex[0][iBin].end()), g_arrvFragmentIndex[0][iBin].end());
+      g_arrvFragmentIndex[iWhichThread][iBin].erase(unique(g_arrvFragmentIndex[iWhichThread][iBin].begin(),
+               g_arrvFragmentIndex[iWhichThread][iBin].end()), g_arrvFragmentIndex[iWhichThread][iBin].end());
    }
 }
 
@@ -511,20 +500,20 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 {
    FILE *fp;
    bool bSucceeded;
-   char szOut[SIZE_FILE+30];
+   string strOut;
 
-   const int iIndex_SIZE_FILE=SIZE_FILE+4;
-   char szIndexFile[iIndex_SIZE_FILE];
-   sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
+   string strIndexFile;
 
-   if ((fp = fopen(szIndexFile, "wb")) == NULL)
+   strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");
+
+   if ((fp = fopen(strIndexFile.c_str(), "wb")) == NULL)
    {
-      printf(" Error - cannot open index file %s to write\n", szIndexFile);
+      printf(" Error - cannot open index file %s to write\n", strIndexFile.c_str());
       exit(1);
    }
 
-   sprintf(szOut, " Creating plain peptide/protein index file: ");
-   logout(szOut);
+   strOut = " Creating plain peptide/protein index file: ";
+   logout(strOut.c_str());
    fflush(stdout);
 
    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
@@ -561,8 +550,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    }
 
    // remove duplicates
-   sprintf(szOut, " - removing duplicates\n");
-   logout(szOut);
+   strOut = " - removing duplicate peptides\n";
+   logout(strOut.c_str());
    fflush(stdout);
 
    // first sort by peptide then protein file position
@@ -621,7 +610,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // sort by mass;
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByMass);
 
-   cout << " - writing file: " << szIndexFile << endl;
+   cout << " - writing file: " << strIndexFile << endl;
 
    // write out index header
    fprintf(fp, "Comet peptide index.  Comet version %s\n", g_sCometVersion.c_str());
@@ -697,10 +686,10 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-// bSucceeded = WriteFragmentIndex(szIndexFile, lPeptidesFilePos, lProteinsFilePos, tp);
+// bSucceeded = WriteFragmentIndex(strIndexFile, lPeptidesFilePos, lProteinsFilePos, tp);
 
-   sprintf(szOut, " - done.  # peps %zd\n", tNumPeptides);
-   logout(szOut);
+   strOut = " - done.  # peps " + to_string(tNumPeptides) + string("\n");
+   logout(strOut.c_str());
    fflush(stdout);
 
 // CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
@@ -708,18 +697,18 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    return bSucceeded;
 }
 
-bool CometFragmentIndex::WriteFragmentIndex(char *szIndexFile,
+bool fWriteFragmentIndex(string strIndexFile,
                                             comet_fileoffset_t lPeptidesFilePos,
                                             comet_fileoffset_t lProteinsFilePos,
                                             ThreadPool *tp)
 {
    FILE *fp;
    bool bSucceeded;
-   char szOut[SIZE_FILE+60];
    size_t tSizevRawPeptides = 0;
+   string strOut;
 
-   sprintf(szOut, "\n Adding fragment index to index file:\n");
-   logout(szOut);
+   strOut = "\n Adding fragment index to index file:\n";
+   logout(strOut.c_str());
    fflush(stdout);
 
    bSucceeded = CometFragmentIndex::CreateFragmentIndex(tp);
@@ -738,9 +727,9 @@ bool CometFragmentIndex::WriteFragmentIndex(char *szIndexFile,
    cout <<  " - writing fragment index ... ";
    fflush(stdout);
 
-   if ((fp = fopen(szIndexFile, "ab")) == NULL)
+   if ((fp = fopen(strIndexFile.c_str(), "ab")) == NULL)
    {
-      printf(" Error - cannot open index file %s to append to\n", szIndexFile);
+      printf(" Error - cannot open index file %s to append to\n", strIndexFile.c_str());
       exit(1);
    }
 
@@ -823,7 +812,7 @@ bool CometFragmentIndex::WriteFragmentIndex(char *szIndexFile,
    fwrite(&lPeptidesFilePos, clSizeCometFileOffset, 1, fp);
    fwrite(&lProteinsFilePos, clSizeCometFileOffset, 1, fp);
 
-   cout << ElapsedTime(tStartTime) << endl;
+   cout << CometFragmentIndex::ElapsedTime(tStartTime) << endl;
 
    return bSucceeded;
 }
@@ -834,7 +823,7 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 {
    FILE *fp;
    bool bSucceeded = true;
-   char szIndexFile[SIZE_FILE+30];
+   string strIndexFile;
    size_t tTmp;
    char szBuf[SIZE_BUF];
 
@@ -842,16 +831,16 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
       return 1;
 
    // database already is .idx
-   sprintf(szIndexFile, "%s", g_staticParams.databaseInfo.szDatabase);
+   strIndexFile = g_staticParams.databaseInfo.szDatabase;
 
-   if ((fp = fopen(szIndexFile, "rb")) == NULL)
+   if ((fp = fopen(strIndexFile.c_str(), "rb")) == NULL)
    {
-      printf(" Error - cannot open index file %s to read\n", szIndexFile);
+      printf(" Error - cannot open index file %s to read\n", strIndexFile.c_str());
       exit(1);
    }
 
    auto tStartTime = chrono::steady_clock::now();
-   cout << " - reading file : " << szIndexFile;
+   cout << " - reading file : " << strIndexFile;
    fflush(stdout);
 
    // read fp of index
@@ -923,11 +912,12 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 
 // delete[] g_arrvFragmentIndex;  // shouldn't be needed; hope it doesn't hurt
 
-   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads>8?8:g_staticParams.options.iNumThreads) ; ++iWhichThread)
+   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGMENTINDEX_THREADS ? MAX_FRAGMENTINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
    {
       g_arrvFragmentIndex[iWhichThread] = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
    }
-   int iWhichThread = 0;
+
+   int iWhichThread = 0;  // FIX if this ever gets used; currently unused as index is generated on-the-fly
 
    for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
    {
@@ -967,25 +957,21 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 {
    FILE *fp;
-   char szIndexFile[SIZE_FILE+30];
    size_t tTmp;
    char szBuf[SIZE_BUF];
+   string strIndexFile;
 
    if (g_vPlainPeptideIndexRead)
       return 1;
 
    if (g_staticParams.options.bCreateIndex)
-      sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
+      strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");
    else // database already is .idx
-      sprintf(szIndexFile, "%s", g_staticParams.databaseInfo.szDatabase);
+      strIndexFile = g_staticParams.databaseInfo.szDatabase;
 
-// auto tStartTime = chrono::steady_clock::now();
-// cout << " - reading file : " << szIndexFile;
-// fflush(stdout);
-
-   if ((fp = fopen(szIndexFile, "rb")) == NULL)
+   if ((fp = fopen(strIndexFile.c_str(), "rb")) == NULL)
    {
-      printf(" Error - cannot open index file %s to read\n", szIndexFile);
+      printf(" Error - cannot open index file %s to read\n", strIndexFile.c_str());
       exit(1);
    }
 

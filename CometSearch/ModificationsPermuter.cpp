@@ -13,6 +13,7 @@
 #include <unordered_set>
 #include "CombinatoricsUtils.h"
 #include "ModificationsPermuter.h"
+#include "CometFragmentIndex.h"
 #include "Common.h"
 
 //using namespace std;
@@ -40,19 +41,9 @@ long TIME_GEN_MODS = 0;
 // https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
 chrono::time_point<chrono::steady_clock> ModificationsPermuter::startTime()
 {
-        // Changed from high_resolution_clock::now to steady_clock::now based on this SO thread
-        // https://stackoverflow.com/questions/70396570/mismatched-types-stdchrono-v2steady-clock-and-stdchrono-v2system
+   // Changed from high_resolution_clock::now to steady_clock::now based on this SO thread
+   // https://stackoverflow.com/questions/70396570/mismatched-types-stdchrono-v2steady-clock-and-stdchrono-v2system
    return chrono::steady_clock::now();
-}
-
-
-void ModificationsPermuter::endTime(chrono::time_point<chrono::steady_clock> start, string message)
-{
-   const auto stop = chrono::steady_clock::now();
-   auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
-   long minutes = duration.count() / 60000;
-   long seconds = (duration.count() - minutes*60000) / 1000;
-   cout << message << " in " << minutes << " minutes " << seconds  << " seconds" << endl;
 }
 
 
@@ -232,7 +223,8 @@ vector<string> ModificationsPermuter::readPeptides(string file)
          pepCnt++;
       }
       myfile.close();
-      endTime(start, "Read " + std::to_string(peptides.size()) + " peptides");
+
+      cout << "Read " << std::to_string(peptides.size()) << " peptides" << CometFragmentIndex::ElapsedTime(start);
    }
    else cout << "ERROR: Unable to open file" << endl;
 

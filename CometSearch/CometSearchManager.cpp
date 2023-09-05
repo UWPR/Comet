@@ -956,7 +956,7 @@ bool CometSearchManager::InitializeStaticParams()
       if ((intRangeData.iEnd >= intRangeData.iStart) && (intRangeData.iStart > 0))
       {
          g_staticParams.options.peptideLengthRange.iStart = intRangeData.iStart;
-         g_staticParams.options.peptideLengthRange.iEnd = intRangeData.iEnd;
+         g_staticParams.options.peptideLengthRange.iEnd = intRangeData.iEnd + 1;  // add 1 to account for terminating char
 
          if (g_staticParams.options.peptideLengthRange.iStart < MIN_PEPTIDE_LEN)
             g_staticParams.options.peptideLengthRange.iStart = MIN_PEPTIDE_LEN;
@@ -1137,10 +1137,10 @@ bool CometSearchManager::InitializeStaticParams()
 
       if (g_staticParams.options.iNumThreads > MAX_THREADS)
       {
-         char szOut[64];
+         string strOut;
          g_staticParams.options.iNumThreads = MAX_THREADS;
-         sprintf(szOut, " Setting number of threads to %d", MAX_THREADS);
-         logout(szOut);
+         strOut = " Setting number of threads to " + to_string(MAX_THREADS);
+         logout(strOut.c_str());
       }
    }
 
@@ -1412,6 +1412,10 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.iPrecursorNLSize = (int)g_staticParams.precursorNLIons.size();
    if (g_staticParams.iPrecursorNLSize > MAX_PRECURSOR_NL_SIZE)
       g_staticParams.iPrecursorNLSize = MAX_PRECURSOR_NL_SIZE;
+
+   // if searching fragment index database, limit load of query spectra
+   if (g_staticParams.bIndexDb && g_staticParams.options.iSpectrumBatchSize > 5000)
+      g_staticParams.options.iSpectrumBatchSize = 5000;
 
 // for (int x=1; x<=9; ++x)
 //    printf("OK bit %d: %d\n", x, (g_staticParams.variableModParameters.iRequireVarMod >> x) & 1U);
@@ -1721,7 +1725,7 @@ bool CometSearchManager::CreateIndex()
 
 bool CometSearchManager::DoSearch()
 {
-   char szOut[256];
+   string strOut;
 
    ThreadPool *tp = _tp;
 
@@ -1756,12 +1760,11 @@ bool CometSearchManager::DoSearch()
 
    if (!g_staticParams.options.bOutputSqtStream) // && !g_staticParams.bIndexDb)
    {
-      sprintf(szOut, " Comet version \"%s\"", g_sCometVersion.c_str());
-//    if (!g_staticParams.options.bSkipUpdateCheck)
-//       CometCheckForUpdates::CheckForUpdates(szOut);
-      sprintf(szOut+strlen(szOut), "\n\n");
+      strOut = " Comet version \"" + g_sCometVersion + "\n\n";
+//      if (!g_staticParams.options.bSkipUpdateCheck)
+//       CometCheckForUpdates::CheckForUpdates(strOut.c_str());
 
-      logout(szOut);
+      logout(strOut.c_str());
       fflush(stdout);
    }
 
@@ -1841,9 +1844,9 @@ bool CometSearchManager::DoSearch()
 
       if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
       {
-         sprintf(szOut, " Search start:  %s\n", g_staticParams.szDate);
-         sprintf(szOut+strlen(szOut), " - Input file: %s\n", g_staticParams.inputFile.szFileName);
-         logout(szOut);
+         strOut = " Search start:  " + string(g_staticParams.szDate) + "\n";
+         strOut += " - Input file: " + string(g_staticParams.inputFile.szFileName) + "\n";
+         logout(strOut.c_str());
          fflush(stdout);
       }
 
@@ -2288,7 +2291,7 @@ bool CometSearchManager::DoSearch()
          auto tBeginTime = chrono::steady_clock::now();
          if (g_staticParams.bIndexDb)
          {
-            printf(" - searching : %s", g_staticParams.inputFile.szBaseName);
+            printf(" - searching \"%s\" ... ", g_staticParams.inputFile.szBaseName);
             fflush(stdout);
          }
 
@@ -2316,11 +2319,10 @@ bool CometSearchManager::DoSearch()
                logout("   - Load spectra:");
 
 #ifdef PERF_DEBUG
-               char szOut[128];
                time(&tLoadAndPreprocessSpectraStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraStartTime));
-               sprintf(szOut, "\n >> Start LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
-               logout(szOut);
+               strOut = "\n >> Start LoadAndPreprocessSpectra:  " + string(szTimeBuffer) + "\n";
+               logout(strOut.c_str());
 #endif
 
                fflush(stdout);
@@ -2331,7 +2333,7 @@ bool CometSearchManager::DoSearch()
             // IMPORTANT: From this point onwards, because we've loaded some
             // spectra, we MUST "goto cleanup_results" before exiting the loop,
             // or we will create a memory leak!
-    
+
             bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp);
 
             if (!bSucceeded)
@@ -2343,14 +2345,13 @@ bool CometSearchManager::DoSearch()
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
             {
-               char szOut[128];
                time(&tLoadAndPreprocessSpectraEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraEndTime));
-               sprintf(szOut, "\n >> End LoadAndPreprocessSpectra:  %s\n", szTimeBuffer);
-               logout(szOut);
-               int iElapsedTime=(int)difftime(tLoadAndPreprocessSpectraEndTime, tLoadAndPreprocessSpectraStartTime);
-               sprintf(szOut, "\n >> Time spent in LoadAndPreprocessSpectra:  %d seconds\n", iElapsedTime);
-               logout(szOut);
+               strOut = "\n >> End LoadAndPreprocessSpectra:  " + string(szTimeBuffer) + string("\n");
+               logout(strOut.c_str());
+               int iElapsedTime = (int)difftime(tLoadAndPreprocessSpectraEndTime, tLoadAndPreprocessSpectraStartTime);
+               strOut = "\n >> Time spent in LoadAndPreprocessSpectra:  " + iElapsedTime + string(" seconds\n");
+               logout(strOut.c_str());
                fflush(stdout);
             }
 #endif
@@ -2365,15 +2366,14 @@ bool CometSearchManager::DoSearch()
             if (!bSucceeded)
                goto cleanup_results;
 
-            char szStatusMsg[256];
-            sprintf(szStatusMsg, " %d\n", (int)g_pvQuery.size());
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
-            {
-               char szOut[256];
-               sprintf(szOut, "%s", szStatusMsg);
-               logout(szOut);
+            { // need strStatusMsg in it's own scope due to goto statement above
+               string strStatusMsg = " " + to_string(g_pvQuery.size()) + string("\n");
+               if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+               {
+                  logout(strStatusMsg.c_str());
+               }
+               g_cometStatus.SetStatusMsg(strStatusMsg);
             }
-            g_cometStatus.SetStatusMsg(string(szStatusMsg));
 
             if (g_staticParams.options.bMango)
             {
@@ -2429,11 +2429,10 @@ bool CometSearchManager::DoSearch()
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
             {
-               char szOut[128];
                time(&tRunSearchStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchStartTime));
-               sprintf(szOut, "\n >> Start RunSearch:  %s\n", szTimeBuffer);
-               logout(szOut);
+               strOut = "\n >> Start RunSearch:  " + string(szTimeBuffer) + string("\n");
+               logout(strOut.c_str());
                fflush(stdout);
             }
 #endif
@@ -2453,20 +2452,19 @@ bool CometSearchManager::DoSearch()
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
             {
-               char szOut[128];
                time(&tRunSearchEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchEndTime));
-               sprintf(szOut, "\n >> End RunSearch:  %s\n", szTimeBuffer);
-               logout(szOut);
+               strOut = "\n >> End RunSearch:  " + string(szTimeBuffer) + string("\n");
+               logout(strOut.c_str());
 
                int iElapsedTime=(int)difftime(tRunSearchEndTime, tRunSearchStartTime);
-               sprintf(szOut, "\n >> Time spent in RunSearch:  %d seconds\n", iElapsedTime);
-               logout(szOut);
+               strOut = "\n >> Time spent in RunSearch:  " + to_string(iElapsedTime) + string("seconds \n");
+               logout(strOut.c_str());
 
                time(&tPostAnalysisStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisStartTime));
-               sprintf(szOut, "\n >> Start PostAnalysis:  %s\n", szTimeBuffer);
-               logout(szOut);
+               strOut = "\n >> Start PostAnalysis:  " + string(szTimeBuffer) + string("\n");
+               logout(strOut.c_str());
 
                fflush(stdout);
             }
@@ -2493,14 +2491,14 @@ bool CometSearchManager::DoSearch()
 #ifdef PERF_DEBUG
             if (!g_staticParams.options.bOutputSqtStream)
             {
-               char szOut[128];
                time(&tPostAnalysisEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisEndTime));
-               sprintf(szOut, "\n >> End PostAnalysis:  %s\n", szTimeBuffer);
-               logout(szOut);
+               strOut = "\n >> End PostAnalysis:  " + string(szTimeBuffer) + string("\n");
+               logout(strOut.c_str());
+
                int iElapsedTime=(int)difftime(tPostAnalysisEndTime, tPostAnalysisStartTime);
-               sprintf(szOut, "\n >> Time spent in PostAnalysis:  %d seconds\n", iElapsedTime);
-               logout(szOut);
+               strOut = "\n >> Time spent in PostAnalysis:  " + to_string(iElapsedTime) + string("seconds \n");
+               logout(strOut.c_str());
                fflush(stdout);
             }
 #endif
@@ -2578,18 +2576,12 @@ bool CometSearchManager::DoSearch()
          }
 
          if (g_staticParams.bIndexDb)
-         {
-            auto tEndTime = chrono::steady_clock::now();
-            auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tBeginTime);
-            long minutes = duration.count() / 60000;
-            long seconds = (duration.count() - minutes * 60000) / 1000;
-            cout << " (" << minutes << " minutes " << seconds  << " seconds)" << endl;
-         }
+            cout << CometFragmentIndex::ElapsedTime(tBeginTime) << endl;
 
          if (bSucceeded)
          {
             if (iTotalSpectraSearched == 0)
-               logout(" Warning - no spectra searched.\n\n");
+               logout(" Warning - no spectra searched.\n");
 
             if (NULL != fpout_pepxml)
                CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
@@ -2615,7 +2607,7 @@ bool CometSearchManager::DoSearch()
                CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpdb, szOutputMzIdentMLtmp, *this);
 
                fclose(fpout_mzidentmltmp);
-               unlink(szOutputMzIdentMLtmp);
+               remove(szOutputMzIdentMLtmp);
             }
 
             if (NULL != fpoutd_mzidentml)
@@ -2636,19 +2628,18 @@ bool CometSearchManager::DoSearch()
                CometWriteMzIdentML::WriteMzIdentML(fpoutd_mzidentml, fpdb, szOutputDecoyMzIdentMLtmp, *this);
 
                fclose(fpoutd_mzidentmltmp);
-               unlink(szOutputDecoyMzIdentMLtmp);
+               remove(szOutputDecoyMzIdentMLtmp);
             }
 
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
-               char szOut[128];
                time_t tEndTime;
 
                time(&tEndTime);
                int iElapsedTime = (int)difftime(tEndTime, tStartTime);
 
                strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tEndTime));
-               sprintf(szOut, " Search end:    %s", g_staticParams.szDate);
+               strOut = " Search end:    " + string(g_staticParams.szDate);
 
                int hours, mins, secs;
 
@@ -2657,12 +2648,11 @@ bool CometSearchManager::DoSearch()
                secs = (int)(iElapsedTime%60);
 
                if (hours)
-                  sprintf(szOut+strlen(szOut), ", %dh:%dm:%ds", hours, mins, secs);
+                  strOut += ", " + to_string(hours) + "h:" + to_string(mins) + "m:" + to_string(secs) + "s\n\n";
                else
-                  sprintf(szOut+strlen(szOut), ", %dm:%ds", mins, secs);
-               sprintf(szOut+strlen(szOut), "\n\n");
+                  strOut += ", " + to_string(mins) + "m:" + to_string(secs) + "s\n\n";
 
-               logout(szOut);
+               logout(strOut.c_str());
             }
          }
 
@@ -2684,7 +2674,7 @@ bool CometSearchManager::DoSearch()
          fclose(fpout_pepxml);
          fpout_pepxml = NULL;
          if (iTotalSpectraSearched == 0)
-            unlink(szOutputPepXML);
+            remove(szOutputPepXML);
       }
 
       if (NULL != fpoutd_pepxml)
@@ -2692,7 +2682,7 @@ bool CometSearchManager::DoSearch()
          fclose(fpoutd_pepxml);
          fpoutd_pepxml = NULL;
          if (iTotalSpectraSearched == 0)
-            unlink(szOutputDecoyPepXML);
+            remove(szOutputDecoyPepXML);
       }
 
       if (NULL != fpout_mzidentml)
@@ -2701,8 +2691,8 @@ bool CometSearchManager::DoSearch()
          fpout_mzidentml= NULL;
          if (iTotalSpectraSearched == 0)
          {
-            unlink(szOutputMzIdentML);
-            unlink(szOutputMzIdentMLtmp);
+            remove(szOutputMzIdentML);
+            remove(szOutputMzIdentMLtmp);
          }
       }
 
@@ -2712,8 +2702,8 @@ bool CometSearchManager::DoSearch()
          fpoutd_mzidentml = NULL;
          if (iTotalSpectraSearched == 0)
          {
-            unlink(szOutputDecoyMzIdentML);
-            unlink(szOutputDecoyMzIdentMLtmp);
+            remove(szOutputDecoyMzIdentML);
+            remove(szOutputDecoyMzIdentMLtmp);
          }
       }
 
@@ -2722,7 +2712,7 @@ bool CometSearchManager::DoSearch()
          fclose(fpout_percolator);
          fpout_percolator = NULL;
          if (iTotalSpectraSearched == 0)
-            unlink(szOutputPercolator);
+            remove(szOutputPercolator);
       }
 
       if (NULL != fpout_sqt)
@@ -2730,7 +2720,7 @@ bool CometSearchManager::DoSearch()
          fclose(fpout_sqt);
          fpout_sqt = NULL;
          if (iTotalSpectraSearched == 0)
-            unlink(szOutputSQT);
+            remove(szOutputSQT);
       }
 
       if (NULL != fpoutd_sqt)
@@ -2738,7 +2728,7 @@ bool CometSearchManager::DoSearch()
          fclose(fpoutd_sqt);
          fpoutd_sqt = NULL;
          if (iTotalSpectraSearched == 0)
-            unlink(szOutputDecoySQT);
+            remove(szOutputDecoySQT);
       }
 
       if (NULL != fpout_txt)
@@ -2746,7 +2736,7 @@ bool CometSearchManager::DoSearch()
          fclose(fpout_txt);
          fpout_txt = NULL;
          if (iTotalSpectraSearched == 0)
-            unlink(szOutputTxt);
+            remove(szOutputTxt);
       }
 
       if (NULL != fpoutd_txt)
@@ -2754,7 +2744,7 @@ bool CometSearchManager::DoSearch()
          fclose(fpoutd_txt);
          fpoutd_txt = NULL;
          if (iTotalSpectraSearched == 0)
-            unlink(szOutputDecoyTxt);
+            remove(szOutputDecoyTxt);
       }
 
       if (iTotalSpectraSearched == 0)

@@ -9,8 +9,6 @@ class ModificationsPermuter
 public:
 
    static chrono::time_point<chrono::steady_clock> startTime();
-   static void endTime(chrono::time_point<chrono::steady_clock> start,
-                       string message);
    static long duration(chrono::time_point<chrono::steady_clock> start);
    static bool isModifiable(char aa,
                             vector<string>& ALL_MODS);

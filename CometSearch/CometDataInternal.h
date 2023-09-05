@@ -29,11 +29,13 @@ class CometSearchManager;
 #define FLOAT_ZERO                  1e-6     // 0.000001
 
 #define MIN_PEPTIDE_LEN             1        // min # of AA for a petpide
-#define MAX_PEPTIDE_LEN             50       // max # of AA for a peptide; one less to account for terminating char
-#define MAX_PEPTIDE_LEN_P2          52       // max # of AA for a peptide plus 2 for N/C-term
+#define MAX_PEPTIDE_LEN             51       // max # of AA for a peptide; one more than actual # to account for terminating char
+#define MAX_PEPTIDE_LEN_P2          53       // max # of AA for a peptide plus 2 for N/C-term
 
 #define MAX_COMBINATIONS            2000
 #define MAX_MODS_PER_MOD            3
+
+#define MAX_FRAGMENTINDEX_THREADS   8
 
 #define KEEP_ALL_PEPTIDES           1        // 1 = print up to MAX_COMBINATIONS of peptides; 0 = ignore mods for peptide that exceed MAX_COMBINATIONS
 
