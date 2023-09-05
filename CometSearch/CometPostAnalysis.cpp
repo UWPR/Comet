@@ -702,14 +702,6 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       }
    }
 
-/*
-   iStartCorr = 0;
-   if (iNextCorr >= 30)
-      iStartCorr = (int)(iNextCorr - iNextCorr*0.25);
-   else if (iNextCorr >= 15)
-      iStartCorr = (int)(iNextCorr - iNextCorr*0.5);
-*/
-
    iStartCorr = iNextCorr - 5;
    int iNumZeroes = 0;
    for (i=iStartCorr; i<=iNextCorr; ++i)
@@ -723,7 +715,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
    Mx=My=a=b=0.0;
 
-   while (iStartCorr >= 0)
+   while (iStartCorr >= 0 && iNextCorr > iStartCorr + 2)
    {
       Sx=Sxy=SumX=SumY=0.0;
       iNumPoints=0;
