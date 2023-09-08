@@ -95,13 +95,22 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    }
 
    char resolvedPathBaseName[PATH_MAX];
+
+   if (g_staticParams.options.bResolveFullPaths)
+   {
 #ifdef _WIN32
-   _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, PATH_MAX);
-   _fullpath(szRunSummaryResolvedPath, szRunSummaryBaseName, PATH_MAX);
+      _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, PATH_MAX);
+      _fullpath(szRunSummaryResolvedPath, szRunSummaryBaseName, PATH_MAX);
 #else
-   realpath(g_staticParams.inputFile.szBaseName, resolvedPathBaseName);
-   realpath(szRunSummaryBaseName, szRunSummaryResolvedPath);
+      realpath(g_staticParams.inputFile.szBaseName, resolvedPathBaseName);
+      realpath(szRunSummaryBaseName, szRunSummaryResolvedPath);
 #endif
+   }
+   else
+   {
+      strcpy(resolvedPathBaseName, g_staticParams.inputFile.szBaseName);
+      strcpy(szRunSummaryResolvedPath, szRunSummaryBaseName);
+   }
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");

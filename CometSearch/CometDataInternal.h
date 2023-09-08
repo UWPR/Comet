@@ -107,6 +107,7 @@ struct Options             // output parameters
    int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors, 3=phosphate neutral loss
    int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search
    int iNumThreads;              // 0=poll CPU else set # threads to spawn
+   int bResolveFullPaths;        // 0=do not resolve full paths; 1=resolve paths (default)
    int bOutputSqtStream;
    int bOutputSqtFile;
    int bOutputTxtFile;
@@ -159,6 +160,7 @@ struct Options             // output parameters
       iRemovePrecursor = a.iRemovePrecursor;
       iDecoySearch = a.iDecoySearch;
       iNumThreads = a.iNumThreads;
+      bResolveFullPaths = a.bResolveFullPaths;
       bOutputSqtStream = a.bOutputSqtStream;
       bOutputSqtFile = a.bOutputSqtFile;
       bOutputTxtFile = a.bOutputTxtFile;
@@ -838,6 +840,8 @@ struct StaticParams
       options.bOutputMzIdentMLFile = 0;
       options.bOutputPercolatorFile = 0;
       options.bOutputOutFiles = 0;
+
+      options.bResolveFullPaths = 1;
 
       options.bSkipAlreadyDone = 1;
 //    options.bSkipUpdateCheck = 0;

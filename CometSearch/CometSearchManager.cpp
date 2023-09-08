@@ -818,6 +818,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("export_additional_pepxml_scores", g_staticParams.options.bExportAdditionalScoresPepXML);
 
+   GetParamValue("resolve_fullpaths", g_staticParams.options.bResolveFullPaths);
+
    GetParamValue("output_sqtstream", g_staticParams.options.bOutputSqtStream);
 
    GetParamValue("output_sqtfile", g_staticParams.options.bOutputSqtFile);

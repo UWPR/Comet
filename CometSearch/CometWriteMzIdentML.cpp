@@ -90,33 +90,6 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
    // Get msModel + msManufacturer from mzXML. Easy way to get from mzML too?
    CometWritePepXML::ReadInstrument(szManufacturer, szModel);
 
-   // The msms_run_summary base_name must be the base name to mzXML input.
-   // This might not be the case with -N command line option.
-   // So get base name from g_staticParams.inputFile.szFileName here to be sure
-   char *pStr;
-   char szRunSummaryBaseName[PATH_MAX];          // base name of szInputFile
-   char szRunSummaryResolvedPath[PATH_MAX];      // resolved path of szInputFile
-   int  iLen = (int)strlen(g_staticParams.inputFile.szFileName);
-   strcpy(szRunSummaryBaseName, g_staticParams.inputFile.szFileName);
-   if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
-      *pStr = '\0';
-
-   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
-   {
-      if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
-         *pStr = '\0';
-   }
-
-   char resolvedPathBaseName[PATH_MAX];
-#ifdef _WIN32
-   _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, PATH_MAX);
-   _fullpath(szRunSummaryResolvedPath, szRunSummaryBaseName, PATH_MAX);
-#else
-   realpath(g_staticParams.inputFile.szBaseName, resolvedPathBaseName);
-   realpath(szRunSummaryBaseName, szRunSummaryResolvedPath);
-#endif
-
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 

@@ -758,6 +758,13 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("print_expect_score", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "resolve_fullpaths"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("resolve_fullpaths", szParamStringVal, iIntParam);
+            }
             else if (!strcmp(szParamName, "output_sqtstream"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
