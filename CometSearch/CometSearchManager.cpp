@@ -1423,10 +1423,6 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.iPrecursorNLSize > MAX_PRECURSOR_NL_SIZE)
       g_staticParams.iPrecursorNLSize = MAX_PRECURSOR_NL_SIZE;
 
-   // if searching fragment index database, limit load of query spectra
-   if (g_staticParams.bIndexDb && g_staticParams.options.iSpectrumBatchSize > 5000)
-      g_staticParams.options.iSpectrumBatchSize = 5000;
-
 // for (int x=1; x<=9; ++x)
 //    printf("OK bit %d: %d\n", x, (g_staticParams.variableModParameters.iRequireVarMod >> x) & 1U);
 
@@ -1755,6 +1751,11 @@ bool CometSearchManager::DoSearch()
       return false;
 
    bool bSucceeded = true;
+
+   // if searching fragment index database, limit load of query spectra as no
+   // need to load all spectra into memory since querying spectra sequentially
+   if (g_staticParams.bIndexDb && g_staticParams.options.iSpectrumBatchSize > 2000)
+      g_staticParams.options.iSpectrumBatchSize = 2000;
 
    // add git hash to version string if present
    // repeated here from Comet main() as main() is skipped when search invoked via DLL
@@ -2913,8 +2914,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
-
-printf("OK dMinMass %f, dMaxMass %f\n", g_massRange.dMinMass, g_massRange.dMaxMass);
 
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;  // unused in this context but setting here anyways
