@@ -60,8 +60,6 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs){
   m_iDataType=0;
   spec=bs;
   indexOffset=-1;
-  m_scanPRECCount = 0;
-  m_scanSPECCount = 0;
   m_scanIDXCount = 0;
   chromat=NULL;
 }
@@ -90,8 +88,6 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs, BasicChromatogram* cs){
   spec=bs;
   chromat=cs;
   indexOffset=-1;
-  m_scanPRECCount = 0;
-  m_scanSPECCount = 0;
   m_scanIDXCount = 0;
 }
 
@@ -134,6 +130,8 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     curChromatIndex.idRef=string(getAttrValue("idRef", attr));
 
   } else if(isElement("offset",el) && m_bSpectrumIndex){
+    //MH: try to extract a scan number from each offset. Failing that, the scan number is simply
+    //the next iteration (1-based).
     m_strData.clear();
     curIndex.idRef=string(getAttrValue("idRef", attr));
     if(strstr(&curIndex.idRef[0],"scan=")!=NULL)  {
@@ -157,18 +155,11 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     if(s.length()<1){
       spec->setPrecursorScanNum(0);
     } else {
-      if(strstr(&s[0],"scan=")!=NULL)  {
-        spec->setPrecursorScanNum(atoi(strstr(&s[0],"scan=")+5));
-      } else if(strstr(&s[0],"scanId=")!=NULL) {
-        spec->setPrecursorScanNum(atoi(strstr(&s[0],"scanId=")+7));
-      } else if (strstr(&s[0], "frame") != NULL) {
-        spec->setPrecursorScanNum(++m_scanPRECCount);
-      } else if(strstr(&s[0],"S")!=NULL) {
-        spec->setPrecursorScanNum(atoi(strstr(&s[0],"S")+1));
+      map<string, size_t>::iterator it = m_mIndex.find(s);
+      if (it != m_mIndex.end()) {
+        spec->setPrecursorScanNum((int)it->second);
       } else {
-        spec->setPrecursorScanNum(++m_scanPRECCount);
-        //Suppressing warning.
-        //cout << "WARNING: Cannot extract precursor scan number spectrum line: " << &s[0] << "\tDefaulting to " << m_scanPRECCount << endl;
+        cout << "ERROR: precursor:spectrumRef " << s << " is not indexed." << endl;
       }
     }
 
@@ -191,20 +182,11 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
   }  else if (isElement("spectrum", el)) {
     string s=getAttrValue("id", attr);
     spec->setIDString(&s[0]);
-    if(strstr(&s[0],"scan=")!=NULL)  {
-      spec->setScanNum(atoi(strstr(&s[0],"scan=")+5));
-    } else if(strstr(&s[0],"scanId=")!=NULL) {
-      spec->setScanNum(atoi(strstr(&s[0],"scanId=")+7));
-    } else if (strstr(&s[0], "frame") != NULL) {
-      spec->setScanNum(++m_scanSPECCount);
-    } else if(strstr(&s[0],"S")!=NULL) {
-      spec->setScanNum(atoi(strstr(&s[0],"S")+1));
-    } else if(m_scanNumOverride>-1){ //if a scan index was set (usually obtained from the calling class), use that instead.
-      spec->setScanNum(m_scanNumOverride);
+    map<string,size_t>::iterator it=m_mIndex.find(s);
+    if(it!=m_mIndex.end()){
+      spec->setScanNum((int)it->second);
     } else {
-      spec->setScanNum(++m_scanSPECCount); //This is a bad deal...it will count iteratively when file is read random-access.
-      //Suppressing warning.
-      //cout << "WARNING: Cannot extract scan number spectrum line: " << &s[0] << "\tDefaulting to " << m_scanSPECCount << endl;
+      cout << "ERROR: " << s << " is not indexed." << endl;
     }
     m_peaksCount = atoi(getAttrValue("defaultArrayLength", attr));
     spec->setPeaksCount(m_peaksCount);
@@ -298,10 +280,12 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
   } else if(isElement("offset",el) && m_bChromatogramIndex){
     curChromatIndex.offset=mzpatoi64(&m_strData[0]);
     m_vChromatIndex.push_back(curChromatIndex);
+    m_mChromatIndex.insert(pair<string,size_t>(curChromatIndex.idRef,m_vChromatIndex.size()));
 
   } else if(isElement("offset",el) && m_bSpectrumIndex){
     curIndex.offset=mzpatoi64(&m_strData[0]);
     m_vIndex.push_back(curIndex);
+    m_mIndex.insert(pair<string,size_t>(curIndex.idRef,curIndex.scanNum));
     if (m_bIndexSorted && m_vIndex.size() > 1) {
       if (m_vIndex[m_vIndex.size()-1].scanNum < m_vIndex[m_vIndex.size()-2].scanNum) {
         m_bIndexSorted = false;
@@ -873,6 +857,9 @@ bool mzpSAXMzmlHandler::load(const char* fileName){
   m_vInstrument.clear();
   m_vIndex.clear();
   m_vChromatIndex.clear();
+  m_mIndex.clear();
+  m_mChromatIndex.clear();
+  m_scanIDXCount = 0;
   parseOffset(0);
   indexOffset = readIndexOffset();
   if(indexOffset==0){

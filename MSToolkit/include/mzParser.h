@@ -588,33 +588,33 @@ private:
   bool m_bIndexSorted;
   //  mzpSAXMzmlHandler index data members.
   std::vector<cindex>    m_vIndex;
+  std::map<std::string,size_t> m_mIndex; //Map of index for quick-lookup of indexed scan numbers
   cindex            curIndex;
   int               posIndex;
   f_off             indexOffset;
 
   std::vector<cindex>    m_vChromatIndex;
+  std::map<std::string, size_t> m_mChromatIndex; //Map of index for quick-lookup of indexed chromatogram numbers
   cindex            curChromatIndex;
   int               posChromatIndex;
 
   //  mzpSAXMzmlHandler data members.
   BasicChromatogram*      chromat;
-  std::string                  m_ccurrentRefGroupName;
+  std::string             m_ccurrentRefGroupName;
   long                    m_encodedLen;            // For compressed data
   instrumentInfo          m_instrument;
   sPrecursorIon           m_precursorIon;
   int                     m_peaksCount;            // Count of peaks in spectrum
-  std::vector<cvParam>         m_refGroupCvParams;
-  int                     m_scanSPECCount;
+  std::vector<cvParam>    m_refGroupCvParams;
   int                     m_scanIDXCount;
-  int                     m_scanPRECCount;
   int                     m_scanNumOverride;
   double                  m_startTime;            //in minutes
   double                  m_stopTime;              //in minutes
   std::string                  m_strData;              // For collecting character data.
   std::vector<instrumentInfo>  m_vInstrument;
   BasicSpectrum*          spec;
-  std::vector<double>          vdI;
-  std::vector<double>          vdM;                    // Peak list std::vectors (masses and charges)
+  std::vector<double>     vdI;
+  std::vector<double>     vdM;                    // Peak list std::vectors (masses and charges)
 
 };
 
