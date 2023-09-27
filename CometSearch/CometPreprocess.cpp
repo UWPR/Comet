@@ -880,7 +880,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                }
                else
                {
-                  for (z=g_staticParams.options.iStartCharge; z<=g_staticParams.options.iEndCharge; z++)
+                  for (z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
                   {
                      vChargeStates.push_back(z);
                   }
@@ -1614,9 +1614,9 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
-   Threading::LockMutex(_maxChargeMutex);
+//   Threading::LockMutex(_maxChargeMutex);
    g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
-   Threading::UnlockMutex(_maxChargeMutex);
+//   Threading::UnlockMutex(_maxChargeMutex);
 
    // initialize these temporary arrays before re-using
    size_t iTmp= (size_t)(pScoring->_spectrumInfoInternal.iArraySize)*sizeof(double);

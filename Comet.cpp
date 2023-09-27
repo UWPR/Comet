@@ -25,6 +25,7 @@ SOFTWARE.
 
 #include "Common.h"
 #include "CometData.h"
+#include "CometDataInternal.h"
 #include "CometInterfaces.h"
 
 #include <algorithm>
@@ -72,12 +73,7 @@ int main(int argc, char *argv[])
 
    bool bSearchSucceeded;
 
-/*
-   if (g_staticParams.bIndexDb)
-      bSearchSucceeded = pCometSearchMgr->IndexSearch();  //fragment index search
-   else
-*/
-      bSearchSucceeded = pCometSearchMgr->DoSearch();
+   bSearchSucceeded = pCometSearchMgr->DoSearch();
 
    CometInterfaces::ReleaseCometSearchManager();
 
@@ -1166,6 +1162,20 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("max_fragment_charge", szParamStringVal, iIntParam);
             }
+            else if (!strcmp(szParamName, "min_fragmentindex_mass"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("min_fragmentindex_mass", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "max_fragmentindex_mass"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("max_fragmentindex_mass", szParamStringVal, dDoubleParam);
+            }
             else if (!strcmp(szParamName, "max_precursor_charge"))
             {
                iIntParam = 0;
@@ -1368,7 +1378,7 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
    // we can't just use "strtok" to grab the filename.
    int i;
    int iCmdLen = (int)strlen(cmd);
-   for (i=0; i < iCmdLen; i++)
+   for (i = 0; i < iCmdLen; ++i)
    {
       if (cmd[i] == ':')
       {
@@ -1636,13 +1646,13 @@ activation_method = ALL                # activation method; used if activation m
 # misc parameters\n\
 #\n\
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
-peptide_length_range = 5 50            # minimum and maximum peptide length to analyze (default %d %d; max length 50)\n\
+peptide_length_range = 5 50            # minimum and maximum peptide length to analyze (default min %d to allowed max %d)\n\
 num_results = 100                      # number of search hits to store internally\n\
 max_duplicate_proteins = 20            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
       1,
-      63, /*MAX_PEPTIDE_LENGTH-1*/
+      MAX_PEPTIDE_LEN,
       MAX_FRAGMENT_CHARGE,
       MAX_PRECURSOR_CHARGE);
 

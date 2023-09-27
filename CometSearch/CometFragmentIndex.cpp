@@ -80,9 +80,8 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
    // - raw peptide via iWhichPeptide referencing entry in g_vRawPeptides to access peptide and protein(s)
    // - modification encoding index
    // - modification mass
-g_massRange.dMinFragmentMass = 180; //FIX
-g_massRange.dMaxFragmentMass = 2500; //FIX
-   g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_massRange.dMaxFragmentMass) + 1;
+
+   g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dMaxFragIndexMass) + 1;
 
    for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGMENTINDEX_THREADS ? MAX_FRAGMENTINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
    {
@@ -106,7 +105,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    // Maximum number of bits that can be set in a modifiable sequence for a given modification.
    // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than MAX_COMBINATIONS (65,534)
 
-   for (int i=0; i<VMODS; i++)
+   for (int i = 0; i < VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
          && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
@@ -118,7 +117,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    int MOD_CNT = (int)ALL_MODS.size();
 
    cout << " - mods: ";
-   for (int i = 0; i < MOD_CNT; i++)
+   for (int i = 0; i < MOD_CNT; ++i)
    {
       if (i==0)
          cout << ALL_MODS[i];
@@ -280,7 +279,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& g_vRa
 
       int modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
 
-      for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; modNumIdx++)
+      for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; ++modNumIdx)
       {
          AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, -1, -1);
 
@@ -374,7 +373,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
 
    // first calculate peptide mass as that's needed in fragment loop
    j = 0;
-   for (int i = 0; i <= iEndPos; i++)
+   for (int i = 0; i <= iEndPos; ++i)
    {
       dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
 
@@ -432,7 +431,7 @@ if (!(iWhichPeptide%5000))
    // print out the peptide
    printf("OK in AddFragments: ");
    j=0;
-   for (int i = 0; i <= iEndPos; i++)
+   for (int i = 0; i <= iEndPos; ++i)
    {
       printf("%c", (char)sPeptide[i]);
       if (sPeptide[i] == modSeq[j])
@@ -451,7 +450,7 @@ if (!(iWhichPeptide%5000))
    j = 0;
    k = modSeq.size() - 1;
    unsigned int uiBinIon;
-   for (int i = 0; i < iEndPos; i++)
+   for (int i = 0; i < iEndPos; ++i)
    {
       iPosReverse = iEndPos - i;
 
@@ -479,12 +478,12 @@ if (!(iWhichPeptide%5000))
          }
       }
 
-      if (dBion > g_massRange.dMaxFragmentMass && dYion > g_massRange.dMaxFragmentMass)
+      if (dBion > g_staticParams.options.dMaxFragIndexMass && dYion > g_staticParams.options.dMaxFragIndexMass)
          break;
 
       if (i > 1)  // skip first two low mass b- and y-ions
       {
-         if (dBion > g_massRange.dMinFragmentMass && dBion < g_massRange.dMaxFragmentMass)
+         if (dBion > g_staticParams.options.dMinFragIndexMass && dBion < g_staticParams.options.dMaxFragIndexMass)
          {
             uiBinIon = BIN(dBion);
 
@@ -492,7 +491,7 @@ if (!(iWhichPeptide%5000))
                g_arrvFragmentIndex[iWhichThread][uiBinIon].push_back(uiCurrentFragmentPeptide);
          }
 
-         if (dYion > g_massRange.dMinFragmentMass && dYion < g_massRange.dMaxFragmentMass)
+         if (dYion > g_staticParams.options.dMinFragIndexMass && dYion < g_staticParams.options.dMaxFragIndexMass)
          {
             uiBinIon = BIN(dYion);
 
@@ -624,6 +623,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fprintf(fp, "Comet peptide index.  Comet version %s\n", g_sCometVersion.c_str());
    fprintf(fp, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
    fprintf(fp, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
+   fprintf(fp, "LengthRange: %d %d\n", g_staticParams.options.peptideLengthRange.iStart, g_staticParams.options.peptideLengthRange.iEnd);
    fprintf(fp, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
    fprintf(fp, "Enzyme: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzymeName,
       g_staticParams.enzymeInformation.iSearchEnzymeOffSet, 
@@ -996,6 +996,19 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          {
             char szErr[256];
             sprintf(szErr, " Error with raw peptide index database format. MassType: did not parse 2 values.");
+            logerr(szErr);
+            fclose(fp);
+            return false;
+         }
+      }
+      else if (!strncmp(szBuf, "LengthRange:", 12))
+      {
+         int iRet = sscanf(szBuf + 12, "%d %d", &g_staticParams.options.peptideLengthRange.iStart, &g_staticParams.options.peptideLengthRange.iEnd);
+
+         if (iRet != 2)
+         {
+            char szErr[256];
+            sprintf(szErr, " Error with raw peptide index database format. LengthRange: did not parse 2 values.");
             logerr(szErr);
             fclose(fp);
             return false;

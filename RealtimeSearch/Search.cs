@@ -119,7 +119,7 @@
                         dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
 
                         var trailerData = rawFile.GetTrailerExtraInformation(iScanNumber);
-                        for (int i = 0; i < trailerData.Length; i++)
+                        for (int i = 0; i < trailerData.Length; ++i)
                         {
                            if (trailerData.Labels[i] == "Monoisotopic M/Z:")
                            {
@@ -160,9 +160,9 @@
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
                         // do not decode peptide/proteins strings unless xcorr>0
-                        if (xcorr > 6)
+                        if (xcorr > 0)
                         {
-                           if ((iScanNumber % 1) == 0)
+                           if ((iScanNumber % 1000) == 0)
                            {
                               if (protein.Length > 20)
                                  protein = protein.Substring(0, 20);  // trim to avoid printing long protein description string
@@ -209,7 +209,7 @@
                SearchMgr.FinalizeSingleSpectrumSearch();
 
                // write out histogram of spectrum search times
-               for (int i = 0; i < iMaxElapsedTime; i++)
+               for (int i = 0; i < iMaxElapsedTime; ++i)
                   Console.WriteLine("{0}\t{1}", i, piTimeSearch[i]);
 
                rawFile.Dispose();
@@ -281,7 +281,7 @@
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            iTmp = 1; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
