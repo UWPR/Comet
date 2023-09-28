@@ -521,8 +521,15 @@ static bool ValidateSequenceDatabaseFile()
    }
 
    // At this point, check extension to set whether index database or not
-   if (!strcmp(g_staticParams.databaseInfo.szDatabase+strlen(g_staticParams.databaseInfo.szDatabase)-4, ".idx"))
+   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   {
       g_staticParams.bIndexDb = 1;
+
+      // if searching fragment index database, limit load of query spectra as no
+      // need to load all spectra into memory since querying spectra sequentially
+      if (g_staticParams.options.iSpectrumBatchSize > 2000 || g_staticParams.options.iSpectrumBatchSize == 0)
+         g_staticParams.options.iSpectrumBatchSize = 2000;
+   }
 
    if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
    {
@@ -1758,11 +1765,6 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
-   // if searching fragment index database, limit load of query spectra as no
-   // need to load all spectra into memory since querying spectra sequentially
-   if (g_staticParams.bIndexDb && g_staticParams.options.iSpectrumBatchSize > 2000)
-      g_staticParams.options.iSpectrumBatchSize = 2000;
-
    // add git hash to version string if present
    // repeated here from Comet main() as main() is skipped when search invoked via DLL
    if (strlen(GITHUBSHA) > 0)
@@ -2274,7 +2276,6 @@ bool CometSearchManager::DoSearch()
          {
             logout("   - Reading all spectra into memory; set \"spectrum_batch_size\" if search terminates here.\n");
             fflush(stdout);
-
          }
 
          CometFragmentIndex sqSearch;
