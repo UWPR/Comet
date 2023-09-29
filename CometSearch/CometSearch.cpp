@@ -1617,7 +1617,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       // Check to see if peptide is within global min/mass range for all queries.
       iLenPeptide = iEndPos-iStartPos+1;
 
-      if (iLenPeptide < g_staticParams.options.peptideLengthRange.iEnd)
+      if (iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
       {
          if (g_staticParams.options.bCreateIndex) // && !g_staticParams.variableModParameters.bRequireVarMod)
          {
@@ -1626,7 +1626,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             // ignore mass check here for indexing; modifications added later
             // could put peptide into mass range so just use peptide length
             if (iPepLen >= g_staticParams.options.peptideLengthRange.iStart
-                && iPepLen < g_staticParams.options.peptideLengthRange.iEnd
+                && iPepLen <= g_staticParams.options.peptideLengthRange.iEnd
                 && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
             {
                Threading::LockMutex(g_pvQueryMutex);
@@ -2067,7 +2067,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
       }
 
       // Increment end.
-      if (dCalcPepMass <= g_massRange.dMaxMass && iEndPos < iProteinSeqLengthMinus1 && iLenPeptide< g_staticParams.options.peptideLengthRange.iEnd)
+      if (dCalcPepMass <= g_massRange.dMaxMass && iEndPos < iProteinSeqLengthMinus1 && iLenPeptide < g_staticParams.options.peptideLengthRange.iEnd)
       {
          iEndPos++;
 
@@ -2760,7 +2760,7 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
    if (dCalcPepMass >= g_massRange.dMinMass
          && dCalcPepMass <= g_massRange.dMaxMass
          && iPepLen >= g_staticParams.options.peptideLengthRange.iStart
-         && iPepLen < g_staticParams.options.peptideLengthRange.iEnd
+         && iPepLen <= g_staticParams.options.peptideLengthRange.iEnd
          && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
    {
       // if creating indexed database, only care of peptide is within global mass range
@@ -3847,7 +3847,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
    iLenPeptide = iEndPos - iStartPos + 1;
    iLenPeptide2 = iLenPeptide + 2;
 
-   if (iLenPeptide >= g_staticParams.options.peptideLengthRange.iEnd)
+   if (iLenPeptide > g_staticParams.options.peptideLengthRange.iEnd)
       return;
 
    if (g_staticParams.options.iDecoySearch==2 && bDecoyPep)  // store separate decoys
@@ -4983,7 +4983,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                     // where the end of the peptide is.
                                     for (iTmpEnd = iStartPos; iTmpEnd <= iEndPos; ++iTmpEnd)
                                     {
-                                       if (iTmpEnd - iStartPos + 1 < g_staticParams.options.peptideLengthRange.iEnd - 1)
+                                       if (iTmpEnd - iStartPos + 1 <= g_staticParams.options.peptideLengthRange.iEnd)
                                        {
                                           cResidue = szProteinSeq[iTmpEnd];
 

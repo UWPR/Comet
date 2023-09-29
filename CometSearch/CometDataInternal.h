@@ -893,7 +893,7 @@ struct StaticParams
       options.clearMzRange.dEnd = 0.0;
 
       options.peptideLengthRange.iStart = MIN_PEPTIDE_LEN;
-      options.peptideLengthRange.iEnd = MAX_PEPTIDE_LEN-1;  // -1 accounts for terminating char
+      options.peptideLengthRange.iEnd = MAX_PEPTIDE_LEN - 1;  // -1 as MAX_PEPTIDE_LEN number includes terminating char
 
       staticModifications.dAddCterminusPeptide = 0.0;
       staticModifications.dAddNterminusPeptide = 0.0;

@@ -979,13 +979,13 @@ bool CometSearchManager::InitializeStaticParams()
       if ((intRangeData.iEnd >= intRangeData.iStart) && (intRangeData.iStart > 0))
       {
          g_staticParams.options.peptideLengthRange.iStart = intRangeData.iStart;
-         g_staticParams.options.peptideLengthRange.iEnd = intRangeData.iEnd + 1;  // add 1 to account for terminating char
+         g_staticParams.options.peptideLengthRange.iEnd = intRangeData.iEnd;
 
          if (g_staticParams.options.peptideLengthRange.iStart < MIN_PEPTIDE_LEN)
             g_staticParams.options.peptideLengthRange.iStart = MIN_PEPTIDE_LEN;
 
-         if (g_staticParams.options.peptideLengthRange.iEnd > MAX_PEPTIDE_LEN)
-            g_staticParams.options.peptideLengthRange.iEnd = MAX_PEPTIDE_LEN;
+         if (g_staticParams.options.peptideLengthRange.iEnd >= MAX_PEPTIDE_LEN)
+            g_staticParams.options.peptideLengthRange.iEnd = MAX_PEPTIDE_LEN - 1;
       }
    }
 
@@ -1762,6 +1762,8 @@ bool CometSearchManager::DoSearch()
 
    if (!ValidatePeptideLengthRange())
       return false;
+
+printf("\nOK length range %d %d\n", g_staticParams.options.peptideLengthRange.iStart, g_staticParams.options.peptideLengthRange.iEnd);
 
    bool bSucceeded = true;
 

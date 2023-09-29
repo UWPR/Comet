@@ -131,7 +131,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    // iEnd is one larger than max peptide length
-   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd - 1, MAX_MODS_PER_MOD,
+   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, MAX_MODS_PER_MOD,
          &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
    // Get the unique modifiable sequences from the peptides
@@ -595,9 +595,6 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
          {
             // different peptide so go ahead and push temp onto g_pvProteinsList
             // and store current protein reference into new temp
-                // (deprecated, raw peptides only) temp can have duplicates due to mod forms of peptide so make unique here
-                //sort(temp.begin(), temp.end());
-                //temp.erase(unique(temp.begin(), temp.end()), temp.end() );
             g_pvProteinsList.push_back(temp);
 
             lProtCount++; // start new row in g_pvProteinsList
@@ -643,8 +640,6 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fprintf(fp, " %lf", g_staticParams.staticModifications.dAddCterminusPeptide);
    fprintf(fp, " %lf", g_staticParams.staticModifications.dAddNterminusProtein);
    fprintf(fp, " %lf\n", g_staticParams.staticModifications.dAddCterminusProtein);
-
-   fprintf(fp, "\n");
 
    // write VariableMod:
    fprintf(fp, "VariableMod:");
