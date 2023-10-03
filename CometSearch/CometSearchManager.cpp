@@ -1084,7 +1084,6 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("percentage_base_peak", g_staticParams.options.dMinPercentageIntensity);
    if (g_staticParams.options.dMinPercentageIntensity < 0.0)
       g_staticParams.options.dMinPercentageIntensity = 0.0;
-   printf("\nOK g_staticParams.options.dMinPercentageIntensity %f\n", g_staticParams.options.dMinPercentageIntensity);
 
    GetParamValue("decoy_search", g_staticParams.options.iDecoySearch);
    if ((g_staticParams.options.iDecoySearch < 0) || (g_staticParams.options.iDecoySearch > 2))
