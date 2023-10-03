@@ -144,7 +144,8 @@ struct Options             // output parameters
    int bTreatSameIL;
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
    long lMaxIterations;          // max # of modification permutations for each iStart position
-   double dMinIntensity;
+   double dMinIntensity;         // intensity cutoff for each peak
+   double dMinPercentageIntensity;  // intensity cutoff for each peak as % of base peak
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
    double dPeptideMassHigh;      // MH+ mass
@@ -200,6 +201,7 @@ struct Options             // output parameters
       iMaxIndexRunTime = a.iMaxIndexRunTime;
       lMaxIterations = a.lMaxIterations;
       dMinIntensity = a.dMinIntensity;
+      dMinPercentageIntensity = a.dMinPercentageIntensity;
       dRemovePrecursorTol = a.dRemovePrecursorTol;
       dPeptideMassLow = a.dPeptideMassLow;
       dPeptideMassHigh = a.dPeptideMassHigh;
@@ -221,6 +223,9 @@ struct Results
    double dExpect;
    float  fScoreSp;
    float  fXcorr;
+   float  fDeltaCn;
+   float  fLastDeltaCn;
+   int    iRankXcorr;
    int    iLenPeptide;
    int    iRankSp;
    int    iMatchedIons;
@@ -881,6 +886,7 @@ struct StaticParams
       options.iMaxPrecursorCharge = 6;
       options.iMSLevel = 2;
       options.dMinIntensity = 0.0;
+      options.dMinPercentageIntensity = 0.0;
       options.dPeptideMassLow = 600.0;
       options.dPeptideMassHigh = 8000.0;
       options.dMinimumXcorr = XCORR_CUTOFF;

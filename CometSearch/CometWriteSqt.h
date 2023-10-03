@@ -44,8 +44,7 @@ private:
                             int iPrintTargetDecoy,
                             FILE *fpOut,
                             FILE *fpdb);
-   static void PrintSqtLine(int iRankXcorr,
-                            int iWhichQuery,
+   static void PrintSqtLine(int iWhichQuery,
                             int iWhichResult,
                             Results *pOutput,
                             FILE *fpOut,

@@ -1220,6 +1220,26 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    double dIon,
           dIntensity;
 
+   // set dIntensityCutoff based on either minimum intensity or % of base peak
+   double dIntensityCutoff = g_staticParams.options.dMinIntensity;
+
+   if (g_staticParams.options.dMinPercentageIntensity > 0.0 && g_staticParams.options.dMinPercentageIntensity <= 1.0)
+   {
+      double dBasePeakIntensity = 0.0;
+
+      for (i = 0; i < mstSpectrum.size(); ++i)
+      {
+         if (mstSpectrum.at(i).intensity > dBasePeakIntensity)
+            dBasePeakIntensity = mstSpectrum.at(i).intensity;
+      }
+
+      dIntensityCutoff = g_staticParams.options.dMinPercentageIntensity * dBasePeakIntensity;
+
+      if (dIntensityCutoff < g_staticParams.options.dMinIntensity)
+         dIntensityCutoff = g_staticParams.options.dMinIntensity;
+   }
+
+
    i = 0;
    while(true)
    {
@@ -1232,7 +1252,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
 
-      if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
+      if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
          // store spectra for fragment index search
          pScoring->vdRawFragmentPeakMass.push_back(dIon);
@@ -1636,15 +1656,38 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    int iTmpArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth);
    memset(pdTmpSpectrum, 0, iTmpArraySize*sizeof(double));
 
+   // set dIntensityCutoff based on either minimum intensity or % of base peak
+   double dIntensityCutoff = g_staticParams.options.dMinIntensity;
+
+   if (g_staticParams.options.dMinPercentageIntensity > 0.0 && g_staticParams.options.dMinPercentageIntensity <= 1.0)
+   {
+      double dBasePeakIntensity = 0.0;
+
+      for (i = 0; i < iNumPeaks; ++i)
+      {
+         if (pdInten[i] > dBasePeakIntensity)
+            dBasePeakIntensity = pdInten[i];
+      }
+
+      dIntensityCutoff = g_staticParams.options.dMinPercentageIntensity * dBasePeakIntensity;
+
+      if (dIntensityCutoff < g_staticParams.options.dMinIntensity)
+         dIntensityCutoff = g_staticParams.options.dMinIntensity;
+   }
+
    for (i=0; i<iNumPeaks; ++i)
    {
       dIon = pdMass[i];
       dIntensity = pdInten[i];
 
-      pScoring->vdRawFragmentPeakMass.push_back(dIon);
+      bool bPass = false;
+      if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
+         bPass = true;
 
-      if ((dIntensity >= g_staticParams.options.dMinIntensity) && (dIntensity > 0.0))
+      if (bPass)
       {
+         pScoring->vdRawFragmentPeakMass.push_back(dIon);   // raw peaks for fragment indexing
+
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
          {
             int iBinIon = BIN(dIon);
@@ -1668,6 +1711,11 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
             }
          }
       }
+   }
+
+   if (pScoring->vdRawFragmentPeakMass.size() > 200)
+   {
+      // reduce peaks applied to the fragment index search
    }
 
    pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();

@@ -176,8 +176,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
                                  FILE *fpdb)
 {
    int  i,
-        iNumPrintLines,
-        iRankXcorr;
+        iNumPrintLines;
    char szBuf[SIZE_BUF],
         scan1[32],
         scan2[32];
@@ -227,21 +226,15 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
    if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
       iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
 
-   iRankXcorr = 1;
-
    for (i=0; i<iNumPrintLines; ++i)
    {
-      if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
-         iRankXcorr++;
-
       if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
-         PrintSqtLine(iRankXcorr, iWhichQuery, i, pOutput, fpout, fpdb, iPrintTargetDecoy);
+         PrintSqtLine(iWhichQuery, i, pOutput, fpout, fpdb, iPrintTargetDecoy);
    }
 }
 
 
-void CometWriteSqt::PrintSqtLine(int iRankXcorr,
-                                 int iWhichQuery,
+void CometWriteSqt::PrintSqtLine(int iWhichQuery,
                                  int iWhichResult,
                                  Results *pOutput,
                                  FILE *fpout,
@@ -250,20 +243,12 @@ void CometWriteSqt::PrintSqtLine(int iRankXcorr,
 {
    int  i;
    char szBuf[SIZE_BUF];
-   double dDeltaCn;
-
-   if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr >= 0.0)
-      dDeltaCn = 1.0 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr;
-   else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr < 0.0)
-      dDeltaCn = 1.0;
-   else
-      dDeltaCn = 0.0;
 
    sprintf(szBuf, "M\t%d\t%d\t%0.6f\t%0.4f\t%0.4f\t",
-         iRankXcorr,
+         pOutput[iWhichResult].iRankXcorr,
          pOutput[iWhichResult].iRankSp,
          pOutput[iWhichResult].dPepMass,
-         dDeltaCn,
+         pOutput[iWhichResult].fDeltaCn,
          pOutput[iWhichResult].fXcorr);
 
    if (g_staticParams.options.bPrintExpectScore)

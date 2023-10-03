@@ -49,6 +49,7 @@ public:
    static bool PostAnalysis(ThreadPool* tp);
    static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
                                       ThreadPool* tp);
+   static void CalculateDeltaCn(int i);
    static void AnalyzeSP(int i);
    static void CalculateSP(Results *pOutput,
                            int iWhichQuery,

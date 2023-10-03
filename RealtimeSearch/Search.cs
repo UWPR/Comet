@@ -113,7 +113,7 @@
                         pdInten = segmentedScan.Intensities;
                      }
 
-                     if (iNumPeaks > 0)
+                     if (iNumPeaks > 5)
                      {
                         iPrecursorCharge = 0;
                         dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
@@ -160,9 +160,9 @@
                         double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
 
                         // do not decode peptide/proteins strings unless xcorr>0
-                        if (xcorr > 0)
+                        if (xcorr > 4)
                         {
-                           if ((iScanNumber % 1000) == 0)
+                           if ((iScanNumber % 1) == 0)
                            {
                               if (protein.Length > 20)
                                  protein = protein.Substring(0, 20);  // trim to avoid printing long protein description string
@@ -265,7 +265,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 
-            iTmp = 1; // m/z tolerance
+            iTmp = 1; // 1 = m/z tolerance
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
@@ -273,15 +273,15 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
-            dTmp = 1.0005; // fragment bin width
+            dTmp = 0.02; // fragment bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.4; // fragment bin offset
+            dTmp = 0.0; // fragment bin offset
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 1; // 0=use flanking peaks, 1=M peak only
+            iTmp = 0; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
@@ -296,20 +296,26 @@
             iTmp = 0; // 0=I and L are different, 1=I and L are same
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("equal_I_and_L", sTmp, iTmp);
-/*
-            // these are read from the indexed database but this is an example
-            // on how to set them here;
+
+            dTmp = 0.05; // base peak percentage cutoff
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("percentage_base_peak", sTmp, dTmp);
+
             VarModsWrapper varMods = new VarModsWrapper();
-            sTmp = "15.9949 M 0 3 -1 0 0";
+            sTmp = "15.9949 M 0 2 -1 0 0";
             varMods.set_VarModMass(15.9949);
             varMods.set_VarModChar("M");
             SearchMgr.SetParam("variable_mod01", sTmp, varMods);
 
-            sTmp = "79.9663 STY 0 3 -1 0 0";
+            sTmp = "79.9663 STY 0 2 -1 0 0";
             varMods.set_VarModMass(79.9663);
             varMods.set_VarModChar("STY");
             SearchMgr.SetParam("variable_mod02", sTmp, varMods);
-*/
+
+            iTmp = 4;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
+
             // Now actually open the .idx database to read mass range from it
             int iLineCount = 0;
             bool bFoundMassRange = false;

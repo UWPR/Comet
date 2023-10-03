@@ -60,13 +60,10 @@ private:
 
    static void PrintPepXMLSearchHit(int iWhichQuery,
                                     int iWhichResult,
-                                    int iRankXcorr,
                                     int iPrintTargetDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
-                                    FILE *fpdb,
-                                    double dDeltaCn,
-                                    double dLastDeltaCn);
+                                    FILE *fpdb);
 
    static void GetVal(char *szElement,
                       char *szAttribute,

@@ -104,8 +104,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
                                         int iPrintTargetDecoy,
                                         int iLenDecoyPrefix)
 {
-   int  i,
-        iNumPrintLines,
+   int  iNumPrintLines,
         iMinLength;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
@@ -177,75 +176,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass);  //ExpMass
       fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass);  //CalcMass
 
-      iMinLength = 999;
-      for (i=0; i<iNumPrintLines; ++i)
-      {
-         int iLen = (int)strlen(pOutput[i].szPeptide);
-         if (iLen == 0)
-            break;
-         if (iLen < iMinLength)
-            iMinLength = iLen;
-      }
-
-      int j;
-      bool bNoDeltaCnYet = true;
-      double dDeltaCn=1.0;       // this is deltaCn between i and first dissimilar peptide
-      double dLastDeltaCn=1.0;   // this is deltaCn between first and last peptide in output list
-
-      // go one past iNumPrintLines to calculate deltaCn value
-      for (j=iWhichResult+1; j<iNumPrintLines+1; ++j)  // loop through remaining hits to calc dDeltaCn dLastDeltaCn
-      {
-         if (j<g_staticParams.options.iNumStored)
-         {
-            // very poor way of calculating peptide similarity but it's what we have for now
-            int iDiffCt = 0;
-
-            if (!g_staticParams.options.bExplicitDeltaCn)
-            {
-               for (int k=0; k<iMinLength; ++k)
-               {
-                  // I-L and Q-K are same for purposes here
-                  if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
-                  {
-                     if (!((pOutput[iWhichResult].szPeptide[k] == 'K' || pOutput[iWhichResult].szPeptide[k] == 'Q')
-                             && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                           && !((pOutput[iWhichResult].szPeptide[k] == 'I' || pOutput[iWhichResult].szPeptide[k] == 'L')
-                              && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
-                     {
-                        iDiffCt++;
-                     }
-                  }
-               }
-            }
-
-            // calculate deltaCn only if sequences are less than 0.75 similar
-            if (g_staticParams.options.bExplicitDeltaCn || ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
-            {
-               if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[iWhichResult].fXcorr;
-               else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-                  dDeltaCn = 1.0;
-               else
-                  dDeltaCn = 0.0;
-
-               bNoDeltaCnYet = 0;
-
-               break;
-            }
-         }
-      }
-
-      if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iNumPrintLines-1].fXcorr >= 0.0)
-         dLastDeltaCn = (pOutput[iWhichResult].fXcorr - pOutput[iNumPrintLines-1].fXcorr)/pOutput[iWhichResult].fXcorr;
-      else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iNumPrintLines-1].fXcorr < 0.0)
-         dLastDeltaCn = 1.0;
-      else
-         dLastDeltaCn = 0.0;
-
-      if (bNoDeltaCnYet)
-         dDeltaCn = 1.0;
-
-      PrintPercolatorSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, dDeltaCn, dLastDeltaCn, vProteinTargets, vProteinDecoys);
+      PrintPercolatorSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, vProteinTargets, vProteinDecoys);
    }
 
    return true;
@@ -257,8 +188,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
                                                     int iPrintTargetDecoy,
                                                     Results *pOutput,
                                                     FILE *fpout,
-                                                    double dDeltaCn,
-                                                    double dLastDeltaCn,
+
                                                     vector<string> vProteinTargets,
                                                     vector<string> vProteinDecoys)
 {
@@ -275,8 +205,8 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "%0.6f\t", -20.0);
 
-   fprintf(fpout, "%0.6f\t", dLastDeltaCn); // deltLCn  last dCn in output list
-   fprintf(fpout, "%0.6f\t", dDeltaCn); // deltCn
+   fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].fLastDeltaCn); // deltLCn  last dCn in output list
+   fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].fDeltaCn); // deltCn
 
    if (pOutput[iWhichResult].dExpect > 0.0)
       fprintf(fpout, "%0.6f\t", log(pOutput[iWhichResult].dExpect)); // ln(Expect)

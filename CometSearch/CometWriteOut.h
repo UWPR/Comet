@@ -39,8 +39,7 @@ private:
    static bool PrintResults(int iWhichQuery,
                             bool bDecoySearch,
                             FILE *fpdb);
-   static void PrintOutputLine(int iRankXcorr,
-                               int iLenMaxDuplicates,
+   static void PrintOutputLine(int iLenMaxDuplicates,
                                int iMaxWidthReference,
                                int iWhichResult,
                                bool bDecoySearch,

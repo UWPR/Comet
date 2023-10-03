@@ -1462,69 +1462,20 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
             iMinLength = iLen;
       }
 
-      int iRankXcorr = 1;
-
       for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
       {
-         int j;
-         double dDeltaCn = 1.0;
-
          if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
             continue;
 
-         // go one past iNumPrintLines to calculate deltaCn value
-         for (j=iWhichResult+1; j<iNumPrintLines+1; ++j)
-         {
-            if (j<g_staticParams.options.iNumStored)
-            {
-               // very poor way of calculating peptide similarity but it's what we have for now
-               int iDiffCt = 0;
-
-               if (!g_staticParams.options.bExplicitDeltaCn)
-               {
-                  for (int k=0; k<iMinLength; ++k)
-                  {
-                     // I-L and Q-K are same for purposes here
-                     if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
-                     {
-                        if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
-                                 && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                              && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
-                                 && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
-                        {
-                           iDiffCt++;
-                        }
-                     }
-                  }
-               }
-
-               // calculate deltaCn only if sequences are less than 0.75 similar
-               if (g_staticParams.options.bExplicitDeltaCn || ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
-               {
-                  if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                     dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[iWhichResult].fXcorr;
-                  else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-                     dDeltaCn = 1.0;
-                  else
-                     dDeltaCn = 0.0;
-
-                  break;
-               }
-            }
-         }
-
-         if (iWhichResult > 0 && !isEqual(pOutput[iWhichResult].fXcorr, pOutput[iWhichResult-1].fXcorr))
-            iRankXcorr++;
-
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
          fprintf(fpout, "%d\t", iBatchNum);
-         fprintf(fpout, "%d\t", iRankXcorr);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].iRankXcorr);
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iChargeState);
          fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
          fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
          fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpect);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
-         fprintf(fpout, "%0.4f\t", dDeltaCn);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fDeltaCn);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].iRankSp);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].iMatchedIons);

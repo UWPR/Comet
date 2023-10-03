@@ -443,7 +443,6 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 {
    int  i,
         iNumPrintLines,
-        iRankXcorr,
         iMinLength;
    char *pStr;
 
@@ -494,7 +493,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       fprintf(fpout, ">\n");
 
    fprintf(fpout, "  <search_result>\n");
-fflush(fpout);
+   fflush(fpout);
 
    Results *pOutput;
 
@@ -522,76 +521,10 @@ fflush(fpout);
          iMinLength = iLen;
    }
 
-   iRankXcorr = 1;
-
    for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
    {
-      int j;
-      bool bNoDeltaCnYet = true;
-      double dDeltaCn = 0.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
-
-      for (j=iWhichResult+1; j<iNumPrintLines+1; ++j)
-      {
-         if (j<g_staticParams.options.iNumStored)
-         {
-            // very poor way of calculating peptide similarity but it's what we have for now
-            int iDiffCt = 0;
-
-            if (!g_staticParams.options.bExplicitDeltaCn)
-            {
-               for (int k=0; k<iMinLength; ++k)
-               {
-                  // I-L and Q-K are same for purposes here
-                  if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
-                  {
-                     if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
-                              && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                           && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
-                              && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
-                     {
-                        iDiffCt++;
-                     }
-                  }
-               }
-            }
-
-            // calculate deltaCn only if sequences are less than 0.75 similar
-            if (g_staticParams.options.bExplicitDeltaCn || ((double) (iMinLength - iDiffCt)/iMinLength) < 0.75)
-            {
-               if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                  dDeltaCn = 1.0 - pOutput[j].fXcorr/pOutput[iWhichResult].fXcorr;
-               else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-                  dDeltaCn = 1.0;
-               else
-                  dDeltaCn = 0.0;
-
-               bNoDeltaCnYet = false;
-
-               break;
-            }
-         }
-      }
-
-      if (bNoDeltaCnYet)
-         dDeltaCn = 1.0;
-
-      if (iWhichResult > 0 && !isEqual(pOutput[iWhichResult].fXcorr, pOutput[iWhichResult-1].fXcorr))
-         iRankXcorr++;
-
-      double dLastDeltaCn = 1.0;  // this is deltaCn between first and last peptide in output list
-
-      if (g_staticParams.options.bExportAdditionalScoresPepXML)
-      {
-         if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iNumPrintLines-1].fXcorr >= 0.0)
-            dLastDeltaCn = (pOutput[iWhichResult].fXcorr - pOutput[iNumPrintLines-1].fXcorr)/pOutput[iWhichResult].fXcorr;
-         else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iNumPrintLines-1].fXcorr < 0.0)
-            dLastDeltaCn = 1.0;
-         else
-            dLastDeltaCn = 0.0;
-      }
-
       if (pOutput[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
-         PrintPepXMLSearchHit(iWhichQuery, iWhichResult, iRankXcorr, iPrintTargetDecoy, pOutput, fpout, fpdb, dDeltaCn, dLastDeltaCn);
+         PrintPepXMLSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, fpdb);
    }
 
    fprintf(fpout, "  </search_result>\n");
@@ -601,13 +534,10 @@ fflush(fpout);
 
 void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                                             int iWhichResult,
-                                            int iRankXcorr,
                                             int iPrintTargetDecoy,
                                             Results *pOutput,
                                             FILE *fpout,
-                                            FILE *fpdb,
-                                            double dDeltaCn,
-                                            double dLastDeltaCn)
+                                            FILE *fpdb)
 {
    int  i;
    int iNTT;
@@ -633,7 +563,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
 
-   fprintf(fpout, "   <search_hit hit_rank=\"%d\"", iRankXcorr);
+   fprintf(fpout, "   <search_hit hit_rank=\"%d\"", pOutput[iWhichResult].iRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
    fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[0]);
    fprintf(fpout, " peptide_next_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[1]);
@@ -913,7 +843,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    }
 
    fprintf(fpout, "    <search_score name=\"xcorr\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fXcorr);
-   fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.4f\"/>\n", dDeltaCn);
+   fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fDeltaCn);
    fprintf(fpout, "    <search_score name=\"spscore\" value=\"%0.1f\"/>\n", pOutput[iWhichResult].fScoreSp);
    fprintf(fpout, "    <search_score name=\"sprank\" value=\"%d\"/>\n", pOutput[iWhichResult].iRankSp);
    fprintf(fpout, "    <search_score name=\"expect\" value=\"%0.2E\"/>\n", pOutput[iWhichResult].dExpect);
@@ -921,7 +851,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    if (g_staticParams.options.bExportAdditionalScoresPepXML)
    {
       fprintf(fpout, "    <search_score name=\"lnrSp\" value=\"%0.4f\"/>\n", log((double)pOutput[iWhichResult].iRankSp));
-      fprintf(fpout, "    <search_score name=\"deltLCn\" value=\"%0.4f\"/>\n", dLastDeltaCn);
+      fprintf(fpout, "    <search_score name=\"deltLCn\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fLastDeltaCn);
       fprintf(fpout, "    <search_score name=\"lnExpect\" value=\"%0.4f\"/>\n", log(pOutput[iWhichResult].dExpect));
       fprintf(fpout, "    <search_score name=\"IonFrac\" value=\"%0.4f\"/>\n", (double)pOutput[iWhichResult].iMatchedIons / pOutput[iWhichResult].iTotalIons);
 

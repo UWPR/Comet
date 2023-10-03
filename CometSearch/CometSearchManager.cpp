@@ -1081,6 +1081,11 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.options.dMinIntensity < 0.0)
       g_staticParams.options.dMinIntensity = 0.0;
 
+   GetParamValue("percentage_base_peak", g_staticParams.options.dMinPercentageIntensity);
+   if (g_staticParams.options.dMinPercentageIntensity < 0.0)
+      g_staticParams.options.dMinPercentageIntensity = 0.0;
+   printf("\nOK g_staticParams.options.dMinPercentageIntensity %f\n", g_staticParams.options.dMinPercentageIntensity);
+
    GetParamValue("decoy_search", g_staticParams.options.iDecoySearch);
    if ((g_staticParams.options.iDecoySearch < 0) || (g_staticParams.options.iDecoySearch > 2))
       g_staticParams.options.iDecoySearch = 0;
@@ -1762,8 +1767,6 @@ bool CometSearchManager::DoSearch()
 
    if (!ValidatePeptideLengthRange())
       return false;
-
-printf("\nOK length range %d %d\n", g_staticParams.options.peptideLengthRange.iStart, g_staticParams.options.peptideLengthRange.iEnd);
 
    bool bSucceeded = true;
 
@@ -3023,6 +3026,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       strReturnProtein = szProtein;            //protein
 
       score.xCorr         = pOutput[0].fXcorr;                        // xcorr
+      score.dCn           = pOutput[0].fDeltaCn;                      // deltaCn
       score.dSp           = pOutput[0].fScoreSp;                      // prelim score
       score.dExpect       = pOutput[0].dExpect;                       // E-value
       score.mass          = pOutput[0].dPepMass - PROTON_MASS;        // calc neutral pep mass
@@ -3038,49 +3042,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
          if (iLen < iMinLength)
             iMinLength = iLen;
       }
-
-      double dDeltaCn = 1.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
-
-      if (iSize > 1)
-      {
-         for (int j = 1; j < iSize; ++j)
-         {
-            // very poor way of calculating peptide similarity but it's what we have for now
-            int iDiffCt = 0;
-
-            if (!g_staticParams.options.bExplicitDeltaCn)
-            {
-               for (int k = 0; k < iMinLength; ++k)
-               {
-                  // I-L and Q-K are same for purposes here
-                  if (pOutput[0].szPeptide[k] != pOutput[j].szPeptide[k])
-                  {
-                     if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
-                              && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
-                           && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
-                              && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
-                     {
-                        iDiffCt++;
-                     }
-                  }
-               }
-            }
-
-            // calculate deltaCn only if sequences are less than 0.75 similar
-            if (g_staticParams.options.bExplicitDeltaCn || ((double)(iMinLength - iDiffCt) / iMinLength) < 0.75)
-            {
-               if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr >= 0.0)
-                  dDeltaCn = 1.0 - pOutput[j].fXcorr / pOutput[0].fXcorr;
-               else if (pOutput[0].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
-                  dDeltaCn = 1.0;
-               else
-                  dDeltaCn = 0.0;
-               break;
-            }
-         }
-      }
-
-      score.dCn = dDeltaCn;  // dCn is calculated from first dis-similar peptide
 
       // Conversion table from b/y ions to the other types (a,c,x,z)
       const double ionMassesRelative[NUM_ION_SERIES] =

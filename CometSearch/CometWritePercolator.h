@@ -47,8 +47,6 @@ private:
                                     int iPrintTargetDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
-                                    double dDeltaCn,
-                                    double dLastDeltaCn,
                                     vector<string> vProteinTargets,
                                     vector<string> vProteinDecoys);
    static void CalcNTTNMC(Results *pOutput,

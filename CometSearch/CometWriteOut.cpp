@@ -75,8 +75,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    int  i,
         iNumPrintLines,
         iLenMaxDuplicates,
-        iMaxWidthReference,
-        iRankXcorr;
+        iMaxWidthReference;
    char szDbLine[SIZE_FILE2],
         szBuf[SIZE_BUF],
         szStatsBuf[512],
@@ -314,15 +313,10 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    fprintf(fpout, "%s", szBuf);
    szBuf[0]='\0';
 
-   iRankXcorr = 1;
-
    for (i=0; i<iNumPrintLines; ++i)
    {
-      if ((i > 0) && !isEqual(pOutput[i].fXcorr, pOutput[i-1].fXcorr))
-         iRankXcorr++;
-
       if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
-         PrintOutputLine(iRankXcorr, iLenMaxDuplicates, iMaxWidthReference, i, bDecoySearch, pOutput, fpout, fpdb);
+         PrintOutputLine(iLenMaxDuplicates, iMaxWidthReference, i, bDecoySearch, pOutput, fpout, fpdb);
    }
 
    fprintf(fpout, "\n");
@@ -373,8 +367,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 }
 
 
-void CometWriteOut::PrintOutputLine(int iRankXcorr,
-                                    int iLenMaxDuplicates,
+void CometWriteOut::PrintOutputLine(int iLenMaxDuplicates,
                                     int iMaxWidthReference,
                                     int iWhichResult,
                                     bool bDecoySearch,
@@ -387,21 +380,12 @@ void CometWriteOut::PrintOutputLine(int iRankXcorr,
         iWidthPrintRef;
    char szBuf[SIZE_BUF];
 
-   double dDeltaCn;
-
-   if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr >= 0.0)
-      dDeltaCn = 1.0 - pOutput[iWhichResult].fXcorr/pOutput[0].fXcorr;
-   else if (pOutput[0].fXcorr > 0.0 && pOutput[iWhichResult].fXcorr < 0.0)
-      dDeltaCn = 1.0;
-   else
-      dDeltaCn = 0.0;
-
    sprintf(szBuf, "%3d. %3d /%3d  %9.4f  %6.4f %7.4f ",
          iWhichResult+1,
-         iRankXcorr,
+         pOutput[iWhichResult].iRankXcorr,
          pOutput[iWhichResult].iRankSp,
          pOutput[iWhichResult].dPepMass,
-         dDeltaCn,
+         pOutput[iWhichResult].fDeltaCn,
          pOutput[iWhichResult].fXcorr);
 
    if (g_staticParams.options.bPrintExpectScore)
