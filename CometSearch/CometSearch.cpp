@@ -35,8 +35,6 @@ SOFTWARE.
 #include <sstream>
 #include <bitset>
 
-#define USEFRAGMENTTHREADS 2
-
 bool *CometSearch::_pbSearchMemoryPool;
 bool **CometSearch::_ppbDuplFragmentArr;
 
@@ -1210,8 +1208,6 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + 100.0) * g_staticParams.dInverseBinWidth);
    unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
 
-   int iNumFragmentThreads = (g_staticParams.options.iNumThreads > MAX_FRAGMENTINDEX_THREADS ? MAX_FRAGMENTINDEX_THREADS : g_staticParams.options.iNumThreads);
-
    // Walk through the binned peaks in the spectrum and map them to the fragment index
    // to count all peptides that contain each fragment peak.
    for (auto it2 = g_pvQuery.at(iWhichQuery)->vdRawFragmentPeakMass.begin();
@@ -1226,7 +1222,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
          if (uiFragmentMass < g_massRange.g_uiMaxFragmentArrayIndex)
          {
-            for (int iWhichThread = 0; iWhichThread < iNumFragmentThreads; ++iWhichThread)
+            for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumFragmentThreads; ++iWhichThread)
             {
                // number of peptides that contain this fragment mass
                lNumPeps = g_arrvFragmentIndex[iWhichThread][uiFragmentMass].size();
@@ -1293,7 +1289,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
       // ix->first references peptide entry in g_vFragmentPeptides[ix->first].iWhichPeptide/.modnumIdx
       // ix->second is matched fragment count
 
-      if (++iCountPeptidesScored > 100) // set some cutoff to score only N top peptides based on fragment ion match
+      if (++iCountPeptidesScored >= MAX_FRAGINDEX_NUMSCORED) // set some cutoff to score only N top peptides based on fragment ion match
          break;
 
       if (ix->second >= iMinFragIons)

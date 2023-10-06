@@ -814,7 +814,6 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          printf(" Warning, scan %d has %d precursors and %d precursor charges\n", iScanNumber, spec.sizeMZ(), spec.sizeZ());
       }
 
-
       // Thermo's monoisotopic m/z determine can fail sometimes. Assume that when
       // the mono m/z value is less than selection window, it is wrong and use the
       // selection m/z as the precursor m/z. This should
@@ -1239,23 +1238,33 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
          dIntensityCutoff = g_staticParams.options.dMinIntensity;
    }
 
+   int iNumFragmentPeaks = 0;
 
-   i = 0;
-   while(true)
+   if (g_staticParams.bIndexDb && mstSpectrum.size() > MAX_FRAGINDEX_NUMPEAKS)
    {
-      if (i >= mstSpectrum.size())
-         break;
+      // sorts spectrum in ascending order by intensity
+      mstSpectrum.sortIntensity();
+   }
 
+   // read peaks in reverse order as they're possibly sorted in ascending order by
+   // intensity and vdRawFragmentPeakMass needs most intense peaks
+   for (i = mstSpectrum.size() - 1; i >= 0; --i)
+   {
       dIon = mstSpectrum.at(i).mz;
       dIntensity = mstSpectrum.at(i).intensity;
-      i++;
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         // store spectra for fragment index search
-         pScoring->vdRawFragmentPeakMass.push_back(dIon);
+         if (g_staticParams.bIndexDb && iNumFragmentPeaks < MAX_FRAGINDEX_NUMPEAKS)
+         {
+            // Store list of fragment masses for fragment index search
+            // Intensities don't matter here
+            pScoring->vdRawFragmentPeakMass.push_back(dIon);
+
+            iNumFragmentPeaks++;
+         }
 
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
          {
@@ -1686,7 +1695,8 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
       if (bPass)
       {
-         pScoring->vdRawFragmentPeakMass.push_back(dIon);   // raw peaks for fragment indexing
+         if (g_staticParams.bIndexDb)
+            pScoring->vdRawFragmentPeakMass.push_back(dIon);
 
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
          {
@@ -1711,11 +1721,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
             }
          }
       }
-   }
-
-   if (pScoring->vdRawFragmentPeakMass.size() > 200)
-   {
-      // reduce peaks applied to the fragment index search
    }
 
    pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();

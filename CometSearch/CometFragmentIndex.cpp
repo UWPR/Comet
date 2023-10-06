@@ -35,8 +35,6 @@ SOFTWARE.
 #include <sstream>
 #include <bitset>
 
-#define USEFRAGMENTTHREADS 2    //0=no, 1=calc fragments, 2=sort only
-
 
 vector<ModificationNumber> MOD_NUMBERS;
 vector<string> MOD_SEQS;    // Unique modifiable sequences.
@@ -83,7 +81,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 
    g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dMaxFragIndexMass) + 1;
 
-   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGMENTINDEX_THREADS ? MAX_FRAGMENTINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
+   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
    {
       g_arrvFragmentIndex[iWhichThread] = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
    }
@@ -915,7 +913,7 @@ bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
 
 // delete[] g_arrvFragmentIndex;  // shouldn't be needed; hope it doesn't hurt
 
-   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGMENTINDEX_THREADS ? MAX_FRAGMENTINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
+   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
    {
       g_arrvFragmentIndex[iWhichThread] = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
    }

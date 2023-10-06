@@ -527,8 +527,8 @@ static bool ValidateSequenceDatabaseFile()
 
       // if searching fragment index database, limit load of query spectra as no
       // need to load all spectra into memory since querying spectra sequentially
-      if (g_staticParams.options.iSpectrumBatchSize > 2000 || g_staticParams.options.iSpectrumBatchSize == 0)
-         g_staticParams.options.iSpectrumBatchSize = 2000;
+      if (g_staticParams.options.iSpectrumBatchSize > MAX_FRAGINDEX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
+         g_staticParams.options.iSpectrumBatchSize = MAX_FRAGINDEX_BATCHSIZE;
    }
 
    if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
@@ -1170,6 +1170,8 @@ bool CometSearchManager::InitializeStaticParams()
          logout(strOut.c_str());
       }
    }
+
+   g_staticParams.options.iNumFragmentThreads = (g_staticParams.options.iNumThreads > MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads);
 
    // Set masses to either average or monoisotopic.
    CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,

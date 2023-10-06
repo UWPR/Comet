@@ -42,11 +42,15 @@ class CometSearchManager;
 
 #define MIN_FRAGINDEX_MASS          180.0
 #define MAX_FRAGINDEX_MASS          2500.0
+#define MAX_FRAGINDEX_THREADS       8
+#define MAX_FRAGINDEX_BATCHSIZE     5000
+#define MAX_FRAGINDEX_NUMPEAKS      200
+#define MAX_FRAGINDEX_NUMSCORED     100
+
 
 #define MAX_COMBINATIONS            2000
 #define MAX_MODS_PER_MOD            3
 
-#define MAX_FRAGMENTINDEX_THREADS   8
 
 #define KEEP_ALL_PEPTIDES           1        // 1 = print up to MAX_COMBINATIONS of peptides; 0 = ignore mods for peptide that exceed MAX_COMBINATIONS
 
@@ -118,6 +122,7 @@ struct Options             // output parameters
    int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors, 3=phosphate neutral loss
    int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search
    int iNumThreads;              // 0=poll CPU else set # threads to spawn
+   int iNumFragmentThreads;      // # threads used for fragment indexing
    int bResolveFullPaths;        // 0=do not resolve full paths; 1=resolve paths (default)
    int bOutputSqtStream;
    int bOutputSqtFile;
@@ -174,6 +179,7 @@ struct Options             // output parameters
       iRemovePrecursor = a.iRemovePrecursor;
       iDecoySearch = a.iDecoySearch;
       iNumThreads = a.iNumThreads;
+      iNumFragmentThreads = a.iNumFragmentThreads;
       bResolveFullPaths = a.bResolveFullPaths;
       bOutputSqtStream = a.bOutputSqtStream;
       bOutputSqtFile = a.bOutputSqtFile;
@@ -868,7 +874,8 @@ struct StaticParams
       options.bCreateIndex = 0;
       options.bVerboseOutput = 0;
       options.iDecoySearch = 0;
-      options.iNumThreads = 0;
+      options.iNumThreads = 4;
+      options.iNumFragmentThreads = 4;
       options.bClipNtermMet = 0;
       options.bClipNtermAA = 0;
       options.bPinModProteinDelim = 0;
