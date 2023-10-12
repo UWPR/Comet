@@ -1322,17 +1322,21 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
    string strProtsDecoy;    // delimited list of "offsets:iStartResidue;" pairs
 */
 
+   double dPrevRT = 0;
    for (std::vector<MzidTmpStruct>::iterator itMzid = (*vMzid).begin(); itMzid < (*vMzid).end(); ++itMzid)
    {
       char szProteinName[512];
       string strProteinName;
       long lOffset;
 
-
       if ((*itMzid).iWhichResult == 0)
       {
          if (itMzid != (*vMzid).begin())
          {
+            if (dPrevRT > 0.0)
+            {
+               fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000894\" name=\"retention time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", dPrevRT);
+            }
             fprintf(fpout, "    </SpectrumIdentificationResult>\n");
          }
          fprintf(fpout, "    <SpectrumIdentificationResult id=\"SIR_%d.%d\" spectrumID=\"%d\" spectraData_ref=\"SD\">\n",
@@ -1415,11 +1419,17 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
 //    fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002500\" name=\"peptide passes threshold\" value=\"false\" />\n");
       fprintf(fpout, "     </SpectrumIdentificationItem>\n");
 
-      if ((*itMzid).dRTime > 0.0)
-         fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000894\" name=\"retention time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", (*itMzid).dRTime);
+
+      dPrevRT = (*itMzid).dRTime; // grab retention time of scan to use in next iteration of for loop
 
       lCount++;
    }
+
+   if (dPrevRT > 0.0)
+   {
+      fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000894\" name=\"retention time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", dPrevRT);
+   }
+
    fprintf(fpout, "    </SpectrumIdentificationResult>\n");
 
    time_t tTime;
