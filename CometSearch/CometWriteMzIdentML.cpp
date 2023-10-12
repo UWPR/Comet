@@ -1328,15 +1328,23 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       string strProteinName;
       long lOffset;
 
-      fprintf(fpout, "    <SpectrumIdentificationResult id=\"SIR_%d.%d.%d\" spectrumID=\"%d\" spectraData_ref=\"SD\">\n",
-            (*itMzid).iWhichQuery,
-            (*itMzid).iWhichResult + 1,
-            (*itMzid).iBatchNum,
-            (*itMzid).iScanNumber);
+
+      if ((*itMzid).iWhichResult == 0)
+      {
+         if (itMzid != (*vMzid).begin())
+         {
+            fprintf(fpout, "    </SpectrumIdentificationResult>\n");
+         }
+         fprintf(fpout, "    <SpectrumIdentificationResult id=\"SIR_%d.%d\" spectrumID=\"%d\" spectraData_ref=\"SD\">\n",
+               (*itMzid).iWhichQuery,
+               (*itMzid).iBatchNum,
+               (*itMzid).iScanNumber);
+      }
+
       fprintf(fpout, "     <SpectrumIdentificationItem id=\"SII_%d.%d.%d\" rank=\"%d\" chargeState=\"%d\" peptide_ref=\"%s;%s\" experimentalMassToCharge=\"%f\" calculatedMassToCharge=\"%f\" passThreshold=\"false\">\n",
             (*itMzid).iWhichQuery,
-            (*itMzid).iWhichResult + 1,
             (*itMzid).iBatchNum,
+            (*itMzid).iWhichResult + 1,
             (*itMzid).iWhichResult + 1,
             (*itMzid).iCharge,
             (*itMzid).strPeptide.c_str(),
@@ -1404,16 +1412,15 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002255\" name=\"Comet:spscore\" value=\"%0.4f\" />\n", (*itMzid).fSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002256\" name=\"Comet:sprank\" value=\"%d\" />\n", (*itMzid).iRankSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002257\" name=\"Comet:expectation value\" value=\"%0.2E\" />\n", (*itMzid).dExpect);
-      fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002500\" name=\"peptide passes threshold\" value=\"false\" />\n");
+//    fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002500\" name=\"peptide passes threshold\" value=\"false\" />\n");
       fprintf(fpout, "     </SpectrumIdentificationItem>\n");
 
       if ((*itMzid).dRTime > 0.0)
          fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000894\" name=\"retention time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", (*itMzid).dRTime);
 
-      fprintf(fpout, "    </SpectrumIdentificationResult>\n");
-
       lCount++;
    }
+   fprintf(fpout, "    </SpectrumIdentificationResult>\n");
 
    time_t tTime;
    char szDate[48];
