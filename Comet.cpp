@@ -1464,7 +1464,8 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 "#\n\
 # masses\n\
 #\n\
-peptide_mass_tolerance = -20.00 20.0   # lower and upper bound of the precursor mass tolerance\n\
+peptide_mass_tolerance = 20.0          # upper bound of the precursor mass tolerance\n\
+peptide_mass_tolerance_lower = -20.0   # lower bound of the precursor mass tolerance\n\
 peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm\n\
 mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
 mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\
