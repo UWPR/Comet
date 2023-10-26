@@ -252,10 +252,13 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("decoy_search", sTmp, iTmp);
 
-            doubleRangeParam.set_dStart(-20.0);
-            doubleRangeParam.set_dEnd(20.0);
-            sTmp = "-20.0 20.0";
-            SearchMgr.SetParam("peptide_mass_tolerance", sTmp, doubleRangeParam);
+            dTmp = 20.0;  // peptide mass tolerance plus
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("peptide_mass_tolerance", sTmp, dTmp);
+
+            dTmp = -20.0;  // peptide mass tolerance minus ; if this is not set, will use -1*peptide_mass_tolerance_plus
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("peptide_mass_tolerance_minus", sTmp, dTmp);
 
             iTmp = 2; // 0=Da, 2=ppm
             sTmp = iTmp.ToString();

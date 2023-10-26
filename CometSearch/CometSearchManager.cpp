@@ -758,45 +758,28 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
 
-   if (GetParamValue("peptide_mass_tolerance", doubleRangeData))
+   GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerancePlus);
+
+   GetParamValue("peptide_mass_tolerance_minus", g_staticParams.tolerances.dInputToleranceMinus);
+   if (g_staticParams.tolerances.dInputToleranceMinus == UNSET_TOLERANCE_MINUS) // if the minus tolerance is not specified
    {
-      if ((doubleRangeData.dEnd > doubleRangeData.dStart))
-      {
-         g_staticParams.tolerances.dInputToleranceMinus = doubleRangeData.dStart;
-         g_staticParams.tolerances.dInputTolerancePlus = doubleRangeData.dEnd;
-      }
-      else if ( doubleRangeData.dEnd == 0.0 && doubleRangeData.dStart > 0.0)
-      {
-         g_staticParams.tolerances.dInputToleranceMinus = -doubleRangeData.dStart;  // if only 1 entry entered, use -/+ value for tolerance
-         g_staticParams.tolerances.dInputTolerancePlus = doubleRangeData.dStart;
-      }
-      else
-      {
-         char szErrorMsg[SIZE_ERROR];
-         string strErrorMsg = " Error - with the \"peptide_mass_tolerance\" parameter entry.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
-         return false;
-      }
+      g_staticParams.tolerances.dInputToleranceMinus = -1.0 * g_staticParams.tolerances.dInputTolerancePlus;
    }
 
    GetParamValue("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
-   if ((g_staticParams.tolerances.iMassToleranceType < 0)
-         || (g_staticParams.tolerances.iMassToleranceType > 1))
+   if ((g_staticParams.tolerances.iMassToleranceType < 0) || (g_staticParams.tolerances.iMassToleranceType > 1))
    {
       g_staticParams.tolerances.iMassToleranceType = 0;
    }
 
    GetParamValue("peptide_mass_units", g_staticParams.tolerances.iMassToleranceUnits);
-   if ((g_staticParams.tolerances.iMassToleranceUnits < 0)
-         || (g_staticParams.tolerances.iMassToleranceUnits > 2))
+   if ((g_staticParams.tolerances.iMassToleranceUnits < 0) || (g_staticParams.tolerances.iMassToleranceUnits > 2))
    {
       g_staticParams.tolerances.iMassToleranceUnits = 0;  // 0=amu, 1=mmu, 2=ppm
    }
 
    GetParamValue("isotope_error", g_staticParams.tolerances.iIsotopeError);
-   if ((g_staticParams.tolerances.iIsotopeError < 0)
-         || (g_staticParams.tolerances.iIsotopeError > 7))
+   if ((g_staticParams.tolerances.iIsotopeError < 0) || (g_staticParams.tolerances.iIsotopeError > 7))
    {
       g_staticParams.tolerances.iIsotopeError = 0;
    }

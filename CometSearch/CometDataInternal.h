@@ -38,6 +38,7 @@ class CometSearchManager;
 #define MAX_FRAGINDEX_NUMPEAKS      200
 #define MAX_FRAGINDEX_NUMSCORED     100
 
+#define UNSET_TOLERANCE_MINUS       -99999.9   // default peptide_mass_tolerance_minus value; if this is not changed, used -(peptide_mass_tolerance)
 
 #define MAX_COMBINATIONS            2000
 #define MAX_MODS_PER_MOD            3
@@ -907,7 +908,7 @@ struct StaticParams
       tolerances.iMassToleranceUnits = 0;
       tolerances.iMassToleranceType = 0;
       tolerances.iIsotopeError = 0;
-      tolerances.dInputToleranceMinus = -3.0;               // peptide_mass_tolerance minus
+      tolerances.dInputToleranceMinus = UNSET_TOLERANCE_MINUS;       // peptide_mass_tolerance minus
       tolerances.dInputTolerancePlus = 3.0;                 // peptide_mass_tolerance plus
       tolerances.dFragmentBinSize = 1.0005;
       tolerances.dFragmentBinStartOffset = 0.4;
