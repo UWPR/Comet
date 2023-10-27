@@ -38,7 +38,7 @@ class CometSearchManager;
 #define MAX_FRAGINDEX_NUMPEAKS      200
 #define MAX_FRAGINDEX_NUMSCORED     100
 
-#define UNSET_TOLERANCE_MINUS       -99999.9   // default peptide_mass_tolerance_minus value; if this is not changed, used -(peptide_mass_tolerance)
+#define UNSET_TOLERANCE_MINUS       -99999.9   // default peptide_mass_tolerance_lower value; if this is not changed, used -(peptide_mass_tolerance)
 
 #define MAX_COMBINATIONS            2000
 #define MAX_MODS_PER_MOD            3

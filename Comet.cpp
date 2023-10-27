@@ -648,11 +648,11 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%lf", dDoubleParam);
                pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, dDoubleParam);
             }
-            else if (!strcmp(szParamName, "peptide_mass_tolerance_minus"))
+            else if (!strcmp(szParamName, "peptide_mass_tolerance_lower"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("peptide_mass_tolerance_minus", szParamStringVal, dDoubleParam);
+               pSearchMgr->SetParam("peptide_mass_tolerance_lower", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "precursor_tolerance_type"))
             {
@@ -1504,9 +1504,9 @@ scale_fragmentNL = 0                   # 0=no, 1=yes; fragment neutral loss mass
 # ion trap ms/ms:  1.0005 tolerance, 0.4 offset (mono masses), theoretical_fragment_ions = 1\n\
 # high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0, spectrum_batch_size = 15000\n\
 #\n\
-fragment_bin_tol = 1.0005              # binning to use on fragment ions\n\
-fragment_bin_offset = 0.4              # offset position to start the binning (0.0 to 1.0)\n\
-theoretical_fragment_ions = 1          # 0=use flanking peaks, 1=M peak only\n\
+fragment_bin_tol = 0.02                # binning to use on fragment ions\n\
+fragment_bin_offset = 0.0              # offset position to start the binning (0.0 to 1.0)\n\
+theoretical_fragment_ions = 0          # 0=use flanking peaks, 1=M peak only\n\
 use_A_ions = 0\n\
 use_B_ions = 1\n\
 use_C_ions = 0\n\

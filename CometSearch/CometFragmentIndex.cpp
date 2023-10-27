@@ -40,12 +40,12 @@ Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
 //comet_fileoffset_t clSizeCometFileOffset;
 #ifdef _WIN32
 #ifdef _WIN64
-comet_fileoffset_t   clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //win64
+comet_fileoffset_t clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //win64
 #else
-comet_fileoffset_t   clSizeCometFileOffset = (long long)sizeof(comet_fileoffset_t);   //win32
+comet_fileoffset_t clSizeCometFileOffset = (long long)sizeof(comet_fileoffset_t);   //win32
 #endif
 #else
-comet_fileoffset_t   clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //linux
+comet_fileoffset_t clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //linux
 #endif
 
 CometFragmentIndex::CometFragmentIndex()

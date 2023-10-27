@@ -760,7 +760,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerancePlus);
 
-   GetParamValue("peptide_mass_tolerance_minus", g_staticParams.tolerances.dInputToleranceMinus);
+   GetParamValue("peptide_mass_tolerance_lower", g_staticParams.tolerances.dInputToleranceMinus);
    if (g_staticParams.tolerances.dInputToleranceMinus == UNSET_TOLERANCE_MINUS) // if the minus tolerance is not specified
    {
       g_staticParams.tolerances.dInputToleranceMinus = -1.0 * g_staticParams.tolerances.dInputTolerancePlus;

@@ -571,7 +571,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          fprintf(fpout, " protein=\"%s\"", sTmp.c_str());
          ++it;
       }
-      else if (vProteinTargets.size() > 0)
+      else if (vProteinDecoys.size() > 0)
       {
          it = vProteinDecoys.begin();
          sTmp = *it;
