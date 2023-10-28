@@ -689,7 +689,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    return bSucceeded;
 }
 
-bool fWriteFragmentIndex(string strIndexFile,
+bool CometFragmentIndex::WriteFragmentIndex(string strIndexFile,
                                             comet_fileoffset_t lPeptidesFilePos,
                                             comet_fileoffset_t lProteinsFilePos,
                                             ThreadPool *tp)
