@@ -2944,6 +2944,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
       CometPostAnalysis::CalculateSP(g_pvQuery.at(0)->_pResults, 0, 1); // only do for top entry
       CometPostAnalysis::CalculateEValue(0, 1);
+      CometPostAnalysis::CalculateDeltaCn(0);
    }
    else
       goto cleanup_results;
