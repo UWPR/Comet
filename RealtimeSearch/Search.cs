@@ -260,7 +260,7 @@
 
             dTmp = -20.0;  // peptide mass tolerance minus ; if this is not set, will use -1*peptide_mass_tolerance_plus
             sTmp = dTmp.ToString();
-            SearchMgr.SetParam("peptide_mass_tolerance_minus", sTmp, dTmp);
+            SearchMgr.SetParam("peptide_mass_tolerance_lower", sTmp, dTmp);
 
             iTmp = 2; // 0=Da, 2=ppm
             sTmp = iTmp.ToString();
