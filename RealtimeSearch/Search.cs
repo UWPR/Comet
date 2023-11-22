@@ -242,6 +242,7 @@
             int iTmp;
             double dTmp;
             DoubleRangeWrapper doubleRangeParam = new DoubleRangeWrapper();
+            IntRangeWrapper intRangeParam = new IntRangeWrapper();
 
             SearchMgr.SetParam("database_name", sDB, sDB);
 
@@ -336,6 +337,19 @@
 
                   bFoundMassRange = true;
                }
+
+               if (strParsed[0].Equals("LengthRange:"))
+               {
+                  int iLengthMin = int.Parse(strParsed[1]);
+                  int iLengthMax = int.Parse(strParsed[2]);
+
+                  var peptideLengthRange = new IntRangeWrapper(iLengthMin, iLengthMax);
+                  string peptideLengthRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
+                  SearchMgr.SetParam("peptide_length_range", peptideLengthRangeString, peptideLengthRange);
+
+                  bFoundMassRange = true;
+               }
+
                iLineCount++;
 
                if (iLineCount > 6)  // header information should only be in first few lines
