@@ -1,26 +1,17 @@
-/*
-MIT License
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Copyright (c) 2023 University of Washington's Proteomics Resource
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
 
 #include "Common.h"
 #include "CometMassSpecUtils.h"
@@ -767,45 +758,28 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
 
-   if (GetParamValue("peptide_mass_tolerance", doubleRangeData))
+   GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerancePlus);
+
+   GetParamValue("peptide_mass_tolerance_lower", g_staticParams.tolerances.dInputToleranceMinus);
+   if (g_staticParams.tolerances.dInputToleranceMinus == UNSET_TOLERANCE_MINUS) // if the minus tolerance is not specified
    {
-      if ((doubleRangeData.dEnd > doubleRangeData.dStart))
-      {
-         g_staticParams.tolerances.dInputToleranceMinus = doubleRangeData.dStart;
-         g_staticParams.tolerances.dInputTolerancePlus = doubleRangeData.dEnd;
-      }
-      else if ( doubleRangeData.dEnd == 0.0 && doubleRangeData.dStart > 0.0)
-      {
-         g_staticParams.tolerances.dInputToleranceMinus = -doubleRangeData.dStart;  // if only 1 entry entered, use -/+ value for tolerance
-         g_staticParams.tolerances.dInputTolerancePlus = doubleRangeData.dStart;
-      }
-      else
-      {
-         char szErrorMsg[SIZE_ERROR];
-         string strErrorMsg = " Error - with the \"peptide_mass_tolerance\" parameter entry.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
-         return false;
-      }
+      g_staticParams.tolerances.dInputToleranceMinus = -1.0 * g_staticParams.tolerances.dInputTolerancePlus;
    }
 
    GetParamValue("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
-   if ((g_staticParams.tolerances.iMassToleranceType < 0)
-         || (g_staticParams.tolerances.iMassToleranceType > 1))
+   if ((g_staticParams.tolerances.iMassToleranceType < 0) || (g_staticParams.tolerances.iMassToleranceType > 1))
    {
       g_staticParams.tolerances.iMassToleranceType = 0;
    }
 
    GetParamValue("peptide_mass_units", g_staticParams.tolerances.iMassToleranceUnits);
-   if ((g_staticParams.tolerances.iMassToleranceUnits < 0)
-         || (g_staticParams.tolerances.iMassToleranceUnits > 2))
+   if ((g_staticParams.tolerances.iMassToleranceUnits < 0) || (g_staticParams.tolerances.iMassToleranceUnits > 2))
    {
       g_staticParams.tolerances.iMassToleranceUnits = 0;  // 0=amu, 1=mmu, 2=ppm
    }
 
    GetParamValue("isotope_error", g_staticParams.tolerances.iIsotopeError);
-   if ((g_staticParams.tolerances.iIsotopeError < 0)
-         || (g_staticParams.tolerances.iIsotopeError > 7))
+   if ((g_staticParams.tolerances.iIsotopeError < 0) || (g_staticParams.tolerances.iIsotopeError > 7))
    {
       g_staticParams.tolerances.iIsotopeError = 0;
    }
@@ -2970,6 +2944,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
       CometPostAnalysis::CalculateSP(g_pvQuery.at(0)->_pResults, 0, 1); // only do for top entry
       CometPostAnalysis::CalculateEValue(0, 1);
+      CometPostAnalysis::CalculateDeltaCn(0);
    }
    else
       goto cleanup_results;

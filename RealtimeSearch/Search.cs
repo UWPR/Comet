@@ -164,8 +164,10 @@
                         {
                            if ((iScanNumber % 1) == 0)
                            {
-                              if (protein.Length > 20)
-                                 protein = protein.Substring(0, 20);  // trim to avoid printing long protein description string
+                              int iLengthCutoff = 10;
+
+                              if (protein.Length > iLengthCutoff)
+                                 protein = protein.Substring(0, iLengthCutoff);  // trim to avoid printing long protein description string
 
                               Console.WriteLine("{0}\t{1}\t{2}\t{3:0.0000}\t{10:0.0000}\t{9:0.0}\t{4:E4}\t{5:0.0000}\t{6}\t{7}\t{8}",
                                  iScanNumber, peptide, protein, xcorr, dExpect, dPepMass, iIonsMatch, iIonsTotal, iPass, dSp, dCn);
@@ -253,10 +255,13 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("decoy_search", sTmp, iTmp);
 
-            doubleRangeParam.set_dStart(-20.0);
-            doubleRangeParam.set_dEnd(20.0);
-            sTmp = "-20.0 20.0";
-            SearchMgr.SetParam("peptide_mass_tolerance", sTmp, doubleRangeParam);
+            dTmp = 20.0;  // peptide mass tolerance plus
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("peptide_mass_tolerance", sTmp, dTmp);
+
+            dTmp = -20.0;  // peptide mass tolerance minus ; if this is not set, will use -1*peptide_mass_tolerance_plus
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("peptide_mass_tolerance_lower", sTmp, dTmp);
 
             iTmp = 2; // 0=Da, 2=ppm
             sTmp = iTmp.ToString();
