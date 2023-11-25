@@ -1254,6 +1254,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
          vPeptides.push_back(*ix);
    }
 
+   mPeptides.clear();
+
    sort(vPeptides.begin(), vPeptides.end(), [=](const std::pair<comet_fileoffset_t, int>& a, const std::pair<comet_fileoffset_t, int>& b) { return a.second > b.second; });
 
    // Now that all peptides are determined based on mapping fragment ions,
@@ -1274,6 +1276,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    int iEndPos = 0;
 
    int iCountPeptidesScored = 0;
+
+   bool* pbDuplFragment = new bool[iArraySize];
 
    for (auto ix = vPeptides.begin(); ix != vPeptides.end(); ++ix)
    {
@@ -1332,7 +1336,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
          double dBion = g_staticParams.precalcMasses.dNtermProton;
          double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
-         bool* pbDuplFragment = new bool[iArraySize];
+
+         memset(pbDuplFragment, 0, sizeof(bool)* iArraySize);
 
          // set terminal mods
          if (g_vFragmentPeptides[ix->first].siNtermMod > -1)
@@ -1466,8 +1471,6 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
             }
          }
 
-         delete[] pbDuplFragment;
-
          struct sDBEntry dbe;
 
          dbe.strName = "";
@@ -1479,6 +1482,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
             dPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses);
       }
    }
+
+   delete[] pbDuplFragment;
 }
 
 
