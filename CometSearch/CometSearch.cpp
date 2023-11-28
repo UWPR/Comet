@@ -1175,21 +1175,24 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    // print out fragment masses at each fragment index
    int x=0;
 
-   for (unsigned int i = 0; i < g_uiMaxFragmentArrayIndex; ++i)
+   for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
    {
-      if (g_arrvFragmentIndex[iWhichThread][i].size() > 0)
+      for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumFragmentThreads; ++iWhichThread)
       {
-         for (size_t ii = 0; ii < g_arrvFragmentIndex[iWhichThread][i].size(); ++ii)
+         if (g_arrvFragmentIndex[iWhichThread][i].size() > 0)
          {
-            printf("%0.2f ", g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][ii]].dPepMass);
-            if (ii==10)
-               break;
+            for (size_t ii = 0; ii < g_arrvFragmentIndex[iWhichThread][i].size(); ++ii)
+            {
+               printf("%0.2f ", g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][i][ii]].dPepMass);
+               if (ii==10)
+                  break;
+            }
+            printf("\n");
+            x++;
          }
-         printf("\n");
-         x++;
+         if (x == 10)
+            break;
       }
-      if (x == 10)
-         break;
    }
 */
 

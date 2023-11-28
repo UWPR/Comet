@@ -524,7 +524,11 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       g_massRange.bNarrowMassRange = false;
 
    if (bSucceeded)
-     bSucceeded = CometSearch::RunSearch(0, 0, tp);
+   {
+      // this step calls RunSearch just to pull out all peptides
+      // to write into the .idx pepties/proteins file
+      bSucceeded = CometSearch::RunSearch(0, 0, tp);
+   }
 
    if (!bSucceeded)
    {

@@ -622,6 +622,8 @@ bool CometPostAnalysis::SortFnSp(const Results &a,
 {
    if (a.fScoreSp > b.fScoreSp)
       return true;
+   else if (a.fScoreSp == b.fScoreSp && strcmp(a.szPeptide, b.szPeptide) < 0)
+      return true;
 
    return false;
 }

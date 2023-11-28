@@ -95,8 +95,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
                                         int iPrintTargetDecoy,
                                         int iLenDecoyPrefix)
 {
-   int  iNumPrintLines,
-        iMinLength;
+   int  iNumPrintLines;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
