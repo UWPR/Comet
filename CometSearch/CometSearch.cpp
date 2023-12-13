@@ -1664,9 +1664,15 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    if (iEndPos == iProteinSeqLengthMinus1)
       dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
 
-   bool bProteinHasJ = false;
+   bool bProteinHasJ = false;  // set to true of compoundmasses used and protein contains J
+   int iJcount = 0;  // number of J residues between iStartPos and iEndPos
    if (g_staticParams.variableModParameters.iNumCompoundMasses > 0 && strchr(szProteinSeq, 'J'))
+   {
       bProteinHasJ = true;
+
+      if (szProteinSeq[iStartPos] == 'J')
+         iJcount = 1;
+   }
 
    // Search through entire protein.
    while (iStartPos < iLenProtein)
@@ -2117,6 +2123,14 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
          }
       }
 
+      if (bProteinHasJ)  // compoundmasses present and protein contains a "J"
+      {
+         if (iJcount > 0 && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
+         {
+            CompoundModSearch(szProteinSeq, iStartPos, iEndPos, pbDuplFragment, &dbe);
+         }
+      }
+
       // Increment end.
       if (dCalcPepMass <= g_massRange.dMaxMass && iEndPos < iProteinSeqLengthMinus1 && iLenPeptide<MAX_PEPTIDE_LEN)
       {
@@ -2131,6 +2145,9 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
             if (iEndPos == iProteinSeqLengthMinus1)
                dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+
+            if (bProteinHasJ && szProteinSeq[iEndPos] == 'J')
+               iJcount++;
          }
       }
       // Increment start, reset end.
@@ -2153,22 +2170,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                SubtractVarMods(piVarModCounts, szProteinSeq[iStartPos], iStartPos);
          }
 
-         if (bProteinHasJ)  // compoundmasses present and protein contains a "J"
-         {
-            bool bHasJ = false;
-            for (int x = iStartPos; x <= iEndPos; ++x)
-            {
-               if (szProteinSeq[x] == 'J')
-               {
-                  bHasJ = true;
-                  break;
-               }
-            }
-
-            if (bHasJ)  // does this peptide region contain the "J"?
-               CompoundModSearch(szProteinSeq, iStartPos, iEndPos, pbDuplFragment, &dbe);
-         }
-
          if (iNtermPeptideOnly)
             return true;
 
@@ -2178,6 +2179,10 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             if (iStartPos == iFirstResiduePosition)
                dCalcPepMass -= g_staticParams.staticModifications.dAddNterminusProtein;
          }
+
+         if (bProteinHasJ && szProteinSeq[iStartPos] == 'J')
+            iJcount--;
+
          iStartPos++;          // Increment start of peptide.
 
          // Skip any more processing because outside of range of variant
@@ -2195,6 +2200,10 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   SubtractVarMods(piVarModCounts, szProteinSeq[iEndPos], iEndPos);
                if (iEndPos == iProteinSeqLengthMinus1)
                   dCalcPepMass -= g_staticParams.staticModifications.dAddCterminusProtein;
+
+               if (bProteinHasJ && szProteinSeq[iEndPos] == 'J')
+                  iJcount--;
+
                iEndPos--;
             }
          }
@@ -2211,6 +2220,9 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   piVarModCounts[x] = 0;
                CountVarMods(piVarModCounts, szProteinSeq[iEndPos], iEndPos);
             }
+
+            if (bProteinHasJ && szProteinSeq[iEndPos] == 'J')
+               iJcount = 1;
          }
       }
    }
@@ -6630,12 +6642,12 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 }
 
 
-// In SearchForPeptides, this is called before each increment of iStartPos
-// if the sequence between iStartPos and iEndPos contains a J.
-// Need to find/set proper iEndPos in this function.
+// Called from SearchForPeptides where that fn checks if the
+// sequence between iStartPos and iEndPos contains a J and
+// is consistent with the enzyme constraints.
 void CometSearch::CompoundModSearch(char *szProteinSeq,
                                     int iStartPos,
-                                    int iInputEndPos,
+                                    int iEndPos,
                                     bool *pbDuplFragment,
                                     struct sDBEntry *dbe)
 {
@@ -6648,352 +6660,359 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
    int piVarModSites[MAX_PEPTIDE_LEN_P2];
    int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
 
-   for (int iEndPos = iStartPos; iEndPos <= iInputEndPos; ++iEndPos)
+   iLenPeptide = iEndPos - iStartPos + 1;
+
+   if (iLenPeptide < MAX_PEPTIDE_LEN-1)
    {
-      iLenPeptide = iEndPos - iStartPos + 1;
+      iProteinSeqLengthMinus1 = strlen(szProteinSeq) - 1;
 
-      if (CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos)
-            && iLenPeptide < MAX_PEPTIDE_LEN-1)
+      int iJPosition = -1;
+
+      // find the first 'J'
+      for (int x = iStartPos; x <= iEndPos; ++x)
       {
-         iProteinSeqLengthMinus1 = strlen(szProteinSeq) - 1;
-
-         bool bHasJ= false;
-         int iJPosition = 0;
-
-         for (int x=iStartPos; x<=iEndPos; ++x)
+         if (szProteinSeq[x] == 'J')
          {
-            if (szProteinSeq[x] == 'J')
-            {
-               bHasJ = true;
-               iJPosition = x - iStartPos;
-               break;
-            }
+            iJPosition = x - iStartPos;
+            break;
+         }
+      }
+
+      if (iJPosition == -1)
+      {
+         printf(" Error in CompoundModSearch, j=-1, %d-%d, %s\n", iStartPos, iEndPos, szProteinSeq);
+         exit(1);
+      }
+
+      // for this start and end, first calculate the peptide mass
+      double dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+
+      if (iStartPos == 0)
+         dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
+      if (iEndPos == iProteinSeqLengthMinus1)
+         dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+      for (int i=iStartPos; i<=iEndPos; ++i)
+         dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
+
+      memset(piVarModSites, 0, _iSizepiVarModSites);
+      memset(piVarModSitesDecoy, 0, _iSizepiVarModSites);
+
+      // szProteinSeq is full peptide with a J in the sequence.
+      // Loop through the list of masses as variable mod on J
+      for (size_t iWhichCompoundMass = 0; iWhichCompoundMass < g_staticParams.variableModParameters.iNumCompoundMasses; ++iWhichCompoundMass)
+      {
+         // dModMass is the calculated peptide mass + each compound modification mass
+         double dModMass = dCalcPepMass +  g_staticParams.variableModParameters.vdCompoundMasses.at(iWhichCompoundMass);
+
+         if (dModMass > g_massRange.dMaxMass)
+            break;
+
+         int iVarModCode = 100 + iWhichCompoundMass;  // modification entries >= 100 in piVarModsites is compoundmods
+      
+         piVarModSites[iJPosition] = iVarModCode;
+         piVarModSitesDecoy[iEndPos - iStartPos - iJPosition] = iVarModCode;
+
+
+         if (iJPosition < 0 || iJPosition > MAX_PEPTIDE_LEN
+               || iEndPos - iStartPos - iJPosition < 0 || iEndPos - iStartPos - iJPosition > MAX_PEPTIDE_LEN)
+         {
+            printf(" Error CompoundModsearch:  iJPosition %d, iEndPos - iJPosition %d, MAX_PEPTIDE_LEN %d\n",
+                  iJPosition, iEndPos - iStartPos - iJPosition, MAX_PEPTIDE_LEN);
+            exit(1);
          }
 
-         if (!bHasJ)
-            continue;
+         int iWhichQuery = WithinMassTolerance(dModMass, szProteinSeq, iStartPos, iEndPos);
 
-         // for this start and end, first calculate the peptide mass
-         double dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
-
-         if (iStartPos == 0)
-            dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
-         if (iEndPos == iProteinSeqLengthMinus1)
-            dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
-         for (int i=iStartPos; i<=iEndPos; ++i)
-            dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
-
-         memset(piVarModSites, 0, _iSizepiVarModSites);
-         memset(piVarModSitesDecoy, 0, _iSizepiVarModSites);
-
-         // szProteinSeq is full peptide with a J in the sequence.
-         // Loop through the list of masses as variable mod on J
-         for (size_t iWhichCompoundMass = 0; iWhichCompoundMass < g_staticParams.variableModParameters.iNumCompoundMasses; ++iWhichCompoundMass)
+         if (iWhichQuery != -1)
          {
-            // dModMass is the calculated peptide mass + each compound modification mass
-            double dModMass = dCalcPepMass +  g_staticParams.variableModParameters.vdCompoundMasses.at(iWhichCompoundMass);
+            bool bFirstTimeThroughLoopForPeptide = true;
 
-            if (dModMass > g_massRange.dMaxMass)
-               break;
-
-            int iVarModCode = 100 + iWhichCompoundMass;  // modification entries >= 100 in piVarModsites is compoundmods
-         
-            piVarModSites[iJPosition] = iVarModCode;
-            piVarModSitesDecoy[iEndPos - iJPosition] = iVarModCode;
-
-            int iWhichQuery = WithinMassTolerance(dModMass, szProteinSeq, iStartPos, iEndPos);
-
-            if (iWhichQuery != -1)
+            // Compare calculated fragment ions against all matching query spectra.
+            while (iWhichQuery < (int)g_pvQuery.size())
             {
-               bool bFirstTimeThroughLoopForPeptide = true;
-
-               // Compare calculated fragment ions against all matching query spectra.
-               while (iWhichQuery < (int)g_pvQuery.size())
+               if (dModMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
                {
-                  if (dModMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
-                  {
-                     // If calculated mass is smaller than low mass range then don't continue as
-                     // it will be smaller than all subsequent iWhichQuery entries
-                     break;
-                  }
+                  // If calculated mass is smaller than low mass range then don't continue as
+                  // it will be smaller than all subsequent iWhichQuery entries
+                  break;
+               }
 
-                  // Mass tolerance check for particular query against this candidate peptide mass.
-                  if (CheckMassMatch(iWhichQuery, dModMass))
-                  {
-                     char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];  // Allow for prev/next AA in string.
+               // Mass tolerance check for particular query against this candidate peptide mass.
+               if (CheckMassMatch(iWhichQuery, dModMass))
+               {
+                  char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];  // Allow for prev/next AA in string.
 
-                     // Calculate ion series just once to compare against all relevant query spectra.
-                     if (bFirstTimeThroughLoopForPeptide && !g_staticParams.options.bCreateIndex)
+                  // Calculate ion series just once to compare against all relevant query spectra.
+                  if (bFirstTimeThroughLoopForPeptide && !g_staticParams.options.bCreateIndex)
+                  {
+                     int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
+                     double dBion = g_staticParams.precalcMasses.dNtermProton;
+                     double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+                     if (iStartPos == 0)
+                        dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+                     if (iEndPos == iProteinSeqLengthMinus1)
+                        dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+
+                     int iPosForward;
+                     int iPosReverse;  // points to residue in szProteinSeq reverse order
+
+                     for (int i=iStartPos; i<=iEndPos; i++)
                      {
-                        int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
-                        double dBion = g_staticParams.precalcMasses.dNtermProton;
-                        double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+                        iPosForward = i - iStartPos;
+                        iPosReverse = iEndPos - iPosForward;
 
-                        if (iStartPos == 0)
-                           dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-                        if (iEndPos == iProteinSeqLengthMinus1)
-                           dYion += g_staticParams.staticModifications.dAddCterminusProtein;
-
-                        int iPosForward;
-                        int iPosReverse;  // points to residue in szProteinSeq reverse order
-
-                        for (int i=iStartPos; i<=iEndPos; i++)
+                        if (i<iEndPos)
                         {
-                           iPosForward = i - iStartPos;
-                           iPosReverse = iEndPos - iPosForward;
+                           dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
+                           if (piVarModSites[iPosForward] >= 100)
+                              dBion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSites[iPosForward] - 100);
 
-                           if (i<iEndPos)
-                           {
-                              dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
-                              if (piVarModSites[iPosForward] >= 100)
-                                 dBion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSites[iPosForward] - 100);
+                           _pdAAforward[iPosForward] = dBion;
 
-                              _pdAAforward[iPosForward] = dBion;
+                           dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iPosReverse]];
+                           if (piVarModSites[iEndPos - i] >= 100)
+                              dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSites[iEndPos - i] - 100);
 
-                              dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iPosReverse]];
-                              if (piVarModSites[iEndPos - i] >= 100)
-                                 dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSites[iEndPos - i] - 100);
-
-                              _pdAAreverse[iPosForward] = dYion;
+                           _pdAAreverse[iPosForward] = dYion;
 
 #ifdef _WIN32                   // FIX: while debugging Windows build, this mysteriously allows program
 printf(" \b"); fflush(stdout);  // to run to completion until I can figure out what the issue is.
 #endif
-                           }
-
-                           // loop through i<=iEndPos as need to count modified residue for neutral loss
                         }
 
-                        // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                        // First initialize pbDuplFragment and _uiBinnedIonMasses
-                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ++ctCharge)
-                        {
-                           for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
-                           {
-                              iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-                              for (ctLen=0; ctLen<iLenMinus1; ++ctLen)
-                              {
-                                 pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
-                                 _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
-                              }
-                           }
-                        }
-
-                        for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ++ctNL)
-                        {
-                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
-                           {
-                              double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                              int iVal = BIN(dNLMass);
-
-                              if (iVal > 0)
-                              {
-                                 pbDuplFragment[iVal] = false;
-                                 _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
-                              }
-                           }
-                        }
-
-                        // Now set _uiBinnedIonMasses; use pbDuplFragment to make sure a fragment isn't counted twice
-                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ++ctCharge)
-                        {
-                           for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
-                           {
-                              iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-                              // As both _pdAAforward and _pdAAreverse are increasing, loop through
-                              // iLenPeptide-1 to complete set of internal fragment ions.
-                              for (ctLen=0; ctLen<iLenMinus1; ++ctLen)
-                              {
-                                 int iVal = BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse));
-
-                                 if (pbDuplFragment[iVal] == false)
-                                 {
-                                    _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = iVal;
-                                    pbDuplFragment[iVal] = true;
-                                 }
-                              }
-                           }
-                        }
-
-                        // No fragment NL peaks here as unmodified
-
-                        // Precursor NL peaks added here
-                        for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ++ctNL)
-                        {
-                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
-                           {
-                              double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                              int iVal = BIN(dNLMass);
-
-                              if (iVal > 0 && pbDuplFragment[iVal] == false)
-                              {
-                                 _uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
-                                 pbDuplFragment[iVal] = true;
-                              }
-                           }
-                        }
-
+                        // loop through i<=iEndPos as need to count modified residue for neutral loss
                      }
 
-                     if (bFirstTimeThroughLoopForPeptide)
-                         bFirstTimeThroughLoopForPeptide = false;
-
-                     XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, 1,
-                           dModMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
-
-                     // Also take care of decoy here.
-                     if (g_staticParams.options.iDecoySearch)
+                     // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
+                     // First initialize pbDuplFragment and _uiBinnedIonMasses
+                     for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ++ctCharge)
                      {
-                        // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.
-                        // So actual reverse peptide starts at position 1 and ends at len-2 (as len-1
-                        // is next AA).
-
-                        int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
-                        double dBion = g_staticParams.precalcMasses.dNtermProton;
-                        double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
-
-                        // Store flanking residues from original sequence.
-                        if (iStartPos==0)
-                           szDecoyPeptide[0]='-';
-                        else
-                           szDecoyPeptide[0]=szProteinSeq[iStartPos-1];
-
-                        if (iEndPos == iProteinSeqLengthMinus1)
-                           szDecoyPeptide[iLenPeptide+1]='-';
-                        else
-                           szDecoyPeptide[iLenPeptide+1]=szProteinSeq[iEndPos+1];
-                        szDecoyPeptide[iLenPeptide+2]='\0';
-
-                        if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet==1)
+                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                         {
-                           // Last residue stays the same:  change ABCDEK to EDCBAK.
-                           for (int i=iEndPos-1; i>=iStartPos; i--)
-                              szDecoyPeptide[iEndPos-i] = szProteinSeq[i];
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
 
-                           szDecoyPeptide[iEndPos-iStartPos+1]=szProteinSeq[iEndPos];  // Last residue stays same.
-                        }
-                        else
-                        {
-                           // First residue stays the same:  change ABCDEK to AKEDCB.
-                           for (int i=iEndPos; i>=iStartPos+1; i--)
-                              szDecoyPeptide[iEndPos-i+2] = szProteinSeq[i];
-
-                           szDecoyPeptide[1]=szProteinSeq[iStartPos];  // First residue stays same.
-                        }
-
-                        // Now given szDecoyPeptide, calculate pdAAforwardDecoy and pdAAreverseDecoy.
-                        dBion = g_staticParams.precalcMasses.dNtermProton;
-                        dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
-
-                        if (iStartPos == 0)
-                           dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-                        if (iEndPos == iProteinSeqLengthMinus1)
-                           dYion += g_staticParams.staticModifications.dAddCterminusProtein;
-
-                        int iDecoyStartPos;       // This is start/end for newly created decoy peptide
-                        int iDecoyEndPos;
-                        int iPosForward;
-                        int iPosReverse;
-
-                        iDecoyStartPos = 1;
-                        iDecoyEndPos = (int)strlen(szDecoyPeptide)-2;
-
-                        for (int i=iDecoyStartPos; i<iDecoyEndPos; i++)
-                        {
-                           iPosForward = i - iDecoyStartPos;
-                           iPosReverse = iDecoyEndPos - iPosForward;
-
-                           dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
-                           if (piVarModSitesDecoy[iPosForward] >= 100)
-                              dBion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSitesDecoy[iPosForward] - 100);
-
-                           _pdAAforwardDecoy[iPosForward] = dBion;
-
-                           dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iPosReverse]];
-                           if (piVarModSitesDecoy[iDecoyEndPos - iDecoyStartPos] >= 100)
-                              dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSitesDecoy[iDecoyEndPos - iDecoyStartPos] - 100);
-
-                           _pdAAreverseDecoy[iPosForward] = dYion;
-                        }
-
-                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ++ctCharge)
-                        {
-                           for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                           for (ctLen=0; ctLen<iLenMinus1; ++ctLen)
                            {
-                              iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-                              for (ctLen=0; ctLen<iLenMinus1; ++ctLen)
-                              {
-                                 pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy))] = false;
-                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = 0;
-                              }
+                              pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
+                              _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
                            }
                         }
+                     }
 
-                        for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ++ctNL)
+                     for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ++ctNL)
+                     {
+                        for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
                         {
-                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
-                           {
-                              double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                              int iVal = BIN(dNLMass);
+                           double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
+                           int iVal = BIN(dNLMass);
 
-                              if (iVal > 0)
-                              {
-                                 pbDuplFragment[iVal] = false;
-                                 _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = 0;
-                              }
+                           if (iVal > 0)
+                           {
+                              pbDuplFragment[iVal] = false;
+                              _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
                            }
                         }
+                     }
 
-                        // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                        for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ++ctCharge)
+                     // Now set _uiBinnedIonMasses; use pbDuplFragment to make sure a fragment isn't counted twice
+                     for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ++ctCharge)
+                     {
+                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                         {
-                           for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+                           // As both _pdAAforward and _pdAAreverse are increasing, loop through
+                           // iLenPeptide-1 to complete set of internal fragment ions.
+                           for (ctLen=0; ctLen<iLenMinus1; ++ctLen)
                            {
-                              iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+                              int iVal = BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse));
 
-                              // As both _pdAAforward and _pdAAreverse are increasing, loop through
-                              // iLenPeptide-1 to complete set of internal fragment ions.
-                              for (ctLen=0; ctLen<iLenMinus1; ++ctLen)
+                              if (pbDuplFragment[iVal] == false)
                               {
-                                 double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy);
-                                 int iVal = BIN(dFragMass);
-
-                                 if (pbDuplFragment[iVal] == false)
-                                 {
-                                    _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = iVal;
-                                    pbDuplFragment[iVal] = true;
-                                 }
-                              }
-                           }
-                        }
-
-                        // No fragment NL peaks here as unmodified
-
-                        // Precursor NL peaks added here
-                        for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ++ctNL)
-                        {
-                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
-                           {
-                              double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                              int iVal = BIN(dNLMass);
-
-                              if (iVal > 0 && pbDuplFragment[iVal] == false)
-                              {
-                                 _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = iVal;
+                                 _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = iVal;
                                  pbDuplFragment[iVal] = true;
                               }
                            }
                         }
-
-                        XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, 1,
-                              dModMass, true, iWhichQuery, iLenPeptide, piVarModSites, dbe);
                      }
+
+                     // No fragment NL peaks here as unmodified
+
+                     // Precursor NL peaks added here
+                     for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ++ctNL)
+                     {
+                        for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+                        {
+                           double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
+                           int iVal = BIN(dNLMass);
+
+                           if (iVal > 0 && pbDuplFragment[iVal] == false)
+                           {
+                              _uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
+                              pbDuplFragment[iVal] = true;
+                           }
+                        }
+                     }
+
                   }
-                  iWhichQuery++;
+
+                  if (bFirstTimeThroughLoopForPeptide)
+                      bFirstTimeThroughLoopForPeptide = false;
+
+                  XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos, 1,
+                        dModMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
+
+                  // Also take care of decoy here.
+                  if (g_staticParams.options.iDecoySearch)
+                  {
+                     // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.
+                     // So actual reverse peptide starts at position 1 and ends at len-2 (as len-1
+                     // is next AA).
+
+                     int iLenMinus1 = iEndPos - iStartPos; // Equals iLenPeptide minus 1.
+                     double dBion = g_staticParams.precalcMasses.dNtermProton;
+                     double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+                     // Store flanking residues from original sequence.
+                     if (iStartPos==0)
+                        szDecoyPeptide[0]='-';
+                     else
+                        szDecoyPeptide[0]=szProteinSeq[iStartPos-1];
+
+                     if (iEndPos == iProteinSeqLengthMinus1)
+                        szDecoyPeptide[iLenPeptide+1]='-';
+                     else
+                        szDecoyPeptide[iLenPeptide+1]=szProteinSeq[iEndPos+1];
+                     szDecoyPeptide[iLenPeptide+2]='\0';
+
+                     if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet==1)
+                     {
+                        // Last residue stays the same:  change ABCDEK to EDCBAK.
+                        for (int i=iEndPos-1; i>=iStartPos; i--)
+                           szDecoyPeptide[iEndPos-i] = szProteinSeq[i];
+
+                        szDecoyPeptide[iEndPos-iStartPos+1]=szProteinSeq[iEndPos];  // Last residue stays same.
+                     }
+                     else
+                     {
+                        // First residue stays the same:  change ABCDEK to AKEDCB.
+                        for (int i=iEndPos; i>=iStartPos+1; i--)
+                           szDecoyPeptide[iEndPos-i+2] = szProteinSeq[i];
+
+                        szDecoyPeptide[1]=szProteinSeq[iStartPos];  // First residue stays same.
+                     }
+
+                     // Now given szDecoyPeptide, calculate pdAAforwardDecoy and pdAAreverseDecoy.
+                     dBion = g_staticParams.precalcMasses.dNtermProton;
+                     dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+                     if (iStartPos == 0)
+                        dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+                     if (iEndPos == iProteinSeqLengthMinus1)
+                        dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+
+                     int iDecoyStartPos;       // This is start/end for newly created decoy peptide
+                     int iDecoyEndPos;
+                     int iPosForward;
+                     int iPosReverse;
+
+                     iDecoyStartPos = 1;
+                     iDecoyEndPos = (int)strlen(szDecoyPeptide)-2;
+
+                     for (int i=iDecoyStartPos; i<iDecoyEndPos; i++)
+                     {
+                        iPosForward = i - iDecoyStartPos;
+                        iPosReverse = iDecoyEndPos - iPosForward;
+
+                        dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
+                        if (piVarModSitesDecoy[iPosForward] >= 100)
+                           dBion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSitesDecoy[iPosForward] - 100);
+
+                        _pdAAforwardDecoy[iPosForward] = dBion;
+
+                        dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iPosReverse]];
+                        if (piVarModSitesDecoy[iDecoyEndPos - iDecoyStartPos] >= 100)
+                           dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSitesDecoy[iDecoyEndPos - iDecoyStartPos] - 100);
+
+                        _pdAAreverseDecoy[iPosForward] = dYion;
+                     }
+
+                     for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ++ctCharge)
+                     {
+                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                        {
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+                           for (ctLen=0; ctLen<iLenMinus1; ++ctLen)
+                           {
+                              pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy))] = false;
+                              _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = 0;
+                           }
+                        }
+                     }
+
+                     for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ++ctNL)
+                     {
+                        for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+                        {
+                           double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
+                           int iVal = BIN(dNLMass);
+
+                           if (iVal > 0)
+                           {
+                              pbDuplFragment[iVal] = false;
+                              _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = 0;
+                           }
+                        }
+                     }
+
+                     // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
+                     for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ++ctCharge)
+                     {
+                        for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
+                        {
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+                           // As both _pdAAforward and _pdAAreverse are increasing, loop through
+                           // iLenPeptide-1 to complete set of internal fragment ions.
+                           for (ctLen=0; ctLen<iLenMinus1; ++ctLen)
+                           {
+                              double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy);
+                              int iVal = BIN(dFragMass);
+
+                              if (pbDuplFragment[iVal] == false)
+                              {
+                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = iVal;
+                                 pbDuplFragment[iVal] = true;
+                              }
+                           }
+                        }
+                     }
+
+                     // No fragment NL peaks here as unmodified
+
+                     // Precursor NL peaks added here
+                     for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ++ctNL)
+                     {
+                        for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+                        {
+                           double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
+                           int iVal = BIN(dNLMass);
+
+                           if (iVal > 0 && pbDuplFragment[iVal] == false)
+                           {
+                              _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = iVal;
+                              pbDuplFragment[iVal] = true;
+                           }
+                        }
+                     }
+
+                     XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, 1,
+                           dModMass, true, iWhichQuery, iLenPeptide, piVarModSites, dbe);
+                  }
                }
+               iWhichQuery++;
             }
          }
       }
