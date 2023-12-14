@@ -213,7 +213,7 @@ private:
                        double dCalcPepMass,
                        int iLenPeptide,
                        struct sDBEntry *dbe);
-   static void SearchFragmentIndex(size_t iWhichQuery,
+   static void SearchFragmentIndex(size_t iWhichThread,
                             ThreadPool *tp);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
