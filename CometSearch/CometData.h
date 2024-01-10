@@ -307,12 +307,6 @@ struct EnzymeInfo
    char szSampleEnzymeBreakAA[MAX_ENZYME_AA];
    char szSampleEnzymeNoBreakAA[MAX_ENZYME_AA];
 
-   int iOneMinusOffset;  // used in CheckEnzymeTermini
-   int iTwoMinusOffset;  // used in CheckEnzymeTermini
-
-   int iOneMinusOffset2;  // used in CheckEnzymeTermini for 2nd enzyme
-   int iTwoMinusOffset2;  // used in CheckEnzymeTermini for 2nd enzyme
-
    EnzymeInfo()
    {
       bNoEnzymeSelected = 1;
@@ -321,10 +315,6 @@ struct EnzymeInfo
       iSearchEnzymeOffSet = 1;
       iSearchEnzyme2OffSet = 0;
       iSampleEnzymeOffSet = 0;
-      iOneMinusOffset = 0;
-      iTwoMinusOffset = 0;
-      iOneMinusOffset2 = 0;
-      iTwoMinusOffset2 = 0;
 
       szSearchEnzymeName[0] = '\0';
       szSearchEnzymeBreakAA[0] = '\0';
