@@ -141,16 +141,20 @@ bool CometSearch::RunSearch(int iPercentStart,
          g_vFragmentIndexRead = true;
       }
 
-      size_t iEnd = g_pvQuery.size();
+      int iNumIndexingThreads = g_staticParams.options.iNumThreads;
+      if (iNumIndexingThreads > MAX_FRAGINDEX_THREADS)
+         iNumIndexingThreads = MAX_FRAGINDEX_THREADS;
 
       ThreadPool *pSearchThreadPool = tp;
 
-      for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumThreads; ++iWhichThread)
+      // Launch N threads; each thread will iterate through subest of input spectra
+      for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
       {
          pSearchThreadPool->doJob(std::bind(SearchFragmentIndex, iWhichThread, pSearchThreadPool));
       }
 
 /*
+      size_t iEnd = g_pvQuery.size();
       for (size_t iWhichQuery = 0; iWhichQuery < iEnd; ++iWhichQuery)
       {
          pSearchThreadPool->doJob(std::bind(SearchFragmentIndex, iWhichQuery, pSearchThreadPool));
@@ -766,12 +770,12 @@ bool CometSearch::RunSearch(int iPercentStart,
             // Load sequence
             while (((iTmpCh=getc(fp)) != '>') && (iTmpCh != EOF))
             {
-               if ('a'<=iTmpCh && iTmpCh<='z')
+               if ('a' <= iTmpCh && iTmpCh <= 'z')
                {
                   dbe.strSeq += iTmpCh - 32;  // convert toupper case so subtract 32 (i.e. 'A'-'a')
                   g_staticParams.databaseInfo.uliTotAACount++;
                }
-               else if ('A'<=iTmpCh && iTmpCh<='Z')
+               else if ('A' <= iTmpCh && iTmpCh <= 'Z')
                {
                   dbe.strSeq += iTmpCh;
                   g_staticParams.databaseInfo.uliTotAACount++;
@@ -786,7 +790,14 @@ bool CometSearch::RunSearch(int iPercentStart,
             // sequences in the database will be loaded/queued all at once which can be
             // a memory issue for extremely large fasta files
             while (pSearchThreadPool->jobs_.size() >= 500)
-               pSearchThreadPool->wait_on_threads();
+            {
+#ifdef _WIN32
+               Sleep(20);
+#else
+               usleep(20);
+#endif
+//             pSearchThreadPool->wait_on_threads();
+            }
 
             // Now search sequence entry; add threading here so that
             // each protein sequence is passed to a separate thread.
@@ -1188,30 +1199,30 @@ void CometSearch::SearchFragmentIndex(size_t iWhichThread,
    for (int iWhichQuery = iWhichThread; iWhichQuery < g_pvQuery.size(); iWhichQuery += g_staticParams.options.iNumThreads)
    {
 
-      /*
-         // print out fragment masses at each fragment index
-         int x=0;
+/*
+      // print out fragment masses at each fragment index
+      int x=0;
 
-         for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
+      for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
+      {
+         for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumFragmentThreads; ++iWhichThread)
          {
-            for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumFragmentThreads; ++iWhichThread)
+            if (g_arrvFragmentIndex[iWhichThread][i].size() > 0)
             {
-               if (g_arrvFragmentIndex[iWhichThread][i].size() > 0)
+               for (size_t ii = 0; ii < g_arrvFragmentIndex[iWhichThread][i].size(); ++ii)
                {
-                  for (size_t ii = 0; ii < g_arrvFragmentIndex[iWhichThread][i].size(); ++ii)
-                  {
-                     printf("%0.2f ", g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][i][ii]].dPepMass);
-                     if (ii==10)
-                        break;
-                  }
-                  printf("\n");
-                  x++;
+                  printf("%0.2f ", g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][i][ii]].dPepMass);
+                  if (ii==10)
+                     break;
                }
-               if (x == 10)
-                  break;
+               printf("\n");
+               x++;
             }
+            if (x == 10)
+               break;
          }
-      */
+      }
+*/
 
       mPeptides.clear();
 

@@ -37,14 +37,11 @@ class CometSearchManager;
 #define MAX_FRAGINDEX_BATCHSIZE     5000
 #define MAX_FRAGINDEX_NUMPEAKS      200
 #define MAX_FRAGINDEX_NUMSCORED     100
+#define MAX_COMBINATIONS            2000
+#define MAX_MODS_PER_MOD            5
+#define KEEP_ALL_PEPTIDES           1        // 1 = print up to MAX_COMBINATIONS of peptides; 0 = ignore mods for peptide that exceed MAX_COMBINATIONS
 
 #define UNSET_TOLERANCE_MINUS       -99999.9   // default peptide_mass_tolerance_lower value; if this is not changed, used -(peptide_mass_tolerance)
-
-#define MAX_COMBINATIONS            2000
-#define MAX_MODS_PER_MOD            3
-
-
-#define KEEP_ALL_PEPTIDES           1        // 1 = print up to MAX_COMBINATIONS of peptides; 0 = ignore mods for peptide that exceed MAX_COMBINATIONS
 
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
@@ -476,7 +473,7 @@ struct FragmentPeptidesStruct
    }
 };
 
-extern vector<unsigned int>* g_arrvFragmentIndex[8];       // array of vectors: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
+extern vector<unsigned int>* g_arrvFragmentIndex[MAX_FRAGINDEX_THREADS];       // array of vectors: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndex> g_vRawPeptides;
 

@@ -49,7 +49,7 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-vector<unsigned int>* g_arrvFragmentIndex[8];               // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
+vector<unsigned int>* g_arrvFragmentIndex[MAX_FRAGINDEX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
 bool g_vPlainPeptideIndexRead = false;
@@ -1145,8 +1145,6 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   g_staticParams.options.iNumFragmentThreads = (g_staticParams.options.iNumThreads > MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads);
-
    // Set masses to either average or monoisotopic.
    CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,
                                   g_staticParams.massUtility.bMonoMassesParent,
@@ -1218,7 +1216,6 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
-
 
    // reduce variable modifications if entries are the same
    for (int i=0; i<VMODS; ++i)
@@ -1412,6 +1409,9 @@ bool CometSearchManager::InitializeStaticParams()
 
 // for (int x=1; x<=9; ++x)
 //    printf("OK bit %d: %d\n", x, (g_staticParams.variableModParameters.iRequireVarMod >> x) & 1U);
+
+   g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dMaxFragIndexMass) + 1;
+   g_staticParams.options.iNumFragmentThreads = (g_staticParams.options.iNumThreads > MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads);
 
    return true;
 }
@@ -2256,21 +2256,6 @@ bool CometSearchManager::DoSearch()
 
          if (g_staticParams.bIndexDb)
          {
-/*
-            if (!g_vPlainPeptideIndexRead)
-            {
-               sqSearch.ReadPlainPeptideIndex();
-               g_vPlainPeptideIndexRead = true;
-
-               sqSearch.CreateFragmentIndex(tp);
-               g_vFragmentIndexRead = true;
-            }
-            if (!g_vFragmentIndexRead)
-            {
-               CometFragmentIndex::ReadFragmentIndex(tp);
-               g_vFragmentIndexRead = true;
-            }
-*/
             if (!g_vPlainPeptideIndexRead)
             {
                sqSearch.ReadPlainPeptideIndex();

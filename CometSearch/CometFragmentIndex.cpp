@@ -65,17 +65,13 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
    // now permute mods on the peptides
    PermuteIndexPeptideMods(g_vRawPeptides);
 
-   // vector of modified peptides
+   // vFragmentPeptides is vector of modified peptides
    // - raw peptide via iWhichPeptide referencing entry in g_vRawPeptides to access peptide and protein(s)
    // - modification encoding index
    // - modification mass
 
-   g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dMaxFragIndexMass) + 1;
-
-   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
-   {
+   for (int iWhichThread = 0; iWhichThread < (g_staticParams.options.iNumThreads > MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads); ++iWhichThread)
       g_arrvFragmentIndex[iWhichThread] = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
-   }
 
    // generate the modified peptides to calculate the fragment index
    GenerateFragmentIndex(g_vRawPeptides, tp);
@@ -118,9 +114,13 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    unsigned long long* ALL_COMBINATIONS;
    int ALL_COMBINATION_CNT = 0;
 
+   int iMaxNumVariableMods = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
+   if (MAX_MODS_PER_MOD < iMaxNumVariableMods)
+      iMaxNumVariableMods = MAX_MODS_PER_MOD;
+
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    // iEnd is one larger than max peptide length
-   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, MAX_MODS_PER_MOD,
+   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, iMaxNumVariableMods,
          &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
    // Get the unique modifiable sequences from the peptides
@@ -129,7 +129,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    MOD_SEQS = ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
    // Get the modification combinations for each unique modifiable substring
-   ModificationsPermuter::getModificationCombinations(MOD_SEQS, MAX_MODS_PER_MOD, ALL_MODS,
+   ModificationsPermuter::getModificationCombinations(MOD_SEQS, iMaxNumVariableMods, ALL_MODS,
          MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
 }
 
@@ -152,8 +152,8 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    int iNumIndexingThreads = g_staticParams.options.iNumThreads;
 
-   if (iNumIndexingThreads > 8)
-      iNumIndexingThreads = 8;
+   if (iNumIndexingThreads > MAX_FRAGINDEX_THREADS)
+      iNumIndexingThreads = MAX_FRAGINDEX_THREADS;
 
    for (int iWhichThread = 0; iWhichThread<iNumIndexingThreads; ++iWhichThread)
    {
@@ -188,6 +188,19 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    Threading::DestroyMutex(_vFragmentPeptidesMutex);
 
    cout << ElapsedTime(tStartTime) << endl;
+
+   // count and report the # of entries in the fragment index
+   unsigned long long liCount = 0;
+   for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
+   {
+      for (unsigned int ii = 0; ii < g_massRange.g_uiMaxFragmentArrayIndex; ++ii)
+      {
+         long long lTmp = g_arrvFragmentIndex[iWhichThread][ii].size();
+         if (lTmp > 0)
+            liCount += lTmp;
+      }
+   }
+   printf("   - total # of entries in the fragment index: %lld\n", liCount);
 }
 
 
@@ -438,7 +451,7 @@ if (!(iWhichPeptide%5000))
 
    j = 0;
    k = modSeq.size() - 1;
-   unsigned int uiBinIon;
+
    for (int i = 0; i < iEndPos; ++i)
    {
       iPosReverse = iEndPos - i;
@@ -472,21 +485,15 @@ if (!(iWhichPeptide%5000))
 
       if (i > 1)  // skip first two low mass b- and y-ions
       {
+         // I don't know why and maybe this is a symptom and not the problem but these
+         // push_back() seem to be causing VS compiled exe to slow down to single thread speed.
+         // A g++ compiled binary is not similarly affected.
+         // A yeast target-decoy fasta with 16M, 80STY invokes over 2 billion of these.
          if (dBion > g_staticParams.options.dMinFragIndexMass && dBion < g_staticParams.options.dMaxFragIndexMass)
-         {
-            uiBinIon = BIN(dBion);
-
-            if (uiBinIon < g_massRange.g_uiMaxFragmentArrayIndex)
-               g_arrvFragmentIndex[iWhichThread][uiBinIon].push_back(uiCurrentFragmentPeptide);
-         }
+            g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
 
          if (dYion > g_staticParams.options.dMinFragIndexMass && dYion < g_staticParams.options.dMaxFragIndexMass)
-         {
-            uiBinIon = BIN(dYion);
-
-            if (uiBinIon < g_massRange.g_uiMaxFragmentArrayIndex)
-               g_arrvFragmentIndex[iWhichThread][uiBinIon].push_back(uiCurrentFragmentPeptide);
-         }
+            g_arrvFragmentIndex[iWhichThread][BIN(dYion)].push_back(uiCurrentFragmentPeptide);
       }
    }
 }
@@ -682,268 +689,9 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-// bSucceeded = WriteFragmentIndex(strIndexFile, lPeptidesFilePos, lProteinsFilePos, tp);
-
    strOut = " - done.  # peps " + to_string(tNumPeptides) + string("\n");
    logout(strOut.c_str());
    fflush(stdout);
-
-// CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
-
-   return bSucceeded;
-}
-
-bool CometFragmentIndex::WriteFragmentIndex(string strIndexFile,
-                                            comet_fileoffset_t lPeptidesFilePos,
-                                            comet_fileoffset_t lProteinsFilePos,
-                                            ThreadPool *tp)
-{
-   FILE *fp;
-   bool bSucceeded;
-   size_t tSizevRawPeptides = 0;
-   string strOut;
-
-   strOut = "\n Adding fragment index to index file:\n";
-   logout(strOut.c_str());
-   fflush(stdout);
-
-   bSucceeded = CometFragmentIndex::CreateFragmentIndex(tp);
-   tSizevRawPeptides = g_vRawPeptides.size();
-
-   if (!bSucceeded)
-   {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error creating fragment index. \n");
-      logerr(szErrorMsg);
-      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
-      return false;
-   }
-
-   auto tStartTime = chrono::steady_clock::now();
-   cout <<  " - writing fragment index ... ";
-   fflush(stdout);
-
-   if ((fp = fopen(strIndexFile.c_str(), "ab")) == NULL)
-   {
-      printf(" Error - cannot open index file %s to append to\n", strIndexFile.c_str());
-      exit(1);
-   }
-
-   fseek(fp, 0, SEEK_END);
-
-   comet_fileoffset_t clBeginFragIndexPosition = ftell(fp);
-
-   // Write MOD_SEQS
-   size_t tSize;
-   unsigned int uiLen;
-   int iTmp;
-
-   tSize = MOD_SEQS.size();
-   fwrite(&tSize, sizeof(size_t), 1, fp); // write # vector elements
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      uiLen = MOD_SEQS.at(i).length();
-      fwrite(&uiLen, sizeof(unsigned int), 1, fp);
-      fwrite(MOD_SEQS.at(i).c_str(), sizeof(char), uiLen, fp); // write out MOD_SEQ.at(i)
-   }
-
-   // write MOD_SEQ_MOD_NUM_START; size is MOD_SEQS.size()
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      iTmp = MOD_SEQ_MOD_NUM_START[i];
-      fwrite(&iTmp, sizeof(int), 1, fp);
-   }
-
-   // write MOD_SEQ_MOD_NUM_CNT; size is MOD_SEQS.size()
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      iTmp = MOD_SEQ_MOD_NUM_CNT[i];
-      fwrite(&iTmp, sizeof(int), 1, fp);
-   }
-
-   // write MOD_NUMBERS
-   tSize = MOD_NUMBERS.size();
-   fwrite(&tSize, sizeof(size_t), 1, fp); // write # vector elements
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      fwrite(&(MOD_NUMBERS[i].modStringLen), sizeof(int), 1, fp);
-      fwrite(MOD_NUMBERS[i].modifications, sizeof(char), MOD_NUMBERS[i].modStringLen, fp);
-   }
-
-   // write PEPTIDE_MOD_SEQ_IDXS; size is g_vRawPeptides.size()
-   fwrite(&tSizevRawPeptides, sizeof(size_t), 1, fp);
-   for (size_t i = 0; i < tSizevRawPeptides; ++i)
-   {
-      iTmp = PEPTIDE_MOD_SEQ_IDXS[i];
-      fwrite(&iTmp, sizeof(int), 1, fp);
-   }
-    
-   // size of g_arrvFragmentIndex which is g_uiMaxFragmentIndexArray
-   fwrite(&g_massRange.g_uiMaxFragmentArrayIndex, sizeof(unsigned int), 1, fp); // array size
-
-   int iWhichThread = 0;  //FIX
-   for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
-   {
-      size_t tNumEntries = g_arrvFragmentIndex[iWhichThread][i].size();
-      fwrite(&tNumEntries, sizeof(size_t), 1, fp); // index
-
-      if (tNumEntries > 0)
-      {
-         for (auto it=g_arrvFragmentIndex[iWhichThread][i].begin(); it!=g_arrvFragmentIndex[iWhichThread][i].end(); ++it)
-         {
-            fwrite(&(*it), sizeof(unsigned int), 1, fp);
-         }
-      }
-   }
-
-   // write g_vFragmentPeptides
-   tSize = g_vFragmentPeptides.size();
-   fwrite(&tSize, sizeof(size_t), 1, fp);
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      fwrite(&(g_vFragmentPeptides[i]), sizeof(struct FragmentPeptidesStruct), 1, fp);
-   }
-
-   fwrite(&clBeginFragIndexPosition, clSizeCometFileOffset, 1, fp);  //write beginning of fragment index at array size
-   fwrite(&lPeptidesFilePos, clSizeCometFileOffset, 1, fp);
-   fwrite(&lProteinsFilePos, clSizeCometFileOffset, 1, fp);
-
-   cout << CometFragmentIndex::ElapsedTime(tStartTime) << endl;
-
-   return bSucceeded;
-}
-
-
-// read fragment index from disk
-bool CometFragmentIndex::ReadFragmentIndex(ThreadPool *tp)
-{
-   FILE *fp;
-   bool bSucceeded = true;
-   string strIndexFile;
-   size_t tTmp;
-   char szBuf[SIZE_BUF];
-
-   if (g_vFragmentIndexRead)
-      return 1;
-
-   // database already is .idx
-   strIndexFile = g_staticParams.databaseInfo.szDatabase;
-
-   if ((fp = fopen(strIndexFile.c_str(), "rb")) == NULL)
-   {
-      printf(" Error - cannot open index file %s to read\n", strIndexFile.c_str());
-      exit(1);
-   }
-
-   auto tStartTime = chrono::steady_clock::now();
-   cout << " - reading file : " << strIndexFile;
-   fflush(stdout);
-
-   // read fp of index
-   comet_fileoffset_t clBeginFragIndexPosition;  // position to start reading fragment index elements
-
-   comet_fseek(fp, -(3*clSizeCometFileOffset), SEEK_END);
-   fread(&clBeginFragIndexPosition, clSizeCometFileOffset, 1, fp);
-
-   comet_fseek(fp, clBeginFragIndexPosition, SEEK_SET);
-
-   // Read MOD_SEQS
-   size_t tSize;
-   unsigned int uiLen;
-   unsigned int uiTmp;
-
-   fread(&tSize, sizeof(size_t), 1, fp); // read # vector elements
-
-   MOD_SEQ_MOD_NUM_START = new int[tSize];
-   MOD_SEQ_MOD_NUM_CNT = new int[tSize];
-
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      fread(&uiLen, sizeof(unsigned int), 1, fp);
-      if (uiLen >= SIZE_BUF)
-      {
-         printf(" Error MOD_SEQ length %d too large.\n", uiLen);
-         exit(1);
-      }
-
-      fread(szBuf, sizeof(char), uiLen, fp); // length of the mod sequence
-      szBuf[uiLen] = '\0';
-      MOD_SEQS.push_back(szBuf);
-   }
-
-   // read MOD_SEQ_MOD_NUM_START; size is MOD_SEQS.size()
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      fread(&(MOD_SEQ_MOD_NUM_START[i]), sizeof(int), 1, fp);
-   }
-
-   // read MOD_SEQ_MOD_NUM_CNT; size is MOD_SEQS.size()
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      fread(&(MOD_SEQ_MOD_NUM_CNT[i]), sizeof(int), 1, fp);
-   }
-
-   // read MOD_NUMBERS
-   fread(&tSize, sizeof(size_t), 1, fp); // write # vector elements
-   struct ModificationNumber sModNumTmp;
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      fread(&sModNumTmp.modStringLen, sizeof(int), 1, fp);
-      char *mods = new char[sModNumTmp.modStringLen];
-      fread(mods, sizeof(char), sModNumTmp.modStringLen, fp);
-      sModNumTmp.modifications = mods;
-      MOD_NUMBERS.push_back(sModNumTmp);
-   }
-
-   // read PEPTIDE_MOD_SEQ_IDXS; size is g_vRawPeptides.size()
-   fread(&tTmp, sizeof(size_t), 1, fp);
-   PEPTIDE_MOD_SEQ_IDXS = new int[tTmp];
-   for (size_t i = 0; i < tTmp; ++i)
-   {
-      fread(&(PEPTIDE_MOD_SEQ_IDXS[i]), sizeof(int), 1, fp);
-   }
-
-   // size of g_arrvFragmentIndex which is g_uiMaxFragmentIndexArray
-   fread(&g_massRange.g_uiMaxFragmentArrayIndex, sizeof(unsigned int), 1, fp); // array size
-
-// delete[] g_arrvFragmentIndex;  // shouldn't be needed; hope it doesn't hurt
-
-   for (int iWhichThread=0; iWhichThread < (g_staticParams.options.iNumThreads> MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads) ; ++iWhichThread)
-   {
-      g_arrvFragmentIndex[iWhichThread] = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
-   }
-
-   int iWhichThread = 0;  // FIX if this ever gets used; currently unused as index is generated on-the-fly
-
-   for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
-   {
-      fread(&tTmp, sizeof(size_t), 1, fp); // index
-
-      if (tTmp> 0)
-      {
-         g_arrvFragmentIndex[iWhichThread][i].reserve(tTmp);
-         for (size_t it = 0; it != tTmp; ++it)
-         {
-            fread(&uiTmp, sizeof(unsigned int), 1, fp);
-            g_arrvFragmentIndex[iWhichThread][i].push_back(uiTmp);
-         }
-      }
-   }
-
-   // size of g_vFragmentPeptides which is g_uiMaxFragmentIndexArray
-   fread(&tSize, sizeof(size_t), 1, fp); // size of g_vFragmentPeptides
-   g_vFragmentPeptides.clear();
-   g_vFragmentPeptides.reserve(tSize);
-   FragmentPeptidesStruct sTmp;
-   for (size_t i = 0; i < tSize; ++i)
-   {
-      fread(&sTmp, sizeof(struct FragmentPeptidesStruct), 1, fp);
-      g_vFragmentPeptides.push_back(sTmp);
-   }
-
-   fclose(fp);
-
-   cout << " (" << ElapsedTime(tStartTime) << ")" << endl;
 
    return bSucceeded;
 }

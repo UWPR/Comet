@@ -28,11 +28,6 @@ public:
    ~CometFragmentIndex();
 
    static bool WritePlainPeptideIndex(ThreadPool *tp);
-   static bool WriteFragmentIndex(string strIndexFile,
-                                  comet_fileoffset_t lPeptidesFilePos,
-                                  comet_fileoffset_t lProteinsFilePos,
-                                  ThreadPool *tp);
-   static bool ReadFragmentIndex(ThreadPool *tp);
    static bool ReadPlainPeptideIndex(void);
    static bool CreateFragmentIndex(ThreadPool *tp);
    static string ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime);
