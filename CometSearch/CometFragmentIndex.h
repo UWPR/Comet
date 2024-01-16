@@ -43,10 +43,8 @@ private:
                             int modNumIdx,
                             short siNtermMod,
                             short siCtermMod);
-   static void AddFragmentsThreadProc(vector<PlainPeptideIndex>& vRawPeptides,
-                                      int iWhichThread,
+   static void AddFragmentsThreadProc(int iWhichThread,
                                       int iNumIndexingThreads,
-                                      int& iNoModificationNumbers,
                                       ThreadPool *tp);
    static bool SortFragmentsByPepMass(unsigned int x,
                                       unsigned int y);

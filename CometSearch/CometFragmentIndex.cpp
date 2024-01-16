@@ -138,7 +138,6 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
                                                ThreadPool *tp)
 {
    size_t iEndSize = g_vRawPeptides.size();
-   int iNoModificationNumbers = 0;
 
    cout <<  " - calculate fragments for " << iEndSize << " raw peptides ... "; fflush(stdout);
 
@@ -152,22 +151,21 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    int iNumIndexingThreads = g_staticParams.options.iNumThreads;
 
+   // Will create a fragment index for each thread, each of which will need
+   // to be queried, so limit this number to MAX_FRAGINDEX_THREADS
    if (iNumIndexingThreads > MAX_FRAGINDEX_THREADS)
       iNumIndexingThreads = MAX_FRAGINDEX_THREADS;
 
+   // Create N number of threads, each of which will iterate through
+   // a subset of peptides to calculate their fragment ions
    for (int iWhichThread = 0; iWhichThread<iNumIndexingThreads; ++iWhichThread)
    {
-      pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, std::ref(g_vRawPeptides),
-               iWhichThread, iNumIndexingThreads, std::ref(iNoModificationNumbers), pFragmentIndexPool));
+      pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, iWhichThread, iNumIndexingThreads, pFragmentIndexPool));
    }
 
    pFragmentIndexPool->wait_on_threads();
 
    cout << ElapsedTime(tStartTime) << endl;
-
-// cout << endl << endl;
-// cout << "peptides have no modification numbers or exceed MAX_COMBINATIONS: " << iNoModificationNumbers << " " << endl;
-// cout << "size of gv_FragmentPeptides is " << g_vFragmentPeptides.size() << endl;
 
    cout << " - sorting each fragment mass index bin by peptide mass ... "; fflush(stdout);
 
@@ -189,6 +187,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    cout << ElapsedTime(tStartTime) << endl;
 
+/*
    // count and report the # of entries in the fragment index
    unsigned long long liCount = 0;
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
@@ -201,6 +200,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
       }
    }
    printf("   - total # of entries in the fragment index: %lld\n", liCount);
+*/
 }
 
 
@@ -223,10 +223,8 @@ string CometFragmentIndex::ElapsedTime(std::chrono::time_point<std::chrono::stea
 }
 
 
-void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& g_vRawPeptides,
-                                                int iWhichThread,
+void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
                                                 int iNumIndexingThreads,
-                                                int& iNoModificationNumbers,
                                                 ThreadPool *tp)
 {
    for (size_t iWhichPeptide = iWhichThread; iWhichPeptide < g_vRawPeptides.size(); iWhichPeptide += iNumIndexingThreads)
@@ -270,7 +268,6 @@ void CometFragmentIndex::AddFragmentsThreadProc(vector<PlainPeptideIndex>& g_vRa
 
       if (modSeqIdx < 0)
       {
-         iNoModificationNumbers += 1;
          // peptide is not modified, skip following permuting code
          continue;
       }
@@ -420,10 +417,18 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    sTmp.siCtermMod = siCtermMod;
    unsigned int uiCurrentFragmentPeptide;
 
+   // Store the current peptide; uiCurrentFragmentPeptide references this peptide entry
+   // for use in the g_arrvFragmentIndex fragment index.  as this is a global list of
+   // peptides, need to lock when updating to avoid thread conflicts
    Threading::LockMutex(_vFragmentPeptidesMutex);
+   uiCurrentFragmentPeptide = g_vFragmentPeptides.size();  // index of current peptide in g_vFragmentPeptides
+   if (g_vFragmentPeptides.size() >= UINT_MAX)
+   {
+      printf(" Error in CometFragmentIndex; UINT_MAX (%d) peptides reached.\n", UINT_MAX);
+      exit(1);
+   }
    // store peptide representation based on sequence (iWhichPeptide), modification state (modNumIdx), and mass (dPepMass)
    g_vFragmentPeptides.push_back(sTmp);
-   uiCurrentFragmentPeptide = g_vFragmentPeptides.size() - 1;  // index of current peptide in g_vFragmentPeptides
    Threading::UnlockMutex(_vFragmentPeptidesMutex);
 
 
