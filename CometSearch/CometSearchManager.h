@@ -63,6 +63,17 @@ public:
                                        string& strReturnProtein,
                                        vector<Fragment> & matchedFragments,
                                        Scores & pScores);
+   virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
+       int iPrecursorCharge,
+       double dMZ,
+       double* pdMass,
+       double* pdInten,
+       int iNumPeaks,
+       vector<string>& strReturnPeptide,
+       vector<string>& strReturnProtein,
+       vector<vector<Fragment>>& matchedFragments,
+       vector<Scores>& scores);
+
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);
