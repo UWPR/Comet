@@ -130,6 +130,66 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
     return isSuccess;
 }
 
+bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(int topN,
+    int iPrecursorCharge,
+    double dMZ,
+    cli::array<double>^ pdMass,
+    cli::array<double>^ pdInten,
+    int iNumPeaks,
+    [Out] List<String^>^% szPeptide,
+    [Out] List<String^>^% szProtein,
+    [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+    [Out] List<ScoreWrapper^>^% score)
+{
+    if (!_pSearchMgr)
+    {
+        return false;
+    }
+    pin_ptr<double> ptrMasses = &pdMass[0];
+    pin_ptr<double> ptrInten = &pdInten[0];
+    vector<std::string> stdStringszPeptide;
+    vector<std::string> stdStringszProtein;
+
+    vector<Scores> scores;
+    vector<vector<Fragment>> matchedFragments;
+
+    // perform the search
+    bool isSuccess = _pSearchMgr->DoSingleSpectrumSearchMultiResults(topN, iPrecursorCharge, dMZ, ptrMasses, ptrInten, iNumPeaks,
+        stdStringszPeptide, stdStringszProtein, matchedFragments, scores);
+
+    szPeptide = gcnew List<String^>();
+    for (auto eachszPeptide : stdStringszPeptide)
+    {
+        // Convert data back to the managed world
+        szPeptide->Add(gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char*>(eachszPeptide.c_str())))));
+    }
+
+    szProtein = gcnew List<String^>();
+    for (auto eachszProtein : stdStringszProtein)
+    {
+        // Convert data back to the managed world
+        szProtein->Add(gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char*>(eachszProtein.c_str())))));
+    }
+
+    score = gcnew List<ScoreWrapper^>();
+    for (auto eachScore : scores)
+    {
+        score->Add(gcnew ScoreWrapper(eachScore));
+    }
+
+    matchingFragments = gcnew List<List<FragmentWrapper^>^>();
+    for (auto eachMatchedFragSet : matchedFragments)
+    {
+        auto eachMatchedFragments = gcnew List<FragmentWrapper^>();
+        for (auto frag : eachMatchedFragSet)
+        {
+            eachMatchedFragments->Add(gcnew FragmentWrapper(frag));
+        }
+        matchingFragments->Add(eachMatchedFragments);
+    }
+
+    return isSuccess;
+}
 
 bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList)
 {
