@@ -63,7 +63,7 @@ public:
                                        string& strReturnProtein,
                                        vector<Fragment> & matchedFragments,
                                        Scores & pScores);
-   virtual bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
+   virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
        int iPrecursorCharge,
        double dMZ,
        double* pdMass,

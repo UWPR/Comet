@@ -2540,7 +2540,7 @@ bool CometSearchManager::DoSearch()
             if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
                CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, fpdb);
 
-   cleanup_results:
+cleanup_results:
 
             // Deleting each Query object in the vector calls its destructor, which
             // frees the spectral memory (see definition for Query in CometData.h).
@@ -3222,6 +3222,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
     double* pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
     bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
     int iSize;
+    int takeSearchResultsN;
     ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
 
     if (!bSucceeded)
@@ -3281,7 +3282,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
     Query* pQuery;
     pQuery = g_pvQuery.at(0);  // return info for top hit only
-    int takeSearchResultsN = topN; // return up to the top N results, or iSize
+    takeSearchResultsN = topN; // return up to the top N results, or iSize
+
     if (takeSearchResultsN > iSize)
     {
         takeSearchResultsN = iSize;
