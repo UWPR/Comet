@@ -506,24 +506,36 @@ if (!(iWhichPeptide%5000))
             // If a peptide is modified, only store fragments that contain the modification
             // as unmodified fragments should already be stored.  I'm sure there's some
             // exception.
+            vector<unsigned int> dBionVector = g_arrvFragmentIndex[iWhichThread][BIN(dBion)];
+            size_t currentSize = dBionVector.size();
+
+            if (currentSize < iEndPos)
+                  dBionVector.resize(iEndPos);
+
             if (modNumIdx >= 0)
             {
                if (bContainsBMod)
-                  g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
+                  dBionVector.push_back(uiCurrentFragmentPeptide);
             }
             else
-               g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
+               dBionVector.push_back(uiCurrentFragmentPeptide);
          }
 
          if (dYion > g_staticParams.options.dMinFragIndexMass && dYion < g_staticParams.options.dMaxFragIndexMass)
          {
             if (modNumIdx >= 0)
             {
+               vector<unsigned int> dYionVector = g_arrvFragmentIndex[iWhichThread][BIN(dYion)];
+               size_t currentSize = dYionVector.size();
+
+               if (currentSize < iEndPos)
+                  dYionVector.resize(iEndPos);
+
                if (bContainsYMod)
-                  g_arrvFragmentIndex[iWhichThread][BIN(dYion)].push_back(uiCurrentFragmentPeptide);
+                  dYionVector.push_back(uiCurrentFragmentPeptide);
             }
             else
-               g_arrvFragmentIndex[iWhichThread][BIN(dYion)].push_back(uiCurrentFragmentPeptide);
+               dYionVector.push_back(uiCurrentFragmentPeptide);
          }
       }
    }
