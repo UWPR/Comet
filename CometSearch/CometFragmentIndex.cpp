@@ -457,11 +457,6 @@ if (!(iWhichPeptide%5000))
    j = 0;
    k = modSeq.size() - 1;
 
-
-
-   bool bContainsBMod = false;
-   bool bContainsYMod = false;
-
    for (int i = 0; i < iEndPos; ++i)
    {
       iPosReverse = iEndPos - i;
@@ -472,24 +467,10 @@ if (!(iWhichPeptide%5000))
       if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
          if (sPeptide[i] == modSeq[j])
-         {
-            if (modNumIdx != -1 && mods[j] != -1)
-            {
-               dBion += g_staticParams.variableModParameters.varModList[(int)mods[j]].dVarModMass;
-               bContainsBMod = true;
-            }
             j++;
-         }
 
          if (sPeptide[iPosReverse] == modSeq[k])
-         {
-            if (modNumIdx != -1 && mods[k] != -1)
-            {
-               dYion += g_staticParams.variableModParameters.varModList[(int)mods[k]].dVarModMass;
-               bContainsYMod = true;
-            }
             k--;
-         }
       }
 
       if (dBion > g_staticParams.options.dMaxFragIndexMass && dYion > g_staticParams.options.dMaxFragIndexMass)
@@ -503,27 +484,12 @@ if (!(iWhichPeptide%5000))
          // A yeast target-decoy fasta with 16M, 80STY invokes over 2 billion of these.
          if (dBion > g_staticParams.options.dMinFragIndexMass && dBion < g_staticParams.options.dMaxFragIndexMass)
          {
-            // If a peptide is modified, only store fragments that contain the modification
-            // as unmodified fragments should already be stored.  I'm sure there's some
-            // exception.
-            if (modNumIdx >= 0)
-            {
-               if (bContainsBMod)
-                  g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
-            }
-            else
-               g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
+            g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
          }
 
          if (dYion > g_staticParams.options.dMinFragIndexMass && dYion < g_staticParams.options.dMaxFragIndexMass)
          {
-            if (modNumIdx >= 0)
-            {
-               if (bContainsYMod)
-                  g_arrvFragmentIndex[iWhichThread][BIN(dYion)].push_back(uiCurrentFragmentPeptide);
-            }
-            else
-               g_arrvFragmentIndex[iWhichThread][BIN(dYion)].push_back(uiCurrentFragmentPeptide);
+            g_arrvFragmentIndex[iWhichThread][BIN(dYion)].push_back(uiCurrentFragmentPeptide);
          }
       }
    }
