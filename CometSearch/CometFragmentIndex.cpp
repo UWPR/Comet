@@ -523,14 +523,14 @@ if (!(iWhichPeptide%5000))
 
          if (dYion > g_staticParams.options.dMinFragIndexMass && dYion < g_staticParams.options.dMaxFragIndexMass)
          {
+            vector<unsigned int> dYionVector = g_arrvFragmentIndex[iWhichThread][BIN(dYion)];
+            size_t currentSize = dYionVector.size();
+
+            if (currentSize < iEndPos)
+               dYionVector.resize(iEndPos);
+
             if (modNumIdx >= 0)
             {
-               vector<unsigned int> dYionVector = g_arrvFragmentIndex[iWhichThread][BIN(dYion)];
-               size_t currentSize = dYionVector.size();
-
-               if (currentSize < iEndPos)
-                  dYionVector.resize(iEndPos);
-
                if (bContainsYMod)
                   dYionVector.push_back(uiCurrentFragmentPeptide);
             }
