@@ -234,7 +234,7 @@ void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp + 1;
    }
 
-   // Then sort each entry by xcorr
+   // Then sort each entry in descending order by xcorr
    std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnXcorr);
 
    // if mod search, now sort peptides with same score but different mod locations
@@ -622,8 +622,25 @@ bool CometPostAnalysis::SortFnSp(const Results &a,
 {
    if (a.fScoreSp > b.fScoreSp)
       return true;
-   else if (a.fScoreSp == b.fScoreSp && strcmp(a.szPeptide, b.szPeptide) < 0)
-      return true;
+   else if (a.fScoreSp == b.fScoreSp)
+   {
+      int iCmp = strcmp(a.szPeptide, b.szPeptide);
+
+      if (iCmp < 0)
+         return true;
+      else if (iCmp > 0)
+         return false;
+      else  // same peptide, check mod state
+      {
+         for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
+         {
+            if (a.piVarModSites[i] < b.piVarModSites[i])
+               return true;
+            else if (a.piVarModSites[i] > b.piVarModSites[i])
+               return false;
+         }
+      }
+   }
 
    return false;
 }
@@ -634,8 +651,25 @@ bool CometPostAnalysis::SortFnXcorr(const Results &a,
 {
    if (a.fXcorr > b.fXcorr)
       return true;
-   else if (a.fXcorr == b.fXcorr && strcmp(a.szPeptide, b.szPeptide) < 0)
-      return true;
+   else if (a.fXcorr == b.fXcorr)
+   {
+      int iCmp = strcmp(a.szPeptide, b.szPeptide);
+
+      if (iCmp < 0)
+         return true;
+      else if (iCmp > 0)
+         return false;
+      else  // same peptide, check mod state
+      {
+         for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
+         {
+            if (a.piVarModSites[i] < b.piVarModSites[i])
+               return true;
+            else if (a.piVarModSites[i] > b.piVarModSites[i])
+               return false;
+         }
+      }
+   }
 
    return false;
 }

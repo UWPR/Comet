@@ -3689,39 +3689,95 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          pQuery->iHistogramCount += 1;
    }
 
-   if (bDecoyPep && g_staticParams.options.iDecoySearch==2)
+   // Now find the lowest xcorr and index within _pResults/_pDecoys which will be updated
+   // with the next peptide stored.
+   double dLowestXcorrScore;
+
+   if (bDecoyPep && g_staticParams.options.iDecoySearch == 2)
+      dLowestXcorrScore = pQuery->dLowestDecoyXcorrScore;
+   else
+      dLowestXcorrScore = pQuery->dLowestXcorrScore;
+
+   if (dXcorr >= dLowestXcorrScore)
    {
-      if (dXcorr > pQuery->dLowestDecoyXcorrScore)
+      bool bContinue = true;
+
+      if (dXcorr == dLowestXcorrScore && dXcorr > XCORR_CUTOFF)
       {
-         // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL
+         // To make search results always match with respect to scored peptides lower in the
+         // list, which can affect Sp score rank, this check here is to always store the same
+         // lowest scoring peptide which would otherwise not necessarily be the case in a
+         // multithreaded search.  So always store the alphabetical first peptide with lowest
+         // mod state.
+
+         int iCmp;
+
+         if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
+         {
+            iCmp = strncmp(szProteinSeq + iStartPos,
+               pQuery->_pDecoys[pQuery->siLowestDecoyXcorrScoreIndex].szPeptide,
+               pQuery->_pDecoys[pQuery->siLowestDecoyXcorrScoreIndex].iLenPeptide);
+         }
+         else
+         {
+            iCmp = strncmp(szProteinSeq + iStartPos,
+               pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].szPeptide,
+               pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].iLenPeptide);
+         }
+
+         if (iCmp < 0)       // current peptide alphabetical earlier, replace lowest scoring peptide
+         {
+            bContinue = true;
+         }
+         else if (iCmp > 0)  // current peptide alphabetical later, don't replace lowest scoring peptide
+         {
+            bContinue = false;
+         }
+         else                // same peptides, now choose based on mod state
+         {
+            if (g_staticParams.variableModParameters.bVarModSearch)
+            {
+               int *piStoredVarModSites;
+
+               if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
+                  piStoredVarModSites = pQuery->_pDecoys[pQuery->siLowestDecoyXcorrScoreIndex].piVarModSites;
+               else
+                  piStoredVarModSites = pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].piVarModSites;
+
+               for (int x = 0 ; x < MAX_PEPTIDE_LEN_P2; ++x)
+               {
+                  if (piVarModSites[x] < piStoredVarModSites[x])  // store if lower mod state
+                  {
+                     bContinue = true;
+                     break;
+                  }
+                  else if (piVarModSites[x] > piStoredVarModSites[x])  // don't store as higher mod state
+                  {
+                     bContinue = false;
+                     break;
+                  }
+               }
+            }
+            else             // same unmodified peptide already stored
+            {
+               bContinue = false;
+            }
+         }
+      }
+
+      if (bContinue)
+      {
+         // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL and no internal decoys
          if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL)
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, bDecoyPep,  piVarModSites, dbe);
+               dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
          }
          else if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
-                  szProteinSeq, bDecoyPep, piVarModSites, dbe))
+            szProteinSeq, bDecoyPep, piVarModSites, dbe))
          {
             StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, bDecoyPep,  piVarModSites, dbe);
-         }
-      }
-   }
-   else
-   {
-      if (dXcorr > pQuery->dLowestXcorrScore)
-      {
-         // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL and no internal decoys
-         if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL && g_staticParams.options.iDecoySearch == 0)
-         {
-            StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
-         }
-         else if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
-                  szProteinSeq, bDecoyPep, piVarModSites, dbe))
-         {
-            StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
+               dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -3882,58 +3938,58 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
    if (g_staticParams.options.iDecoySearch==2 && bDecoyPep)  // store separate decoys
    {
-      short siLowestDecoySpScoreIndex;
+      short siLowestDecoyXcorrScoreIndex;
 
-      siLowestDecoySpScoreIndex = pQuery->siLowestDecoySpScoreIndex;
+      siLowestDecoyXcorrScoreIndex = pQuery->siLowestDecoyXcorrScoreIndex;
 
       pQuery->iDecoyMatchPeptideCount++;
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].iLenPeptide = iLenPeptide;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iLenPeptide = iLenPeptide;
 
-      memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPeptide[iLenPeptide]='\0';
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].dPepMass = dCalcPepMass;
+      memcpy(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPeptide[iLenPeptide]='\0';
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].dPepMass = dCalcPepMass;
 
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons = (iLenPeptide - 1)
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
             * pQuery->_spectrumInfoInternal.iMaxFragCharge
             * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iTotalIons = (iLenPeptide - 1)
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
             * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
 
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].fXcorr = (float)dXcorr;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr = (float)dXcorr;
 
       if (g_staticParams.bIndexDb)
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = _proteinInfo.cPrevAA;
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = _proteinInfo.cNextAA;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0] = _proteinInfo.cPrevAA;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[1] = _proteinInfo.cNextAA;
       }
       else
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].bClippedM = false;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = false;
 
          if (iStartPos == 0)
          {
             // check if clip n-term met
             if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
             {
-               pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = 'M';
-               pQuery->_pDecoys[siLowestDecoySpScoreIndex].bClippedM = true;
+               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0] = 'M';
+               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = true;
             }
             else
-               pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = '-';
+               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0] = '-';
          }
          else
-            pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
          if (iEndPos == _proteinInfo.iTmpProteinSeqLength-1)
-            pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = '-';
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[1] = '-';
          else
-            pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
       }
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
@@ -3941,15 +3997,15 @@ void CometSearch::StorePeptide(int iWhichQuery,
             && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition+_proteinInfo.iPeffNewResidueCount-1) 
             && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].sPeffOrigResidues = _proteinInfo.sPeffOrigResidues;
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffNewResidueCount = _proteinInfo.iPeffNewResidueCount;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].sPeffOrigResidues = _proteinInfo.sPeffOrigResidues;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iPeffNewResidueCount = _proteinInfo.iPeffNewResidueCount;
       }
       else
       {
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].sPeffOrigResidues.clear();
-         pQuery->_pDecoys[siLowestDecoySpScoreIndex].iPeffNewResidueCount = 0;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].sPeffOrigResidues.clear();
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iPeffNewResidueCount = 0;
       }
 
       // store protein
@@ -3957,65 +4013,104 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pTmp.lWhichProtein = dbe->lProteinFilePosition;
       pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
-      pTmp.cPrevAA = pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[0];
-      pTmp.cNextAA = pQuery->_pDecoys[siLowestDecoySpScoreIndex].szPrevNextAA[1];
+      pTmp.cPrevAA = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0];
+      pTmp.cNextAA = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[1];
 
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].pWhichDecoyProtein.clear();
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].pWhichDecoyProtein.push_back(pTmp);
-      pQuery->_pDecoys[siLowestDecoySpScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.clear();
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (!iFoundVariableMod)   // Normal peptide in variable mod search.
          {
-            memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-            memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
          }
          else
          {
-            memcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
+            memcpy(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
 
             int iVal;
             for (i = 0; i < iLenPeptide2; ++i)
             {
-               iVal = pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites[i];
+               iVal = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[i];
 
                if (iVal > 0)
                {
-                  pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites[i]
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i]
                      = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
                }
                else if (iVal < 0)
                {
                   int iTmp = -iVal - 1;
-                  pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
-                  strcpy(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
+                  strcpy(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
                }
                else
-                  pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites[i] = 0.0;
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = 0.0;
             }
          }
       }
       else
       {
-         memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-         memset(pQuery->_pDecoys[siLowestDecoySpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
       }
 
-      // Get new lowest score.
+      // walk through stored entries and get new lowest xcorr score
       pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[0].fXcorr;
-      siLowestDecoySpScoreIndex=0;
+      siLowestDecoyXcorrScoreIndex = 0;
 
-      for (i=g_staticParams.options.iNumStored-1; i>0; i--)
+      for (i = g_staticParams.options.iNumStored - 1; i > 0; --i)
       {
-         if (pQuery->_pDecoys[i].fXcorr < pQuery->dLowestDecoyXcorrScore || pQuery->_pDecoys[i].iLenPeptide == 0)
+         if (pQuery->_pDecoys[i].fXcorr <= pQuery->dLowestDecoyXcorrScore || pQuery->_pDecoys[i].iLenPeptide == 0)
          {
-            pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[i].fXcorr;
-            siLowestDecoySpScoreIndex = i;
+            // if there are multiple entries with the same lowest score, replace the
+            // alphabetical last peptide
+            if (pQuery->_pDecoys[i].fXcorr == pQuery->dLowestDecoyXcorrScore)
+            {
+               int iCmp = strncmp(pQuery->_pDecoys[i].szPeptide,
+                     pQuery->_pDecoys[pQuery->siLowestDecoyXcorrScoreIndex].szPeptide,
+                     pQuery->_pDecoys[pQuery->siLowestDecoyXcorrScoreIndex].iLenPeptide);
+
+               if (iCmp > 0)
+               {
+                  pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[i].fXcorr;
+                  siLowestDecoyXcorrScoreIndex = i;
+               }
+               else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
+               {
+                  // different peptides with same mod state; replace last mod state
+                  int *piStoredVarModSites;
+
+                  piStoredVarModSites = pQuery->_pDecoys[i].piVarModSites;
+
+                  for (int x = 0; x < MAX_PEPTIDE_LEN_P2; ++x)
+                  {
+                     if (piVarModSites[x] < piStoredVarModSites[x])
+                     {
+                        pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[i].fXcorr;
+                        siLowestDecoyXcorrScoreIndex = i;
+                        break;
+                     }
+                     else if (piVarModSites[x] > piStoredVarModSites[x])
+                     {
+                        // don't swap this peptide entry
+                        break;
+                     }
+                  }
+               }
+            }
+            else  // this the lowest score to store it
+            {
+               pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[i].fXcorr;
+               siLowestDecoyXcorrScoreIndex = i;
+            }
          }
       }
 
-      pQuery->siLowestDecoySpScoreIndex = siLowestDecoySpScoreIndex;
+      pQuery->siLowestDecoyXcorrScoreIndex = siLowestDecoyXcorrScoreIndex;
 
       // round lowest score to 6 significant digits
       int iTmp = (int)(pQuery->dLowestDecoyXcorrScore * 1000000);
@@ -4023,35 +4118,35 @@ void CometSearch::StorePeptide(int iWhichQuery,
    }
    else
    {
-      short siLowestSpScoreIndex;
+      short siLowestXcorrScoreIndex;
 
-      siLowestSpScoreIndex = pQuery->siLowestSpScoreIndex;
+      siLowestXcorrScoreIndex = pQuery->siLowestXcorrScoreIndex;
 
       pQuery->iMatchPeptideCount++;
-      pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide = iLenPeptide;
+      pQuery->_pResults[siLowestXcorrScoreIndex].iLenPeptide = iLenPeptide;
 
-      memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
-      pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
-      pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
+      memcpy(pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
+      pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide[iLenPeptide]='\0';
+      pQuery->_pResults[siLowestXcorrScoreIndex].dPepMass = dCalcPepMass;
                   
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
-         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
+         pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
             * pQuery->_spectrumInfoInternal.iMaxFragCharge
             * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {
-         pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
+         pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
             * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
 
-      pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
+      pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr = (float)dXcorr;
 
       if (g_staticParams.bIndexDb)
       {
-         pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = _proteinInfo.cPrevAA;
-         pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = _proteinInfo.cNextAA;
+         pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = _proteinInfo.cPrevAA;
+         pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1] = _proteinInfo.cNextAA;
       }
       else
       {
@@ -4059,17 +4154,17 @@ void CometSearch::StorePeptide(int iWhichQuery,
          {
             // check if clip n-term met
             if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
-               pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = 'M';
+               pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = 'M';
             else
-               pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
+               pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = '-';
          }
          else
-            pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+            pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
 
          if (iEndPos == _proteinInfo.iTmpProteinSeqLength-1)
-            pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = '-';
+            pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1] = '-';
          else
-            pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+            pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
       }
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
@@ -4077,17 +4172,17 @@ void CometSearch::StorePeptide(int iWhichQuery,
             && (iStartPos-1 <= _proteinInfo.iPeffOrigResiduePosition+_proteinInfo.iPeffNewResidueCount-1)
             && (_proteinInfo.iPeffOrigResiduePosition <= iEndPos+1))
       {
-         pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
-         //pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
-         pQuery->_pResults[siLowestSpScoreIndex].sPeffOrigResidues = _proteinInfo.sPeffOrigResidues;
-         pQuery->_pResults[siLowestSpScoreIndex].iPeffNewResidueCount = _proteinInfo.iPeffNewResidueCount;
+         pQuery->_pResults[siLowestXcorrScoreIndex].iPeffOrigResiduePosition = _proteinInfo.iPeffOrigResiduePosition - iStartPos;
+         //pQuery->_pResults[siLowestXcorrScoreIndex].cPeffOrigResidue = _proteinInfo.cPeffOrigResidue;
+         pQuery->_pResults[siLowestXcorrScoreIndex].sPeffOrigResidues = _proteinInfo.sPeffOrigResidues;
+         pQuery->_pResults[siLowestXcorrScoreIndex].iPeffNewResidueCount = _proteinInfo.iPeffNewResidueCount;
       }
       else
       {
-         pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
-         //pQuery->_pResults[siLowestSpScoreIndex].cPeffOrigResidue = '\0';
-         pQuery->_pResults[siLowestSpScoreIndex].sPeffOrigResidues.clear();
-         pQuery->_pResults[siLowestSpScoreIndex].iPeffNewResidueCount = 0;
+         pQuery->_pResults[siLowestXcorrScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
+         //pQuery->_pResults[siLowestXcorrScoreIndex].cPeffOrigResidue = '\0';
+         pQuery->_pResults[siLowestXcorrScoreIndex].sPeffOrigResidues.clear();
+         pQuery->_pResults[siLowestXcorrScoreIndex].iPeffNewResidueCount = 0;
       }
 
       // store protein
@@ -4095,70 +4190,111 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pTmp.lWhichProtein = dbe->lProteinFilePosition;
       pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
-      pTmp.cPrevAA = pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0];
-      pTmp.cNextAA = pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1];
+      pTmp.cPrevAA = pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0];
+      pTmp.cNextAA = pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1];
 
-      pQuery->_pResults[siLowestSpScoreIndex].pWhichProtein.clear();
-      pQuery->_pResults[siLowestSpScoreIndex].pWhichDecoyProtein.clear();
-      pQuery->_pResults[siLowestSpScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
+      pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
+      pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
+      pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
       if (bDecoyPep)
-         pQuery->_pResults[siLowestSpScoreIndex].pWhichDecoyProtein.push_back(pTmp);
+         pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
       else
-         pQuery->_pResults[siLowestSpScoreIndex].pWhichProtein.push_back(pTmp);
+         pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.push_back(pTmp);
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (!iFoundVariableMod)  // Normal peptide in variable mod search.
          {
-            memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-            memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+            memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+            memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
          }
          else
          {
-            memcpy(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
+            memcpy(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, piVarModSites, _iSizepiVarModSites);
 
             int iVal;
             for (i = 0; i < iLenPeptide + 2; ++i)
             {
-               iVal = pQuery->_pResults[siLowestSpScoreIndex].piVarModSites[i];
+               iVal = pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[i];
 
                if (iVal > 0)
                {
-                  pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i]
+                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i]
                      = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
                }
                else if (iVal < 0)
                {
                   int iTmp = -iVal - 1;
-                  pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
-                  strcpy(pQuery->_pResults[siLowestSpScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
+                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
+                  strcpy(pQuery->_pResults[siLowestXcorrScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
                }
                else
-                  pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = 0.0;
+                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;
             }
          }
       }
       else
       {
-         memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-         memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+         memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
+         memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
       }
 
-      // Get new lowest score.
+      // walk through stored entries and get new lowest xcorr score
       pQuery->dLowestXcorrScore = pQuery->_pResults[0].fXcorr;
-      siLowestSpScoreIndex=0;
+      siLowestXcorrScoreIndex = 0;
 
       for (i = g_staticParams.options.iNumStored - 1; i > 0; --i)
       {
-         if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
+         if (pQuery->_pResults[i].iLenPeptide == 0)  // empty stored entry
+         {
+            pQuery->dLowestXcorrScore = XCORR_CUTOFF;
+            siLowestXcorrScoreIndex = i;
+         }
+         else if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore)
          {
             pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
-            siLowestSpScoreIndex = i;
+            siLowestXcorrScoreIndex = i;
+         }
+         else if (pQuery->_pResults[i].fXcorr == pQuery->dLowestXcorrScore)
+         {
+            // if there are multiple entries with the same lowest score, 
+            // choose the alphabetical last peptide to replace
+            int iCmp = strncmp(pQuery->_pResults[i].szPeptide,
+                  pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].szPeptide,
+                  pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].iLenPeptide);
+
+            if (iCmp > 0)
+            {
+               pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
+               siLowestXcorrScoreIndex = i;
+            }
+            else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
+            {
+               // different peptides with same mod state; replace last mod state
+               int *piStoredVarModSites;
+
+               piStoredVarModSites = pQuery->_pResults[i].piVarModSites;
+
+               for (int x = 0; x < MAX_PEPTIDE_LEN_P2; ++x)
+               {
+                  if (piVarModSites[x] < piStoredVarModSites[x])
+                  {
+                     pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
+                     siLowestXcorrScoreIndex = i;
+                     break;
+                  }
+                  else if (piVarModSites[x] > piStoredVarModSites[x])
+                  {
+                     // don't swap this peptide entry
+                     break;
+                  }
+               }
+            }
          }
       }
 
-      pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
+      pQuery->siLowestXcorrScoreIndex = siLowestXcorrScoreIndex;
 
       // round lowest score to 6 significant digits
       int iTmp = (int)(pQuery->dLowestXcorrScore * 1000000);
@@ -4184,39 +4320,39 @@ void CometSearch::StorePeptideI(int iWhichQuery,
 
    iLenPeptide = iEndPos - iStartPos + 1;
 
-   short siLowestSpScoreIndex = pQuery->siLowestSpScoreIndex;
+   short siLowestXcorrScoreIndex = pQuery->siLowestXcorrScoreIndex;
 
    pQuery->iMatchPeptideCount++;
-   pQuery->_pResults[siLowestSpScoreIndex].iLenPeptide = iLenPeptide;
+   pQuery->_pResults[siLowestXcorrScoreIndex].iLenPeptide = iLenPeptide;
 
-   memcpy(pQuery->_pResults[siLowestSpScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
-   pQuery->_pResults[siLowestSpScoreIndex].szPeptide[iLenPeptide]='\0';
-   pQuery->_pResults[siLowestSpScoreIndex].dPepMass = dCalcPepMass;
+   memcpy(pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
+   pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide[iLenPeptide]='\0';
+   pQuery->_pResults[siLowestXcorrScoreIndex].dPepMass = dCalcPepMass;
                   
    if (pQuery->_spectrumInfoInternal.iChargeState > 2)
    {
-      pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
+      pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
          * pQuery->_spectrumInfoInternal.iMaxFragCharge
          * g_staticParams.ionInformation.iNumIonSeriesUsed;
    }
    else
    {
-      pQuery->_pResults[siLowestSpScoreIndex].iTotalIons = (iLenPeptide - 1)
+      pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
          * g_staticParams.ionInformation.iNumIonSeriesUsed;
    }
 
-   pQuery->_pResults[siLowestSpScoreIndex].fXcorr = (float)dXcorr;
+   pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr = (float)dXcorr;
 
-   pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[0] = '-';
-   pQuery->_pResults[siLowestSpScoreIndex].szPrevNextAA[1] = '-';
+   pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = '-';
+   pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1] = '-';
 
-   pQuery->_pResults[siLowestSpScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
-   pQuery->_pResults[siLowestSpScoreIndex].sPeffOrigResidues.clear();
-   pQuery->_pResults[siLowestSpScoreIndex].iPeffNewResidueCount = 0;
+   pQuery->_pResults[siLowestXcorrScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
+   pQuery->_pResults[siLowestXcorrScoreIndex].sPeffOrigResidues.clear();
+   pQuery->_pResults[siLowestXcorrScoreIndex].iPeffNewResidueCount = 0;
 
-   pQuery->_pResults[siLowestSpScoreIndex].pWhichProtein.clear();
-   pQuery->_pResults[siLowestSpScoreIndex].pWhichDecoyProtein.clear();
-   pQuery->_pResults[siLowestSpScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
+   pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
+   pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
+   pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
    int iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
    int iSizepdVarModSites = sizeof(double)*MAX_PEPTIDE_LEN_P2;
@@ -4225,48 +4361,48 @@ void CometSearch::StorePeptideI(int iWhichQuery,
    {
       if (!iFoundVariableMod)  // Normal peptide in variable mod search.
       {
-         memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, iSizepiVarModSites);
-         memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, iSizepdVarModSites);
+         memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, iSizepiVarModSites);
+         memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, iSizepdVarModSites);
       }
       else
       {
-         memcpy(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, piVarModSites, iSizepiVarModSites);
+         memcpy(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, piVarModSites, iSizepiVarModSites);
 
          int iVal;
          for (i = 0; i < iLenPeptide + 2; ++i)
          {
-            iVal = pQuery->_pResults[siLowestSpScoreIndex].piVarModSites[i];
+            iVal = pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[i];
 
             if (iVal > 0)
             {
-               pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i]
+               pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i]
                   = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
             }
             else
-               pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites[i] = 0.0;
+               pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;
          }
       }
    }
    else
    {
-      memset(pQuery->_pResults[siLowestSpScoreIndex].piVarModSites, 0, iSizepiVarModSites);
-      memset(pQuery->_pResults[siLowestSpScoreIndex].pdVarModSites, 0, iSizepdVarModSites);
+      memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, iSizepiVarModSites);
+      memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, iSizepdVarModSites);
    }
 
    // Get new lowest score.
    pQuery->dLowestXcorrScore = pQuery->_pResults[0].fXcorr;
-   siLowestSpScoreIndex=0;
+   siLowestXcorrScoreIndex=0;
 
    for (i = g_staticParams.options.iNumStored - 1; i > 0; --i)
    {
       if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
       {
          pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
-         siLowestSpScoreIndex = i;
+         siLowestXcorrScoreIndex = i;
       }
    }
 
-   pQuery->siLowestSpScoreIndex = siLowestSpScoreIndex;
+   pQuery->siLowestXcorrScoreIndex = siLowestXcorrScoreIndex;
 
    // round lowest score to 6 significant digits
    int iTmp = (int)(pQuery->dLowestXcorrScore * 1000000);

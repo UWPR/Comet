@@ -179,19 +179,16 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 
    Results *pOutput;
 
-   float fLowestScore;
    unsigned long uliNumMatched;
 
    if (iPrintTargetDecoy == 2)
    {
-      fLowestScore = pQuery->fLowestDecoySpScore;
       uliNumMatched = pQuery->_uliNumMatchedDecoyPeptides;
       iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
       pOutput = pQuery->_pDecoys;
    }
    else
    {
-      fLowestScore = pQuery->fLowestSpScore;
       uliNumMatched = pQuery->_uliNumMatchedPeptides;
       iNumPrintLines = pQuery->iMatchPeptideCount;
       pOutput = pQuery->_pResults;
@@ -205,7 +202,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
          g_staticParams.szHostName,
          pQuery->_pepMassInfo.dExpPepMass,
          pQuery->_spectrumInfoInternal.dTotalIntensity,
-         fLowestScore,
+         0.0,  // meant to be lowest Sp score; no longer relevant with fast xcorr
          uliNumMatched);
 
    if (g_staticParams.options.bOutputSqtStream)

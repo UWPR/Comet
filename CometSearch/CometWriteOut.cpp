@@ -156,16 +156,14 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    if (bDecoySearch)
    {
-      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %lu",
+      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = 0 # matched peptides = %lu",
             pQuery->_spectrumInfoInternal.dTotalIntensity,
-            pQuery->fLowestDecoySpScore,
             pQuery->_uliNumMatchedDecoyPeptides);
    }
    else
    {
-      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = %0.1f, # matched peptides = %lu",
+      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = 0, # matched peptides = %lu",
             pQuery->_spectrumInfoInternal.dTotalIntensity,
-            pQuery->fLowestSpScore,
             pQuery->_uliNumMatchedPeptides);
    }
 

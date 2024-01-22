@@ -961,11 +961,8 @@ struct Query
 
    short siMaxXcorr;        // index of maximum correlation score in iXcorrHistogram
 
-   short siLowestSpScoreIndex;
-   short siLowestDecoySpScoreIndex;
-
-   float fLowestSpScore;
-   float fLowestDecoySpScore;
+   short siLowestXcorrScoreIndex;
+   short siLowestDecoyXcorrScoreIndex;
 
    double dLowestXcorrScore;
    double dLowestDecoyXcorrScore;
@@ -1013,11 +1010,8 @@ struct Query
       fPar[3]=0.0;
 
       siMaxXcorr = 0;                        // index of maximum correlation score in iXcorrHistogram
-      siLowestSpScoreIndex = 0;
-      siLowestDecoySpScoreIndex = 0;
-
-      fLowestSpScore = 0.0;
-      fLowestDecoySpScore = 0.0;
+      siLowestXcorrScoreIndex = 0;
+      siLowestDecoyXcorrScoreIndex = 0;
 
       dLowestXcorrScore = XCORR_CUTOFF;
       dLowestDecoyXcorrScore = XCORR_CUTOFF;
