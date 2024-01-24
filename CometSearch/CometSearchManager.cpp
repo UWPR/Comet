@@ -50,6 +50,7 @@ string                        g_sCometVersion;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 vector<unsigned int>* g_arrvFragmentIndex[MAX_FRAGINDEX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
+unsigned int* g_iCountFragmentIndex[MAX_FRAGINDEX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
 bool g_vPlainPeptideIndexRead = false;
@@ -926,10 +927,16 @@ bool CometSearchManager::InitializeStaticParams()
       g_staticParams.staticModifications.pdStaticMods[(int)'Z'] = dDoubleData;
 
    if (GetParamValue("min_fragmentindex_mass", dDoubleData))
-      g_staticParams.options.dMinFragIndexMass = dDoubleData;
+   {
+      if (dDoubleData > MIN_FRAGINDEX_MASS && dDoubleData < MAX_FRAGINDEX_MASS)
+         g_staticParams.options.dMinFragIndexMass = dDoubleData;
+   }
 
    if (GetParamValue("max_fragmentindex_mass", dDoubleData))
-      g_staticParams.options.dMaxFragIndexMass = dDoubleData;
+   {
+      if (dDoubleData > MIN_FRAGINDEX_MASS && dDoubleData < MAX_FRAGINDEX_MASS)
+         g_staticParams.options.dMaxFragIndexMass = dDoubleData;
+   }
 
    GetParamValue("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
    if ((g_staticParams.options.iEnzymeTermini != 1)
@@ -1753,7 +1760,7 @@ bool CometSearchManager::DoSearch()
 
    if (!g_staticParams.options.bOutputSqtStream) // && !g_staticParams.bIndexDb)
    {
-      strOut = " Comet version \"" + g_sCometVersion + "\n\n";
+      strOut = " Comet version \"" + g_sCometVersion + "\"\n\n";
 //      if (!g_staticParams.options.bSkipUpdateCheck)
 //       CometCheckForUpdates::CheckForUpdates(strOut.c_str());
 

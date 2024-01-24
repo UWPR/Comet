@@ -474,6 +474,7 @@ struct FragmentPeptidesStruct
 };
 
 extern vector<unsigned int>* g_arrvFragmentIndex[MAX_FRAGINDEX_THREADS];       // array of vectors: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
+extern unsigned int* g_iCountFragmentIndex[MAX_FRAGINDEX_THREADS];       // array of ints: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndex> g_vRawPeptides;
 

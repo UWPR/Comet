@@ -42,10 +42,12 @@ private:
                             int iWhichPeptide,
                             int modNumIdx,
                             short siNtermMod,
-                            short siCtermMod);
+                            short siCtermMod,
+                            bool bCountOnly);
    static void AddFragmentsThreadProc(int iWhichThread,
                                       int iNumIndexingThreads,
-                                      ThreadPool *tp);
+                                      ThreadPool *tp,
+                                      bool bCountOnly);
    static bool SortFragmentsByPepMass(unsigned int x,
                                       unsigned int y);
    static void SortFragmentThreadProc(int i,
