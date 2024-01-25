@@ -31,12 +31,13 @@ class CometSearchManager;
 #define MAX_PEPTIDE_LEN             51       // max # of AA for a peptide; one more than actual # to account for terminating char
 #define MAX_PEPTIDE_LEN_P2          53       // max # of AA for a peptide plus 2 for N/C-term
 
-#define MIN_FRAGINDEX_MASS          180.0
-#define MAX_FRAGINDEX_MASS          2500.0
-#define MAX_FRAGINDEX_THREADS       8
-#define MAX_FRAGINDEX_BATCHSIZE     5000
-#define MAX_FRAGINDEX_NUMPEAKS      200
-#define MAX_FRAGINDEX_NUMSCORED     100
+#define MIN_FRAGINDEX_MATCHEDIONS   3
+#define MIN_FRAGINDEX_MASS          200.0
+#define MAX_FRAGINDEX_MASS          2000.0
+#define MAX_FRAGINDEX_THREADS       12
+#define MAX_FRAGINDEX_BATCHSIZE     2000
+#define MAX_FRAGINDEX_NUMPEAKS      100
+#define MAX_FRAGINDEX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
 #define MAX_COMBINATIONS            2000
 #define MAX_MODS_PER_MOD            5
 #define KEEP_ALL_PEPTIDES           1        // 1 = print up to MAX_COMBINATIONS of peptides; 0 = ignore mods for peptide that exceed MAX_COMBINATIONS

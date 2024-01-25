@@ -164,6 +164,15 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       pSearchThreadPool->wait_on_threads();
 
+      if (!g_staticParams.options.bOutputSqtStream && !(g_staticParams.databaseInfo.iTotalNumProteins % 500))
+      {
+         char szTmp[128];
+         sprintf(szTmp, "%3d%%", iPercentStart);
+         logout(szTmp);
+         fflush(stdout);
+         logout("\b\b\b\b");
+      }
+
       return bSucceeded;
    }
    else
@@ -1269,14 +1278,12 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
       }
    }
 
-   int iMinFragIons = 3;
-
    // copy mPeptides map to a vector of pairs and sort in
    // descending order of matched fragment ions
    std::vector<std::pair<comet_fileoffset_t, int>> vPeptides;
    for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ++ix)
    {
-      if (ix->second >= iMinFragIons)
+      if (ix->second >= MIN_FRAGINDEX_MATCHEDIONS)
          vPeptides.push_back(*ix);
    }
 
@@ -1285,7 +1292,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    // Now that all peptides are determined based on mapping fragment ions,
    // re-score highest matches with xcorr. Let use cutoff of at least
-   // iMinFragIons fragment ion matches.
+   // MIN_FRAGINDEX_MATCHEDIONS fragment ion matches.
 
    int iLenPeptide;
    int iWhichIonSeries;
@@ -1310,7 +1317,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
       if (++iCountPeptidesScored >= MAX_FRAGINDEX_NUMSCORED) // set some cutoff to score only N top peptides based on fragment ion match
          break;
 
-      if (ix->second >= iMinFragIons)
+      if (ix->second >= MIN_FRAGINDEX_MATCHEDIONS)
       {
          int iFoundVariableMod = 0;
 

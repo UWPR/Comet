@@ -142,7 +142,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 {
    size_t iEndSize = g_vRawPeptides.size();
 
-   cout <<  " - count fragments for " << iEndSize << " raw peptides ... "; fflush(stdout);
+   cout <<  " - generate fragment index for " << iEndSize << " raw peptides ... "; fflush(stdout);
    auto tStartTime = chrono::steady_clock::now();
 
    // Create the mutex we will use to protect vFragmentIndex
@@ -173,10 +173,6 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    pFragmentIndexPool->wait_on_threads();
 
-   cout << ElapsedTime(tStartTime) << endl;
-   cout << " - reserve memory and populate fragment index ... "; fflush(stdout);
-   tStartTime = chrono::steady_clock::now();
-
    // now reserve memory for the fragment index vectors
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
    {
@@ -193,9 +189,9 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    pFragmentIndexPool->wait_on_threads();
 
-   cout << ElapsedTime(tStartTime) << endl;
-   cout << " - sorting each fragment mass index bin by peptide mass ... "; fflush(stdout);
-   tStartTime = chrono::steady_clock::now();
+//   cout << ElapsedTime(tStartTime) << endl;
+//   cout << " - sorting each fragment index mass bin by peptide mass ... "; fflush(stdout);
+//   tStartTime = chrono::steady_clock::now();
 
    // combine each g_arrvFragmentIndex[iWhichThread[]
    for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
