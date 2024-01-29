@@ -1231,7 +1231,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
    int iNumFragmentPeaks = 0;
 
-   if (g_staticParams.bIndexDb && mstSpectrum.size() > MAX_FRAGINDEX_NUMPEAKS)
+   if (g_staticParams.bIndexDb && mstSpectrum.size() > FRAGINDEX_MAX_NUMPEAKS)
    {
       // sorts spectrum in ascending order by intensity
       mstSpectrum.sortIntensity();
@@ -1248,7 +1248,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.bIndexDb && iNumFragmentPeaks < MAX_FRAGINDEX_NUMPEAKS)
+         if (g_staticParams.bIndexDb && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
          {
             // Store list of fragment masses for fragment index search
             // Intensities don't matter here

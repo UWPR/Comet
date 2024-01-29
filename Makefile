@@ -51,4 +51,4 @@ cclean:
 
 mstclean:
 	cd $(MSTOOLKIT)/src ; rm -rf expat-2.2.9 zlib-1.2.11/ ; tar xzf expat-2.2.9.tar.gz  ; unzip zlib1211.zip
-	cd $(MSTOOLKIT)/include ; rm -f zconf.h expat.h expat_external.h zlib.h
+	cd $(MSTOOLKIT)/include ; rm -f expat.h expat_external.h zconf.h zlib.h

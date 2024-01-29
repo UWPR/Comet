@@ -142,8 +142,8 @@ bool CometSearch::RunSearch(int iPercentStart,
       }
 
       int iNumIndexingThreads = g_staticParams.options.iNumThreads;
-      if (iNumIndexingThreads > MAX_FRAGINDEX_THREADS)
-         iNumIndexingThreads = MAX_FRAGINDEX_THREADS;
+      if (iNumIndexingThreads > FRAGINDEX_MAX_THREADS)
+         iNumIndexingThreads = FRAGINDEX_MAX_THREADS;
 
       ThreadPool *pSearchThreadPool = tp;
 
@@ -1213,7 +1213,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
    {
-      for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumFragmentThreads; ++iWhichThread)
+      for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iFragIndexNumThreads; ++iWhichThread)
       {
          if (g_arrvFragmentIndex[iWhichThread][i].size() > 0)
          {
@@ -1248,7 +1248,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
          if (uiFragmentMass < g_massRange.g_uiMaxFragmentArrayIndex)
          {
-            for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumFragmentThreads; ++iWhichThread)
+            for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iFragIndexNumThreads; ++iWhichThread)
             {
                // number of peptides that contain this fragment mass
                lNumPeps = g_arrvFragmentIndex[iWhichThread][uiFragmentMass].size();
@@ -1283,7 +1283,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    std::vector<std::pair<comet_fileoffset_t, int>> vPeptides;
    for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ++ix)
    {
-      if (ix->second >= MIN_FRAGINDEX_MATCHEDIONS)
+      if (ix->second >= FRAGINDEX_MIN_MATCHEDIONS)
          vPeptides.push_back(*ix);
    }
 
@@ -1292,7 +1292,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    // Now that all peptides are determined based on mapping fragment ions,
    // re-score highest matches with xcorr. Let use cutoff of at least
-   // MIN_FRAGINDEX_MATCHEDIONS fragment ion matches.
+   // FRAGINDEX_MIN_MATCHEDIONS fragment ion matches.
 
    int iLenPeptide;
    int iWhichIonSeries;
@@ -1314,10 +1314,10 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
       // ix->first references peptide entry in g_vFragmentPeptides[ix->first].iWhichPeptide/.modnumIdx
       // ix->second is matched fragment count
 
-      if (++iCountPeptidesScored >= MAX_FRAGINDEX_NUMSCORED) // set some cutoff to score only N top peptides based on fragment ion match
+      if (++iCountPeptidesScored >= FRAGINDEX_MAX_NUMSCORED) // set some cutoff to score only N top peptides based on fragment ion match
          break;
 
-      if (ix->second >= MIN_FRAGINDEX_MATCHEDIONS)
+      if (ix->second >= FRAGINDEX_MIN_MATCHEDIONS)
       {
          int iFoundVariableMod = 0;
 

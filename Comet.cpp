@@ -1157,6 +1157,36 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%ld", lLongParam);
                pSearchMgr->SetParam("max_iterations", szParamStringVal, lLongParam);
             }
+            else if (!strcmp(szParamName, "fragindex_min_fragmentmass"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("fragindex_min_fragmentmass", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "fragindex_max_fragmentmass"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("fragindex_max_fragmentmass", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "fragindex_num_spectrumpeaks"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("fragindex_num_spectrumpeaks", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "fragindex_max_peptidesscored"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("fragindex_max_peptidesscored", szParamStringVal, iIntParam);
+            }
+            else if (!strcmp(szParamName, "fragindex_min_matchedions"))
+            {
+               sscanf(szParamVal, "%d", &iIntParam);
+               sprintf(szParamStringVal, "%d", iIntParam);
+               pSearchMgr->SetParam("fragindex_min_matchedions", szParamStringVal, iIntParam);
+            }
             else
             {
                sprintf(szErrorMsg, " Warning - invalid parameter found: %s.  Parameter will be ignored.\n", szParamName);
@@ -1462,13 +1492,21 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 
    fprintf(fp,
 "#\n\
+# fragment index\n\
+#\n\
+fragindex_min_fragmentmass = 3         # minimum number of matched fragment ion index peaks for xcorr\n\
+fragindex_num_spectrumpeaks = 100      # number of peaks from spectrum to use for fragment index matching\n\
+fragindex_max_peptidesscored = 100     # xcorr score up to this many peptides per spectrum query\n\
+fragindex_min_matchedions = 200.0      # low mass cutoff for fragment ions\n\
+fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n");
+
+   fprintf(fp,
+"#\n\
 # masses\n\
 #\n\
 peptide_mass_tolerance = 20.0          # upper bound of the precursor mass tolerance\n\
 peptide_mass_tolerance_lower = -20.0   # lower bound of the precursor mass tolerance\n\
 peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm\n\
-mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
-mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n\
 precursor_tolerance_type = 1           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances\n\
 isotope_error = 3                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1\n\
 \n\
@@ -1496,7 +1534,6 @@ variable_mod08 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0 0.0\n\
 max_variable_mods_in_peptide = 5\n\
 require_variable_mod = 0\n\
-scale_fragmentNL = 0                   # 0=no, 1=yes; fragment neutral loss mass is multipled by number of modified residues in the fragment\n\
 \n\
 #\n\
 # fragment ions\n\
@@ -1543,9 +1580,9 @@ activation_method = ALL                # activation method; used if activation m
 # misc parameters\n\
 #\n\
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
-peptide_length_range = 5 50            # minimum and maximum peptide length to analyze (default min %d to allowed max %d)\n\
+peptide_length_range = 5 40            # minimum and maximum peptide length to analyze (default min %d to allowed max %d)\n\
 num_results = 100                      # number of search hits to store internally\n\
-max_duplicate_proteins = 20            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates\n\
+max_duplicate_proteins = 10            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
       1,
@@ -1558,9 +1595,7 @@ fprintf(fp,
 spectrum_batch_size = 15000            # max. # of spectra to search at a time; 0 to search the entire scan range in one loop\n\
 decoy_prefix = DECOY_                  # decoy entries are denoted by this string which is pre-pended to each protein accession\n\
 equal_I_and_L = 1                      # 0=treat I and L as different; 1=treat I and L as same\n\
-output_suffix =                        # add a suffix to output base names i.e. suffix \"-C\" generates base-C.pep.xml from base.mzXML input\n\
 mass_offsets =                         # one or more mass offsets to search (values substracted from deconvoluted precursor mass)\n\
-precursor_NL_ions =                    # one or more precursor neutral loss masses, will be added to xcorr analysis\n\
 \n\
 #\n\
 # spectral processing\n\

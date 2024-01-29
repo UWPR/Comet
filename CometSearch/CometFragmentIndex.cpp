@@ -70,7 +70,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
    // - modification encoding index
    // - modification mass
 
-   for (int iWhichThread = 0; iWhichThread < (g_staticParams.options.iNumThreads > MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads); ++iWhichThread)
+   for (int iWhichThread = 0; iWhichThread < (g_staticParams.options.iNumThreads > FRAGINDEX_MAX_THREADS ? FRAGINDEX_MAX_THREADS : g_staticParams.options.iNumThreads); ++iWhichThread)
    {
       g_arrvFragmentIndex[iWhichThread] = new vector<unsigned int>[g_massRange.g_uiMaxFragmentArrayIndex];
       g_iCountFragmentIndex[iWhichThread] = new unsigned int[g_massRange.g_uiMaxFragmentArrayIndex];
@@ -88,10 +88,10 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up
-   // to MAX_MODS_PER_MOD modified amino acids.
+   // to FRAGINDEX_MAX_MODS_PER_MOD modified amino acids.
 
    // Maximum number of bits that can be set in a modifiable sequence for a given modification.
-   // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than MAX_COMBINATIONS (65,534)
+   // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than FRAGINDEX_MAX_COMBINATIONS (65,534)
 
    for (int i = 0; i < VMODS; ++i)
    {
@@ -118,8 +118,8 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    int ALL_COMBINATION_CNT = 0;
 
    int iMaxNumVariableMods = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
-   if (MAX_MODS_PER_MOD < iMaxNumVariableMods)
-      iMaxNumVariableMods = MAX_MODS_PER_MOD;
+   if (FRAGINDEX_MAX_MODS_PER_MOD < iMaxNumVariableMods)
+      iMaxNumVariableMods = FRAGINDEX_MAX_MODS_PER_MOD;
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    // iEnd is one larger than max peptide length
@@ -140,9 +140,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRawPeptides,
                                                ThreadPool *tp)
 {
-   size_t iEndSize = g_vRawPeptides.size();
-
-   cout <<  " - generate fragment index for " << iEndSize << " raw peptides ... "; fflush(stdout);
+   cout <<  " - generate fragment index ... "; fflush(stdout);
    auto tStartTime = chrono::steady_clock::now();
 
    // Create the mutex we will use to protect vFragmentIndex
@@ -154,9 +152,9 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    int iNumIndexingThreads = g_staticParams.options.iNumThreads;
 
    // Will create a fragment index for each thread, each of which will need
-   // to be queried, so limit this number to MAX_FRAGINDEX_THREADS
-   if (iNumIndexingThreads > MAX_FRAGINDEX_THREADS)
-      iNumIndexingThreads = MAX_FRAGINDEX_THREADS;
+   // to be queried, so limit this number to FRAGINDEX_MAX_THREADS
+   if (iNumIndexingThreads > FRAGINDEX_MAX_THREADS)
+      iNumIndexingThreads = FRAGINDEX_MAX_THREADS;
 
    // Create N number of threads, each of which will iterate through
    // a subset of peptides to calculate their fragment ions
@@ -182,6 +180,8 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
             g_arrvFragmentIndex[iWhichThread][iMass].reserve(g_iCountFragmentIndex[iWhichThread][iMass]);
       }
    }
+
+   cout <<  "memory reserved, populating index ... "; fflush(stdout);
 
    // now populate the fragment index vector
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
@@ -501,7 +501,7 @@ if (!(iWhichPeptide%5000))
             k--;
       }
 
-      if (dBion > g_staticParams.options.dMaxFragIndexMass && dYion > g_staticParams.options.dMaxFragIndexMass)
+      if (dBion > g_staticParams.options.dFragIndexMaxMass && dYion > g_staticParams.options.dFragIndexMaxMass)
          break;
 
       if (i > 1)  // skip first two low mass b- and y-ions
@@ -510,7 +510,7 @@ if (!(iWhichPeptide%5000))
          // push_back() seem to be causing VS compiled exe to slow down to single thread speed.
          // A g++ compiled binary is not similarly affected.
          // A yeast target-decoy fasta with 16M, 80STY invokes over 2 billion of these.
-         if (dBion > g_staticParams.options.dMinFragIndexMass && dBion < g_staticParams.options.dMaxFragIndexMass)
+         if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass)
          {
             if (bCountOnly)
                g_iCountFragmentIndex[iWhichThread][BIN(dBion)] += 1;
@@ -518,7 +518,7 @@ if (!(iWhichPeptide%5000))
                g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
          }
 
-         if (dYion > g_staticParams.options.dMinFragIndexMass && dYion < g_staticParams.options.dMaxFragIndexMass)
+         if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass)
          {
             if (bCountOnly)
                g_iCountFragmentIndex[iWhichThread][BIN(dYion)] += 1;

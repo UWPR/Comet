@@ -31,16 +31,16 @@ class CometSearchManager;
 #define MAX_PEPTIDE_LEN             51       // max # of AA for a peptide; one more than actual # to account for terminating char
 #define MAX_PEPTIDE_LEN_P2          53       // max # of AA for a peptide plus 2 for N/C-term
 
-#define MIN_FRAGINDEX_MATCHEDIONS   3
-#define MIN_FRAGINDEX_MASS          200.0
-#define MAX_FRAGINDEX_MASS          2000.0
-#define MAX_FRAGINDEX_THREADS       12
-#define MAX_FRAGINDEX_BATCHSIZE     2000
-#define MAX_FRAGINDEX_NUMPEAKS      100
-#define MAX_FRAGINDEX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
-#define MAX_COMBINATIONS            2000
-#define MAX_MODS_PER_MOD            5
-#define KEEP_ALL_PEPTIDES           1        // 1 = print up to MAX_COMBINATIONS of peptides; 0 = ignore mods for peptide that exceed MAX_COMBINATIONS
+#define FRAGINDEX_MIN_MATCHEDIONS   3
+#define FRAGINDEX_MIN_MASS          200.0    // minimum fragment ion mass used to generate fragment index
+#define FRAGINDEX_MAX_MASS          2000.0   // maximum fragment ion mass used to generate fragment index
+#define FRAGINDEX_MAX_THREADS       12
+#define FRAGINDEX_MAX_BATCHSIZE     2000     // maximum number of spectra loaded when querying fragment index
+#define FRAGINDEX_MAX_NUMPEAKS      100      // number of spectrum peaks used to query fragment index
+#define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
+#define FRAGINDEX_MAX_COMBINATIONS  2000
+#define FRAGINDEX_MAX_MODS_PER_MOD  5
+#define FRAGINDEX_KEEP_ALL_PEPTIDES 1        // 1 = consider up to FRAGINDEX_MAX_COMBINATIONS of peptides; 0 = ignore all mods for peptide that exceed FRAGINDEX_MAX_COMBINATIONS
 
 #define UNSET_TOLERANCE_MINUS       -99999.9   // default peptide_mass_tolerance_lower value; if this is not changed, used -(peptide_mass_tolerance)
 
@@ -138,6 +138,10 @@ struct Options             // output parameters
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
+   int iFragIndexNumThreads;
+   int iFragIndexMinMatchedIons;
+   int iFragIndexNumSpectrumPeaks;
+   int iFragIndexMaxNumScored;
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;         // intensity cutoff for each peak
    double dMinPercentageIntensity;  // intensity cutoff for each peak as % of base peak
@@ -145,8 +149,8 @@ struct Options             // output parameters
    double dPeptideMassLow;       // MH+ mass
    double dPeptideMassHigh;      // MH+ mass
    double dMinimumXcorr;         // set the minimum xcorr to report (default is 1e-8)
-   double dMaxFragIndexMass;     // maximum fragment index fragment mass
-   double dMinFragIndexMass;     // minimum fragment index fragment mass
+   double dFragIndexMaxMass;     // fragment index maximum fragment mass
+   double dFragIndexMinMass;     // fragment index minimum fragment mass
    IntRange scanRange;
    IntRange peptideLengthRange;
    DoubleRange clearMzRange;
@@ -169,7 +173,6 @@ struct Options             // output parameters
       iRemovePrecursor = a.iRemovePrecursor;
       iDecoySearch = a.iDecoySearch;
       iNumThreads = a.iNumThreads;
-      iNumFragmentThreads = a.iNumFragmentThreads;
       bResolveFullPaths = a.bResolveFullPaths;
       bOutputSqtStream = a.bOutputSqtStream;
       bOutputSqtFile = a.bOutputSqtFile;
@@ -202,12 +205,17 @@ struct Options             // output parameters
       dPeptideMassLow = a.dPeptideMassLow;
       dPeptideMassHigh = a.dPeptideMassHigh;
       dMinimumXcorr = a.dMinimumXcorr;
-      dMaxFragIndexMass = a.dMaxFragIndexMass;
-      dMinFragIndexMass = a.dMinFragIndexMass;
       scanRange = a.scanRange;
       peptideLengthRange = a.peptideLengthRange;
       clearMzRange = a.clearMzRange;
       strcpy(szActivationMethod, a.szActivationMethod);
+
+      dFragIndexMinMass = a.dFragIndexMinMass;                    // smallest fragment mass in fragment index
+      dFragIndexMaxMass = a.dFragIndexMaxMass;                    // largest fragment mass in fragment index
+      iFragIndexNumThreads = a.iFragIndexNumThreads;              // # of threads to use for fragment index (as not sure humongous # makes sense)
+      iFragIndexMinMatchedIons = a.iFragIndexMinMatchedIons;      // minimum # of matched fragment ions peaks required to pass to xcorr
+      iFragIndexNumSpectrumPeaks = a.iFragIndexNumSpectrumPeaks;  // # of peaks from spectrum to use for querying fragment index
+      iFragIndexMaxNumScored = a.iFragIndexMaxNumScored;          // maximum # of peptides passed to xcorr for a spectrum
 
       return *this;
    }
@@ -273,7 +281,7 @@ struct MassRange
    double dMaxMass;
    int    iMaxFragmentCharge;  // global maximum fragment charge
    bool   bNarrowMassRange;    // used to determine how to parse peptides in SearchForPeptides
-   unsigned int g_uiMaxFragmentArrayIndex; // BIN(dMaxFragIndexMass); used as fragment array index
+   unsigned int g_uiMaxFragmentArrayIndex; // BIN(dFragIndexMaxMass); used as fragment array index
 };
 
 extern MassRange g_massRange;
@@ -474,8 +482,8 @@ struct FragmentPeptidesStruct
    }
 };
 
-extern vector<unsigned int>* g_arrvFragmentIndex[MAX_FRAGINDEX_THREADS];       // array of vectors: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
-extern unsigned int* g_iCountFragmentIndex[MAX_FRAGINDEX_THREADS];       // array of ints: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
+extern vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS];       // array of vectors: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
+extern unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS];       // array of ints: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndex> g_vRawPeptides;
 
@@ -888,10 +896,18 @@ struct StaticParams
       options.dPeptideMassLow = 600.0;
       options.dPeptideMassHigh = 8000.0;
       options.dMinimumXcorr = XCORR_CUTOFF;
-      options.dMaxFragIndexMass = MAX_FRAGINDEX_MASS;
-      options.dMinFragIndexMass = MIN_FRAGINDEX_MASS;
+      options.dFragIndexMaxMass = FRAGINDEX_MAX_MASS;
+      options.dFragIndexMinMass = FRAGINDEX_MIN_MASS;
       strcpy(options.szActivationMethod, "ALL");
       // End of mzXML specific parameters.
+
+
+      options.dFragIndexMinMass = FRAGINDEX_MIN_MASS;
+      options.dFragIndexMaxMass = FRAGINDEX_MAX_MASS;
+      options.iFragIndexNumThreads = FRAGINDEX_MAX_THREADS;
+      options.iFragIndexMinMatchedIons = FRAGINDEX_MIN_MATCHEDIONS;
+      options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
+      options.iFragIndexMaxNumScored = FRAGINDEX_MAX_NUMSCORED;
 
       options.clearMzRange.dStart = 0.0;
       options.clearMzRange.dEnd = 0.0;

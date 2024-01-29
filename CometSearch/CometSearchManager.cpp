@@ -49,8 +49,8 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-vector<unsigned int>* g_arrvFragmentIndex[MAX_FRAGINDEX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
-unsigned int* g_iCountFragmentIndex[MAX_FRAGINDEX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
+vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
+unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
 bool g_vPlainPeptideIndexRead = false;
@@ -519,8 +519,8 @@ static bool ValidateSequenceDatabaseFile()
 
       // if searching fragment index database, limit load of query spectra as no
       // need to load all spectra into memory since querying spectra sequentially
-      if (g_staticParams.options.iSpectrumBatchSize > MAX_FRAGINDEX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
-         g_staticParams.options.iSpectrumBatchSize = MAX_FRAGINDEX_BATCHSIZE;
+      if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
+         g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
    }
 
    if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
@@ -926,17 +926,20 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("add_Z_user_amino_acid", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'Z'] = dDoubleData;
 
-   if (GetParamValue("min_fragmentindex_mass", dDoubleData))
+   if (GetParamValue("fragindex_min_fragmentmass", dDoubleData))
    {
-      if (dDoubleData > MIN_FRAGINDEX_MASS && dDoubleData < MAX_FRAGINDEX_MASS)
-         g_staticParams.options.dMinFragIndexMass = dDoubleData;
+      if (dDoubleData >= FRAGINDEX_MIN_MASS && dDoubleData <= FRAGINDEX_MAX_MASS)
+         g_staticParams.options.dFragIndexMinMass = dDoubleData;
    }
+   if (GetParamValue("fragindex_max_fragmentmass", dDoubleData))
+   {
+      if (dDoubleData >= FRAGINDEX_MIN_MASS && dDoubleData <= FRAGINDEX_MAX_MASS)
+         g_staticParams.options.dFragIndexMaxMass = dDoubleData;
+   }
+   GetParamValue("fragindex_num_spectrumpeaks", g_staticParams.options.iFragIndexNumSpectrumPeaks);
+   GetParamValue("fragindex_max_peptidesscored", g_staticParams.options.iFragIndexMaxNumScored);
+   GetParamValue("fragindex_min_matchedions", g_staticParams.options.iFragIndexMinMatchedIons);
 
-   if (GetParamValue("max_fragmentindex_mass", dDoubleData))
-   {
-      if (dDoubleData > MIN_FRAGINDEX_MASS && dDoubleData < MAX_FRAGINDEX_MASS)
-         g_staticParams.options.dMaxFragIndexMass = dDoubleData;
-   }
 
    GetParamValue("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
    if ((g_staticParams.options.iEnzymeTermini != 1)
@@ -1417,8 +1420,8 @@ bool CometSearchManager::InitializeStaticParams()
 // for (int x=1; x<=9; ++x)
 //    printf("OK bit %d: %d\n", x, (g_staticParams.variableModParameters.iRequireVarMod >> x) & 1U);
 
-   g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dMaxFragIndexMass) + 1;
-   g_staticParams.options.iNumFragmentThreads = (g_staticParams.options.iNumThreads > MAX_FRAGINDEX_THREADS ? MAX_FRAGINDEX_THREADS : g_staticParams.options.iNumThreads);
+   g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dFragIndexMaxMass) + 1;
+   g_staticParams.options.iFragIndexNumThreads = (g_staticParams.options.iNumThreads > FRAGINDEX_MAX_THREADS ? FRAGINDEX_MAX_THREADS : g_staticParams.options.iNumThreads);
 
    return true;
 }
