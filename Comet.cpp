@@ -1143,7 +1143,7 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%ld", lLongParam);
                pSearchMgr->SetParam("max_iterations", szParamStringVal, lLongParam);
             }
-            if (!strcmp(szParamName, "fragindex_min_fragmentmass"))
+            else if (!strcmp(szParamName, "fragindex_min_fragmentmass"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                sprintf(szParamStringVal, "%lf", dDoubleParam);
