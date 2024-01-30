@@ -318,27 +318,6 @@ void LoadParameters(char *pszParamsFile,
                strcpy(szFile, szParamVal);
                pSearchMgr->SetParam("database_name", szFile, szFile);
             }
-            else if (!strcmp(szParamName, "dia_windows_file"))
-            {
-               char szFile[SIZE_FILE];
-
-               // Remove white spaces at beginning/end of szParamVal
-               int iLen = (int)strlen(szParamVal);
-               char *szTrimmed = szParamVal;
-
-               while (isspace(szTrimmed[iLen -1]))  // trim end
-                  szTrimmed[--iLen] = 0;
-               while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
-               {
-                  ++szTrimmed;
-                  --iLen;
-               }
-
-               memmove(szParamVal, szTrimmed, iLen+1);
-
-               strcpy(szFile, szParamVal);
-               pSearchMgr->SetParam("dia_windows_file", szFile, szFile);
-            }
             else if (!strcmp(szParamName, "peff_obo"))
             {
                char szFile[SIZE_FILE];
@@ -1567,7 +1546,7 @@ activation_method = ALL                # activation method; used if activation m
 #\n\
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
 peptide_length_range = 5 40            # minimum and maximum peptide length to analyze (default min %d to allowed max %d)\n\
-num_results = 100                      # number of search hits to store internally\n\
+num_results = 100                      # number of results to store internally for Sp rank only; if Sp rank is not used, set this to num_output_lines\n\
 max_duplicate_proteins = 10            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",

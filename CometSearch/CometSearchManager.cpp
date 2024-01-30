@@ -37,7 +37,6 @@
 
 std::vector<Query*>           g_pvQuery;
 std::vector<InputFileInfo *>  g_pvInputFiles;
-std::vector<double>           g_pvDIAWindows;
 StaticParams                  g_staticParams;
 vector<DBIndex>               g_pvDBIndex;
 MassRange                     g_massRange;
@@ -639,9 +638,6 @@ bool CometSearchManager::InitializeStaticParams()
       if (strData.length() > 0)
          strcpy(g_staticParams.szTxtFileExt, strData.c_str());
    } 
-
-   if (GetParamValue("dia_windows_file", strData))
-      strcpy(g_staticParams.szDIAWindowsFile, strData.c_str());
 
    if (GetParamValue("peff_obo", strData))
       strcpy(g_staticParams.peffInfo.szPeffOBO, strData.c_str());
@@ -1312,17 +1308,12 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   // Do Sp scoring after search based on how many lines to print out.
-   if (g_staticParams.options.iNumStored < 1)
-      g_staticParams.options.iNumStored = 1;
-
-   if (g_staticParams.options.iNumPeptideOutputLines > g_staticParams.options.iNumStored)
-      g_staticParams.options.iNumPeptideOutputLines = g_staticParams.options.iNumStored;
-   else if (g_staticParams.options.iNumPeptideOutputLines < 1)
+   if (g_staticParams.options.iNumPeptideOutputLines < 1)
       g_staticParams.options.iNumPeptideOutputLines = 1;
 
-   if (g_staticParams.peaksInformation.iNumMatchPeaks > 5)
-      g_staticParams.peaksInformation.iNumMatchPeaks = 5;
+   // set iNumStored to be at least 1 bigger than iNumPeptideOutputLines for post processing code
+   if (g_staticParams.options.iNumStored <= g_staticParams.options.iNumPeptideOutputLines)
+      g_staticParams.options.iNumStored = g_staticParams.options.iNumPeptideOutputLines + 1;
 
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
    {
@@ -1793,47 +1784,6 @@ bool CometSearchManager::DoSearch()
    bool bBlankSearchFile = false;
 
    tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
-
-   if (strlen(g_staticParams.szDIAWindowsFile) > 0)
-   {
-      FILE *fp;
-
-      if ((fp=fopen(g_staticParams.szDIAWindowsFile, "r")) != NULL)
-      {
-         // read DIA windows
-         double dStartMass=0.0,
-                dEndMass=0.0;
-         char szTmp[512];
-
-         while (fgets(szTmp, 512, fp))
-         {
-            sscanf(szTmp, "%lf %lf", &dStartMass, &dEndMass);
-            if (dEndMass <= dStartMass)
-            {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error - DIA window file end mass <= start mass:  %f %f.\n",  dStartMass, dEndMass);
-               string strErrorMsg(szErrorMsg);
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
-               
-               g_pvDIAWindows.clear();
-               return false;
-            }
-
-            g_pvDIAWindows.push_back(dStartMass);
-            g_pvDIAWindows.push_back(dEndMass);
-         }
-         fclose(fp);
-      }
-      else
-      {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg,  " Error - cannot read DIA window file \"%s\".\n",  g_staticParams.szDIAWindowsFile);
-         string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
-      }
-   }
 
    for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
    {
@@ -2382,24 +2332,6 @@ bool CometSearchManager::DoSearch()
                      iMangoIndex++;
 
                   sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c", (int)iMangoIndex/2, (iMangoIndex % 2)?'B':'A');
-               }
-            }
-
-            if (g_pvDIAWindows.size() > 0)
-            {
-               // delete scan entries that do not map to a DIA window;
-               // should we throw error and abort search in this case instead?
-               std::vector<Query*>::iterator it = g_pvQuery.begin();
-
-               while(it != g_pvQuery.end())
-               {
-                  if ( (*it)->_pepMassInfo.dPeptideMassToleranceMinus == 0.0
-                        || (*it)->_pepMassInfo.dPeptideMassTolerancePlus == 0.0)
-                  {
-                     g_pvQuery.erase(it);
-                  }
-                  else
-                     ++it;
                }
             }
 

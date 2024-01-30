@@ -3147,109 +3147,124 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
 {
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   if (g_pvDIAWindows.size() == 0)
+   int iMassOffsetsSize = (int)g_staticParams.vectorMassOffsets.size();
+
+   // this first check sees if calculated pepmass is within the low/high mass
+   // range (including isotope offsets) of query.
+   if ((dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus)
+         && (dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus))
    {
-      int iMassOffsetsSize = (int)g_staticParams.vectorMassOffsets.size();
-
-      // this first check sees if calculated pepmass is within the low/high mass
-      // range (including isotope offsets) of query.
-      if ((dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus)
-            && (dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus))
+      if (g_staticParams.tolerances.iIsotopeError == 0 && iMassOffsetsSize == 0)
+         return true;
+      else if (iMassOffsetsSize > 0)
       {
-         if (g_staticParams.tolerances.iIsotopeError == 0 && iMassOffsetsSize == 0)
-            return true;
-         else if (iMassOffsetsSize > 0)
+         // need to account for both mass offsets and possible isotope offsets
+
+         // isotope 0 = 0
+         // isotope 1 = 0,1
+         // isotope 2 = 0,1,2
+         // isotope 3 = 0,1,2,3
+         // isotope 4 = -1,0,2,3
+         // isotope 5 = -1,0,1
+         // isotope 6 = -3,-2,-1,0,1,2,3
+         // isotope 7 = -8,-4,0,4,8
+
+         if (g_staticParams.tolerances.iIsotopeError <= 6)
          {
-            // need to account for both mass offsets and possible isotope offsets
+            // first handle larger C13 isotopes
+            int iMaxIsotope = 3;
+            if (g_staticParams.tolerances.iIsotopeError < 3)
+               iMaxIsotope = g_staticParams.tolerances.iIsotopeError;
 
-            // isotope 0 = 0
-            // isotope 1 = 0,1
-            // isotope 2 = 0,1,2
-            // isotope 3 = 0,1,2,3
-            // isotope 4 = -1,0,2,3
-            // isotope 5 = -1,0,1
-            // isotope 6 = -3,-2,-1,0,1,2,3
-            // isotope 7 = -8,-4,0,4,8
+            if (g_staticParams.tolerances.iIsotopeError == 5)
+               iMaxIsotope = 1;
 
-            if (g_staticParams.tolerances.iIsotopeError <= 6)
+            for (int i = 0; i < iMassOffsetsSize; ++i)
             {
-               // first handle larger C13 isotopes
-               int iMaxIsotope = 3;
-               if (g_staticParams.tolerances.iIsotopeError < 3)
-                  iMaxIsotope = g_staticParams.tolerances.iIsotopeError;
+               for (int x = 0; x <= iMaxIsotope; ++x)
+               {
+                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x*C13_DIFF
+                             && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x*C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+                  {
+                     return true;
+                  }
+               }
+            }
 
-               if (g_staticParams.tolerances.iIsotopeError == 5)
+            if (g_staticParams.tolerances.iIsotopeError > 3 && g_staticParams.tolerances.iIsotopeError < 7)
+            {
+               // now consider negative C13 isotopes aka triggered peak is less than real peak
+               if (g_staticParams.tolerances.iIsotopeError == 4 || g_staticParams.tolerances.iIsotopeError == 5)
                   iMaxIsotope = 1;
+               else  // g_staticParams.tolerances.iIsotopeError == 6
+                  iMaxIsotope = 3;
 
                for (int i = 0; i < iMassOffsetsSize; ++i)
                {
                   for (int x = 0; x <= iMaxIsotope; ++x)
                   {
-                     if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x*C13_DIFF
-                                && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x*C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+                     if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] - x*C13_DIFF
+                                && dCalcPepMass + g_staticParams.vectorMassOffsets[i] - x*C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
                      {
                         return true;
                      }
                   }
                }
+            }
 
-               if (g_staticParams.tolerances.iIsotopeError > 3 && g_staticParams.tolerances.iIsotopeError < 7)
+            return false;
+         }
+         else if (g_staticParams.tolerances.iIsotopeError == 7)
+         {
+            for (int i = 0; i < iMassOffsetsSize; ++i)
+            {
+               for (int x = -2; x <= 2; ++x)
                {
-                  // now consider negative C13 isotopes aka triggered peak is less than real peak
-                  if (g_staticParams.tolerances.iIsotopeError == 4 || g_staticParams.tolerances.iIsotopeError == 5)
-                     iMaxIsotope = 1;
-                  else  // g_staticParams.tolerances.iIsotopeError == 6
-                     iMaxIsotope = 3;
-
-                  for (int i = 0; i < iMassOffsetsSize; ++i)
+                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x*4.0070995
+                             && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x*4.0070995 <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
                   {
-                     for (int x = 0; x <= iMaxIsotope; ++x)
-                     {
-                        if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] - x*C13_DIFF
-                                   && dCalcPepMass + g_staticParams.vectorMassOffsets[i] - x*C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
-                        {
-                           return true;
-                        }
-                     }
+                     return true;
                   }
                }
-
-               return false;
             }
-            else if (g_staticParams.tolerances.iIsotopeError == 7)
-            {
-               for (int i = 0; i < iMassOffsetsSize; ++i)
-               {
-                  for (int x = -2; x <= 2; ++x)
-                  {
-                     if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x*4.0070995
-                                && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x*4.0070995 <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
-                     {
-                        return true;
-                     }
-                  }
-               }
-               return false;
-            }
-            else
-            {
-               string strErrorMsg = " Error - iIsotopeError=" + to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg.c_str());
-               return false;
-            }
+            return false;
          }
          else
          {
-            if (g_staticParams.tolerances.iIsotopeError <= 6)
-            {
-               // first handle larger C13 isotopes
-               int iMaxIsotope = 3;
-               if (g_staticParams.tolerances.iIsotopeError < 3)
-                  iMaxIsotope = g_staticParams.tolerances.iIsotopeError;
+            string strErrorMsg = " Error - iIsotopeError=" + to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg.c_str());
+            return false;
+         }
+      }
+      else
+      {
+         if (g_staticParams.tolerances.iIsotopeError <= 6)
+         {
+            // first handle larger C13 isotopes
+            int iMaxIsotope = 3;
+            if (g_staticParams.tolerances.iIsotopeError < 3)
+               iMaxIsotope = g_staticParams.tolerances.iIsotopeError;
 
-               if (g_staticParams.tolerances.iIsotopeError == 6)
+            if (g_staticParams.tolerances.iIsotopeError == 6)
+               iMaxIsotope = 1;
+
+            for (int x = 0; x <= iMaxIsotope; ++x)
+            {
+               if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x*C13_DIFF
+                          && dCalcPepMass + x*C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+               {
+                  return true;
+               }
+            }
+
+            if (g_staticParams.tolerances.iIsotopeError > 3 && g_staticParams.tolerances.iIsotopeError < 7)
+            {
+               // now consider negative C13 isotopes
+               if (g_staticParams.tolerances.iIsotopeError == 4 || g_staticParams.tolerances.iIsotopeError == 6)
                   iMaxIsotope = 1;
+               else  // g_staticParams.tolerances.iIsotopeError == 5
+                  iMaxIsotope = 3;
 
                for (int x = 0; x <= iMaxIsotope; ++x)
                {
@@ -3259,58 +3274,31 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
                      return true;
                   }
                }
-
-               if (g_staticParams.tolerances.iIsotopeError > 3 && g_staticParams.tolerances.iIsotopeError < 7)
-               {
-                  // now consider negative C13 isotopes
-                  if (g_staticParams.tolerances.iIsotopeError == 4 || g_staticParams.tolerances.iIsotopeError == 6)
-                     iMaxIsotope = 1;
-                  else  // g_staticParams.tolerances.iIsotopeError == 5
-                     iMaxIsotope = 3;
-
-                  for (int x = 0; x <= iMaxIsotope; ++x)
-                  {
-                     if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x*C13_DIFF
-                                && dCalcPepMass + x*C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
-                     {
-                        return true;
-                     }
-                  }
-               }
-
-               return false;
-            }
-            else if (g_staticParams.tolerances.iIsotopeError == 7)
-            {
-               for (int x = -2; x <= 2; ++x)
-               {
-                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x*4.0070995
-                             && dCalcPepMass + x*4.0070995 <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
-                  {
-                     return true;
-                  }
-               }
-               return false;
             }
 
-            // only deal with isotope offsets; no mass offsets
-            else
-            {
-               string strErrorMsg = " Error - iIsotopeError=" + to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg.c_str());
-               return false;
-            }
+            return false;
          }
-      }
-   }
-   else
-   {
-      // use DIA windows
-      if (pQuery->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
-            && dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus)
-      {
-         return true;
+         else if (g_staticParams.tolerances.iIsotopeError == 7)
+         {
+            for (int x = -2; x <= 2; ++x)
+            {
+               if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x*4.0070995
+                          && dCalcPepMass + x*4.0070995 <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+               {
+                  return true;
+               }
+            }
+            return false;
+         }
+
+         // only deal with isotope offsets; no mass offsets
+         else
+         {
+            string strErrorMsg = " Error - iIsotopeError=" + to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg.c_str());
+            return false;
+         }
       }
    }
 

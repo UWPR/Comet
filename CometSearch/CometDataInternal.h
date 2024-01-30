@@ -637,20 +637,6 @@ struct ToleranceParams
    }
 };
 
-struct PeaksInfo
-{
-   int iNumMatchPeaks;
-   int iNumAllowedMatchPeakErrors;
-
-   PeaksInfo& operator=(PeaksInfo& a)
-   {
-      iNumMatchPeaks = a.iNumMatchPeaks;
-      iNumAllowedMatchPeakErrors = a.iNumAllowedMatchPeakErrors;
-
-      return *this;
-   }
-};
-
 struct IonInfo
 {
    int iNumIonSeriesUsed;
@@ -702,7 +688,6 @@ struct StaticParams
    MassUtil        massUtility;
    double          dInverseBinWidth;    // this is used in BIN() many times so use inverse binWidth to do multiply vs. divide
    double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
-   PeaksInfo       peaksInformation;
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
    int             bIndexDb;            // 0 = normal fasta; 1 = indexed database
@@ -710,7 +695,6 @@ struct StaticParams
    vector<double>  precursorNLIons;
    int             iPrecursorNLSize;
    int             iOldModsEncoding;
-   char            szDIAWindowsFile[SIZE_FILE];
    bool            bSkipToStartScan;
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
 
@@ -748,7 +732,6 @@ struct StaticParams
        dInverseBinWidth = a.dInverseBinWidth;
        dOneMinusBinOffset = a.dOneMinusBinOffset;
        iXcorrProcessingOffset = a.iXcorrProcessingOffset;
-       peaksInformation = a.peaksInformation;
        ionInformation = a.ionInformation;
        return *this;
    }
@@ -773,7 +756,6 @@ struct StaticParams
       peffInfo.szPeffOBO[0] = '\0';
       peffInfo.iPeffSearch = 0;
 
-      szDIAWindowsFile[0]='\0';
       iPrecursorNLSize = 0;
 
       for (i = 0; i < SIZE_MASS; ++i)
@@ -934,8 +916,6 @@ struct StaticParams
 };
 
 extern StaticParams    g_staticParams;
-
-extern vector<double>  g_pvDIAWindows;    // vector of start-end masses for DIA window; even number start mass, odd number end mass
 
 extern string g_psGITHUB_SHA;             // grab the GITHUB_SHA environment variable and trim to 7 chars; null if environment variable not present
 
