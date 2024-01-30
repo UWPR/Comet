@@ -778,14 +778,12 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("skip_researching", szParamStringVal, iIntParam);
             }
-/*
             else if (!strcmp(szParamName, "skip_updatecheck"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("skip_updatecheck", szParamStringVal, iIntParam);
             }
-*/
             else if (!strcmp(szParamName, "peff_verbose_output"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1067,18 +1065,6 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("max_fragment_charge", szParamStringVal, iIntParam);
             }
-            else if (!strcmp(szParamName, "min_fragmentindex_mass"))
-            {
-               sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("min_fragmentindex_mass", szParamStringVal, dDoubleParam);
-            }
-            else if (!strcmp(szParamName, "max_fragmentindex_mass"))
-            {
-               sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
-               pSearchMgr->SetParam("max_fragmentindex_mass", szParamStringVal, dDoubleParam);
-            }
             else if (!strcmp(szParamName, "max_precursor_charge"))
             {
                iIntParam = 0;
@@ -1157,7 +1143,7 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%ld", lLongParam);
                pSearchMgr->SetParam("max_iterations", szParamStringVal, lLongParam);
             }
-            else if (!strcmp(szParamName, "fragindex_min_fragmentmass"))
+            if (!strcmp(szParamName, "fragindex_min_fragmentmass"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                sprintf(szParamStringVal, "%lf", dDoubleParam);
