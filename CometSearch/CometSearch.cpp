@@ -3652,6 +3652,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
+   int iTmp = (int)(dXcorr * 1000.0);
+   dXcorr = iTmp / 1000.0;  // round to 4 digits
+
    Threading::LockMutex(pQuery->accessMutex);
 
    // Increment matched peptide counts.
@@ -3684,8 +3687,6 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          pQuery->iHistogramCount += 1;
    }
 
-   // Now find the lowest xcorr and index within _pResults/_pDecoys which will be updated
-   // with the next peptide stored.
    double dLowestXcorrScore;
 
    if (bDecoyPep && g_staticParams.options.iDecoySearch == 2)
@@ -3693,87 +3694,19 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    else
       dLowestXcorrScore = pQuery->dLowestXcorrScore;
 
-   if (dXcorr >= dLowestXcorrScore)
+   if (dXcorr >= dLowestXcorrScore && iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
    {
-      bool bContinue = true;
-
-      if (dXcorr == dLowestXcorrScore && dXcorr > XCORR_CUTOFF)
+      // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL and no internal decoys
+      if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL)
       {
-         // To make search results always match with respect to scored peptides lower in the
-         // list, which can affect Sp score rank, this check here is to always store the same
-         // lowest scoring peptide which would otherwise not necessarily be the case in a
-         // multithreaded search.  So always store the alphabetical first peptide with lowest
-         // mod state.
-
-         int iCmp;
-
-         if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
-         {
-            iCmp = strncmp(szProteinSeq + iStartPos,
-               pQuery->_pDecoys[pQuery->siLowestDecoyXcorrScoreIndex].szPeptide,
-               pQuery->_pDecoys[pQuery->siLowestDecoyXcorrScoreIndex].iLenPeptide);
-         }
-         else
-         {
-            iCmp = strncmp(szProteinSeq + iStartPos,
-               pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].szPeptide,
-               pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].iLenPeptide);
-         }
-
-         if (iCmp < 0)       // current peptide alphabetical earlier, replace lowest scoring peptide
-         {
-            bContinue = true;
-         }
-         else if (iCmp > 0)  // current peptide alphabetical later, don't replace lowest scoring peptide
-         {
-            bContinue = false;
-         }
-         else                // same peptides, now choose based on mod state
-         {
-            if (g_staticParams.variableModParameters.bVarModSearch)
-            {
-               int *piStoredVarModSites;
-
-               if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
-                  piStoredVarModSites = pQuery->_pDecoys[pQuery->siLowestDecoyXcorrScoreIndex].piVarModSites;
-               else
-                  piStoredVarModSites = pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].piVarModSites;
-
-               for (int x = 0 ; x < MAX_PEPTIDE_LEN_P2; ++x)
-               {
-                  if (piVarModSites[x] < piStoredVarModSites[x])  // store if lower mod state
-                  {
-                     bContinue = true;
-                     break;
-                  }
-                  else if (piVarModSites[x] > piStoredVarModSites[x])  // don't store as higher mod state
-                  {
-                     bContinue = false;
-                     break;
-                  }
-               }
-            }
-            else             // same unmodified peptide already stored
-            {
-               bContinue = false;
-            }
-         }
+         StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
+            dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
       }
-
-      if (bContinue)
+      else if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
+         szProteinSeq, bDecoyPep, piVarModSites, dbe))
       {
-         // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL and no internal decoys
-         if (g_staticParams.bIndexDb && !g_staticParams.options.bTreatSameIL)
-         {
-            StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-               dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
-         }
-         else if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
-            szProteinSeq, bDecoyPep, piVarModSites, dbe))
-         {
-            StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-               dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
-         }
+         StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
+            dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
       }
    }
 
@@ -3835,6 +3768,9 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
    }
 
    dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
+
+   int iTmp = (int)(dXcorr * 1000.0);
+   dXcorr = iTmp / 1000.0;  // round to 4 digits
 
    Threading::LockMutex(pQuery->accessMutex);
 
@@ -3927,9 +3863,6 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
    iLenPeptide = iEndPos - iStartPos + 1;
    iLenPeptide2 = iLenPeptide + 2;
-
-   if (iLenPeptide > g_staticParams.options.peptideLengthRange.iEnd)
-      return;
 
    if (g_staticParams.options.iDecoySearch==2 && bDecoyPep)  // store separate decoys
    {
@@ -4113,9 +4046,67 @@ void CometSearch::StorePeptide(int iWhichQuery,
    }
    else
    {
-      short siLowestXcorrScoreIndex;
+      short siLowestXcorrScoreIndex = 0;
 
-      siLowestXcorrScoreIndex = pQuery->siLowestXcorrScoreIndex;
+      for (short siA = 1; siA < g_staticParams.options.iNumStored; ++siA)
+      {
+         if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr > pQuery->_pResults[siA].fXcorr)
+         {
+            siLowestXcorrScoreIndex = siA;
+         }
+         else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr ==  pQuery->_pResults[siA].fXcorr)
+         {
+            // if current lowest score is the same as current siA peptide,
+            // determine if need to point to siA peptide as the one to replace
+            // based on keeping lower sequence, lower mod state
+
+            int iCmp = strcmp(pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide, pQuery->_pResults[siA].szPeptide);
+
+            if (iCmp < 0)
+            {
+               // we want to keep lower peptide so point new lowest entry to the higher peptide
+               siLowestXcorrScoreIndex = siA;
+            }
+            else if (iCmp == 0)
+            {
+               if (g_staticParams.variableModParameters.bVarModSearch)
+               {
+                  // different peptides with same mod state; replace last mod state
+                  int *piStoredVarModSites = pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites;
+
+                  for (int x = 0; x < pQuery->_pResults[siA].iLenPeptide + 2; ++x)
+                  {
+                     if (pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[x] < pQuery->_pResults[siA].piVarModSites[x])
+                     {
+                        // keep peptide with lower mod state so point new entry to higher mod state
+                        siLowestXcorrScoreIndex = siA;
+                        break;
+                     }
+                     else if (piVarModSites[x] > piStoredVarModSites[x])
+                     {
+                        // don't swap this peptide entry
+                        break;
+                     }
+                  }
+               }
+               else if (pQuery->_pResults[siA].iLenPeptide > 0)
+               {
+                  // should not have gotten here; duplicate unmodified peptide would get
+                  // flagged in CheckDuplicates
+                  printf("\n Error in StorePeptides. %s stored twice:  %d %lf, %d %lf\n",
+                        pQuery->_pResults[siA].szPeptide,
+                        siA,
+                        pQuery->_pResults[siA].fXcorr,
+                        siLowestXcorrScoreIndex,
+                        pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr);
+
+                  exit(1);
+               }
+            }
+         }
+      }
+
+//    siLowestXcorrScoreIndex = pQuery->siLowestXcorrScoreIndex;
 
       pQuery->iMatchPeptideCount++;
       pQuery->_pResults[siLowestXcorrScoreIndex].iLenPeptide = iLenPeptide;
@@ -4239,61 +4230,29 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pQuery->dLowestXcorrScore = pQuery->_pResults[0].fXcorr;
       siLowestXcorrScoreIndex = 0;
 
-      for (i = g_staticParams.options.iNumStored - 1; i > 0; --i)
+      for (i = 1 ; i < g_staticParams.options.iNumStored; ++i)
       {
+/*
          if (pQuery->_pResults[i].iLenPeptide == 0)  // empty stored entry
          {
             pQuery->dLowestXcorrScore = XCORR_CUTOFF;
-            siLowestXcorrScoreIndex = i;
+            break;
          }
          else if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore)
          {
             pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
-            siLowestXcorrScoreIndex = i;
          }
-         else if (pQuery->_pResults[i].fXcorr == pQuery->dLowestXcorrScore)
+         if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
+*/
+         if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore)
          {
-            // if there are multiple entries with the same lowest score, 
-            // choose the alphabetical last peptide to replace
-            int iCmp = strncmp(pQuery->_pResults[i].szPeptide,
-                  pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].szPeptide,
-                  pQuery->_pResults[pQuery->siLowestXcorrScoreIndex].iLenPeptide);
-
-            if (iCmp > 0)
-            {
-               pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
-               siLowestXcorrScoreIndex = i;
-            }
-            else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
-            {
-               // different peptides with same mod state; replace last mod state
-               int *piStoredVarModSites;
-
-               piStoredVarModSites = pQuery->_pResults[i].piVarModSites;
-
-               for (int x = 0; x < MAX_PEPTIDE_LEN_P2; ++x)
-               {
-                  if (piVarModSites[x] < piStoredVarModSites[x])
-                  {
-                     pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
-                     siLowestXcorrScoreIndex = i;
-                     break;
-                  }
-                  else if (piVarModSites[x] > piStoredVarModSites[x])
-                  {
-                     // don't swap this peptide entry
-                     break;
-                  }
-               }
-            }
+            pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
+            siLowestXcorrScoreIndex = i;
          }
       }
 
       pQuery->siLowestXcorrScoreIndex = siLowestXcorrScoreIndex;
 
-      // round lowest score to 6 significant digits
-      int iTmp = (int)(pQuery->dLowestXcorrScore * 1000000);
-      pQuery->dLowestXcorrScore = (double)iTmp / 1000000.0;
    }
 }
 
@@ -4418,18 +4377,18 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                                 struct sDBEntry *dbe)
 {
    int i,
-       iLenMinus1,
+       iLenPeptide,
        bIsDuplicate=0;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   iLenMinus1 = iEndPos-iStartPos+1;
+   iLenPeptide = iEndPos - iStartPos + 1;
 
    if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
    {
       for (i = 0; i < g_staticParams.options.iNumStored; ++i)
       {
          // Quick check of peptide sequence length first.
-         if (iLenMinus1 == pQuery->_pDecoys[i].iLenPeptide && isEqual(dCalcPepMass, pQuery->_pDecoys[i].dPepMass))
+         if (iLenPeptide == pQuery->_pDecoys[i].iLenPeptide && isEqual(dCalcPepMass, pQuery->_pDecoys[i].dPepMass))
          {
             if (!memcmp(pQuery->_pDecoys[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*(pQuery->_pDecoys[i].iLenPeptide)))
             {
@@ -4546,7 +4505,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       for (i = 0; i < g_staticParams.options.iNumStored; ++i)
       {
          // Quick check of peptide sequence length.
-         if (iLenMinus1 == pQuery->_pResults[i].iLenPeptide && isEqual(dCalcPepMass, pQuery->_pResults[i].dPepMass))
+         if (iLenPeptide == pQuery->_pResults[i].iLenPeptide) // && isEqual(dCalcPepMass, pQuery->_pResults[i].dPepMass))
          {
             if (!memcmp(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*pQuery->_pResults[i].iLenPeptide))
             {

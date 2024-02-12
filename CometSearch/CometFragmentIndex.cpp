@@ -209,7 +209,6 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    cout << ElapsedTime(tStartTime) << endl;
 
-/*
    // count and report the # of entries in the fragment index
    unsigned long long liCount = 0;
    for (unsigned int ii = 0; ii < g_massRange.g_uiMaxFragmentArrayIndex; ++ii)
@@ -221,8 +220,8 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
             liCount += lTmp;
       }
    }
-   printf("   - total # of entries in the fragment index: %lld\n", liCount);
-*/
+   printf("   - total # of entries in the fragment index: %0.2E\n", (double)liCount);
+
 }
 
 
@@ -377,6 +376,14 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    int modSeqIdx = -1;
    string modSeq;
 
+   bool bSkipNtermFragments = false;  // a peptide containing an nterm or cterm mod doesn't need to
+   bool bSkipCtermFragments = false;  // repeat storing fragments that do not contain the terminal mod
+
+   if (siNtermMod != -1 && siCtermMod == -1)
+      bSkipCtermFragments = true;
+   if (siNtermMod == -1 && siCtermMod != -1)
+      bSkipNtermFragments = true;
+
    if (modNumIdx >= 0)  // set modified peptide info
    {
       modNum = MOD_NUMBERS.at(modNumIdx);
@@ -413,12 +420,12 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
       }
    }
 
-   if (siNtermMod >= 0)  // if -1, unused
+   if (siNtermMod >= 0 && !bSkipNtermFragments)  // if -1, unused
    {
       dBion += g_staticParams.variableModParameters.varModList[(int)siNtermMod].dVarModMass;
       dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)siNtermMod].dVarModMass;
    }
-   if (siCtermMod >= 0)  // if -1, unused
+   if (siCtermMod >= 0 && !bSkipCtermFragments)  // if -1, unused
    {
       dYion += g_staticParams.variableModParameters.varModList[(int)siCtermMod].dVarModMass;
       dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)siCtermMod].dVarModMass;
@@ -489,8 +496,10 @@ if (!(iWhichPeptide%5000))
    {
       iPosReverse = iEndPos - i;
 
-      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
-      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[iPosReverse]];
+      if (!bSkipNtermFragments)
+         dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
+      if (!bSkipCtermFragments)
+         dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[iPosReverse]];
 
       if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
@@ -510,7 +519,7 @@ if (!(iWhichPeptide%5000))
          // push_back() seem to be causing VS compiled exe to slow down to single thread speed.
          // A g++ compiled binary is not similarly affected.
          // A yeast target-decoy fasta with 16M, 80STY invokes over 2 billion of these.
-         if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass)
+         if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass && !bSkipNtermFragments)
          {
             if (bCountOnly)
                g_iCountFragmentIndex[iWhichThread][BIN(dBion)] += 1;
@@ -518,7 +527,7 @@ if (!(iWhichPeptide%5000))
                g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
          }
 
-         if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass)
+         if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass && !bSkipCtermFragments)
          {
             if (bCountOnly)
                g_iCountFragmentIndex[iWhichThread][BIN(dYion)] += 1;
