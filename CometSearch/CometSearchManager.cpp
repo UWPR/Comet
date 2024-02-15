@@ -1219,6 +1219,9 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.variableModParameters.bVarModSearch = false;
    g_staticParams.variableModParameters.bVarTermModSearch = false;
    g_staticParams.variableModParameters.bBinaryModSearch = false;
+   g_staticParams.variableModParameters.bVarProteinNTermMod = false;
+   g_staticParams.variableModParameters.bVarProteinCTermMod = false;
+
 
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
@@ -1287,12 +1290,18 @@ bool CometSearchManager::InitializeStaticParams()
          {
             g_staticParams.variableModParameters.varModList[i].bNtermMod = true;
             g_staticParams.variableModParameters.bVarTermModSearch = true;
+
+            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)
+               g_staticParams.variableModParameters.bVarProteinNTermMod = true;
          }
 
          if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
          {
             g_staticParams.variableModParameters.varModList[i].bCtermMod = true;
             g_staticParams.variableModParameters.bVarTermModSearch = true;
+
+            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)
+               g_staticParams.variableModParameters.bVarProteinCTermMod = true;
          }
 
          if (g_staticParams.variableModParameters.varModList[i].iBinaryMod)

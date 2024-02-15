@@ -31,7 +31,7 @@ vector<ModificationNumber> MOD_NUMBERS;
 vector<string> MOD_SEQS;    // Unique modifiable sequences.
 int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
 int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
-int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids.
+int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids; -2 if only terminal mods.
 int MOD_NUM = 0;
 
 Mutex CometFragmentIndex::_vFragmentIndexMutex;
@@ -140,7 +140,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRawPeptides,
                                                ThreadPool *tp)
 {
-   cout <<  " - generate fragment index ... "; fflush(stdout);
+   cout <<  " - generate fragment index\n"; fflush(stdout);
    auto tStartTime = chrono::steady_clock::now();
 
    // Create the mutex we will use to protect vFragmentIndex
@@ -159,6 +159,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    // Create N number of threads, each of which will iterate through
    // a subset of peptides to calculate their fragment ions
 
+   cout <<  "   - count fragment index vector sizes ... "; fflush(stdout);
    // stupid workaround for Visual Studio ... first calculate all fragments to find size
    // of each fragment index vector
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
@@ -170,6 +171,10 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
       pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, iWhichThread, iNumIndexingThreads, pFragmentIndexPool, 1));
 
    pFragmentIndexPool->wait_on_threads();
+   cout << ElapsedTime(tStartTime) << endl;
+
+   tStartTime = chrono::steady_clock::now();
+   cout <<  "   - reserve memory ... "; fflush(stdout);
 
    // now reserve memory for the fragment index vectors
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
@@ -180,8 +185,10 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
             g_arrvFragmentIndex[iWhichThread][iMass].reserve(g_iCountFragmentIndex[iWhichThread][iMass]);
       }
    }
+   cout << ElapsedTime(tStartTime) << endl;
 
-   cout <<  "memory reserved, populating index ... "; fflush(stdout);
+   tStartTime = chrono::steady_clock::now();
+   cout <<  "   - populating index ... "; fflush(stdout);
 
    // now populate the fragment index vector
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
@@ -189,9 +196,10 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
 
    pFragmentIndexPool->wait_on_threads();
 
-//   cout << ElapsedTime(tStartTime) << endl;
-//   cout << " - sorting each fragment index mass bin by peptide mass ... "; fflush(stdout);
-//   tStartTime = chrono::steady_clock::now();
+   cout << ElapsedTime(tStartTime) << endl;
+
+   tStartTime = chrono::steady_clock::now();
+   cout <<  "   - sorting fragment index mass bin by peptide mass ... "; fflush(stdout);
 
    // combine each g_arrvFragmentIndex[iWhichThread[]
    for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
@@ -376,14 +384,6 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    int modSeqIdx = -1;
    string modSeq;
 
-   bool bSkipNtermFragments = false;  // a peptide containing an nterm or cterm mod doesn't need to
-   bool bSkipCtermFragments = false;  // repeat storing fragments that do not contain the terminal mod
-
-   if (siNtermMod != -1 && siCtermMod == -1)
-      bSkipCtermFragments = true;
-   if (siNtermMod == -1 && siCtermMod != -1)
-      bSkipNtermFragments = true;
-
    if (modNumIdx >= 0)  // set modified peptide info
    {
       modNum = MOD_NUMBERS.at(modNumIdx);
@@ -420,12 +420,12 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
       }
    }
 
-   if (siNtermMod >= 0 && !bSkipNtermFragments)  // if -1, unused
+   if (siNtermMod >= 0)  // if -1, unused
    {
       dBion += g_staticParams.variableModParameters.varModList[(int)siNtermMod].dVarModMass;
       dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)siNtermMod].dVarModMass;
    }
-   if (siCtermMod >= 0 && !bSkipCtermFragments)  // if -1, unused
+   if (siCtermMod >= 0)  // if -1, unused
    {
       dYion += g_staticParams.variableModParameters.varModList[(int)siCtermMod].dVarModMass;
       dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)siCtermMod].dVarModMass;
@@ -496,10 +496,8 @@ if (!(iWhichPeptide%5000))
    {
       iPosReverse = iEndPos - i;
 
-      if (!bSkipNtermFragments)
-         dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
-      if (!bSkipCtermFragments)
-         dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[iPosReverse]];
+      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
+      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[iPosReverse]];
 
       if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
@@ -519,7 +517,7 @@ if (!(iWhichPeptide%5000))
          // push_back() seem to be causing VS compiled exe to slow down to single thread speed.
          // A g++ compiled binary is not similarly affected.
          // A yeast target-decoy fasta with 16M, 80STY invokes over 2 billion of these.
-         if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass && !bSkipNtermFragments)
+         if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass)
          {
             if (bCountOnly)
                g_iCountFragmentIndex[iWhichThread][BIN(dBion)] += 1;
@@ -527,7 +525,7 @@ if (!(iWhichPeptide%5000))
                g_arrvFragmentIndex[iWhichThread][BIN(dBion)].push_back(uiCurrentFragmentPeptide);
          }
 
-         if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass && !bSkipCtermFragments)
+         if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass)
          {
             if (bCountOnly)
                g_iCountFragmentIndex[iWhichThread][BIN(dYion)] += 1;
@@ -972,21 +970,7 @@ bool CometFragmentIndex::CompareByPeptide(const DBIndex &lhs,
             return false;
       }
 
-/*
-      // same sequences and masses here so next look at mod state
-      int iLen = (int)strlen(lhs.szPeptide)+2;
-      for (int i=0; i<iLen; ++i)
-      {
-         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
-         {
-            // different mod state
-            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
-               return true;
-            else
-               return false;
-         }
-      }
-*/
+      // FIX: if protein terminal mods are specified, address them
 
       // at this point, same peptide, same mass, same mods so return first protein
       if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)

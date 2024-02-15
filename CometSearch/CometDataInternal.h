@@ -549,6 +549,8 @@ struct VarModParams
 {
    bool    bVarModSearch;            // set to true if variable mods are specified
    bool    bVarTermModSearch;        // set to true if any n-term/c-term variable mods are specified
+   bool    bVarProteinNTermMod;      // set to true if a protein n-term variable mod specified
+   bool    bVarProteinCTermMod;      // set to true if a protein c-term variable mod specified 
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
    int     iRequireVarMod;           // 0=no; else use bits to determine which varmods are required
@@ -561,6 +563,8 @@ struct VarModParams
    {
       bVarModSearch = a.bVarModSearch;
       bVarTermModSearch = a.bVarTermModSearch;
+      bVarProteinNTermMod = a.bVarProteinNTermMod;
+      bVarProteinCTermMod = a.bVarProteinCTermMod;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;
       bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
