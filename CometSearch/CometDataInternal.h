@@ -39,7 +39,7 @@ class CometSearchManager;
 #define FRAGINDEX_MAX_NUMPEAKS      100      // number of spectrum peaks used to query fragment index
 #define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
 #define FRAGINDEX_MAX_COMBINATIONS  2000
-#define FRAGINDEX_MAX_MODS_PER_MOD  5
+#define FRAGINDEX_MAX_MODS_PER_PEP  5
 #define FRAGINDEX_KEEP_ALL_PEPTIDES 1        // 1 = consider up to FRAGINDEX_MAX_COMBINATIONS of peptides; 0 = ignore all mods for peptide that exceed FRAGINDEX_MAX_COMBINATIONS
 
 #define UNSET_TOLERANCE_MINUS       -99999.9   // default peptide_mass_tolerance_lower value; if this is not changed, used -(peptide_mass_tolerance)
@@ -240,7 +240,8 @@ struct Results
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
    char   szPeptide[MAX_PEPTIDE_LEN];
-   char   szPrevNextAA[2];                    // [0] stores prev AA, [1] stores next AA
+   char   cPrevAA;                            // stores prev flanking AA
+   char   cNextAA;                            // stores following flanking AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
    string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
@@ -415,7 +416,8 @@ struct DBInfo
 struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
-   char   szPrevNextAA[2];
+   char   cPrevAA;
+   char   cNextAA;
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
    comet_fileoffset_t   lIndexProteinFilePosition;         // points to entry in g_pvProteinsList
    double dPepMass;                          // MH+ pep mass
@@ -455,7 +457,8 @@ struct DBIndex
 struct PlainPeptideIndex
 {
    string sPeptide;
-   char   szPrevNextAA[2];
+   char   cPrevAA;
+   char   cNextAA;
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
 
@@ -947,8 +950,8 @@ extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiab
 extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;
-extern bool g_vFragmentIndexRead;       // set to true when fragment index file is read
-extern bool g_vPlainPeptideIndexRead;   // set to true if plain peptide index file is read
+extern bool g_bFragmentIndexRead;       // set to true when fragment index file is read
+extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

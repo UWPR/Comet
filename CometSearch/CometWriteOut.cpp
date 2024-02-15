@@ -483,7 +483,7 @@ void CometWriteOut::PrintOutputLine(int iLenMaxDuplicates,
    }
    sprintf(szBuf+strlen(szBuf), "  ");
 
-   sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
+   sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].cPrevAA);
 
    if (g_staticParams.variableModParameters.bVarModSearch
          && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
@@ -519,7 +519,7 @@ void CometWriteOut::PrintOutputLine(int iLenMaxDuplicates,
             "c%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
    }
 
-   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
+   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].cNextAA);
 
    fprintf(fpout, "%s\n", szBuf);
 }
@@ -542,9 +542,9 @@ void CometWriteOut::PrintIons(int iWhichQuery,
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   if (pQuery->_pResults[0].szPrevNextAA[0] == '-')
+   if (pQuery->_pResults[0].cPrevAA == '-')
       dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-   if (pQuery->_pResults[0].szPrevNextAA[1] == '-')
+   if (pQuery->_pResults[0].cNextAA == '-')
       dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
    if (g_staticParams.variableModParameters.bVarModSearch

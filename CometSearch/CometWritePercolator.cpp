@@ -255,7 +255,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
    }
 
-   fprintf(fpout, "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
+   fprintf(fpout, "%c.", pOutput[iWhichResult].cPrevAA);
    // generate modified_peptide string
    if (bNterm)
       fprintf(fpout, "n[%0.4f]", dNterm);
@@ -269,7 +269,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    }
    if (bCterm)
       fprintf(fpout, "c[%0.4f]", dCterm);
-   fprintf(fpout, ".%c\t", pOutput[iWhichResult].szPrevNextAA[1]);
+   fprintf(fpout, ".%c\t", pOutput[iWhichResult].cNextAA);
 
    std::vector<string>::iterator it;
 
@@ -324,13 +324,13 @@ void CometWritePercolator::CalcNTTNMC(Results *pOutput,
    *iNMC=0;
 
    // Calculate number of tolerable termini (NTT) based on sample_enzyme
-   if (pOutput[iWhichResult].szPrevNextAA[0]=='-')
+   if (pOutput[iWhichResult].cPrevAA=='-')
    {
       *iNterm = 1;
    }
    else if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
-      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPrevNextAA[0])
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].cPrevAA)
             && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[0]))
       {
          *iNterm = 1;
@@ -339,27 +339,27 @@ void CometWritePercolator::CalcNTTNMC(Results *pOutput,
    else
    {
       if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[0])
-            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPrevNextAA[0]))
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].cPrevAA))
       {
          *iNterm = 1;
       }
    }
 
-   if (pOutput[iWhichResult].szPrevNextAA[1]=='-')
+   if (pOutput[iWhichResult].cNextAA=='-')
    {
       *iCterm = 1;
    }
    else if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
       if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1])
-            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPrevNextAA[1]))
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].cNextAA))
       {
          *iCterm = 1;
       }
    }
    else
    {
-      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPrevNextAA[1])
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].cNextAA)
             && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1]))
       {
          *iCterm = 1;

@@ -1493,7 +1493,7 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
 
          // prev/next AA
-         fprintf(fpout, "%c%c\t", pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].szPrevNextAA[1]);
+         fprintf(fpout, "%c%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].cNextAA);
 
          // modifications:  zero-position:mass; semi-colon delimited; length=nterm, length+1=c-term
 

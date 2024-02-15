@@ -106,13 +106,13 @@ bool CometSearch::RunSearch(ThreadPool *tp)
 {
    CometFragmentIndex sqSearch;
 
-   if (!g_vPlainPeptideIndexRead)
+   if (!g_bPlainPeptideIndexRead)
    {
       sqSearch.ReadPlainPeptideIndex();
-      g_vPlainPeptideIndexRead = true;
+      g_bPlainPeptideIndexRead = true;
 
       sqSearch.CreateFragmentIndex(tp);
-      g_vFragmentIndexRead = true;
+      g_bFragmentIndexRead = true;
    }
 
    size_t iWhichQuery = 0;
@@ -132,13 +132,13 @@ bool CometSearch::RunSearch(int iPercentStart,
    {
       CometFragmentIndex sqSearch;
 
-      if (!g_vPlainPeptideIndexRead)
+      if (!g_bPlainPeptideIndexRead)
       {
          sqSearch.ReadPlainPeptideIndex();
-         g_vPlainPeptideIndexRead = true;
+         g_bPlainPeptideIndexRead = true;
 
          sqSearch.CreateFragmentIndex(tp);
-         g_vFragmentIndexRead = true;
+         g_bFragmentIndexRead = true;
       }
 
       int iNumIndexingThreads = g_staticParams.options.iNumThreads;
@@ -1661,14 +1661,14 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                sEntry.szPeptide[iLenPeptide]='\0';
 
                if (iStartPos == 0)
-                  sEntry.szPrevNextAA[0] = '-';
+                  sEntry.cPrevAA = '-';
                else
-                  sEntry.szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+                  sEntry.cPrevAA = szProteinSeq[iStartPos - 1];
 
                if (iEndPos == iProteinSeqLengthMinus1)
-                  sEntry.szPrevNextAA[1] = '-';
+                  sEntry.cNextAA = '-';
                else
-                  sEntry.szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+                  sEntry.cNextAA = szProteinSeq[iEndPos + 1];
 
                sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2.0));
@@ -3893,8 +3893,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       if (g_staticParams.bIndexDb)
       {
-         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0] = _proteinInfo.cPrevAA;
-         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[1] = _proteinInfo.cNextAA;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = _proteinInfo.cPrevAA;
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = _proteinInfo.cNextAA;
       }
       else
       {
@@ -3905,19 +3905,19 @@ void CometSearch::StorePeptide(int iWhichQuery,
             // check if clip n-term met
             if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
             {
-               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0] = 'M';
+               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = 'M';
                pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = true;
             }
             else
-               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0] = '-';
+               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = '-';
          }
          else
-            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = szProteinSeq[iStartPos - 1];
 
          if (iEndPos == _proteinInfo.iTmpProteinSeqLength-1)
-            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[1] = '-';
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = '-';
          else
-            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
       }
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
@@ -3941,8 +3941,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pTmp.lWhichProtein = dbe->lProteinFilePosition;
       pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
-      pTmp.cPrevAA = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[0];
-      pTmp.cNextAA = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPrevNextAA[1];
+      pTmp.cPrevAA = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA;
+      pTmp.cNextAA = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA;
 
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.clear();
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
@@ -4131,8 +4131,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       if (g_staticParams.bIndexDb)
       {
-         pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = _proteinInfo.cPrevAA;
-         pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1] = _proteinInfo.cNextAA;
+         pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = _proteinInfo.cPrevAA;
+         pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = _proteinInfo.cNextAA;
       }
       else
       {
@@ -4140,17 +4140,17 @@ void CometSearch::StorePeptide(int iWhichQuery,
          {
             // check if clip n-term met
             if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
-               pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = 'M';
+               pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = 'M';
             else
-               pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = '-';
+               pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
          }
          else
-            pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = szProteinSeq[iStartPos - 1];
+            pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = szProteinSeq[iStartPos - 1];
 
          if (iEndPos == _proteinInfo.iTmpProteinSeqLength-1)
-            pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1] = '-';
+            pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
          else
-            pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1] = szProteinSeq[iEndPos + 1];
+            pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
       }
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
@@ -4176,8 +4176,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pTmp.lWhichProtein = dbe->lProteinFilePosition;
       pTmp.iStartResidue = iStartResidue + 1;  // 1 based position
-      pTmp.cPrevAA = pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0];
-      pTmp.cNextAA = pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1];
+      pTmp.cPrevAA = pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA;
+      pTmp.cNextAA = pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA;
 
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
@@ -4297,8 +4297,8 @@ void CometSearch::StorePeptideI(int iWhichQuery,
 
    pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr = (float)dXcorr;
 
-   pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[0] = '-';
-   pQuery->_pResults[siLowestXcorrScoreIndex].szPrevNextAA[1] = '-';
+   pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
+   pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
 
    pQuery->_pResults[siLowestXcorrScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
    pQuery->_pResults[siLowestXcorrScoreIndex].sPeffOrigResidues.clear();
@@ -4612,8 +4612,8 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pResults[i].iLenPeptide*sizeof(char));
                   pQuery->_pResults[i].szPeptide[pQuery->_pResults[i].iLenPeptide]='\0';
 
-                  pQuery->_pResults[i].szPrevNextAA[0] = pTmp.cPrevAA;
-                  pQuery->_pResults[i].szPrevNextAA[1] = pTmp.cNextAA;
+                  pQuery->_pResults[i].cPrevAA = pTmp.cPrevAA;
+                  pQuery->_pResults[i].cNextAA = pTmp.cNextAA;
                }
 
                break;

@@ -52,8 +52,8 @@ vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS];      // stores
 unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
-bool g_vPlainPeptideIndexRead = false;
-bool g_vFragmentIndexRead = false;
+bool g_bPlainPeptideIndexRead = false;
+bool g_bFragmentIndexRead = false;
 FILE* fpfasta;
 
 
@@ -2225,10 +2225,10 @@ bool CometSearchManager::DoSearch()
 
          if (g_staticParams.bIndexDb)
          {
-            if (!g_vPlainPeptideIndexRead)
+            if (!g_bPlainPeptideIndexRead)
             {
                sqSearch.ReadPlainPeptideIndex();
-               g_vPlainPeptideIndexRead = true;
+               g_bPlainPeptideIndexRead = true;
 
                sqSearch.CreateFragmentIndex(tp);
             }
@@ -2726,10 +2726,10 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
    // Load databases
    CometFragmentIndex sqSearch;
-   if (!g_vPlainPeptideIndexRead)
+   if (!g_bPlainPeptideIndexRead)
    {
       sqSearch.ReadPlainPeptideIndex();
-      g_vPlainPeptideIndexRead = true;
+      g_bPlainPeptideIndexRead = true;
 
       sqSearch.CreateFragmentIndex(tp);
    }
@@ -2892,7 +2892,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       Results *pOutput = pQuery->_pResults;
 
       // Set return values for peptide sequence, protein, xcorr and E-value
-      strReturnPeptide = std::string(1, pOutput[0].szPrevNextAA[0]) + ".";
+      strReturnPeptide = std::string(1, pOutput[0].cPrevAA) + ".";
 
       // n-term variable mod
       if (pOutput[0].piVarModSites[pOutput[0].iLenPeptide] != 0)
@@ -2927,7 +2927,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       comet_fseek(fpfasta, g_pvProteinsList.at(pOutput[0].lProteinFilePosition).at(0), SEEK_SET);
       fscanf(fpfasta, "%511s", szProtein);  // WIDTH_REFERENCE-1
       szProtein[511] = '\0';
-      strReturnPeptide += "." + std::string(1, pOutput[0].szPrevNextAA[1]);
+      strReturnPeptide += "." + std::string(1, pOutput[0].cNextAA);
 
       strReturnProtein = szProtein;            //protein
 
@@ -2968,11 +2968,11 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
       double dBion = g_staticParams.precalcMasses.dNtermProton;
       double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
-      if (pQuery->_pResults[0].szPrevNextAA[0] == '-')
+      if (pQuery->_pResults[0].cPrevAA == '-')
       {
          dBion += g_staticParams.staticModifications.dAddNterminusProtein;
       }
-      if (pQuery->_pResults[0].szPrevNextAA[1] == '-')
+      if (pQuery->_pResults[0].cNextAA == '-')
       {        
          dYion += g_staticParams.staticModifications.dAddCterminusProtein;
       }
@@ -3255,7 +3255,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             Results* pOutput = pQuery->_pResults;
 
             // Set return values for peptide sequence, protein, xcorr and E-value
-            eachStrReturnPeptide = std::string(1, pOutput[idx].szPrevNextAA[0]) + ".";
+            eachStrReturnPeptide = std::string(1, pOutput[idx].cPrevAA) + ".";
 
             // n-term variable mod
             if (pOutput[idx].piVarModSites[pOutput[idx].iLenPeptide] != 0)
@@ -3290,7 +3290,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             comet_fseek(fpfasta, g_pvProteinsList.at(pOutput[idx].lProteinFilePosition).at(0), SEEK_SET);
             fscanf(fpfasta, "%511s", szProtein);  // WIDTH_REFERENCE-1
             szProtein[511] = '\0';
-            eachStrReturnPeptide += "." + std::string(1, pOutput[idx].szPrevNextAA[1]);
+            eachStrReturnPeptide += "." + std::string(1, pOutput[idx].cNextAA);
 
             eachStrReturnProtein = szProtein;            //protein
 
@@ -3331,11 +3331,11 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             double dBion = g_staticParams.precalcMasses.dNtermProton;
             double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
-            if (pQuery->_pResults[idx].szPrevNextAA[0] == '-')
+            if (pQuery->_pResults[idx].cPrevAA == '-')
             {
                 dBion += g_staticParams.staticModifications.dAddNterminusProtein;
             }
-            if (pQuery->_pResults[idx].szPrevNextAA[1] == '-')
+            if (pQuery->_pResults[idx].cNextAA == '-')
             {
                 dYion += g_staticParams.staticModifications.dAddCterminusProtein;
             }
@@ -3535,13 +3535,13 @@ void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
       {
          if (pOutput[i].pWhichProtein.size() != 0)
          {
-            pOutput[i].szPrevNextAA[0] = pOutput[i].pWhichProtein.at(0).cPrevAA;
-            pOutput[i].szPrevNextAA[1] = pOutput[i].pWhichProtein.at(0).cNextAA;
+            pOutput[i].cPrevAA = pOutput[i].pWhichProtein.at(0).cPrevAA;
+            pOutput[i].cNextAA = pOutput[i].pWhichProtein.at(0).cNextAA;
          }
          else
          {
-            pOutput[i].szPrevNextAA[0] = pOutput[i].pWhichDecoyProtein.at(0).cPrevAA;
-            pOutput[i].szPrevNextAA[1] = pOutput[i].pWhichDecoyProtein.at(0).cNextAA;
+            pOutput[i].cPrevAA = pOutput[i].pWhichDecoyProtein.at(0).cPrevAA;
+            pOutput[i].cNextAA = pOutput[i].pWhichDecoyProtein.at(0).cNextAA;
          }
       }
    }

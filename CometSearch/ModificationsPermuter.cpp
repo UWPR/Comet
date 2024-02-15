@@ -520,7 +520,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
 
       if (ignorePeptidesWithTooManyMods() && calculatedCombinationsCount > FRAGINDEX_MAX_COMBINATIONS)
       {
-         // If we are ignoring peptides with > FRAGINDEX_MAX_COMBINATIONS or reducing FRAGINDEX_MAX_MODS_PER_MOD to get the number of
+         // If we are ignoring peptides with > FRAGINDEX_MAX_COMBINATIONS or reducing FRAGINDEX_MAX_MODS_PER_PEP to get the number of
          // modified peptides withing the threshold, then the calculated combinations should not exceed FRAGINDEX_MAX_COMBINATIONS
          cout << "ERROR: calculated combination count exceeds FRAGINDEX_MAX_COMBINATIONS (" << to_string(FRAGINDEX_MAX_COMBINATIONS) +
             ") but FRAGINDEX_KEEP_ALL_PEPTIDES is set to " << to_string(FRAGINDEX_KEEP_ALL_PEPTIDES);

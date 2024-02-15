@@ -556,8 +556,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", pOutput[iWhichResult].iRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
-   fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[0]);
-   fprintf(fpout, " peptide_next_aa=\"%c\"", pOutput[iWhichResult].szPrevNextAA[1]);
+   fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].cPrevAA);
+   fprintf(fpout, " peptide_next_aa=\"%c\"", pOutput[iWhichResult].cNextAA);
 
    string sTmp;
 
@@ -643,9 +643,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
       bModified = 1;
 
-   if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
+   if (pOutput[iWhichResult].cPrevAA=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
       bModified = 1;
-   if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
+   if (pOutput[iWhichResult].cNextAA=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
       bModified = 1;
 
    //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
@@ -688,7 +688,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       // See if n-term mod (static and/or variable) needs to be reported
       if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0
             || !isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
-            || (pOutput[iWhichResult].szPrevNextAA[0]=='-'
+            || (pOutput[iWhichResult].cPrevAA=='-'
                && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
       {
          bNterm = true;
@@ -702,14 +702,14 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
             bNtermVariable = true;
          }
 
-         if (pOutput[iWhichResult].szPrevNextAA[0]=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
+         if (pOutput[iWhichResult].cPrevAA=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
             dNterm += g_staticParams.staticModifications.dAddNterminusProtein;
       }
 
       // See if c-term mod (static and/or variable) needs to be reported
       if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0
             || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0)
-            || (pOutput[iWhichResult].szPrevNextAA[1]=='-'
+            || (pOutput[iWhichResult].cNextAA=='-'
                && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
       {
          bCterm = true;
@@ -722,7 +722,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
             bCtermVariable = true;
          }
 
-         if (pOutput[iWhichResult].szPrevNextAA[1]=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
+         if (pOutput[iWhichResult].cNextAA=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
             dCterm += g_staticParams.staticModifications.dAddCterminusProtein;
       }
 
@@ -787,7 +787,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
             {
                // case where a single amino acid substitution one prior to the start of the peptide caused the peptide sequence (i.e. creation of an enzyme cut site)
                fprintf(fpout, "     <aminoacid_substitution peptide_prev_aa=\"%c\" orig_aa=\"%s\"/>\n",
-                     pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].sPeffOrigResidues.c_str());
+                     pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].sPeffOrigResidues.c_str());
             }
             else 
             {
@@ -796,7 +796,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                if (iPepPos == 0 || iPepPos <= (int)strlen(pOutput[iWhichResult].szPeptide))
                { 
                   fprintf(fpout, "     <aminoacid_substitution peptide_prev_aa=\"%c\" orig_aa=\"%c\"/>\n",
-                        pOutput[iWhichResult].szPrevNextAA[0], pOutput[iWhichResult].sPeffOrigResidues.back());
+                        pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].sPeffOrigResidues.back());
                } 
                if (iPepPos > 0)
                {
@@ -811,7 +811,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          {
             // case where a single amino acid substitution one after the end of the peptide caused the peptide sequence (i.e. creation of an enzyme cut site)
             fprintf(fpout, "     <aminoacid_substitution peptide_next_aa=\"%c\" orig_aa=\"%c\"/>\n",
-                  pOutput[iWhichResult].szPrevNextAA[1], pOutput[iWhichResult].sPeffOrigResidues[0]);
+                  pOutput[iWhichResult].cNextAA, pOutput[iWhichResult].sPeffOrigResidues[0]);
          }
          else if (pOutput[iWhichResult].sPeffOrigResidues.size() == 1 && pOutput[iWhichResult].iPeffNewResidueCount == 1) // single aa substitution
          {
@@ -947,13 +947,13 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    *iNMC=0;
 
    // Calculate number of tolerable termini (NTT) based on sample_enzyme
-   if (pOutput[iWhichResult].szPrevNextAA[0]=='-')
+   if (pOutput[iWhichResult].cPrevAA=='-')
    {
       *iNTT += 1;
    }
    else if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
-      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPrevNextAA[0])
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].cPrevAA)
             && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[0]))
       {
          *iNTT += 1;
@@ -962,27 +962,27 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    else
    {
       if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[0])
-            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPrevNextAA[0]))
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].cPrevAA))
       {
          *iNTT += 1;
       }
    }
 
-   if (pOutput[iWhichResult].szPrevNextAA[1]=='-')
+   if (pOutput[iWhichResult].cNextAA=='-')
    {
       *iNTT += 1;
    }
    else if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
       if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1])
-            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPrevNextAA[1]))
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].cNextAA))
       {
          *iNTT += 1;
       }
    }
    else
    {
-      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPrevNextAA[1])
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].cNextAA)
             && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1]))
       {
          *iNTT += 1;

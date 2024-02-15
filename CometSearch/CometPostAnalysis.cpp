@@ -386,9 +386,9 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
 
-         if (pOutput[i].szPrevNextAA[0] == '-' || pOutput[i].bClippedM)
+         if (pOutput[i].cPrevAA == '-' || pOutput[i].bClippedM)
             dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-         if (pOutput[i].szPrevNextAA[1] == '-')
+         if (pOutput[i].cNextAA == '-')
             dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
          if (g_staticParams.variableModParameters.bVarModSearch

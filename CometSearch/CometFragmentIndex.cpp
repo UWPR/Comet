@@ -59,7 +59,7 @@ CometFragmentIndex::~CometFragmentIndex()
 
 bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 {
-   if (!g_vPlainPeptideIndexRead)
+   if (!g_bPlainPeptideIndexRead)
       ReadPlainPeptideIndex();
 
    // now permute mods on the peptides
@@ -77,7 +77,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
    }
 
    // generate the modified peptides to calculate the fragment index
-   GenerateFragmentIndex(g_vRawPeptides, tp);
+   GenerateFragmentIndex(tp);
 
    return true;
 }
@@ -88,7 +88,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up
-   // to FRAGINDEX_MAX_MODS_PER_MOD modified amino acids.
+   // to FRAGINDEX_MAX_MODS_PER_PEP modified amino acids.
 
    // Maximum number of bits that can be set in a modifiable sequence for a given modification.
    // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than FRAGINDEX_MAX_COMBINATIONS (65,534)
@@ -118,8 +118,8 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    int ALL_COMBINATION_CNT = 0;
 
    int iMaxNumVariableMods = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
-   if (FRAGINDEX_MAX_MODS_PER_MOD < iMaxNumVariableMods)
-      iMaxNumVariableMods = FRAGINDEX_MAX_MODS_PER_MOD;
+   if (FRAGINDEX_MAX_MODS_PER_PEP < iMaxNumVariableMods)
+      iMaxNumVariableMods = FRAGINDEX_MAX_MODS_PER_PEP;
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    // iEnd is one larger than max peptide length
@@ -137,8 +137,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 }
 
 
-void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRawPeptides,
-                                               ThreadPool *tp)
+void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
    cout <<  " - generate fragment index\n"; fflush(stdout);
    auto tStartTime = chrono::steady_clock::now();
@@ -164,7 +163,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    // of each fragment index vector
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
    {
-      for (int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
+      for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
          g_iCountFragmentIndex[iWhichThread][iMass] = 0;
    }
    for (int iWhichThread = 0; iWhichThread<iNumIndexingThreads; ++iWhichThread)
@@ -179,7 +178,7 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    // now reserve memory for the fragment index vectors
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
    {
-      for (int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
+      for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
       {
          if (g_iCountFragmentIndex[iWhichThread][iMass] > 0)
             g_arrvFragmentIndex[iWhichThread][iMass].reserve(g_iCountFragmentIndex[iWhichThread][iMass]);
@@ -218,18 +217,20 @@ void CometFragmentIndex::GenerateFragmentIndex(vector<PlainPeptideIndex>& g_vRaw
    cout << ElapsedTime(tStartTime) << endl;
 
    // count and report the # of entries in the fragment index
-   unsigned long long liCount = 0;
+   unsigned long long ullCount = 0;
+   unsigned long long ullMax = 0;
    for (unsigned int ii = 0; ii < g_massRange.g_uiMaxFragmentArrayIndex; ++ii)
    {
       for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
       {
-         long long lTmp = g_arrvFragmentIndex[iWhichThread][ii].size();
-         if (lTmp > 0)
-            liCount += lTmp;
+         long long ullTmp = g_arrvFragmentIndex[iWhichThread][ii].size();
+         ullCount += ullTmp;
+
+         if (ullTmp > ullMax)
+            ullMax = ullTmp;
       }
    }
-   printf("   - total # of entries in the fragment index: %0.2E\n", (double)liCount);
-
+   printf("   - total # of entries in the fragment index: %0.2E (max %lld)\n", (double)ullCount, ullMax);
 }
 
 
@@ -451,9 +452,9 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
       sTmp.siNtermMod = siNtermMod;
       sTmp.siCtermMod = siCtermMod;
 
-   // Store the current peptide; uiCurrentFragmentPeptide references this peptide entry
-   // for use in the g_arrvFragmentIndex fragment index.  as this is a global list of
-   // peptides, need to lock when updating to avoid thread conflicts
+      // Store the current peptide; uiCurrentFragmentPeptide references this peptide entry
+      // for use in the g_arrvFragmentIndex fragment index.  as this is a global list of
+      // peptides, need to lock when updating to avoid thread conflicts
 
       Threading::LockMutex(_vFragmentPeptidesMutex);
       uiCurrentFragmentPeptide = g_vFragmentPeptides.size();  // index of current peptide in g_vFragmentPeptides
@@ -744,7 +745,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    char szBuf[SIZE_BUF];
    string strIndexFile;
 
-   if (g_vPlainPeptideIndexRead)
+   if (g_bPlainPeptideIndexRead)
       return 1;
 
    if (g_staticParams.options.bCreateIndex)

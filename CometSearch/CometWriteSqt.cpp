@@ -268,7 +268,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    }
 
    // generate modified_peptide string
-   sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].szPrevNextAA[0]);
+   sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].cPrevAA);
    if (g_staticParams.iOldModsEncoding)
    {
       if (bNterm)
@@ -313,7 +313,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       if (bCterm)
          sprintf(szBuf+strlen(szBuf), "c[%0.4f]", dCterm);
    }
-   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].szPrevNextAA[1]);
+   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].cNextAA);
 
    if (g_staticParams.options.bOutputSqtStream)
       fprintf(stdout, "%s\tU\n", szBuf);
