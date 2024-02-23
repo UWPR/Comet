@@ -269,6 +269,13 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       }
    }
 
+   // write out amino acid mass of parent used; applicable for user defined AA masses
+   for (int x = 65 ; x <= 90; ++x)
+   {
+      fprintf(fpout, "  <parameter name=\"residuemass_%c\" value=\"%lf\"/>\n", char(x), g_staticParams.massUtility.pdAAMassParent[x]);
+   }
+
+
    fprintf(fpout, " </search_summary>\n");
    fflush(fpout);
 

@@ -853,6 +853,192 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_Nterm_protein", szParamStringVal, dDoubleParam);
             }
+
+
+            else if (!strcmp(szParamName, "set_G_glycine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_G_glycine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_A_alanine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_A_alanine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_S_serine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_S_serine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_P_proline"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_P_proline", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_V_valine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_V_valine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_T_threonine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_T_threonine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_C_cysteine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_C_cysteine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_U_selenocysteine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_U_selenocysteine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_L_leucine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_L_leucine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_I_isoleucine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_I_isoleucine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_N_asparagine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_N_asparagine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_O_pyrrolysine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_O_pyrrolysine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_D_aspartic_acid"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_D_aspartic_acid", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_Q_glutamine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_Q_glutamine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_K_lysine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_K_lysine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_E_glutamic_acid"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_E_glutamic_acid", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_M_methionine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_M_methionine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_H_histidine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_H_histidine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_F_phenylalanine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_F_phenylalanine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_R_arginine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_R_arginine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_Y_tyrosine"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_Y_tyrosine", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_W_tryptophan"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_W_tryptophan", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_B_user_amino_acid"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_B_user_amino_acid", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_J_user_amino_acid"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_J_user_amino_acid", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_X_user_amino_acid"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_X_user_amino_acid", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "set_Z_user_amino_acid"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               szParamStringVal[0] = '\0';
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("set_Z_user_amino_acid", szParamStringVal, dDoubleParam);
+            }
+
+
             else if (!strcmp(szParamName, "add_G_glycine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
@@ -1680,6 +1866,34 @@ add_B_user_amino_acid = 0.0000         # added to B - avg.   0.0000, mono.   0.0
 add_J_user_amino_acid = 0.0000         # added to J - avg.   0.0000, mono.   0.00000\n\
 add_X_user_amino_acid = 0.0000         # added to X - avg.   0.0000, mono.   0.00000\n\
 add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.00000\n\
+\n\
+# these set_X_residue parameters will override the default AA masses for both precursor and fragment calculations\n\
+set_G_glycine = 0.0000\n\
+set_A_alanine = 0.0000\n\
+set_S_serine = 0.0000\n\
+set_P_proline = 0.0000\n\
+set_V_valine = 0.0000\n\
+set_T_threonine = 0.0000\n\
+set_C_cysteine = 0.0000\n\
+set_L_leucine = 0.0000\n\
+set_I_isoleucine = 0.0000\n\
+set_N_asparagine = 0.0000\n\
+set_D_aspartic_acid = 0.0000\n\
+set_Q_glutamine = 0.0000\n\
+set_K_lysine = 0.0000\n\
+set_E_glutamic_acid = 0.0000\n\
+set_M_methionine = 0.0000\n\
+set_H_histidine = 0.0000\n\
+set_F_phenylalanine = 0.0000\n\
+set_U_selenocysteine = 0.0000\n\
+set_R_arginine = 0.0000\n\
+set_Y_tyrosine = 0.0000\n\
+set_W_tryptophan = 0.0000\n\
+set_O_pyrrolysine = 0.0000\n\
+set_B_user_amino_acid = 0.0000\n\
+set_J_user_amino_acid = 0.0000\n\
+set_X_user_amino_acid = 0.0000\n\
+set_Z_user_amino_acid = 0.0000\n\
 \n\
 #\n\
 # COMET_ENZYME_INFO _must_ be at the end of this parameters file\n\
