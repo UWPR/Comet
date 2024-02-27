@@ -50,7 +50,7 @@ private:
    static bool SortFragmentsByPepMass(unsigned int x,
                                       unsigned int y);
    static void SortFragmentThreadProc(int i,
-                                      int iNumIndexingThreads,
+                                      int iWhichThread,
                                       ThreadPool *tp);
    static bool CompareByPeptide(const DBIndex &lhs,
                                 const DBIndex &rhs);

@@ -50,6 +50,7 @@ string                        g_sCometVersion;
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
 unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
+bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
 bool g_bPlainPeptideIndexRead = false;
@@ -505,26 +506,6 @@ static bool ValidateSequenceDatabaseFile()
    {
       sprintf(szErrorMsg, " Error (2) - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
             g_staticParams.databaseInfo.szDatabase);
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return false;
-   }
-
-   // At this point, check extension to set whether index database or not
-   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
-   {
-      g_staticParams.bIndexDb = 1;
-
-      // if searching fragment index database, limit load of query spectra as no
-      // need to load all spectra into memory since querying spectra sequentially
-      if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
-         g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
-   }
-
-   if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
-   {
-      sprintf(szErrorMsg, " Error - input database already indexed: \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
@@ -1423,6 +1404,39 @@ bool CometSearchManager::InitializeStaticParams()
    g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dFragIndexMaxMass) + 1;
    g_staticParams.options.iFragIndexNumThreads = (g_staticParams.options.iNumThreads > FRAGINDEX_MAX_THREADS ? FRAGINDEX_MAX_THREADS : g_staticParams.options.iNumThreads);
 
+   // At this point, check extension to set whether index database or not
+   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   {
+      g_staticParams.bIndexDb = 1;
+
+      // if searching fragment index database, limit load of query spectra as no
+      // need to load all spectra into memory since querying spectra sequentially
+      if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
+         g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
+   }
+
+   if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
+   {
+      char szErrorMsg[SIZE_ERROR];
+      sprintf(szErrorMsg, " Error - input database already indexed: \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+
+   if (g_staticParams.bIndexDb)
+   {
+      g_bIndexPrecursors = (bool*) malloc(BIN(g_staticParams.options.dPeptideMassHigh));
+      if (g_bIndexPrecursors == NULL)
+      {
+         printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", BIN(g_staticParams.options.dPeptideMassHigh));
+         return false;
+      }
+      for (int x = 0; x < BIN(g_staticParams.options.dPeptideMassHigh); ++x)
+         g_bIndexPrecursors[x] = false;
+   }
+
    return true;
 }
 
@@ -1793,6 +1807,36 @@ bool CometSearchManager::DoSearch()
    bool bBlankSearchFile = false;
 
    tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
+
+   // read precursors before creating fragment index
+   auto tStartTime = chrono::steady_clock::now();
+   if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+   {
+      cout <<  " - read precursors ... ";
+      fflush(stdout);
+   }
+
+   if (g_staticParams.bIndexDb)
+   {
+      for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
+      {
+         bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
+         if (!bSucceeded)
+            break;
+
+         // For file access using MSToolkit.
+         MSReader mstReader;
+
+         // We want to read only MS2/MS3 scans.
+         SetMSLevelFilter(mstReader);
+
+         CometPreprocess::Reset();
+
+         bSucceeded = CometPreprocess::ReadPrecursors(mstReader);
+      }
+   }
+   if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+      cout << CometFragmentIndex::ElapsedTime(tStartTime) << endl;
 
    for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
    {
@@ -2435,8 +2479,6 @@ bool CometSearchManager::DoSearch()
             // Sort g_pvQuery vector by scan.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
-//          CalcRunTime(tStartTime);
-
 /*
             // Now set szPrevNextAA
             if (g_staticParams.options.iDecoySearch == 2)
@@ -2464,6 +2506,8 @@ bool CometSearchManager::DoSearch()
 
             if (g_staticParams.options.bOutputOutFiles)
             {
+               CalcRunTime(tStartTime);
+
                bSucceeded = CometWriteOut::WriteOut(fpdb);
                if (!bSucceeded)
                   goto cleanup_results;
@@ -2593,7 +2637,7 @@ cleanup_results:
 //    g_staticParams.precursorNLIons.clear();
 
       //MH: Deallocate spectral processing memory.
-//    CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
+      CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
 
       // Deallocate search memory
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
@@ -2684,6 +2728,9 @@ cleanup_results:
       if (!bSucceeded)
          break;
    }
+
+   if (g_staticParams.bIndexDb)
+     printf(" - done.\n\n");
 
    if (bBlankSearchFile)
       return false;

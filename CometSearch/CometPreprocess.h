@@ -66,6 +66,7 @@ public:
    ~CometPreprocess();
 
    static void Reset();
+   static bool ReadPrecursors(MSReader &mstReader);
    static bool LoadAndPreprocessSpectra(MSReader &mstReader,
                                         int iFirstScan,
                                         int iLastScan,

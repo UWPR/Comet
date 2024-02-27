@@ -28,6 +28,8 @@
 typedef __int64 comet_fileoffset_t;
 #define comet_fseek(handle, offset, whence) _fseeki64(handle, offset, whence)
 #define comet_ftell(handle) _ftelli64(handle)
+#define PATH_MAX _MAX_PATH
+#define realpath(N,R) _fullpath((R),(N),PATH_MAX)
 #else
 #include <unistd.h>
 #include <sys/stat.h>

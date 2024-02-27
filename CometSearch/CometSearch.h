@@ -137,7 +137,9 @@ private:
                    int iLenPeptide,
                    int *piVarModSites,
                    struct sDBEntry *dbe,
-                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT]);
+                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
+                   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE]);
+
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
@@ -214,7 +216,7 @@ private:
                        int iLenPeptide,
                        struct sDBEntry *dbe);
    static void SearchFragmentIndex(size_t iWhichQuery,
-                            ThreadPool *tp);
+                                   ThreadPool *tp);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence

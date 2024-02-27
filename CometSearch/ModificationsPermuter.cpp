@@ -451,7 +451,7 @@ bool ModificationsPermuter::combine(int* modNumbers,
 
    MOD_NUMBERS.push_back(modification);
 
-   TIME_IN_COMBINE += duration(start);
+// TIME_IN_COMBINE += duration(start);
    return true;
 }
 
@@ -466,8 +466,6 @@ void ModificationsPermuter::generateModifications(string* sequence,
                                                   int ALL_COMBINATION_CNT,
                                                   unsigned long long* ALL_COMBINATIONS)
 {
-   auto startGenMods = startTime();
-
    vector<unsigned long long> modBitmasks; // One entry in the vector for each user specified modification found in the sequence
    vector<int> modIndices; // Indices in the ALL_MODS array of the modifications found in the given sequence
    vector<int> combinationCounts; // Number of combinations that would be generated for each modification
@@ -567,7 +565,6 @@ void ModificationsPermuter::generateModifications(string* sequence,
       }
       combinationsForAllMods[idx++] = combinationsForMod;
    }
-
 
 /*
    if (DEBUG)
@@ -706,7 +703,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
    modIndices.clear();
    combinationCounts.clear();
 
-   TIME_GEN_MODS += duration(startGenMods);
+// TIME_GEN_MODS += duration(startGenMods);
 }
 
 

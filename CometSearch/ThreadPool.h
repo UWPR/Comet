@@ -213,7 +213,6 @@ public:
       if (data_.size()) delete data_[0];
       data_.clear();
 
-
 #ifdef _WIN32
       CloseHandle(lock_);
       CloseHandle(countlock_);

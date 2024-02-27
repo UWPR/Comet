@@ -417,7 +417,7 @@ struct InputFileInfo
 {
    int  iInputType;
    int  iAnalysisType;
-   int  iFirstScan;
+   int  iFirstScan;         // for scan range specified with file on command line; otherwise replicates g_staticParams.options.scanRange.iStart
    int  iLastScan;
    char szFileName[SIZE_FILE];
    char szBaseName[SIZE_FILE];

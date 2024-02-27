@@ -24,9 +24,6 @@
 #include "limits.h"
 #include "stdlib.h"
 
-#ifdef _WIN32
-#define PATH_MAX _MAX_PATH
-#endif
 
 CometWriteMzIdentML::CometWriteMzIdentML()
 {
@@ -760,7 +757,7 @@ void CometWriteMzIdentML::GetModificationID(char cResidue,
    *strModRef = "PSI-MS";
    *strModName = "unknown modification";
 
-   if (fabs(dModMass - 15.994915) < 0.01 && strchr("DKNPFYRMCWHGUEILQSTV", cResidue))
+   if (fabs(dModMass - Oxygen_Mono) < 0.01 && strchr("DKNPFYRMCWHGUEILQSTV", cResidue))
    {
       *strModID = "UNIMOD:35";
       *strModRef = "UNIMOD";

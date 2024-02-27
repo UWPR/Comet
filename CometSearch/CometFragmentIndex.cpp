@@ -131,9 +131,13 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
 
    MOD_SEQS = ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
+auto tStartTime = chrono::steady_clock::now();
+cout <<  "   - get modification combinations ... "; fflush(stdout);
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(MOD_SEQS, iMaxNumVariableMods, ALL_MODS,
          MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+cout << ElapsedTime(tStartTime) << endl;
+
 }
 
 
@@ -170,10 +174,6 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, iWhichThread, iNumIndexingThreads, pFragmentIndexPool, 1));
 
    pFragmentIndexPool->wait_on_threads();
-   cout << ElapsedTime(tStartTime) << endl;
-
-   tStartTime = chrono::steady_clock::now();
-   cout <<  "   - reserve memory ... "; fflush(stdout);
 
    // now reserve memory for the fragment index vectors
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
@@ -198,14 +198,18 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    cout << ElapsedTime(tStartTime) << endl;
 
    tStartTime = chrono::steady_clock::now();
-   cout <<  "   - sorting fragment index mass bin by peptide mass ... "; fflush(stdout);
+   cout <<  "   - sorting fragment mass bins by peptide mass ... "; fflush(stdout);
 
-   // combine each g_arrvFragmentIndex[iWhichThread[]
-   for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
+   // sort list of peptides at each fragment bin by peptide mass
+   for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
    {
-      // Walk through each g_arrvFragmentIndex[] and sort entries by increasing peptide mass
-      // First merge individual g_arrvFragmentIndex[] into g_arrvFragmentIndex[0]
-      pFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, i, iNumIndexingThreads, pFragmentIndexPool));
+      for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
+      {
+         // Walk through each g_arrvFragmentIndex[] and sort entries by increasing peptide mass
+         // First merge individual g_arrvFragmentIndex[] into g_arrvFragmentIndex[0]
+         if (g_arrvFragmentIndex[iWhichThread][i].size() > 1)
+            pFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, i, iWhichThread, pFragmentIndexPool));
+      }
    }
 
    pFragmentIndexPool->wait_on_threads();
@@ -223,7 +227,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    {
       for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
       {
-         long long ullTmp = g_arrvFragmentIndex[iWhichThread][ii].size();
+         unsigned long long ullTmp = g_arrvFragmentIndex[iWhichThread][ii].size();
          ullCount += ullTmp;
 
          if (ullTmp > ullMax)
@@ -348,16 +352,13 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
 
 
 void CometFragmentIndex::SortFragmentThreadProc(int iBin,
-                                                int iNumIndexingThreads,
+                                                int iWhichThread,
                                                 ThreadPool *tp)
 {
-   for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
-   {
-      sort(g_arrvFragmentIndex[iWhichThread][iBin].begin(), g_arrvFragmentIndex[iWhichThread][iBin].end(), SortFragmentsByPepMass);
+   sort(g_arrvFragmentIndex[iWhichThread][iBin].begin(), g_arrvFragmentIndex[iWhichThread][iBin].end(), SortFragmentsByPepMass);
 
-      g_arrvFragmentIndex[iWhichThread][iBin].erase(unique(g_arrvFragmentIndex[iWhichThread][iBin].begin(),
-               g_arrvFragmentIndex[iWhichThread][iBin].end()), g_arrvFragmentIndex[iWhichThread][iBin].end());
-   }
+   g_arrvFragmentIndex[iWhichThread][iBin].erase(unique(g_arrvFragmentIndex[iWhichThread][iBin].begin(),
+            g_arrvFragmentIndex[iWhichThread][iBin].end()), g_arrvFragmentIndex[iWhichThread][iBin].end());
 }
 
 
@@ -437,8 +438,11 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
       printf(" Error, pepmass in AddFragments is %f, peptide %s, modNumIdx %d\n", dCalcPepMass, sPeptide.c_str(), modNumIdx);
       exit(1);
    }
-
+  
    if (dCalcPepMass > g_massRange.dMaxMass)
+      return;
+
+   if (!g_bIndexPrecursors[BIN(dCalcPepMass)])
       return;
 
    unsigned int uiCurrentFragmentPeptide;
@@ -503,10 +507,16 @@ if (!(iWhichPeptide%5000))
       if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
          if (sPeptide[i] == modSeq[j])
+         {
+            dBion += g_staticParams.variableModParameters.varModList[mods[j] - 1].dVarModMass;
             j++;
+         }
 
          if (sPeptide[iPosReverse] == modSeq[k])
+         {
+            dYion += g_staticParams.variableModParameters.varModList[mods[k] - 1].dVarModMass;
             k--;
+         }
       }
 
       if (dBion > g_staticParams.options.dFragIndexMaxMass && dYion > g_staticParams.options.dFragIndexMaxMass)
@@ -518,6 +528,7 @@ if (!(iWhichPeptide%5000))
          // push_back() seem to be causing VS compiled exe to slow down to single thread speed.
          // A g++ compiled binary is not similarly affected.
          // A yeast target-decoy fasta with 16M, 80STY invokes over 2 billion of these.
+
          if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass)
          {
             if (bCountOnly)
@@ -684,7 +695,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // write VariableMod:
    fprintf(fp, "VariableMod:");
    for (int x = 0; x < VMODS; ++x)
-      fprintf(fp, " %lf:%s", g_staticParams.variableModParameters.varModList[x].dVarModMass,
+      fprintf(fp, " %lf:%lf:%s", g_staticParams.variableModParameters.varModList[x].dVarModMass,
+         g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
          g_staticParams.variableModParameters.varModList[x].szVarModChar);
    fprintf(fp, "\n");
 
@@ -729,7 +741,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-   strOut = " - done.  # peps " + to_string(tNumPeptides) + string("\n");
+   strOut = " - done.  # peps " + to_string(tNumPeptides) + string("\n\n");
    logout(strOut.c_str());
    fflush(stdout);
 
@@ -848,31 +860,40 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          sscanf(szBuf + 12, "%s %s %s %s %s %s %s %s %s",
             szMod1, szMod2, szMod3, szMod4, szMod5, szMod6, szMod7, szMod8, szMod9);
          
-         sscanf(szMod1, "%lf:%s", &(g_staticParams.variableModParameters.varModList[0].dVarModMass),
+         sscanf(szMod1, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[0].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[0].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[0].szVarModChar);
 
-         sscanf(szMod2, "%lf:%s", &(g_staticParams.variableModParameters.varModList[1].dVarModMass),
+         sscanf(szMod2, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[1].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[1].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[1].szVarModChar);
 
-         sscanf(szMod3, "%lf:%s", &(g_staticParams.variableModParameters.varModList[2].dVarModMass),
+         sscanf(szMod3, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[2].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[2].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[2].szVarModChar);
 
-         sscanf(szMod4, "%lf:%s", &(g_staticParams.variableModParameters.varModList[3].dVarModMass),
+         sscanf(szMod4, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[3].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[3].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[3].szVarModChar);
 
-         sscanf(szMod5, "%lf:%s", &(g_staticParams.variableModParameters.varModList[4].dVarModMass),
+         sscanf(szMod5, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[4].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[4].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[4].szVarModChar);
 
-         sscanf(szMod6, "%lf:%s", &(g_staticParams.variableModParameters.varModList[5].dVarModMass),
+         sscanf(szMod6, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[5].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[5].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[5].szVarModChar);
 
-         sscanf(szMod7, "%lf:%s", &(g_staticParams.variableModParameters.varModList[6].dVarModMass),
+         sscanf(szMod7, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[6].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[6].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[6].szVarModChar);
 
-         sscanf(szMod8, "%lf:%s", &(g_staticParams.variableModParameters.varModList[7].dVarModMass),
+         sscanf(szMod8, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[7].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[7].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[7].szVarModChar);
 
-         sscanf(szMod9, "%lf:%s", &(g_staticParams.variableModParameters.varModList[8].dVarModMass),
+         sscanf(szMod9, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[8].dVarModMass),
+            &(g_staticParams.variableModParameters.varModList[8].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[8].szVarModChar);
 
          for (int x = 0; x < VMODS; ++x)
@@ -887,6 +908,12 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          bFoundVariable = true;
          break;
       }
+   }
+
+   for (int i = 0; i < 9 ; ++i)
+   {
+      if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
+         g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
    }
 
    if (!bFoundStatic || !bFoundVariable)

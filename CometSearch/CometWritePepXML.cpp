@@ -23,9 +23,6 @@
 #include "limits.h"
 #include "stdlib.h"
 
-#ifdef _WIN32
-#define PATH_MAX _MAX_PATH
-#endif
 
 CometWritePepXML::CometWritePepXML()
 {
@@ -79,36 +76,29 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // This might not be the case with -N command line option.
    // So get base name from g_staticParams.inputFile.szFileName here to be sure
    char *pStr;
-   char szRunSummaryBaseName[PATH_MAX];          // base name of szInputFile
    char szRunSummaryResolvedPath[PATH_MAX];      // resolved path of szInputFile
-   int  iLen = (int)strlen(g_staticParams.inputFile.szFileName);
-   strcpy(szRunSummaryBaseName, g_staticParams.inputFile.szFileName);
-   if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
-      *pStr = '\0';
 
-   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
-   {
-      if ( (pStr = strrchr(szRunSummaryBaseName, '.')))
-         *pStr = '\0';
-   }
-
-   char resolvedPathBaseName[PATH_MAX];
+   // punt on resolving the path of szBaseName as would need to either crop
+   // off the base name first or add a valid file extension
 
    if (g_staticParams.options.bResolveFullPaths)
    {
-#ifdef _WIN32
-      _fullpath(resolvedPathBaseName, g_staticParams.inputFile.szBaseName, PATH_MAX);
-      _fullpath(szRunSummaryResolvedPath, szRunSummaryBaseName, PATH_MAX);
-#else
-      realpath(g_staticParams.inputFile.szBaseName, resolvedPathBaseName);
-      realpath(szRunSummaryBaseName, szRunSummaryResolvedPath);
-#endif
+      // realpath is #defined to _fullpath in WIN32
+      if (!realpath(g_staticParams.inputFile.szFileName, szRunSummaryResolvedPath))
+         strcpy(szRunSummaryResolvedPath, g_staticParams.inputFile.szFileName);
    }
    else
+      strcpy(szRunSummaryResolvedPath, g_staticParams.inputFile.szFileName);
+
+   // now remove extension from szRunSummaryResolvedPath to leave just the base name
+   int  iLen = (int)strlen(g_staticParams.inputFile.szFileName);
+   if ( (pStr = strrchr(szRunSummaryResolvedPath, '.')))
+      *pStr = '\0';
+   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
+         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
    {
-      strcpy(resolvedPathBaseName, g_staticParams.inputFile.szBaseName);
-      strcpy(szRunSummaryResolvedPath, szRunSummaryBaseName);
+      if ( (pStr = strrchr(szRunSummaryResolvedPath, '.')))
+         *pStr = '\0';
    }
 
    // Write out pepXML header.
@@ -118,7 +108,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v120.xsd\" ");
-   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", resolvedPathBaseName);
+   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", g_staticParams.inputFile.szBaseName);
 
    fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", szRunSummaryResolvedPath);
    fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
@@ -160,7 +150,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
          g_staticParams.enzymeInformation.iSampleEnzymeOffSet?'C':'N');
    fprintf(fpout, " </sample_enzyme>\n");
 
-   fprintf(fpout, " <search_summary base_name=\"%s\"", resolvedPathBaseName);
+   fprintf(fpout, " <search_summary base_name=\"%s\"", g_staticParams.inputFile.szBaseName);
    fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s%s\"", (g_staticParams.options.bMango?"Mango ":""), g_sCometVersion.c_str());
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");

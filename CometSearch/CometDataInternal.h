@@ -411,8 +411,7 @@ struct DBInfo
    }
 };
 
-// will need to retire this soon as it's a duplicate of PlainPeptideIndex
-// now that mods aren't stored
+// this duplicates PlainPeptideIndex but with fixed peptide char string for simplified binary write/read
 struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
@@ -489,6 +488,7 @@ extern vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS];       /
 extern unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS];       // array of ints: [Index/thread/max8][BIN(fragment mass)][which entries in g_vFragmentPeptides]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndex> g_vRawPeptides;
+extern bool *g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
 
 
 struct IndexProteinStruct  // for indexed database

@@ -212,6 +212,9 @@ void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
 {
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
+   // need this sort first for all iNumStored hits
+   std::sort(pQuery->_pResults, pQuery->_pResults + g_staticParams.options.iNumStored, SortFnXcorr);
+
    int iSize = pQuery->iMatchPeptideCount;
 
    // Need to analyze up to iNumStored here so that Sp rank can range to this
@@ -264,6 +267,9 @@ void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
    // Repeat for decoy search
    if (g_staticParams.options.iDecoySearch == 2)
    {
+      // need this sort first for all iNumStored hits
+      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + g_staticParams.options.iNumStored, SortFnXcorr);
+
       iSize = pQuery->iDecoyMatchPeptideCount;
 
       if (iSize > g_staticParams.options.iNumPeptideOutputLines)

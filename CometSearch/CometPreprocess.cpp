@@ -31,7 +31,6 @@ CometPreprocess::CometPreprocess()
 {
 }
 
-
 CometPreprocess::~CometPreprocess()
 {
 }
@@ -41,6 +40,459 @@ void CometPreprocess::Reset()
     _bFirstScan = true;
     _bDoneProcessingAllSpectra = false;
 }
+
+bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
+{
+   int iFileLastScan = -1;         // The actual last scan in the file.
+   int iFirstScan = 0;
+   int iLastScan = 0;
+   int iTmpCount = 0;
+   int iScanNumber = 0;
+   int iSpectrumCharge;
+   Spectrum mstSpectrum;           // For holding spectrum.
+
+   int iMaxBin = BIN(g_staticParams.options.dPeptideMassHigh);
+
+
+   if (g_staticParams.options.scanRange.iStart != 0)
+      iFirstScan = g_staticParams.options.scanRange.iStart;
+
+   if (g_staticParams.options.scanRange.iEnd != 0)
+      iLastScan = g_staticParams.options.scanRange.iEnd;
+
+   // Load all input spectra.
+   while (true)
+   {
+      // Loads in MSMS spectrum data.
+      if (_bFirstScan)
+      {
+         PreloadIons(mstReader, mstSpectrum, false, 0);  // Use 0 as scan num here in last argument instead of iFirstScan; must
+         _bFirstScan = false;                            // be MS/MS scan else data not read by MSToolkit so safer to start at 0.
+      }                                                  // Not ideal as could be reading non-relevant scans but it's fast enough.
+      else
+      {
+         PreloadIons(mstReader, mstSpectrum, true);
+      }
+
+      if (iFileLastScan == -1)
+      {
+         iFileLastScan = mstReader.getLastScan();
+         if (iLastScan == 0 && iFileLastScan != -1)
+            iLastScan = iFileLastScan;
+      }
+
+      if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
+      {
+         _bDoneProcessingAllSpectra = true;
+         break;
+      }
+
+      iScanNumber = mstSpectrum.getScanNumber();
+
+      if (iLastScan > 0 && iScanNumber > iLastScan)
+         break;
+
+      if (g_staticParams.bSkipToStartScan && iScanNumber < iFirstScan)
+      {
+         g_staticParams.bSkipToStartScan = false;
+
+         PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+         iScanNumber = mstSpectrum.getScanNumber();
+
+         // iScanNumber will equal 0 if iFirstScan is not the right scan level
+         // So need to keep reading the next scan until we get a non-zero scan number
+         while (iScanNumber == 0 && iFirstScan < iFileLastScan)
+         {
+            iFirstScan++;
+            PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+            iScanNumber = mstSpectrum.getScanNumber();
+         }
+      }
+
+
+      if (iScanNumber != 0)
+      {
+         if (iLastScan > 0 && iScanNumber > iLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            break;
+         }
+         if (iFirstScan != 0 && iLastScan > 0 && !(iFirstScan <= iScanNumber && iScanNumber <= iLastScan))
+            continue;
+         if (iFirstScan != 0 && iLastScan == 0 && iScanNumber < iFirstScan)
+            continue;
+
+         g_staticParams.bSkipToStartScan = false;
+         iTmpCount = iScanNumber;
+
+/*   
+         // Thermo's monoisotopic m/z determine can fail sometimes. Assume that when
+         // the mono m/z value is less than selection window, it is wrong and use the
+         // selection m/z as the precursor m/z. This should
+         // be invoked when searching Thermo raw files and mzML converted from those.
+         // Only applied when single precursor present.
+         for (int i = 0 ; i < mstSpectrum.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
+         {
+            double dMZ = mstSpectrum.getMonoMZ(i);
+
+            if (g_staticParams.options.bCorrectMass && mstSpectrum.sizeMZ() == 1)
+            {
+               double dSelectionLower = mstSpectrum.getSelWindowLower();
+               double dSelectedMZ = mstSpectrum.getMZ(i);
+
+               if (dMZ > 0.1 && dSelectionLower > 0.1 && dMZ+0.1 < dSelectionLower)
+                  dMZ = dSelectedMZ;
+            }
+
+            if (dMZ == 0)
+               dMZ = mstSpectrum.getMZ(i);
+
+            if (!(iScanNumber % 5000))
+               printf("OK %s  dMZ %f %d/%d\n", g_staticParams.inputFile.szFileName, dMZ, iScanNumber, iFileLastScan);
+         }
+*/
+
+         // To run a search, all that's needed is MH+ and Z. So need to generate
+         // all combinations of these for each spectrum, whether there's a known
+         // Z for each precursor or if Comet has to guess the 1+ or 2+/3+ charges.
+
+         for (int i = 0 ; i < mstSpectrum.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
+         {
+            double dMZ = 0.0;              // m/z to use for analysis
+            vector<int> vChargeStates;
+
+            if (mstSpectrum.sizeMZ() == mstSpectrum.sizeZ())
+            {
+               iSpectrumCharge = mstSpectrum.atZ(i).z;
+            }
+            else if (mstSpectrum.sizeMZ() == 1 && mstSpectrum.sizeMZ() < mstSpectrum.sizeZ())
+            {
+               // example from ms2 file with one precursor and multiple Z lines?
+               // will need to include all spectrum charges below
+               iSpectrumCharge = mstSpectrum.atZ(i).z;
+            }
+            else if (mstSpectrum.sizeMZ() > mstSpectrum.sizeZ())
+            {
+               // need to ignore any spectrum charge as don't know which correspond charge to which precursor
+               iSpectrumCharge = 0;
+            }
+            else
+            {
+               // don't know what condition/spectrum type leads here
+               iSpectrumCharge = 0;
+               printf(" Warning, scan %d has %d precursors and %d precursor charges\n", iScanNumber, mstSpectrum.sizeMZ(), mstSpectrum.sizeZ());
+            }
+
+            // Thermo's monoisotopic m/z determine can fail sometimes. Assume that when
+            // the mono m/z value is less than selection window, it is wrong and use the
+            // selection m/z as the precursor m/z. This should
+            // be invoked when searching Thermo raw files and mzML converted from those.
+            // Only applied when single precursor present.
+            dMZ = mstSpectrum.getMonoMZ(i);
+
+            if (g_staticParams.options.bCorrectMass && mstSpectrum.sizeMZ() == 1)
+            {
+               double dSelectionLower = mstSpectrum.getSelWindowLower();
+               double dSelectedMZ = mstSpectrum.getMZ(i);
+
+               if (dMZ > 0.1 && dSelectionLower > 0.1 && dMZ+0.1 < dSelectionLower)
+                  dMZ = dSelectedMZ;
+            }
+
+            if (dMZ == 0)
+               dMZ = mstSpectrum.getMZ(i);
+
+            // 1.  Have spectrum charge from file.  It may be 0.
+            // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
+            // 3.  Else just use the spectrum charge (and possibly 1 or 2/3 rule)
+            if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.bOverrideCharge > 0)
+            {
+               if (g_staticParams.options.bOverrideCharge == 1)
+               {
+                  // ignore spectrum charge and use precursor_charge range
+                  for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
+                  {
+                     vChargeStates.push_back(z);
+                  }
+               }
+               else if (g_staticParams.options.bOverrideCharge == 2)
+               {
+                  // only use spectrum charge if it's within the charge range
+                  for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
+                  {
+                     if (z == iSpectrumCharge)
+                        vChargeStates.push_back(z);
+                  }
+               }
+               else if (g_staticParams.options.bOverrideCharge == 3)
+               {
+                  if (iSpectrumCharge > 0)
+                  {
+                     vChargeStates.push_back(iSpectrumCharge);
+                  }
+                  else // use 1+ or charge range
+                  {
+                     double dSumBelow = 0.0;
+                     double dSumTotal = 0.0;
+
+                     for (int i=0; i<mstSpectrum.size(); ++i)
+                     {
+                        dSumTotal += mstSpectrum.at(i).intensity;
+                        if (mstSpectrum.at(i).mz < mstSpectrum.getMZ())
+                           dSumBelow += mstSpectrum.at(i).intensity;
+                     }
+
+                     if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
+                     {
+                        vChargeStates.push_back(1);
+                     }
+                     else
+                     {
+                        for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
+                        {
+                           vChargeStates.push_back(z);
+                        }
+                     }
+                  }
+               }
+            }
+            else  // use spectrum charge
+            {
+               if (iSpectrumCharge > 0) // use charge from file
+               {
+                  vChargeStates.push_back(iSpectrumCharge);
+
+                  // add in any other charge states for the single precursor m/z
+                  if (mstSpectrum.sizeMZ() == 1 && mstSpectrum.sizeMZ() < mstSpectrum.sizeZ())
+                  {
+                     for (int ii = 1 ; ii < mstSpectrum.sizeZ(); ++ii)
+                     {
+                        vChargeStates.push_back(mstSpectrum.atZ(ii).z);
+                     }
+                  }
+               }
+               else
+               {
+                  double dSumBelow = 0.0;
+                  double dSumTotal = 0.0;
+
+                  for (int i=0; i<mstSpectrum.size(); ++i)
+                  {
+                     dSumTotal += mstSpectrum.at(i).intensity;
+
+                     if (mstSpectrum.at(i).mz < mstSpectrum.getMZ())
+                        dSumBelow += mstSpectrum.at(i).intensity;
+                  }
+
+                  if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
+                  {
+                     vChargeStates.push_back(1);
+                  }
+                  else
+                  {
+                     vChargeStates.push_back(2);
+                     vChargeStates.push_back(3);
+                  }
+               }
+            }
+
+            // now analyze all possible precursor charges for this spectrum
+            for (vector<int>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
+            {
+               int iPrecursorCharge = *iter;
+               double dProtonatedMass = (dMZ * iPrecursorCharge) - (iPrecursorCharge * PROTON_MASS)  + PROTON_MASS;
+
+               double dToleranceLow = 0;
+               double dToleranceHigh = 0;
+   
+               if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
+               {
+                  dToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus;
+                  dToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus;
+
+                  if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+                  {
+                     dToleranceLow  *= iPrecursorCharge;
+                     dToleranceHigh *= iPrecursorCharge;
+                  }
+               }
+               else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
+               {
+                  dToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus * 0.001;
+                  dToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus  * 0.001;
+
+                  if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+                  {
+                     dToleranceLow  *= iPrecursorCharge;
+                     dToleranceHigh *= iPrecursorCharge;
+                  }
+               }
+
+               // tolerances are fixed above except if ppm is specified
+               if (g_staticParams.tolerances.iMassToleranceUnits == 2) // ppm
+               {
+                  dToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus * dProtonatedMass / 1E6;
+                  dToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus * dProtonatedMass / 1E6;
+               }
+
+               // these are the range of neutral mass bins if any theoretical peptide falls into,
+               // we want to add them to the fragment index
+               double dMassLow = dProtonatedMass + dToleranceLow;
+               double dMassHigh = dProtonatedMass + dToleranceHigh;
+               int iStart = BIN(dMassLow);  // add dToleranceLow as it will be negative number
+               int iEnd   = BIN(dMassHigh);
+
+               if (iStart < 0)
+                  iStart = 0;   // real problems if we actually get here
+               if (iEnd > iMaxBin)
+                  iEnd = iMaxBin;
+
+               for (int x = iStart ; x <= iEnd; ++x)
+               {
+                  g_bIndexPrecursors[x] = true;
+               }
+
+               // now go through each isotope offset
+               if (g_staticParams.tolerances.iIsotopeError > 0)
+               {
+                  if (g_staticParams.tolerances.iIsotopeError == 1
+                        || g_staticParams.tolerances.iIsotopeError == 2
+                        || g_staticParams.tolerances.iIsotopeError == 3
+                        || g_staticParams.tolerances.iIsotopeError == 5
+                        || g_staticParams.tolerances.iIsotopeError == 6)
+                  {
+                     iStart = BIN(dMassLow - C13_DIFF * PROTON_MASS);     // do +1 offset
+                     iEnd   = BIN(dMassHigh - C13_DIFF * PROTON_MASS);
+                     if (iStart < 0)
+                        iStart = 0;
+                     if (iEnd > iMaxBin)
+                        iEnd = iMaxBin;
+                     for (int x = iStart ; x <= iEnd; ++x)
+                        g_bIndexPrecursors[x] = true;
+
+                     if (g_staticParams.tolerances.iIsotopeError == 2
+                           || g_staticParams.tolerances.iIsotopeError == 3
+                           || g_staticParams.tolerances.iIsotopeError == 5
+                           || g_staticParams.tolerances.iIsotopeError == 6)
+                     {
+                        iStart = BIN(dMassLow - 2.0 * C13_DIFF * PROTON_MASS);     // do +2 offset
+                        iEnd   = BIN(dMassHigh - 2.0 * C13_DIFF * PROTON_MASS);
+                        if (iStart < 0)
+                           iStart = 0;
+                        if (iEnd > iMaxBin)
+                           iEnd = iMaxBin;
+                        for (int x = iStart ; x <= iEnd; ++x)
+                           g_bIndexPrecursors[x] = true;
+
+                        if (g_staticParams.tolerances.iIsotopeError == 3
+                              || g_staticParams.tolerances.iIsotopeError == 5
+                              || g_staticParams.tolerances.iIsotopeError == 6)
+                        {
+                           iStart = BIN(dMassLow - 3.0 * C13_DIFF * PROTON_MASS);     // do +3 offset
+                           iEnd   = BIN(dMassHigh - 3.0 * C13_DIFF * PROTON_MASS);
+                           if (iStart < 0)
+                              iStart = 0;
+                           if (iEnd > iMaxBin)
+                              iEnd = iMaxBin;
+                           for (int x = iStart ; x <= iEnd; ++x)
+                              g_bIndexPrecursors[x] = true;
+
+                           if (g_staticParams.tolerances.iIsotopeError == 5
+                                 || g_staticParams.tolerances.iIsotopeError == 6)
+                           {         
+                              iStart = BIN(dMassLow + C13_DIFF * PROTON_MASS);     // do -1 offset
+                              iEnd   = BIN(dMassHigh + C13_DIFF * PROTON_MASS);
+                              if (iStart < 0)
+                                 iStart = 0;
+                              if (iEnd > iMaxBin)
+                                 iEnd = iMaxBin;
+                              for (int x = iStart ; x <= iEnd; ++x)
+                                 g_bIndexPrecursors[x] = true;
+
+                              if (g_staticParams.tolerances.iIsotopeError == 6)
+                              {
+                                 iStart = BIN(dMassLow + 2.0 * C13_DIFF * PROTON_MASS);     // do -2 and -3 offsets
+                                 iEnd   = BIN(dMassHigh + 2.0 * C13_DIFF * PROTON_MASS);
+                                 if (iStart < 0)
+                                    iStart = 0;
+                                 if (iEnd > iMaxBin)
+                                    iEnd = iMaxBin;
+                                 for (int x = iStart ; x <= iEnd; ++x)
+                                    g_bIndexPrecursors[x] = true;
+
+                                 iStart = BIN(dMassLow + 3.0 * C13_DIFF * PROTON_MASS);     // do -2 and -3 offsets
+                                 iEnd   = BIN(dMassHigh + 3.0 * C13_DIFF * PROTON_MASS);
+                                 if (iStart < 0)
+                                    iStart = 0;
+                                 if (iEnd > iMaxBin)
+                                    iEnd = iMaxBin;
+                                 for (int x = iStart ; x <= iEnd; ++x)
+                                    g_bIndexPrecursors[x] = true;
+                              }
+
+                           }
+                        }
+                     }
+                  }
+                  else if (g_staticParams.tolerances.iIsotopeError == 4)            // do -8, -4, +4, +8 offsets
+                  {
+                     iStart = BIN(dMassLow + 8.0 * C13_DIFF * PROTON_MASS);
+                     iEnd   = BIN(dMassHigh + 8.0 * C13_DIFF * PROTON_MASS);
+                     if (iStart < 0)
+                        iStart = 0;
+                     if (iEnd > iMaxBin)
+                        iEnd = iMaxBin;
+                     for (int x = iStart ; x <= iEnd; ++x)
+                        g_bIndexPrecursors[x] = true;
+
+                     iStart = BIN(dMassLow + 4.0 * C13_DIFF * PROTON_MASS);
+                     iEnd   = BIN(dMassHigh + 4.0 * C13_DIFF * PROTON_MASS);
+                     if (iStart < 0)
+                        iStart = 0;
+                     if (iEnd > iMaxBin)
+                        iEnd = iMaxBin;
+                     for (int x = iStart ; x <= iEnd; ++x)
+                        g_bIndexPrecursors[x] = true;
+
+                     iStart = BIN(dMassLow - 8.0 * C13_DIFF * PROTON_MASS);
+                     iEnd   = BIN(dMassHigh - 8.0 * C13_DIFF * PROTON_MASS);
+                     if (iStart < 0)
+                        iStart = 0;
+                     if (iEnd > iMaxBin)
+                        iEnd = iMaxBin;
+                     for (int x = iStart ; x <= iEnd; ++x)
+                        g_bIndexPrecursors[x] = true;
+
+                     iStart = BIN(dMassLow - 4.0 * C13_DIFF * PROTON_MASS);
+                     iEnd   = BIN(dMassHigh - 4.0 * C13_DIFF * PROTON_MASS);
+                     if (iStart < 0)
+                        iStart = 0;
+                     if (iEnd > iMaxBin)
+                        iEnd = iMaxBin;
+                     for (int x = iStart ; x <= iEnd; ++x)
+                        g_bIndexPrecursors[x] = true;
+                  }
+               }
+            }
+         }
+      }
+      else
+      {
+         // What happens here when iScanNumber == 0 and it is an mzXML file?
+         // Best way to deal with this is to keep trying to read but track each
+         // attempt and break when the count goes past the mzXML's last scan.
+         iTmpCount++;
+
+         if (iTmpCount > iFileLastScan)
+            break;
+      }
+   }
+
+// mstReader.closeFile();
+
+   return true;
+}
+
 
 bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                                                int iFirstScan,
@@ -151,7 +603,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
             }
          }
 
-         if (mstSpectrum.size()-iNumClearedPeaks >= g_staticParams.options.iMinPeaks)
+         if (mstSpectrum.size() - iNumClearedPeaks >= g_staticParams.options.iMinPeaks)
          {
             if (iAnalysisType == AnalysisType_SpecificScanRange && iLastScan > 0 && iScanNumber > iLastScan)
             {
@@ -233,7 +685,8 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 }
 
 
-void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData, ThreadPool* tp)
+void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
+                                           ThreadPool* tp)
 {
    // This returns false if it fails, but the errors are already logged
    // so no need to check the return value here.
@@ -242,7 +695,6 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    int i;
 
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
-
    for (i=0; i<g_staticParams.options.iNumThreads; ++i)
    {
       if (pbMemoryPool[i]==false)
