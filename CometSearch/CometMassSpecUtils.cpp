@@ -140,13 +140,13 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
 
       fread(&lSize, sizeof(long), 1, fpdb);
       vector<comet_fileoffset_t> vOffsets;
-      for (long x = 0; x < lSize; ++x)
+      for (long x = 0; x < lSize; ++x) // read file offsets
       {
          comet_fileoffset_t tmpoffset;
          fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
          vOffsets.push_back(tmpoffset);
       }
-      for (long x = 0; x < lSize; ++x)
+      for (long x = 0; x < lSize; ++x) // read name from fasta
       {
          char szTmp[WIDTH_REFERENCE];
          comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
@@ -228,13 +228,24 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       // get target proteins
       if (iPrintTargetDecoy != 2)  // if not decoy-only
       {
+         vector<string> vTmp;      // store decoy matches here to append at end
+
          comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
          for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
          {
             comet_fseek(fpdb, *it, SEEK_SET);
             fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
             szProteinName[511] = '\0';
-            vProteinTargets.push_back(szProteinName);
+
+            if (!strncmp(szProteinName, g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
+               vTmp.push_back(szProteinName);
+            else
+               vProteinTargets.push_back(szProteinName);
+         }
+
+         if (vTmp.size() > 0)      // append any decoy matches now
+         {
+            vProteinTargets.insert(vProteinTargets.end(), vTmp.begin(), vTmp.end());
          }
       }
 
