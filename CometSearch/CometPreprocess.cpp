@@ -355,11 +355,8 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                // now go through each isotope offset
                if (g_staticParams.tolerances.iIsotopeError > 0)
                {
-                  if (g_staticParams.tolerances.iIsotopeError == 1
-                        || g_staticParams.tolerances.iIsotopeError == 2
-                        || g_staticParams.tolerances.iIsotopeError == 3
-                        || g_staticParams.tolerances.iIsotopeError == 5
-                        || g_staticParams.tolerances.iIsotopeError == 6)
+                  if (g_staticParams.tolerances.iIsotopeError >= 1
+                        && g_staticParams.tolerances.iIsotopeError <= 6)
                   {
                      iStart = BIN(dMassLow - C13_DIFF * PROTON_MASS);     // do +1 offset
                      iEnd   = BIN(dMassHigh - C13_DIFF * PROTON_MASS);
@@ -370,10 +367,9 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                      for (int x = iStart ; x <= iEnd; ++x)
                         g_bIndexPrecursors[x] = true;
 
-                     if (g_staticParams.tolerances.iIsotopeError == 2
-                           || g_staticParams.tolerances.iIsotopeError == 3
-                           || g_staticParams.tolerances.iIsotopeError == 5
-                           || g_staticParams.tolerances.iIsotopeError == 6)
+                     if (g_staticParams.tolerances.iIsotopeError >= 2
+                           && g_staticParams.tolerances.iIsotopeError <= 6
+                           && g_staticParams.tolerances.iIsotopeError != 5)
                      {
                         iStart = BIN(dMassLow - 2.0 * C13_DIFF * PROTON_MASS);     // do +2 offset
                         iEnd   = BIN(dMassHigh - 2.0 * C13_DIFF * PROTON_MASS);
@@ -384,9 +380,9 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                         for (int x = iStart ; x <= iEnd; ++x)
                            g_bIndexPrecursors[x] = true;
 
-                        if (g_staticParams.tolerances.iIsotopeError == 3
-                              || g_staticParams.tolerances.iIsotopeError == 5
-                              || g_staticParams.tolerances.iIsotopeError == 6)
+                        if (g_staticParams.tolerances.iIsotopeError >= 3
+                              && g_staticParams.tolerances.iIsotopeError <= 6
+                              && g_staticParams.tolerances.iIsotopeError != 5)
                         {
                            iStart = BIN(dMassLow - 3.0 * C13_DIFF * PROTON_MASS);     // do +3 offset
                            iEnd   = BIN(dMassHigh - 3.0 * C13_DIFF * PROTON_MASS);
@@ -396,45 +392,44 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                               iEnd = iMaxBin;
                            for (int x = iStart ; x <= iEnd; ++x)
                               g_bIndexPrecursors[x] = true;
-
-                           if (g_staticParams.tolerances.iIsotopeError == 5
-                                 || g_staticParams.tolerances.iIsotopeError == 6)
-                           {         
-                              iStart = BIN(dMassLow + C13_DIFF * PROTON_MASS);     // do -1 offset
-                              iEnd   = BIN(dMassHigh + C13_DIFF * PROTON_MASS);
-                              if (iStart < 0)
-                                 iStart = 0;
-                              if (iEnd > iMaxBin)
-                                 iEnd = iMaxBin;
-                              for (int x = iStart ; x <= iEnd; ++x)
-                                 g_bIndexPrecursors[x] = true;
-
-                              if (g_staticParams.tolerances.iIsotopeError == 6)
-                              {
-                                 iStart = BIN(dMassLow + 2.0 * C13_DIFF * PROTON_MASS);     // do -2 and -3 offsets
-                                 iEnd   = BIN(dMassHigh + 2.0 * C13_DIFF * PROTON_MASS);
-                                 if (iStart < 0)
-                                    iStart = 0;
-                                 if (iEnd > iMaxBin)
-                                    iEnd = iMaxBin;
-                                 for (int x = iStart ; x <= iEnd; ++x)
-                                    g_bIndexPrecursors[x] = true;
-
-                                 iStart = BIN(dMassLow + 3.0 * C13_DIFF * PROTON_MASS);     // do -2 and -3 offsets
-                                 iEnd   = BIN(dMassHigh + 3.0 * C13_DIFF * PROTON_MASS);
-                                 if (iStart < 0)
-                                    iStart = 0;
-                                 if (iEnd > iMaxBin)
-                                    iEnd = iMaxBin;
-                                 for (int x = iStart ; x <= iEnd; ++x)
-                                    g_bIndexPrecursors[x] = true;
-                              }
-
-                           }
                         }
                      }
                   }
-                  else if (g_staticParams.tolerances.iIsotopeError == 4)            // do -8, -4, +4, +8 offsets
+
+                  if (g_staticParams.tolerances.iIsotopeError == 5
+                        || g_staticParams.tolerances.iIsotopeError == 6)
+                  {         
+                     iStart = BIN(dMassLow + C13_DIFF * PROTON_MASS);      // do -1 offset
+                     iEnd   = BIN(dMassHigh + C13_DIFF * PROTON_MASS);
+                     if (iStart < 0)
+                                 iStart = 0;
+                     if (iEnd > iMaxBin)
+                                 iEnd = iMaxBin;
+                     for (int x = iStart ; x <= iEnd; ++x)
+                                 g_bIndexPrecursors[x] = true;
+
+                     if (g_staticParams.tolerances.iIsotopeError == 6)     // do -2 and -3 offsets
+                     {
+                        iStart = BIN(dMassLow + 2.0 * C13_DIFF * PROTON_MASS);
+                        iEnd   = BIN(dMassHigh + 2.0 * C13_DIFF * PROTON_MASS);
+                        if (iStart < 0)
+                           iStart = 0;
+                        if (iEnd > iMaxBin)
+                           iEnd = iMaxBin;
+                        for (int x = iStart ; x <= iEnd; ++x)
+                           g_bIndexPrecursors[x] = true;
+
+                        iStart = BIN(dMassLow + 3.0 * C13_DIFF * PROTON_MASS);
+                        iEnd   = BIN(dMassHigh + 3.0 * C13_DIFF * PROTON_MASS);
+                        if (iStart < 0)
+                           iStart = 0;
+                        if (iEnd > iMaxBin)
+                           iEnd = iMaxBin;
+                        for (int x = iStart ; x <= iEnd; ++x)
+                           g_bIndexPrecursors[x] = true;
+                     }
+                  }
+                  else if (g_staticParams.tolerances.iIsotopeError == 7)            // do -8, -4, +4, +8 offsets
                   {
                      iStart = BIN(dMassLow + 8.0 * C13_DIFF * PROTON_MASS);
                      iEnd   = BIN(dMassHigh + 8.0 * C13_DIFF * PROTON_MASS);
@@ -1551,26 +1546,25 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 3.0 * C13_DIFF * PROTON_MASS;
       pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh;
    }
-   else if (g_staticParams.tolerances.iIsotopeError == 4) // search -8, -4, 0, 4, 8 windows
-   {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 8.1;
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + 8.1;
-   }
-   else if (g_staticParams.tolerances.iIsotopeError == 5) // search -1, 0, +1, +2, +3 isotope windows
+   else if (g_staticParams.tolerances.iIsotopeError == 4) // search -1, 0, +1, +2, +3 isotope windows
    {
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 3.0 * C13_DIFF * PROTON_MASS;
       pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + 1.0 * C13_DIFF * PROTON_MASS;
-
+   }
+   else if (g_staticParams.tolerances.iIsotopeError == 5) // search -1, 0, +1 isotope windows
+   {
+      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - C13_DIFF * PROTON_MASS;
+      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + C13_DIFF * PROTON_MASS;
    }
    else if (g_staticParams.tolerances.iIsotopeError == 6) // search -3, -2, -1, 0, +1, +2, +3 isotope windows
    {
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 3.0 * C13_DIFF * PROTON_MASS;
       pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + 3.0 * C13_DIFF * PROTON_MASS;
    }
-   else if (g_staticParams.tolerances.iIsotopeError == 7) // search -1, 0, +1 isotope windows
+   else if (g_staticParams.tolerances.iIsotopeError == 7) // search -8, -4, 0, 4, 8 windows
    {
-      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - C13_DIFF * PROTON_MASS;
-      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + C13_DIFF * PROTON_MASS;
+      pScoring->_pepMassInfo.dPeptideMassToleranceMinus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow - 8.1;
+      pScoring->_pepMassInfo.dPeptideMassTolerancePlus = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh + 8.1;
    }
    else  // Should not get here.
    {

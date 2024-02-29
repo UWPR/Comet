@@ -1468,9 +1468,13 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
             pdAAreverse[iPosForward] = dYion;
          }
 
+         int iMaxFragmentCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
+         if (iMaxFragmentCharge > 2)   // ony use up to 2+ fragments for the fragment index query
+            iMaxFragmentCharge = 2;
+
          // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
          // First initialize pbDuplFragment and _uiBinnedIonMasses
-         for (ctCharge = 1; ctCharge <= g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
+         for (ctCharge = 1; ctCharge <= iMaxFragmentCharge; ++ctCharge)
          {
             for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
             {
@@ -3281,7 +3285,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
                }
             }
 
-            if (g_staticParams.tolerances.iIsotopeError > 3 && g_staticParams.tolerances.iIsotopeError < 7)
+            if (g_staticParams.tolerances.iIsotopeError >= 4 && g_staticParams.tolerances.iIsotopeError <= 6)
             {
                // now consider negative C13 isotopes aka triggered peak is less than real peak
                if (g_staticParams.tolerances.iIsotopeError == 4 || g_staticParams.tolerances.iIsotopeError == 5)
@@ -3336,7 +3340,7 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
             if (g_staticParams.tolerances.iIsotopeError < 3)
                iMaxIsotope = g_staticParams.tolerances.iIsotopeError;
 
-            if (g_staticParams.tolerances.iIsotopeError == 6)
+            if (g_staticParams.tolerances.iIsotopeError == 5)
                iMaxIsotope = 1;
 
             for (int x = 0; x <= iMaxIsotope; ++x)
@@ -3348,18 +3352,18 @@ bool CometSearch::CheckMassMatch(int iWhichQuery,
                }
             }
 
-            if (g_staticParams.tolerances.iIsotopeError > 3 && g_staticParams.tolerances.iIsotopeError < 7)
+            if (g_staticParams.tolerances.iIsotopeError >= 4 && g_staticParams.tolerances.iIsotopeError <= 6)
             {
                // now consider negative C13 isotopes
-               if (g_staticParams.tolerances.iIsotopeError == 4 || g_staticParams.tolerances.iIsotopeError == 6)
+               if (g_staticParams.tolerances.iIsotopeError == 4 || g_staticParams.tolerances.iIsotopeError == 5)
                   iMaxIsotope = 1;
-               else  // g_staticParams.tolerances.iIsotopeError == 5
+               else  // g_staticParams.tolerances.iIsotopeError == 6
                   iMaxIsotope = 3;
 
                for (int x = 0; x <= iMaxIsotope; ++x)
                {
-                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x*C13_DIFF
-                             && dCalcPepMass + x*C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass - x*C13_DIFF
+                             && dCalcPepMass - x*C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
                   {
                      return true;
                   }

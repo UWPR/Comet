@@ -1777,7 +1777,7 @@ bool CometSearchManager::DoSearch()
 
    if (!g_staticParams.options.bOutputSqtStream) // && !g_staticParams.bIndexDb)
    {
-      strOut = " Comet version \"" + g_sCometVersion + "\"\n\n";
+      strOut = "\n Comet version \"" + g_sCometVersion + "\"\n\n";
 //      if (!g_staticParams.options.bSkipUpdateCheck)
 //       CometCheckForUpdates::CheckForUpdates(strOut.c_str());
 
