@@ -135,7 +135,6 @@ bool CometSearch::RunSearch(int iPercentStart,
       CometFragmentIndex sqFI;
       CometSearch sqSearch;
 
-
       if (!g_bPlainPeptideIndexRead)
       {
          sqFI.ReadPlainPeptideIndex();
@@ -1194,6 +1193,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
 
+   CometSearch sqSearch;
 
    std::map<comet_fileoffset_t, int> mPeptides;   // which peptide (fileoffset, and # matched fragments)
    size_t lNumPeps = 0;
@@ -1261,13 +1261,16 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
                   for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                   {
-                     if (g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
-                        && g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
+                     double dCalcPepMass = g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass;
+
+                     if (dCalcPepMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
+                           && dCalcPepMass <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
                      {
-                        mPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]] += 1;
+                        if (sqSearch.CheckMassMatch(iWhichQuery, dCalcPepMass))
+                           mPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]] += 1;
                      }
 
-                     if (g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
+                     if (dCalcPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
                         break;
                   }
                }
