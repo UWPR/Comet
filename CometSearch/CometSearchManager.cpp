@@ -48,8 +48,8 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
-unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
+vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];    // stores fragment index; g_pvFragmentIndex[thread][pepmass][BIN(mass)][which g_vFragmentPeptides entries]
+unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
@@ -1434,7 +1434,12 @@ bool CometSearchManager::InitializeStaticParams()
          return false;
       }
       for (int x = 0; x < BIN(g_staticParams.options.dPeptideMassHigh); ++x)
-         g_bIndexPrecursors[x] = false;
+      {
+         if (g_pvInputFiles.size() == 0)
+            g_bIndexPrecursors[x] = true;  // if RTS search, no input file to read precursors from so all precursors are valid
+         else
+            g_bIndexPrecursors[x] = false; // set all precursors as invalid; valid precursors will be determined in ReadPrecursors
+      }
    }
 
    return true;
@@ -2730,7 +2735,10 @@ cleanup_results:
    }
 
    if (g_staticParams.bIndexDb)
-     printf(" - done.\n\n");
+   {
+      free(g_bIndexPrecursors);       // allocated in InitializeStaticParams
+      printf(" - done.\n\n");
+   }
 
    if (bBlankSearchFile)
       return false;
@@ -2844,9 +2852,6 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
    if (!InitializeSingleSpectrumSearch())
       return false;
-
-   // tRealTimeStart used to track elapsed search time and to exit if g_staticParams.options.iMaxIndexRunTime is surpased
-   g_staticParams.tRealTimeStart = std::chrono::high_resolution_clock::now();
 
    // We need to reset some of the static variables in-between input files
    CometPreprocess::Reset();
@@ -3204,9 +3209,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
     if (!InitializeSingleSpectrumSearch())
         return false;
-
-    // tRealTimeStart used to track elapsed search time and to exit if g_staticParams.options.iMaxIndexRunTime is surpased
-    g_staticParams.tRealTimeStart = std::chrono::high_resolution_clock::now();
 
     // We need to reset some of the static variables in-between input files
     CometPreprocess::Reset();

@@ -31,6 +31,7 @@ public:
    static bool ReadPlainPeptideIndex(void);
    static bool CreateFragmentIndex(ThreadPool *tp);
    static string ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime);
+   static int WhichPrecursorBin(double dMass);
 
 private:
 
@@ -49,8 +50,9 @@ private:
                                       bool bCountOnly);
    static bool SortFragmentsByPepMass(unsigned int x,
                                       unsigned int y);
-   static void SortFragmentThreadProc(int i,
-                                      int iWhichThread,
+   static void SortFragmentThreadProc(int iWhichThread,
+                                      int iPrecursorBins,
+                                      int i,
                                       ThreadPool *tp);
    static bool CompareByPeptide(const DBIndex &lhs,
                                 const DBIndex &rhs);
@@ -65,7 +67,6 @@ private:
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
 
-   static Mutex _vFragmentIndexMutex;
    static Mutex _vFragmentPeptidesMutex;
 };
 

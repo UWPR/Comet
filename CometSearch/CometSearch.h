@@ -93,6 +93,7 @@ private:
                         int end,
                         double dCalcPepMass);
    static int BinarySearchIndexMass(int iWhichThread,
+                                    int iPrecursorBin,
                                     int start,
                                     int end,
                                     double dQueryMass,
