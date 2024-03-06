@@ -1455,6 +1455,7 @@ decoy_search = 0                       # 0=no (default), 1=internal decoy concat
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\n", MAX_THREADS);
 
+/*
    fprintf(fp,
 "#\n\
 # fragment index\n\
@@ -1463,7 +1464,8 @@ fragindex_min_fragmentmass = 3         # minimum number of matched fragment ion 
 fragindex_num_spectrumpeaks = 100      # number of peaks from spectrum to use for fragment index matching\n\
 fragindex_max_peptidesscored = 100     # xcorr score up to this many peptides per spectrum query\n\
 fragindex_min_matchedions = 200.0      # low mass cutoff for fragment ions\n\
-fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n");
+fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\n");
+*/
 
    fprintf(fp,
 "#\n\

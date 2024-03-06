@@ -41,9 +41,9 @@ class CometSearchManager;
 #define FRAGINDEX_MAX_COMBINATIONS  2000
 #define FRAGINDEX_MAX_MODS_PER_PEP  5
 #define FRAGINDEX_KEEP_ALL_PEPTIDES 1        // 1 = consider up to FRAGINDEX_MAX_COMBINATIONS of peptides; 0 = ignore all mods for peptide that exceed FRAGINDEX_MAX_COMBINATIONS
-#define FRAGINDEX_PRECURSORBINS     500     // bins for precursors
+#define FRAGINDEX_PRECURSORBINS     300      // bins for precursors, mass range of each bin will be (max_mass - min_mass)/FRAGINDEX_PRECURSORBINS
 
-#define UNSET_TOLERANCE_MINUS       -99999.9 // default peptide_mass_tolerance_lower value; if this is not changed, used -(peptide_mass_tolerance)
+#define UNSET_TOLERANCE_MINUS       -99999.9 // default peptide_mass_tolerance_lower value; if this is not changed/set, use -(peptide_mass_tolerance)
 
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
