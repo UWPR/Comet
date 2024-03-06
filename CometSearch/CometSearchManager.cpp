@@ -48,8 +48,8 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];    // stores fragment index; g_pvFragmentIndex[thread][pepmass][BIN(mass)][which g_vFragmentPeptides entries]
-unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];      // stores fragment index; g_pvFragmentIndex[thread][BIN(mass)][which g_vFragmentPeptides entries]
+unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];        // stores fragment index; [thread][pepmass][BIN(mass)][which g_vFragmentPeptides entries]
+unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];      // stores counts of fragment index; [thread][pepmass][BIN(mass)]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
@@ -2736,7 +2736,25 @@ cleanup_results:
 
    if (g_staticParams.bIndexDb)
    {
+      int iNumIndexingThreads = g_staticParams.options.iNumThreads;
+      if (iNumIndexingThreads > FRAGINDEX_MAX_THREADS)
+         iNumIndexingThreads = FRAGINDEX_MAX_THREADS;
+
       free(g_bIndexPrecursors);       // allocated in InitializeStaticParams
+
+      for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
+      {
+         for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
+         {
+            for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
+            {
+               delete [] g_iFragmentIndex[iWhichThread][iPrecursorBin][iMass];
+            }
+            delete[] g_iFragmentIndex[iWhichThread][iPrecursorBin];
+            delete[] g_iCountFragmentIndex[iWhichThread][iPrecursorBin];
+         }
+      }
+
       printf(" - done.\n\n");
    }
 

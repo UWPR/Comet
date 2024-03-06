@@ -1257,11 +1257,11 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
                for (int iPrecursorBin = iPrecursorBinStart; iPrecursorBin <= iPrecursorBinEnd; ++iPrecursorBin)
                {
                   // number of peptides that contain this fragment mass
-                  lNumPeps = g_arrvFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass].size();
+                  lNumPeps = g_iCountFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass];
 
                   if (lNumPeps > 0)
                   {
-                     // g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass
+                     // g_vFragmentPeptides[g_iFragmentIndex[iWhichThread][uiFragmentMass][ix]].dPepMass
                      // is >= to g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
                      // Each fragment index entry has lNumPeps peptides sort in increasing order by mass;
                      // find first entry that matches low tolerance of current query
@@ -1270,13 +1270,13 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
                      for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                      {
-                        double dCalcPepMass = g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass][ix]].dPepMass;
+                        double dCalcPepMass = g_vFragmentPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass][ix]].dPepMass;
 
                         if (dCalcPepMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
                            && dCalcPepMass <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
                         {
                            if (sqSearch.CheckMassMatch(iWhichQuery, dCalcPepMass))
-                              mPeptides[g_arrvFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass][ix]] += 1;
+                              mPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass][ix]] += 1;
                         }
 
                         if (dCalcPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
@@ -3226,7 +3226,7 @@ int CometSearch::BinarySearchIndexMass(int iWhichThread,
    // the array into two pieces.
    unsigned middle = start + ((end - start) / 2);
 
-   double dArrayMass = g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][iPrecursorBin][*uiFragmentMass][middle]].dPepMass;
+   double dArrayMass = g_vFragmentPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][*uiFragmentMass][middle]].dPepMass;
 
    if (dArrayMass > dQueryMass)
    {
@@ -3241,7 +3241,7 @@ int CometSearch::BinarySearchIndexMass(int iWhichThread,
       // always walk backwards now until ArrayMass is < dQueryMass
       // as there may be multiple entries in the mass vector with the same ArrayMass so
       // need to start at the first one (or the entry before the first one)
-      while (middle > 0 && g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][iPrecursorBin][*uiFragmentMass][middle]].dPepMass >= dQueryMass)
+      while (middle > 0 && g_vFragmentPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][*uiFragmentMass][middle]].dPepMass >= dQueryMass)
       {
          middle--;
       }

@@ -485,7 +485,7 @@ struct FragmentPeptidesStruct
    }
 };
 
-extern vector<unsigned int>* g_arrvFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS]; // array of vectors: [thread][precursor_mass][BIN(fragment mass)][which entries in g_vFragmentPeptides]
+extern unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];           // 4D array [thread][precursor_mass][BIN[fragment mass)][which entries in g_vFragmentPeptides]
 extern unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];       // array of ints: [thread][precursor_mass][BIN(fragment mass)][which entries in g_vFragmentPeptides]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndex> g_vRawPeptides;

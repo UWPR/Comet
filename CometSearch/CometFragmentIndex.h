@@ -46,14 +46,13 @@ private:
                             bool bCountOnly);
    static void AddFragmentsThreadProc(int iWhichThread,
                                       int iNumIndexingThreads,
-                                      ThreadPool *tp,
-                                      bool bCountOnly);
+                                      bool bCountOnly,
+                                      ThreadPool *tp);
    static bool SortFragmentsByPepMass(unsigned int x,
                                       unsigned int y);
    static void SortFragmentThreadProc(int iWhichThread,
-                                      int iPrecursorBins,
-                                      int i,
-                                      ThreadPool *tp);
+                                      int iNumIndexingThreads,
+                                      ThreadPool* tp);
    static bool CompareByPeptide(const DBIndex &lhs,
                                 const DBIndex &rhs);
    static bool CompareByMass(const DBIndex &lhs,
