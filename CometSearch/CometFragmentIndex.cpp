@@ -197,6 +197,8 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
                g_iFragmentIndex[iWhichThread][iPrecursorBin][iMass] = new unsigned int[g_iCountFragmentIndex[iWhichThread][iPrecursorBin][iMass]];
                g_iCountFragmentIndex[iWhichThread][iPrecursorBin][iMass] = 0;  // reset to zero as this will  be used to determine g_iFragmentIndex fill position
             }
+            else
+               g_iFragmentIndex[iWhichThread][iPrecursorBin][iMass] = NULL;
          }
       }
    }
@@ -463,7 +465,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    if (!g_bIndexPrecursors[BIN(dCalcPepMass)])
       return;
 
-   unsigned int uiCurrentFragmentPeptide;
+   unsigned int uiCurrentFragmentPeptide = -1;
 
    if (!bCountOnly)
    {

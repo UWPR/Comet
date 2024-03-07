@@ -2748,7 +2748,10 @@ cleanup_results:
          {
             for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
             {
-               delete [] g_iFragmentIndex[iWhichThread][iPrecursorBin][iMass];
+               if (g_iFragmentIndex[iWhichThread][iPrecursorBin][iMass] != NULL)
+               {
+                  delete [] g_iFragmentIndex[iWhichThread][iPrecursorBin][iMass];
+               }
             }
             delete[] g_iFragmentIndex[iWhichThread][iPrecursorBin];
             delete[] g_iCountFragmentIndex[iWhichThread][iPrecursorBin];
