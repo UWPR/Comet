@@ -121,6 +121,8 @@ class MSReader {
   //for Sqlite
   void createIndex(); 
 
+  void closeFile();
+
  protected:
 
  private:
@@ -166,7 +168,7 @@ class MSReader {
   std::vector<std::string> mgfFiles;
 
   //Functions
-  void closeFile();
+// void closeFile();
   int openFile(const char* c, bool text=false);
   bool findSpectrum(int i);
   void readCompressSpec(FILE* fileIn, MSScanInfo& ms, Spectrum& s);

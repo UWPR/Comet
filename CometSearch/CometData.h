@@ -1,18 +1,17 @@
-/*
-   Copyright 2012 University of Washington
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 #ifndef _COMETDATA_H_
 #define _COMETDATA_H_
@@ -102,6 +101,7 @@ struct IntRange
 struct Scores
 {
     double xCorr;
+    double dSp;
     double dCn;
     double dExpect;
     double mass;
@@ -110,6 +110,7 @@ struct Scores
 
     Scores() :
         xCorr(0),
+        dSp(0),
         dCn(0),
         dExpect(0),
         mass(0),
@@ -117,8 +118,9 @@ struct Scores
         totalIons(0)
     { }
 
-    Scores(double xCorr, double dCn, double dExpect, double mass, int matchedIons, int totalIons) :
+    Scores(double xCorr, double dSp, double dCn, double dExpect, double mass, int matchedIons, int totalIons) :
         xCorr(xCorr),
+        dSp(dSp),
         dCn(dCn),
         dExpect(dExpect),
         mass(mass),
@@ -128,6 +130,7 @@ struct Scores
 
     Scores(const Scores& a) :
         xCorr(a.xCorr),
+        dSp(a.dSp),
         dCn(a.dCn),
         dExpect(a.dExpect),
         mass(a.mass),
@@ -138,6 +141,7 @@ struct Scores
     Scores& operator=(Scores& a)
     {
         xCorr = a.xCorr;
+        dSp = a.dSp;
         dCn = a.dCn;
         dExpect = a.dExpect;
         mass = a.mass;
@@ -211,7 +215,7 @@ struct Fragment
 
     double ToMz()
     {
-        return (mass + (charge - 1)*1.00727646688) / charge;
+        return (mass + (charge - 1.0)*1.00727646688) / charge;
     }
 };
 
@@ -226,6 +230,9 @@ struct VarMods
    int    iWhichTerm;
    int    bRequireThisMod;
    char   szVarModChar[MAX_VARMOD_AA];
+   bool   bNtermMod;  // set to true if n-term mod
+   bool   bCtermMod;  // set to true if c-term mod
+   bool   bUseMod;    // set to true if non-zero mod mass
 
    VarMods()
    {
@@ -238,6 +245,9 @@ struct VarMods
       dVarModMass = 0.0;
       dNeutralLoss = 0.0;
       szVarModChar[0] = '\0';
+      bNtermMod = false;
+      bCtermMod = false;
+      bUseMod = false;
    }
 
    VarMods(const VarMods& a)
@@ -251,6 +261,9 @@ struct VarMods
       dVarModMass = a.dVarModMass;
       dNeutralLoss = a.dNeutralLoss;
       strcpy(szVarModChar, a.szVarModChar);
+      bNtermMod  = a.bNtermMod;
+      bCtermMod  = a.bCtermMod;
+      bUseMod  = a.bUseMod;
    }
 
    VarMods& operator=(VarMods& a)
@@ -264,6 +277,9 @@ struct VarMods
       dVarModMass = a.dVarModMass;
       strcpy(szVarModChar, a.szVarModChar);
       dNeutralLoss = a.dNeutralLoss;
+      bNtermMod  = a.bNtermMod;
+      bCtermMod  = a.bCtermMod;
+      bUseMod  = a.bUseMod;
 
       return *this;
    }
@@ -291,12 +307,6 @@ struct EnzymeInfo
    char szSampleEnzymeBreakAA[MAX_ENZYME_AA];
    char szSampleEnzymeNoBreakAA[MAX_ENZYME_AA];
 
-   int iOneMinusOffset;  // used in CheckEnzymeTermini
-   int iTwoMinusOffset;  // used in CheckEnzymeTermini
-
-   int iOneMinusOffset2;  // used in CheckEnzymeTermini for 2nd enzyme
-   int iTwoMinusOffset2;  // used in CheckEnzymeTermini for 2nd enzyme
-
    EnzymeInfo()
    {
       bNoEnzymeSelected = 1;
@@ -305,10 +315,6 @@ struct EnzymeInfo
       iSearchEnzymeOffSet = 1;
       iSearchEnzyme2OffSet = 0;
       iSampleEnzymeOffSet = 0;
-      iOneMinusOffset = 0;
-      iTwoMinusOffset = 0;
-      iOneMinusOffset2 = 0;
-      iTwoMinusOffset2 = 0;
 
       szSearchEnzymeName[0] = '\0';
       szSearchEnzymeBreakAA[0] = '\0';
@@ -411,7 +417,7 @@ struct InputFileInfo
 {
    int  iInputType;
    int  iAnalysisType;
-   int  iFirstScan;
+   int  iFirstScan;         // for scan range specified with file on command line; otherwise replicates g_staticParams.options.scanRange.iStart
    int  iLastScan;
    char szFileName[SIZE_FILE];
    char szBaseName[SIZE_FILE];

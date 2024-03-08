@@ -1,18 +1,17 @@
-/*
-   Copyright 2013 University of Washington
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 #ifndef _COMETSEARCHMANAGER_H_
 #define _COMETSEARCHMANAGER_H_
@@ -20,6 +19,25 @@
 #include "CometData.h"
 #include "CometDataInternal.h"
 #include "CometInterfaces.h"
+
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <stdarg.h>
+#ifdef _WIN32
+#include <io.h>
+#include <stdio.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <unistd.h>
+#include <err.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#endif
 
 using namespace CometInterfaces;
 
@@ -45,6 +63,17 @@ public:
                                        string& strReturnProtein,
                                        vector<Fragment> & matchedFragments,
                                        Scores & pScores);
+   virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
+       int iPrecursorCharge,
+       double dMZ,
+       double* pdMass,
+       double* pdInten,
+       int iNumPeaks,
+       vector<string>& strReturnPeptide,
+       vector<string>& strReturnProtein,
+       vector<vector<Fragment>>& matchedFragments,
+       vector<Scores>& scores);
+
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);
@@ -77,15 +106,8 @@ public:
 
 private:
    bool InitializeStaticParams();
-   static bool CompareByPeptide(const DBIndex &lhs,
-                                const DBIndex &rhs);
-   static bool CompareByMass(const DBIndex &lhs,
-                             const DBIndex &rhs);
-   static bool WriteIndexedDatabase(void);
-
    static void UpdatePrevNextAA(int iWhichQuery,
                                 int iPrintTargetDecoy);
-
    bool singleSearchInitializationComplete;
    int singleSearchThreadCount;
    std::map<std::string, CometParam*> _mapStaticParams;

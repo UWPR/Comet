@@ -1,18 +1,17 @@
-/*
-   Copyright 2012 University of Washington
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 ///////////////////////////////////////////////////////////////////////////////
 //  Implementations for generic mass spectrometry related utility functions.
@@ -64,7 +63,7 @@ double CometMassSpecUtils::GetFragmentIonMass(int iWhichIonSeries,
          break;
    }
 
-   return (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
+   return (dFragmentIonMass + (ctCharge - 1.0) * PROTON_MASS) / ctCharge;
 }
 
 
@@ -76,55 +75,55 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
 
    if (bMonoMasses) // monoisotopic masses
    {
-      H = pdAAMass['h'] = Hydrogen_Mono; // hydrogen
-      O = pdAAMass['o'] = Oxygen_Mono;  // oxygen
-      C = pdAAMass['c'] = Carbon_Mono;   // carbon
-      N = pdAAMass['n'] = Nitrogen_Mono;   // nitrogen
-//    P = pdAAMass['p'] = 30.973762;    // phosphorus
-      S = pdAAMass['s'] = 31.9720707;   // sulphur
-      Se = pdAAMass['e'] = 79.9165196;  // selenium
+      H = pdAAMass[(int)'h'] = Hydrogen_Mono; // hydrogen
+      O = pdAAMass[(int)'o'] = Oxygen_Mono;  // oxygen
+      C = pdAAMass[(int)'c'] = Carbon_Mono;   // carbon
+      N = pdAAMass[(int)'n'] = Nitrogen_Mono;   // nitrogen
+//    P = pdAAMass[(int)'p'] = 30.973762;    // phosphorus
+      S = pdAAMass[(int)'s'] = 31.9720707;   // sulphur
+      Se = pdAAMass[(int)'e'] = 79.9165196;  // selenium
    }
    else  // average masses
    {
-      H = pdAAMass['h'] =  1.00794;
-      O = pdAAMass['o'] = 15.9994;
-      C = pdAAMass['c'] = 12.0107;
-      N = pdAAMass['n'] = 14.0067;
-//    P = pdAAMass['p'] = 30.973761;
-      S = pdAAMass['s'] = 32.065;
-      Se = pdAAMass['e'] = 78.96;
+      H = pdAAMass[(int)'h'] =  1.00794;
+      O = pdAAMass[(int)'o'] = 15.9994;
+      C = pdAAMass[(int)'c'] = 12.0107;
+      N = pdAAMass[(int)'n'] = 14.0067;
+//    P = pdAAMass[(int)'p'] = 30.973761;
+      S = pdAAMass[(int)'s'] = 32.065;
+      Se = pdAAMass[(int)'e'] = 78.96;
    }
 
    *dOH2 = H + H + O;
 
-   pdAAMass['G'] = C*2  + H*3  + N   + O ;
-   pdAAMass['A'] = C*3  + H*5  + N   + O ;
-   pdAAMass['S'] = C*3  + H*5  + N   + O*2 ;
-   pdAAMass['P'] = C*5  + H*7  + N   + O ;
-   pdAAMass['V'] = C*5  + H*9  + N   + O ;
-   pdAAMass['T'] = C*4  + H*7  + N   + O*2 ;
-   pdAAMass['C'] = C*3  + H*5  + N   + O   + S ;
-   pdAAMass['U'] = C*3  + H*5  + N   + O   + Se ;
-   pdAAMass['L'] = C*6  + H*11 + N   + O ;
-   pdAAMass['I'] = C*6  + H*11 + N   + O ;
-   pdAAMass['N'] = C*4  + H*6  + N*2 + O*2 ;
-   pdAAMass['D'] = C*4  + H*5  + N   + O*3 ;
-   pdAAMass['Q'] = C*5  + H*8  + N*2 + O*2 ;
-   pdAAMass['K'] = C*6  + H*12 + N*2 + O ;
-   pdAAMass['E'] = C*5  + H*7  + N   + O*3 ;
-   pdAAMass['M'] = C*5  + H*9  + N   + O   + S ;
-   pdAAMass['H'] = C*6  + H*7  + N*3 + O ;
-   pdAAMass['F'] = C*9  + H*9  + N   + O ;
-   pdAAMass['R'] = C*6  + H*12 + N*4 + O ;
-   pdAAMass['Y'] = C*9  + H*9  + N   + O*2 ;
-   pdAAMass['W'] = C*11 + H*10 + N*2 + O ;
+   pdAAMass[(int)'G'] = C*2  + H*3  + N   + O ;
+   pdAAMass[(int)'A'] = C*3  + H*5  + N   + O ;
+   pdAAMass[(int)'S'] = C*3  + H*5  + N   + O*2 ;
+   pdAAMass[(int)'P'] = C*5  + H*7  + N   + O ;
+   pdAAMass[(int)'V'] = C*5  + H*9  + N   + O ;
+   pdAAMass[(int)'T'] = C*4  + H*7  + N   + O*2 ;
+   pdAAMass[(int)'C'] = C*3  + H*5  + N   + O   + S ;
+   pdAAMass[(int)'U'] = C*3  + H*5  + N   + O   + Se ;
+   pdAAMass[(int)'L'] = C*6  + H*11 + N   + O ;
+   pdAAMass[(int)'I'] = C*6  + H*11 + N   + O ;
+   pdAAMass[(int)'N'] = C*4  + H*6  + N*2 + O*2 ;
+   pdAAMass[(int)'D'] = C*4  + H*5  + N   + O*3 ;
+   pdAAMass[(int)'Q'] = C*5  + H*8  + N*2 + O*2 ;
+   pdAAMass[(int)'K'] = C*6  + H*12 + N*2 + O ;
+   pdAAMass[(int)'E'] = C*5  + H*7  + N   + O*3 ;
+   pdAAMass[(int)'M'] = C*5  + H*9  + N   + O   + S ;
+   pdAAMass[(int)'H'] = C*6  + H*7  + N*3 + O ;
+   pdAAMass[(int)'F'] = C*9  + H*9  + N   + O ;
+   pdAAMass[(int)'R'] = C*6  + H*12 + N*4 + O ;
+   pdAAMass[(int)'Y'] = C*9  + H*9  + N   + O*2 ;
+   pdAAMass[(int)'W'] = C*11 + H*10 + N*2 + O ;
 
-   pdAAMass['O'] = C*12  + H*19 + N*3 + O*2 ;
+   pdAAMass[(int)'O'] = C*12  + H*19 + N*3 + O*2 ;
 
-   pdAAMass['B'] = 0.0;
-   pdAAMass['J'] = 0.0;
-   pdAAMass['X'] = 0.0;
-   pdAAMass['Z'] = 0.0;
+   pdAAMass[(int)'B'] = 0.0;
+   pdAAMass[(int)'J'] = 0.0;
+   pdAAMass[(int)'X'] = 0.0;
+   pdAAMass[(int)'Z'] = 0.0;
 }
 
 
@@ -141,13 +140,13 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
 
       fread(&lSize, sizeof(long), 1, fpdb);
       vector<comet_fileoffset_t> vOffsets;
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lSize; ++x) // read file offsets
       {
          comet_fileoffset_t tmpoffset;
          fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
          vOffsets.push_back(tmpoffset);
       }
-      for (long x = 0; x < lSize; x++)
+      for (long x = 0; x < lSize; ++x) // read name from fasta
       {
          char szTmp[WIDTH_REFERENCE];
          comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
@@ -219,48 +218,39 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
    if (g_staticParams.bIndexDb)  //index database
    {
-      long lSize;
-      bool bDecoy = false;
+      Results *pOutput;
 
-      if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].pWhichProtein.size() > 0)
-         it = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].pWhichProtein.begin();
+      if (iPrintTargetDecoy != 2)
+         pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
       else
+         pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+
+      // get target proteins
+      if (iPrintTargetDecoy != 2)  // if not decoy-only
       {
-         it = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].pWhichDecoyProtein.begin();
-         bDecoy = true;
-      }
+         vector<string> vTmp;      // store decoy matches here to append at end
 
-      comet_fseek(fpdb, it->lWhichProtein, SEEK_SET);
-
-      fread(&lSize, sizeof(long), 1, fpdb);
-      vector<comet_fileoffset_t> vOffsets;
-
-      for (long x = 0; x < lSize; x++)
-      {
-         comet_fileoffset_t tmpoffset;
-         fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
-         vOffsets.push_back(tmpoffset);
-      }
-
-      for (long x = 0; x < lSize; x++)
-      {
-         if (x > g_staticParams.options.iMaxDuplicateProteins)
-            break;
-
-         comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
-         fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-         szProteinName[511] = '\0';
-   
-         if (bDecoy)
+         comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+         for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
          {
-            if (strlen(szProteinName) + iLenDecoyPrefix >= WIDTH_REFERENCE)
-               szProteinName[strlen(szProteinName) - iLenDecoyPrefix] = '\0';
-            sprintf(szDecoyProteinName, "%s%s", g_staticParams.szDecoyPrefix, szProteinName);
-            vProteinTargets.push_back(szDecoyProteinName);
+            comet_fseek(fpdb, *it, SEEK_SET);
+            fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+            szProteinName[511] = '\0';
+
+            if (!strncmp(szProteinName, g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
+               vTmp.push_back(szProteinName);
+            else
+               vProteinTargets.push_back(szProteinName);
          }
-         else
-            vProteinTargets.push_back(szProteinName);
+
+         if (vTmp.size() > 0)      // append any decoy matches now
+         {
+            vProteinTargets.insert(vProteinTargets.end(), vTmp.begin(), vTmp.end());
+         }
       }
+
+      // FIX need to handle decoys
+
    }
    else  // regular fasta database
    {

@@ -1,18 +1,17 @@
-/*
-   Copyright 2012 University of Washington
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 #include "Common.h"
 #include "CometDataInternal.h"
@@ -42,7 +41,7 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
    //Reuse existing ThreadPool
    ThreadPool *pPostAnalysisThreadPool = tp;
 
-   for (int i=0; i<(int)g_pvQuery.size(); i++)
+   for (int i=0; i<(int)g_pvQuery.size(); ++i)
    {
       PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
 
@@ -90,31 +89,146 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
       if (g_pvQuery.at(iQueryIndex)->iMatchPeptideCount > 0
             || g_pvQuery.at(iQueryIndex)->iDecoyMatchPeptideCount > 0)
       {
-         CalculateEValue(iQueryIndex);
+         CalculateEValue(iQueryIndex, 0);
       }
    }
+
+   // this has to happen after AnalyzeSP as results are sorted in that fn
+   CalculateDeltaCn(iQueryIndex);
+
    delete pThreadData;
    pThreadData = NULL;
 }
 
 
-void CometPostAnalysis::AnalyzeSP(int i)
+void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
 {
-   Query* pQuery = g_pvQuery.at(i);
+   int iNumPrintLines;
+   int iMinLength;
+
+   Results* pOutput;
+
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
+   pOutput = pQuery->_pResults;
+
+   iNumPrintLines = pQuery->iMatchPeptideCount;
+
+   // extend 1 past iNumPeptideOutputLines need for deltaCn calculation of last entry
+   if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines + 1)
+      iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines + 1;
+
+   iMinLength = 999;
+   for (int i = 0; i < iNumPrintLines; ++i)
+   {
+      int iLen = (int)strlen(pOutput[i].szPeptide);
+      if (iLen == 0)
+         break;
+      if (iLen < iMinLength)
+         iMinLength = iLen;
+   }
+
+   int iRankXcorr = 1;
+
+   int iLastEntry = 0;
+   for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
+      if (pOutput[iWhichResult].fXcorr > 0.0000001)
+         iLastEntry = iWhichResult;
+
+   for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
+   {
+      int j;
+      bool bNoDeltaCnYet = true;
+      double dDeltaCn = 0.0;       // this is deltaCn between top hit and peptide in list (or next dissimilar peptide)
+
+      for (j = iWhichResult + 1; j < iNumPrintLines + 1; ++j)
+      {
+         if (j < g_staticParams.options.iNumStored)
+         {
+            // very poor way of calculating peptide similarity but it's what we have for now
+            int iDiffCt = 0;
+
+            if (!g_staticParams.options.bExplicitDeltaCn)
+            {
+               for (int k = 0; k < iMinLength; ++k)
+               {
+                  // I-L and Q-K are same for purposes here
+                  if (pOutput[iWhichResult].szPeptide[k] != pOutput[j].szPeptide[k])
+                  {
+                     if (!((pOutput[0].szPeptide[k] == 'K' || pOutput[0].szPeptide[k] == 'Q')
+                        && (pOutput[j].szPeptide[k] == 'K' || pOutput[j].szPeptide[k] == 'Q'))
+                        && !((pOutput[0].szPeptide[k] == 'I' || pOutput[0].szPeptide[k] == 'L')
+                           && (pOutput[j].szPeptide[k] == 'I' || pOutput[j].szPeptide[k] == 'L')))
+                     {
+                        iDiffCt++;
+                     }
+                  }
+               }
+            }
+
+            // calculate deltaCn only if sequences are less than 0.75 similar
+            if (g_staticParams.options.bExplicitDeltaCn || ((double)(iMinLength - iDiffCt) / iMinLength) < 0.75)
+            {
+               if (pOutput[iWhichResult].fXcorr > 0.0000001 && pOutput[j].fXcorr > 0.0000001)
+                  dDeltaCn = 1.0 - (pOutput[j].fXcorr / pOutput[iWhichResult].fXcorr);
+               else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+                  dDeltaCn = 0.0;
+               else
+                  dDeltaCn = 0.0;
+
+               bNoDeltaCnYet = false;
+
+               break;
+            }
+         }
+      }
+
+      if (bNoDeltaCnYet || iNumPrintLines == 1)
+         dDeltaCn = 0.0;
+
+      if (iWhichResult > 0 && !isEqual(pOutput[iWhichResult].fXcorr, pOutput[iWhichResult - 1].fXcorr))
+         iRankXcorr++;
+
+      double dLastDeltaCn = 1.0;  // this is deltaCn between first and last peptide in output list
+
+      if (g_staticParams.options.bExportAdditionalScoresPepXML)
+      {
+         if (pOutput[iWhichResult].fXcorr > 0.0000001 && pOutput[iLastEntry].fXcorr > 0.0000001)
+            dLastDeltaCn = 1.0 - (pOutput[iLastEntry].fXcorr / pOutput[iWhichResult].fXcorr);
+         else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iLastEntry].fXcorr < 0.0)
+            dLastDeltaCn = 0.0;
+         else
+            dLastDeltaCn = 0.0;
+      }
+
+      pOutput[iWhichResult].fDeltaCn = (float)dDeltaCn;
+      pOutput[iWhichResult].fLastDeltaCn = (float)dLastDeltaCn;
+      pOutput[iWhichResult].iRankXcorr = iRankXcorr;
+   }
+}
+
+
+void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
+{
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
+   // need this sort first for all iNumStored hits
+   std::sort(pQuery->_pResults, pQuery->_pResults + g_staticParams.options.iNumStored, SortFnXcorr);
 
    int iSize = pQuery->iMatchPeptideCount;
 
+   // Need to analyze up to iNumStored here so that Sp rank can range to this
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
    // Target search
-   CalculateSP(pQuery->_pResults, i, iSize);
+   CalculateSP(pQuery->_pResults, iWhichQuery, iSize);
 
    std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnSp);
 
    pQuery->_pResults[0].iRankSp = 1;
 
-   for (int ii=1; ii<iSize; ii++)
+   for (int ii=1; ii<iSize; ++ii)
    {
       // Determine score rankings
       if (isEqual(pQuery->_pResults[ii].fScoreSp, pQuery->_pResults[ii-1].fScoreSp))
@@ -123,13 +237,13 @@ void CometPostAnalysis::AnalyzeSP(int i)
          pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp + 1;
    }
 
-   // Then sort each entry by xcorr
+   // Then sort each entry in descending order by xcorr
    std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnXcorr);
 
    // if mod search, now sort peptides with same score but different mod locations
    if (g_staticParams.variableModParameters.bVarModSearch)
    {
-      for (int ii=0; ii<iSize; ii++)
+      for (int ii=0; ii<iSize; ++ii)
       {
          int j=ii+1;
 
@@ -153,17 +267,20 @@ void CometPostAnalysis::AnalyzeSP(int i)
    // Repeat for decoy search
    if (g_staticParams.options.iDecoySearch == 2)
    {
+      // need this sort first for all iNumStored hits
+      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + g_staticParams.options.iNumStored, SortFnXcorr);
+
       iSize = pQuery->iDecoyMatchPeptideCount;
 
-      if (iSize > g_staticParams.options.iNumStored)
-         iSize = g_staticParams.options.iNumStored;
+      if (iSize > g_staticParams.options.iNumPeptideOutputLines)
+         iSize = g_staticParams.options.iNumPeptideOutputLines;
 
-      CalculateSP(pQuery->_pDecoys, i, iSize);
+      CalculateSP(pQuery->_pDecoys, iWhichQuery, iSize);
 
       std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, SortFnSp);
       pQuery->_pDecoys[0].iRankSp = 1;
 
-      for (int ii=1; ii<iSize; ii++)
+      for (int ii=1; ii<iSize; ++ii)
       {
          // Determine score rankings
          if (isEqual(pQuery->_pDecoys[ii].fScoreSp, pQuery->_pDecoys[ii-1].fScoreSp))
@@ -178,7 +295,7 @@ void CometPostAnalysis::AnalyzeSP(int i)
       // if mod search, now sort peptides with same score but different mod locations
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
-         for (int ii=0; ii<iSize; ii++)
+         for (int ii=0; ii<iSize; ++ii)
          {
             int j=ii+1;
 
@@ -211,43 +328,46 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    int  _iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
 
-   for (i=0; i<iSize; i++)
+   for (i=0; i<iSize; ++i)
    {
-      // hijack here to make protein vector unique
-      if (pOutput[i].pWhichProtein.size() > 1)
+      if (!g_staticParams.bIndexDb)
       {
-         sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
-
-//       Sadly this erase(unique()) code doesn't work; it leaves only first entry in vector
-//       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
-//             pOutput[i].pWhichProtein.end());
-
-         comet_fileoffset_t lPrev=0;
-         for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
+         // hijack here to make protein vector unique
+         if (pOutput[i].pWhichProtein.size() > 1)
          {
-            if ( (*it).lWhichProtein == lPrev)
-               it = pOutput[i].pWhichProtein.erase(it);
-            else
+            sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
+
+            //       Sadly this erase(unique()) code doesn't work; it leaves only first entry in vector
+            //       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
+            //             pOutput[i].pWhichProtein.end());
+
+            comet_fileoffset_t lPrev = 0;
+            for (std::vector<ProteinEntryStruct>::iterator it = pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
             {
-               lPrev = (*it).lWhichProtein;
-               ++it;
+               if ((*it).lWhichProtein == lPrev)
+                  it = pOutput[i].pWhichProtein.erase(it);
+               else
+               {
+                  lPrev = (*it).lWhichProtein;
+                  ++it;
+               }
             }
          }
-      }
 
-      if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
-      {
-         sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
-
-         comet_fileoffset_t lPrev=0;
-         for (std::vector<ProteinEntryStruct>::iterator it=pOutput[i].pWhichDecoyProtein.begin(); it != pOutput[i].pWhichDecoyProtein.end(); )
+         if (g_staticParams.options.iDecoySearch && pOutput[i].pWhichDecoyProtein.size() > 1)
          {
-            if ( (*it).lWhichProtein == lPrev)
-               it = pOutput[i].pWhichDecoyProtein.erase(it);
-            else
+            sort(pOutput[i].pWhichDecoyProtein.begin(), pOutput[i].pWhichDecoyProtein.end(), ProteinEntryCmp);
+
+            comet_fileoffset_t lPrev = 0;
+            for (std::vector<ProteinEntryStruct>::iterator it = pOutput[i].pWhichDecoyProtein.begin(); it != pOutput[i].pWhichDecoyProtein.end(); )
             {
-               lPrev = (*it).lWhichProtein;
-               ++it;
+               if ((*it).lWhichProtein == lPrev)
+                  it = pOutput[i].pWhichDecoyProtein.erase(it);
+               else
+               {
+                  lPrev = (*it).lWhichProtein;
+                  ++it;
+               }
             }
          }
       }
@@ -272,9 +392,9 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
 
-         if (pOutput[i].szPrevNextAA[0] == '-' || pOutput[i].bClippedM)
+         if (pOutput[i].cPrevAA == '-' || pOutput[i].bClippedM)
             dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-         if (pOutput[i].szPrevNextAA[1] == '-')
+         if (pOutput[i].cNextAA == '-')
             dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
          if (g_staticParams.variableModParameters.bVarModSearch
@@ -289,11 +409,11 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             dYion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].iLenPeptide+1]-1].dVarModMass;
          }
 
-         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
          {
             int iii;
 
-            for (iii=1; iii<=iMaxFragCharge; iii++)
+            for (iii=1; iii<=iMaxFragCharge; ++iii)
                ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
          }
 
@@ -311,7 +431,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          // Generate pdAAforward for _pResults[0].szPeptide.
          int iLenMinus1 = pOutput[i].iLenPeptide - 1;
-         for (ii=0; ii<iLenMinus1; ii++)
+         for (ii=0; ii<iLenMinus1; ++ii)
          {
             int iPos = iLenMinus1 - ii;
 
@@ -363,15 +483,15 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          int iMax = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE;
 
-         for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
+         for (ctCharge=1; ctCharge<=iMaxFragCharge; ++ctCharge)
          {
-            for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+            for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
             {
                int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
 
                // As both _pdAAforward and _pdAAreverse are increasing, loop through
                // iLenPeptide-1 to complete set of internal fragment ions.
-               for (int iii=0; iii<pOutput[i].iLenPeptide-1; iii++)
+               for (int iii=0; iii<pOutput[i].iLenPeptide-1; ++iii)
                {
                   // Gets fragment ion mass.
                   dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
@@ -484,9 +604,10 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             }
          }
 
-
-         pOutput[i].fScoreSp = (float) ((dTmpIntenMatch * iMatchedFragmentIonCt*(1.0+dConsec)) /
-               ((pOutput[i].iLenPeptide-1) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
+         pOutput[i].fScoreSp = (float)((dTmpIntenMatch * iMatchedFragmentIonCt * (1.0 + dConsec)) /
+            ((pOutput[i].iLenPeptide - 1.0) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
+         // round Sp to 3 significant digits
+         pOutput[i].fScoreSp =  ( ((int)pOutput[i].fScoreSp)  * 100)  / 100.0;
 
          pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
       }
@@ -509,6 +630,25 @@ bool CometPostAnalysis::SortFnSp(const Results &a,
 {
    if (a.fScoreSp > b.fScoreSp)
       return true;
+   else if (a.fScoreSp == b.fScoreSp)
+   {
+      int iCmp = strcmp(a.szPeptide, b.szPeptide);
+
+      if (iCmp < 0)
+         return true;
+      else if (iCmp > 0)
+         return false;
+      else  // same peptide, check mod state
+      {
+         for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
+         {
+            if (a.piVarModSites[i] < b.piVarModSites[i])
+               return true;
+            else if (a.piVarModSites[i] > b.piVarModSites[i])
+               return false;
+         }
+      }
+   }
 
    return false;
 }
@@ -519,8 +659,25 @@ bool CometPostAnalysis::SortFnXcorr(const Results &a,
 {
    if (a.fXcorr > b.fXcorr)
       return true;
-   else if (a.fXcorr == b.fXcorr && strcmp(a.szPeptide, b.szPeptide) < 0)
-      return true;
+   else if (a.fXcorr == b.fXcorr)
+   {
+      int iCmp = strcmp(a.szPeptide, b.szPeptide);
+
+      if (iCmp < 0)
+         return true;
+      else if (iCmp > 0)
+         return false;
+      else  // same peptide, check mod state
+      {
+         for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
+         {
+            if (a.piVarModSites[i] < b.piVarModSites[i])
+               return true;
+            else if (a.piVarModSites[i] > b.piVarModSites[i])
+               return false;
+         }
+      }
+   }
 
    return false;
 }
@@ -532,7 +689,7 @@ bool CometPostAnalysis::SortFnMod(const Results &a,
    // must compare character at a time
    // actually not sure why strcmp doesn't work
    // as piVarModSites is a char array
-   for (int i=0; i<MAX_PEPTIDE_LEN_P2; i++)
+   for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
    {
       if (a.piVarModSites[i] < b.piVarModSites[i])
          return true;
@@ -544,7 +701,8 @@ bool CometPostAnalysis::SortFnMod(const Results &a,
 }
 
 
-bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
+bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
+                                        bool bTopHitOnly)
 {
    int i;
    int *piHistogram;
@@ -562,7 +720,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
    {
       if (!GenerateXcorrDecoys(iWhichQuery))
       {
-          return false;
+         return false;
       }
    }
 
@@ -583,7 +741,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
    if (iLoopCount > g_staticParams.options.iNumPeptideOutputLines)
       iLoopCount = g_staticParams.options.iNumPeptideOutputLines;
 
-   for (i=0; i<iLoopCount; i++)
+   for (i=0; i<iLoopCount; ++i)
    {
       if (dSlope >= 0.0)
       {
@@ -595,7 +753,6 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
       else
       {
          double dExpect;
-
          if (i<pQuery->iMatchPeptideCount)
          {
             dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
@@ -612,6 +769,9 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery)
             pQuery->_pDecoys[i].dExpect = dExpect;
          }
       }
+
+      if (bTopHitOnly)
+         break;
    }
 
    return true;
@@ -650,7 +810,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    iNextCorr = 0;
    bool bFoundFirstNonZeroEntry = false;
 
-   for (i=0; i<iMaxCorr; i++)
+   for (i=0; i<iMaxCorr; ++i)
    {
       if (piHistogram[i] == 0 && bFoundFirstNonZeroEntry)
       {
@@ -697,17 +857,9 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
       }
    }
 
-/*
-   iStartCorr = 0;
-   if (iNextCorr >= 30)
-      iStartCorr = (int)(iNextCorr - iNextCorr*0.25);
-   else if (iNextCorr >= 15)
-      iStartCorr = (int)(iNextCorr - iNextCorr*0.5);
-*/
-
    iStartCorr = iNextCorr - 5;
    int iNumZeroes = 0;
-   for (i=iStartCorr; i<=iNextCorr; i++)
+   for (i=iStartCorr; i<=iNextCorr; ++i)
       if (pdCumulative[i] == 0)
          iNumZeroes++;
 
@@ -718,13 +870,13 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
    Mx=My=a=b=0.0;
 
-   while (iStartCorr >= 0)
+   while (iStartCorr >= 0 && iNextCorr > iStartCorr + 2)
    {
       Sx=Sxy=SumX=SumY=0.0;
       iNumPoints=0;
 
       // Calculate means.
-      for (i=iStartCorr; i<=iNextCorr; i++)
+      for (i=iStartCorr; i<=iNextCorr; ++i)
       {
          if (piHistogram[i] > 0)
          {
@@ -743,7 +895,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
          Mx = My = 0.0;
 
       // Calculate sum of squares.
-      for (i=iStartCorr; i<=iNextCorr; i++)
+      for (i=iStartCorr; i<=iNextCorr; ++i)
       {
          if (pdCumulative[i] > 0)
          {
@@ -819,16 +971,16 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
       iLastEntry = g_staticParams.options.iNumStored;
 
    j=0;
-   for (i=0; i<iLoopMax; i++)  // iterate through required # decoys
+   for (i=0; i<iLoopMax; ++i)  // iterate through required # decoys
    {
       dFastXcorr = 0.0;
 
-      for (j=0; j<MAX_DECOY_PEP_LEN; j++)  // iterate through decoy fragment ions
+      for (j=0; j<MAX_DECOY_PEP_LEN; ++j)  // iterate through decoy fragment ions
       {
          dBion = decoyIons[i].pdIonsN[j];
          dYion = decoyIons[i].pdIonsC[j];
 
-         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ii++)
+         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
          {
             int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
 
@@ -865,9 +1017,9 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   break;
             }
 
-            for (ctCharge=1; ctCharge<=iMaxFragCharge; ctCharge++)
+            for (ctCharge=1; ctCharge<=iMaxFragCharge; ++ctCharge)
             {
-               dFragmentIonMass = (dFragmentIonMass + (ctCharge-1)*PROTON_MASS)/ctCharge;
+               dFragmentIonMass = (dFragmentIonMass + (ctCharge - 1.0) * PROTON_MASS) / ctCharge;
 
                if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
                {

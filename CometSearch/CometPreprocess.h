@@ -1,18 +1,17 @@
-/*
-   Copyright 2012 University of Washington
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 #ifndef _COMETPREPROCESS_H_
 #define _COMETPREPROCESS_H_
@@ -67,6 +66,7 @@ public:
    ~CometPreprocess();
 
    static void Reset();
+   static bool ReadPrecursors(MSReader &mstReader);
    static bool LoadAndPreprocessSpectra(MSReader &mstReader,
                                         int iFirstScan,
                                         int iLastScan,
@@ -118,12 +118,8 @@ private:
                             double *pdTmpCorrelationData,
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);
-   static void GetTopIons(double *pdTmpRawData,
-                          struct msdata *pTmpSpData,
-                          int iArraySize);
    static bool SortByIon(const struct msdata &a,
                          const struct msdata &b);
-   static void StairStep(struct msdata *pTmpSpData);
    static bool IsValidInputType(int inputType);
 
 

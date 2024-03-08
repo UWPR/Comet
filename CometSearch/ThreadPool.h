@@ -1,24 +1,23 @@
-/*
-   Copyright (C) 2021 David Shteynberg, Institute for Systems Biology
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 #ifndef _THREAD_POOL_H_
 #define _THREAD_POOL_H_
 #include <iostream>
 
-#include "Threading.h"
+//#include "Threading.h"
 //#include <mutex>
 //#include <condition_variable>
 #include <deque>
@@ -27,18 +26,26 @@
 #include <chrono>
 
 #include <thread>
+
+#ifdef TPP_WIN32THREADS
+#define _WIN32
+#endif
+
 #ifdef _WIN32
 //#include <winsock2.h>
 #include <windows.h>
 #include <process.h>
 #else
+#include <unistd.h>
 #endif
 
 #ifndef _WIN32
 #include <pthread.h>
+#include <sched.h>
 #endif
 
 #define VERBOSE 0
+using namespace std;
 
 class  thpldata
 {
@@ -74,11 +81,12 @@ public:
       running_count_ = 0;
       threads_.reserve (threads);
       fillPool(threads);
+
    }
 
    void fillPool(int threads)
    {
-      thpldata* data = new thpldata();
+
 
 #ifdef _WIN32
       lock_ = CreateMutex(NULL, FALSE, NULL);
@@ -105,19 +113,21 @@ public:
 #else
       pthread_t *pHandle = new pthread_t[threads];
 #endif
-
+      thpldata* data = NULL;
+      
       threads_.reserve (threads);
       data_.reserve(threads);
-
+      
       for (int i = 0; i < threads; ++i)
       {
-
+         data = new thpldata();
          data->setThreadNum(i);
          data->tp = this;
          data_.push_back(data);
 
-         threads_[i] = pHandle[i];
-
+         this->LOCK(&this->lock_);
+         threads_.push_back(pHandle[i]);
+         this->UNLOCK(&this->lock_);
 #ifdef _WIN32
          threads_[i] = (HANDLE)_beginthreadex(0, 0, (_beginthreadex_proc_type) &threadStart, (void*) data_[i], 0,NULL);
 #else
@@ -133,25 +143,15 @@ public:
       {
          this->LOCK(&this->lock_);
 
-         if (this->jobs_.empty () || this->running_count_ < (int) this->threads_.capacity() )
+         if (this->jobs_.empty () || this->running_count_ < (int) this->threads_.size() )
          {
             this->UNLOCK(&this->lock_);
-            //Threading::ThreadSleep(100);
             // When threads are still busy and no jobs to do wait ...
 #ifdef _WIN32
-            std::this_thread::yield();
+            SwitchToThread();            
 #else
             sched_yield();
-#endif
-/* 
-#if !defined(_WIN32) && !defined(__APPLE__)
-            pthread_yield();
-#elif __APPLE__
-            sched_yield();
-#else
-            std::this_thread::yield();
-#endif
-*/
+#endif    
          }
          else
          {
@@ -188,19 +188,10 @@ public:
       {
          this->UNLOCK(&countlock_);
 #ifdef _WIN32
-            std::this_thread::yield();
+         SwitchToThread();            
 #else
-            sched_yield();
-#endif
-/*
-#if !defined(_WIN32) && !defined(__APPLE__)
-         pthread_yield();
-#elif __APPLE__
          sched_yield();
-#else
-         std::this_thread::yield();
-#endif
-*/
+#endif    
          this->LOCK(&countlock_);
       }
       this->UNLOCK(&countlock_);
@@ -209,7 +200,7 @@ public:
    void drainPool()
    {
       shutdown_ = true;
-      for (size_t i = 0; i < data_.size(); i++)
+      for (size_t i =0 ; i < data_.size(); i++)
       {
 #ifdef _WIN32
          WaitForSingleObject(threads_[i],INFINITE);
@@ -219,15 +210,21 @@ public:
 #endif
       }
       
-      if (data_.size())
-         delete data_[0];
-
+      if (data_.size()) delete data_[0];
       data_.clear();
+
+#ifdef _WIN32
+      CloseHandle(lock_);
+      CloseHandle(countlock_);
+#else
+      pthread_mutex_destroy(&lock_);                                                                                               
+      pthread_mutex_destroy(&countlock_);        
+#endif   
    }
 
    ~ThreadPool ()
    {
-      drainPool();
+     drainPool();
    }
 
    void doJob (std::function <void (void)> func)
@@ -255,7 +252,8 @@ public:
 
    bool haveJob()
    {
-      bool rtn;
+     //return !jobs_.empty() || (running_count_ > 0);
+     bool rtn;
       this->LOCK(&lock_);
       rtn = !jobs_.empty() || running_count_;
       this->UNLOCK(&lock_);
@@ -346,41 +344,37 @@ inline void* threadStart(void* ptr)
          tp->UNLOCK(&tp->lock_);
 
 #ifdef _WIN32
-            std::this_thread::yield();
+         SwitchToThread();            
 #else
-            sched_yield();
-#endif
-/*
-#if !defined(_WIN32) && !defined(__APPLE__)
-         pthread_yield();
-#elif __APPLE__
          sched_yield();
-#else
-         std::this_thread::yield();
 #endif
-*/
+         tp->LOCK(&tp->lock_);
+         if (tp->threads_.size() == 0)
+         {
+            tp->UNLOCK(&tp->lock_);
 
-         if (tp->threads_.capacity() == 0)
 #ifdef _WIN32
             return 1;
 #else
             return NULL;
 #endif
+         }
+    
          //sleep some before reacquiring lock
          //Threading::ThreadSleep(100);
-         tp->LOCK(&tp->lock_);
          if  (did_job)
          {
             tp->running_count_ --;
             did_job = false;
          }
       }
-
+      
       if (tp->jobs_.empty ())
       {
          // No jobs to do and we are shutting down
          if (VERBOSE)
             std::cerr << "Thread " << i << " terminates" << std::endl;
+
          tp->UNLOCK(&tp->lock_);
 #ifdef _WIN32
          return 1;
@@ -388,7 +382,6 @@ inline void* threadStart(void* ptr)
          return NULL;
 #endif
          break;
-
       }
       else
       {

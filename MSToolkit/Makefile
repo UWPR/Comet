@@ -123,6 +123,7 @@ endif
 
 zlib-realclean : zlib-clean
 	rm -rf $(ZLIB_LIC) $(ZLIB_DST) $(BUILD_DIR)/libz.so*
+	rm -f include/zconf.h include/expat.h include/expat_external.h include/zlib.h
 	
 
 # -- MSToolkit  ---------------------------------------------------------------

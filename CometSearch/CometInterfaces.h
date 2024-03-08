@@ -1,18 +1,17 @@
-/*
-   Copyright 2012 University of Washington
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 #ifndef _COMETINTERFACES_H_
 #define _COMETINTERFACES_H_
@@ -43,6 +42,16 @@ public:
                                           string& strReturnProtein,
                                           vector<Fragment> & matchedFragments,
                                           Scores & scores) = 0;
+      virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
+          const int iPrecursorCharge,
+          const double dMZ,
+          double* dMass,
+          double* dInten,
+          const int iNumPeaks,
+          vector<string>& strReturnPeptide,
+          vector<string>& strReturnProtein,
+          vector<vector<Fragment>>& matchedFragments,
+          vector<Scores>& scores) = 0;
       virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles) = 0;
       virtual void SetOutputFileBaseName(const char *pszBaseName) = 0;
       virtual void SetParam(const string &name, const string &strValue, const string &value) = 0;

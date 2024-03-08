@@ -1,25 +1,24 @@
-/*
-   Copyright 2012 University of Washington
+// Copyright 2023 Jimmy Eng
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 #ifndef _COMETSEARCH_H_
 #define _COMETSEARCH_H_
 
-
 #include "Common.h"
 #include "CometDataInternal.h"
+#include <functional>
 
 struct SearchThreadData
 {
@@ -27,7 +26,6 @@ struct SearchThreadData
    bool *pbSearchMemoryPool;
    ThreadPool *tp;
   
-
    SearchThreadData()
    {
    }
@@ -72,8 +70,8 @@ public:
    static bool DeallocateMemory(int maxNumThreads);
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,
-                         ThreadPool* tp);
-   static bool RunSearch(void);    // for DoSingleSpectrumSearch() to call IndexSearch()
+                         ThreadPool *tp);
+   static bool RunSearch(ThreadPool *tp);    // for DoSingleSpectrumSearch() to call IndexSearch()
    static void SearchThreadProc(SearchThreadData *pSearchThreadData,
                                 ThreadPool *tp);
    bool DoSearch(sDBEntry dbe,
@@ -94,13 +92,19 @@ private:
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
+   static int BinarySearchIndexMass(int iWhichThread,
+                                    int iPrecursorBin,
+                                    int start,
+                                    int end,
+                                    double dQueryMass,
+                                    unsigned int *uiFragmentMass);
    void SubtractVarMods(int *piVarModCounts,
                         int cResidue,
                         int iResiduePosition);
    void CountVarMods(int *piVarModCounts,
                      int cResidue,
                      int iResiduePosition);
-   bool HasVariableMod(int varModCounts[],
+   bool HasVariableMod(int *varModCounts,
                        int iCVarModCount,
                        int iNVarModCount,
                        struct sDBEntry *dbe);
@@ -124,6 +128,19 @@ private:
                    int iLenPeptide,
                    int *piVarModSites,
                    struct sDBEntry *dbe);
+   static void XcorrScoreI(char *szProteinSeq,
+                   int iStartPos,
+                   int iEndPos,
+                   int iFoundVariableMod,
+                   double dCalcPepMass,
+                   bool bDecoyPep,
+                   int iWhichQuery,
+                   int iLenPeptide,
+                   int *piVarModSites,
+                   struct sDBEntry *dbe,
+                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
+                   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE]);
+
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos);
@@ -133,7 +150,7 @@ private:
                               int iStartPos);
    bool CheckMassMatch(int iWhichQuery,
                        double dCalcPepMass);
-   double GetFragmentIonMass(int iWhichIonSeries,
+   static double GetFragmentIonMass(int iWhichIonSeries,
                              int i,
                              int ctCharge,
                              double *pdAAforward,
@@ -151,6 +168,16 @@ private:
                       struct sDBEntry *dbe);
    void StorePeptide(int iWhichQuery,
                      int iStartResidue,
+                     int iStartPos,
+                     int iEndPos,
+                     int iFoundVariableMod,
+                     char *szProteinSeq,
+                     double dCalcPepMass,
+                     double dXcorr,
+                     bool bStoreSeparateDecoy,
+                     int *piVarModSites,
+                     struct sDBEntry *dbe);
+   static void StorePeptideI(int iWhichQuery,
                      int iStartPos,
                      int iEndPos,
                      int iFoundVariableMod,
@@ -189,8 +216,8 @@ private:
                        double dCalcPepMass,
                        int iLenPeptide,
                        struct sDBEntry *dbe);
-   bool IndexSearch(void);
-   void ReadDBIndexEntry(struct DBIndex *sDBI, FILE *fp);
+   static void SearchFragmentIndex(size_t iWhichQuery,
+                                   ThreadPool *tp);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence
@@ -206,14 +233,11 @@ private:
                         bool *pbDuplFragment,
                         struct sDBEntry *dbe);
 
+
    char GetAA(int i,
               int iDirection,
               char *sDNASequence);
 
-   // Cleaning up
-   void CleanUp();
-
-private:
    struct VarModStat
    {
        int iTotVarModCt;                     // # mod positions in peptide
@@ -232,15 +256,10 @@ private:
 
    struct PepMassTolerance
    {
-       double dPeptideMassTolerance;
-       double dPeptideMassToleranceMinus;
-       double dPeptideMassTolerancePlus;
-   };
-
-   struct PepMassInfo
-   {
-       double           dCalcPepMass;
-       PepMassTolerance pepMassTol;
+       double dPeptideMassToleranceLow;           // mass tolerance low in amu from experimental mass
+       double dPeptideMassToleranceHigh;          // mass tolerance high in amu from experimental mass
+       double dPeptideMassToleranceMinus;         // low end of mass tolerance range including isotope offsets
+       double dPeptideMassTolerancePlus;          // high end of mass tolerance range including isotope offsets
    };
 
    struct MatchedPeaksStruct
