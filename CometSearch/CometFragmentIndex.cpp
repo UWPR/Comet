@@ -599,7 +599,10 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       exit(1);
    }
 
-   strOut = " Creating plain peptide/protein index file: ";
+   strOut = " Creating plain peptide/protein index file:\n";
+   logout(strOut.c_str());
+   fflush(stdout);
+   strOut = " - parse peptides from database ... ";
    logout(strOut.c_str());
    fflush(stdout);
 
@@ -641,7 +644,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    }
 
    // remove duplicates
-   strOut = " - removing duplicate peptides\n";
+   strOut = " - remove duplicate peptides\n";
    logout(strOut.c_str());
    fflush(stdout);
 
@@ -698,7 +701,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // sort by mass;
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CompareByMass);
 
-   cout << " - writing file: " << strIndexFile << endl;
+   cout << " - write peptides/proteins to file" << endl;
 
    // write out index header
    fprintf(fp, "Comet peptide index.  Comet version %s\n", g_sCometVersion.c_str());
@@ -810,7 +813,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-   strOut = " - done.  # peps " + to_string(tNumPeptides) + string("\n\n");
+   strOut = " - done. " + strIndexFile + " (" + to_string(tNumPeptides) + " peptides)\n\n";
    logout(strOut.c_str());
    fflush(stdout);
 
@@ -1096,7 +1099,15 @@ int CometFragmentIndex::WhichPrecursorBin(double dMass)
 {
    // need to round up iBinSize
    int iBinSize = (int)(0.5 + (g_staticParams.options.dPeptideMassHigh - g_staticParams.options.dPeptideMassLow)/ FRAGINDEX_PRECURSORBINS);
-   return ( (int) ( (dMass - g_staticParams.options.dPeptideMassLow) / iBinSize) );
+
+   int iWhichBin = (int) ( (dMass - g_staticParams.options.dPeptideMassLow) / iBinSize);
+
+   if (iWhichBin < 0)
+      iWhichBin = 0;
+   else if (iWhichBin > FRAGINDEX_PRECURSORBINS - 1)
+      iWhichBin = FRAGINDEX_PRECURSORBINS - 1;
+
+   return (iWhichBin);
 }
 
 

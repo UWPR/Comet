@@ -1266,7 +1266,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
                      // Each fragment index entry has lNumPeps peptides sort in increasing order by mass;
                      // find first entry that matches low tolerance of current query
 
-                     size_t iFirst = BinarySearchIndexMass(iWhichThread, iPrecursorBin, 0, lNumPeps, g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
+                     size_t iFirst = BinarySearchIndexMass(iWhichThread, iPrecursorBin, 0,
+                           lNumPeps, g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
 
                      for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                      {

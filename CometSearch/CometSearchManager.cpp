@@ -1814,7 +1814,7 @@ bool CometSearchManager::DoSearch()
    tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
 
    // read precursors before creating fragment index
-   auto tStartTime = chrono::steady_clock::now();
+   auto tTime1 = chrono::steady_clock::now();
    if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
    {
       cout <<  " - read precursors ... ";
@@ -1841,7 +1841,7 @@ bool CometSearchManager::DoSearch()
       }
    }
    if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
-      cout << CometFragmentIndex::ElapsedTime(tStartTime) << endl;
+      cout << CometFragmentIndex::ElapsedTime(tTime1) << endl;
 
    for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
    {
@@ -2276,7 +2276,21 @@ bool CometSearchManager::DoSearch()
          {
             if (!g_bPlainPeptideIndexRead)
             {
+               auto tStartTime = chrono::steady_clock::now();
+               if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+               {
+                  cout <<  " - read .idx ... ";
+                  fflush(stdout);
+               }
+
                sqSearch.ReadPlainPeptideIndex();
+
+               if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+               {
+                  cout << CometFragmentIndex::ElapsedTime(tStartTime) << endl;
+               }
+
+
                g_bPlainPeptideIndexRead = true;
 
                sqSearch.CreateFragmentIndex(tp);
