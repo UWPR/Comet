@@ -596,6 +596,7 @@ struct MassUtil
    double dOH2parent;
    double pdAAMassParent[SIZE_MASS];
    double pdAAMassFragment[SIZE_MASS];
+   double pdAAMassUser[SIZE_MASS];       // user defined default amino acid masses
 
    MassUtil& operator=(MassUtil& a)
    {
@@ -613,6 +614,7 @@ struct MassUtil
       {
          pdAAMassParent[i] = a.pdAAMassParent[i];
          pdAAMassFragment[i] = a.pdAAMassFragment[i];
+         pdAAMassUser[i] = a.pdAAMassUser[i];
       }
 
       return *this;
@@ -769,6 +771,7 @@ struct StaticParams
       {
          massUtility.pdAAMassParent[i] = 999999.;
          massUtility.pdAAMassFragment[i] = 999999.;
+         massUtility.pdAAMassUser[i] = 0.0;
          staticModifications.pdStaticMods[i] = 0.0;
       }
 

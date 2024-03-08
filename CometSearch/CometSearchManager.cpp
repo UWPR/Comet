@@ -903,6 +903,162 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("add_Z_user_amino_acid", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'Z'] = dDoubleData;
 
+   if (GetParamValue("set_G_glycine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'G'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_A_alanine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'A'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_S_serine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'S'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_P_proline", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'P'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_V_valine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'V'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_T_threonine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'T'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_C_cysteine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'C'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_L_leucine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'L'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_I_isoleucine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'I'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_N_asparagine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'N'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_O_pyrrolysine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'O'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_D_aspartic_acid", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'D'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_Q_glutamine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'Q'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_K_lysine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'K'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_E_glutamic_acid", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'E'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_M_methionine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'M'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_H_histidine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'H'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_F_phenylalanine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'F'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_R_arginine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'R'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_Y_tyrosine", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'Y'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_W_tryptophan", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'W'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_B_user_amino_acid", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'B'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_J_user_amino_acid", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'J'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_U_user_amino_acid", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'U'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_X_user_amino_acid", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'X'] = dDoubleData;
+   }
+
+   if (GetParamValue("set_Z_user_amino_acid", dDoubleData))
+   {
+      if (dDoubleData != 0.0)
+         g_staticParams.massUtility.pdAAMassUser[(int)'X'] = dDoubleData;
+   }
+
    if (GetParamValue("fragindex_min_fragmentmass", dDoubleData))
    {
       if (dDoubleData >= FRAGINDEX_MIN_MASS && dDoubleData <= FRAGINDEX_MAX_MASS)
@@ -916,7 +1072,6 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("fragindex_num_spectrumpeaks", g_staticParams.options.iFragIndexNumSpectrumPeaks);
    GetParamValue("fragindex_max_peptidesscored", g_staticParams.options.iFragIndexMaxNumScored);
    GetParamValue("fragindex_min_matchedions", g_staticParams.options.iFragIndexMinMatchedIons);
-
 
    GetParamValue("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
    if ((g_staticParams.options.iEnzymeTermini != 1)
@@ -1140,6 +1295,17 @@ bool CometSearchManager::InitializeStaticParams()
    CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
                                   g_staticParams.massUtility.bMonoMassesFragment,
                                   &g_staticParams.massUtility.dOH2fragment);
+
+   // Now that amino acid masses are assigned, see if they are possibly overriden by
+   // the user define amino acid masses
+   for (int x = 65 ; x <= 90; ++x)
+   {
+      if (g_staticParams.massUtility.pdAAMassUser[x] > 0.0)
+      {
+         g_staticParams.massUtility.pdAAMassParent[x] = g_staticParams.massUtility.pdAAMassUser[x];
+         g_staticParams.massUtility.pdAAMassFragment[x] = g_staticParams.massUtility.pdAAMassUser[x];
+      }
+   }
 
    g_staticParams.massUtility.dCO = g_staticParams.massUtility.pdAAMassFragment[(int)'c']
             + g_staticParams.massUtility.pdAAMassFragment[(int)'o'];
