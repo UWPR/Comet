@@ -34,9 +34,9 @@ class CometSearchManager;
 #define FRAGINDEX_MIN_MATCHEDIONS   3
 #define FRAGINDEX_MIN_MASS          200.0    // minimum fragment ion mass used to generate fragment index
 #define FRAGINDEX_MAX_MASS          2000.0   // maximum fragment ion mass used to generate fragment index
-#define FRAGINDEX_MAX_THREADS       12
+#define FRAGINDEX_MAX_THREADS       16       // not sure it makes sense to set this max limit
 #define FRAGINDEX_MAX_BATCHSIZE     2000     // maximum number of spectra loaded when querying fragment index
-#define FRAGINDEX_MAX_NUMPEAKS      100      // number of spectrum peaks used to query fragment index
+#define FRAGINDEX_MAX_NUMPEAKS      150      // number of spectrum peaks used to query fragment index
 #define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
 #define FRAGINDEX_MAX_COMBINATIONS  2000
 #define FRAGINDEX_MAX_MODS_PER_PEP  5

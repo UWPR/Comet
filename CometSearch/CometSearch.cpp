@@ -797,9 +797,9 @@ bool CometSearch::RunSearch(int iPercentStart,
             while (pSearchThreadPool->jobs_.size() >= 500)
             {
 #ifdef _WIN32
-               Sleep(20);
+               Sleep(10);
 #else
-               usleep(20);
+               usleep(10);
 #endif
 //             pSearchThreadPool->wait_on_threads();
             }
@@ -1756,7 +1756,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             // could put peptide into mass range so just use peptide length
             if (iPepLen >= g_staticParams.options.peptideLengthRange.iStart
                 && iPepLen <= g_staticParams.options.peptideLengthRange.iEnd
-                && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
+                && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos)
+                && dCalcPepMass < g_massRange.dMaxMass)
             {
                Threading::LockMutex(g_pvQueryMutex);
 
@@ -1767,20 +1768,25 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iLenPeptide);
                sEntry.szPeptide[iLenPeptide]='\0';
 
-               if (iStartPos == 0)
-                  sEntry.cPrevAA = '-';
-               else
-                  sEntry.cPrevAA = szProteinSeq[iStartPos - 1];
+               // little sanity check here to not include peptides with '*' in them
+               // although mass check above should've caught these before
+               if (!strchr(sEntry.szPeptide, '*'))
+               {
+                  if (iStartPos == 0)
+                     sEntry.cPrevAA = '-';
+                  else
+                     sEntry.cPrevAA = szProteinSeq[iStartPos - 1];
 
-               if (iEndPos == iProteinSeqLengthMinus1)
-                  sEntry.cNextAA = '-';
-               else
-                  sEntry.cNextAA = szProteinSeq[iEndPos + 1];
+                  if (iEndPos == iProteinSeqLengthMinus1)
+                     sEntry.cNextAA = '-';
+                  else
+                     sEntry.cNextAA = szProteinSeq[iEndPos + 1];
 
-               sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
-               memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2.0));
+                  sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
+                  memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2.0));
 
-               g_pvDBIndex.push_back(sEntry);
+                  g_pvDBIndex.push_back(sEntry);
+               }
 
                Threading::UnlockMutex(g_pvQueryMutex);
             }
