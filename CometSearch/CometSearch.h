@@ -211,6 +211,7 @@ private:
    void CompoundModSearch(char *szProtein,
                           int iStartPos,
                           int iEndPos,
+                          int *piVarModSites,
                           bool *pbDuplFragment,
                           struct sDBEntry *dbe);
 

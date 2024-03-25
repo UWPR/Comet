@@ -38,6 +38,8 @@ class CometSearchManager;
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
 #define BIN_MOD_COUNT               10       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9)
 
+#define COMPOUNDMODS_OFFSET         100      // used to encode compound mods entry in piVarModSites; add this value to which compound mod
+
 #define WIDTH_REFERENCE             512      // length of the protein accession field to store
 #define MAX_PROTEINS                50       // maximum number of proteins to return for each query; for index search only right now
 
