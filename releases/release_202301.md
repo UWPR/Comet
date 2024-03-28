@@ -19,5 +19,5 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 - Add "[scale_fragmentNL](/Comet/parameters/parameters_202301/scale_fragmentNL.html)" parameter entry which scales (multiplies) the neutral loss mass value by the number of modified residues in the fragment. Feature requested by A. Keller.
 - Add contributions of fragment neutral loss peaks in preliminary (Sp) score; previously they only applied to the cross-correlation score.
 - Fix bug where the fragment neutral loss peak was not analyzed if the primary fragment peak was not matched.
-- Fix bug where Comet files to analyze a variable modification if more than 19 residues are specified for that mod. Thanks to D. Tabb for reporting the issue.
+- Fix bug where Comet fails to analyze a variable modification if more than 19 residues are specified for that mod. Thanks to D. Tabb for reporting the issue.
 - Fix minor typo in command line help. Thanks to M. Riffle for the pull request.
