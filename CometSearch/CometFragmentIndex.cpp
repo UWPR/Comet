@@ -546,11 +546,6 @@ if (!(iWhichPeptide%5000))
 
       if (i > 1)  // skip first two low mass b- and y-ions
       {
-         // I don't know why and maybe this is a symptom and not the problem but these
-         // push_back() seem to be causing VS compiled exe to slow down to single thread speed.
-         // A g++ compiled binary is not similarly affected.
-         // A yeast target-decoy fasta with 16M, 80STY invokes over 2 billion of these.
-
          if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass)
          {
             if (bCountOnly)
