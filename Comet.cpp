@@ -1360,6 +1360,12 @@ void LoadParameters(char *pszParamsFile,
                   sprintf(szParamStringVal, "%d", iIntParam);
                   pSearchMgr->SetParam("fragindex_min_matchedions", szParamStringVal, iIntParam);
                }
+               else if (!strcmp(szParamName, "fragindex_skipreadprecursors"))
+               {
+                  sscanf(szParamVal, "%d", &iIntParam);
+                  sprintf(szParamStringVal, "%d", iIntParam);
+                  pSearchMgr->SetParam("fragindex_skipreadprecursors", szParamStringVal, iIntParam);
+               }
                else
                {
                   sprintf(szErrorMsg, " Warning - invalid parameter found: %s.  Parameter will be ignored.\n", szParamName);

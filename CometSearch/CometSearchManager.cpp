@@ -1072,6 +1072,7 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("fragindex_num_spectrumpeaks", g_staticParams.options.iFragIndexNumSpectrumPeaks);
    GetParamValue("fragindex_max_peptidesscored", g_staticParams.options.iFragIndexMaxNumScored);
    GetParamValue("fragindex_min_matchedions", g_staticParams.options.iFragIndexMinMatchedIons);
+   GetParamValue("fragindex_skipreadprecursors", g_staticParams.options.iFragIndexSkipReadPrecursors);
 
    GetParamValue("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
    if ((g_staticParams.options.iEnzymeTermini != 1)
@@ -1601,7 +1602,7 @@ bool CometSearchManager::InitializeStaticParams()
       }
       for (int x = 0; x < BIN(g_staticParams.options.dPeptideMassHigh); ++x)
       {
-         if (g_pvInputFiles.size() == 0)
+         if (g_pvInputFiles.size() == 0 || g_staticParams.options.iFragIndexSkipReadPrecursors)
             g_bIndexPrecursors[x] = true;  // if RTS search, no input file to read precursors from so all precursors are valid
          else
             g_bIndexPrecursors[x] = false; // set all precursors as invalid; valid precursors will be determined in ReadPrecursors
@@ -1979,35 +1980,43 @@ bool CometSearchManager::DoSearch()
 
    tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
 
-   // read precursors before creating fragment index
-   auto tTime1 = chrono::steady_clock::now();
-   if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+   if (!g_staticParams.options.iFragIndexSkipReadPrecursors)
    {
-      cout <<  " - read precursors ... ";
+      // read precursors before creating fragment index
+      auto tTime1 = chrono::steady_clock::now();
+      if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+      {
+         cout <<  " - read precursors ... ";
+         fflush(stdout);
+      }
+
+      if (g_staticParams.bIndexDb)
+      {
+         for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
+         {
+            bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
+            if (!bSucceeded)
+               break;
+
+            // For file access using MSToolkit.
+            MSReader mstReader;
+
+            // We want to read only MS2/MS3 scans.
+            SetMSLevelFilter(mstReader);
+
+            CometPreprocess::Reset();
+
+            bSucceeded = CometPreprocess::ReadPrecursors(mstReader);
+         }
+      }
+      if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+         cout << CometFragmentIndex::ElapsedTime(tTime1) << endl;
+   }
+   else
+   {
+      cout <<  " - read precursors ... skipping" << endl;
       fflush(stdout);
    }
-
-   if (g_staticParams.bIndexDb)
-   {
-      for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
-      {
-         bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
-         if (!bSucceeded)
-            break;
-
-         // For file access using MSToolkit.
-         MSReader mstReader;
-
-         // We want to read only MS2/MS3 scans.
-         SetMSLevelFilter(mstReader);
-
-         CometPreprocess::Reset();
-
-         bSucceeded = CometPreprocess::ReadPrecursors(mstReader);
-      }
-   }
-   if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
-      cout << CometFragmentIndex::ElapsedTime(tTime1) << endl;
 
    for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
    {

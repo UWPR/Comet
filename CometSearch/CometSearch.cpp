@@ -1328,7 +1328,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
       // ix->first references peptide entry in g_vFragmentPeptides[ix->first].iWhichPeptide/.modnumIdx
       // ix->second is matched fragment count
 
-      if (++iCountPeptidesScored >= FRAGINDEX_MAX_NUMSCORED) // set some cutoff to score only N top peptides based on fragment ion match
+      if (++iCountPeptidesScored >= g_staticParams.options.iFragIndexMaxNumScored) // set some cutoff to score only N top peptides based on fragment ion match
          break;
 
       if (ix->second >= FRAGINDEX_MIN_MATCHEDIONS)
