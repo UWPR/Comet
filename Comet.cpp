@@ -30,11 +30,11 @@ void ProcessCmdLine(int argc,
                     ICometSearchManager *pSearchMgr);
 void SetOptions(char *arg,
                 char *szParamsFile,
-                bool *bPrintParams,
+                int *iPrintParams,
                 ICometSearchManager *pSearchMgr);
 void LoadParameters(char *pszParamsFile,
                     ICometSearchManager *pSearchMgr);
-void PrintParams();
+void PrintParams(int iPrintParams);
 bool ValidateInputFile(char *pszInputFileName);
 
 
@@ -116,7 +116,7 @@ void Usage(char *pszCmd)
 
 void SetOptions(char *arg,
       char *szParamsFile,
-      bool *bPrintParams,
+      int *iPrintParams,
       ICometSearchManager *pSearchMgr)
 {
    char szTmp[512];
@@ -189,7 +189,9 @@ void SetOptions(char *arg,
          }
          break;
       case 'p':
-         *bPrintParams = true;
+         *iPrintParams = 1;
+         if (arg[2] == '1')
+            *iPrintParams = 2;  // print out fragment index param options
          break;
       case 'i':
          sprintf(szParamStringVal, "1");
@@ -1348,12 +1350,6 @@ void LoadParameters(char *pszParamsFile,
                   sprintf(szParamStringVal, "%d", iIntParam);
                   pSearchMgr->SetParam("fragindex_num_spectrumpeaks", szParamStringVal, iIntParam);
                }
-               else if (!strcmp(szParamName, "fragindex_max_peptidesscored"))
-               {
-                  sscanf(szParamVal, "%d", &iIntParam);
-                  sprintf(szParamStringVal, "%d", iIntParam);
-                  pSearchMgr->SetParam("fragindex_max_peptidesscored", szParamStringVal, iIntParam);
-               }
                else if (!strcmp(szParamName, "fragindex_min_matchedions"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
@@ -1575,7 +1571,7 @@ void ProcessCmdLine(int argc,
                     vector<InputFileInfo*> &pvInputFiles,
                     ICometSearchManager *pSearchMgr)
 {
-   bool bPrintParams = false;
+   int iPrintParams = false;
    int iStartInputFile = 1;
    char *arg;
 
@@ -1597,14 +1593,14 @@ void ProcessCmdLine(int argc,
    while ((iStartInputFile < argc) && (NULL != arg))
    {
       if (arg[0] == '-')
-         SetOptions(arg, szParamsFile, &bPrintParams, pSearchMgr);
+         SetOptions(arg, szParamsFile, &iPrintParams, pSearchMgr);
 
       arg = argv[++iStartInputFile];
    }
 
-   if (bPrintParams)
+   if (iPrintParams)
    {
-      PrintParams();
+      PrintParams(iPrintParams);
       exit(0);
    }
 
@@ -1620,7 +1616,7 @@ void ProcessCmdLine(int argc,
    {
       if (arg[0] == '-')
       {
-         SetOptions(arg, szParamsFile, &bPrintParams, pSearchMgr);
+         SetOptions(arg, szParamsFile, &iPrintParams, pSearchMgr);
       }
       else if (arg != NULL)
       {
@@ -1646,7 +1642,7 @@ void ProcessCmdLine(int argc,
 } // ProcessCmdLine
 
 
-void PrintParams(void)
+void PrintParams(int iPrintParams)
 {
    FILE *fp;
 
@@ -1670,17 +1666,17 @@ decoy_search = 0                       # 0=no (default), 1=internal decoy concat
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\n", MAX_THREADS);
 
-/*
-   fprintf(fp,
+   if (iPrintParams == 2)
+   {
+      fprintf(fp,
 "#\n\
 # fragment index\n\
 #\n\
-fragindex_min_fragmentmass = 3         # minimum number of matched fragment ion index peaks for xcorr\n\
+fragindex_min_matchedions = 3         # minimum number of matched fragment ion index peaks for xcorr\n\
 fragindex_num_spectrumpeaks = 100      # number of peaks from spectrum to use for fragment index matching\n\
-fragindex_max_peptidesscored = 100     # xcorr score up to this many peptides per spectrum query\n\
-fragindex_min_matchedions = 200.0      # low mass cutoff for fragment ions\n\
+fragindex_min_fragmentmass = 200.0      # low mass cutoff for fragment ions\n\
 fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\n");
-*/
+   }
 
    fprintf(fp,
 "#\n\

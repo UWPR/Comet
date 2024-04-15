@@ -1070,7 +1070,6 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.dFragIndexMaxMass = dDoubleData;
    }
    GetParamValue("fragindex_num_spectrumpeaks", g_staticParams.options.iFragIndexNumSpectrumPeaks);
-   GetParamValue("fragindex_max_peptidesscored", g_staticParams.options.iFragIndexMaxNumScored);
    GetParamValue("fragindex_min_matchedions", g_staticParams.options.iFragIndexMinMatchedIons);
    GetParamValue("fragindex_skipreadprecursors", g_staticParams.options.iFragIndexSkipReadPrecursors);
 

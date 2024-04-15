@@ -142,7 +142,6 @@ struct Options             // output parameters
    int iFragIndexNumThreads;
    int iFragIndexMinMatchedIons;
    int iFragIndexNumSpectrumPeaks;
-   int iFragIndexMaxNumScored;
    int iFragIndexSkipReadPrecursors;
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;         // intensity cutoff for each peak
@@ -217,7 +216,6 @@ struct Options             // output parameters
       iFragIndexNumThreads = a.iFragIndexNumThreads;              // # of threads to use for fragment index (as not sure humongous # makes sense)
       iFragIndexMinMatchedIons = a.iFragIndexMinMatchedIons;      // minimum # of matched fragment ions peaks required to pass to xcorr
       iFragIndexNumSpectrumPeaks = a.iFragIndexNumSpectrumPeaks;  // # of peaks from spectrum to use for querying fragment index
-      iFragIndexMaxNumScored = a.iFragIndexMaxNumScored;          // maximum # of peptides passed to xcorr for a spectrum
       iFragIndexSkipReadPrecursors = a.iFragIndexSkipReadPrecursors;   // if true, skips reading precursors step
 
       return *this;
@@ -901,7 +899,6 @@ struct StaticParams
       options.iFragIndexNumThreads = FRAGINDEX_MAX_THREADS;
       options.iFragIndexMinMatchedIons = FRAGINDEX_MIN_MATCHEDIONS;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
-      options.iFragIndexMaxNumScored = FRAGINDEX_MAX_NUMSCORED;
       options.iFragIndexSkipReadPrecursors = 0;
 
       options.clearMzRange.dStart = 0.0;

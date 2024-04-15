@@ -1321,15 +1321,10 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    int iStartPos = 0;
    int iEndPos = 0;
 
-   int iCountPeptidesScored = 0;
-
    for (auto ix = vPeptides.begin(); ix != vPeptides.end(); ++ix)
    {
       // ix->first references peptide entry in g_vFragmentPeptides[ix->first].iWhichPeptide/.modnumIdx
       // ix->second is matched fragment count
-
-      if (++iCountPeptidesScored >= g_staticParams.options.iFragIndexMaxNumScored) // set some cutoff to score only N top peptides based on fragment ion match
-         break;
 
       if (ix->second >= FRAGINDEX_MIN_MATCHEDIONS)
       {
