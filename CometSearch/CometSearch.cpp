@@ -1295,7 +1295,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    std::vector<std::pair<comet_fileoffset_t, int>> vPeptides;
    for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ++ix)
    {
-      if (ix->second >= FRAGINDEX_MIN_MATCHEDIONS)
+      if (ix->second >= g_staticParams.options.iFragIndexMinMatchedIons)
          vPeptides.push_back(*ix);
    }
 
@@ -1304,7 +1304,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    // Now that all peptides are determined based on mapping fragment ions,
    // re-score highest matches with xcorr. Let use cutoff of at least
-   // FRAGINDEX_MIN_MATCHEDIONS fragment ion matches.
+   // g_staticParams.options.iFragIndexMinMatchedIons fragment ion matches.
 
    int iLenPeptide;
    int iWhichIonSeries;
@@ -1326,7 +1326,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
       // ix->first references peptide entry in g_vFragmentPeptides[ix->first].iWhichPeptide/.modnumIdx
       // ix->second is matched fragment count
 
-      if (ix->second >= FRAGINDEX_MIN_MATCHEDIONS)
+      if (ix->second >= g_staticParams.options.iFragIndexMinMatchedIons)
       {
          int iFoundVariableMod = 0;
 
