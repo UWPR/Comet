@@ -812,7 +812,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
    for (i=0; i<iMaxCorr; ++i)
    {
-      if (piHistogram[i] == 0 && bFoundFirstNonZeroEntry)
+      if (piHistogram[i] == 0 && bFoundFirstNonZeroEntry && i >= 15)
       {
          // register iNextCorr if there's a histo value of 0 consecutively
          if (piHistogram[i+1] == 0 || i+1 == iMaxCorr)
@@ -829,8 +829,22 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    if (i==iMaxCorr)
    {
       iNextCorr = iMaxCorr;
-      if (iMaxCorr>12)
-         iNextCorr = iMaxCorr-2;
+
+      if (iMaxCorr >= 15)
+      {
+         for (i = iMaxCorr; i >= iMaxCorr - 5; --i)
+         {
+            if (piHistogram[i] == 0)
+            {
+               iNextCorr = i;
+
+               if (iMaxCorr <= 20)
+                  break;
+            }
+         }
+         if (iNextCorr == iMaxCorr)
+            iNextCorr = iMaxCorr - 1;
+      }
    }
 
    // Create cumulative distribution function from iNextCorr down, skipping the outliers.
@@ -853,7 +867,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
          if (pdCumulative[i+1] > 0.0)
             pdCumulative[i] = log10(pdCumulative[i+1]);
          else
-            pdCumulative[i] = 0;
+            pdCumulative[i] = 0.0;
       }
    }
 
