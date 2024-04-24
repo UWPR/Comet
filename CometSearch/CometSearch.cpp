@@ -1779,7 +1779,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                   sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                   memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2.0));
-
+                  
                   g_pvDBIndex.push_back(sEntry);
                }
 
