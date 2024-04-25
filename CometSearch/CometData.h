@@ -228,7 +228,7 @@ struct VarMods
    int    iMinNumVarModAAPerMod;
    int    iVarModTermDistance;
    int    iWhichTerm;
-   int    bRequireThisMod;
+   int    iRequireThisMod;  // 0=no; 1=required; negative number = different functionality allowing only one from a set of mods
    char   szVarModChar[MAX_VARMOD_AA];
    bool   bNtermMod;  // set to true if n-term mod
    bool   bCtermMod;  // set to true if c-term mod
@@ -237,7 +237,7 @@ struct VarMods
    VarMods()
    {
       iBinaryMod = 0;
-      bRequireThisMod = 0;
+      iRequireThisMod = 0;
       iMaxNumVarModAAPerMod = 0;
       iMinNumVarModAAPerMod = 0;
       iVarModTermDistance = -1;
@@ -253,7 +253,7 @@ struct VarMods
    VarMods(const VarMods& a)
    {
       iBinaryMod = a.iBinaryMod;
-      bRequireThisMod = a.bRequireThisMod;
+      iRequireThisMod = a.iRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iMinNumVarModAAPerMod = a.iMinNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;
@@ -269,7 +269,7 @@ struct VarMods
    VarMods& operator=(VarMods& a)
    {
       iBinaryMod = a.iBinaryMod;
-      bRequireThisMod = a.bRequireThisMod;
+      iRequireThisMod = a.iRequireThisMod;
       iMaxNumVarModAAPerMod = a.iMaxNumVarModAAPerMod;
       iMinNumVarModAAPerMod = a.iMinNumVarModAAPerMod;
       iVarModTermDistance = a.iVarModTermDistance;

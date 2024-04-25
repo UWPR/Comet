@@ -1200,7 +1200,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    unsigned int uiFragmentMass;
    int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + 100.0) * g_staticParams.dInverseBinWidth);
 
-   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
+   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
    bool* pbDuplFragment = new bool[iArraySize];
@@ -3621,7 +3621,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    int iLenPeptideMinus1 = iLenPeptide - 1;
 
    // Pointer to either regular or decoy uiBinnedIonMasses[][][][][].
-   unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
+   unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE+1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int (*p_uiBinnedPrecursorNL)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
    // Point to right set of arrays depending on target or decoy search.
@@ -3805,7 +3805,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
                              int iLenPeptide,
                              int *piVarModSites,
                              struct sDBEntry *dbe,
-                             unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
+                             unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
                              unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE])
 {
    int  ctLen,
@@ -4946,6 +4946,12 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
        i7,
        i8,
        i9,
+       i10,
+       i11,
+       i12,
+       i13,
+       i14,
+       i15,
        piVarModCountsNC[VMODS],   // add n- and c-term mods to the counts here
        numVarModCounts[VMODS];
    double dTmpMass;
@@ -5115,9 +5121,45 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
    if (iStartPos == 0)
       dTmpMass += g_staticParams.staticModifications.dAddNterminusProtein;
 
+   for (i15 = 0; i15 <= numVarModCounts[VMOD_15_INDEX]; ++i15)
+   {
+      if (i15 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+         break;
+
+   for (i14 = 0; i14 <= numVarModCounts[VMOD_14_INDEX]; ++i14)
+   {
+      int iSum14 = i15 + i14;
+      if (iSum14 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+         break;
+
+   for (i13 = 0; i13 <= numVarModCounts[VMOD_13_INDEX]; ++i13)
+   {
+      int iSum13 = iSum14 + i13;
+      if (iSum13 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+         break;
+
+   for (i12 = 0; i12 <= numVarModCounts[VMOD_12_INDEX]; ++i12)
+   {
+      int iSum12 = iSum13 + i12;
+      if (iSum12 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+         break;
+
+   for (i11 = 0; i11 <= numVarModCounts[VMOD_11_INDEX]; ++i11)
+   {
+      int iSum11 = iSum12 + i11;
+      if (iSum11 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+         break;
+
+   for (i10 = 0; i10 <= numVarModCounts[VMOD_10_INDEX]; ++i10)
+   {
+      int iSum10 = iSum11 + i10;
+      if (iSum10 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+         break;
+
    for (i9 = 0; i9 <= numVarModCounts[VMOD_9_INDEX]; ++i9)
    {
-      if (i9 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+      int iSum9 = iSum10 + i9;
+      if (iSum9 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
          break;
 
       for (i8 = 0; i8 <= numVarModCounts[VMOD_8_INDEX]; ++i8)
@@ -5176,30 +5218,56 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                               if (iSum1 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
                                  break;
 
-                              int piTmpVarModCounts[] = {i1, i2, i3, i4, i5, i6, i7, i8, i9};
+                              int piTmpVarModCounts[] = {i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12, i13, i14, i15};
 
-                              if (i1>0 || i2>0 || i3>0 || i4>0 || i5>0 || i6>0 || i7>0 || i8>0 || i9>0 || bPeffMod)
+                              if (i1>0 || i2>0 || i3>0 || i4>0 || i5>0 || i6>0 || i7>0 || i8>0 || i9>0
+                                 || i10>0 || i11>0 || i12>0 || i13>0 || i14>0 || i15>0 || bPeffMod)
                               {
                                  bool bPass = true;
 
-                                 if (i1 > 0 && i1 < g_staticParams.variableModParameters.varModList[0].iMinNumVarModAAPerMod)
+                                 if (i1 > 0 && i1 < g_staticParams.variableModParameters.varModList[VMOD_1_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i2 > 0 && i2 < g_staticParams.variableModParameters.varModList[1].iMinNumVarModAAPerMod)
+                                 if (i2 > 0 && i2 < g_staticParams.variableModParameters.varModList[VMOD_2_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i3 > 0 && i3 < g_staticParams.variableModParameters.varModList[2].iMinNumVarModAAPerMod)
+                                 if (i3 > 0 && i3 < g_staticParams.variableModParameters.varModList[VMOD_3_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i4 > 0 && i4 < g_staticParams.variableModParameters.varModList[3].iMinNumVarModAAPerMod)
+                                 if (i4 > 0 && i4 < g_staticParams.variableModParameters.varModList[VMOD_4_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i5 > 0 && i5 < g_staticParams.variableModParameters.varModList[4].iMinNumVarModAAPerMod)
+                                 if (i5 > 0 && i5 < g_staticParams.variableModParameters.varModList[VMOD_5_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i6 > 0 && i6 < g_staticParams.variableModParameters.varModList[5].iMinNumVarModAAPerMod)
+                                 if (i6 > 0 && i6 < g_staticParams.variableModParameters.varModList[VMOD_6_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i7 > 0 && i7 < g_staticParams.variableModParameters.varModList[6].iMinNumVarModAAPerMod)
+                                 if (i7 > 0 && i7 < g_staticParams.variableModParameters.varModList[VMOD_7_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i8 > 0 && i8 < g_staticParams.variableModParameters.varModList[7].iMinNumVarModAAPerMod)
+                                 if (i8 > 0 && i8 < g_staticParams.variableModParameters.varModList[VMOD_8_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
-                                 if (i9 > 0 && i9 < g_staticParams.variableModParameters.varModList[8].iMinNumVarModAAPerMod)
+                                 if (i9 > 0 && i9 < g_staticParams.variableModParameters.varModList[VMOD_9_INDEX].iMinNumVarModAAPerMod)
                                     bPass = false;
+                                 if (i10 > 0 && i10 < g_staticParams.variableModParameters.varModList[VMOD_10_INDEX].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i11 > 0 && i11 < g_staticParams.variableModParameters.varModList[VMOD_11_INDEX].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i12 > 0 && i12 < g_staticParams.variableModParameters.varModList[VMOD_12_INDEX].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i13 > 0 && i13 < g_staticParams.variableModParameters.varModList[VMOD_13_INDEX].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i14 > 0 && i14 < g_staticParams.variableModParameters.varModList[VMOD_14_INDEX].iMinNumVarModAAPerMod)
+                                    bPass = false;
+                                 if (i15 > 0 && i15 < g_staticParams.variableModParameters.varModList[VMOD_15_INDEX].iMinNumVarModAAPerMod)
+                                    bPass = false;
+
+                                 if (bPass && g_staticParams.variableModParameters.bRareVarModPresent)
+                                 {
+                                    // check rare mods ... only allow one of those at a time
+                                    int iCountRareMods = 0;
+                                    for (int xx = 0; xx < VMODS; ++xx)
+                                    {
+                                       if (g_staticParams.variableModParameters.varModList[xx].iRequireThisMod == -1 && piTmpVarModCounts[xx] > 0)
+                                          iCountRareMods++;
+                                    }
+                                    if (iCountRareMods > 1)  // only allow 1 rare mod at a time
+                                       bPass = false;
+                                 }
 
                                  if (bPass)
                                  {
@@ -5550,7 +5618,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                              // so don't worry about distance constraint issues yet.
                                              for (i = 0; i < VMODS; ++i)
                                              {
-                                                if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod
+                                                if (g_staticParams.variableModParameters.varModList[i].iRequireThisMod > 0
                                                       && piTmpVarModCounts[i] == 0)
                                                 {
                                                    bValid = false;
@@ -5662,6 +5730,12 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
          }
       }
    }
+   }
+   }
+   }
+   }
+   }
+   }
 
    if ((int)dbe->vectorPeffMod.size() > 0)
       vPeffArray.clear();
@@ -5720,6 +5794,24 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
       case 9:
          iModIndex = VMOD_9_INDEX;
          break;
+      case 10:
+         iModIndex = VMOD_10_INDEX;
+         break;
+      case 11:
+         iModIndex = VMOD_11_INDEX;
+         break;
+      case 12:
+         iModIndex = VMOD_12_INDEX;
+         break;
+      case 13:
+         iModIndex = VMOD_13_INDEX;
+         break;
+      case 14:
+         iModIndex = VMOD_14_INDEX;
+         break;
+      case 15:
+         iModIndex = VMOD_15_INDEX;
+         break;
       default:
          string strErrorMsg = " Error - in CometSearch::PermuteMods, iWhichIndex=" + to_string(iWhichMod) + " (valid range 1 to 9)\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -5753,7 +5845,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          i++;
       }
 
-      if (iWhichMod == 9)
+      if (iWhichMod == VMODS)
       {
          if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
@@ -5772,7 +5864,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          for (i = 0; i != N; ++i)
             _varModInfo.varModStatList[iModIndex].iVarModSites[i] = (b[i] ? iWhichMod : 0);
 
-         if (iWhichMod == 9)
+         if (iWhichMod == VMODS)
          {
             if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
                return false;
@@ -5786,7 +5878,7 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
    }
    else
    {
-      if (iWhichMod == 9)
+      if (iWhichMod == VMODS)
       {
          if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
@@ -6109,7 +6201,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    {
       for (j = 0; j < VMODS; ++j)
       {
-         if (g_staticParams.variableModParameters.varModList[j].bRequireThisMod
+         if (g_staticParams.variableModParameters.varModList[j].iRequireThisMod > 0
                && g_staticParams.variableModParameters.varModList[j].bUseMod)
          {
             bool bPresent = false;

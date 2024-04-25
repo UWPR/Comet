@@ -30,6 +30,7 @@ class CometSearchManager;
 #define MIN_PEPTIDE_LEN             1        // min # of AA for a petpide
 #define MAX_PEPTIDE_LEN             51       // max # of AA for a peptide; one more than actual # to account for terminating char
 #define MAX_PEPTIDE_LEN_P2          53       // max # of AA for a peptide plus 2 for N/C-term
+#define MAX_FRAGMENT_IONS_TYPE      9        // allowed fragment ions (aka a/b/c/x/y/z) ; check why this is 9!
 
 #define FRAGINDEX_MIN_MATCHEDIONS   3
 #define FRAGINDEX_MIN_MASS          200.0    // minimum fragment ion mass used to generate fragment index
@@ -51,7 +52,7 @@ class CometSearchManager;
 #define NUM_SP_IONS                 1000     // num ions for preliminary scoring
 #define NUM_ION_SERIES              7        // a,b,c,x,y,z,z1
 #define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
-#define BIN_MOD_COUNT               10       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-9)
+#define BIN_MOD_COUNT               16       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-15)
 
 #define WIDTH_REFERENCE             512      // length of the protein accession field to store
 #define MAX_PROTEINS                50       // maximum number of proteins to return for each query; for index search only right now
@@ -60,7 +61,7 @@ class CometSearchManager;
 
 #define NO_PEFF_VARIANT             -127
 
-#define VMODS                       9
+#define VMODS                       15
 #define VMOD_1_INDEX                0
 #define VMOD_2_INDEX                1
 #define VMOD_3_INDEX                2
@@ -70,6 +71,12 @@ class CometSearchManager;
 #define VMOD_7_INDEX                6
 #define VMOD_8_INDEX                7
 #define VMOD_9_INDEX                8
+#define VMOD_10_INDEX               9
+#define VMOD_11_INDEX               10
+#define VMOD_12_INDEX               11
+#define VMOD_13_INDEX               12
+#define VMOD_14_INDEX               13
+#define VMOD_15_INDEX               14
 
 #define ENZYME_SINGLE_TERMINI       1
 #define ENZYME_DOUBLE_TERMINI       2
@@ -557,6 +564,7 @@ struct VarModParams
    bool    bVarProteinCTermMod;      // set to true if a protein c-term variable mod specified 
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
+   bool    bRareVarModPresent;       // set to true if any of iRequireThisMod == -1
    int     iRequireVarMod;           // 0=no; else use bits to determine which varmods are required
    int     iMaxVarModPerPeptide;
    int     iMaxPermutations;
@@ -569,9 +577,12 @@ struct VarModParams
       bVarTermModSearch = a.bVarTermModSearch;
       bVarProteinNTermMod = a.bVarProteinNTermMod;
       bVarProteinCTermMod = a.bVarProteinCTermMod;
+      bBinaryModSearch = a.bBinaryModSearch;
+      bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
+      bRareVarModPresent = a.bRareVarModPresent;
+      iRequireVarMod = a.iRequireVarMod;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;
-      bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
 
       for (int i = 0; i < VMODS; ++i)
       {
@@ -790,7 +801,7 @@ struct StaticParams
          variableModParameters.varModList[i].iMaxNumVarModAAPerMod = 3;
          variableModParameters.varModList[i].iMinNumVarModAAPerMod = 0;
          variableModParameters.varModList[i].iBinaryMod = 0;
-         variableModParameters.varModList[i].bRequireThisMod = false;
+         variableModParameters.varModList[i].iRequireThisMod = 0;
          variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
          variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
          variableModParameters.varModList[i].dVarModMass = 0.0;
