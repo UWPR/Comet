@@ -1373,6 +1373,22 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
 
+   for (int i=0; i<VMODS; ++i)
+   {
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
+      {
+         if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+            g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
+
+         if (g_staticParams.options.bCreateIndex)
+         {  // limit any user specified modification limits to the max supported by fragment ion indexing
+            if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > FRAGINDEX_MAX_MODS_PER_MOD)
+               g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = FRAGINDEX_MAX_MODS_PER_MOD;
+         }
+      }
+   }
+
    // reduce variable modifications if entries are the same
    for (int i=0; i<VMODS; ++i)
    {
@@ -1402,9 +1418,6 @@ bool CometSearchManager::InitializeStaticParams()
                   sprintf(g_staticParams.variableModParameters.varModList[ii].szVarModChar, "-");
                   g_staticParams.variableModParameters.varModList[ii].dVarModMass = 0.0;
                }
-      
-               if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
-                  g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
             }
          }
 

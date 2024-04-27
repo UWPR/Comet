@@ -52,7 +52,7 @@ public:
                        int modNumCount,
                        int modStringLen);
    static void generateModifications(string* sequence,
-                                     int max_mods_per_mod,
+                                     vector<int>& vMaxNumVarModsPerMod,
                                      int* ret_modNumStart,
                                      int* ret_modNumCount,
                                      vector<string>& ALL_MODS,
@@ -60,7 +60,7 @@ public:
                                      int ALL_COMBINATION_CNT,
                                      unsigned long long* ALL_COMBINATIONS);
    static void getModificationCombinations(const vector<string> modifiableSeqs,
-                                           int max_mods_per_mod,
+                                           vector<int>& vMaxNumVarModsPerMod,
                                            vector<string>& ALL_MODS,
                                            int MOD_CNT,
                                            int ALL_COMBINATION_CNT,

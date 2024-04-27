@@ -401,7 +401,7 @@ bool ModificationsPermuter::combine(int* modNumbers,
                                     int modNumCount,
                                     int modStringLen)
 {
-   const auto start = startTime();
+// const auto start = startTime();
 
    for (int j = 0; j < modNumCount; ++j)
    {
@@ -458,7 +458,7 @@ bool ModificationsPermuter::combine(int* modNumbers,
 
 // Generate all the modification combinations for the given sequence of modifiable amino acids.
 void ModificationsPermuter::generateModifications(string* sequence,
-                                                  int max_mods_per_mod,
+                                                  vector<int>& vMaxNumVarModsPerMod,
                                                   int* ret_modNumStart,
                                                   int* ret_modNumCount,
                                                   vector<string>& ALL_MODS,
@@ -472,6 +472,8 @@ void ModificationsPermuter::generateModifications(string* sequence,
 
    *ret_modNumStart = -1;
    *ret_modNumCount = 0;
+
+   vector<unsigned int> vMaxMods;  // store value from vMaxNumVarModsPerMod for each modBitmasks
 
    // Step 1: Get a bitmask representing each user specified modification found in the sequence.
    for (int m = 0; m < MOD_CNT; ++m)
@@ -491,7 +493,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
             return; 
          }
 
-         int combinationCount = CombinatoricsUtils::getCombinationCount(int(bitCount), max_mods_per_mod); // nCk + nCk-1 +...+nC1
+         int combinationCount = CombinatoricsUtils::getCombinationCount(int(bitCount), vMaxNumVarModsPerMod[m]); // nCk + nCk-1 +...+nC1
 
          if (ignorePeptidesWithTooManyMods() && combinationCount > FRAGINDEX_MAX_COMBINATIONS)
          {
@@ -502,6 +504,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
          modIndices.push_back(m);
 
          modBitmasks.push_back(bitmask);
+         vMaxMods.push_back(vMaxNumVarModsPerMod[m]);
          combinationCounts.push_back(combinationCount);
       }
    }
@@ -518,7 +521,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
 
       if (ignorePeptidesWithTooManyMods() && calculatedCombinationsCount > FRAGINDEX_MAX_COMBINATIONS)
       {
-         // If we are ignoring peptides with > FRAGINDEX_MAX_COMBINATIONS or reducing FRAGINDEX_MAX_MODS_PER_PEP to get the number of
+         // If we are ignoring peptides with > FRAGINDEX_MAX_COMBINATIONS or reducing FRAGINDEX_MAX_MODS_PER_MOD to get the number of
          // modified peptides withing the threshold, then the calculated combinations should not exceed FRAGINDEX_MAX_COMBINATIONS
          cout << "ERROR: calculated combination count exceeds FRAGINDEX_MAX_COMBINATIONS (" << to_string(FRAGINDEX_MAX_COMBINATIONS) +
             ") but FRAGINDEX_KEEP_ALL_PEPTIDES is set to " << to_string(FRAGINDEX_KEEP_ALL_PEPTIDES);
@@ -555,7 +558,10 @@ void ModificationsPermuter::generateModifications(string* sequence,
          if (combination > modBitmask)
             break;
 
-         if ((combination & notMod) == 0) // Only the bits set in the modification bitmask should be set in the combination.
+         std::bitset<64> x(combination);
+         unsigned long long bitCount = x.count();
+
+         if ((combination & notMod) == 0 && bitCount <= vMaxMods.at(idx)) // Only the bits set in the modification bitmask should be set in the combination.
             combinationsForMod[combinationsFound++] = combination;
       }
       if (combinationsFound != combinationsForModArrLen) // Number of combinations found should be the same as the expected number.
@@ -708,7 +714,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
 
 
 void ModificationsPermuter::getModificationCombinations(const vector<string> modifiableSeqs,
-                                                        int max_mods_per_mod,
+                                                        vector<int>& vMaxNumVarModsPerMod,
                                                         vector<string>& ALL_MODS,
                                                         int MOD_CNT,
                                                         int ALL_COMBINATION_CNT,
@@ -727,9 +733,7 @@ void ModificationsPermuter::getModificationCombinations(const vector<string> mod
       int modNumStart = -1;
       int modNumCount = 0;
 
-      int maxModsPerModForSeq = max_mods_per_mod;
-
-      generateModifications(&modSeq, maxModsPerModForSeq, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+      generateModifications(&modSeq, vMaxNumVarModsPerMod, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
 
       MOD_SEQ_MOD_NUM_START[i] = modNumStart;
       MOD_SEQ_MOD_NUM_CNT[i] = modNumCount;
