@@ -403,6 +403,8 @@ bool ModificationsPermuter::combine(int* modNumbers,
 {
 // const auto start = startTime();
 
+   unsigned long long combinedBitmasks = 0;  // use this combined bitmask to check total # of mods
+
    for (int j = 0; j < modNumCount; ++j)
    {
       for (int k = j+1; k < modNumCount; ++k)
@@ -410,6 +412,7 @@ bool ModificationsPermuter::combine(int* modNumbers,
          // cout << "1: "; printBits(bitmasks[j]);
          // cout << "2: "; printBits(bitmasks[k]);
          unsigned long long combined = bitmasks[j] & bitmasks[k];
+         combinedBitmasks = bitmasks[j] | bitmasks[k];
          // cout << "3: "; printBits(combined);
          if (combined != 0)
          {
@@ -419,6 +422,12 @@ bool ModificationsPermuter::combine(int* modNumbers,
          }
       }
    }
+
+   // now check if number of mods after combining is greater than total allowed in peptide
+   std::bitset<64> x(combinedBitmasks);
+   unsigned long long bitCount = x.count();
+   if (bitCount > (unsigned long long)g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+      return false;
 
    char *mods = new char[modStringLen];
    char modNum;
