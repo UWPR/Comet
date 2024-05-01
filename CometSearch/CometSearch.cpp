@@ -1611,7 +1611,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
          dbe.lProteinFilePosition = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).lIndexProteinFilePosition;
 
          XcorrScoreI(szPeptide, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
-               false, iWhichQuery, iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL);
+               false, iWhichQuery, iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL,
+               ix->second);
       }
    }
 
@@ -3760,9 +3761,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
          iTmp = HISTO_SIZE - 1;
 
       pQuery->iXcorrHistogram[iTmp] += 1;
-
-      if (pQuery->iHistogramCount < DECOY_SIZE)
-         pQuery->iHistogramCount += 1;
+      pQuery->uiHistogramCount += 1;
    }
 
    double dLowestXcorrScore;
@@ -3806,7 +3805,8 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
                              int *piVarModSites,
                              struct sDBEntry *dbe,
                              unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
-                             unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE])
+                             unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
+                             int iNumMatchedFragmentIons)
 {
    int  ctLen,
         ctIonSeries,
@@ -3915,13 +3915,14 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
          iTmp = HISTO_SIZE - 1;
 
       pQuery->iXcorrHistogram[iTmp] += 1;
-
-      if (pQuery->iHistogramCount < DECOY_SIZE)
-         pQuery->iHistogramCount += 1;
+      pQuery->uiHistogramCount += 1;
    }
 
-   StorePeptideI(iWhichQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-                  dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
+// if (iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinMatchedIons + 2 ) // latter option being tested
+   {
+      StorePeptideI(iWhichQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
+            dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
+   }
 
    Threading::UnlockMutex(pQuery->accessMutex);
 }

@@ -92,7 +92,8 @@ void Usage(char *pszCmd)
    logout(" Supported input formats include mzXML, mzML, Thermo raw, mgf, and ms2 variants (cms2, bms2, ms2)\n");
 
    logout("\n");
-   logout("       options:  -p         to print out a comet.params file (named comet.params.new)\n");
+   logout("       options:  -p         to print out a comet.params.new file\n");
+   logout("                 -q         to print out a comet.params.new file with more parameter entries\n");
    logout("                 -P<params> to specify an alternate parameters file (default comet.params)\n");
    logout("                 -N<name>   to specify an alternate output base name; valid only with one input file\n");
    logout("                 -D<dbase>  to specify a sequence database, overriding entry in parameters file\n");
@@ -189,9 +190,10 @@ void SetOptions(char *arg,
          }
          break;
       case 'p':
-         *iPrintParams = 1;
-         if (arg[2] == '1')
-            *iPrintParams = 2;  // print out fragment index param options
+         *iPrintParams = 1;  // default set of parameters
+         break;
+      case 'q':
+         *iPrintParams = 2;  // include additional parameters such as PEFF, fragment ion index
          break;
       case 'i':
          sprintf(szParamStringVal, "1");
@@ -630,6 +632,12 @@ void LoadParameters(char *pszParamsFile,
                sscanf(szParamVal, "%lf", &dDoubleParam);
                sprintf(szParamStringVal, "%lf", dDoubleParam);
                pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, dDoubleParam);
+            }
+            else if (!strcmp(szParamName, "peptide_mass_tolerance_upper"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("peptide_mass_tolerance_upper", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "peptide_mass_tolerance_lower"))
             {
@@ -1660,7 +1668,7 @@ void PrintParams(int iPrintParams)
 # Everything following the '#' symbol is treated as a comment.\n", g_sCometVersion.c_str());
 
    fprintf(fp,
-"\n\
+"#\n\
 database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=internal decoy concatenated, 2=internal decoy separate\n\
 \n\
@@ -1670,11 +1678,17 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
    {
       fprintf(fp,
 "#\n\
-# fragment index\n\
+# PEFF - PSI Extended FASTA Format\n\
 #\n\
-fragindex_min_matchedions = 3         # minimum number of matched fragment ion index peaks for xcorr\n\
-fragindex_num_spectrumpeaks = 100      # number of peaks from spectrum to use for fragment index matching\n\
-fragindex_min_fragmentmass = 200.0      # low mass cutoff for fragment ions\n\
+peff_format = 0                        # 0=no (normal fasta, default), 1=PEFF PSI-MOD, 2=PEFF Unimod\n\
+peff_obo =                             # path to PSI Mod or Unimod OBO file\n\
+\n\
+#\n\
+# fragment ion index; limited to 5 variable mods and up to 5 modified residues per mod\n\
+#\n\
+fragindex_min_matchedions = 3          # minimum number of matched fragment ion index peaks for xcorr\n\
+fragindex_num_spectrumpeaks = 100      # number of peaks from spectrum to use for fragment ion index matching\n\
+fragindex_min_fragmentmass = 200.0     # low mass cutoff for fragment ions\n\
 fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\n");
    }
 
@@ -1682,22 +1696,33 @@ fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\n"
 "#\n\
 # masses\n\
 #\n\
-peptide_mass_tolerance = 20.0          # upper bound of the precursor mass tolerance\n\
-peptide_mass_tolerance_lower = -20.0   # lower bound of the precursor mass tolerance\n\
+peptide_mass_tolerance_upper = 20.0    # upper bound of the precursor mass tolerance\n\
+peptide_mass_tolerance_lower = -20.0   # lower bound of the precursor mass tolerance; USUALLY NEGATIVE TO BE LOWER THAN 0\n\
 peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm\n\
 precursor_tolerance_type = 1           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances\n\
-isotope_error = 3                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1\n\
-\n\
+isotope_error = 3                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1\n");
+
+   if (iPrintParams == 2)
+   {
+      fprintf(fp,
+"mass_type_parent = 1                   # 0=average masses, 1=monoisotopic masses\n\
+mass_type_fragment = 1                 # 0=average masses, 1=monoisotopic masses\n");
+   }
+
+   fprintf(fp,
+"\n\
 #\n\
 # search enzyme\n\
 #\n\
 search_enzyme_number = 1               # choose from list at end of this params file\n\
 search_enzyme2_number = 0              # second enzyme; set to 0 if no second enzyme\n\
+sample_enzyme_number = 1               # specifies the sample enzyme which is possibly different than the one applied to the search;\n\
+                                       # used by PeptideProphet to calculate NTT & NMC in pepXML output (default=1 for trypsin).\n\
 num_enzyme_termini = 2                 # 1 (semi-digested), 2 (fully digested, default), 8 C-term unspecific , 9 N-term unspecific\n\
 allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n\
 \n\
 #\n\
-# Up to 9 variable modifications are supported\n\
+# Up to 15 variable_mod entries are supported for a standard search; manually add additional entries as needed\n\
 # format:  <mass> <residues> <0=variable/else binary> <max_mods_per_peptide> <term_distance> <n/c-term> <required> <neutral_loss>\n\
 #     e.g. 79.966331 STY 0 3 -1 0 0 97.976896\n\
 #\n\
@@ -1705,12 +1730,24 @@ variable_mod01 = 15.9949 M 0 3 -1 0 0 0.0\n\
 variable_mod02 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod03 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod04 = 0.0 X 0 3 -1 0 0 0.0\n\
-variable_mod05 = 0.0 X 0 3 -1 0 0 0.0\n\
-variable_mod06 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod05 = 0.0 X 0 3 -1 0 0 0.0\n");
+   if (iPrintParams == 2)
+   {
+      fprintf(fp,
+"variable_mod06 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod07 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod08 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0 0.0\n\
-max_variable_mods_in_peptide = 5\n\
+variable_mod010 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod011 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod012 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod013 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod014 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod015 = 0.0 X 0 3 -1 0 0 0.0\n");
+   }
+
+   fprintf(fp,
+"max_variable_mods_in_peptide = 5\n\
 require_variable_mod = 0\n\
 \n\
 #\n\
@@ -1738,15 +1775,19 @@ output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
 output_txtfile = 0                     # 0=no, 1=yes  write tab-delimited txt file\n\
 output_pepxmlfile = 1                  # 0=no, 1=yes  write pepXML file\n\
 output_mzidentmlfile = 0               # 0=no, 1=yes  write mzIdentML file\n\
-output_percolatorfile = 0              # 0=no, 1=yes  write Percolator pin file\n\
-print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
-num_output_lines = 5                   # num peptide results to show\n\
-\n\
-sample_enzyme_number = 1               # Sample enzyme which is possibly different than the one applied to the search.\n\
-                                       # Used to calculate NTT & NMC in pepXML output (default=1 for trypsin).\n\
+output_percolatorfile = 0              # 0=no, 1=yes  write Percolator pin file\n");
+
+   if (iPrintParams == 2)
+   {
+      fprintf(fp,
+"print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n");
+   }
+ 
+   fprintf(fp,
+"num_output_lines = 5                   # num peptide results to show\n\
 \n\
 #\n\
-# mzXML parameters\n\
+# mzXML/mzML/raw file parameters\n\
 #\n\
 scan_range = 0 0                       # start and end scan range to search; either entry can be set independently\n\
 precursor_charge = 0 0                 # precursor charge range to analyze; does not override any existing charge; 0 as 1st entry ignores parameter\n\
@@ -1758,13 +1799,19 @@ activation_method = ALL                # activation method; used if activation m
 # misc parameters\n\
 #\n\
 digest_mass_range = 600.0 5000.0       # MH+ peptide mass range to analyze\n\
-peptide_length_range = 5 40            # minimum and maximum peptide length to analyze (default min %d to allowed max %d)\n\
-num_results = 100                      # number of results to store internally for Sp rank only; if Sp rank is not used, set this to num_output_lines\n\
-max_duplicate_proteins = 10            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates\n\
+peptide_length_range = 5 50            # minimum and maximum peptide length to analyze (default min 1 to allowed max %d)\n",
+      MAX_PEPTIDE_LEN);
+
+   if (iPrintParams == 2)
+   {
+      fprintf(fp,
+"num_results = 100                      # number of results to store internally for Sp rank only; if Sp rank is not used, set this to num_output_lines\n");
+   }
+
+fprintf(fp,
+"max_duplicate_proteins = 10            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
-      1,
-      MAX_PEPTIDE_LEN,
       MAX_FRAGMENT_CHARGE,
       MAX_PRECURSOR_CHARGE);
 
@@ -1784,12 +1831,11 @@ fprintf(fp,
 "minimum_intensity = 0                  # minimum intensity value to read in\n\
 remove_precursor_peak = 0              # 0=no, 1=yes, 2=all charge reduced precursor peaks (for ETD), 3=phosphate neutral loss peaks\n\
 remove_precursor_tolerance = 1.5       # +- Da tolerance for precursor removal\n\
-clear_mz_range = 0.0 0.0               # for iTRAQ/TMT type data; will clear out all peaks in the specified m/z range\n\
+clear_mz_range = 0.0 0.0               # clear out all peaks in the specified m/z range e.g. remove reporter ion region of TMT spectra\n\
 \n\
 #\n\
-# additional modifications\n\
+# static modifications\n\
 #\n\
-\n\
 add_Cterm_peptide = 0.0\n\
 add_Nterm_peptide = 0.0\n\
 add_Cterm_protein = 0.0\n\
@@ -1820,9 +1866,15 @@ add_O_pyrrolysine = 0.0000             # added to O - avg. 237.2982, mono  237.1
 add_B_user_amino_acid = 0.0000         # added to B - avg.   0.0000, mono.   0.00000\n\
 add_J_user_amino_acid = 0.0000         # added to J - avg.   0.0000, mono.   0.00000\n\
 add_X_user_amino_acid = 0.0000         # added to X - avg.   0.0000, mono.   0.00000\n\
-add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.00000\n\
-\n\
-# these set_X_residue parameters will override the default AA masses for both precursor and fragment calculations\n\
+add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.00000\n\n");
+
+   if (iPrintParams == 2)
+   {
+fprintf(fp,
+"#\n\
+# These set_X_residue parameters will override the default AA masses for both precursor and fragment calculations.\n\
+# They are applied if the parameter value is not zero.\n\
+#\n\
 set_G_glycine = 0.0000\n\
 set_A_alanine = 0.0000\n\
 set_S_serine = 0.0000\n\
@@ -1848,10 +1900,13 @@ set_O_pyrrolysine = 0.0000\n\
 set_B_user_amino_acid = 0.0000\n\
 set_J_user_amino_acid = 0.0000\n\
 set_X_user_amino_acid = 0.0000\n\
-set_Z_user_amino_acid = 0.0000\n\
-\n\
-#\n\
+set_Z_user_amino_acid = 0.0000\n\n");
+   }
+
+fprintf(fp,
+"#\n\
 # COMET_ENZYME_INFO _must_ be at the end of this parameters file\n\
+# Enzyme ntries can be added/deleted/edited\n\
 #\n\
 [COMET_ENZYME_INFO]\n\
 0.  Cut_everywhere         0      -           -\n\

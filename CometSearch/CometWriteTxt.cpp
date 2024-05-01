@@ -101,7 +101,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "modifications\t");
    fprintf(fpout, "retention_time_sec\t");
    fprintf(fpout, "sp_rank\n");
-
+// fprintf(fpout, "num_matched_peptides\n");
 #endif
 }
 
@@ -372,6 +372,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // Sp rank
          fprintf(fpout, "%d", pOutput[iWhichResult].iRankSp);
+
+//       // number of scored peptides
+//       fprintf(fpout, "\t%u", pQuery->uiHistogramCount);
 
          fprintf(fpout, "\n");
       }
