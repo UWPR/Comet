@@ -18,8 +18,11 @@ options 4 thru 7.  Those options now correspond to 4 = -1/0/1/2/3,
 - Add the parameters
 "[peptide_mass_tolerance_lower](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_lower.html)"
 and
-"[peptide_mass_tolerance_higher](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_higher.html)"
+"[peptide_mass_tolerance_upper](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_upper.html)"
 to allow the specification of non-symmetric precursor mass tolerances.
+This means that "peptide_mass_tolerance" is retired and you should start
+with a fresh comet.params with this release and not re-use an old
+parameters file.
 - Add the parameter
 "[resolve_fullpaths](https://uwpr.github.io/Comet/parameters/parameters_202401/resolve_fullpaths.html)"
 to allow the control of whether or not 
