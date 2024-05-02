@@ -101,9 +101,9 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [text_file_extension](text_file_extension.html)
 - [explicit_deltacn](explicit_deltacn.html)
 - [old_mods_encoding](old_mods_encoding.html)
-- [export_additional_pepxml_scores](export_additional_pepxml_scores.html)
-- [resolve_fullpaths](resolve_fullpaths.html)
-- [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue  <font color="red">*</font>
+- [export_additional_pepxml_scores](export_additional_pepxml_scores.html) <font color="red">*</font>
+- [resolve_fullpaths](resolve_fullpaths.html) <font color="red">*</font>
+- [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue <font color="red">*</font>
 
 #### Spectral processing
 
