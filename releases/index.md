@@ -1,5 +1,6 @@
 ### Comet Releases
 
+- [Release 2024.01, 2023/05/XX](/Comet/releases/release_202401.html)
 - [Release 2023.01, 2023/01/31, last revised 2023/03/30](/Comet/releases/release_202301.html)
 - [Release 2022.01, 2022/05/02, last revised 2022/09/12](/Comet/releases/release_202201.html)
 - [Release 2021.02, 2021/12/09](/Comet/releases/release_202102.html)
@@ -22,18 +23,17 @@
 <img src="/Comet/images/cometlogo_2_small.png" alt="Comet logo" style="float:right" height="80">
 Comet is currently supported within the following software projects:
 
-- [Thermo Fischer Scientific Real-Time Search](https://www.thermofisher.com/us/en/home/industrial/mass-spectrometry/liquid-chromatography-mass-spectrometry-lc-ms/lc-ms-systems/orbitrap-lc-ms/orbitrap-tribrid-mass-spectrometers/orbitrap-eclipse-tribrid-mass-spectrometer.html#how-advanced) and as a Proteome Discoverer 3.0 node.
-- [Bruker Daltonics Integrated Proteomics Pipeline (IP2)](https://www.manula.com/manuals/ip2/ip2/1/en/topic/7-2-comet-search-engine)
 - [Trans-Proteomic Pipeline (TPP)](http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP)
 - [PatternLab](http://www.patternlabforproteomics.org/)
-- [OpenMS](https://www.openms.de)
 - [Crux](https://crux.ms)
+- [OpenMS](https://www.openms.de)
 - [Bio Docker](https://hub.docker.com/r/biocontainers/comet)
 - [MASSyPup](http://www.bioprocess.org/massypup/)
 - [ProHits](http://prohitsms.com/)
 - [PAW pipeline](https://github.com/pwilmart/PAW_pipeline/)
-- [Philosopher](https://philosopher.nesvilab.org/)
 - [SearchGUI](http://compomics.github.io/projects/searchgui.html) and [PeptideShaker](http://compomics.github.io/projects/peptide-shaker.html)
+- [Bruker Daltonics Integrated Proteomics Pipeline (IP2)](https://www.manula.com/manuals/ip2/ip2/1/en/topic/7-2-comet-search-engine)
+- [Thermo Fischer Scientific Real-Time Search](https://www.thermofisher.com/us/en/home/industrial/mass-spectrometry/liquid-chromatography-mass-spectrometry-lc-ms/lc-ms-systems/orbitrap-lc-ms/orbitrap-tribrid-mass-spectrometers/orbitrap-eclipse-tribrid-mass-spectrometer.html#how-advanced) and as a Proteome Discoverer 3.0 node.
 
 Comet is a free, open source tool distributed under the
 [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0)
