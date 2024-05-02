@@ -33,7 +33,9 @@ through
 - Add support for what I will term an "exclusive" modification where only one from
 the set of exclusive variable modification can appear in a peptide. Denoting which
 variable modifications are an "exclusive" modification is accomplished by setting
-field 7 in the variable_modXX parameters to "-1".  The exclusive modification can
+field 7 in the 
+"[variable_mod##](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)".
+parameters to "-1".  The exclusive modification can
 apply to multiple residues (controlled by the 4th field) and can exist in conjunction
 with other variable modifications that are not denoted as being exclusive.  This
 reduces the complexity and search times when analyzing many modifications by not
@@ -48,7 +50,7 @@ single peptide hits will receive a dCn score of 0.0.
 - Update to the
 [MSToolkit library](https://github.com/mhoopmann/mstoolkit)
 to fix a scan numbering bug when spectra are not numbered.  Implemented by
-the amazing M. Hoopmann.
+the talented M. Hoopmann.
 - Update the index search, including the CometWrapperl.dll interface used for 
 real time search (RTS), to use fragment ion indexing.  It is still a work in
 progress with limited functionality so documentation will be added when it is
@@ -63,11 +65,14 @@ e.g. set_A_residue to modify the base mass of alanine.  Feature requested by
 m.f.abdollahnia via the Comet google group.
 - Implemented returning multiple results, instead of just the top hit, through
 the CometWrapper.dll interface.  Code was contributed by our Thermo collaborators
-J. Canterbury and W. Barshop and committed by C. McGann.
+J. Canterbury and W. Barshop and integrated by C. McGann.
 - "comet -p" now generates a slightly simplified comet.params.new file.  Some
 lesser used parameters are left out of that file.  "comet -q" will generate
 a comet.params.new file with a more complete list of supported search parameters.
-- Fixed issues with the mzIdentML output as reported by R. Marissen in issue #45.
-- Fixed the inconsistent Sp rank numbers between runs, reported by keesh0 in issue #46.
+- Fixed issues with the mzIdentML output as reported by R. Marissen in
+[issue #45](https://github.com/UWPR/Comet/issues/45).
+- Fixed the inconsistent Sp rank numbers between runs, reported by keesh0 in
+[issue #46](https://github.com/UWPR/Comet/issues/46).
 - Fixed bug with counting the number of missed cleavages for enzymes that cut 
-before (N-terminal of) the residue, reported by cpaul32015 in issue #47.
+before (N-terminal of) the residue, reported by cpaul32015 in
+[issue #47](https://github.com/UWPR/Comet/issues/47).

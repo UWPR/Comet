@@ -37,8 +37,9 @@ There are 8 fields/settings that are associated with these parameters:
     only peptides that contain this modification will be analyzed.
     - 0 = not forced to be present
     - 1 = modification is required 
-    - -1 = exclusive modification; only of of the set of exclusive modifications can appear in the peptide
-  - The eigth entry is an optional fragment neutral loss field. For any fragment ion that
+    - -1 = exclusive modification; only of of the set of exclusive modifications can appear in the peptide;
+           this functionality was added with release 2024.01.0
+  - The eighth entry is an optional fragment neutral loss field. For any fragment ion that
     contain the variable modification, a neutral loss will also be analyzed if the specified
     neutral loss value is not zero (0.0).
   - The default value is "0.0 X 0 3 -1 0 0 0.0" if this parameter is missing *except* if Comet is

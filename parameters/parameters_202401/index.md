@@ -63,6 +63,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [output_sqtfile](output_sqtfile.html)
 - [output_sqtstream](output_sqtstream.html)
 - [output_txtfile](output_txtfile.html)
+- [output_outfiles](output_outfiles.html)
 - [print_expect_score](print_expect_score.html)
 - [num_output_lines](num_output_lines.html)
 - [show_fragment_ions](show_fragment_ions.html)
@@ -100,7 +101,9 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [text_file_extension](text_file_extension.html)
 - [explicit_deltacn](explicit_deltacn.html)
 - [old_mods_encoding](old_mods_encoding.html)
-- [set_XX_residue](set_XX_residue.html) aka set_A_residue through set_Z_residue
+- [export_additional_pepxml_scores](export_additional_pepxml_scores.html)
+- [resolve_fullpaths](resolve_fullpaths.html)
+- [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue  <font color="red">*</font>
 
 #### Spectral processing
 
