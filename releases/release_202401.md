@@ -7,10 +7,10 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 
 #### release 2024.01 rev. 0 (2024.01.0), release date 2024/05/03
 
-- Address low/good E-value scores for peptides identified from sparse spectra 
-(as any match to any single peak looks like an outlier from the majority of 
-peptides that match no peaks).  This is handled by putting a constraint on the 
-linear regression step of the E-value calculation.
+- Fix sparse/bad spectra generated low/good E-value scores. This occurs for
+sparse spectra as any match to any single peak looks like an outlier from the
+majority of peptides that match no peaks.  This is handled by putting a
+constraint on the linear regression step of the E-value calculation.
 - Change
 "[isotope_error](https://uwpr.github.io/Comet/parameters/parameters_202401/isotope_error.html)"
 options 4 thru 7.  Those options now correspond to 4 = -1/0/1/2/3,
@@ -33,11 +33,13 @@ leaving the paths as-is.  Requested by M. Riffle.
 "[variable_mod10](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)"
 through
 "[variable_mod15](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)".
+Please do not attempt to search with 15 (or even 9) variable mods without
+using some serious constraints!
 - Add support for what I will term an "exclusive" modification where only one from
 the set of exclusive variable modification can appear in a peptide. Denoting which
 variable modifications are an "exclusive" modification is accomplished by setting
 field 7 in the 
-"[variable_mod##](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)".
+"[variable_mod##](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)"
 parameters to "-1".  The exclusive modification can
 apply to multiple residues (controlled by the 4th field) and can exist in conjunction
 with other variable modifications that are not denoted as being exclusive.  This
@@ -54,7 +56,7 @@ single peptide hits will receive a dCn score of 0.0.
 [MSToolkit library](https://github.com/mhoopmann/mstoolkit)
 to fix a scan numbering bug when spectra are not numbered.  Implemented by
 the talented M. Hoopmann.
-- Update the index search, including the CometWrapperl.dll interface used for 
+- Update the index search, including the CometWrapper.dll interface used for 
 real time search (RTS), to use fragment ion indexing.  It is still a work in
 progress with limited functionality so documentation will be added when it is
 ready for more general use.  And the fragment ion indexing is just a pre-filter
@@ -66,9 +68,10 @@ the E. Bergstrom, C. McGann, and D. Schweppe for development/testing feedback.
 parameters which allow user to redefine the base mass of each amino acid residue
 e.g. set_A_residue to modify the base mass of alanine.  Feature requested by
 m.f.abdollahnia via the Comet google group.
-- Implemented returning multiple results, instead of just the top hit, through
-the CometWrapper.dll interface.  Code was contributed by our Thermo collaborators
-J. Canterbury and W. Barshop and integrated by C. McGann.
+- Implemented returning multiple results, instead of just the top hit peptide,
+for each RTS spectrum query through the CometWrapper.dll interface.  Code was
+contributed by our Thermo collaborators J. Canterbury and W. Barshop and
+integrated by C. McGann.
 - "comet -p" now generates a slightly simplified comet.params.new file.  Some
 lesser used parameters are left out of that file.  "comet -q" will generate
 a comet.params.new file with a more complete list of supported search parameters.
