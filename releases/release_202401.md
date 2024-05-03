@@ -7,7 +7,7 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 
 #### release 2024.01 rev. 0 (2024.01.0), release date 2024/05/03
 
-- Fix sparse/bad spectra generated low/good E-value scores. This occurs for
+- Fix calculating good E-value scores for extremely sparse spectra. This occurs for
 sparse spectra as any match to any single peak looks like an outlier from the
 majority of peptides that match no peaks.  This is handled by putting a
 constraint on the linear regression step of the E-value calculation.
@@ -26,15 +26,15 @@ parameters file.
 - Add the parameter
 "[resolve_fullpaths](https://uwpr.github.io/Comet/parameters/parameters_202401/resolve_fullpaths.html)"
 to allow the control of whether or not 
-the resolve the full path base_names in the pepXML output.  Default behavior is 
-to resolve those full paths and this parameter allows the user to control 
+to resolve the full path base_names in the pepXML output.  Default behavior is 
+to resolve those full paths. This parameter allows the user to control 
 leaving the paths as-is.  Requested by M. Riffle.
 - Add support for up to 15 variable modifications with the addition of
 "[variable_mod10](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)"
 through
 "[variable_mod15](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)".
 Please do not attempt to search with 15 (or even 9) variable mods without
-using some serious constraints!
+using some serious constraints unless you are the most patient person in the world.
 - Add support for what I will term an "exclusive" modification where only one from
 the set of exclusive variable modification can appear in a peptide. Denoting which
 variable modifications are an "exclusive" modification is accomplished by setting
@@ -45,7 +45,7 @@ apply to multiple residues (controlled by the 4th field) and can exist in conjun
 with other variable modifications that are not denoted as being exclusive.  This
 reduces the complexity and search times when analyzing many modifications by not
 requiring all permutation/combinations of modifications to be analyzed, which can be
-extensive for many multiple variable mods.  Requested by E. Deutsch.
+a huge number for many multiple variable mods.  Requested by E. Deutsch.
 - Simplify the spectral processing for Sp scoring (preliminary score) by simply 
 taking the raw binned spectra and normalizing the max intensity to 100.
 - Change the convention for the dCn (delta Cn) score for single hit results 
@@ -58,16 +58,17 @@ to fix a scan numbering bug when spectra are not numbered.  Implemented by
 the talented M. Hoopmann.
 - Update the index search, including the CometWrapper.dll interface used for 
 real time search (RTS), to use fragment ion indexing.  It is still a work in
-progress with limited functionality so documentation will be added when it is
-ready for more general use.  And the fragment ion indexing is just a pre-filter
-to the full cross-correlation analysis so Comet is not winning any speed tests.
+progress (so do not use it unless you are curious). Documentation will be added when it is
+ready for general use.  The fragment ion indexing is used as a pre-filter
+to the full cross-correlation scoring.
 Thanks to V. Sharma for implementing the modifications permutation code and
 the E. Bergstrom, C. McGann, and D. Schweppe for development/testing feedback.
 - Added
 "[set_X_residue](https://uwpr.github.io/Comet/parameters/parameters_202401/set_X_residue.html)"
 parameters which allow user to redefine the base mass of each amino acid residue
-e.g. set_A_residue to modify the base mass of alanine.  Feature requested by
-m.f.abdollahnia via the Comet google group.
+e.g. set_A_residue to modify the base mass of alanine. Making use of static modifications
+can effectively accomplish the same thing so there is a very limited use case
+for this new feature.  Feature requested by m.f.abdollahnia via the Comet google group.
 - Implemented returning multiple results, instead of just the top hit peptide,
 for each RTS spectrum query through the CometWrapper.dll interface.  Code was
 contributed by our Thermo collaborators J. Canterbury and W. Barshop and
