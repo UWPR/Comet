@@ -109,7 +109,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       {
          dir = ".";
 #ifdef _WIN32
-         file = "\\"
+         file = "\\";
          file +=  g_staticParams.inputFile.szBaseName;
 #else
          file = "/";
