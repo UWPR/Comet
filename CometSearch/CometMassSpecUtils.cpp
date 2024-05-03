@@ -206,6 +206,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                                               int iWhichQuery,  // which search
                                               int iWhichResult, // which peptide within the search
                                               int iPrintTargetDecoy,    // 0 = target+decoys, 1=target only, 2=decoy only
+                                              unsigned int *uiNumTotProteins,   // matched protein count
                                               vector<string>& vProteinTargets,  // the target protein names
                                               vector<string>& vProteinDecoys)   // the decoy protein names if applicable
 {
@@ -225,6 +226,10 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       else
          pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
 
+      *uiNumTotProteins = g_pvProteinsList.at(pOutput[iWhichResult].lProteinFilePosition).size();
+
+      int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
+
       // get target proteins
       if (iPrintTargetDecoy != 2)  // if not decoy-only
       {
@@ -241,6 +246,10 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                vTmp.push_back(szProteinName);
             else
                vProteinTargets.push_back(szProteinName);
+
+            iPrintDuplicateProteinCt++;
+            if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+               break;
          }
 
          if (vTmp.size() > 0)      // append any decoy matches now
@@ -262,6 +271,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
          pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
 
       int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
+
+      *uiNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
 
       // targets + decoys, targets only, decoys only
  
@@ -292,7 +303,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
             // collate decoy proteins, if needed, from target-decoy search
             for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
             {
-               if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
+               if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
                   break;
    
                comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);

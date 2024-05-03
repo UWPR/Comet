@@ -50,6 +50,7 @@ public:
                                     int iWhichQuery,  // which search
                                     int iWhichResult, // which peptide within the search
                                     int iPrintTargetDecoy,
+                                    unsigned int *iNumTotProteins,   // matched protein count
                                     vector<string>& vProteinTargets,  // the target protein names
                                     vector<string>& vProteinDecoys);  // the decoy protein names if applicable
 

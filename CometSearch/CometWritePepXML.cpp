@@ -530,26 +530,17 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    int  i;
    int iNTT;
    int iNMC;
+   unsigned int uiNumTotProteins = 0;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
 
-   int iNumTotProteins = 0;
-
-   // iPrintTargetDecoy==0 is print both; ==1 print target only, ==2 print decoy only
-   if (iPrintTargetDecoy == 0)
-      iNumTotProteins = (int)(pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size());
-   else if (iPrintTargetDecoy == 1)
-      iNumTotProteins = (int)pOutput[iWhichResult].pWhichProtein.size();
-   else //if (iPrintTargetDecoy == 2)
-      iNumTotProteins = (int)pOutput[iWhichResult].pWhichDecoyProtein.size();
-
    std::vector<string> vProteinTargets;  // store vector of target protein names
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
    std::vector<string>::iterator it;
 
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", pOutput[iWhichResult].iRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
@@ -594,7 +585,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       ++it;
    }
 
-   fprintf(fpout, " num_tot_proteins=\"%d\"", iNumTotProteins);
+   fprintf(fpout, " num_tot_proteins=\"%u\"", uiNumTotProteins);
    fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
    fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
    fprintf(fpout, " calc_neutral_pep_mass=\"%0.6f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);
