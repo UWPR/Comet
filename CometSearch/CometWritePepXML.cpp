@@ -76,30 +76,58 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // This might not be the case with -N command line option.
    // So get base name from g_staticParams.inputFile.szFileName here to be sure
    char *pStr;
-   char szRunSummaryResolvedPath[PATH_MAX];      // resolved path of szInputFile
-
-   // punt on resolving the path of szBaseName as would need to either crop
-   // off the base name first or add a valid file extension
+   char szResolvedInputBaseName[PATH_MAX];       // base name of szInputFile
+   char szResolvedOutputBaseName[PATH_MAX];      // resolved path of szInputFile
 
    if (g_staticParams.options.bResolveFullPaths)
    {
       // realpath is #defined to _fullpath in WIN32
-      if (!realpath(g_staticParams.inputFile.szFileName, szRunSummaryResolvedPath))
-         strcpy(szRunSummaryResolvedPath, g_staticParams.inputFile.szFileName);
+      if (!realpath(g_staticParams.inputFile.szFileName, szResolvedInputBaseName))
+         strcpy(szResolvedInputBaseName, g_staticParams.inputFile.szFileName);
    }
    else
-      strcpy(szRunSummaryResolvedPath, g_staticParams.inputFile.szFileName);
+      strcpy(szResolvedInputBaseName, g_staticParams.inputFile.szFileName);
 
    // now remove extension from szRunSummaryResolvedPath to leave just the base name
-   int  iLen = (int)strlen(g_staticParams.inputFile.szFileName);
-   if ( (pStr = strrchr(szRunSummaryResolvedPath, '.')))
+   int  iLen = (int)strlen(szResolvedInputBaseName);
+   if ( (pStr = strrchr(szResolvedInputBaseName, '.')))
       *pStr = '\0';
-   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+
+   if (g_staticParams.options.bResolveFullPaths)
    {
-      if ( (pStr = strrchr(szRunSummaryResolvedPath, '.')))
-         *pStr = '\0';
+      // now get base name of output file; possibly different from above as could
+      // be set using -N command line option
+      std::string dir = string(g_staticParams.inputFile.szBaseName);
+      std::size_t found = dir.find_last_of("/\\");
+      std::string file = "";
+      if (found != string::npos)
+      {
+         file = dir.substr(found);
+         dir = dir.substr(0,found);
+      }
+      else
+      {
+         dir = ".";
+#ifdef _WIN32
+         file = "\\"
+         file +=  g_staticParams.inputFile.szBaseName;
+#else
+         file = "/";
+         file +=  g_staticParams.inputFile.szBaseName;
+#endif
+      }
+
+      if (!realpath(g_staticParams.inputFile.szBaseName, szResolvedOutputBaseName))
+      {
+         if (!realpath(dir.c_str(), szResolvedOutputBaseName))
+            strcpy(szResolvedOutputBaseName, g_staticParams.inputFile.szBaseName);
+         else
+            strcat(szResolvedOutputBaseName, file.c_str());
+      }
    }
+   else
+      strcpy(szResolvedOutputBaseName, g_staticParams.inputFile.szBaseName);
+
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -108,9 +136,9 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v120.xsd\" ");
-   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", g_staticParams.inputFile.szBaseName);
+   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", szResolvedOutputBaseName);
 
-   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", szRunSummaryResolvedPath);
+   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", szResolvedInputBaseName);
    fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
    fprintf(fpout, "msModel=\"%s\" ", szModel);
 
@@ -150,7 +178,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
          g_staticParams.enzymeInformation.iSampleEnzymeOffSet?'C':'N');
    fprintf(fpout, " </sample_enzyme>\n");
 
-   fprintf(fpout, " <search_summary base_name=\"%s\"", g_staticParams.inputFile.szBaseName);
+   fprintf(fpout, " <search_summary base_name=\"%s\"", szResolvedOutputBaseName);
    fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s%s\"", (g_staticParams.options.bMango?"Mango ":""), g_sCometVersion.c_str());
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");
