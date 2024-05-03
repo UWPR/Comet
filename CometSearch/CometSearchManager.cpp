@@ -740,9 +740,12 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerancePlus);
    g_staticParams.tolerances.dInputToleranceMinus = -1.0 * g_staticParams.tolerances.dInputTolerancePlus;
 
-   GetParamValue("peptide_mass_tolerance_upper", g_staticParams.tolerances.dInputTolerancePlus);
+   GetParamValue("peptide_mass_tolerance_upper", g_staticParams.tolerances.dInputToleranceMinus);
 
-   GetParamValue("peptide_mass_tolerance_lower", g_staticParams.tolerances.dInputToleranceMinus);
+   GetParamValue("peptide_mass_tolerance_lower", g_staticParams.tolerances.dInputTolerancePlus);
+
+   g_staticParams.tolerances.dInputToleranceMinus *= -1.0;  // hack to address reversing logic in how these were applieed
+   g_staticParams.tolerances.dInputTolerancePlus *= -1.0;
 
    GetParamValue("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
    if ((g_staticParams.tolerances.iMassToleranceType < 0) || (g_staticParams.tolerances.iMassToleranceType > 1))
