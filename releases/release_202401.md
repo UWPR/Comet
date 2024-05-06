@@ -7,14 +7,6 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 
 #### release 2024.01 rev. 0 (2024.01.0), release date 2024/05/03
 
-- Fix calculating good E-value scores for extremely sparse spectra. This occurs for
-sparse spectra as any match to any single peak looks like an outlier from the
-majority of peptides that match no peaks.  This is handled by putting a
-constraint on the linear regression step of the E-value calculation.
-- Change
-"[isotope_error](https://uwpr.github.io/Comet/parameters/parameters_202401/isotope_error.html)"
-options 4 thru 7.  Those options now correspond to 4 = -1/0/1/2/3,
-5 = -1/0/1, 6 = -3/-2/-1/0/1/2/3, 7 = -8/-4/0/4/8. 
 - Add the parameters
 "[peptide_mass_tolerance_lower](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_lower.html)"
 and
@@ -23,12 +15,6 @@ to allow the specification of non-symmetric precursor mass tolerances.
 This means that "peptide_mass_tolerance" is retired and you should start
 with a fresh comet.params with this release and not re-use an old
 parameters file.
-- Add the parameter
-"[resolve_fullpaths](https://uwpr.github.io/Comet/parameters/parameters_202401/resolve_fullpaths.html)"
-to allow the control of whether or not 
-to resolve the full path base_names in the pepXML output.  Default behavior is 
-to resolve those full paths. This parameter allows the user to control 
-leaving the paths as-is.  Requested by M. Riffle.
 - Add support for up to 15 variable modifications with the addition of
 "[variable_mod10](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)"
 through
@@ -36,17 +22,33 @@ through
 Please do not attempt to search with 15 (or even 9) variable mods without
 using some serious constraints unless you are the most patient person in the world.
 - Add support for what I will term an "exclusive" modification where only one from
-the set of exclusive variable modification can appear in a peptide. Denoting which
+the set of exclusive variable modifications can appear in a peptide. You would want
+to apply this option to rare modifications that are unlikely to co-exist and be
+identified along with another rate modification in the same peptide.  Denoting which
 variable modifications are an "exclusive" modification is accomplished by setting
 field 7 in the 
 "[variable_mod##](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)"
-parameters to "-1".  The exclusive modification can
+parameters to "-1".  The exclusive modification can still
 apply to multiple residues (controlled by the 4th field) and can exist in conjunction
 with other variable modifications that are not denoted as being exclusive.  This
 reduces the complexity and search times when analyzing many modifications by not
-requiring all permutation/combinations of modifications to be analyzed, which can be
-a huge number for many multiple variable mods.  Requested by E. Deutsch.
-- Simplify the spectral processing for Sp scoring (preliminary score) by simply 
+requiring all permutation/combinations of modifications to be analyzed.  Requested by
+E. Deutsch.
+- Change
+"[isotope_error](https://uwpr.github.io/Comet/parameters/parameters_202401/isotope_error.html)"
+options 4 thru 7.  Those options now correspond to 4 = -1/0/1/2/3,
+5 = -1/0/1, 6 = -3/-2/-1/0/1/2/3, 7 = -8/-4/0/4/8. 
+- Add the parameter
+"[resolve_fullpaths](https://uwpr.github.io/Comet/parameters/parameters_202401/resolve_fullpaths.html)"
+to allow the control of whether or not 
+to resolve the full path base_names in the pepXML output.  Default behavior is 
+to resolve those full paths. This parameter allows the user to control 
+leaving the paths as-is.  Requested by M. Riffle.
+- Fix calculating good E-value scores for extremely sparse spectra. This occurs for
+sparse spectra as any match to any single peak looks like an outlier from the
+majority of peptides that match no peaks.  This is handled by putting a
+constraint on the linear regression step of the E-value calculation.
+- Simplify the spectral processing for Sp scoring (preliminary score) by just
 taking the raw binned spectra and normalizing the max intensity to 100.
 - Change the convention for the dCn (delta Cn) score for single hit results 
 i.e. those results where only a single peptide is scored/reported.  In the 
@@ -58,9 +60,10 @@ to fix a scan numbering bug when spectra are not numbered.  Implemented by
 the talented M. Hoopmann.
 - Update the index search, including the CometWrapper.dll interface used for 
 real time search (RTS), to use fragment ion indexing.  It is still a work in
-progress (so do not use it unless you are curious). Documentation will be added when it is
+progress and not all functionality has been implemented (so do not use it
+unless you want to be a beta tester). Documentation will be added when it is
 ready for general use.  The fragment ion indexing is used as a pre-filter
-to the full cross-correlation scoring.
+to the full cross-correlation scoring and is not fast compared to other search tools.
 Thanks to V. Sharma for implementing the modifications permutation code and
 the E. Bergstrom, C. McGann, and D. Schweppe for development/testing feedback.
 - Added
