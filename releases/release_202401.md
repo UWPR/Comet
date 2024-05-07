@@ -5,7 +5,7 @@ here](/Comet/parameters/parameters_202401/).
 
 Download release [here](https://github.com/UWPR/Comet/releases).
 
-#### release 2024.01 rev. 0 (2024.01.0), release date 2024/05/03
+#### release 2024.01 rev. 0 (2024.01.0), release date 2024/05/06
 
 - Add the parameters
 "[peptide_mass_tolerance_lower](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_lower.html)"
