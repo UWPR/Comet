@@ -1906,7 +1906,7 @@ set_Z_user_amino_acid = 0.0000\n\n");
 fprintf(fp,
 "#\n\
 # COMET_ENZYME_INFO _must_ be at the end of this parameters file\n\
-# Enzyme ntries can be added/deleted/edited\n\
+# Enzyme entries can be added/deleted/edited\n\
 #\n\
 [COMET_ENZYME_INFO]\n\
 0.  Cut_everywhere         0      -           -\n\
