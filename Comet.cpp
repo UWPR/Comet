@@ -1738,12 +1738,12 @@ variable_mod05 = 0.0 X 0 3 -1 0 0 0.0\n");
 variable_mod07 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod08 = 0.0 X 0 3 -1 0 0 0.0\n\
 variable_mod09 = 0.0 X 0 3 -1 0 0 0.0\n\
-variable_mod010 = 0.0 X 0 3 -1 0 0 0.0\n\
-variable_mod011 = 0.0 X 0 3 -1 0 0 0.0\n\
-variable_mod012 = 0.0 X 0 3 -1 0 0 0.0\n\
-variable_mod013 = 0.0 X 0 3 -1 0 0 0.0\n\
-variable_mod014 = 0.0 X 0 3 -1 0 0 0.0\n\
-variable_mod015 = 0.0 X 0 3 -1 0 0 0.0\n");
+variable_mod10 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod11 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod12 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod13 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod14 = 0.0 X 0 3 -1 0 0 0.0\n\
+variable_mod15 = 0.0 X 0 3 -1 0 0 0.0\n");
    }
 
    fprintf(fp,
