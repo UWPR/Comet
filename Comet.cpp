@@ -1700,7 +1700,7 @@ peptide_mass_tolerance_upper = 20.0    # upper bound of the precursor mass toler
 peptide_mass_tolerance_lower = -20.0   # lower bound of the precursor mass tolerance; USUALLY NEGATIVE TO BE LOWER THAN 0\n\
 peptide_mass_units = 2                 # 0=amu, 1=mmu, 2=ppm\n\
 precursor_tolerance_type = 1           # 0=MH+ (default), 1=precursor m/z; only valid for amu/mmu tolerances\n\
-isotope_error = 3                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1\n");
+isotope_error = 2                      # 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1\n");
 
    if (iPrintParams == 2)
    {
