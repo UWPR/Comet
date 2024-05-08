@@ -677,22 +677,20 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("use_NL_ions", g_staticParams.ionInformation.bUseWaterAmmoniaLoss);
 
    GetParamValue("variable_mod01", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
-
    GetParamValue("variable_mod02", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
-
    GetParamValue("variable_mod03", g_staticParams.variableModParameters.varModList[VMOD_3_INDEX]);
-
    GetParamValue("variable_mod04", g_staticParams.variableModParameters.varModList[VMOD_4_INDEX]);
-
    GetParamValue("variable_mod05", g_staticParams.variableModParameters.varModList[VMOD_5_INDEX]);
-
    GetParamValue("variable_mod06", g_staticParams.variableModParameters.varModList[VMOD_6_INDEX]);
-
    GetParamValue("variable_mod07", g_staticParams.variableModParameters.varModList[VMOD_7_INDEX]);
-
    GetParamValue("variable_mod08", g_staticParams.variableModParameters.varModList[VMOD_8_INDEX]);
-
    GetParamValue("variable_mod09", g_staticParams.variableModParameters.varModList[VMOD_9_INDEX]);
+   GetParamValue("variable_mod10", g_staticParams.variableModParameters.varModList[VMOD_10_INDEX]);
+   GetParamValue("variable_mod11", g_staticParams.variableModParameters.varModList[VMOD_11_INDEX]);
+   GetParamValue("variable_mod12", g_staticParams.variableModParameters.varModList[VMOD_12_INDEX]);
+   GetParamValue("variable_mod13", g_staticParams.variableModParameters.varModList[VMOD_13_INDEX]);
+   GetParamValue("variable_mod14", g_staticParams.variableModParameters.varModList[VMOD_14_INDEX]);
+   GetParamValue("variable_mod15", g_staticParams.variableModParameters.varModList[VMOD_15_INDEX]);
 
    if (GetParamValue("max_variable_mods_in_peptide", iIntData))
    {
@@ -701,7 +699,7 @@ bool CometSearchManager::InitializeStaticParams()
    }
 
    // Note that g_staticParams.variableModParameters.iRequireVarMod could also
-   // be set by each mod's bRequireThisMod later on in this function
+   // be set by each mod's iRequireThisMod later on in this function
    if (GetParamValue("require_variable_mod", strData) && strData.length() > 0)
    {
       if (strData != "0")
@@ -1376,6 +1374,8 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
 
+   g_staticParams.variableModParameters.bRareVarModPresent = false;
+
    for (int i=0; i<VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
@@ -1396,6 +1396,12 @@ bool CometSearchManager::InitializeStaticParams()
    for (int i=0; i<VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+            && g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+      {
+         g_staticParams.variableModParameters.bRareVarModPresent = true;
+      }
+
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
          for (int ii=i+1; ii<VMODS-1; ++ii)
@@ -1414,7 +1420,8 @@ bool CometSearchManager::InitializeStaticParams()
                      && (g_staticParams.variableModParameters.varModList[i].iMinNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMinNumVarModAAPerMod)
                      && (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == g_staticParams.variableModParameters.varModList[ii].iVarModTermDistance)
                      && (g_staticParams.variableModParameters.varModList[i].iWhichTerm == g_staticParams.variableModParameters.varModList[ii].iWhichTerm)
-                     && (g_staticParams.variableModParameters.varModList[i].bRequireThisMod == g_staticParams.variableModParameters.varModList[ii].bRequireThisMod))
+                     && (g_staticParams.variableModParameters.varModList[i].iRequireThisMod == g_staticParams.variableModParameters.varModList[ii].iRequireThisMod)
+                     &&  g_staticParams.variableModParameters.varModList[i].iRequireThisMod != -1)
                {
                   // everything the same merge the modifications
                   strcat(g_staticParams.variableModParameters.varModList[i].szVarModChar, g_staticParams.variableModParameters.varModList[ii].szVarModChar);
@@ -1470,10 +1477,8 @@ bool CometSearchManager::InitializeStaticParams()
          if (g_staticParams.variableModParameters.varModList[i].iBinaryMod)
             g_staticParams.variableModParameters.bBinaryModSearch = true;
 
-         if (g_staticParams.variableModParameters.varModList[i].bRequireThisMod)
-         {
-            g_staticParams.variableModParameters.iRequireVarMod |= 1UL << (i+1);  // set i+1 bit for 1 thru 9
-         }
+         if (g_staticParams.variableModParameters.varModList[i].iRequireThisMod > 0)
+            g_staticParams.variableModParameters.iRequireVarMod |= 1UL << (i+1);  // set i+1 bit variable mods
 
          if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
             g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;

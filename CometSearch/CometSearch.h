@@ -138,7 +138,7 @@ private:
                    int iLenPeptide,
                    int *piVarModSites,
                    struct sDBEntry *dbe,
-                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
+                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
                    unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
                    int iNumMatchedFragmentIons);
 
@@ -305,8 +305,8 @@ private:
    VarModInfo         _varModInfo;
    ProteinInfo        _proteinInfo;
 
-   unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
-   unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][9][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
+   unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
+   unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
    unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 

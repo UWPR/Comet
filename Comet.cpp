@@ -576,7 +576,7 @@ void LoadParameters(char *pszParamsFile,
                      szTmp,
                      &varModsParam.iVarModTermDistance,
                      &varModsParam.iWhichTerm,
-                     &varModsParam.bRequireThisMod,
+                     &varModsParam.iRequireThisMod,
                      &varModsParam.dNeutralLoss);
 
                // the 4th entry can either be just the max_num_var_mod or a comma separated
