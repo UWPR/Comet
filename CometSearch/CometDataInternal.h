@@ -40,18 +40,16 @@ class CometSearchManager;
 #define FRAGINDEX_MAX_NUMPEAKS      150      // number of spectrum peaks used to query fragment index
 #define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
 #define FRAGINDEX_MAX_COMBINATIONS  2000
-#define FRAGINDEX_MAX_MODS_PER_PEP  5
+#define FRAGINDEX_MAX_MODS_PER_MOD  5
 #define FRAGINDEX_KEEP_ALL_PEPTIDES 1        // 1 = consider up to FRAGINDEX_MAX_COMBINATIONS of peptides; 0 = ignore all mods for peptide that exceed FRAGINDEX_MAX_COMBINATIONS
 #define FRAGINDEX_PRECURSORBINS     300      // bins for precursors, mass range of each bin will be (max_mass - min_mass)/FRAGINDEX_PRECURSORBINS
-
-#define UNSET_TOLERANCE_MINUS       -99999.9 // default peptide_mass_tolerance_lower value; if this is not changed/set, use -(peptide_mass_tolerance)
 
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
 #define SIZE_NATIVEID               256      // max length of nativeID string
 #define NUM_SP_IONS                 1000     // num ions for preliminary scoring
 #define NUM_ION_SERIES              7        // a,b,c,x,y,z,z1
-#define DECOY_SIZE                  3000     // number of decoy entries in CometDecoys.h
+#define EXPECT_DECOY_SIZE           3000     // number of decoy entries in CometDecoys.h
 #define BIN_MOD_COUNT               16       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-15)
 
 #define WIDTH_REFERENCE             512      // length of the protein accession field to store
@@ -641,7 +639,6 @@ struct ToleranceParams
    double dInputTolerancePlus;    // raw tolerance value from param file, upper bound; gets converted to dPeptideMassTolerancePlus
    double dFragmentBinSize;
    double dFragmentBinStartOffset;
-   double dMatchPeakTolerance;
 
    ToleranceParams& operator=(ToleranceParams& a)
    {
@@ -652,7 +649,6 @@ struct ToleranceParams
       dInputTolerancePlus = a.dInputTolerancePlus;
       dFragmentBinSize = a.dFragmentBinSize;
       dFragmentBinStartOffset = a.dFragmentBinStartOffset;
-      dMatchPeakTolerance = a.dMatchPeakTolerance;
 
       return *this;
    }
@@ -926,11 +922,10 @@ struct StaticParams
       tolerances.iMassToleranceUnits = 0;
       tolerances.iMassToleranceType = 0;
       tolerances.iIsotopeError = 0;
-      tolerances.dInputToleranceMinus = UNSET_TOLERANCE_MINUS;       // peptide_mass_tolerance minus
+      tolerances.dInputToleranceMinus = -3.0;               // peptide_mass_tolerance minus
       tolerances.dInputTolerancePlus = 3.0;                 // peptide_mass_tolerance plus
       tolerances.dFragmentBinSize = 1.0005;
       tolerances.dFragmentBinStartOffset = 0.4;
-      tolerances.dMatchPeakTolerance = 0.5;
 
       bSkipToStartScan = true;
    }
@@ -972,7 +967,7 @@ extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index fi
 struct Query
 {
    int   iXcorrHistogram[HISTO_SIZE];
-   int   iHistogramCount;   // # of entries in histogram
+   unsigned int   uiHistogramCount;   // # of entries in histogram
    float fPar[4];           // parameters of LMA regression
 
    int iMatchPeptideCount;        // # of peptides that get stored (i.e. are greater than lowest score)
@@ -1021,7 +1016,7 @@ struct Query
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
-      iHistogramCount = 0;
+      uiHistogramCount = 0;
 
       fPar[0]=0.0;
       fPar[1]=0.0;

@@ -76,30 +76,58 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // This might not be the case with -N command line option.
    // So get base name from g_staticParams.inputFile.szFileName here to be sure
    char *pStr;
-   char szRunSummaryResolvedPath[PATH_MAX];      // resolved path of szInputFile
-
-   // punt on resolving the path of szBaseName as would need to either crop
-   // off the base name first or add a valid file extension
+   char szResolvedInputBaseName[PATH_MAX];       // base name of szInputFile
+   char szResolvedOutputBaseName[PATH_MAX];      // resolved path of szInputFile
 
    if (g_staticParams.options.bResolveFullPaths)
    {
       // realpath is #defined to _fullpath in WIN32
-      if (!realpath(g_staticParams.inputFile.szFileName, szRunSummaryResolvedPath))
-         strcpy(szRunSummaryResolvedPath, g_staticParams.inputFile.szFileName);
+      if (!realpath(g_staticParams.inputFile.szFileName, szResolvedInputBaseName))
+         strcpy(szResolvedInputBaseName, g_staticParams.inputFile.szFileName);
    }
    else
-      strcpy(szRunSummaryResolvedPath, g_staticParams.inputFile.szFileName);
+      strcpy(szResolvedInputBaseName, g_staticParams.inputFile.szFileName);
 
    // now remove extension from szRunSummaryResolvedPath to leave just the base name
-   int  iLen = (int)strlen(g_staticParams.inputFile.szFileName);
-   if ( (pStr = strrchr(szRunSummaryResolvedPath, '.')))
+   int  iLen = (int)strlen(szResolvedInputBaseName);
+   if ( (pStr = strrchr(szResolvedInputBaseName, '.')))
       *pStr = '\0';
-   if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+
+   if (g_staticParams.options.bResolveFullPaths)
    {
-      if ( (pStr = strrchr(szRunSummaryResolvedPath, '.')))
-         *pStr = '\0';
+      // now get base name of output file; possibly different from above as could
+      // be set using -N command line option
+      std::string dir = string(g_staticParams.inputFile.szBaseName);
+      std::size_t found = dir.find_last_of("/\\");
+      std::string file = "";
+      if (found != string::npos)
+      {
+         file = dir.substr(found);
+         dir = dir.substr(0,found);
+      }
+      else
+      {
+         dir = ".";
+#ifdef _WIN32
+         file = "\\";
+         file +=  g_staticParams.inputFile.szBaseName;
+#else
+         file = "/";
+         file +=  g_staticParams.inputFile.szBaseName;
+#endif
+      }
+
+      if (!realpath(g_staticParams.inputFile.szBaseName, szResolvedOutputBaseName))
+      {
+         if (!realpath(dir.c_str(), szResolvedOutputBaseName))
+            strcpy(szResolvedOutputBaseName, g_staticParams.inputFile.szBaseName);
+         else
+            strcat(szResolvedOutputBaseName, file.c_str());
+      }
    }
+   else
+      strcpy(szResolvedOutputBaseName, g_staticParams.inputFile.szBaseName);
+
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -108,9 +136,9 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v120.xsd\" ");
-   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", g_staticParams.inputFile.szBaseName);
+   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", szResolvedOutputBaseName);
 
-   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", szRunSummaryResolvedPath);
+   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", szResolvedInputBaseName);
    fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
    fprintf(fpout, "msModel=\"%s\" ", szModel);
 
@@ -150,7 +178,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
          g_staticParams.enzymeInformation.iSampleEnzymeOffSet?'C':'N');
    fprintf(fpout, " </sample_enzyme>\n");
 
-   fprintf(fpout, " <search_summary base_name=\"%s\"", g_staticParams.inputFile.szBaseName);
+   fprintf(fpout, " <search_summary base_name=\"%s\"", szResolvedOutputBaseName);
    fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s%s\"", (g_staticParams.options.bMango?"Mango ":""), g_sCometVersion.c_str());
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");
@@ -530,26 +558,17 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    int  i;
    int iNTT;
    int iNMC;
+   unsigned int uiNumTotProteins = 0;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
 
-   int iNumTotProteins = 0;
-
-   // iPrintTargetDecoy==0 is print both; ==1 print target only, ==2 print decoy only
-   if (iPrintTargetDecoy == 0)
-      iNumTotProteins = (int)(pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size());
-   else if (iPrintTargetDecoy == 1)
-      iNumTotProteins = (int)pOutput[iWhichResult].pWhichProtein.size();
-   else //if (iPrintTargetDecoy == 2)
-      iNumTotProteins = (int)pOutput[iWhichResult].pWhichDecoyProtein.size();
-
    std::vector<string> vProteinTargets;  // store vector of target protein names
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
    std::vector<string>::iterator it;
 
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", pOutput[iWhichResult].iRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
@@ -594,7 +613,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       ++it;
    }
 
-   fprintf(fpout, " num_tot_proteins=\"%d\"", iNumTotProteins);
+   fprintf(fpout, " num_tot_proteins=\"%u\"", uiNumTotProteins);
    fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
    fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
    fprintf(fpout, " calc_neutral_pep_mass=\"%0.6f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);

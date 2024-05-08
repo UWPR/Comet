@@ -325,7 +325,8 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
    std::vector<string>::iterator it;
 
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
+   unsigned int uiNumTotProteins = 0;  // unused in sqt
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
