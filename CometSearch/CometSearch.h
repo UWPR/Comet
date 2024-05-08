@@ -139,7 +139,8 @@ private:
                    int *piVarModSites,
                    struct sDBEntry *dbe,
                    unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
-                   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE]);
+                   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
+                   int iNumMatchedFragmentIons);
 
    bool CheckEnzymeTermini(char *szProteinSeq,
                            int iStartPos,

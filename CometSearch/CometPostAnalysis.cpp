@@ -21,7 +21,7 @@
 #include "CometStatus.h"
 
 
-#include "CometDecoys.h"  // this is where decoyIons[DECOY_SIZE] is initialized
+#include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 
 
 CometPostAnalysis::CometPostAnalysis()
@@ -716,7 +716,7 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
 
    piHistogram = pQuery->iXcorrHistogram;
 
-   if (pQuery->iHistogramCount < DECOY_SIZE)
+   if (pQuery->uiHistogramCount < EXPECT_DECOY_SIZE)
    {
       if (!GenerateXcorrDecoys(iWhichQuery))
       {
@@ -812,7 +812,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
 
    for (i=0; i<iMaxCorr; ++i)
    {
-      if (piHistogram[i] == 0 && bFoundFirstNonZeroEntry && i >= 15)
+      if (piHistogram[i] == 0 && bFoundFirstNonZeroEntry && i >= 10)
       {
          // register iNextCorr if there's a histo value of 0 consecutively
          if (piHistogram[i+1] == 0 || i+1 == iMaxCorr)
@@ -830,7 +830,7 @@ void CometPostAnalysis::LinearRegression(int *piHistogram,
    {
       iNextCorr = iMaxCorr;
 
-      if (iMaxCorr >= 15)
+      if (iMaxCorr >= 10)
       {
          for (i = iMaxCorr; i >= iMaxCorr - 5; --i)
          {
@@ -970,9 +970,9 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
    iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
 
-   // DECOY_SIZE is the minimum # of decoys required or else this function isn't
+   // EXPECT_DECOY_SIZE is the minimum # of decoys required or else this function isn't
    // called.  So need to generate iLoopMax more xcorr scores for the histogram.
-   int iLoopMax = DECOY_SIZE - pQuery->iHistogramCount;
+   int iLoopMax = EXPECT_DECOY_SIZE - pQuery->uiHistogramCount;
    int iLastEntry;
 
    // Determine if using target or decoy peptides to rotate to fill out histogram.

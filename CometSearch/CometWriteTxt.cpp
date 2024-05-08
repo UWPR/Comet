@@ -101,7 +101,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "modifications\t");
    fprintf(fpout, "retention_time_sec\t");
    fprintf(fpout, "sp_rank\n");
-
+// fprintf(fpout, "num_matched_peptides\n");
 #endif
 }
 
@@ -203,9 +203,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          // prints modification encoding
          PrintModifications(fpout, pOutput, iWhichResult);
 
-         size_t iNumTotProteins = 0;
+         unsigned int uiNumTotProteins = 0;
          // print protein list
-         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &iNumTotProteins);
+         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins);
 
          // Cleavage type
          fprintf(fpout, "\t%c%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].cNextAA);
@@ -357,12 +357,12 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%c\t", pOutput[iWhichResult].cPrevAA);
          fprintf(fpout, "%c\t", pOutput[iWhichResult].cNextAA);
 
-         size_t iNumTotProteins = 0;
+         unsigned int uiNumTotProteins = 0;
 
          // print protein list
-         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &iNumTotProteins);
+         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins);
 
-         fprintf(fpout, "\t%zu\t", iNumTotProteins);
+         fprintf(fpout, "\t%u\t", uiNumTotProteins);
 
          // encoded modifications
          PrintModifications(fpout, pOutput, iWhichResult);
@@ -372,6 +372,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // Sp rank
          fprintf(fpout, "%d", pOutput[iWhichResult].iRankSp);
+
+//       // number of scored peptides
+//       fprintf(fpout, "\t%u", pQuery->uiHistogramCount);
 
          fprintf(fpout, "\n");
       }
@@ -386,14 +389,14 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
                                   int iWhichQuery,
                                   int iWhichResult,
                                   int iPrintTargetDecoy,
-                                  size_t *iNumTotProteins)
+                                  unsigned int *uiNumTotProteins)
 {
    std::vector<string> vProteinTargets;  // store vector of target protein names
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
    std::vector<string>::iterator it;
 
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, vProteinTargets, vProteinDecoys);
- 
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, uiNumTotProteins, vProteinTargets, vProteinDecoys);
+
    bool bPrintComma = false;
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
@@ -404,8 +407,6 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintComma = true;
-
-         (*iNumTotProteins)++;
       }
    }
       
@@ -418,8 +419,6 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintComma = true;
-
-         (*iNumTotProteins)++;
       }
    }
 }

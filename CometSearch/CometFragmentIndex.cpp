@@ -87,12 +87,16 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vRawPeptides)
 {
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
+   vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up
-   // to FRAGINDEX_MAX_MODS_PER_PEP modified amino acids.
+   // to FRAGINDEX_MAX_MODS_PER_MOD modified amino acids.
 
    // Maximum number of bits that can be set in a modifiable sequence for a given modification.
    // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than FRAGINDEX_MAX_COMBINATIONS (65,534)
+
+   // iMaxNumVariableMods is the maximum # of mods per any variable_modXX entry used in the bitmasks
+   int iMaxNumVariableMods = 0;
 
    for (int i = 0; i < VMODS; ++i)
    {
@@ -100,6 +104,10 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
          && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
          ALL_MODS.push_back(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+         vMaxNumVarModsPerMod.push_back(g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod);
+
+         if (iMaxNumVariableMods < g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod)
+            iMaxNumVariableMods = g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod;
       }
    }
 
@@ -118,9 +126,10 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    unsigned long long* ALL_COMBINATIONS;
    int ALL_COMBINATION_CNT = 0;
 
-   int iMaxNumVariableMods = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
-   if (FRAGINDEX_MAX_MODS_PER_PEP < iMaxNumVariableMods)
-      iMaxNumVariableMods = FRAGINDEX_MAX_MODS_PER_PEP;
+   if (FRAGINDEX_MAX_MODS_PER_MOD < iMaxNumVariableMods)
+      iMaxNumVariableMods = FRAGINDEX_MAX_MODS_PER_MOD;
+   if (g_staticParams.variableModParameters.iMaxVarModPerPeptide < iMaxNumVariableMods)
+      iMaxNumVariableMods = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    // iEnd is one larger than max peptide length
@@ -135,7 +144,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    auto tStartTime = chrono::steady_clock::now();
    cout <<  "   - get modification combinations ... "; fflush(stdout);
    // Get the modification combinations for each unique modifiable substring
-   ModificationsPermuter::getModificationCombinations(MOD_SEQS, iMaxNumVariableMods, ALL_MODS,
+   ModificationsPermuter::getModificationCombinations(MOD_SEQS, vMaxNumVarModsPerMod, ALL_MODS,
          MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
    cout << ElapsedTime(tStartTime) << endl;
 }
@@ -178,7 +187,6 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, iWhichThread, iNumIndexingThreads, 1, pFragmentIndexPool));
 
    pFragmentIndexPool->wait_on_threads();
-
 
    cout << ElapsedTime(tStartTime) << endl;
 

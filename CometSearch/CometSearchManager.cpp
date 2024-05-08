@@ -734,13 +734,16 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
 
+   // this parameter superseded by _upper/_lower; will still apply if the other params are missing
    GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerancePlus);
+   g_staticParams.tolerances.dInputToleranceMinus = -1.0 * g_staticParams.tolerances.dInputTolerancePlus;
 
-   GetParamValue("peptide_mass_tolerance_lower", g_staticParams.tolerances.dInputToleranceMinus);
-   if (g_staticParams.tolerances.dInputToleranceMinus == UNSET_TOLERANCE_MINUS) // if the minus tolerance is not specified
-   {
-      g_staticParams.tolerances.dInputToleranceMinus = -1.0 * g_staticParams.tolerances.dInputTolerancePlus;
-   }
+   GetParamValue("peptide_mass_tolerance_upper", g_staticParams.tolerances.dInputToleranceMinus);
+
+   GetParamValue("peptide_mass_tolerance_lower", g_staticParams.tolerances.dInputTolerancePlus);
+
+   g_staticParams.tolerances.dInputToleranceMinus *= -1.0;  // hack to address reversing logic in how these were applieed
+   g_staticParams.tolerances.dInputTolerancePlus *= -1.0;
 
    GetParamValue("precursor_tolerance_type", g_staticParams.tolerances.iMassToleranceType);
    if ((g_staticParams.tolerances.iMassToleranceType < 0) || (g_staticParams.tolerances.iMassToleranceType > 1))
@@ -1372,6 +1375,23 @@ bool CometSearchManager::InitializeStaticParams()
       g_staticParams.variableModParameters.bVarModSearch = true;
 
    g_staticParams.variableModParameters.bRareVarModPresent = false;
+
+   for (int i=0; i<VMODS; ++i)
+   {
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
+      {
+         if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
+            g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
+
+         if (g_staticParams.options.bCreateIndex)
+         {  // limit any user specified modification limits to the max supported by fragment ion indexing
+            if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > FRAGINDEX_MAX_MODS_PER_MOD)
+               g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = FRAGINDEX_MAX_MODS_PER_MOD;
+         }
+      }
+   }
+
    // reduce variable modifications if entries are the same
    for (int i=0; i<VMODS; ++i)
    {
@@ -1408,9 +1428,6 @@ bool CometSearchManager::InitializeStaticParams()
                   sprintf(g_staticParams.variableModParameters.varModList[ii].szVarModChar, "-");
                   g_staticParams.variableModParameters.varModList[ii].dVarModMass = 0.0;
                }
-      
-               if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
-                  g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
             }
          }
 
@@ -1877,11 +1894,7 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
-    if (strstr(comet_version, version.c_str())
-          || strstr(version.c_str(), "2023.")
-          || strstr(version.c_str(), "2022.")
-          || strstr(version.c_str(), "2021.")
-          || strstr(version.c_str(), "2020."))
+    if (strstr(comet_version, version.c_str()))
     {
        return true;
     }

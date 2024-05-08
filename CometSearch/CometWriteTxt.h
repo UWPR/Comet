@@ -35,7 +35,7 @@ public:
                              int iWhichQuery,
                              int iWhichResult,
                              int iPrintTargetDecoy,
-                             size_t *iNumProteins);
+                             unsigned int *uiNumTotProteins);
 
 private:
    static void PrintResults(int iWhichQuery,
