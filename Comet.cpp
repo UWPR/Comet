@@ -1358,11 +1358,17 @@ void LoadParameters(char *pszParamsFile,
                   sprintf(szParamStringVal, "%d", iIntParam);
                   pSearchMgr->SetParam("fragindex_num_spectrumpeaks", szParamStringVal, iIntParam);
                }
-               else if (!strcmp(szParamName, "fragindex_min_matchedions"))
+               else if (!strcmp(szParamName, "fragindex_min_ions_score"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
                   sprintf(szParamStringVal, "%d", iIntParam);
-                  pSearchMgr->SetParam("fragindex_min_matchedions", szParamStringVal, iIntParam);
+                  pSearchMgr->SetParam("fragindex_min_ions_score", szParamStringVal, iIntParam);
+               }
+               else if (!strcmp(szParamName, "fragindex_min_ions_report"))
+               {
+                  sscanf(szParamVal, "%d", &iIntParam);
+                  sprintf(szParamStringVal, "%d", iIntParam);
+                  pSearchMgr->SetParam("fragindex_min_ions_report", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "fragindex_skipreadprecursors"))
                {
@@ -1686,10 +1692,12 @@ peff_obo =                             # path to PSI Mod or Unimod OBO file\n\
 #\n\
 # fragment ion index; limited to 5 variable mods and up to 5 modified residues per mod\n\
 #\n\
-fragindex_min_matchedions = 3          # minimum number of matched fragment ion index peaks for xcorr\n\
+fragindex_min_ions_score = 3           # minimum number of matched fragment ion index peaks for scoring\n\
+fragindex_min_ions_report = 3          # minimum number of matched fragment ion index peaks for reporting(>= fragindex_min_ions_score)\n\
 fragindex_num_spectrumpeaks = 100      # number of peaks from spectrum to use for fragment ion index matching\n\
 fragindex_min_fragmentmass = 200.0     # low mass cutoff for fragment ions\n\
-fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\n");
+fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\
+fragindex_skipreadprecursors = 0       # high mass cutoff for fragment ions\n\n");
    }
 
    fprintf(fp,
@@ -1868,7 +1876,7 @@ add_J_user_amino_acid = 0.0000         # added to J - avg.   0.0000, mono.   0.0
 add_X_user_amino_acid = 0.0000         # added to X - avg.   0.0000, mono.   0.00000\n\
 add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.00000\n\n");
 
-   if (iPrintParams == 2)
+   if (0)  // do not print these parameters out
    {
 fprintf(fp,
 "#\n\

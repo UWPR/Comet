@@ -32,7 +32,8 @@ class CometSearchManager;
 #define MAX_PEPTIDE_LEN_P2          53       // max # of AA for a peptide plus 2 for N/C-term
 #define MAX_FRAGMENT_IONS_TYPE      9        // allowed fragment ions (aka a/b/c/x/y/z) ; check why this is 9!
 
-#define FRAGINDEX_MIN_MATCHEDIONS   3
+#define FRAGINDEX_MIN_IONS_SCORE    3        // min # of matched ions for peptide to register for E-value xcorr histogram
+#define FRAGINDEX_MIN_IONS_REPORT   3        // min # of matched ions for peptide to be reported
 #define FRAGINDEX_MIN_MASS          200.0    // minimum fragment ion mass used to generate fragment index
 #define FRAGINDEX_MAX_MASS          2000.0   // maximum fragment ion mass used to generate fragment index
 #define FRAGINDEX_MAX_THREADS       16       // not sure it makes sense to set this max limit
@@ -144,13 +145,14 @@ struct Options             // output parameters
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
    int bTreatSameIL;
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
-   int iFragIndexNumThreads;
-   int iFragIndexMinMatchedIons;
-   int iFragIndexNumSpectrumPeaks;
-   int iFragIndexSkipReadPrecursors;
+   int iFragIndexNumThreads;     // # of threads to use for fragment index (as not sure humongous # makes sense)
+   int iFragIndexMinIonsScore;   // minimum matched fragment index ions for scoring
+   int iFragIndexMinIonsReport;  // minimum matched fragment index ions for reporting
+   int iFragIndexNumSpectrumPeaks;   // # of peaks from spectrum to use for querying fragment index
+   int iFragIndexSkipReadPrecursors; // if true, skips reading precursors step
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;         // intensity cutoff for each peak
-   double dMinPercentageIntensity;  // intensity cutoff for each peak as % of base peak
+   double dMinPercentageIntensity;   // intensity cutoff for each peak as % of base peak
    double dRemovePrecursorTol;
    double dPeptideMassLow;       // MH+ mass
    double dPeptideMassHigh;      // MH+ mass
@@ -216,12 +218,13 @@ struct Options             // output parameters
       clearMzRange = a.clearMzRange;
       strcpy(szActivationMethod, a.szActivationMethod);
 
-      dFragIndexMinMass = a.dFragIndexMinMass;                    // smallest fragment mass in fragment index
-      dFragIndexMaxMass = a.dFragIndexMaxMass;                    // largest fragment mass in fragment index
-      iFragIndexNumThreads = a.iFragIndexNumThreads;              // # of threads to use for fragment index (as not sure humongous # makes sense)
-      iFragIndexMinMatchedIons = a.iFragIndexMinMatchedIons;      // minimum # of matched fragment ions peaks required to pass to xcorr
-      iFragIndexNumSpectrumPeaks = a.iFragIndexNumSpectrumPeaks;  // # of peaks from spectrum to use for querying fragment index
-      iFragIndexSkipReadPrecursors = a.iFragIndexSkipReadPrecursors;   // if true, skips reading precursors step
+      dFragIndexMinMass = a.dFragIndexMinMass;
+      dFragIndexMaxMass = a.dFragIndexMaxMass;
+      iFragIndexNumThreads = a.iFragIndexNumThreads;
+      iFragIndexMinIonsScore = a.iFragIndexMinIonsScore;    
+      iFragIndexMinIonsReport = a.iFragIndexMinIonsReport ;  
+      iFragIndexNumSpectrumPeaks = a.iFragIndexNumSpectrumPeaks;
+      iFragIndexSkipReadPrecursors = a.iFragIndexSkipReadPrecursors;
 
       return *this;
    }
@@ -904,7 +907,8 @@ struct StaticParams
       options.dFragIndexMinMass = FRAGINDEX_MIN_MASS;
       options.dFragIndexMaxMass = FRAGINDEX_MAX_MASS;
       options.iFragIndexNumThreads = FRAGINDEX_MAX_THREADS;
-      options.iFragIndexMinMatchedIons = FRAGINDEX_MIN_MATCHEDIONS;
+      options.iFragIndexMinIonsScore = FRAGINDEX_MIN_IONS_SCORE;
+      options.iFragIndexMinIonsReport = FRAGINDEX_MIN_IONS_REPORT;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
       options.iFragIndexSkipReadPrecursors = 0;
 
