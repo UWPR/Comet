@@ -1361,12 +1361,12 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
             {
                if (szPeptide[k] == modSeq[j])
                {
-                  if (mods[j] != -1)
+                  if (mods[j + 2] != -1)
                   {
                      // mods value of -1 means no mod
                      // whereas piVarModSites value of 0 means no mod
                      // so need to add 1 to mods when setting piVarModSites
-                     piVarModSites[k] = 1 + (int)mods[j];
+                     piVarModSites[k] = 1 + (int)mods[j + 2];
                   }
                   j++;
                }

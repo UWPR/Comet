@@ -44,6 +44,9 @@ class CometSearchManager;
 #define FRAGINDEX_MAX_MODS_PER_MOD  5
 #define FRAGINDEX_KEEP_ALL_PEPTIDES 1        // 1 = consider up to FRAGINDEX_MAX_COMBINATIONS of peptides; 0 = ignore all mods for peptide that exceed FRAGINDEX_MAX_COMBINATIONS
 #define FRAGINDEX_PRECURSORBINS     300      // bins for precursors, mass range of each bin will be (max_mass - min_mass)/FRAGINDEX_PRECURSORBINS
+#define FRAGINDEX_MAX_BITCOUNT      24       // Maximum number of bits that can be set in a modifiable sequence for a given modification.
+                                             // C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than FRAGINDEX_MAX_COMBINATIONS (65,534)
+
 
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
@@ -54,7 +57,6 @@ class CometSearchManager;
 #define BIN_MOD_COUNT               16       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-15)
 
 #define WIDTH_REFERENCE             512      // length of the protein accession field to store
-#define MAX_PROTEINS                50       // maximum number of proteins to return for each query; for index search only right now
 
 #define HISTO_SIZE                  152      // some number greater than 150
 
@@ -95,6 +97,13 @@ class CometSearchManager;
 #else
 #define XCORR_CUTOFF                1E-8   // some near-zero cutoff
 #endif
+
+typedef struct Peptide    // used in permuting code
+{
+   std::string sequence;
+   bool nterm = false;
+   bool cterm = false;
+} Peptide;
 
 struct msdata                    // used in the preprocessing
 {
@@ -947,9 +956,12 @@ extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
 struct ModificationNumber
 {
-//   int modificationNumber;
-   int modStringLen;             // FIX: need to confirm if not needed  (MOD_SEQS.at(modSeqIdx)).size();
-   char* modifications;
+// int modificationNumber;   // not used
+   unsigned char lengthModifications;  // length of the modifications char*
+   char* modifications; // Array of modification indices in the modifiable sequence.
+                        // -1 for unmodified positions in the sequence.
+                        // 1st element in array is the modification index of a n-term mod. -1 if the n-terminus is unmodified.
+                        // 2nd element in array is the modification index of a c-term mod. -1 if the c-terminus is unmodified.
 };
 
 extern vector<ModificationNumber> MOD_NUMBERS;

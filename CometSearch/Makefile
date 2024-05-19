@@ -20,10 +20,24 @@ else
 
 endif
 
-COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o\
-				  CometWriteSqt.o CometWritePepXML.o CometWriteMzIdentML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o\
-				  CombinatoricsUtils.o ModificationsPermuter.o CometFragmentIndex.o
-
+COMETSEARCH = CombinatoricsUtils.o\
+              CometFragmentIndex.o\
+              CometInterfaces.o\
+              CometMassSpecUtils.o\
+              CometPostAnalysis.o\
+              CometPreprocess.o\
+              CometSearch.o\
+              CometSearchManager.o\
+              CometWriteMzIdentML.o\
+              CometWriteOut.o\
+              CometWritePepXML.o\
+              CometWritePercolator.o\
+              CometWriteSqt.o\
+              CometWriteTxt.o\
+              ModificationRule.o\
+              Modifications.o\
+              ModificationsPermuter.o\
+              Threading.o
 
 all:  $(COMETSEARCH)
 	ar rcs libcometsearch.a $(COMETSEARCH)
@@ -61,7 +75,11 @@ CometInterfaces.o:      CometInterfaces.cpp Common.h CometData.h CometDataIntern
 	${CXX} ${CXXFLAGS} CometInterfaces.cpp -c
 CombinatoricsUtils.o:   CombinatoricsUtils.cpp CombinatoricsUtils.h Common.h
 	${CXX} ${CXXFLAGS} CombinatoricsUtils.cpp -c
-ModificationsPermuter.o:   ModificationsPermuter.cpp ModificationsPermuter.h Common.h
+ModificationRule.o:   ModificationRule.cpp ModificationRule.h Common.h CometDataInternal.h
+	${CXX} ${CXXFLAGS} ModificationRule.cpp -c
+ModificationsPermuter.o:   ModificationsPermuter.cpp ModificationsPermuter.h Modifications.h Common.h CometDataInternal.h
 	${CXX} ${CXXFLAGS} ModificationsPermuter.cpp -c
+Modifications.o:   Modifications.cpp Modifications.h ModificationRule.h Common.h
+	${CXX} ${CXXFLAGS} Modifications.cpp -c
 CometFragmentIndex.o: CometFragmentIndex.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
 	${CXX} ${CXXFLAGS} CometFragmentIndex.cpp -c

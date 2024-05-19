@@ -1,20 +1,7 @@
-// Copyright 2023 Jimmy Eng
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-
 #include "CombinatoricsUtils.h"
-#include "Common.h"
+#include <iostream>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -22,7 +9,7 @@ CombinatoricsUtils::CombinatoricsUtils()
 {
 }
 
-int** BINOM_COEF; // array[N][K], partial Pascal's Triangle
+unsigned long long ** BINOM_COEF; // array[N][K], partial Pascal's Triangle
 int N = -1;
 int K = -1;
 
@@ -30,10 +17,10 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
 {
    N = n;
    K = k;
-   BINOM_COEF = new int*[n + 1];
+   BINOM_COEF = new unsigned long long*[n + 1];
    for (int i = 0; i <= n; ++i)
    {
-      const auto coeffs = new int[k + 1];
+      const auto coeffs = new unsigned long long[k + 1];
       if (i == 0)
       {
          coeffs[0] = 1;
@@ -48,7 +35,7 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
                coeffs[j] = 1;
                continue;
             }
-            int* prevRow = BINOM_COEF[i - 1];
+            unsigned long long* prevRow = BINOM_COEF[i - 1];
             coeffs[j] = prevRow[j - 1] + prevRow[j];
          }
       }
@@ -68,7 +55,7 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
 
 // Copied from org.apache.commons.math3.util.CombinatoricsUtils.java
 // Returns a two dimensional array [count][r]
-int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
+int** CombinatoricsUtils::makeCombinations(int n, int r, unsigned long long count)
 {
    if (r == 0)
    {
@@ -167,7 +154,7 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
    return combinations;
 }
 
-int CombinatoricsUtils::nChooseK(const int n, const int k)
+unsigned long long CombinatoricsUtils::nChooseK(const int n, const int k)
 {
    if (n == k || k == 0) return 1;
 
@@ -182,8 +169,8 @@ int CombinatoricsUtils::nChooseK(const int n, const int k)
 
    // https://en.wikipedia.org/wiki/Binomial_coefficient#Identities_involving_binomial_coefficients
    // (n, k) = n / k * (n - 1, k - 1)
-   int answer = n - k + 1; // base (n - k + 1, 1)
-   int previous = answer;
+   unsigned long long answer = n - k + 1; // base (n - k + 1, 1)
+   unsigned long long previous = answer;
    for (int i = 1; i < k; ++i) 
    {
       answer = previous * (n - k + 1 + i) / (i + 1);
@@ -193,15 +180,23 @@ int CombinatoricsUtils::nChooseK(const int n, const int k)
    return answer;
 }
 
-int CombinatoricsUtils::getCombinationCount(int n, int k)
+// Returns the value of nCk + nCk-1 + ... + nCminK
+// If k == minK, this will return the value of nCk.
+unsigned long long CombinatoricsUtils::getCombinationCount(int n, int k, int minK)
 {
-   int total = 0;
+   unsigned long long total = 0;
    if (k > n) k = n;
-   for (; k >= 1; k--)
+   for (; k >= minK; k--)
    {
       total += nChooseK(n, k);
    }
    return total;
+}
+
+// Returns the value of nCk + nCk-1 + ncK-2 + ... + nC1
+unsigned long long CombinatoricsUtils::getCombinationCount(int n, int k)
+{
+   return CombinatoricsUtils::getCombinationCount(n, k, 1);
 }
 
 CombinatoricsUtils::~CombinatoricsUtils()

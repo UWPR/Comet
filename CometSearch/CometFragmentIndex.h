@@ -19,6 +19,7 @@
 #include "Common.h"
 #include "CometDataInternal.h"
 #include "CometSearch.h"
+#include "Modifications.h"
 #include <functional>
 
 class CometFragmentIndex
@@ -51,7 +52,6 @@ private:
    static bool SortFragmentsByPepMass(unsigned int x,
                                       unsigned int y);
    static void SortFragmentThreadProc(int iWhichThread,
-                                      int iNumIndexingThreads,
                                       ThreadPool* tp);
    static bool CompareByPeptide(const DBIndex &lhs,
                                 const DBIndex &rhs);

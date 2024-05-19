@@ -20,6 +20,8 @@
 #include "CometStatus.h"
 //#include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
+#include "Modifications.h"
+#include "ModificationRule.h"
 #include "ModificationsPermuter.h"
 
 #include <stdio.h>
@@ -86,8 +88,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 
 void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vRawPeptides)
 {
-   vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
-   vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
+   Modifications ALL_MODS;
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up
    // to FRAGINDEX_MAX_MODS_PER_MOD modified amino acids.
@@ -101,51 +102,64 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    for (int i = 0; i < VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
-         && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
+         && g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'
+         && g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > 0
+         && g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod >= 
+            g_staticParams.variableModParameters.varModList[i].iMinNumVarModAAPerMod)
       {
-         ALL_MODS.push_back(g_staticParams.variableModParameters.varModList[i].szVarModChar);
-         vMaxNumVarModsPerMod.push_back(g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod);
+         int iMin = g_staticParams.variableModParameters.varModList[i].iMinNumVarModAAPerMod;
+
+         if (iMin == 0)
+            iMin = 1;
+
+         ALL_MODS.addRule(ModificationRule(g_staticParams.variableModParameters.varModList[i].szVarModChar,
+                  iMin,
+                  g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod));
 
          if (iMaxNumVariableMods < g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod)
             iMaxNumVariableMods = g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod;
       }
    }
 
-   int MOD_CNT = (int)ALL_MODS.size();
+   size_t MOD_CNT = ALL_MODS.count();
 
    cout << " - mods: ";
-   for (int i = 0; i < MOD_CNT; ++i)
+   for (size_t i = 0; i < MOD_CNT; ++i)
    {
       if (i==0)
-         cout << ALL_MODS[i];
+         cout << ALL_MODS.getModificationRule(i)->toString();
       else
-         cout << ", " << ALL_MODS[i];
+         cout << ", " << ALL_MODS.getModificationRule(i)->toString();
    }
    cout << endl;
 
    unsigned long long* ALL_COMBINATIONS;
    int ALL_COMBINATION_CNT = 0;
 
-   if (FRAGINDEX_MAX_MODS_PER_MOD < iMaxNumVariableMods)
+   if (iMaxNumVariableMods > FRAGINDEX_MAX_MODS_PER_MOD)
       iMaxNumVariableMods = FRAGINDEX_MAX_MODS_PER_MOD;
-   if (g_staticParams.variableModParameters.iMaxVarModPerPeptide < iMaxNumVariableMods)
+   if (iMaxNumVariableMods > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
       iMaxNumVariableMods = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    // iEnd is one larger than max peptide length
-   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, iMaxNumVariableMods,
-         &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
+   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd,
+         iMaxNumVariableMods, &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
    // Get the unique modifiable sequences from the peptides
    PEPTIDE_MOD_SEQ_IDXS = new int[g_vRawPeptides.size()];
 
    MOD_SEQS = ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
+   MOD_SEQ_MOD_NUM_START = new int[MOD_SEQS.size()];
+   MOD_SEQ_MOD_NUM_CNT = new int[MOD_SEQS.size()];
+
    auto tStartTime = chrono::steady_clock::now();
    cout <<  "   - get modification combinations ... "; fflush(stdout);
+
    // Get the modification combinations for each unique modifiable substring
-   ModificationsPermuter::getModificationCombinations(MOD_SEQS, vMaxNumVarModsPerMod, ALL_MODS,
-         MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+   ModificationsPermuter::getModificationCombinations(MOD_SEQS, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+
    cout << ElapsedTime(tStartTime) << endl;
 }
 
@@ -183,7 +197,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       }
    }
 
-   for (int iWhichThread = 0; iWhichThread<iNumIndexingThreads; ++iWhichThread)
+   for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
       pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, iWhichThread, iNumIndexingThreads, 1, pFragmentIndexPool));
 
    pFragmentIndexPool->wait_on_threads();
@@ -229,7 +243,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // sort list of peptides at each fragment bin by peptide mass
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
-      pFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, iWhichThread, iNumIndexingThreads, pFragmentIndexPool));
+      pFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, iWhichThread, pFragmentIndexPool));
 
    pFragmentIndexPool->wait_on_threads();
 
@@ -372,7 +386,6 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
 
 
 void CometFragmentIndex::SortFragmentThreadProc(int iWhichThread,
-                                                int iNumIndexingThreads,
                                                 ThreadPool *tp)
 {
    for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
@@ -413,13 +426,28 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    char* mods = NULL;
    int modSeqIdx = -1;
    string modSeq;
+   string modSeqNoTerms;
+   size_t modSeqLen;
+   size_t modsArrayLen;
+   int* indexInPep;
+   size_t pepLen;
+   int modNumCount;
 
    if (modNumIdx >= 0)  // set modified peptide info
    {
-      modNum = MOD_NUMBERS.at(modNumIdx);
-      mods = modNum.modifications;
       modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
       modSeq = MOD_SEQS.at(modSeqIdx);
+      modSeqNoTerms = ModificationsPermuter::getModSeqNoTerms(modSeq);
+      modSeqLen = modSeqNoTerms.size();
+      modsArrayLen = modSeqLen + 2; 
+      indexInPep = new int[modSeqLen];
+      pepLen = sPeptide.length();
+      modNum = MOD_NUMBERS.at(modNumIdx);
+      modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
+      mods = modNum.modifications;
+
+      for (int i=0; i<modSeqLen; ++i)
+         indexInPep[i] = 0;
    }
 
    double dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
@@ -441,9 +469,9 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
       {
          if (sPeptide[i] == modSeq[j])
          {
-            if (mods[j] != -1)
+            if (mods[j + 2] != -1)
             {
-               dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)mods[j]].dVarModMass;
+               dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)mods[j + 2]].dVarModMass;
             }
             j++;
          }
@@ -501,24 +529,24 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    }
 
 /*
-if (!(iWhichPeptide%5000))
+if (1)
 {
    // print out the peptide
-   printf("OK in AddFragments: ");
+   printf("\nOK in AddFragments: ");
    j=0;
    for (int i = 0; i <= iEndPos; ++i)
    {
       printf("%c", (char)sPeptide[i]);
       if (sPeptide[i] == modSeq[j])
       {
-         if (modNumIdx != -1 && mods[j] != -1)
+         if (modNumIdx != -1 && mods[j + 2] != -1)
          {
-            printf("%s", to_string(mods[j]).c_str());
+            printf("%s", to_string(mods[j + 2]).c_str());
          }
          j++;
       }
    }
-   printf("\t%f\t%d\t%s\n", dCalcPepMass, modNumIdx, modSeq.c_str());
+   printf(", mass %lf\n", dCalcPepMass);
 }
 */
 
@@ -538,13 +566,13 @@ if (!(iWhichPeptide%5000))
       {
          if (sPeptide[i] == modSeq[j])
          {
-            dBion += g_staticParams.variableModParameters.varModList[mods[j] - 1].dVarModMass;
+            dBion += g_staticParams.variableModParameters.varModList[mods[j + 2] - 1].dVarModMass;
             j++;
          }
 
          if (sPeptide[iPosReverse] == modSeq[k])
          {
-            dYion += g_staticParams.variableModParameters.varModList[mods[k] - 1].dVarModMass;
+            dYion += g_staticParams.variableModParameters.varModList[mods[k + 2] - 1].dVarModMass;
             k--;
          }
       }
@@ -736,9 +764,11 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // write VariableMod:
    fprintf(fp, "VariableMod:");
    for (int x = 0; x < VMODS; ++x)
+   {
       fprintf(fp, " %lf:%lf:%s", g_staticParams.variableModParameters.varModList[x].dVarModMass,
          g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
          g_staticParams.variableModParameters.varModList[x].szVarModChar);
+   }
    fprintf(fp, "\n");
 
    size_t tTmp = (int)g_pvProteinNames.size();
@@ -804,8 +834,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    }
    for (unsigned long i = 0; i < ulModNumSize; ++i)
    {
-      fwrite(&(MOD_NUMBERS[i].modStringLen), sizeof(int), 1, fp);
-      fwrite(MOD_NUMBERS[i].modifications, 1, MOD_NUMBERS[i].modStringLen, fp);
+      fwrite(&(MOD_NUMBERS[i].lengthModifications), sizeof(unsigned char), 1, fp);
+      fwrite(MOD_NUMBERS[i].modifications, 1, MOD_NUMBERS[i].lengthModifications, fp);
    }
 
    fwrite(&clPeptidesFilePos, clSizeCometFileOffset, 1, fp);
@@ -1073,6 +1103,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    fread(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
    fread(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);  //FIX
    int iTmp;
+   unsigned char ucTmp;
    char szTmp[MAX_PEPTIDE_LEN];
    for (unsigned long i = 0; i < ulSizeModSeqs; ++i)
    {
@@ -1084,12 +1115,12 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    for (unsigned long i = 0; i < ulModNumSize; ++i)
    {
       ModificationNumber sTmp;
-      fread(&iTmp, sizeof(int), 1, fp); // read length
-      fread(szTmp, 1, iTmp, fp);
-      szTmp[iTmp]='\0';
-      sTmp.modStringLen = iTmp;
-      sTmp.modifications = new char[iTmp];
-      memcpy(sTmp.modifications, szTmp, iTmp);
+      fread(&ucTmp, 1, 1, fp); // read length
+      fread(szTmp, 1, ucTmp, fp);
+      szTmp[ucTmp]='\0';
+      sTmp.modifications = new char[ucTmp];
+      sTmp.lengthModifications = ucTmp;
+      memcpy(sTmp.modifications, szTmp, ucTmp);
       MOD_NUMBERS.push_back(sTmp);
    }
 
