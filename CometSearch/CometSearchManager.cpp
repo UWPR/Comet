@@ -625,6 +625,9 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("dia_windows_file", strData))
       strcpy(g_staticParams.szDIAWindowsFile, strData.c_str());
 
+   if (GetParamValue("compoundmods_file", strData))
+      g_staticParams.sCompoundModsFile = strData;
+
    if (GetParamValue("peff_obo", strData))
       strcpy(g_staticParams.peffInfo.szPeffOBO, strData.c_str());
 
@@ -1731,11 +1734,15 @@ bool CometSearchManager::DoSearch()
       }
    }
 
+   if (g_staticParams.sCompoundModsFile.length() == 0)
+      g_staticParams.sCompoundModsFile = "compoundmods.txt";
    // see if compoundmods.txt is present, if so, read in the list of masses.
-   if ((fp=fopen("compoundmods.txt", "r")) != NULL)
+   if ((fp=fopen(g_staticParams.sCompoundModsFile.c_str(), "r")) != NULL)
    {
       char szBuf[512];
       double dTmp;
+
+      printf(" Parsing compoundmods file: %s\n\n", g_staticParams.sCompoundModsFile.c_str() );
 
       while (fgets(szBuf, 512, fp))
       {

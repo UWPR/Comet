@@ -634,6 +634,7 @@ struct StaticParams
    int             iPrecursorNLSize;
    int             iOldModsEncoding;
    char            szDIAWindowsFile[SIZE_FILE];
+   string          sCompoundModsFile;
    bool            bSkipToStartScan;
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
 
@@ -697,6 +698,7 @@ struct StaticParams
       peffInfo.iPeffSearch = 0;
 
       szDIAWindowsFile[0]='\0';
+      sCompoundModsFile = "";
       iPrecursorNLSize = 0;
 
       for (i=0; i<SIZE_MASS; i++)
