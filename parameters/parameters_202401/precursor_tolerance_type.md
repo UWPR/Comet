@@ -1,7 +1,8 @@
 ### Comet parameter: precursor_tolerance_type
 
-- This parameter controls how the "[peptide_mass_tolerance](peptide_mass_tolerance.html)"
-parameter is applied.  That tolerance can be applied to the singly charged peptide mass or it can
+- This parameter controls how the peptide mass tolerance
+parameters([1](peptide_mass_tolerance_lower.html))([2](peptide_mass_tolerance_upper.html))
+are applied.  The tolerances can be applied to the singly charged peptide mass or it can
 be applied to the precursor m/z.
 - Note that this parameter is applied only when amu or mmu tolerances are specified.  It is
 ignored when ppm tolerances are specified.
