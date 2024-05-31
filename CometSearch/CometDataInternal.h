@@ -30,7 +30,6 @@ class CometSearchManager;
 #define MIN_PEPTIDE_LEN             1        // min # of AA for a petpide
 #define MAX_PEPTIDE_LEN             51       // max # of AA for a peptide; one more than actual # to account for terminating char
 #define MAX_PEPTIDE_LEN_P2          53       // max # of AA for a peptide plus 2 for N/C-term
-#define MAX_FRAGMENT_IONS_TYPE      9        // allowed fragment ions (aka a/b/c/x/y/z) ; check why this is 9!
 
 #define FRAGINDEX_MIN_IONS_SCORE    3        // min # of matched ions for peptide to register for E-value xcorr histogram
 #define FRAGINDEX_MIN_IONS_REPORT   3        // min # of matched ions for peptide to be reported

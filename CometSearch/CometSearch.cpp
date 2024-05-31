@@ -1200,7 +1200,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    unsigned int uiFragmentMass;
    int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + 100.0) * g_staticParams.dInverseBinWidth);
 
-   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
+   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
    bool* pbDuplFragment = new bool[iArraySize];
@@ -3622,7 +3622,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    int iLenPeptideMinus1 = iLenPeptide - 1;
 
    // Pointer to either regular or decoy uiBinnedIonMasses[][][][][].
-   unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE+1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
+   unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int (*p_uiBinnedPrecursorNL)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
    // Point to right set of arrays depending on target or decoy search.
@@ -3804,7 +3804,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
                              int iLenPeptide,
                              int *piVarModSites,
                              struct sDBEntry *dbe,
-                             unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][MAX_FRAGMENT_IONS_TYPE][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
+                             unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
                              unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
                              int iNumMatchedFragmentIons)
 {
