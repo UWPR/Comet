@@ -54,6 +54,12 @@ public:
                                     vector<string>& vProteinTargets,  // the target protein names
                                     vector<string>& vProteinDecoys);  // the decoy protein names if applicable
 
+   static void GetPrevNextAA(FILE *fpdb,
+                             int iWhichQuery,  // which search
+                             int iWhichResult, // which peptide within the search
+                             int iPrintTargetDecoy,
+                             int iWhichTerm);  // 0=no term constraint, 1=protein N-term, 2=protein C-term
+
    static string GetField(std::string *s,
                           unsigned int n,
                           char cDelimeter);

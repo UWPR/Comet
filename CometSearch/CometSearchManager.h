@@ -106,8 +106,6 @@ public:
 
 private:
    bool InitializeStaticParams();
-   static void UpdatePrevNextAA(int iWhichQuery,
-                                int iPrintTargetDecoy);
    bool singleSearchInitializationComplete;
    int singleSearchThreadCount;
    std::map<std::string, CometParam*> _mapStaticParams;

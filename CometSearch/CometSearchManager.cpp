@@ -2690,24 +2690,45 @@ bool CometSearchManager::DoSearch()
             // Sort g_pvQuery vector by scan.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
-/*
-            // Now set szPrevNextAA
-            if (g_staticParams.options.iDecoySearch == 2)
+            // Get flanking amino acid residues
+            if (g_staticParams.bIndexDb)
             {
-               for (int x=0; x<(int)g_pvQuery.size(); ++x)
-                  UpdatePrevNextAA(x, 1);
-               for (int x=0; x<(int)g_pvQuery.size(); ++x)
-                  UpdatePrevNextAA(x, 2);
-            }
-            else
-            {
-               for (int x=0; x<(int)g_pvQuery.size(); ++x)
+               for (int iWhichQuery = 0; iWhichQuery < (int)g_pvQuery.size(); ++iWhichQuery)
                {
-                  UpdatePrevNextAA(x, 0);
+                  int iNumPrintLines;
+                  int iPrintTargetDecoy = 0;   // will set to 1 or 2 when index db supports internal decoys
+
+                  iNumPrintLines = g_pvQuery.at(iWhichQuery)->iMatchPeptideCount;
+                  if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
+                     iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
+
+                  for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
+                  {
+                     int iNtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[0];
+                     int iCtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide - 1];
+
+                     if (iNtermMod != 0
+                        && g_staticParams.variableModParameters.varModList[iNtermMod - 1].iVarModTermDistance == 0
+                        && g_staticParams.variableModParameters.varModList[iNtermMod - 1].iWhichTerm ==  0)
+                     {
+                        // only match to peptides at the N-terminus of proteins as protein terminal mod applied
+                        CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 1);
+                     }
+                     else if (iCtermMod != 0
+                        && g_staticParams.variableModParameters.varModList[iCtermMod - 1].iVarModTermDistance == 0
+                        && g_staticParams.variableModParameters.varModList[iCtermMod - 1].iWhichTerm ==  1)
+                     {
+                        // only match to peptides at the C-terminus of proteins as protein terminal mod applied
+                        CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 2);
+                     }
+                     else
+                     {
+                        // peptide can be anywhere in sequence
+                        CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 0);
+                     }
+                  }
                }
             }
-            // done setting szPrevNextAA
-*/
 
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
             {
@@ -3780,45 +3801,4 @@ cleanup_results:
     delete[] pdTmpSpectrum;
 
     return bSucceeded;
-}
-
-
-// set prev/next AA from first target protein and
-// if decoy only then from first decoy protein
-void CometSearchManager::UpdatePrevNextAA(int iWhichQuery,
-                                          int iPrintTargetDecoy)
-{
-   Results *pOutput;
-   int iNumPrintLines;
-
-   if (iPrintTargetDecoy == 2)
-   {
-      pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
-      iNumPrintLines = g_pvQuery.at(iWhichQuery)->iDecoyMatchPeptideCount;
-   }
-   else
-   {
-      pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
-      iNumPrintLines = g_pvQuery.at(iWhichQuery)->iMatchPeptideCount;
-   }
-
-   if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
-      iNumPrintLines = (g_staticParams.options.iNumPeptideOutputLines);
-
-   for (int i=0; i<iNumPrintLines; ++i)
-   {
-      if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
-      {
-         if (pOutput[i].pWhichProtein.size() != 0)
-         {
-            pOutput[i].cPrevAA = pOutput[i].pWhichProtein.at(0).cPrevAA;
-            pOutput[i].cNextAA = pOutput[i].pWhichProtein.at(0).cNextAA;
-         }
-         else
-         {
-            pOutput[i].cPrevAA = pOutput[i].pWhichDecoyProtein.at(0).cPrevAA;
-            pOutput[i].cNextAA = pOutput[i].pWhichDecoyProtein.at(0).cNextAA;
-         }
-      }
-   }
 }

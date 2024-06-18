@@ -419,7 +419,7 @@ struct DBInfo
    }
 };
 
-// this duplicates PlainPeptideIndex but with fixed peptide char string for simplified binary write/read
+// this duplicates PlainPeptideIndex but with modsites and fixed peptide char string for simplified binary write/read
 struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
@@ -464,8 +464,6 @@ struct DBIndex
 struct PlainPeptideIndex
 {
    string sPeptide;
-   char   cPrevAA;
-   char   cNextAA;
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
 
@@ -474,7 +472,7 @@ struct PlainPeptideIndex
       if (!sPeptide.compare(rhs.sPeptide))
          return true;
       else
-      return false; // peptides are different
+         return false; // peptides are different
    }
 };
 

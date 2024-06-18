@@ -21,6 +21,7 @@
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometMassSpecUtils.h"
+#include "CometSearch.h"
 
 
 
@@ -318,6 +319,185 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                iPrintDuplicateProteinCt++;
             }
          }
+      }
+   }
+}
+
+
+// find prev, next AA from first matched protein
+// this is only valid if searching indexed db with peptide/protein .idx file
+void CometMassSpecUtils::GetPrevNextAA(FILE *fpdb,
+                                       int iWhichQuery,  // which search
+                                       int iWhichResult, // which peptide within the search
+                                       int iPrintTargetDecoy,    // 0 = target+decoys, 1=target only, 2=decoy only
+                                       int iWhichTerm)   // 0=no term constraint, 1=protein N-term, 2=protein C-term
+{
+   if (g_staticParams.bIndexDb)
+   {
+      Results *pOutput;
+      int iTmpCh = 0;
+      bool bFound = false;      // sanity check to confirm find peptide match in protein else throw error
+
+/*    // this will only be useful if Comet internal decoys are ever applied
+      if (iPrintTargetDecoy != 2)
+         pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
+      else
+         pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+*/
+      pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
+
+      comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+
+      int iLenPeptide = strlen(pOutput[iWhichResult].szPeptide);
+
+      for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+      {
+         string strSeq;
+
+         comet_fseek(fpdb, *it, SEEK_SET);
+
+         // skip through protein name string to first carriage return
+         while (((iTmpCh = getc(fpdb)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF));
+
+         // Load sequence
+         while (((iTmpCh=getc(fpdb)) != '>') && (iTmpCh != EOF))
+         {
+            if ('a' <= iTmpCh && iTmpCh <= 'z')
+            {
+               strSeq += iTmpCh - 32;  // convert toupper case so subtract 32 (i.e. 'A'-'a')
+               g_staticParams.databaseInfo.uliTotAACount++;
+            }
+            else if ('A' <= iTmpCh && iTmpCh <= 'Z')
+            {
+               strSeq += iTmpCh;
+               g_staticParams.databaseInfo.uliTotAACount++;
+            }
+            else if (iTmpCh == '*')  // stop codon
+            {
+               strSeq += iTmpCh;
+            }
+
+            if (iWhichTerm == 1 && (int)strSeq.length() == iLenPeptide + 1)
+            {
+               break;  // protein N-terminal peptide identified so have enough sequence now
+            }
+         }
+
+         CometSearch cs;
+         char* szSequence = (char*)malloc(strSeq.size() + 1);
+         strcpy(szSequence, strSeq.c_str());
+
+         int iLenSequence = strlen(szSequence);
+         cs._proteinInfo.iTmpProteinSeqLength = iLenSequence; // used in CheckEnzymeTermini
+
+         if (iWhichTerm == 0)
+         {
+            size_t iStartPos = 0;
+
+            // Find all occurrences of the peptide in the sequence
+            // Take first one consistent with the enzyme constraint for prev/next AA
+            while( std::string::npos != ( iStartPos = (int)strSeq.find(pOutput[iWhichResult].szPeptide, iStartPos ) ) )
+            {
+               int iEndPos = iStartPos + iLenPeptide - 1;
+
+               if (cs.CheckEnzymeTermini(szSequence, iStartPos, iEndPos))
+               {
+                  if (iStartPos == 0)
+                     pOutput[iWhichResult].cPrevAA = '-';
+                  else
+                     pOutput[iWhichResult].cPrevAA = szSequence[iStartPos - 1];
+
+                  if (iEndPos == iLenSequence - 1)
+                     pOutput[iWhichResult].cNextAA = '-';
+                  else
+                     pOutput[iWhichResult].cNextAA = szSequence[iEndPos + 1];
+
+                  bFound = true;
+                  break;
+               }
+               else if (g_staticParams.options.bClipNtermMet && iStartPos == 1 && szSequence[0] == 'M' && cs.CheckEnzymeEndTermini(szSequence, iEndPos))
+               {
+                  pOutput[iWhichResult].cPrevAA = 'M';
+
+                  if (iEndPos == iLenSequence - 1)
+                     pOutput[iWhichResult].cNextAA = '-';
+                  else
+                     pOutput[iWhichResult].cNextAA = szSequence[iEndPos + 1];
+
+                  bFound = true;
+                  break;
+               }
+
+               ++iStartPos;
+            }
+
+            if (bFound)
+               break;
+         }
+         else if (iWhichTerm == 1)
+         {
+            int iEndPos = iLenPeptide; // used for clip n-term met so needs to be set to iLenPeptide
+
+            if (!strncmp(szSequence, pOutput[iWhichResult].szPeptide, iLenPeptide)
+                  && cs.CheckEnzymeEndTermini(szSequence, iLenPeptide - 1))
+            {
+               pOutput[iWhichResult].cPrevAA = '-';
+
+               if (iLenSequence >= iLenPeptide)  // for n-term pep, iLenPeptide is following residue position
+                  pOutput[iWhichResult].cNextAA = szSequence[iLenPeptide];
+               else
+                  pOutput[iWhichResult].cNextAA = '-';
+
+               bFound = true;
+               break;
+            } 
+            else if (g_staticParams.options.bClipNtermMet
+                  && szSequence[0] == 'M'
+                  && !strncmp(szSequence + 1, pOutput[iWhichResult].szPeptide, iLenPeptide)
+                  && cs.CheckEnzymeEndTermini(szSequence, iEndPos))
+            {
+               pOutput[iWhichResult].cPrevAA = 'M';
+               pOutput[iWhichResult].cNextAA = szSequence[iEndPos + 1];
+               bFound = true;
+               break;
+            }
+         }
+         else if (iWhichTerm == 2)
+         {
+            int iStartPos = iLenSequence - iLenPeptide;
+
+            if (!strncmp(szSequence + iStartPos, pOutput[iWhichResult].szPeptide, iLenPeptide))
+            {
+               if (cs.CheckEnzymeStartTermini(szSequence, iLenSequence - iLenPeptide))
+               {
+                  if (iStartPos > 0)
+                     pOutput[iWhichResult].cPrevAA = szSequence[iStartPos - 1];
+                  else
+                     pOutput[iWhichResult].cPrevAA = '-';
+
+                  pOutput[iWhichResult].cNextAA = '-';
+
+                  bFound = true;
+                  break;
+               }
+               else if (g_staticParams.options.bClipNtermMet && iStartPos == 1 && szSequence[0] == 'M')
+               {
+                  pOutput[iWhichResult].cPrevAA = 'M';
+                  pOutput[iWhichResult].cNextAA = '-';
+                  bFound = true;
+                  break;
+               }
+            }
+         }
+
+         free(szSequence);
+      }
+
+      if (!bFound)
+      {
+         printf(" Error, did not match peptide in GetPrevNextAA(); pep %s, iWhichQuery %d, iWhichResult %d\n",
+               pOutput[iWhichResult].szPeptide, iWhichQuery, iWhichResult);
+         exit(1);
       }
    }
 }

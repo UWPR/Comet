@@ -76,6 +76,31 @@ public:
                                 ThreadPool *tp);
    bool DoSearch(sDBEntry dbe,
                  bool *pbDuplFragment);
+   bool CheckEnzymeTermini(char *szProteinSeq,
+                           int iStartPos,
+                           int iEndPos);
+   bool CheckEnzymeStartTermini(char *szProteinSeq,
+                                int iStartPos);
+   bool CheckEnzymeEndTermini(char *szProteinSeq,
+                              int iEndPos);
+
+   struct ProteinInfo
+   {
+       int  iProteinSeqLength;                    // length of sequence
+       int  iTmpProteinSeqLength;                 // either length of sequence or 1 less for skip N-term M; or more for PEFF insertions
+       int  iAllocatedProtSeqLength;              // used in nucleotide to AA translation
+       int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
+       comet_fileoffset_t lProteinFilePosition;
+       char szProteinName[WIDTH_REFERENCE];
+       char *pszProteinSeq;
+       //char cPeffOrigResidue;                     // original residue of a PEFF variant
+       string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
+       int    iPeffNewResidueCount;               // number of new residue(s) being substituted/added in PEFF variant
+       char cPrevAA;  // hack for indexdb realtime search
+       char cNextAA;  // hack for indexdb realtime search
+   };
+
+   ProteinInfo _proteinInfo;
 
 private:
 
@@ -141,14 +166,6 @@ private:
                    unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
                    unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
                    int iNumMatchedFragmentIons);
-
-   bool CheckEnzymeTermini(char *szProteinSeq,
-                           int iStartPos,
-                           int iEndPos);
-   bool CheckEnzymeStartTermini(char *szProteinSeq,
-                                int iStartPos);
-   bool CheckEnzymeEndTermini(char *szProteinSeq,
-                              int iStartPos);
    bool CheckMassMatch(int iWhichQuery,
                        double dCalcPepMass);
    static double GetFragmentIonMass(int iWhichIonSeries,
@@ -269,22 +286,6 @@ private:
       double dIntensity;
    };
 
-   struct ProteinInfo
-   {
-       int  iProteinSeqLength;                    // length of sequence
-       int  iTmpProteinSeqLength;                 // either length of sequence or 1 less for skip N-term M; or more for PEFF insertions
-       int  iAllocatedProtSeqLength;              // used in nucleotide to AA translation
-       int  iPeffOrigResiduePosition;             // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
-       comet_fileoffset_t lProteinFilePosition;
-       char szProteinName[WIDTH_REFERENCE];
-       char *pszProteinSeq;
-       //char cPeffOrigResidue;                     // original residue of a PEFF variant
-       string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
-       int    iPeffNewResidueCount;               // number of new residue(s) being substituted/added in PEFF variant
-       char cPrevAA;  // hack for indexdb realtime search
-       char cNextAA;  // hack for indexdb realtime search
-   };
-
    struct SpectrumInfoInternal
    {
       Spectrum *pSpectrum;
@@ -303,7 +304,6 @@ private:
    int                _iSizepiVarModSites;
    int                _iSizepdVarModSites;
    VarModInfo         _varModInfo;
-   ProteinInfo        _proteinInfo;
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
