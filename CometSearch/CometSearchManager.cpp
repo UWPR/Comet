@@ -729,8 +729,6 @@ bool CometSearchManager::InitializeStaticParams()
       strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
 
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
-   if (g_staticParams.tolerances.dFragmentBinSize < 0.01)
-      g_staticParams.tolerances.dFragmentBinSize = 0.01;
 
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
 
