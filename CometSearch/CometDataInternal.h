@@ -423,8 +423,6 @@ struct DBInfo
 struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
-   char   cPrevAA;
-   char   cNextAA;
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
    comet_fileoffset_t   lIndexProteinFilePosition;         // points to entry in g_pvProteinsList
    double dPepMass;                          // MH+ pep mass

@@ -1768,16 +1768,6 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                // although mass check above should've caught these before
                if (!strchr(sEntry.szPeptide, '*'))
                {
-                  if (iStartPos == 0)
-                     sEntry.cPrevAA = '-';
-                  else
-                     sEntry.cPrevAA = szProteinSeq[iStartPos - 1];
-
-                  if (iEndPos == iProteinSeqLengthMinus1)
-                     sEntry.cNextAA = '-';
-                  else
-                     sEntry.cNextAA = szProteinSeq[iEndPos + 1];
-
                   sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                   memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2.0));
                   
