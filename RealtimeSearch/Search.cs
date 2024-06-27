@@ -68,8 +68,9 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int iMaxElapsedTime = 100;
+               int iMaxElapsedTime = 20;
                int[] piTimeSearch = new int[iMaxElapsedTime];  // histogram of search times
+
                for (int i = 0; i < iMaxElapsedTime; ++i)
                {
                   piTimeSearch[i] = 0;
@@ -113,7 +114,7 @@
                         pdInten = segmentedScan.Intensities;
                      }
 
-                     if (iNumPeaks > 5)
+                     if (iNumPeaks >= 10)  // don't bother searching sparse spectra
                      {
                         iPrecursorCharge = 0;
                         dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
@@ -140,46 +141,35 @@
                         // now run the search on scan
 
                         // these next variables store return value from search
-                        ScoreWrapper score;
-                        List<FragmentWrapper> matchingFragments;
-                        string peptide;
-                        string protein;
+                        List<string> vPeptide = new List<string>();
+                        List<string> vProtein = new List<string>();
+                        List<List<FragmentWrapper>> vMatchingFragments;
+                        List<ScoreWrapper> vScores;
+
+                        int topN = 5; // report up to topN hits per query
 
                         watch.Start();
-                        SearchMgr.DoSingleSpectrumSearch(iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
-                           out peptide, out protein, out matchingFragments, out score);
+                        SearchMgr.DoSingleSpectrumSearchMultiResults(topN, iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
+                           out vPeptide, out vProtein, out vMatchingFragments, out vScores);
                         watch.Stop();
 
-                        double xcorr = score.xCorr;
-                        double dExpect = score.dExpect;
-                        double dSp = score.dSp;
-                        double dCn = score.dCn;
-                        int iIonsMatch = score.MatchedIons;
-                        int iIonsTotal = score.TotalIons;
+                        int iProteinLengthCutoff = 30;
 
-                        double dPepMass = (dPrecursorMZ * iPrecursorCharge) - (iPrecursorCharge - 1) * 1.00727646688;
-
-                        // do not decode peptide/proteins strings unless xcorr>0
-                        if (xcorr > 4)
+                        if (vPeptide.Count > 0 && (iScanNumber % 10) == 0)
                         {
-                           if ((iScanNumber % 1) == 0)
+                           for (int x = 0; x < vPeptide.Count; ++x)
                            {
-                              int iLengthCutoff = 10;
+                              string protein = vProtein[x];
+                              if (protein.Length > iProteinLengthCutoff)
+                                 protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
 
-                              if (protein.Length > iLengthCutoff)
-                                 protein = protein.Substring(0, iLengthCutoff);  // trim to avoid printing long protein description string
-
-                              Console.WriteLine("{0}\t{1}\t{2}\t{3:0.0000}\t{10:0.0000}\t{9:0.0}\t{4:E4}\t{5:0.0000}\t{6}\t{7}\t{8}",
-                                 iScanNumber, peptide, protein, xcorr, dExpect, dPepMass, iIonsMatch, iIonsTotal, iPass, dSp, dCn);
-
+                              Console.WriteLine("{0}\t{12}\t{1}\t{2}\t{3:0.0000}\t{11:0.0000}\t{10:0.0}\t{4:E4}\t{5:0.0000}\t{6:0.0000}\t{7}\t{8}\t{9}",
+                                 iScanNumber, vPeptide[x], protein, vScores[x].xCorr, vScores[x].dExpect, dExpPepMass - 1.00727646688, vScores[x].mass,
+                                 vScores[x].MatchedIons, vScores[x].TotalIons, iPass, vScores[x].dSp, vScores[x].dCn, x + 1);
 /*
-                              Console.WriteLine("pass {12}\t{0}\t{2}\t{3:0.0000}\t{9:0.0000}\t{5}\t{6}\t{7:0.0000}\t{8}\t{10}/{11}",
-                                 iScanNumber, iLastScan, iPrecursorCharge, dPrecursorMZ, iNumPeaks, peptide, protein,
-                                 xcorr, watch.ElapsedMilliseconds, dPepMass, iIonsMatch, iIonsTotal, iPass);
-
-                              foreach (var myFragment in matchingFragments)
+                              foreach (var myFragment in vMatchingFragments[x]) // print matched fragment ions
                               {
-                                 Console.WriteLine("{0:0000.0000} {1:0.0} {2} {3}",
+                                 Console.WriteLine("\t{0:0.0000}\t{1:0.0}\t{2}+\t{3}-ion",
                                     myFragment.Mass,
                                     myFragment.Intensity,
                                     myFragment.Charge,
@@ -187,15 +177,19 @@
                               }
 */
                            }
+                           Console.WriteLine("");
                         }
 
-                        iTime = (int)watch.ElapsedMilliseconds;
-                        if (iTime >= iMaxElapsedTime)
-                           iTime = iMaxElapsedTime-1;
-                        if (iTime >= 0)
-                           piTimeSearch[iTime] += 1;
-
+                        if (vPeptide.Count > 0)
+                        {
+                           iTime = (int)watch.ElapsedMilliseconds;
+                           if (iTime >= iMaxElapsedTime)
+                              iTime = iMaxElapsedTime - 1;
+                           if (iTime >= 0)
+                              piTimeSearch[iTime] += 1;
+                        }
                         watch.Reset();
+
                      }
                   }
 /*
@@ -248,16 +242,17 @@
 
             SearchMgr.SetParam("database_name", sDB, sDB);
 
+/*
             sTmp = "DECOY_";
             SearchMgr.SetParam("decoy_prefix", sTmp, sTmp);
 
             iTmp = 0; // 0=no internal decoys, 1=concatenated target/decoy
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("decoy_search", sTmp, iTmp);
-
+*/
             dTmp = 20.0;  // peptide mass tolerance plus
             sTmp = dTmp.ToString();
-            SearchMgr.SetParam("peptide_mass_tolerance", sTmp, dTmp);
+            SearchMgr.SetParam("peptide_mass_tolerance_upper", sTmp, dTmp);
 
             dTmp = -20.0;  // peptide mass tolerance minus ; if this is not set, will use -1*peptide_mass_tolerance_plus
             sTmp = dTmp.ToString();
@@ -266,6 +261,26 @@
             iTmp = 2; // 0=Da, 2=ppm
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
+
+            iTmp = 3;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("fragindex_min_ions_score", sTmp, iTmp);
+
+            iTmp = 3;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("fragindex_min_ions_report", sTmp, iTmp);
+
+            iTmp = 100;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("fragindex_num_spectrumpeaks", sTmp, iTmp);
+
+            dTmp = 200.0;
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("fragindex_min_fragmentmass", sTmp, dTmp);
+
+            dTmp = 2000.0;
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("fragindex_max_fragmentmass", sTmp, dTmp);
 
             iTmp = 100; // search time cutoff in milliseconds
             sTmp = iTmp.ToString();

@@ -1697,7 +1697,7 @@ fragindex_min_ions_report = 3          # minimum number of matched fragment ion 
 fragindex_num_spectrumpeaks = 100      # number of peaks from spectrum to use for fragment ion index matching\n\
 fragindex_min_fragmentmass = 200.0     # low mass cutoff for fragment ions\n\
 fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\
-fragindex_skipreadprecursors = 0       # high mass cutoff for fragment ions\n\n");
+fragindex_skipreadprecursors = 0       # 0=off, 1=read precursors to limit fragment ion index\n\n");
    }
 
    fprintf(fp,

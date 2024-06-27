@@ -3134,42 +3134,22 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    else
       g_massRange.bNarrowMassRange = false;
 
-/*
-   // add git hash to version string if present
-   // repeated here from Comet main() as main() is skipped when search invoked via DLL
-   if (strlen(GITHUBSHA) > 0)
-   {
-      string sTmp = std::string(GITHUBSHA);
-      if (sTmp.size() > 7)
-         sTmp.resize(7);
-      g_sCometVersion = std::string(comet_version) + " (" + sTmp + ")";
-   }
-   else
-      g_sCometVersion = comet_version;
-*/
    g_sCometVersion = comet_version;
 
    // Now that spectra are loaded to memory and sorted, do search.
    bSucceeded = CometSearch::RunSearch(tp);
 
    iSize = g_pvQuery.at(0)->iMatchPeptideCount;
-
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
-   // simply take top xcorr peptide as E-value calculation too expensive
    if (iSize > 1)
    {
       std::sort(g_pvQuery.at(0)->_pResults, g_pvQuery.at(0)->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
 
-   if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
+   if (bSucceeded && iSize > 0)
    {
-      int iSize = g_pvQuery.at(0)->iMatchPeptideCount;
-
-      if (iSize > g_staticParams.options.iNumStored)
-         iSize = g_staticParams.options.iNumStored;
-
       CometPostAnalysis::CalculateSP(g_pvQuery.at(0)->_pResults, 0, 1); // only do for top entry
       CometPostAnalysis::CalculateEValue(0, 1);
       CometPostAnalysis::CalculateDeltaCn(0);
@@ -3185,7 +3165,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    Query* pQuery;
    pQuery = g_pvQuery.at(0);  // return info for top hit only
 
-   if (iSize > 0 && pQuery->_pResults[0].fXcorr>0.0 && pQuery->_pResults[0].iLenPeptide>0)
+   if (iSize > 0 && pQuery->_pResults[0].fXcorr > 0.0 && pQuery->_pResults[0].iLenPeptide > 0)
    {
       Results *pOutput = pQuery->_pResults;
 
@@ -3528,12 +3508,11 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
     Query* pQuery;
     pQuery = g_pvQuery.at(0);  // return info for top hit only
-    takeSearchResultsN = topN; // return up to the top N results, or iSize
 
+    takeSearchResultsN = topN; // return up to the top N results, or iSize
     if (takeSearchResultsN > iSize)
-    {
         takeSearchResultsN = iSize;
-    }
+
     for (int idx = 0; idx < takeSearchResultsN; ++idx)
     {
         Scores score;
@@ -3548,6 +3527,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
         if (iSize > 0 && pQuery->_pResults[idx].fXcorr > 0.0 && pQuery->_pResults[idx].iLenPeptide > 0)
         {
             Results* pOutput = pQuery->_pResults;
+
+            // Comment out this next line to not parse previous/next amino acids from  fasta for RTS reporting
+            CometMassSpecUtils::GetPrevNextAA(fpfasta, 0, idx, 0, 0);
 
             // Set return values for peptide sequence, protein, xcorr and E-value
             eachStrReturnPeptide = std::string(1, pOutput[idx].cPrevAA) + ".";
@@ -3579,14 +3561,13 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                 ss << "c[" << std::fixed << std::setprecision(4) << pOutput[idx].pdVarModSites[pOutput[idx].iLenPeptide + 1] << "]";
                 eachStrReturnPeptide += ss.str();
             }
+            eachStrReturnPeptide += "." + std::string(1, pOutput[idx].cNextAA);
 
             // retrieve protein name from fasta; need to fopen just once
             char szProtein[512];
             comet_fseek(fpfasta, g_pvProteinsList.at(pOutput[idx].lProteinFilePosition).at(0), SEEK_SET);
             fscanf(fpfasta, "%511s", szProtein);  // WIDTH_REFERENCE-1
             szProtein[511] = '\0';
-            eachStrReturnPeptide += "." + std::string(1, pOutput[idx].cNextAA);
-
             eachStrReturnProtein = szProtein;            //protein
 
             score.xCorr = pOutput[idx].fXcorr;                        // xcorr
@@ -3697,7 +3678,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                         mass += ionMassesRelative[ionSeries];
 
                         double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
-
                         iTmp = BIN(mz);
                         if (iTmp < iArraySize && pdTmpSpectrum[iTmp] > 0.0)
                         {

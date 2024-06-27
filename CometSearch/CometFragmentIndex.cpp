@@ -879,6 +879,36 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
             return false;
          }
       }
+      else if (!strncmp(szBuf, "Enzyme:", 7))
+      {
+         int iRet = sscanf(szBuf + 7, "%*s [%d %s %s]", &g_staticParams.enzymeInformation.iSearchEnzymeOffSet,
+            g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
+            g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+
+         if (iRet != 3)
+         {
+            char szErr[256];
+            sprintf(szErr, " Error with raw peptide index database format. Enzyme: did not parse 3 values.");
+            logerr(szErr);
+            fclose(fp);
+            return false;
+         }
+      }
+      else if (!strncmp(szBuf, "Enzyme2:", 8))
+      {
+         int iRet = sscanf(szBuf + 8, "%*s [%d %s %s]", &g_staticParams.enzymeInformation.iSearchEnzyme2OffSet,
+            g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
+            g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+
+         if (iRet != 3)
+         {
+            char szErr[256];
+            sprintf(szErr, " Error with raw peptide index database format. Enzyme2: did not parse 3 values.");
+            logerr(szErr);
+            fclose(fp);
+            return false;
+         }
+      }
       else if (!strncmp(szBuf, "StaticMod:", 10)) // read in static mods
       {
          char *tok;

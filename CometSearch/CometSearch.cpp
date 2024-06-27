@@ -1211,15 +1211,16 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iFragIndexNumThreads; ++iWhichThread)
    {
-      for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBIN; ++iPrecursorBin)
+      for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
       {
          for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
          {
-            if (g_arrvFragmentIndex[iWhichThread][iPrecursorBin][i].size() > 0)
+            if (g_iCountFragmentIndex[iWhichThread][iPrecursorBin][i] > 0)
             {
-               for (size_t ii = 0; ii < g_arrvFragmentIndex[iWhichThread][iPrecursorBin][i].size(); ++ii)
+               for (size_t ii = 0; ii < g_iCountFragmentIndex[iWhichThread][iPrecursorBin][i]; ++ii)
                {
-                  printf("%0.2f ", g_vFragmentPeptides[g_arrvFragmentIndex[iWhichThread][iPrecursorBin][i][ii]].dPepMass);
+                  printf("%0.2f ", g_vFragmentPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][i][ii]].dPepMass);
+
                   if (ii==10)
                      break;
                }
@@ -1279,8 +1280,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
                            if (sqSearch.CheckMassMatch(iWhichQuery, dCalcPepMass))
                               mPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass][ix]] += 1;
                         }
-
-                        if (dCalcPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
+                        else if (dCalcPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
                            break;
                      }
                   }
