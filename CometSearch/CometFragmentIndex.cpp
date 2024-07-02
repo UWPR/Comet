@@ -284,7 +284,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
    // each thread will loop through a subset of the g_vRawPeptides
    for (size_t iWhichPeptide = iWhichThread; iWhichPeptide < g_vRawPeptides.size(); iWhichPeptide += iNumIndexingThreads)
    {
-      // AddFragments(iWhichPeptide, modNumIdx) for unmodified peptide
+      // AddFragments for unmodified peptide
       // FIX: if require variable mod is set, this would not be called here
       AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, -1, -1, bCountOnly);
 
