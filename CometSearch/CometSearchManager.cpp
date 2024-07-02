@@ -1974,6 +1974,8 @@ bool CometSearchManager::DoSearch()
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
+   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);
+
    if (g_staticParams.options.bCreateIndex) //index
    {
       // write out .idx file containing unmodified peptides and protein refs;
@@ -1991,8 +1993,6 @@ bool CometSearchManager::DoSearch()
       PrintOutfileHeader();
 
    bool bBlankSearchFile = false;
-
-   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
 
    if (!g_staticParams.options.iFragIndexSkipReadPrecursors)
    {

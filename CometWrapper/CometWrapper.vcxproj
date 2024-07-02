@@ -108,9 +108,10 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;WIN64;_WIN64;_DEBUG;_NOSQLITE;_CRT_SECURE_NO_WARNINGS%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalIncludeDirectories>..\pthreads-w32\include;..\MSToolkit\include;..\CometSearch</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\src\expat-2.2.9\lib;..\MSToolkit\src\zlib-1.2.11;..\CometSearch</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -136,7 +137,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WIN32;WIN64;_WIN64;NDEBUG;_NOSQLITE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalIncludeDirectories>..\pthreads-w32\include;..\MSToolkit\include;..\MSToolkit\src\expat-2.2.9\lib;..\MSToolkit\src\zlib-1.2.11;..\MSToolkit\src\sqlite-3.32.1;..\CometSearch</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\src\expat-2.2.9\lib;..\MSToolkit\src\zlib-1.2.11;..\CometSearch</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>

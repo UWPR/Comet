@@ -311,7 +311,7 @@ void LoadParameters(char *pszParamsFile,
                int iLen = (int)strlen(szParamVal);
                char *szTrimmed = szParamVal;
 
-               while (isspace(szTrimmed[iLen -1]))  // trim end
+               while (iLen > 0 && isspace(szTrimmed[iLen -1]))  // trim end
                   szTrimmed[--iLen] = 0;
                while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
                {
@@ -332,7 +332,7 @@ void LoadParameters(char *pszParamsFile,
                int iLen = (int)strlen(szParamVal);
                char *szTrimmed = szParamVal;
 
-               while (isspace(szTrimmed[iLen -1]))  // trim end
+               while (iLen > 0 && isspace(szTrimmed[iLen -1]))  // trim end
                   szTrimmed[--iLen] = 0;
                while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
                {
@@ -380,7 +380,7 @@ void LoadParameters(char *pszParamsFile,
                int iLen = (int)strlen(szParamVal);
                char *szTrimmed = szParamVal;
 
-               while (isspace(szTrimmed[iLen -1]))  // trim end
+               while (iLen > 0 && isspace(szTrimmed[iLen -1]))  // trim end
                   szTrimmed[--iLen] = 0;
                while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
                {
@@ -402,10 +402,12 @@ void LoadParameters(char *pszParamsFile,
                tok = strtok(szParamVal, delims);
                while (tok != NULL)
                {
-                  sscanf(tok, "%lf", &dMass);
-                  if (dMass >= 0.0)
-                     vectorSetMassOffsets.push_back(dMass);
-                  tok = strtok(NULL, delims);
+                  if (sscanf(tok, "%lf", &dMass) == 1)
+                  {
+                     if (dMass >= 0.0)
+                        vectorSetMassOffsets.push_back(dMass);
+                     tok = strtok(NULL, delims);
+                  }
                }
 
                sort(vectorSetMassOffsets.begin(), vectorSetMassOffsets.end());
@@ -418,7 +420,7 @@ void LoadParameters(char *pszParamsFile,
                int iLen = (int)strlen(szParamVal);
                char *szTrimmed = szParamVal;
 
-               while (isspace(szTrimmed[iLen -1]))  // trim end
+               while (iLen > 0 && isspace(szTrimmed[iLen -1]))  // trim end
                   szTrimmed[--iLen] = 0;
                while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
                {
