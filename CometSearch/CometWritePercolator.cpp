@@ -35,7 +35,7 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
                                            FILE *fpdb)
 {
    int i;
-   int iLenDecoyPrefix = strlen(g_staticParams.szDecoyPrefix);
+   int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
    // Print results.
    for (i=0; i<(int)g_pvQuery.size(); ++i)

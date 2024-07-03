@@ -302,7 +302,7 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].dPepMass = 0.0;
          pQuery->_pResults[j].dExpect = 999;
          pQuery->_pResults[j].fScoreSp = 0.0;
-         pQuery->_pResults[j].fXcorr = g_staticParams.options.dMinimumXcorr;
+         pQuery->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
          pQuery->_pResults[j].iLenPeptide = 0;
          pQuery->_pResults[j].iRankSp = 0;
          pQuery->_pResults[j].iMatchedIons = 0;
@@ -322,7 +322,7 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].dPepMass = 0.0;
             pQuery->_pDecoys[j].dExpect = 999;
             pQuery->_pDecoys[j].fScoreSp = 0.0;
-            pQuery->_pDecoys[j].fXcorr = g_staticParams.options.dMinimumXcorr;
+            pQuery->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
             pQuery->_pDecoys[j].iLenPeptide = 0;
             pQuery->_pDecoys[j].iRankSp = 0;
             pQuery->_pDecoys[j].iMatchedIons = 0;
@@ -2743,7 +2743,7 @@ bool CometSearchManager::DoSearch()
             }
 
             if (g_staticParams.options.bOutputPepXMLFile)
-               CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb, iTotalSpectraSearched - g_pvQuery.size());
+               CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb, iTotalSpectraSearched - (int)g_pvQuery.size());
 
             // For mzid output, dump psms as tab-delimited text first then collate results to
             // mzid file at very end due to requirements of this format.

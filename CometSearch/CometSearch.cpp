@@ -1277,7 +1277,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
                         if (dCalcPepMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
                            && dCalcPepMass <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
                         {
-                           if (sqSearch.CheckMassMatch(iWhichQuery, dCalcPepMass))
+                           if (sqSearch.CheckMassMatch((int)iWhichQuery, dCalcPepMass))
                               mPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass][ix]] += 1;
                         }
                         else if (dCalcPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
@@ -1333,7 +1333,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
          // calculate full xcorr here those that pass simple filter
 
          strcpy(szPeptide, g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).sPeptide.c_str());
-         iLenPeptide = strlen(szPeptide);
+         iLenPeptide = (int)strlen(szPeptide);
 
          ModificationNumber modNum;
          char* mods = NULL;
@@ -1610,9 +1610,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
          // this lProteinFilePosition is actually the entry in g_pvProteinsList that contains the list of proteins for that peptide
          dbe.lProteinFilePosition = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).lIndexProteinFilePosition;
 
-         XcorrScoreI(szPeptide, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
-               false, iWhichQuery, iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL,
-               ix->second);
+         XcorrScoreI(szPeptide, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, false, iWhichQuery,
+               iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, ix->second);
       }
    }
 
@@ -1769,7 +1768,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                if (!strchr(sEntry.szPeptide, '*'))
                {
                   sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
-                  memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2.0));
+                  memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2));
                   
                   g_pvDBIndex.push_back(sEntry);
                }
@@ -3197,10 +3196,10 @@ int CometSearch::BinarySearchMass(int start,
 }
 
 
-int CometSearch::BinarySearchIndexMass(int iWhichThread,
+size_t CometSearch::BinarySearchIndexMass(int iWhichThread,
                                        int iPrecursorBin,
-                                       int start,
-                                       int end,
+                                       size_t start,
+                                       size_t end,
                                        double dQueryMass,
                                        unsigned int *uiFragmentMass)
 {
@@ -3214,7 +3213,7 @@ int CometSearch::BinarySearchIndexMass(int iWhichThread,
 
    // Find the middle element of the vector and use that for splitting
    // the array into two pieces.
-   unsigned middle = start + ((end - start) / 2);
+   size_t middle = start + ((end - start) / 2);
 
    double dArrayMass = g_vFragmentPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][*uiFragmentMass][middle]].dPepMass;
 
@@ -3790,7 +3789,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
                              int iFoundVariableMod,    // 0=no mods, 1 has variable mod, 2=phospho mod use NL peaks
                              double dCalcPepMass,
                              bool bDecoyPep,
-                             int iWhichQuery,
+                             size_t iWhichQuery,
                              int iLenPeptide,
                              int *piVarModSites,
                              struct sDBEntry *dbe,
@@ -4369,7 +4368,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 }
 
 
-void CometSearch::StorePeptideI(int iWhichQuery,
+void CometSearch::StorePeptideI(size_t iWhichQuery,
                                int iStartPos,
                                int iEndPos,
                                int iFoundVariableMod,

@@ -321,7 +321,7 @@ unsigned long long ModificationsPermuter::getModBitmask(string* modSeq,
                                                         string sModChars)
 {
    uint64_t bitMask = 0ULL;
-   long len = (*modSeq).size();
+   long len = (long)(*modSeq).size();
    for (int i = 0; i < len; ++i)
    {
       if (sModChars.find((*modSeq)[i]) != string::npos)
@@ -601,7 +601,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
 
    // Step 3: We have all the possible combinations for each modification. Combine them to generate modification numbers.
 
-   vector<vector<int>> combinationSets = getCombinationSets(modIndices.size());
+   vector<vector<int>> combinationSets = getCombinationSets((int)modIndices.size());
 
    const int combinationCount = getTotalCombinationCount(combinationCounts, combinationSets);
    
@@ -614,7 +614,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
       {
          vector<int> set = *it;
 
-         const int modNumCount = set.size();
+         const int modNumCount = (int)set.size();
          int* modIndicesToMerge = new int[modNumCount];
          int* combinationCountsToMerge = new int[modNumCount];
          int s = 0;
@@ -652,7 +652,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
                modNumbers[k] = modIndices.at(modIndicesToMerge[k]);
             }
 
-            if (combine(modNumbers, toCombine, modNumCount, (*sequence).length()))
+            if (combine(modNumbers, toCombine, modNumCount, (int)(*sequence).length()))
             {
                modNumCalculated++;
             }

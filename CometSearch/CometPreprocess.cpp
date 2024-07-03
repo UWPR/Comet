@@ -1025,7 +1025,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Create data for sp scoring which is just the binned peaks normalized to max inten 100
    for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      pScoring->pfSpScoreData[i] = 100.0 * pdTmpRawData[i] / pPre.dHighestIntensity;
+      pScoring->pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
    }
 
    // MH: Fill sparse matrix for SpScore
@@ -2287,7 +2287,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      pScoring->pfSpScoreData[i] = 100.0 * pdTmpRawData[i] / pPre.dHighestIntensity;
+      pScoring->pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
    }
 
    // MH: Fill sparse matrix for SpScore

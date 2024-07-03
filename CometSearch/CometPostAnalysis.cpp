@@ -607,7 +607,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          pOutput[i].fScoreSp = (float)((dTmpIntenMatch * iMatchedFragmentIonCt * (1.0 + dConsec)) /
             ((pOutput[i].iLenPeptide - 1.0) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
          // round Sp to 3 significant digits
-         pOutput[i].fScoreSp =  ( ((int)pOutput[i].fScoreSp)  * 100)  / 100.0;
+         pOutput[i].fScoreSp =  (float)(( ((int)pOutput[i].fScoreSp)  * 100)  / 100.0);
 
          pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
       }

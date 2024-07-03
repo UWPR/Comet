@@ -117,12 +117,12 @@ private:
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
-   static int BinarySearchIndexMass(int iWhichThread,
-                                    int iPrecursorBin,
-                                    int start,
-                                    int end,
-                                    double dQueryMass,
-                                    unsigned int *uiFragmentMass);
+   static size_t BinarySearchIndexMass(int iWhichThread,
+                                       int iPrecursorBin,
+                                       size_t start,
+                                       size_t end,
+                                       double dQueryMass,
+                                       unsigned int *uiFragmentMass);
    void SubtractVarMods(int *piVarModCounts,
                         int cResidue,
                         int iResiduePosition);
@@ -159,7 +159,7 @@ private:
                    int iFoundVariableMod,
                    double dCalcPepMass,
                    bool bDecoyPep,
-                   int iWhichQuery,
+                   size_t iWhichQuery,
                    int iLenPeptide,
                    int *piVarModSites,
                    struct sDBEntry *dbe,
@@ -195,7 +195,7 @@ private:
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
-   static void StorePeptideI(int iWhichQuery,
+   static void StorePeptideI(size_t iWhichQuery,
                      int iStartPos,
                      int iEndPos,
                      int iFoundVariableMod,

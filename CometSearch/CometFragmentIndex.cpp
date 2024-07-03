@@ -401,7 +401,7 @@ bool CometFragmentIndex::SortFragmentsByPepMass(unsigned int x, unsigned int y)
 
 void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
                                       int iWhichThread,
-                                      int iWhichPeptide,
+                                      size_t iWhichPeptide,
                                       int modNumIdx,
                                       short siNtermMod,
                                       short siCtermMod,
@@ -478,7 +478,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    if (!bCountOnly)
    {
       struct FragmentPeptidesStruct sTmp;
-      sTmp.iWhichPeptide = iWhichPeptide;
+      sTmp.iWhichPeptide = (int)iWhichPeptide;
       sTmp.modNumIdx = modNumIdx;
       sTmp.dPepMass = dCalcPepMass;
       sTmp.siNtermMod = siNtermMod;
@@ -489,7 +489,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
       // peptides, need to lock when updating to avoid thread conflicts
 
       Threading::LockMutex(_vFragmentPeptidesMutex);
-      uiCurrentFragmentPeptide = g_vFragmentPeptides.size();  // index of current peptide in g_vFragmentPeptides
+      uiCurrentFragmentPeptide = (unsigned int)g_vFragmentPeptides.size();  // index of current peptide in g_vFragmentPeptides
       if (g_vFragmentPeptides.size() >= UINT_MAX)
       {
          printf(" Error in CometFragmentIndex; UINT_MAX (%d) peptides reached.\n", UINT_MAX);
@@ -525,7 +525,7 @@ if (!(iWhichPeptide%5000))
    int iPrecursorBin = WhichPrecursorBin(dCalcPepMass);
 
    j = 0;
-   k = modSeq.size() - 1;
+   k = (int)modSeq.size() - 1;
 
    for (int i = 0; i < iEndPos; ++i)
    {
@@ -783,9 +783,9 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // now permute mods on the peptides
    PermuteIndexPeptideMods(g_vRawPeptides);
  
-   unsigned long ulSizeModSeqs = MOD_SEQS.size();              // size of MOD_SEQS
-   unsigned long ulSizevRawPeptides = g_vRawPeptides.size();   // size of g_vRawPeptides
-   unsigned long ulModNumSize = MOD_NUMBERS.size();            // size of MOD_NUMBERS
+   unsigned long ulSizeModSeqs = (unsigned long)MOD_SEQS.size();              // size of MOD_SEQS
+   unsigned long ulSizevRawPeptides = (unsigned long)g_vRawPeptides.size();   // size of g_vRawPeptides
+   unsigned long ulModNumSize = (unsigned long)MOD_NUMBERS.size();            // size of MOD_NUMBERS
 
    comet_fileoffset_t clPermutationsFilePos = comet_ftell(fp);
 
@@ -798,7 +798,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    int iTmp;
    for (unsigned long i = 0; i < ulSizeModSeqs; ++i)
    {
-      iTmp = MOD_SEQS[i].size();
+      iTmp = (int)MOD_SEQS[i].size();
       fwrite(&iTmp, sizeof(int), 1, fp); // write length
       fwrite(MOD_SEQS[i].c_str(), 1, iTmp, fp);
    }

@@ -39,7 +39,7 @@ private:
    static void GenerateFragmentIndex(ThreadPool *tp);
    static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
                             int iWhichThread,
-                            int iWhichPeptide,
+                            size_t iWhichPeptide,
                             int modNumIdx,
                             short siNtermMod,
                             short siCtermMod,

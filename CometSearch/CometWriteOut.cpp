@@ -253,7 +253,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
       if (g_staticParams.bIndexDb)  //index database
       {
-         uiNumTotProteins =  g_pvProteinsList.at(pOutput[i].lProteinFilePosition).size();
+         uiNumTotProteins =  (unsigned int)g_pvProteinsList.at(pOutput[i].lProteinFilePosition).size();
       }
 
       // Use iLenMaxDuplicates here to store largest duplicate count;

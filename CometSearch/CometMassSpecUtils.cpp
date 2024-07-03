@@ -216,7 +216,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
    char szDecoyProteinName[iDECOY_WIDTH_REFERENCE];
    std::vector<ProteinEntryStruct>::iterator it;
 
-   int iLenDecoyPrefix = strlen(g_staticParams.szDecoyPrefix);
+   int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
    if (g_staticParams.bIndexDb)  //index database
    {
@@ -227,7 +227,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       else
          pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
 
-      *uiNumTotProteins = g_pvProteinsList.at(pOutput[iWhichResult].lProteinFilePosition).size();
+      *uiNumTotProteins = (unsigned int)g_pvProteinsList.at(pOutput[iWhichResult].lProteinFilePosition).size();
 
       int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
 
@@ -273,7 +273,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
       int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
 
-      *uiNumTotProteins = pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size();
+      *uiNumTotProteins = (unsigned int)(pOutput[iWhichResult].pWhichProtein.size() + pOutput[iWhichResult].pWhichDecoyProtein.size());
 
       // targets + decoys, targets only, decoys only
  
@@ -348,7 +348,7 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpdb,
 
       comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
 
-      int iLenPeptide = strlen(pOutput[iWhichResult].szPeptide);
+      int iLenPeptide = (int)strlen(pOutput[iWhichResult].szPeptide);
 
       for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
       {
@@ -387,7 +387,7 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpdb,
          char* szSequence = (char*)malloc(strSeq.size() + 1);
          strcpy(szSequence, strSeq.c_str());
 
-         int iLenSequence = strlen(szSequence);
+         int iLenSequence = (int)strlen(szSequence);
          cs._proteinInfo.iTmpProteinSeqLength = iLenSequence; // used in CheckEnzymeTermini
 
          if (iWhichTerm == 0)
@@ -398,9 +398,9 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpdb,
             // Take first one consistent with the enzyme constraint for prev/next AA
             while( std::string::npos != ( iStartPos = (int)strSeq.find(pOutput[iWhichResult].szPeptide, iStartPos ) ) )
             {
-               int iEndPos = iStartPos + iLenPeptide - 1;
+               int iEndPos = (int)iStartPos + iLenPeptide - 1;
 
-               if (cs.CheckEnzymeTermini(szSequence, iStartPos, iEndPos))
+               if (cs.CheckEnzymeTermini(szSequence, (int)iStartPos, iEndPos))
                {
                   if (iStartPos == 0)
                      pOutput[iWhichResult].cPrevAA = '-';
