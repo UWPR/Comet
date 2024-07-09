@@ -796,12 +796,14 @@ bool CometSearch::RunSearch(int iPercentStart,
             // a memory issue for extremely large fasta files
             while (pSearchThreadPool->jobs_.size() >= 500)
             {
+/*
 #ifdef _WIN32
                Sleep(10);
 #else
                usleep(10);
 #endif
-//             pSearchThreadPool->wait_on_threads();
+*/
+               pSearchThreadPool->wait_on_threads();
             }
 
             // Now search sequence entry; add threading here so that
@@ -4002,7 +4004,12 @@ void CometSearch::StorePeptide(int iWhichQuery,
             }
             else if (iCmp == 0) // same sequence, compare mod state
             {
-               if (g_staticParams.variableModParameters.bVarModSearch)
+               if (strlen(pQuery->_pDecoys[siA].szPeptide) == 0)
+               {
+                  siLowestDecoyXcorrScoreIndex = siA;
+                  break;
+               }
+               else if (g_staticParams.variableModParameters.bVarModSearch)
                {
                   // different peptides with same mod state; replace last mod state
                   for (int x = 0; x < pQuery->_pDecoys[siA].iLenPeptide + 2; ++x)
@@ -4024,7 +4031,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
                {
                   // should not have gotten here; duplicate unmodified peptide would get
                   // flagged in CheckDuplicates
-                  printf("\n Error in StorePeptides. %s stored twice:  %d %lf, %d %lf\n",
+                  printf("\n Error in StorePeptides (decoys). %s stored twice:  %d %lf, %d %lf\n",
                         pQuery->_pDecoys[siA].szPeptide,
                         siA,
                         pQuery->_pDecoys[siA].fXcorr,
@@ -4196,7 +4203,12 @@ void CometSearch::StorePeptide(int iWhichQuery,
             }
             else if (iCmp == 0) // same sequence, compare mod state
             {
-               if (g_staticParams.variableModParameters.bVarModSearch)
+               if (strlen(pQuery->_pResults[siA].szPeptide) == 0)
+               {
+                  siLowestXcorrScoreIndex = siA;
+                  break;
+               }
+               else if (g_staticParams.variableModParameters.bVarModSearch)
                {
                   // same peptides with different mod state; replace last mod state
                   for (int x = 0; x < pQuery->_pResults[siA].iLenPeptide + 2; ++x)
