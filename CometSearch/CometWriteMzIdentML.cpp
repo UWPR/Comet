@@ -1048,7 +1048,7 @@ void CometWriteMzIdentML::WriteEnzyme(FILE *fpout)
    {
       sprintf(szRegExpression, "(?&lt;=[%s])", g_staticParams.enzymeInformation.szSearchEnzymeBreakAA);
       if (g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA[0] != '-')
-         sprintf(szRegExpression+strlen(szRegExpression), " (?!%s)", g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+         sprintf(szRegExpression+strlen(szRegExpression), "(?!%s)", g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
    }
    else
    {
@@ -1070,7 +1070,7 @@ void CometWriteMzIdentML::WriteEnzyme(FILE *fpout)
       {
          sprintf(szRegExpression, "(?&lt;=[%s])", g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA);
          if (g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA[0] != '-')
-            sprintf(szRegExpression+strlen(szRegExpression), " (?!%s)", g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+            sprintf(szRegExpression+strlen(szRegExpression), "(?!%s)", g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
       }
       else
       {
