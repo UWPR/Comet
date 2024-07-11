@@ -1058,9 +1058,12 @@ void CometWriteMzIdentML::WriteEnzyme(FILE *fpout)
       sprintf(szRegExpression+strlen(szRegExpression), "(?=[%s])", g_staticParams.enzymeInformation.szSearchEnzymeBreakAA);
    }
 
+   string sAdditionalEnzymeInfo = GetAdditionalEnzymeInfo(1);
+
    fprintf(fpout, "     <Enzyme id=\"ENZ\"  missedCleavages=\"%d\" semiSpecific=\"%s\">\n", 
          g_staticParams.enzymeInformation.iAllowedMissedCleavage, szSemi);
    fprintf(fpout, "      <SiteRegexp>(%s)</SiteRegexp>\n", szRegExpression);
+   fprintf(fpout, "%s", sAdditionalEnzymeInfo.c_str());
    fprintf(fpout, "     </Enzyme>\n");
 
    //search enzyme 2
@@ -1080,9 +1083,11 @@ void CometWriteMzIdentML::WriteEnzyme(FILE *fpout)
          sprintf(szRegExpression, "(?=[%s])", g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA);
       }
 
+      string sAdditionalEnzymeInfo = GetAdditionalEnzymeInfo(2);
       fprintf(fpout, "     <Enzyme id=\"ENZ2\"  missedCleavages=\"%d\" semiSpecific=\"%s\">\n", 
             g_staticParams.enzymeInformation.iAllowedMissedCleavage, szSemi);
       fprintf(fpout, "      <SiteRegexp>(%s)</SiteRegexp>\n", szRegExpression);
+      fprintf(fpout, "%s", sAdditionalEnzymeInfo.c_str());
       fprintf(fpout, "     </Enzyme>\n");
    }
   
@@ -1291,24 +1296,6 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
    fprintf(fpout, "   <SpectrumIdentificationList id=\"SIL\">\n");
 
    long lCount = 1;
-
-/*
-   int    iScanNumber;
-   int    iXcorrRank;
-   int    iCharge;
-   double dExpMass;   // neutral experimental mass
-   double dCalcMass;  // neutral calculated mass
-   double dExpect;
-   float  fXcorr;
-   float  fCn;
-   float  fSp;
-   int    iRankSp;
-   string strPeptide;
-   char   cPrevNext[3];
-   string strMods;
-   string strProtsTarget;   // delimited list of "offsets:iStartResidue;" pairs
-   string strProtsDecoy;    // delimited list of "offsets:iStartResidue;" pairs
-*/
 
    double dPrevRT = 0;
    for (std::vector<MzidTmpStruct>::iterator itMzid = (*vMzid).begin(); itMzid < (*vMzid).end(); ++itMzid)
@@ -1558,4 +1545,96 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          fprintf(fpout, "\n");
       }
    }
+}
+
+
+string CometWriteMzIdentML::GetAdditionalEnzymeInfo(int iWhichEnzyme)
+{
+   string sBreakAA;
+   string sNoBreakAA;
+   string sReturnString = "";
+   int iOffSet;
+
+   if (iWhichEnzyme == 1)
+   {
+      iOffSet = g_staticParams.enzymeInformation.iSearchEnzymeOffSet;
+      sBreakAA = g_staticParams.enzymeInformation.szSearchEnzymeBreakAA;
+      sNoBreakAA = g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA;
+   }
+   else // 2nd enzyme
+   {
+      iOffSet = g_staticParams.enzymeInformation.iSearchEnzyme2OffSet;
+      sBreakAA = g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA;
+      sNoBreakAA = g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA;
+   }
+
+   sReturnString  = "      <EnzymeName>\n";
+   if (sNoBreakAA.length() == 1)
+   {
+      if (iOffSet == 1)
+      {
+         if (sBreakAA.length() == 1)
+         {
+            if (sBreakAA == "K" && sNoBreakAA == "P")
+            {
+               sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001335\" name=\"Lys-C\"/>\n";
+            }
+            else if (sBreakAA == "R" && sNoBreakAA == "P")
+            {
+               sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001272\" name=\"Arg-C\"/>\n";
+            }
+            else if (sBreakAA == "M" && sNoBreakAA == "-")
+            {
+               sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001333\" name=\"CNBr\"/>\n";
+            }
+         }
+         else if (sBreakAA.length() == 2)
+         {
+            if (sBreakAA.find('K')!=std::string::npos && sBreakAA.find('R')!=std::string::npos && sNoBreakAA == "P")
+            {
+               sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001251\" name=\"Trypsin\"/>\n";
+            }
+            else if (sBreakAA.find('K')!=std::string::npos && sBreakAA.find('R')!=std::string::npos && sNoBreakAA == "-")
+            {
+               sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001313\" name=\"Trypsin/P\"/>\n";
+            }
+            else if (sBreakAA.find('D')!=std::string::npos && sBreakAA.find('E')!=std::string::npos && sNoBreakAA == "-")
+            {
+               sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001274\" name=\"Asp-N_ambic\"/>\n";
+            }
+            else if (sBreakAA.find('F')!=std::string::npos && sBreakAA.find('L')!=std::string::npos && sNoBreakAA == "-")
+            {
+               sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001337\" name=\"PepsinA\"/>\n";
+            }
+         }
+         else if (sBreakAA.length() == 4)
+         {
+            if (sBreakAA.find('F')!=std::string::npos && sBreakAA.find('W')!=std::string::npos
+                  && sBreakAA.find('Y')!=std::string::npos && sBreakAA.find('L')!=std::string::npos && sNoBreakAA == "P")
+            {
+               sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001332\" name=\"Chymotrypsin\"/>\n";
+            }
+         }
+   
+      }
+      else if (iOffSet == 0)
+      {
+         if (sBreakAA.length() == 2 && sBreakAA.find('N')!=std::string::npos
+               && sBreakAA.find('D')!=std::string::npos && sNoBreakAA == "-")
+         {
+            sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001273\" name=\"Asp-N\"/>\n";
+         }
+         else if (sBreakAA == "K" && sNoBreakAA == "-")
+         {
+            sReturnString += "       <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001335\" name=\"Lys-N\"/>\n";
+         }
+      }
+      sReturnString += "      </EnzymeName>\n";
+   }
+
+   // if it does not contain "<cvParam" string, that means no enzyme match
+   if (sReturnString.find("<cvParam") == std::string::npos)
+      sReturnString = "";
+
+   return sReturnString;
 }

@@ -84,6 +84,8 @@ private:
                                  string *strModID,
                                  string *strModRef,
                                  string *strModName);
+
+   static string GetAdditionalEnzymeInfo(int iWhichEnzyme);
  
    static void WriteEnzyme(FILE *fpout);
 

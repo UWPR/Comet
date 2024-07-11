@@ -1925,10 +1925,10 @@ fprintf(fp,
 3.  Lys_C                  1      K           P\n\
 4.  Lys_N                  0      K           -\n\
 5.  Arg_C                  1      R           P\n\
-6.  Asp_N                  0      D           -\n\
+6.  Asp_N                  0      DN          -\n\
 7.  CNBr                   1      M           -\n\
-8.  Glu_C                  1      DE          P\n\
-9.  PepsinA                1      FL          P\n\
+8.  Asp-N_ambic            1      DE          -\n\
+9.  PepsinA                1      FL          -\n\
 10. Chymotrypsin           1      FWYL        P\n\
 11. No_cut                 1      @           @\n\
 \n");
