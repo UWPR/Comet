@@ -1402,7 +1402,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
 
    if (dPrevRT > 0.0)
    {
-      fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000894\" name=\"retention time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", dPrevRT);
+      fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000016\" name=\"start scan time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", dPrevRT);
    }
 
    fprintf(fpout, "    </SpectrumIdentificationResult>\n");
