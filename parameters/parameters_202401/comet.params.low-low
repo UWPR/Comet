@@ -147,10 +147,10 @@ add_Z_user_amino_acid = 0.0000         # added to Z - avg.   0.0000, mono.   0.0
 3.  Lys_C                  1      K           P
 4.  Lys_N                  0      K           -
 5.  Arg_C                  1      R           P
-6.  Asp_N                  0      D           -
+6.  Asp_N                  0      DN          -
 7.  CNBr                   1      M           -
-8.  Glu_C                  1      DE          P
-9.  PepsinA                1      FL          P
+8.  Asp-N_ambic            1      DE          -
+9.  PepsinA                1      FL          -
 10. Chymotrypsin           1      FWYL        P
 11. No_cut                 1      @           @
 
