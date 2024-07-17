@@ -5,6 +5,19 @@ here](/Comet/parameters/parameters_202401/).
 
 Download release [here](https://github.com/UWPR/Comet/releases).
 
+#### release 2024.01 rev. 1 (2024.01.1), release date 2024/07/17
+
+- Report the previous and next amino acid residues in the fragment ion index search output.  Previously the index search did not track this information and simply returned '-' for the preceding and trailing residues. Thanks to E. Bergstrom for tracking this and the other issues in the fragment ion index project.
+- Remove the lower limit to allow smaller than 0.01 [fragment_bin_tol](https://uwpr.github.io/Comet/parameters/parameters_202401/fragment_bin_tol.html) values.  Thanks to I. Smith for reporting the presence of this lower limit in the code.
+- Adds support for the new parameter "[pinfile_protein_delimiter](https://uwpr.github.io/Comet/parameters/parameters_202401/pinfile_protein_delimiter.html)" which will replace the Percolator pin file protein field delimiter from a tab to the specified character or string.  If this parameter entry is left blank the protein field delimiter remains a tab.  This is a hidden parameter in that it doesn't appear in the example comet.params files that can be downloaded from the Comet website.  Nor is it present in the abbreviated "comet.params.new" file generated with "comet -p".  It will be present in the full "comet.param.new" file generated with "comet -q". Thanks to S. Paez for requesting this feature in issue #66. (I should not that I also deprecated a previously undocumented "pin_mod_proteindelim" parameter that, when set, changed the pin file protein delimiter to a comma from the tab.)
+- Fix backwards compatibility with the old/retired [peptide_mass_tolerance](https://uwpr.github.io/Comet/parameters/parameters_202301/peptide_mass_tolerance.html) parameter.  Although this parameter has been replaced by [peptide_mass_tolerance_lower](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_lower.html) and [peptide_mass_tolerance_upper](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_upper.html), Comet code was intended to continue supporting the old [peptide_mass_tolerance](https://uwpr.github.io/Comet/parameters/parameters_202301/peptide_mass_tolerance.html) parameter.  During a late change to support the new parameters, I broke support for the old parameter.  This is addressed by commit 23a3901.  Thanks to C. Bielow for posting this issue #60.
+- Searches will stall when a fasta sequence loading threshold has been hit; addressed by commit e5cf236.  Thanks to C. Bielow for posting the issue #62.
+- A logic error in the StorePeptide() kills the search as I did not properly account for the strcmp() string comparison returning true when one of the strings is empty.  This was also addressed by commit e5cf236.  Thanks to C. Bielow for posting the issue #63.
+- Fix the mzIdentML output regular expression for the digestion enzyme, removing an extra space in the regular expression.  Also added the more complete EnzymeName element which references the PSI-MS ontology for common enzymes.  These were addressed by commit 754514f.  Thanks to J. Uszkoreit for posting the issue #64.
+- Asp_N, Asp-N_ambic, and PepsinA enzyme definitions in comet.params.new are now updated as part of commit 754514f.
+- Change the ppm tolerances to be applied to m/z instead of the deconvoluted mass.  There are slight differences between the two that become apparent in extremely large ppm tolerances; in practice this change doesn't really do anything.  This change was prompted by [issue #689](https://github.com/crux-toolkit/crux-toolkit/issues/689) on the crux-toolkit repository.
+- macOS builds now use the macos-13 runner for compiling binaries as the macos-11 runner has been deprecated by GitHub.
+
 #### release 2024.01 rev. 0 (2024.01.0), release date 2024/05/06
 
 - Add the parameters
