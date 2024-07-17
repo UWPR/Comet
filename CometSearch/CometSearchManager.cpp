@@ -649,8 +649,6 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("clip_nterm_aa", g_staticParams.options.bClipNtermAA);
 
-   GetParamValue("pin_mod_proteindelim", g_staticParams.options.bPinModProteinDelim);
-
    GetParamValue("minimum_xcorr", g_staticParams.options.dMinimumXcorr);
 
    GetParamValue("theoretical_fragment_ions", g_staticParams.ionInformation.iTheoreticalFragmentIons);
@@ -1192,6 +1190,12 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("activation_method", strData))
       strcpy(g_staticParams.options.szActivationMethod, strData.c_str());
 
+   if (GetParamValue("pinfile_protein_delimiter", strData))
+   {
+      if (strData.length() > 0)
+         g_staticParams.options.sPinProteinDelimiter = strData;
+   }
+
    GetParamValue("minimum_intensity", g_staticParams.options.dMinIntensity);
    if (g_staticParams.options.dMinIntensity < 0.0)
       g_staticParams.options.dMinIntensity = 0.0;
@@ -1625,6 +1629,12 @@ bool CometSearchManager::InitializeStaticParams()
          else
             g_bIndexPrecursors[x] = false; // set all precursors as invalid; valid precursors will be determined in ReadPrecursors
       }
+   }
+
+   if (g_staticParams.tolerances.dInputToleranceMinus > g_staticParams.tolerances.dInputTolerancePlus)
+   {
+      printf("\n Error: mass_tolerance_lower is greater than mass_tolerance_upper so no peptides will be analyzed.\n");
+      return false;
    }
 
    return true;

@@ -280,12 +280,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)
       {
          if (bPrintTab)
-         {
-            if (g_staticParams.options.bPinModProteinDelim)
-               fprintf(fpout, ",");
-            else
-               fprintf(fpout, "\t");
-         }
+            fprintf(fpout, "%s", g_staticParams.options.sPinProteinDelimiter.c_str());
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintTab = true;
@@ -297,12 +292,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); ++it)
       {
          if (bPrintTab)
-         {
-            if (g_staticParams.options.bPinModProteinDelim)
-               fprintf(fpout, ",");
-            else
-               fprintf(fpout, "\t");
-         }
+            fprintf(fpout, "%s", g_staticParams.options.sPinProteinDelimiter.c_str());
 
          fprintf(fpout, "%s", (*it).c_str());
          bPrintTab = true;

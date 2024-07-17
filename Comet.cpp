@@ -351,7 +351,6 @@ void LoadParameters(char *pszParamsFile,
                szDecoyPrefix[0] = '\0';
                sscanf(szParamVal, "%255s", szDecoyPrefix);
                pSearchMgr->SetParam("decoy_prefix", szDecoyPrefix, szDecoyPrefix);
-
             }
             else if (!strcmp(szParamName, "output_suffix"))
             {
@@ -499,12 +498,6 @@ void LoadParameters(char *pszParamsFile,
                sscanf(szParamVal, "%d", &iIntParam);
                sprintf(szParamStringVal, "%d", iIntParam);
                pSearchMgr->SetParam("clip_nterm_aa", szParamStringVal, iIntParam);
-            }
-            else if (!strcmp(szParamName, "pin_mod_proteindelim"))
-            {
-               sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
-               pSearchMgr->SetParam("pin_proteindelim_comma", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "minimum_xcorr"))
             {
@@ -1335,6 +1328,13 @@ void LoadParameters(char *pszParamsFile,
                   sprintf(szParamStringVal, "%d", iIntParam);
                   pSearchMgr->SetParam("scale_fragmentNL", szParamStringVal, iIntParam);
                }
+               else if (!strcmp(szParamName, "pinfile_protein_delimiter"))
+               {
+                  char szDelimiter[256];
+                  szDelimiter[0] = '\0';
+                  sscanf(szParamVal, "%255s", szDelimiter);
+                  pSearchMgr->SetParam("pinfile_protein_delimiter", szDelimiter, szDelimiter);
+               }
                else if (!strcmp(szParamName, "max_iterations"))
                {
                   sscanf(szParamVal, "%ld", &lLongParam);
@@ -1814,6 +1814,8 @@ peptide_length_range = 5 50            # minimum and maximum peptide length to a
 
    if (iPrintParams == 2)
    {
+      fprintf(fp,
+"pinfile_protein_delimiter =            # blank = default 'tab' delimiter between proteins; enter a char/string to use in place of the tab; Percolator pin output only\n");
       fprintf(fp,
 "num_results = 100                      # number of results to store internally for Sp rank only; if Sp rank is not used, set this to num_output_lines\n");
    }
