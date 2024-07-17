@@ -1522,8 +1522,21 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    }
    else // ppm
    {
-      pScoring->_pepMassInfo.dPeptideMassToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus * pScoring->_pepMassInfo.dExpPepMass / 1E6;
-      pScoring->_pepMassInfo.dPeptideMassToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus * pScoring->_pepMassInfo.dExpPepMass / 1E6;
+      int iCharge = pScoring->_spectrumInfoInternal.iChargeState;
+
+      double dMZ = (pScoring->_pepMassInfo.dExpPepMass + (iCharge - 1) * PROTON_MASS) / iCharge;
+
+      // calculate lower/upper ppm bounds in m/z
+      double dBoundLower = dMZ + (dMZ * g_staticParams.tolerances.dInputToleranceMinus / 1E6); // dInputToleranceMinus typically has negative sign
+      double dBoundUpper = dMZ + (dMZ * g_staticParams.tolerances.dInputTolerancePlus  / 1E6);
+
+      // convert m/z bounds to neutral mass then add a proton as Comet uses protonated ranges
+      double dProtonatedLower = (dBoundLower * iCharge) - (iCharge * PROTON_MASS) + PROTON_MASS;
+      double dProtonatedUpper = (dBoundUpper * iCharge) - (iCharge * PROTON_MASS) + PROTON_MASS;
+
+      // these are now the mass difference from exp mass (experimental MH+ mass) to lower/upper bounds
+      pScoring->_pepMassInfo.dPeptideMassToleranceLow  = dProtonatedLower - pScoring->_pepMassInfo.dExpPepMass; // usually negative
+      pScoring->_pepMassInfo.dPeptideMassToleranceHigh = dProtonatedUpper - pScoring->_pepMassInfo.dExpPepMass; // usually positive
    }
 
    if (g_staticParams.tolerances.iIsotopeError == 0)
