@@ -6765,6 +6765,7 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
                if (iWhichQuery != -1)
                {
                   bool bFirstTimeThroughLoopForPeptide = true;
+                  bool bFirstTimeThroughLoopForDecoyPeptide = true;
 
                   // Compare calculated fragment ions against all matching query spectra.
                   while (iWhichQuery < (int)g_pvQuery.size())
@@ -6780,6 +6781,8 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
                      if (CheckMassMatch(iWhichQuery, dModMass))
                      {
                         char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];  // Allow for prev/next AA in string.
+                        int iDecoyStartPos;       // This is start/end for newly created decoy peptide
+                        int iDecoyEndPos;
 
                         // Calculate ion series just once to compare against all relevant query spectra.
                         if (bFirstTimeThroughLoopForPeptide && !g_staticParams.options.bCreateIndex)
@@ -6895,7 +6898,6 @@ printf(" \b"); fflush(stdout);  // to run to completion until I can figure out w
                                  }
                               }
                            }
-
                         }
 
                         if (bFirstTimeThroughLoopForPeptide)
@@ -6905,7 +6907,7 @@ printf(" \b"); fflush(stdout);  // to run to completion until I can figure out w
                               dModMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
 
                         // Also take care of decoy here.
-                        if (g_staticParams.options.iDecoySearch)
+                        if (g_staticParams.options.iDecoySearch && bFirstTimeThroughLoopForDecoyPeptide && !g_staticParams.options.bCreateIndex)
                         {
                            // Generate reverse peptide.  Keep prev and next AA in szDecoyPeptide string.
                            // So actual reverse peptide starts at position 1 and ends at len-2 (as len-1
@@ -6966,15 +6968,13 @@ printf(" \b"); fflush(stdout);  // to run to completion until I can figure out w
                            if (iEndPos == iProteinSeqLengthMinus1)
                               dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
-                           int iDecoyStartPos;       // This is start/end for newly created decoy peptide
-                           int iDecoyEndPos;
                            int iPosForward;
                            int iPosReverse;
 
                            iDecoyStartPos = 1;
                            iDecoyEndPos = (int)strlen(szDecoyPeptide)-2;
 
-                           for (int i=iDecoyStartPos; i<iDecoyEndPos; i++)
+                           for (int i = iDecoyStartPos; i < iDecoyEndPos; ++i)
                            {
                               iPosForward = i - iDecoyStartPos;
                               iPosReverse = iDecoyEndPos - iPosForward;
@@ -6986,8 +6986,8 @@ printf(" \b"); fflush(stdout);  // to run to completion until I can figure out w
                               _pdAAforwardDecoy[iPosForward] = dBion;
 
                               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iPosReverse]];
-                              if (piVarModSitesDecoy[iDecoyEndPos - iDecoyStartPos] >= COMPOUNDMODS_OFFSET)
-                                 dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSitesDecoy[iDecoyEndPos - iDecoyStartPos] - COMPOUNDMODS_OFFSET);
+                              if (piVarModSitesDecoy[iDecoyEndPos - i] >= COMPOUNDMODS_OFFSET)
+                                 dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSitesDecoy[iDecoyEndPos - i] - COMPOUNDMODS_OFFSET);
 
                               _pdAAreverseDecoy[iPosForward] = dYion;
                            }
@@ -7061,9 +7061,15 @@ printf(" \b"); fflush(stdout);  // to run to completion until I can figure out w
                                  }
                               }
                            }
+                        }
 
-                           XcorrScore(szDecoyPeptide, iStartPos, iEndPos, 1, iLenPeptide, 1,
-                                 dModMass, true, iWhichQuery, iLenPeptide, piVarModSites, dbe);
+                        if (g_staticParams.options.iDecoySearch)
+                        {
+                           iDecoyStartPos = 1;
+                           iDecoyEndPos = (int)strlen(szDecoyPeptide)-2;
+
+                           XcorrScore(szDecoyPeptide, iDecoyStartPos, iDecoyEndPos, 1, iLenPeptide, 1,
+                                 dModMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
                         }
                      }
 
