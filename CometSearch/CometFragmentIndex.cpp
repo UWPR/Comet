@@ -401,7 +401,7 @@ bool CometFragmentIndex::SortFragmentsByPepMass(unsigned int x, unsigned int y)
 
 void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
                                       int iWhichThread,
-                                      size_t iWhichPeptide,
+                                      int iWhichPeptide,
                                       int modNumIdx,
                                       short siNtermMod,
                                       short siCtermMod,
@@ -478,7 +478,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    if (!bCountOnly)
    {
       struct FragmentPeptidesStruct sTmp;
-      sTmp.iWhichPeptide = (int)iWhichPeptide;
+      sTmp.iWhichPeptide = iWhichPeptide;
       sTmp.modNumIdx = modNumIdx;
       sTmp.dPepMass = dCalcPepMass;
       sTmp.siNtermMod = siNtermMod;
@@ -609,12 +609,12 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    logout(strOut.c_str());
    fflush(stdout);
 
+   // Allocate memory shared by threads during search
    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+       return bSucceeded;
 
-   g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
-   g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
-
-   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
+ //  tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;
    else
@@ -1124,6 +1124,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    }
 
    fclose(fp);
+
+   g_bPlainPeptideIndexRead = true;
 
    return true;
 }

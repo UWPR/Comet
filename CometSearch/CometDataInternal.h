@@ -958,8 +958,7 @@ extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiab
 extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;
-extern bool g_bFragmentIndexRead;       // set to true when fragment index file is read
-extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read
+extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
@@ -1120,6 +1119,7 @@ struct Query
 extern vector<Query*>          g_pvQuery;
 extern vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
+extern Mutex                   g_pvDBIndexMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
 extern Mutex                   g_searchMemoryPoolMutex;
 extern Mutex                   g_dbIndexMutex;

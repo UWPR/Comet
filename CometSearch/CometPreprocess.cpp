@@ -652,6 +652,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
       }
 
       Threading::LockMutex(g_pvQueryMutex);
+
       if (CheckExit(iAnalysisType,
                     iScanNumber,
                     iTotalScans,
@@ -1994,6 +1995,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    g_massRange.dMinMass = pScoring->_pepMassInfo.dExpPepMass;
    g_massRange.dMaxMass = pScoring->_pepMassInfo.dExpPepMass;
+   g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
 
    if (iPrecursorCharge == 1)
       pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;
@@ -2043,9 +2045,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
-//   Threading::LockMutex(_maxChargeMutex);
-   g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
-//   Threading::UnlockMutex(_maxChargeMutex);
 
    // initialize these temporary arrays before re-using
    size_t iTmp= (size_t)(pScoring->_spectrumInfoInternal.iArraySize)*sizeof(double);
@@ -2057,7 +2056,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
    memset(pdTmpCorrelationData, 0, iTmp);
- 
+
    // Loop through single spectrum and store in pdTmpRawData array
    double dIon=0,
           dIntensity=0;
