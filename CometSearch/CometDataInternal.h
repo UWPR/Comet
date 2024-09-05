@@ -50,7 +50,6 @@ class CometSearchManager;
 #define NUM_SP_IONS                 1000     // num ions for preliminary scoring
 #define NUM_ION_SERIES              7        // a,b,c,x,y,z,z1
 #define EXPECT_DECOY_SIZE           3000     // number of decoy entries in CometDecoys.h
-#define BIN_MOD_COUNT               16       // size of 4th dimension of uiBinnedIonMasses; covers unmodified ions (0), mod NL (1-15)
 
 #define WIDTH_REFERENCE             512      // length of the protein accession field to store
 #define MAX_PROTEINS                50       // maximum number of proteins to return for each query; for index search only right now
@@ -59,7 +58,8 @@ class CometSearchManager;
 
 #define NO_PEFF_VARIANT             -127
 
-#define VMODS                       15
+#define FRAGINDEX_VMODS             5        // only parse first five variable mods for fragment ion index searches
+#define VMODS                       15       // also "VMODS+1" is 4th dimension of uiBinnedIonMasses to cover unmodified ions (0), mod NL (1-15)
 #define VMOD_1_INDEX                0
 #define VMOD_2_INDEX                1
 #define VMOD_3_INDEX                2

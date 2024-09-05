@@ -163,7 +163,7 @@ private:
                    int iLenPeptide,
                    int *piVarModSites,
                    struct sDBEntry *dbe,
-                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT],
+                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][FRAGINDEX_VMODS+1],
                    unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
                    int iNumMatchedFragmentIons);
    bool CheckMassMatch(int iWhichQuery,
@@ -246,11 +246,6 @@ private:
    bool TranslateNA2AA(int *frame,
                        int iDirection,
                        char *sDNASequence);
-   void AnalyzeIndexPep(int iWhichQuery,
-                        DBIndex sTmp,
-                        bool *pbDuplFragment,
-                        struct sDBEntry *dbe);
-
 
    char GetAA(int i,
               int iDirection,
@@ -305,8 +300,8 @@ private:
    int                _iSizepdVarModSites;
    VarModInfo         _varModInfo;
 
-   unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
-   unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][BIN_MOD_COUNT];
+   unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 1];
+   unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 1];
    unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
    unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 

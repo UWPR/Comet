@@ -98,7 +98,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vR
    // iMaxNumVariableMods is the maximum # of mods per any variable_modXX entry used in the bitmasks
    int iMaxNumVariableMods = 0;
 
-   for (int i = 0; i < VMODS; ++i)
+   for (int i = 0; i < FRAGINDEX_VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
          && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
@@ -294,23 +294,23 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
       if (g_staticParams.variableModParameters.bVarTermModSearch)
       {
          // Add any n-term variable mods
-         for (short ctNtermMod=0; ctNtermMod<VMODS; ++ctNtermMod)
+         for (short ctNtermMod=0; ctNtermMod<FRAGINDEX_VMODS; ++ctNtermMod)
          {
             if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod)
                AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, ctNtermMod, -1, bCountOnly);
          }
 
          // Add any c-term variable mods
-         for (short ctCtermMod=0; ctCtermMod<VMODS; ++ctCtermMod)
+         for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
          {
             if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
                AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, -1, ctCtermMod, bCountOnly);
          }
 
          // Now consider combinations of n-term and c-term variable mods
-         for (short ctNtermMod=0; ctNtermMod<VMODS; ++ctNtermMod)
+         for (short ctNtermMod=0; ctNtermMod< FRAGINDEX_VMODS; ++ctNtermMod)
          {
-            for (short ctCtermMod=0; ctCtermMod<VMODS; ++ctCtermMod)
+            for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
             {
                if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
                      && g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
@@ -340,23 +340,23 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
          if (g_staticParams.variableModParameters.bVarTermModSearch)
          {
             // Add any n-term variable mods
-            for (short ctNtermMod=0; ctNtermMod<VMODS; ++ctNtermMod)
+            for (short ctNtermMod=0; ctNtermMod< FRAGINDEX_VMODS; ++ctNtermMod)
             {
                if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod)
                   AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, ctNtermMod, -1, bCountOnly);
             }
 
             // Add any c-term variable mods
-            for (short ctCtermMod=0; ctCtermMod<VMODS; ++ctCtermMod)
+            for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
             {
                if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
                   AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, -1, ctCtermMod, bCountOnly);
             }
 
             // Now consider combinations of n-term and c-term variable mods
-            for (short ctNtermMod=0; ctNtermMod<VMODS; ++ctNtermMod)
+            for (short ctNtermMod=0; ctNtermMod< FRAGINDEX_VMODS; ++ctNtermMod)
             {
-               for (short ctCtermMod=0; ctCtermMod<VMODS; ++ctCtermMod)
+               for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
                {
                   if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
                         && g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
@@ -735,7 +735,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    // write VariableMod:
    fprintf(fp, "VariableMod:");
-   for (int x = 0; x < VMODS; ++x)
+   for (int x = 0; x < FRAGINDEX_VMODS; ++x)
       fprintf(fp, " %lf:%lf:%s", g_staticParams.variableModParameters.varModList[x].dVarModMass,
          g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
          g_staticParams.variableModParameters.varModList[x].szVarModChar);
@@ -959,14 +959,11 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          char szMod3[512];
          char szMod4[512];
          char szMod5[512];
-         char szMod6[512];
-         char szMod7[512];
-         char szMod8[512];
-         char szMod9[512];
 
-         sscanf(szBuf + 12, "%s %s %s %s %s %s %s %s %s",
-            szMod1, szMod2, szMod3, szMod4, szMod5, szMod6, szMod7, szMod8, szMod9);
-         
+         sscanf(szBuf + 12, "%s %s %s %s %s",
+            szMod1, szMod2, szMod3, szMod4, szMod5);
+
+         // parse FRAGINDEX_VMODS number of mods; FIX: make this into a loop over FRAGINDEX_VMODS
          sscanf(szMod1, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[0].dVarModMass),
             &(g_staticParams.variableModParameters.varModList[0].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[0].szVarModChar);
@@ -987,23 +984,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
             &(g_staticParams.variableModParameters.varModList[4].dNeutralLoss),
             g_staticParams.variableModParameters.varModList[4].szVarModChar);
 
-         sscanf(szMod6, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[5].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[5].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[5].szVarModChar);
-
-         sscanf(szMod7, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[6].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[6].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[6].szVarModChar);
-
-         sscanf(szMod8, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[7].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[7].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[7].szVarModChar);
-
-         sscanf(szMod9, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[8].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[8].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[8].szVarModChar);
-
-         for (int x = 0; x < VMODS; ++x)
+         for (int x = 0; x < FRAGINDEX_VMODS; ++x)
          {
             if (g_staticParams.variableModParameters.varModList[x].dVarModMass != 0.0)
             {

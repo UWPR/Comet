@@ -669,7 +669,7 @@ bool CometPostAnalysis::SortFnXcorr(const Results &a,
          return false;
       else  // same peptide, check mod state
       {
-         for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
+         for (int i = 0; i < a.iLenPeptide + 2; ++i)
          {
             if (a.piVarModSites[i] < b.piVarModSites[i])
                return true;
@@ -689,7 +689,7 @@ bool CometPostAnalysis::SortFnMod(const Results &a,
    // must compare character at a time
    // actually not sure why strcmp doesn't work
    // as piVarModSites is a char array
-   for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
+   for (int i = 0; i < a.iLenPeptide + 2; ++i)
    {
       if (a.piVarModSites[i] < b.piVarModSites[i])
          return true;

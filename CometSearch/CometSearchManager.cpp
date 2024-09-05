@@ -2717,27 +2717,34 @@ bool CometSearchManager::DoSearch()
 
                   for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
                   {
-                     int iNtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[0];
-                     int iCtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide - 1];
+                     if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide > 0 && g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].fXcorr > XCORR_CUTOFF)
+                     {
+                        int iNtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[0];
+                        int iCtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide - 1];
 
-                     if (iNtermMod != 0
-                        && g_staticParams.variableModParameters.varModList[iNtermMod - 1].iVarModTermDistance == 0
-                        && g_staticParams.variableModParameters.varModList[iNtermMod - 1].iWhichTerm ==  0)
-                     {
-                        // only match to peptides at the N-terminus of proteins as protein terminal mod applied
-                        CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 1);
-                     }
-                     else if (iCtermMod != 0
-                        && g_staticParams.variableModParameters.varModList[iCtermMod - 1].iVarModTermDistance == 0
-                        && g_staticParams.variableModParameters.varModList[iCtermMod - 1].iWhichTerm ==  1)
-                     {
-                        // only match to peptides at the C-terminus of proteins as protein terminal mod applied
-                        CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 2);
-                     }
-                     else
-                     {
-                        // peptide can be anywhere in sequence
-                        CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 0);
+                        if (!(iNtermMod <0 || iNtermMod > FRAGINDEX_VMODS) && !(iCtermMod < 0 || iCtermMod > FRAGINDEX_VMODS))
+                        {
+                           if (iNtermMod > 0
+                              && g_staticParams.variableModParameters.varModList[iNtermMod - 1].iVarModTermDistance == 0
+                              && g_staticParams.variableModParameters.varModList[iNtermMod - 1].iWhichTerm == 0)
+                           {
+                              // only match to peptides at the N-terminus of proteins as protein terminal mod applied
+                              CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 1);
+                           }
+                           else if (iCtermMod > 0
+                              && g_staticParams.variableModParameters.varModList[iCtermMod - 1].iVarModTermDistance == 0
+                              && g_staticParams.variableModParameters.varModList[iCtermMod - 1].iWhichTerm == 1)
+                           {
+                              // only match to peptides at the C-terminus of proteins as protein terminal mod applied
+                              CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 2);
+                           }
+                           else
+                           {
+
+                              // peptide can be anywhere in sequence
+                              CometMassSpecUtils::GetPrevNextAA(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, 0);
+                           }
+                        }
                      }
                   }
                }
