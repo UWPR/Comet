@@ -132,7 +132,7 @@ void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
 
    int iLastEntry = 0;
    for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
-      if (pOutput[iWhichResult].fXcorr > 0.0000001)
+      if (pOutput[iWhichResult].fXcorr > FLOAT_ZERO)
          iLastEntry = iWhichResult;
 
    for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
@@ -169,7 +169,7 @@ void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
             // calculate deltaCn only if sequences are less than 0.75 similar
             if (g_staticParams.options.bExplicitDeltaCn || ((double)(iMinLength - iDiffCt) / iMinLength) < 0.75)
             {
-               if (pOutput[iWhichResult].fXcorr > 0.0000001 && pOutput[j].fXcorr > 0.0000001)
+               if (pOutput[iWhichResult].fXcorr > FLOAT_ZERO && pOutput[j].fXcorr > FLOAT_ZERO)
                   dDeltaCn = 1.0 - (pOutput[j].fXcorr / pOutput[iWhichResult].fXcorr);
                else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
                   dDeltaCn = 0.0;
@@ -193,7 +193,7 @@ void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
 
       if (g_staticParams.options.bExportAdditionalScoresPepXML)
       {
-         if (pOutput[iWhichResult].fXcorr > 0.0000001 && pOutput[iLastEntry].fXcorr > 0.0000001)
+         if (pOutput[iWhichResult].fXcorr > FLOAT_ZERO && pOutput[iLastEntry].fXcorr > FLOAT_ZERO)
             dLastDeltaCn = 1.0 - (pOutput[iLastEntry].fXcorr / pOutput[iWhichResult].fXcorr);
          else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iLastEntry].fXcorr < 0.0)
             dLastDeltaCn = 0.0;
@@ -337,10 +337,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          {
             sort(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp);
 
-            //       Sadly this erase(unique()) code doesn't work; it leaves only first entry in vector
-            //       pOutput[i].pWhichProtein.erase(unique(pOutput[i].pWhichProtein.begin(), pOutput[i].pWhichProtein.end(), ProteinEntryCmp),
-            //             pOutput[i].pWhichProtein.end());
-
+            // erase duplicate proteins in the list
             comet_fileoffset_t lPrev = 0;
             for (std::vector<ProteinEntryStruct>::iterator it = pOutput[i].pWhichProtein.begin(); it != pOutput[i].pWhichProtein.end(); )
             {
@@ -372,7 +369,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          }
       }
 
-      if (pOutput[i].iLenPeptide>0) // take care of possible edge case
+      if (pOutput[i].iLenPeptide > 0 && pOutput[i].fXcorr > XCORR_CUTOFF) // take care of possible edge case
       {
          int  ii;
          int  ctCharge;
@@ -496,7 +493,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                   // Gets fragment ion mass.
                   dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
 
-                  if ( dFragmentIonMass > FLOAT_ZERO)
+                  if (dFragmentIonMass > FLOAT_ZERO)
                   {
                      int iFragmentIonMass = BIN(dFragmentIonMass);
                      float fSpScore;

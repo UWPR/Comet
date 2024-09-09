@@ -702,6 +702,7 @@ struct StaticParams
    EnzymeInfo      enzymeInformation;
    MassUtil        massUtility;
    double          dInverseBinWidth;    // this is used in BIN() many times so use inverse binWidth to do multiply vs. divide
+   int             iArraySizeGlobal;    // (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth)
    double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
@@ -744,6 +745,7 @@ struct StaticParams
        enzymeInformation = a.enzymeInformation;
        massUtility = a.massUtility;
        dInverseBinWidth = a.dInverseBinWidth;
+       iArraySizeGlobal = a.iArraySizeGlobal;
        dOneMinusBinOffset = a.dOneMinusBinOffset;
        iXcorrProcessingOffset = a.iXcorrProcessingOffset;
        ionInformation = a.ionInformation;

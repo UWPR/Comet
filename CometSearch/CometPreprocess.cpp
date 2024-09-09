@@ -769,10 +769,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
 
    // initialize these temporary arrays before re-using
-   size_t iTmp= (size_t)((g_staticParams.options.dPeptideMassHigh + dCushion + 2.0) * g_staticParams.dInverseBinWidth)*sizeof(double);
-   memset(pdTmpRawData, 0, iTmp);
-   memset(pdTmpFastXcorrData, 0, iTmp);
-   memset(pdTmpCorrelationData, 0, iTmp);
+   memset(pdTmpRawData, 0, g_staticParams.iArraySizeGlobal * sizeof(double));
+   memset(pdTmpFastXcorrData, 0, g_staticParams.iArraySizeGlobal * sizeof(double));
+   memset(pdTmpCorrelationData, 0, g_staticParams.iArraySizeGlobal * sizeof(double));
 
    // pdTmpRawData is a binned array holding raw data
    if (!LoadIons(pScoring, pdTmpRawData, mstSpectrum, &pPre))
@@ -1871,9 +1870,6 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
    }
 
-   //MH: Must be equal to largest possible array
-   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
-
    //MH: Initally mark all arrays as available (i.e. false=not inuse).
    pbMemoryPool = new bool[maxNumThreads];
    for (i=0; i<maxNumThreads; ++i)
@@ -1887,12 +1883,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    {
       try
       {
-         ppdTmpRawDataArr[i] = new double[iArraySize]();
+         ppdTmpRawDataArr[i] = new double[g_staticParams.iArraySizeGlobal]();
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpRawData[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpRawData[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
@@ -1908,12 +1904,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    {
       try
       {
-         ppdTmpFastXcorrDataArr[i] = new double[iArraySize]();
+         ppdTmpFastXcorrDataArr[i] = new double[g_staticParams.iArraySizeGlobal]();
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpFastXcorrData[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpFastXcorrData[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
@@ -1929,12 +1925,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    {
       try
       {
-         ppdTmpCorrelationDataArr[i] = new double[iArraySize]();
+         ppdTmpCorrelationDataArr[i] = new double[g_staticParams.iArraySizeGlobal]();
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pdTmpCorrelationData[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(pdTmpCorrelationData[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
@@ -2061,8 +2057,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    double dIon=0,
           dIntensity=0;
 
-   int iTmpArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth);
-   memset(pdTmpSpectrum, 0, iTmpArraySize*sizeof(double));
+   memset(pdTmpSpectrum, 0, g_staticParams.iArraySizeGlobal * sizeof(double));
 
    // set dIntensityCutoff based on either minimum intensity or % of base peak
    double dIntensityCutoff = g_staticParams.options.dMinIntensity;
@@ -2103,7 +2098,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
             dIntensity = sqrt(dIntensity);
 
-            if (iBinIon < iTmpArraySize && pdTmpSpectrum[iBinIon] < dIntensity)  // used in DoSingleSpectrumSearch to return matched ions
+            if (iBinIon < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iBinIon] < dIntensity)  // used in DoSingleSpectrumSearch to return matched ions
                 pdTmpSpectrum[iBinIon] = dIntensity;
 
             if (iBinIon > pPre.iHighestIon)

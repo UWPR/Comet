@@ -1643,6 +1643,8 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
+   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth);
+
    return true;
 }
 

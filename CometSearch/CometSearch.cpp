@@ -48,9 +48,6 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
 {
    int i;
 
-   // Must be equal to largest possible array
-   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + 100.0) * g_staticParams.dInverseBinWidth);
-
    // Initally mark all arrays as available (i.e. false == not in use)
    _pbSearchMemoryPool = new bool[maxNumThreads];
    for (i=0; i < maxNumThreads; ++i)
@@ -64,12 +61,12 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
    {
       try
       {
-         _ppbDuplFragmentArr[i] = new bool[iArraySize];
+         _ppbDuplFragmentArr[i] = new bool[g_staticParams.iArraySizeGlobal];
       }
       catch (std::bad_alloc& ba)
       {
          char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.\n", iArraySize, ba.what());
+         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
          sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
          sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to mitigate memory use.\n");
          string strErrorMsg(szErrorMsg);
@@ -1194,12 +1191,11 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    std::map<comet_fileoffset_t, int> mPeptides;   // which peptide (fileoffset, and # matched fragments)
    size_t lNumPeps = 0;
    unsigned int uiFragmentMass;
-   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + 100.0) * g_staticParams.dInverseBinWidth);
 
    unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][FRAGINDEX_VMODS + 1];
    unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
-   bool* pbDuplFragment = new bool[iArraySize];
+   bool* pbDuplFragment = new bool[g_staticParams.iArraySizeGlobal];
 
 /*
    // print out fragment masses at each fragment index
@@ -1372,8 +1368,6 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
          double dBion = g_staticParams.precalcMasses.dNtermProton;
          double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
-         memset(pbDuplFragment, 0, sizeof(bool) * iArraySize);
-
          // set terminal mods
          if (g_vFragmentPeptides[ix->first].siNtermMod > -1)
          {
@@ -1391,12 +1385,13 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
          //FIX: set fragment neutral loss correctly
          if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
          {
+            memset(iCountNLB, 0, sizeof(iCountNLB));
+            memset(iCountNLY, 0, sizeof(iCountNLY));
+
             for (int i = 0; i < FRAGINDEX_VMODS; ++i)
             {
                iPositionNLB[i] = 999;    // default to greater than last residue position
                iPositionNLY[i] = -1;     // default to less that first residue position
-               memset(iCountNLB[i], 0, sizeof(int)*MAX_PEPTIDE_LEN);
-               memset(iCountNLY[i], 0, sizeof(int)*MAX_PEPTIDE_LEN);
             }
          }
 
@@ -1478,68 +1473,11 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
             iMaxFragmentCharge = 2;
 
          // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
+
          // First initialize pbDuplFragment and _uiBinnedIonMasses
-         for (ctCharge = 1; ctCharge <= iMaxFragmentCharge; ++ctCharge)
-         {
-            for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
-            {
-               iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-               for (ctLen = 0; ctLen < iLenMinus1; ++ctLen)
-               {
-                  double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, pdAAforward, pdAAreverse);
-
-                  pbDuplFragment[BIN(dFragMass)] = false;
-                  uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
-
-                  // initialize fragmentNL
-                  if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
-                  {
-                     for (int x = 0; x < FRAGINDEX_VMODS; ++x)  // should be within this if() because only looking for NL masses from each mod
-                     {
-                        uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][x+1] = 0;
-
-                        if ((iWhichIonSeries <= 2 && ctLen >= iPositionNLB[x])  // 0/1/2 is a/b/c ions
-                              || (iWhichIonSeries >= 3 && iWhichIonSeries <= 5 && iLenMinus1-ctLen <= iPositionNLY[x])) // 3/4/5 is x/y/z ions
-                        {
-                           int iScaleFactor;
-
-                           if (iWhichIonSeries <= 2)
-                              iScaleFactor = iCountNLB[x][ctLen];
-                           else
-                              iScaleFactor = iCountNLY[x][ctLen];
-
-                           double dNewMass = dFragMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[x].dNeutralLoss / ctCharge);
-
-                           if (dNewMass >= 0.0)
-                           {
-                              pbDuplFragment[BIN(dNewMass)] = false;
-                              iFoundVariableMod = 2;
-                           }
-
-                           uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][x+1] = 0;
-                        }
-                     }
-                  }
-               }
-            }
-         }
-
-         // initialize precursorNL
-         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
-         {
-            for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
-            {
-               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
-               int iVal = BIN(dNLMass);
-
-               if (iVal > 0)
-               {
-                  pbDuplFragment[BIN(dNLMass)] = false;
-                  uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
-               }
-            }
-         }
+         memset(pbDuplFragment, 0, sizeof(bool) * g_staticParams.iArraySizeGlobal);
+         memset(uiBinnedIonMasses, 0, sizeof(uiBinnedIonMasses));
+         memset(uiBinnedPrecursorNL, 0, sizeof(uiBinnedPrecursorNL));
 
          // set pbDuplFragment[bin] to true for each fragment ion bin
          for (ctCharge = 1; ctCharge <= g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
@@ -1956,35 +1894,11 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         }
 
                         // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
+
                         // First initialize pbDuplFragment and _uiBinnedIonMasses
-                        for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
-                        {
-                           for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
-                           {
-                              iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-                              for (ctLen = 0; ctLen < iLenMinus1; ++ctLen)
-                              {
-                                 pbDuplFragment[BIN(GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse))] = false;
-                                 _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
-                              }
-                           }
-                        }
-
-                        for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
-                        {
-                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
-                           {
-                              double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
-                              int iVal = BIN(dNLMass);
-
-                              if (iVal > 0)
-                              {
-                                 pbDuplFragment[iVal] = false;
-                                 _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
-                              }
-                           }
-                        }
+                        memset(pbDuplFragment, 0, sizeof(bool) * g_staticParams.iArraySizeGlobal);
+                        memset(_uiBinnedIonMasses, 0, sizeof(_uiBinnedIonMasses));
+                        memset(_uiBinnedPrecursorNL, 0, sizeof(_uiBinnedPrecursorNL));
 
                         // Now set _uiBinnedIonMasses; use pbDuplFragment to make sure a fragment isn't counted twice
                         for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
@@ -3265,8 +3179,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
-   int iTmp = (int)(dXcorr * 1000.0);
-   dXcorr = iTmp / 1000.0;  // round to 4 digits
+   dXcorr= std::round(dXcorr* 10000.0) / 1000.0;  // round to 4 decimal points
 
    Threading::LockMutex(pQuery->accessMutex);
 
@@ -3422,8 +3335,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
 
    dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
-   int iTmp = (int)(dXcorr * 1000.0);
-   dXcorr = iTmp / 1000.0;  // round to 4 digits
+   dXcorr= std::round(dXcorr* 10000.0) / 10000.0;  // round to 4 decimal points
 
    Threading::LockMutex(pQuery->accessMutex);
 
@@ -3452,7 +3364,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
       pQuery->uiHistogramCount += 1;
    }
 
-   if (iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport)
+   if (iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport && dXcorr >= pQuery->dLowestXcorrScore)
    {
       StorePeptideI(iWhichQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
             dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
@@ -5927,7 +5839,6 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
    int ctLen;
    int ctCharge;
    int iWhichIonSeries;
-   int i;
    int iLenMinus1 = iLenPeptide - 1;
    int iFoundVariableMod = 1;  // 1=found variable mod, 2=found fragmentNL
    int iFoundVariableModDecoy = 1;  // 1=found variable mod, 2=found fragmentNL
@@ -5969,12 +5880,13 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
             if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
             {
-               for (i = 0; i < VMODS; ++i)
+               memset(iCountNLB, 0, sizeof(iCountNLB));
+               memset(iCountNLY, 0, sizeof(iCountNLY));
+
+               for (int i = 0; i < VMODS; ++i)
                {
                   iPositionNLB[i] = 999;    // default to greater than last residue position
                   iPositionNLY[i] = -1;     // default to less that first residue position
-                  memset(iCountNLB[i], 0, sizeof(int)*MAX_PEPTIDE_LEN);
-                  memset(iCountNLY[i], 0, sizeof(int)*MAX_PEPTIDE_LEN);
                }
             }
 
@@ -5992,7 +5904,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                dYion += g_staticParams.variableModParameters.varModList[piVarModSites[iLenPeptide + 1] - 1].dVarModMass;
 
             // Generate pdAAforward for _pResults[0].szPeptide
-            for (i = _varModInfo.iStartPos; i < _varModInfo.iEndPos; ++i)
+            for (int i = _varModInfo.iStartPos; i < _varModInfo.iEndPos; ++i)
             {
                int iPosForward = i - _varModInfo.iStartPos; // increment up from 0
                int iPosReverse = _varModInfo.iEndPos - iPosForward;
@@ -6072,64 +5984,9 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             // now get the set of binned fragment ions once for all matching peptides
 
             // initialize pbDuplFragment here
-            for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
-            {
-               for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
-               {
-                  iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-
-                  for (ctLen = 0; ctLen < iLenMinus1; ++ctLen)
-                  {
-                     double dFragMass = GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse);
-
-                     pbDuplFragment[BIN(dFragMass)] = false;
-                     _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
-
-                     // initialize fragmentNL
-                     if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
-                     {
-                        for (int x = 0; x < VMODS; ++x)
-                        {
-                           if ((iWhichIonSeries <= 2 && ctLen >= iPositionNLB[x])  // 0/1/2 is a/b/c ions
-                                 || (iWhichIonSeries >= 3 && iWhichIonSeries <= 5 && iLenMinus1-ctLen <= iPositionNLY[x])) // 3/4/5 is x/y/z ions
-                           {
-                              int iScaleFactor;
-
-                              if (iWhichIonSeries <= 2)
-                                 iScaleFactor = iCountNLB[x][ctLen];
-                              else
-                                 iScaleFactor = iCountNLY[x][ctLen];
-
-                              double dNewMass = dFragMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[x].dNeutralLoss / ctCharge);
-
-                              if (dNewMass > 0.0)
-                              {
-                                 pbDuplFragment[BIN(dNewMass)] = false;
-                              }
-                           }
-
-                           _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][x+1] = 0;
-                        }
-                     }
-                  }
-               }
-            }
-
-            // initialize precursorNL
-            for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
-            {
-               for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
-               {
-                  double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
-                  int iVal = BIN(dNLMass);
-
-                  if (iVal > 0)
-                  {
-                     pbDuplFragment[BIN(dNLMass)] = false;
-                     _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
-                  }
-               }
-            }
+            memset(pbDuplFragment, 0, sizeof(bool) * g_staticParams.iArraySizeGlobal);
+            memset(_uiBinnedIonMasses, 0, sizeof(_uiBinnedIonMasses));
+            memset(_uiBinnedPrecursorNL, 0, sizeof(_uiBinnedPrecursorNL));
 
             // set pbDuplFragment[bin] to true for each fragment ion bin
             for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
@@ -6222,7 +6079,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
                {
-                  for (i = 0; i < VMODS; ++i)
+                  for (int i = 0; i < VMODS; ++i)
                   {
                      iPositionNLB[i] = 999;    // default to greater than last residue position
                      iPositionNLY[i] = -1;     // default to less that first residue position
@@ -6258,7 +6115,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                {
                   // last residue stays the same:  change ABCDEK to EDCBAK
 
-                  for (i=_varModInfo.iEndPos-1; i>=_varModInfo.iStartPos; --i)
+                  for (int i = _varModInfo.iEndPos-1; i >= _varModInfo.iStartPos; --i)
                   {
                      szDecoyPeptide[_varModInfo.iEndPos - i] = szProteinSeq[i];
                      piTmpVarModSearchSites[_varModInfo.iEndPos - i - 1] = piVarModSites[i - _varModInfo.iStartPos];
@@ -6271,7 +6128,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                {
                   // first residue stays the same:  change ABCDEK to AKEDCB
 
-                  for (i=_varModInfo.iEndPos; i>_varModInfo.iStartPos; i--)
+                  for (int i = _varModInfo.iEndPos; i > _varModInfo.iStartPos; i--)
                   {
                      szDecoyPeptide[_varModInfo.iEndPos - i + 2] = szProteinSeq[i];
                      piTmpVarModSearchSites[_varModInfo.iEndPos - i + 1] = piVarModSites[i - _varModInfo.iStartPos];
@@ -6310,7 +6167,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
                {
-                  for (i = 0; i < VMODS; ++i)
+                  for (int i = 0; i < VMODS; ++i)
                   {
                      iPositionNLB[i] = 999;
                      iPositionNLY[i] = -1;
@@ -6318,7 +6175,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
 
                // Generate pdAAforward for szDecoyPeptide
-               for (i = iDecoyStartPos; i < iDecoyEndPos; ++i)
+               for (int i = iDecoyStartPos; i < iDecoyEndPos; ++i)
                {
                   iPosForward = i - iDecoyStartPos;
                   iPosReverse = iDecoyEndPos - iPosForward;
