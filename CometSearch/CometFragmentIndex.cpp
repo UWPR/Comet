@@ -229,7 +229,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // sort list of peptides at each fragment bin by peptide mass
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
-      pFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, iWhichThread, iNumIndexingThreads, pFragmentIndexPool));
+      pFragmentIndexPool->doJob(std::bind(SortFragmentThreadProc, iWhichThread, pFragmentIndexPool));
 
    pFragmentIndexPool->wait_on_threads();
 
@@ -372,7 +372,6 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
 
 
 void CometFragmentIndex::SortFragmentThreadProc(int iWhichThread,
-                                                int iNumIndexingThreads,
                                                 ThreadPool *tp)
 {
    for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
@@ -1019,26 +1018,26 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    comet_fileoffset_t clPermutationsFilePos;  // file position of permutations variables
 
    comet_fseek(fp, -clSizeCometFileOffset*3, SEEK_END);
-   fread(&clPeptidesFilePos, clSizeCometFileOffset, 1, fp);
-   fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
-   fread(&clPermutationsFilePos, clSizeCometFileOffset, 1, fp);
+   tTmp = fread(&clPeptidesFilePos, clSizeCometFileOffset, 1, fp);
+   tTmp = fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
+   tTmp = fread(&clPermutationsFilePos, clSizeCometFileOffset, 1, fp);
 
    comet_fseek(fp, clPeptidesFilePos, SEEK_SET);
 
    size_t tNumPeptides;
-   fread(&tNumPeptides, sizeof(size_t), 1, fp);  // read # of peptides
+   tTmp = fread(&tNumPeptides, sizeof(size_t), 1, fp);  // read # of peptides
 
    struct PlainPeptideIndex sTmp;
    int iLen;
    char szPeptide[MAX_PEPTIDE_LEN];
    for (size_t it = 0; it < tNumPeptides; ++it)
    {
-      fread(&iLen, sizeof(int), 1, fp);
-      fread(szPeptide, sizeof(char), iLen, fp);
+      tTmp = fread(&iLen, sizeof(int), 1, fp);
+      tTmp = fread(szPeptide, sizeof(char), iLen, fp);
       szPeptide[iLen] = '\0';
       sTmp.sPeptide = szPeptide;
-      fread(&(sTmp.dPepMass), sizeof(double), 1, fp);
-      fread(&(sTmp.lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
+      tTmp = fread(&(sTmp.dPepMass), sizeof(double), 1, fp);
+      tTmp = fread(&(sTmp.lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
 
       g_vRawPeptides.push_back(sTmp);
    }
@@ -1047,7 +1046,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    // now read in: vector<vector<comet_fileoffset_t>> g_pvProteinsList
    size_t tSize;
-   fread(&tSize, clSizeCometFileOffset, 1, fp);
+   tTmp = fread(&tSize, clSizeCometFileOffset, 1, fp);
    vector<comet_fileoffset_t> vTmp;
 
    g_pvProteinsList.clear();
@@ -1055,12 +1054,13 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    for (size_t it = 0; it < tSize; ++it)
    {
-      fread(&tTmp, clSizeCometFileOffset, 1, fp);
+      size_t tNumProteinOffsets;
+      tTmp = fread(&tNumProteinOffsets, clSizeCometFileOffset, 1, fp);
       
       vTmp.clear();
-      for (size_t it2 = 0; it2 < tTmp; ++it2)
+      for (size_t it2 = 0; it2 < tNumProteinOffsets; ++it2)
       {
-         fread(&clTmp, clSizeCometFileOffset, 1, fp);
+         tTmp = fread(&clTmp, clSizeCometFileOffset, 1, fp);
          vTmp.push_back(clTmp);
       }
       g_pvProteinsList.push_back(vTmp);
@@ -1072,31 +1072,32 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    unsigned long ulSizevRawPeptides;   // size of g_vRawPeptides
    unsigned long ulModNumSize;         // size of MOD_NUMBERS
 
-   fread(&ulSizeModSeqs, sizeof(unsigned long), 1, fp);
-   fread(&ulSizevRawPeptides, sizeof(unsigned long), 1, fp);
-   fread(&ulModNumSize, sizeof(unsigned long), 1, fp);
+   tTmp = fread(&ulSizeModSeqs, sizeof(unsigned long), 1, fp);
+   tTmp = fread(&ulSizevRawPeptides, sizeof(unsigned long), 1, fp);
+   tTmp = fread(&ulModNumSize, sizeof(unsigned long), 1, fp);
 
    MOD_SEQ_MOD_NUM_START = new int[ulSizeModSeqs];
    MOD_SEQ_MOD_NUM_CNT = new int[ulSizeModSeqs];
    PEPTIDE_MOD_SEQ_IDXS = new int[ulSizevRawPeptides];
 
-   fread(MOD_SEQ_MOD_NUM_START, sizeof(int), ulSizeModSeqs, fp);
-   fread(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
-   fread(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);  //FIX
+   tTmp = fread(MOD_SEQ_MOD_NUM_START, sizeof(int), ulSizeModSeqs, fp);
+   tTmp = fread(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
+   tTmp = fread(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);  //FIX
+
    int iTmp;
    char szTmp[MAX_PEPTIDE_LEN];
    for (unsigned long i = 0; i < ulSizeModSeqs; ++i)
    {
-      fread(&iTmp, sizeof(int), 1, fp); // read length
-      fread(szTmp, 1, iTmp, fp);
+      tTmp = fread(&iTmp, sizeof(int), 1, fp); // read length
+      tTmp = fread(szTmp, 1, iTmp, fp);
       szTmp[iTmp]='\0';
       MOD_SEQS.push_back(szTmp);
    }
    for (unsigned long i = 0; i < ulModNumSize; ++i)
    {
       ModificationNumber sTmp;
-      fread(&iTmp, sizeof(int), 1, fp); // read length
-      fread(szTmp, 1, iTmp, fp);
+      tTmp = fread(&iTmp, sizeof(int), 1, fp); // read length
+      tTmp = fread(szTmp, 1, iTmp, fp);
       szTmp[iTmp]='\0';
       sTmp.modStringLen = iTmp;
       sTmp.modifications = new char[iTmp];

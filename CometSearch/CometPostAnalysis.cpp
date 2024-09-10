@@ -328,7 +328,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    int  _iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
 
-   for (i=0; i<iSize; ++i)
+   for (i = 0; i < iSize; ++i)
    {
       if (!g_staticParams.bIndexDb)
       {

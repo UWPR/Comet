@@ -89,8 +89,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       strcpy(szResolvedInputBaseName, g_staticParams.inputFile.szFileName);
 
    // now remove extension from szRunSummaryResolvedPath to leave just the base name
-   int  iLen = (int)strlen(szResolvedInputBaseName);
-   if ( (pStr = strrchr(szResolvedInputBaseName, '.')))
+   if ((pStr = strrchr(szResolvedInputBaseName, '.')))
       *pStr = '\0';
 
    if (g_staticParams.options.bResolveFullPaths)

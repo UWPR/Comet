@@ -3487,13 +3487,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (!bSucceeded)
       goto cleanup_results;
 
-      g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
+   g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size() - 1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;  // unused in this context but setting here anyways
    else
       g_massRange.bNarrowMassRange = false;
+
    g_sCometVersion = comet_version;
 
    // Now that spectra are loaded to memory and sorted, do search.

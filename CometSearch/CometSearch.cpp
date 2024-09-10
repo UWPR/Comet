@@ -3179,7 +3179,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
-   dXcorr= std::round(dXcorr* 10000.0) / 1000.0;  // round to 4 decimal points
+   dXcorr= std::round(dXcorr* 10000.0) / 10000.0;  // round to 4 decimal points
 
    Threading::LockMutex(pQuery->accessMutex);
 
