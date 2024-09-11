@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: macos-13
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Build Comet
       run: make
@@ -27,7 +27,7 @@ jobs:
         cp README.md release/README.md
 
     - name: Upload build artificats
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: comet-macos
         path: release/*
