@@ -206,7 +206,7 @@ private:
                      int *piVarModSites,
                      struct sDBEntry *dbe);
    void VariableModSearch(char *szProteinSeq,
-                          int varModCounts[],
+                          int piVarModCounts[],
                           int iStartPos,
                           int iEndPos,
                           bool *pbDuplFragment,

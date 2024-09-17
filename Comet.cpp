@@ -366,6 +366,13 @@ void LoadParameters(char *pszParamsFile,
                sscanf(szParamVal, "%255s", szTxtFileExt);
                pSearchMgr->SetParam("text_file_extension", szTxtFileExt, szTxtFileExt);
             }
+            else if (!strcmp(szParamName, "protein_modslist_file"))
+            {
+               char szTmp[256];
+               szTmp[0] = '\0';
+               sscanf(szParamVal, "%255s", szTmp);
+               pSearchMgr->SetParam("protein_modslist_file", szTmp, szTmp);
+            }
             else if (!strcmp(szParamName, "explicit_deltacn"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1758,8 +1765,14 @@ variable_mod15 = 0.0 X 0 3 -1 0 0 0.0\n");
 
    fprintf(fp,
 "max_variable_mods_in_peptide = 5\n\
-require_variable_mod = 0\n\
-\n\
+require_variable_mod = 0\n");
+   if (iPrintParams == 2)
+   {
+      fprintf(fp, "protein_modslist_file =                # limit variable mods to subset of specified proteins if this file is specified & present\n");
+   }
+
+   fprintf(fp,
+"\n\
 #\n\
 # fragment ions\n\
 #\n\

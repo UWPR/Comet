@@ -194,16 +194,11 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
           || (g_staticParams.options.iEnzymeTermini == ENZYME_N_TERMINI)
           || (g_staticParams.options.iEnzymeTermini == ENZYME_C_TERMINI))?1:0);
 
-   // Write out properly encoded mods
-   WriteVariableMod(fpout, searchMgr, "variable_mod01", 0); // this writes aminoacid_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod02", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod03", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod04", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod05", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod06", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod07", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod08", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod09", 0);
+   // Write modifications header; first amino acid mods
+   for (int iWhichVariableMod = 0; iWhichVariableMod < VMODS; ++iWhichVariableMod)
+   {
+      WriteVariableMod(fpout, iWhichVariableMod, 0);  // third parameter writes amino acid mods
+   }
 
    WriteStaticMod(fpout, searchMgr, "add_G_glycine");
    WriteStaticMod(fpout, searchMgr, "add_A_alanine");
@@ -232,15 +227,11 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    WriteStaticMod(fpout, searchMgr, "add_X_user_amino_acid");
    WriteStaticMod(fpout, searchMgr, "add_Z_user_amino_acid");
 
-   WriteVariableMod(fpout, searchMgr, "variable_mod01", 1);  // this writes terminal_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod02", 1);  // which has to come after aminoacid_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod03", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod04", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod05", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod06", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod07", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod08", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod09", 1);
+   // write terminal_modification which has to come after aminoacid_modification 
+   for (int iWhichVariableMod = 0; iWhichVariableMod < VMODS; ++iWhichVariableMod)
+   {
+      WriteVariableMod(fpout, iWhichVariableMod, 1);
+   }
 
    double dMass = 0.0;
    if (searchMgr.GetParamValue("add_Cterm_peptide", dMass))
@@ -309,39 +300,20 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
 
 void CometWritePepXML::WriteVariableMod(FILE *fpout,
-                                        CometSearchManager &searchMgr,
-                                        string varModName,
+                                        int iWhichVariableMod,
                                         bool bWriteTerminalMods)
 {
-   VarMods varModsParam;
-   if (searchMgr.GetParamValue(varModName, varModsParam))
-   {
-      char cSymbol = '-';
-      if (varModName[13]=='1')
-         cSymbol = g_staticParams.variableModParameters.cModCode[0];
-      else if (varModName[13]=='2')
-         cSymbol = g_staticParams.variableModParameters.cModCode[1];
-      else if (varModName[13]=='3')
-         cSymbol = g_staticParams.variableModParameters.cModCode[2];
-      else if (varModName[13]=='4')
-         cSymbol = g_staticParams.variableModParameters.cModCode[3];
-      else if (varModName[13]=='5')
-         cSymbol = g_staticParams.variableModParameters.cModCode[4];
-      else if (varModName[13]=='6')
-         cSymbol = g_staticParams.variableModParameters.cModCode[5];
-      else if (varModName[13]=='7')
-         cSymbol = g_staticParams.variableModParameters.cModCode[6];
-      else if (varModName[13]=='8')
-         cSymbol = g_staticParams.variableModParameters.cModCode[7];
-      else if (varModName[13]=='9')
-         cSymbol = g_staticParams.variableModParameters.cModCode[8];
+   VarMods varModsParam = g_staticParams.variableModParameters.varModList[iWhichVariableMod];
 
-      if (cSymbol != '-' && !isEqual(varModsParam.dVarModMass, 0.0))
+   if (!isEqual(varModsParam.dVarModMass, 0.0))
+   {
+      int iLen = (int)strlen(varModsParam.szVarModChar);
+
+      for (int i=0; i<iLen; ++i)
       {
-         int iLen = (int)strlen(varModsParam.szVarModChar);
-         for (int i=0; i<iLen; ++i)
+         if (bWriteTerminalMods)
          {
-            if (varModsParam.szVarModChar[i]=='n' && bWriteTerminalMods)
+            if (varModsParam.szVarModChar[i] == 'n')
             {
                if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 1 || varModsParam.iWhichTerm == 3))
                {
@@ -349,34 +321,29 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
                }
                else
                {
-                  double dMass = 0.0;
-                  searchMgr.GetParamValue("add_Nterm_protein", dMass);
-
                   // print this if N-term protein variable mod or a generic N-term mod there's also N-term protein static mod
                   if (varModsParam.iWhichTerm == 0 && varModsParam.iVarModTermDistance == 0)
                   {
                      // massdiff = mod mass + h
-                     fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\" symbol=\"%c\"/>\n",
-                           varModsParam.dVarModMass,
-                           varModsParam.dVarModMass
-                              + dMass
-                              + g_staticParams.precalcMasses.dNtermProton
-                              - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'],
-                           cSymbol);
+                     fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\"/>\n",
+                        varModsParam.dVarModMass,
+                        varModsParam.dVarModMass
+                        + g_staticParams.staticModifications.dAddNterminusProtein
+                        + g_staticParams.precalcMasses.dNtermProton
+                        - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
                   }
                   // print this if non-protein N-term variable mod
                   else
                   {
-                     fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\" symbol=\"%c\"/>\n",
-                           varModsParam.dVarModMass,
-                           varModsParam.dVarModMass
-                              + g_staticParams.precalcMasses.dNtermProton
-                              - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'],
-                           cSymbol);
+                     fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\"/>\n",
+                        varModsParam.dVarModMass,
+                        varModsParam.dVarModMass
+                        + g_staticParams.precalcMasses.dNtermProton
+                        - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
                   }
                }
             }
-            else if (varModsParam.szVarModChar[i]=='c' && bWriteTerminalMods)
+            else if (varModsParam.szVarModChar[i] == 'c')
             {
                if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 0 || varModsParam.iWhichTerm == 2))
                {
@@ -384,44 +351,38 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
                }
                else
                {
-                  double dMass = 0.0;
-                  searchMgr.GetParamValue("add_Cterm_protein", dMass);
-
                   // print this if C-term protein variable mod or a generic C-term mod there's also C-term protein static mod
                   if (varModsParam.iWhichTerm == 1 && varModsParam.iVarModTermDistance == 0)
                   {
                      // massdiff = mod mass + oh
-                     fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\" symbol=\"%c\"/>\n",
-                           varModsParam.dVarModMass,
-                           varModsParam.dVarModMass
-                              + dMass
-                              + g_staticParams.precalcMasses.dCtermOH2Proton
-                              - PROTON_MASS
-                              - g_staticParams.massUtility.pdAAMassFragment[(int)'h'],
-                           cSymbol);
+                     fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\"/>\n",
+                        varModsParam.dVarModMass,
+                        varModsParam.dVarModMass
+                        + g_staticParams.staticModifications.dAddCterminusProtein
+                        + g_staticParams.precalcMasses.dCtermOH2Proton
+                        - PROTON_MASS
+                        - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
                   }
                   // print this if non-protein C-term variable mod
                   else
                   {
-                     fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\" symbol=\"%c\"/>\n",
-                           varModsParam.dVarModMass,
-                           varModsParam.dVarModMass
-                              + g_staticParams.precalcMasses.dCtermOH2Proton
-                              - PROTON_MASS
-                              - g_staticParams.massUtility.pdAAMassFragment[(int)'h'],
-                           cSymbol);
+                     fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\"/>\n",
+                        varModsParam.dVarModMass,
+                        varModsParam.dVarModMass
+                        + g_staticParams.precalcMasses.dCtermOH2Proton
+                        - PROTON_MASS
+                        - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
                   }
                }
             }
-            else if (!bWriteTerminalMods && varModsParam.szVarModChar[i]!='c' && varModsParam.szVarModChar[i]!='n')
-            {
-               fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" %ssymbol=\"%c\"/>\n",
-                     varModsParam.szVarModChar[i],
-                     varModsParam.dVarModMass,
-                     g_staticParams.massUtility.pdAAMassParent[(int)varModsParam.szVarModChar[i]] + varModsParam.dVarModMass,
-                     (varModsParam.iBinaryMod?"binary=\"Y\" ":""),
-                     cSymbol);
-            }
+         }
+         else if (varModsParam.szVarModChar[i]!='c' && varModsParam.szVarModChar[i]!='n')
+         {
+            fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\"%s/>\n",
+                  varModsParam.szVarModChar[i],
+                  varModsParam.dVarModMass,
+                  g_staticParams.massUtility.pdAAMassParent[(int)varModsParam.szVarModChar[i]] + varModsParam.dVarModMass,
+                  (varModsParam.iBinaryMod?" binary=\"Y\"":""));
          }
       }
    }

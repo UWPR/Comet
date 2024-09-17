@@ -624,7 +624,10 @@ bool CometSearchManager::InitializeStaticParams()
    {
       if (strData.length() > 0)
          strcpy(g_staticParams.szTxtFileExt, strData.c_str());
-   } 
+   }
+
+   if (GetParamValue("protein_modslist_file", strData))
+      g_staticParams.variableModParameters.sProteinLModsListFile = strData;
 
    if (GetParamValue("peff_obo", strData))
       strcpy(g_staticParams.peffInfo.szPeffOBO, strData.c_str());
@@ -804,8 +807,6 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
 
    GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
-
-// GetParamValue("skip_updatecheck", g_staticParams.options.bSkipUpdateCheck);
 
    GetParamValue("mango_search", g_staticParams.options.bMango);
 
@@ -1982,11 +1983,57 @@ bool CometSearchManager::DoSearch()
    if (!g_staticParams.options.bOutputSqtStream) // && !g_staticParams.bIndexDb)
    {
       strOut = "\n Comet version \"" + g_sCometVersion + "\"\n\n";
-//      if (!g_staticParams.options.bSkipUpdateCheck)
-//       CometCheckForUpdates::CheckForUpdates(strOut.c_str());
 
       logout(strOut.c_str());
       fflush(stdout);
+   }
+
+   FILE* fp;
+
+   // see if comet_varmod_proteins.txt is present, if so, read in the list of masses.
+   if ((fp = fopen(g_staticParams.variableModParameters.sProteinLModsListFile.c_str(), "r")) != NULL)
+   {
+      char szBuf[512];
+      vector<pair<int, string>> vpTmp;
+
+      printf(" Protein variable modifications filter:\n");
+
+      while (fgets(szBuf, 512, fp))
+      {
+         if (strlen(szBuf) > 3)
+         {
+            char szProtein[512];
+            int iWhichMod;
+
+            if (sscanf(szBuf, "%d %s", &iWhichMod, szProtein) == 2)
+            {
+               if (iWhichMod > 0 && iWhichMod <= VMODS)
+               {
+                  g_staticParams.variableModParameters.mmapProteinLModsList.insert({ iWhichMod, szProtein });
+               }
+            }
+         }
+      }
+      fclose(fp);
+
+      auto it = g_staticParams.variableModParameters.mmapProteinLModsList.begin();
+      while (it != g_staticParams.variableModParameters.mmapProteinLModsList.end())
+      {
+         int iWhichMod = it->first;
+         bool bFirst = true;
+
+         printf(" - variable_mod%02d: ", iWhichMod);
+         while (it != g_staticParams.variableModParameters.mmapProteinLModsList.end() && it->first == iWhichMod)
+         {
+            if (!bFirst)
+               printf(", ");
+            printf("%s", it->second.c_str());
+            it++;
+            bFirst = false;
+         }
+         printf("\n");
+      }
+      printf("\n");
    }
 
    g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);

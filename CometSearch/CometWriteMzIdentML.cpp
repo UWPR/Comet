@@ -677,45 +677,29 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
       }
    }
 
-   dMass = 0.0;
-   if (searchMgr.GetParamValue("add_Nterm_protein", dMass))
+   if (!isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
    {
-      if (!isEqual(dMass, 0.0))
-      {
-         double dMassDiff = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
+      fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\"%0.6f\" residues=\".\">\n", g_staticParams.staticModifications.dAddNterminusProtein);
+      fprintf(fpout, "   <SpecificityRules>\n");
+      fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002057\" name=\"modification specificity protein N-term\" />\n");
+      fprintf(fpout, "   </SpecificityRules>\n");
 
-         fprintf(fpout, "  <SearchModification fixedMod=\"true\" massDelta=\"%0.6f\" residues=\".\">\n", dMassDiff);
-         fprintf(fpout, "   <SpecificityRules>\n");
-         fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002057\" name=\"modification specificity protein N-term\" />\n");
-         fprintf(fpout, "   </SpecificityRules>\n");
+      GetModificationID('n', g_staticParams.staticModifications.dAddNterminusProtein, &strModID, &strModRef, &strModName);
+      fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
+         strModRef.c_str(), strModID.c_str(), strModName.c_str());
 
-         GetModificationID('n', dMassDiff, &strModID, &strModRef, &strModName);
-         fprintf(fpout, "   <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-               strModRef.c_str(), strModID.c_str(), strModName.c_str());
-
-         fprintf(fpout, "  </SearchModification>\n");
-      }
+      fprintf(fpout, "  </SearchModification>\n");
    }
 
    // Write out properly encoded mods
-   WriteVariableMod(fpout, searchMgr, "variable_mod01", 0); // this writes aminoacid_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod02", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod03", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod04", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod05", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod06", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod07", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod08", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod09", 0);
-   WriteVariableMod(fpout, searchMgr, "variable_mod01", 1);  // this writes terminal_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod02", 1);  // which has to come after aminoaicd_modification
-   WriteVariableMod(fpout, searchMgr, "variable_mod03", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod04", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod05", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod06", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod07", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod08", 1);
-   WriteVariableMod(fpout, searchMgr, "variable_mod09", 1);
+   for (int iWhichVariableMod = 0; iWhichVariableMod < VMODS; ++iWhichVariableMod)
+   {
+      WriteVariableMod(fpout, iWhichVariableMod, 0);
+   }
+   for (int iWhichVariableMod = 0; iWhichVariableMod < VMODS; ++iWhichVariableMod)
+   {
+      WriteVariableMod(fpout, iWhichVariableMod, 1);
+   }
 
    fprintf(fpout, "   </ModificationParams>\n");
 }
@@ -887,137 +871,105 @@ void CometWriteMzIdentML::GetModificationID(char cResidue,
                                             
 
 void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
-                                           CometSearchManager &searchMgr,
-                                           string varModName,
+                                           int iWhichVariableMod,
                                            bool bWriteTerminalMods)
 {
-   VarMods varModsParam;
+   VarMods varModsParam = g_staticParams.variableModParameters.varModList[iWhichVariableMod];
 
-   if (searchMgr.GetParamValue(varModName, varModsParam))
+   if (!isEqual(varModsParam.dVarModMass, 0.0))
    {
-/*
-      char cSymbol = '-';
-      if (varModName[13]=='1')
-         cSymbol = g_staticParams.variableModParameters.cModCode[0];
-      else if (varModName[13]=='2')
-         cSymbol = g_staticParams.variableModParameters.cModCode[1];
-      else if (varModName[13]=='3')
-         cSymbol = g_staticParams.variableModParameters.cModCode[2];
-      else if (varModName[13]=='4')
-         cSymbol = g_staticParams.variableModParameters.cModCode[3];
-      else if (varModName[13]=='5')
-         cSymbol = g_staticParams.variableModParameters.cModCode[4];
-      else if (varModName[13]=='6')
-         cSymbol = g_staticParams.variableModParameters.cModCode[5];
-      else if (varModName[13]=='7')
-         cSymbol = g_staticParams.variableModParameters.cModCode[6];
-      else if (varModName[13]=='8')
-         cSymbol = g_staticParams.variableModParameters.cModCode[7];
-      else if (varModName[13]=='9')
-         cSymbol = g_staticParams.variableModParameters.cModCode[8];
+      int iLen = (int)strlen(varModsParam.szVarModChar);
 
-      if (cSymbol != '-' && !isEqual(varModsParam.dVarModMass, 0.0))
-*/
-      if (!isEqual(varModsParam.dVarModMass, 0.0))
+      for (int i=0; i<iLen; ++i)
       {
-         int iLen = (int)strlen(varModsParam.szVarModChar);
+         string strModID;
+         string strModRef;
+         string strModName;
 
-         for (int i=0; i<iLen; ++i)
+         GetModificationID(varModsParam.szVarModChar[i], varModsParam.dVarModMass, &strModID, &strModRef, &strModName);
+
+         if (varModsParam.szVarModChar[i]=='n' && bWriteTerminalMods)
          {
-            string strModID;
-            string strModRef;
-            string strModName;
-
-            GetModificationID(varModsParam.szVarModChar[i], varModsParam.dVarModMass, &strModID, &strModRef, &strModName);
-
-            if (varModsParam.szVarModChar[i]=='n' && bWriteTerminalMods)
+            if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 1 || varModsParam.iWhichTerm == 3))
             {
-               if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 1 || varModsParam.iWhichTerm == 3))
+               // ignore if N-term mod on C-term
+            }
+            else
+            {
+               // print this if N-term protein variable mod or a generic N-term mod there's also N-term protein static mod
+               if (varModsParam.iWhichTerm == 0 && varModsParam.iVarModTermDistance == 0)
                {
-                  // ignore if N-term mod on C-term
+                  fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n",
+                     varModsParam.dVarModMass + g_staticParams.staticModifications.dAddNterminusProtein);
+
+                  fprintf(fpout, "     <SpecificityRules>\n");
+                  fprintf(fpout, "       <cvParam accession=\"MS:1002057\" cvRef=\"PSI-MS\" name=\"modification specificity protein N-term\" />\n");
+                  fprintf(fpout, "     </SpecificityRules>\n");
+
+                  fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
+                        strModRef.c_str(), strModID.c_str(), strModName.c_str());
+                  fprintf(fpout, "    </SearchModification>\n");
                }
+               // print this if non-protein N-term variable mod
                else
                {
-                  double dMass = 0.0;
-                  searchMgr.GetParamValue("add_Nterm_protein", dMass);
+                  fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
 
-                  // print this if N-term protein variable mod or a generic N-term mod there's also N-term protein static mod
-                  if (varModsParam.iWhichTerm == 0 && varModsParam.iVarModTermDistance == 0)
-                  {
-                     fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
+                  fprintf(fpout, "     <SpecificityRules>\n");
+                  fprintf(fpout, "       <cvParam accession=\"MS:1001189\" cvRef=\"PSI-MS\" name=\"modification specificity peptide N-term\" />\n");
+                  fprintf(fpout, "     </SpecificityRules>\n");
 
-                     fprintf(fpout, "     <SpecificityRules>\n");
-                     fprintf(fpout, "       <cvParam accession=\"MS:1002057\" cvRef=\"PSI-MS\" name=\"modification specificity protein N-term\" />\n");
-                     fprintf(fpout, "     </SpecificityRules>\n");
-         
-                     fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                           strModRef.c_str(), strModID.c_str(), strModName.c_str());
-                     fprintf(fpout, "    </SearchModification>\n");
-                  }
-                  // print this if non-protein N-term variable mod
-                  else
-                  {
-                     fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
-
-                     fprintf(fpout, "     <SpecificityRules>\n");
-                     fprintf(fpout, "       <cvParam accession=\"MS:1001189\" cvRef=\"PSI-MS\" name=\"modification specificity peptide N-term\" />\n");
-                     fprintf(fpout, "     </SpecificityRules>\n");
-         
-                     fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                           strModRef.c_str(), strModID.c_str(), strModName.c_str());
-                     fprintf(fpout, "    </SearchModification>\n");
-                  }
+                  fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
+                        strModRef.c_str(), strModID.c_str(), strModName.c_str());
+                  fprintf(fpout, "    </SearchModification>\n");
                }
             }
-            else if (varModsParam.szVarModChar[i]=='c' && bWriteTerminalMods)
+         }
+         else if (varModsParam.szVarModChar[i]=='c' && bWriteTerminalMods)
+         {
+            if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 0 || varModsParam.iWhichTerm == 2))
             {
-               if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 0 || varModsParam.iWhichTerm == 2))
+               // ignore if C-term mod on N-term
+            }
+            else
+            {
+               // print this if C-term protein variable mod or a generic C-term mod there's also C-term protein static mod
+               if (varModsParam.iWhichTerm == 1 && varModsParam.iVarModTermDistance == 0)
                {
-                  // ignore if C-term mod on N-term
+                  fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n",
+                     varModsParam.dVarModMass + g_staticParams.staticModifications.dAddCterminusProtein);
+
+                  fprintf(fpout, "     <SpecificityRules>\n");
+                  fprintf(fpout, "       <cvParam accession=\"MS:1002058\" cvRef=\"PSI-MS\" name=\"modification specificity protein C-term\" />\n");
+                  fprintf(fpout, "     </SpecificityRules>\n");
+
+                  fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
+                        strModRef.c_str(), strModID.c_str(), strModName.c_str());
+                  fprintf(fpout, "    </SearchModification>\n");
                }
+               // print this if non-protein C-term variable mod
                else
                {
-                  double dMass = 0.0;
-                  searchMgr.GetParamValue("add_Cterm_protein", dMass);
+                  fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
 
-                  // print this if C-term protein variable mod or a generic C-term mod there's also C-term protein static mod
-                  if (varModsParam.iWhichTerm == 1 && varModsParam.iVarModTermDistance == 0)
-                  {
-                     fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
+                  fprintf(fpout, "     <SpecificityRules>\n");
+                  fprintf(fpout, "       <cvParam accession=\"MS:1001190\" cvRef=\"PSI-MS\" name=\"modification specificity peptide C-term\" />\n");
+                  fprintf(fpout, "     </SpecificityRules>\n");
 
-                     fprintf(fpout, "     <SpecificityRules>\n");
-                     fprintf(fpout, "       <cvParam accession=\"MS:1002058\" cvRef=\"PSI-MS\" name=\"modification specificity protein C-term\" />\n");
-                     fprintf(fpout, "     </SpecificityRules>\n");
-         
-                     fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                           strModRef.c_str(), strModID.c_str(), strModName.c_str());
-                     fprintf(fpout, "    </SearchModification>\n");
-                  }
-                  // print this if non-protein C-term variable mod
-                  else
-                  {
-                     fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
-
-                     fprintf(fpout, "     <SpecificityRules>\n");
-                     fprintf(fpout, "       <cvParam accession=\"MS:1001190\" cvRef=\"PSI-MS\" name=\"modification specificity peptide C-term\" />\n");
-                     fprintf(fpout, "     </SpecificityRules>\n");
-         
-                     fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                           strModRef.c_str(), strModID.c_str(), strModName.c_str());
-                     fprintf(fpout, "    </SearchModification>\n");
-                  }
+                  fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
+                        strModRef.c_str(), strModID.c_str(), strModName.c_str());
+                  fprintf(fpout, "    </SearchModification>\n");
                }
             }
-            else if (!bWriteTerminalMods && varModsParam.szVarModChar[i]!='c' && varModsParam.szVarModChar[i]!='n')
-            {
-               fprintf(fpout, "    <SearchModification residues=\"%c\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n",
-                     varModsParam.szVarModChar[i],
-                     varModsParam.dVarModMass);
-     
-               fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                     strModRef.c_str(), strModID.c_str(), strModName.c_str());
-               fprintf(fpout, "    </SearchModification>\n");
-            }
+         }
+         else if (!bWriteTerminalMods && varModsParam.szVarModChar[i]!='c' && varModsParam.szVarModChar[i]!='n')
+         {
+            fprintf(fpout, "    <SearchModification residues=\"%c\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n",
+                  varModsParam.szVarModChar[i], varModsParam.dVarModMass);
+
+            fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
+                  strModRef.c_str(), strModID.c_str(), strModName.c_str());
+            fprintf(fpout, "    </SearchModification>\n");
          }
       }
    }
@@ -1090,7 +1042,7 @@ void CometWriteMzIdentML::WriteEnzyme(FILE *fpout)
       fprintf(fpout, "%s", sAdditionalEnzymeInfo.c_str());
       fprintf(fpout, "     </Enzyme>\n");
    }
-  
+
    fprintf(fpout, "   </Enzymes>\n");
 }
 

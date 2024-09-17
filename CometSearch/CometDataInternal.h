@@ -130,7 +130,6 @@ struct Options
    int bClipNtermMet;            // 0=leave protein sequences alone; 1=also consider w/o N-term methionine
    int bClipNtermAA;             // 0=leave peptide sequences as-is; 1=clip N-term amino acid from every peptide
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
-// int bSkipUpdateCheck;         // 0=do not check for updates; 1=check for updates
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
    int bScaleFragmentNL;         // 0=no; 1=scale fragment NL for each modified residue contained in fragment
    int bCreateIndex;             // 0=normal search; 1=create peptide index file
@@ -191,7 +190,6 @@ struct Options
       bClipNtermMet = a.bClipNtermMet;
       bClipNtermAA = a.bClipNtermAA;
       bSkipAlreadyDone = a.bSkipAlreadyDone;
-//    bSkipUpdateCheck = a.bSkipUpdateCheck;
       bMango = a.bMango;
       bScaleFragmentNL = a.bScaleFragmentNL;
       bCreateIndex = a.bCreateIndex;
@@ -566,6 +564,8 @@ struct VarModParams
    int     iMaxPermutations;
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
+   string  sProteinLModsListFile;                 // file containing list of proteins to restrict application of varmods to
+   multimap<int, string> mmapProteinLModsList;    // <varmod#, protein name> vector read from sProteinModsListFile if present
 
    VarModParams& operator=(VarModParams& a)
    {
@@ -822,6 +822,14 @@ struct StaticParams
       variableModParameters.cModCode[6] = '%';
       variableModParameters.cModCode[7] = '!';
       variableModParameters.cModCode[8] = '+';
+      for (int i = 9; i < VMODS; ++i)
+      {
+         int iAscii = 88 + i;    //start with lower case 'a' ASCII 97
+         if (iAscii <= 125)      // thru '}' which is ASCII 125
+            variableModParameters.cModCode[i] = (char)(iAscii);
+         else
+            variableModParameters.cModCode[i] = '_';
+      }
 
       variableModParameters.iMaxVarModPerPeptide = 5;
       variableModParameters.iMaxPermutations = MAX_PERMUTATIONS;
@@ -866,7 +874,6 @@ struct StaticParams
       options.bResolveFullPaths = 1;
 
       options.bSkipAlreadyDone = 1;
-//    options.bSkipUpdateCheck = 0;
       options.bMango = 0;
       options.bScaleFragmentNL = 0;
       options.bCreateIndex = 0;

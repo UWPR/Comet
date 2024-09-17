@@ -23,6 +23,7 @@
 #include "ModificationsPermuter.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <sstream>
 #include <bitset>
 
@@ -1569,6 +1570,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    int iStartPos = 0;
    int iEndPos = 0;
    int piVarModCounts[VMODS];
+   bool pbVarModProteinFilter[VMODS];  // default true; set to false if a mod has a protein filter that does not match this protein
    int iWhichIonSeries;
    int ctIonSeries;
    int ctLen;
@@ -1611,6 +1613,41 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
    if (g_staticParams.options.bClipNtermAA) // skip the N-term residue of every peptide
       iStartPos = 1;
+
+   for (int i = 0; i < VMODS; ++i)
+   {
+      piVarModCounts[i] = 0;
+      pbVarModProteinFilter[i] = true;
+   }
+
+   // If variable modifications protein filter is applied, check if current sequence
+   // is in the protein filter list.  Check each variable mod protein filter and if
+   // current protein is not on the list, do not apply that particular variable mod.
+   // Any variable mod on the list will have pbVarModProteinFilter[?] = false unless
+   // the current protein matches a protein on the list.
+   if (g_staticParams.variableModParameters.mmapProteinLModsList.size() > 0)
+   {
+      char szProteinAccession[256];
+      sscanf(dbe.strName.c_str(), "%255s", szProteinAccession);
+      szProteinAccession[255] = '\0';
+
+      auto it = g_staticParams.variableModParameters.mmapProteinLModsList.begin();
+      while (it != g_staticParams.variableModParameters.mmapProteinLModsList.end())
+      {
+         int iWhichMod = it->first;
+
+         pbVarModProteinFilter[iWhichMod - 1] = false;  // do not apply this mod to this protein unless it's on the mmapProteinModsList
+
+         while (it != g_staticParams.variableModParameters.mmapProteinLModsList.end() && it->first == iWhichMod)
+         {
+            if (strstr(szProteinAccession, it->second.c_str()))
+            {
+               pbVarModProteinFilter[iWhichMod - 1] = true;
+            }
+            it++;
+         }
+      }
+   }
 
    // Quick clip n-term & PEFF variant check. Start summing amino acid mass at
    // the start variant position and work backwards.  If the mass is larger than
@@ -2124,6 +2161,17 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             // Otherwise, at this point, peptide mass is too big which means should be ok for varmod search.
             if (!g_staticParams.options.bCreateIndex && HasVariableMod(piVarModCounts, iStartPos, iEndPos, &dbe))
             {
+               // if variable mod protein filter applied, set residue mod count to 0 for the
+               // particular variable mod if current protein not on the protein filter list
+               if (g_staticParams.variableModParameters.mmapProteinLModsList.size() > 0)
+               {
+                  for (int i = 0; i < VMODS; ++i)
+                  {
+                     if (pbVarModProteinFilter[i] == false)
+                        piVarModCounts[i] = 0;
+                  }
+               }
+
                // VariableModSearch also includes looking at PEFF mods
                VariableModSearch(szProteinSeq, piVarModCounts, iStartPos, iEndPos, pbDuplFragment, &dbe);
             }

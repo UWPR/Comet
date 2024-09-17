@@ -61,8 +61,7 @@ private:
                       char *szAttributeVal);
 
    static void WriteVariableMod(FILE *fpout,
-                                CometSearchManager &searchMgr,
-                                string varModName,
+                                int iWhichVariableMod,
                                 bool bWriteTerminalMods);
 
    static void WriteStaticMod(FILE *fpout,
