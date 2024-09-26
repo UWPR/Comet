@@ -23,6 +23,7 @@
 #include "ModificationsPermuter.h"
 
 #include <stdio.h>
+#include <iostream>
 #include <sstream>
 #include <bitset>
 
@@ -170,8 +171,8 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    // a subset of peptides to calculate their fragment ions
 
    cout <<  "   - count fragment index vector sizes ... "; fflush(stdout);
-   // stupid workaround for Visual Studio ... first calculate all fragments to find size
-   // of each fragment index vector
+   // stupid workaround for Windows/Visual Studio performance ... first calculate all
+   // fragments to find size of each fragment on index vector
    for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
    {
       for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
@@ -253,7 +254,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
          }
       }
    }
-   printf("   - total # of entries in the fragment index: %0.2E (max %lld)\n", (double)ullCount, ullMax);
+   printf("   - total # of entries in the fragment index: %llu (max %llu)\n", ullCount, ullMax);
 }
 
 
@@ -296,15 +297,21 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
          // Add any n-term variable mods
          for (short ctNtermMod=0; ctNtermMod<FRAGINDEX_VMODS; ++ctNtermMod)
          {
-            if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod)
+            if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
+                     && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
+            {
                AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, ctNtermMod, -1, bCountOnly);
+            }
          }
 
          // Add any c-term variable mods
          for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
          {
-            if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
+            if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod
+                     && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
+            {
                AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, -1, ctCtermMod, bCountOnly);
+            }
          }
 
          // Now consider combinations of n-term and c-term variable mods
@@ -313,7 +320,10 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
             for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
             {
                if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
-                     && g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
+                     && g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod
+                     && (!g_staticParams.variableModParameters.bVarModProteinFilter ||
+                           (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
+                         && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                {
                   AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, ctNtermMod, ctCtermMod, bCountOnly);
                }
@@ -335,33 +345,66 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
 
       for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; ++modNumIdx)
       {
-         AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, -1, -1, bCountOnly);
-
-         if (g_staticParams.variableModParameters.bVarTermModSearch)
+         if (modNumIdx >= 0)
          {
-            // Add any n-term variable mods
-            for (short ctNtermMod=0; ctNtermMod< FRAGINDEX_VMODS; ++ctNtermMod)
-            {
-               if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod)
-                  AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, ctNtermMod, -1, bCountOnly);
-            }
+            bool bPass = true;
 
-            // Add any c-term variable mods
-            for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
+            // if protein variable mod filter is applied, check mods[] against the peptides siVarModProteinFilter
+            if (g_staticParams.variableModParameters.bVarModProteinFilter)
             {
-               if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
-                  AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, -1, ctCtermMod, bCountOnly);
-            }
+               char* mods = MOD_NUMBERS.at(modNumIdx).modifications;
 
-            // Now consider combinations of n-term and c-term variable mods
-            for (short ctNtermMod=0; ctNtermMod< FRAGINDEX_VMODS; ++ctNtermMod)
-            {
-               for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
+               for (int i = 0; i < MOD_NUMBERS.at(modNumIdx).modStringLen; ++i)
                {
-                  if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
-                        && g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod)
+                  // if mods[i] is not set to 1 in siVarModProteinFilter, do not apply this mod
+                  if (!cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, mods[i]))
                   {
-                     AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, ctNtermMod, ctCtermMod, bCountOnly);
+                     bPass = false;
+                     break;
+                  }
+               }
+            }
+
+            if (bPass)
+            {
+               AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, -1, -1, bCountOnly);
+
+               if (g_staticParams.variableModParameters.bVarTermModSearch)
+               {
+                  // Add any n-term variable mods
+                  for (short ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
+                  {
+                     if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
+                              && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
+                     {
+                        AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, ctNtermMod, -1, bCountOnly);
+                     }
+                  }
+
+                  // Add any c-term variable mods
+                  for (short ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
+                  {
+                     if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod
+                              && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
+                     {
+                        AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, -1, ctCtermMod, bCountOnly);
+                     }
+                  }
+
+                  // Now consider combinations of n-term and c-term variable mods
+                  for (short ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
+                  {
+                     for (short ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
+                     {
+                        if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
+                                 && g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod
+                                 && (!g_staticParams.variableModParameters.bVarModProteinFilter ||
+                                       (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
+                                     && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
+                        {
+                           AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, modNumIdx, ctNtermMod, ctCtermMod, bCountOnly);
+                        }
+                     }
                   }
                }
             }
@@ -740,10 +783,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
          g_staticParams.variableModParameters.varModList[x].szVarModChar);
    fprintf(fp, "\n");
 
-   size_t tTmp = (int)g_pvProteinNames.size();
-   comet_fileoffset_t *lProteinIndex = new comet_fileoffset_t[tTmp];
-   for (size_t i = 0; i < tTmp; ++i)
-      lProteinIndex[i] = -1;
+   // Variable mod protein filter:
+   fprintf(fp, "ProteinModList: %d\n", g_staticParams.variableModParameters.bVarModProteinFilter?1:0);
 
    comet_fileoffset_t clPeptidesFilePos = comet_ftell(fp);
    size_t tNumPeptides = g_pvDBIndex.size();
@@ -757,17 +798,19 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       fwrite(&iLen, sizeof(int), 1, fp);
       fwrite((*it).szPeptide, sizeof(char), iLen, fp);
       fwrite(&((*it).dPepMass), sizeof(double), 1, fp);
+      fwrite(&((*it).siVarModProteinFilter), sizeof(unsigned short), 1, fp);
       fwrite(&((*it).lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
 
       sTmp.sPeptide = (*it).szPeptide;
       sTmp.lIndexProteinFilePosition = clSizeCometFileOffset;
       sTmp.dPepMass = (*it).dPepMass;
+      sTmp.siVarModProteinFilter = (*it).siVarModProteinFilter;
       g_vRawPeptides.push_back(sTmp);
    }
 
    // Now write out: vector<vector<comet_fileoffset_t>> g_pvProteinsList
    comet_fileoffset_t clProteinsFilePos = comet_ftell(fp);
-   tTmp = g_pvProteinsList.size();
+   size_t tTmp = g_pvProteinsList.size();
    fwrite(&tTmp, clSizeCometFileOffset, 1, fp);
    for (auto it = g_pvProteinsList.begin(); it != g_pvProteinsList.end(); ++it)
    {
@@ -812,8 +855,6 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fwrite(&clPermutationsFilePos, clSizeCometFileOffset, 1, fp);
 
    g_pvDBIndex.clear();
-   g_pvProteinNames.clear();
-   delete[] lProteinIndex;
 
    fclose(fp);
 
@@ -923,7 +964,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          tok=strtok(szBuf+11, delims);
          while (tok != NULL)
          {
-            sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
+            int iRet = sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
             g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
             tok = strtok(NULL, delims);
             x++;
@@ -953,54 +994,51 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
       else if (!strncmp(szBuf, "VariableMod:", 12)) // read in variable mods
       {
-         char szMod1[512];
-         char szMod2[512];
-         char szMod3[512];
-         char szMod4[512];
-         char szMod5[512];
+         string strMods = szBuf + 12;
 
-         sscanf(szBuf + 12, "%s %s %s %s %s",
-            szMod1, szMod2, szMod3, szMod4, szMod5);
+         istringstream iss(strMods);
 
-         // parse FRAGINDEX_VMODS number of mods; FIX: make this into a loop over FRAGINDEX_VMODS
-         sscanf(szMod1, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[0].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[0].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[0].szVarModChar);
+         int iNumMods = 0;
 
-         sscanf(szMod2, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[1].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[1].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[1].szVarModChar);
+         do
+         {
+            string subStr;
 
-         sscanf(szMod3, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[2].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[2].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[2].szVarModChar);
+            iss >> subStr;  // parse each word which is a colon delimited triplet pair for modmass:neutralloss:modchars
 
-         sscanf(szMod4, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[3].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[3].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[3].szVarModChar);
+            int iRet = sscanf(subStr.c_str(), "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
+               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
+               g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar);
 
-         sscanf(szMod5, "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[4].dVarModMass),
-            &(g_staticParams.variableModParameters.varModList[4].dNeutralLoss),
-            g_staticParams.variableModParameters.varModList[4].szVarModChar);
+            iNumMods++;
+
+            if (iNumMods == FRAGINDEX_VMODS)
+               break;
+
+         } while (iss);
 
          for (int x = 0; x < FRAGINDEX_VMODS; ++x)
          {
             if (g_staticParams.variableModParameters.varModList[x].dVarModMass != 0.0)
-            {
                g_staticParams.variableModParameters.bVarModSearch = true;
-               break;
-            }
+
+            if (g_staticParams.variableModParameters.varModList[x].dNeutralLoss != 0.0)
+               g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
          }
 
          bFoundVariable = true;
+      }
+      else if (!strncmp(szBuf, "ProteinModList:", 15))
+      {
+         int iTmp;
+
+         int iRet = sscanf(szBuf + 16, "%d", &iTmp);
+
+         if (iTmp)
+            g_staticParams.variableModParameters.bVarModProteinFilter = true;
+
          break;
       }
-   }
-
-   for (int i = 0; i < 9 ; ++i)
-   {
-      if (g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
-         g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
    }
 
    if (!bFoundStatic || !bFoundVariable)
@@ -1030,6 +1068,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    struct PlainPeptideIndex sTmp;
    int iLen;
    char szPeptide[MAX_PEPTIDE_LEN];
+
    for (size_t it = 0; it < tNumPeptides; ++it)
    {
       tTmp = fread(&iLen, sizeof(int), 1, fp);
@@ -1037,6 +1076,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       szPeptide[iLen] = '\0';
       sTmp.sPeptide = szPeptide;
       tTmp = fread(&(sTmp.dPepMass), sizeof(double), 1, fp);
+      tTmp = fread(&(sTmp.siVarModProteinFilter), sizeof(unsigned short), 1, fp);
       tTmp = fread(&(sTmp.lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
 
       g_vRawPeptides.push_back(sTmp);
@@ -1082,7 +1122,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    tTmp = fread(MOD_SEQ_MOD_NUM_START, sizeof(int), ulSizeModSeqs, fp);
    tTmp = fread(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
-   tTmp = fread(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);  //FIX
+   tTmp = fread(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);  //FIX, why??
 
    int iTmp;
    char szTmp[MAX_PEPTIDE_LEN];

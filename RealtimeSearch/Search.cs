@@ -32,7 +32,7 @@
 
          CometSearchManagerWrapper SearchMgr = new CometSearchManagerWrapper();
          SearchSettings searchParams = new SearchSettings();
-                 
+
          string rawFileName = args[0];
          string sDB = args[1];
          double  dPeptideMassLow = 0;
@@ -155,7 +155,7 @@
 
                         int iProteinLengthCutoff = 30;
 
-                        if (vPeptide.Count > 0 && (iScanNumber % 10) == 0)
+                        if (vPeptide.Count > 0 && (iScanNumber % 1) == 0)
                         {
                            for (int x = 0; x < vPeptide.Count; ++x)
                            {
@@ -250,17 +250,21 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("decoy_search", sTmp, iTmp);
 */
-            dTmp = 20.0;  // peptide mass tolerance plus
+            dTmp = 3.0;  // peptide mass tolerance plus
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("peptide_mass_tolerance_upper", sTmp, dTmp);
 
-            dTmp = -20.0;  // peptide mass tolerance minus ; if this is not set, will use -1*peptide_mass_tolerance_plus
+            dTmp = -3.0;  // peptide mass tolerance minus ; if this is not set, will use -1*peptide_mass_tolerance_plus
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("peptide_mass_tolerance_lower", sTmp, dTmp);
 
-            iTmp = 2; // 0=Da, 2=ppm
+            iTmp = 0; // 0=Da, 2=ppm
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
+
+            iTmp = 0;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
             iTmp = 3;
             sTmp = iTmp.ToString();
@@ -286,23 +290,23 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 
-            iTmp = 1; // 1 = m/z tolerance
+            iTmp = 0; // 1 = m/z tolerance
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-            iTmp = 2; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
+            iTmp = 0; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
-            dTmp = 0.02; // fragment bin width
+            dTmp = 1.0005; // fragment bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.0; // fragment bin offset
+            dTmp = 0.4; // fragment bin offset
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            iTmp = 1; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
@@ -322,6 +326,7 @@
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("percentage_base_peak", sTmp, dTmp);
 
+/* unused for the search as these are applied during the plain peptide .idx index creation
             VarModsWrapper varMods = new VarModsWrapper();
             sTmp = "15.9949 M 0 2 -1 0 0";
             varMods.set_VarModMass(15.9949);
@@ -336,6 +341,7 @@
             iTmp = 4;
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
+*/
 
             // Now actually open the .idx database to read mass range from it
             int iLineCount = 0;

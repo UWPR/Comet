@@ -23,7 +23,7 @@
 #include "ModificationsPermuter.h"
 
 #include <stdio.h>
-#include <string.h>
+#include <cstring>
 #include <sstream>
 #include <bitset>
 
@@ -752,16 +752,6 @@ bool CometSearch::RunSearch(int iPercentStart,
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg.c_str());
                return false;
-            }
-
-            if (g_staticParams.options.bCreateIndex)
-            {
-               struct IndexProteinStruct sEntry;
-
-               // store protein name
-               strcpy(sEntry.szProt, dbe.strName.c_str());
-               sEntry.lProteinFilePosition = dbe.lProteinFilePosition;
-               g_pvProteinNames.insert({ sEntry.lProteinFilePosition, sEntry });
             }
 
             // Load sequence
@@ -1614,10 +1604,18 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    if (g_staticParams.options.bClipNtermAA) // skip the N-term residue of every peptide
       iStartPos = 1;
 
+   unsigned short siVarModProteinFilter = 0;  // bitwise representation of mmapProtein, all bits set to "0" initially
+
    for (int i = 0; i < VMODS; ++i)
    {
       piVarModCounts[i] = 0;
-      pbVarModProteinFilter[i] = true;
+      if (g_staticParams.variableModParameters.varModList[i].dVarModMass != 0.0)
+      {
+         pbVarModProteinFilter[i] = true;
+         cometbitset(siVarModProteinFilter, i);  // set the "i"th bit to 1
+      }
+      else
+         pbVarModProteinFilter[i] = false;
    }
 
    // If variable modifications protein filter is applied, check if current sequence
@@ -1625,29 +1623,46 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    // current protein is not on the list, do not apply that particular variable mod.
    // Any variable mod on the list will have pbVarModProteinFilter[?] = false unless
    // the current protein matches a protein on the list.
-   if (g_staticParams.variableModParameters.mmapProteinLModsList.size() > 0)
+   if (g_staticParams.variableModParameters.bVarModProteinFilter)
    {
       char szProteinAccession[256];
       sscanf(dbe.strName.c_str(), "%255s", szProteinAccession);
       szProteinAccession[255] = '\0';
 
-      auto it = g_staticParams.variableModParameters.mmapProteinLModsList.begin();
-      while (it != g_staticParams.variableModParameters.mmapProteinLModsList.end())
+      auto it = g_staticParams.variableModParameters.mmapProteinModsList.begin();
+      while (it != g_staticParams.variableModParameters.mmapProteinModsList.end())
       {
          int iWhichMod = it->first;
 
          pbVarModProteinFilter[iWhichMod - 1] = false;  // do not apply this mod to this protein unless it's on the mmapProteinModsList
 
-         while (it != g_staticParams.variableModParameters.mmapProteinLModsList.end() && it->first == iWhichMod)
+         cometbitclear(siVarModProteinFilter, iWhichMod - 1);
+
+         while (it != g_staticParams.variableModParameters.mmapProteinModsList.end() && it->first == iWhichMod)
          {
             if (strstr(szProteinAccession, it->second.c_str()))
             {
                pbVarModProteinFilter[iWhichMod - 1] = true;
+               cometbitset(siVarModProteinFilter, iWhichMod - 1);  // set "iWhichMod - 1" bit to 1
             }
             it++;
          }
       }
    }
+
+/*
+   printf("\nOK prot %s, ", dbe.strName.c_str());
+   for (int i = 0; i < FRAGINDEX_VMODS; ++i)
+   {
+      printf("%d", pbVarModProteinFilter[i]);
+   }
+   printf("  ");
+   for (int i = 0; i < FRAGINDEX_VMODS; ++i)
+   {
+      printf("%d", cometbitcheck(siVarModProteinFilter, i)==0?0:1);
+   }
+   printf("\n");
+*/
 
    // Quick clip n-term & PEFF variant check. Start summing amino acid mass at
    // the start variant position and work backwards.  If the mass is larger than
@@ -1733,6 +1748,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iLenPeptide);
                sEntry.szPeptide[iLenPeptide]='\0';
+               sEntry.siVarModProteinFilter = siVarModProteinFilter;
 
                // little sanity check here to not include peptides with '*' in them
                // although mass check above should've caught these before
@@ -1741,7 +1757,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                   memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2));
 
-                  g_pvDBIndex.push_back(sEntry);
+                  g_pvDBIndex.push_back(sEntry);  // can save a few transient bytes by going with <PlainPeptideIndex> g_vRawPeptides here
                }
 
                Threading::UnlockMutex(g_pvDBIndexMutex);
@@ -2163,7 +2179,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             {
                // if variable mod protein filter applied, set residue mod count to 0 for the
                // particular variable mod if current protein not on the protein filter list
-               if (g_staticParams.variableModParameters.mmapProteinLModsList.size() > 0)
+               if (g_staticParams.variableModParameters.bVarModProteinFilter)
                {
                   for (int i = 0; i < VMODS; ++i)
                   {
@@ -3227,7 +3243,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
-   dXcorr= std::round(dXcorr* 10000.0) / 10000.0;  // round to 4 decimal points
+   dXcorr= std::round(dXcorr* 1000.0) / 1000.0;  // round to 3 decimal points
 
    Threading::LockMutex(pQuery->accessMutex);
 
@@ -3383,7 +3399,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
 
    dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
-   dXcorr= std::round(dXcorr* 10000.0) / 10000.0;  // round to 4 decimal points
+   dXcorr= std::round(dXcorr* 1000.0) / 1000.0;  // round to 3 decimal points
 
    Threading::LockMutex(pQuery->accessMutex);
 

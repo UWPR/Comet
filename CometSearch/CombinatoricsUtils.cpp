@@ -92,7 +92,8 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
    int *c = new int[k + 3];
 
    c[0] = 0;
-   for (int i = 1; i <= k; ++i) {
+   for (int i = 1; i <= k; ++i)
+   {
       c[i] = i - 1;
    }
    // Initialize sentinels
@@ -116,7 +117,8 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
       // Prepare next iteration
       // T2 and T6 loop
       int x = 0;
-      if (j > 0) {
+      if (j > 0)
+      {
          x = j;
          c[j] = x;
          j--;
@@ -126,30 +128,36 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
          // return ret;
       }
       // T3
-      if (c[1] + 1 < c[2]) {
+      if (c[1] + 1 < c[2])
+      {
          c[1]++;
          combinations[idx] = ret;
          idx++;
          continue;
          // return ret;
       }
-      else {
+      else
+      {
          j = 2;
       }
       // T4
       bool stepDone = false;
-      while (!stepDone) {
+      while (!stepDone)
+      {
          c[j - 1] = j - 2;
          x = c[j] + 1;
-         if (x == c[j + 1]) {
+         if (x == c[j + 1])
+         {
             j++;
          }
-         else {
+         else
+         {
             stepDone = true;
          }
       }
       // T5
-      if (j > k) {
+      if (j > k)
+      {
          more = false;
          combinations[idx] = ret;
          idx++;
@@ -169,11 +177,14 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
 
 int CombinatoricsUtils::nChooseK(const int n, const int k)
 {
-   if (n == k || k == 0) return 1;
+   if (n == k || k == 0)
+      return 1;
 
-   if (k == 1 || k == n - 1) return n;
+   if (k == 1 || k == n - 1)
+      return n;
 
-   if (k > n / 2) return nChooseK(n, n - k);
+   if (k > n / 2)
+      return nChooseK(n, n - k);
 
    if (n <= N && k <= K)
    {
@@ -196,7 +207,8 @@ int CombinatoricsUtils::nChooseK(const int n, const int k)
 int CombinatoricsUtils::getCombinationCount(int n, int k)
 {
    int total = 0;
-   if (k > n) k = n;
+   if (k > n)
+      k = n;
    for (; k >= 1; k--)
    {
       total += nChooseK(n, k);

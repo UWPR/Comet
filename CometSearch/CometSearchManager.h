@@ -106,6 +106,7 @@ public:
 
 private:
    bool InitializeStaticParams();
+   bool ReadProteinVarModFilterFile();
    bool singleSearchInitializationComplete;
    int singleSearchThreadCount;
    std::map<std::string, CometParam*> _mapStaticParams;

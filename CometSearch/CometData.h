@@ -338,16 +338,14 @@ struct EnzymeInfo
       iSearchEnzyme2OffSet = a.iSearchEnzyme2OffSet;
       iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
 
-      int i;
-
-      for (i = 0; i < ENZYME_NAME_LEN; i++)
+      for (int i = 0; i < ENZYME_NAME_LEN; ++i)
       {
          szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
          szSearchEnzyme2Name[i] = a.szSearchEnzyme2Name[i];
          szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
       }
 
-      for (i = 0; i < MAX_ENZYME_AA; i++)
+      for (int i = 0; i < MAX_ENZYME_AA; ++i)
       {
          szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
          szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
@@ -367,16 +365,14 @@ struct EnzymeInfo
       iSearchEnzyme2OffSet = a.iSearchEnzyme2OffSet;
       iSampleEnzymeOffSet = a.iSampleEnzymeOffSet;
 
-      int i;
-
-      for (i = 0; i < ENZYME_NAME_LEN; i++)
+      for (int i = 0; i < ENZYME_NAME_LEN; ++i)
       {
          szSearchEnzymeName[i] = a.szSearchEnzymeName[i];
          szSearchEnzyme2Name[i] = a.szSearchEnzyme2Name[i];
          szSampleEnzymeName[i] = a.szSampleEnzymeName[i];
       }
 
-      for (i = 0; i < MAX_ENZYME_AA; i++)
+      for (int i = 0; i < MAX_ENZYME_AA; ++i)
       {
          szSearchEnzymeBreakAA[i] = a.szSearchEnzymeBreakAA[i];
          szSearchEnzymeNoBreakAA[i] = a.szSearchEnzymeNoBreakAA[i];
@@ -479,11 +475,8 @@ struct InputFileInfo
 struct SingleSpectrumStruct
 
 {
-
    double dMass;
-
    double dInt;
-
 };
 
 enum CometParamType

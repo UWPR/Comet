@@ -125,33 +125,6 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
          g_staticParams.bSkipToStartScan = false;
          iTmpCount = iScanNumber;
 
-/*   
-         // Thermo's monoisotopic m/z determine can fail sometimes. Assume that when
-         // the mono m/z value is less than selection window, it is wrong and use the
-         // selection m/z as the precursor m/z. This should
-         // be invoked when searching Thermo raw files and mzML converted from those.
-         // Only applied when single precursor present.
-         for (int i = 0 ; i < mstSpectrum.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
-         {
-            double dMZ = mstSpectrum.getMonoMZ(i);
-
-            if (g_staticParams.options.bCorrectMass && mstSpectrum.sizeMZ() == 1)
-            {
-               double dSelectionLower = mstSpectrum.getSelWindowLower();
-               double dSelectedMZ = mstSpectrum.getMZ(i);
-
-               if (dMZ > 0.1 && dSelectionLower > 0.1 && dMZ+0.1 < dSelectionLower)
-                  dMZ = dSelectedMZ;
-            }
-
-            if (dMZ == 0)
-               dMZ = mstSpectrum.getMZ(i);
-
-            if (!(iScanNumber % 5000))
-               printf("OK %s  dMZ %f %d/%d\n", g_staticParams.inputFile.szFileName, dMZ, iScanNumber, iFileLastScan);
-         }
-*/
-
          // To run a search, all that's needed is MH+ and Z. So need to generate
          // all combinations of these for each spectrum, whether there's a known
          // Z for each precursor or if Comet has to guess the 1+ or 2+/3+ charges.

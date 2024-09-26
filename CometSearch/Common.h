@@ -69,7 +69,7 @@ using namespace std;
    #define GITHUBSHA ""
 #endif
 
-#define comet_version   "2024.01 rev. 2"
+#define comet_version   "2024.02 rev. 0"
 #define copyright "(c) University of Washington"
 extern string g_sCometVersion;   // version string including git hash
 
@@ -78,6 +78,12 @@ extern string g_sCometVersion;   // version string including git hash
 #define BIN(dMass) (int)((dMass)*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
 
 #define isEqual(x, y) (std::abs(x-y) <= ( (std::abs(x) > std::abs(y) ? std::abs(y) : std::abs(x)) * FLT_EPSILON))
+
+#define cometbitset(byte, nbit)   ((byte) |=  (1<<(nbit)))  // https://www.codementor.io/@hbendali/c-c-macro-bit-operations-ztrat0et6
+#define cometbitclear(byte, nbit) ((byte) &= ~(1<<(nbit)))
+#define cometbitflip(byte, nbit)  ((byte) ^=  (1<<(nbit)))
+#define cometbitcheck(byte, nbit) ((byte) &   (1<<(nbit)))
+
 
 using namespace MSToolkit;
 #ifdef CRUX

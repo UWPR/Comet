@@ -703,6 +703,12 @@ void LoadParameters(char *pszParamsFile,
                sprintf(szParamStringVal, "%lf %lf", doubleRangeParam.dStart, doubleRangeParam.dEnd);
                pSearchMgr->SetParam("clear_mz_range", szParamStringVal, doubleRangeParam);
             }
+            else if (!strcmp(szParamName, "percentage_base_peak"))
+            {
+               sscanf(szParamVal, "%lf", &dDoubleParam);
+               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               pSearchMgr->SetParam("percentage_base_peak", szParamStringVal, dDoubleParam);
+            }
             else if (!strcmp(szParamName, "export_additional_pepxml_scores"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
@@ -1853,10 +1859,11 @@ mass_offsets =                         # one or more mass offsets to search (val
 minimum_peaks = 10                     # required minimum number of peaks in spectrum to search (default 10)\n");
 
 fprintf(fp,
-"minimum_intensity = 0                  # minimum intensity value to read in\n\
+"minimum_intensity = 0                 # minimum intensity value to read in\n\
 remove_precursor_peak = 0              # 0=no, 1=yes, 2=all charge reduced precursor peaks (for ETD), 3=phosphate neutral loss peaks\n\
 remove_precursor_tolerance = 1.5       # +- Da tolerance for precursor removal\n\
 clear_mz_range = 0.0 0.0               # clear out all peaks in the specified m/z range e.g. remove reporter ion region of TMT spectra\n\
+percentage_base_peak = 0.0             # specify a percentage (e.g. \"0.05\" for 5%%) of the base peak intensity as a minimum intensity threshold\n\
 \n\
 #\n\
 # static modifications\n\

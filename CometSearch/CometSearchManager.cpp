@@ -40,7 +40,6 @@ std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 vector<DBIndex>               g_pvDBIndex;
 MassRange                     g_massRange;
-map<long long, IndexProteinStruct>    g_pvProteinNames;  // for db index
 Mutex                         g_pvQueryMutex;
 Mutex                         g_pvDBIndexMutex;
 Mutex                         g_preprocessMemoryPoolMutex;
@@ -1376,14 +1375,14 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.variableModParameters.bVarModSearch = false;
    g_staticParams.variableModParameters.bVarTermModSearch = false;
    g_staticParams.variableModParameters.bBinaryModSearch = false;
+   g_staticParams.variableModParameters.bUseFragmentNeutralLoss = false;
    g_staticParams.variableModParameters.bVarProteinNTermMod = false;
    g_staticParams.variableModParameters.bVarProteinCTermMod = false;
-
+   g_staticParams.variableModParameters.bVarModProteinFilter = false;
+   g_staticParams.variableModParameters.bRareVarModPresent = false;
 
    if (g_staticParams.peffInfo.iPeffSearch)
       g_staticParams.variableModParameters.bVarModSearch = true;
-
-   g_staticParams.variableModParameters.bRareVarModPresent = false;
 
    for (int i=0; i<VMODS; ++i)
    {
@@ -1911,7 +1910,8 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
-    if (strstr(comet_version, version.c_str()))
+    if (strstr(comet_version, version.c_str())
+          || strstr(comet_version, "2024.0"))
     {
        return true;
     }
@@ -1988,52 +1988,32 @@ bool CometSearchManager::DoSearch()
       fflush(stdout);
    }
 
-   FILE* fp;
-
-   // see if comet_varmod_proteins.txt is present, if so, read in the list of masses.
-   if ((fp = fopen(g_staticParams.variableModParameters.sProteinLModsListFile.c_str(), "r")) != NULL)
+   if (g_staticParams.options.bCreateIndex || !g_staticParams.bIndexDb)
    {
-      char szBuf[512];
-      vector<pair<int, string>> vpTmp;
-
-      printf(" Protein variable modifications filter:\n");
-
-      while (fgets(szBuf, 512, fp))
+      // If specified, read in the protein variable mod filter file content.
+      // Do this here only for classic search or if creating the plain peptide index.
+      if (g_staticParams.variableModParameters.sProteinLModsListFile.length() > 0)
       {
-         if (strlen(szBuf) > 3)
-         {
-            char szProtein[512];
-            int iWhichMod;
+         bool bVarModUsed = false;
 
-            if (sscanf(szBuf, "%d %s", &iWhichMod, szProtein) == 2)
+         // Do a quick check to confirm there's a variable mod specified,
+         // otherwise there's no point in parsing the file.
+         for (int iMod = 0; iMod < VMODS; ++iMod)
+         {
+            if (g_staticParams.variableModParameters.varModList[iMod].dVarModMass != 0.0)
             {
-               if (iWhichMod > 0 && iWhichMod <= VMODS)
-               {
-                  g_staticParams.variableModParameters.mmapProteinLModsList.insert({ iWhichMod, szProtein });
-               }
+               bVarModUsed = true;
+               break;
             }
          }
-      }
-      fclose(fp);
 
-      auto it = g_staticParams.variableModParameters.mmapProteinLModsList.begin();
-      while (it != g_staticParams.variableModParameters.mmapProteinLModsList.end())
-      {
-         int iWhichMod = it->first;
-         bool bFirst = true;
-
-         printf(" - variable_mod%02d: ", iWhichMod);
-         while (it != g_staticParams.variableModParameters.mmapProteinLModsList.end() && it->first == iWhichMod)
+         if (bVarModUsed)
          {
-            if (!bFirst)
-               printf(", ");
-            printf("%s", it->second.c_str());
-            it++;
-            bFirst = false;
+            bSucceeded = ReadProteinVarModFilterFile();
+            if (!bSucceeded)
+               return bSucceeded;
          }
-         printf("\n");
       }
-      printf("\n");
    }
 
    g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
@@ -3174,9 +3154,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
 
-   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth);
-
-   double *pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
+   double *pdTmpSpectrum = new double[g_staticParams.iArraySizeGlobal];  // use this to determine most intense b/y-ions masses to report back
    bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
    int iSize;
    ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
@@ -3387,7 +3365,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                double mz = (mass + (ctCharge - 1)*PROTON_MASS) / ctCharge;
 
                iTmp = BIN(mz);
-               if (iTmp<iArraySize && pdTmpSpectrum[iTmp] > 0.0)
+               if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
                {
                   Fragment frag;
                   frag.intensity = pdTmpSpectrum[iTmp];
@@ -3435,7 +3413,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
 
                      double dNLfragMz = mz - (dNLmass / ctCharge);
                      iTmp = BIN(dNLfragMz);
-                     if (iTmp < iArraySize && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
+                     if (iTmp < g_staticParams.iArraySizeGlobal && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
                      {
                         Fragment frag;
                         frag.intensity = pdTmpSpectrum[iTmp];
@@ -3511,9 +3489,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
    // or we will create a memory leak!
 
-   int iArraySize = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth);
-
-   double* pdTmpSpectrum = new double[iArraySize];  // use this to determine most intense b/y-ions masses to report back
+   double* pdTmpSpectrum = new double[g_staticParams.iArraySizeGlobal];  // use this to determine most intense b/y-ions masses to report back
 
    bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
 
@@ -3552,20 +3528,18 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
-   // simply take top xcorr peptide as E-value calculation too expensive
    if (iSize > 1)
    {
       std::sort(g_pvQuery.at(0)->_pResults, g_pvQuery.at(0)->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
 
+   takeSearchResultsN = topN; // return up to the top N results, or iSize
+   if (takeSearchResultsN > iSize)
+      takeSearchResultsN = iSize;
+
    if (bSucceeded && g_pvQuery.at(0)->iMatchPeptideCount > 0)
    {
-      int iSize = g_pvQuery.at(0)->iMatchPeptideCount;
-
-      if (iSize > g_staticParams.options.iNumStored)
-         iSize = g_staticParams.options.iNumStored;
-
-      CometPostAnalysis::CalculateSP(g_pvQuery.at(0)->_pResults, 0, 1); // only do for top entry
+      CometPostAnalysis::CalculateSP(g_pvQuery.at(0)->_pResults, 0, takeSearchResultsN);
       CometPostAnalysis::CalculateEValue(0, 0);
       CometPostAnalysis::CalculateDeltaCn(0);
    }
@@ -3580,10 +3554,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    Query* pQuery;
    pQuery = g_pvQuery.at(0);  // return info for top hit only
 
-   takeSearchResultsN = topN; // return up to the top N results, or iSize
-   if (takeSearchResultsN > iSize)
-      takeSearchResultsN = iSize;
-
    for (int idx = 0; idx < takeSearchResultsN; ++idx)
    {
       Scores score;
@@ -3595,7 +3565,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       std::string eachStrReturnProtein;
       vector<Fragment> eachMatchedFragments;
 
-      if (iSize > 0 && pQuery->_pResults[idx].fXcorr > 0.0 && pQuery->_pResults[idx].iLenPeptide > 0)
+      if (iSize > 0 && pQuery->_pResults[idx].fXcorr > XCORR_CUTOFF && pQuery->_pResults[idx].iLenPeptide > 0)
       {
          Results* pOutput = pQuery->_pResults;
 
@@ -3750,7 +3720,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
                      double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
                      iTmp = BIN(mz);
-                     if (iTmp < iArraySize && pdTmpSpectrum[iTmp] > 0.0)
+                     if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
                      {
                            Fragment frag;
                            frag.intensity = pdTmpSpectrum[iTmp];
@@ -3798,7 +3768,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
                               double dNLfragMz = mz - (dNLmass / ctCharge);
                               iTmp = BIN(dNLfragMz);
-                              if (iTmp < iArraySize && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
+                              if (iTmp < g_staticParams.iArraySizeGlobal && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
                               {
                                  Fragment frag;
                                  frag.intensity = pdTmpSpectrum[iTmp];
@@ -3850,4 +3820,87 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    delete[] pdTmpSpectrum;
 
    return bSucceeded;
+}
+
+
+// Restrict variable mods to a list of proteins that are read here
+// File format is an "int string" on each line where "int" is the
+// variable modfication number and "string" is a single protein accession word
+bool CometSearchManager::ReadProteinVarModFilterFile()
+{
+   FILE* fp;
+   char szBuf[512];
+
+   if ((fp = fopen(g_staticParams.variableModParameters.sProteinLModsListFile.c_str(), "r")) != NULL)
+   {
+      printf(" Protein variable modifications filter:\n");
+
+      while (fgets(szBuf, 512, fp))
+      {
+         if (strlen(szBuf) > 3)
+         {
+            char szProtein[512];
+            int iWhichMod;
+
+            if (sscanf(szBuf, "%d %s", &iWhichMod, szProtein) == 2)
+            {
+               if (iWhichMod > 0 && iWhichMod <= VMODS)
+               {
+                  // check if specified iWhichMod actually corresponds to a non-zero variable mod
+                  if (!isEqual(g_staticParams.variableModParameters.varModList[iWhichMod -1].dVarModMass, 0.0))
+                     g_staticParams.variableModParameters.mmapProteinModsList.insert({ iWhichMod, szProtein });
+               }
+            }
+         }
+      }
+      fclose(fp);
+
+      if (g_staticParams.variableModParameters.mmapProteinModsList.size() > 0)
+      {
+         g_staticParams.variableModParameters.bVarModProteinFilter = true;
+
+         // print out the parsed proteins
+         auto it = g_staticParams.variableModParameters.mmapProteinModsList.begin();
+         while (it != g_staticParams.variableModParameters.mmapProteinModsList.end())
+         {
+            int iWhichMod = it->first;
+            int iCount = 0;
+            bool bFirst = true;
+
+            printf(" - variable_mod%02d: ", iWhichMod);
+            while (it != g_staticParams.variableModParameters.mmapProteinModsList.end() && it->first == iWhichMod)
+            {
+               if (iCount < 3)
+               {
+                  if (!bFirst)
+                     printf(", ");
+                  printf("%s", it->second.c_str());
+               }
+               else if (iCount == 3)
+               {
+                  printf(", ...");
+               }
+               it++;
+               iCount++;
+               bFirst = false;
+            }
+            printf("\n");
+         }
+         printf("\n");
+      }
+      else
+         g_staticParams.variableModParameters.bVarModProteinFilter = false;
+
+      return true;
+   }
+   else
+   {
+      char szErrorMsg[SIZE_ERROR];
+      sprintf(szErrorMsg, " Error - cannot read protein variable mod filter file \"%s\".\n",
+         g_staticParams.variableModParameters.sProteinLModsListFile.c_str());
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
 }

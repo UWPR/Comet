@@ -276,8 +276,10 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
    int pepIdx = 0;
    int modSeqIdx = 0;
    int modifiablePeptides = 0;
+
    for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
    {
+      //FIX: put restriction here for protein mod filter
       string modifiableAas = getModifiableAas((*it).sPeptide, ALL_MODS);
 
       if (!modifiableAas.empty())
@@ -308,7 +310,6 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
 
       pepIdx++;
    }
-
 
    cout << " - " << std::to_string(modifiablePeptides) << " modifiable peptides; " << std::to_string(ret.size()) << " unique modifiable sequences" << endl;
    return ret;
@@ -487,6 +488,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
    // Step 1: Get a bitmask representing each user specified modification found in the sequence.
    for (int m = 0; m < MOD_CNT; ++m)
    {
+      //FIX: apply protein modifications filter here??
       string sModChars = ALL_MODS[m];
 
       const unsigned long long bitmask = getModBitmask(sequence, sModChars); // Example: CMHQQQMK -> 01000010 (for modChar = 'M')

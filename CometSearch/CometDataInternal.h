@@ -59,6 +59,8 @@ class CometSearchManager;
 #define NO_PEFF_VARIANT             -127
 
 #define FRAGINDEX_VMODS             5        // only parse first five variable mods for fragment ion index searches
+                                             // if this is ever larger than 16, need to extend range of siVarModProteinFilter
+
 #define VMODS                       15       // also "VMODS+1" is 4th dimension of uiBinnedIonMasses to cover unmodified ions (0), mod NL (1-15)
 #define VMOD_1_INDEX                0
 #define VMOD_2_INDEX                1
@@ -424,6 +426,7 @@ struct DBIndex
    char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
    comet_fileoffset_t   lIndexProteinFilePosition;         // points to entry in g_pvProteinsList
    double dPepMass;                          // MH+ pep mass
+   unsigned short siVarModProteinFilter;            // bitwise representation of mmapProtein
 
    bool operator==(const DBIndex &rhs) const
    {
@@ -462,6 +465,7 @@ struct PlainPeptideIndex
    string sPeptide;
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
+   unsigned short siVarModProteinFilter;            // bitwise representation of mmapProtein
 
    bool operator==(const PlainPeptideIndex &rhs) const
    {
@@ -559,13 +563,14 @@ struct VarModParams
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
    bool    bRareVarModPresent;       // set to true if any of iRequireThisMod == -1
+   bool    bVarModProteinFilter;     // set to trueif protein mods list is applied
    int     iRequireVarMod;           // 0=no; else use bits to determine which varmods are required
    int     iMaxVarModPerPeptide;
    int     iMaxPermutations;
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
    string  sProteinLModsListFile;                 // file containing list of proteins to restrict application of varmods to
-   multimap<int, string> mmapProteinLModsList;    // <varmod#, protein name> vector read from sProteinModsListFile if present
+   multimap<int, string> mmapProteinModsList;     // <varmod#, protein name> vector read from sProteinModsListFile if present
 
    VarModParams& operator=(VarModParams& a)
    {
@@ -576,6 +581,7 @@ struct VarModParams
       bBinaryModSearch = a.bBinaryModSearch;
       bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
       bRareVarModPresent = a.bRareVarModPresent;
+      bVarModProteinFilter = a.bVarModProteinFilter;
       iRequireVarMod = a.iRequireVarMod;
       iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
       iMaxPermutations = a.iMaxPermutations;
@@ -942,8 +948,6 @@ struct StaticParams
 extern StaticParams    g_staticParams;
 
 extern string g_psGITHUB_SHA;             // grab the GITHUB_SHA environment variable and trim to 7 chars; null if environment variable not present
-
-extern map<long long, IndexProteinStruct>  g_pvProteinNames;
 
 extern vector<DBIndex> g_pvDBIndex;
 
