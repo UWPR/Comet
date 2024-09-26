@@ -8,7 +8,7 @@ peak of a precursor isotopic pattern. In these cases, the precursor mass is meas
 first isotope peak (one C13 atom) or possibly even the second or third isotope peak. To address
 this problem, this "isotope_error" parameter allows you to perform an accurate mass search
 (say 10 ppm) even if the precursor mass measurement is off by one or more C13 offsets.
-- Valid values are 0, 1, 2, 3, 4 and 5:
+- Valid values are 0 through 7:
   - 0 analyzes no isotope offsets, just the given precursor mass
   - 1 searches 0, +1 isotope offsets
   - 2 searches 0, +1, +2 isotope offsets
