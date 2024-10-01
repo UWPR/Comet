@@ -55,6 +55,16 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [use_Z1_ions](use_Z1_ions.html)
 - [use_NL_ions](use_NL_ions.html)
 
+#### Fragment-ion index
+
+- [fragindex_max_fragmentmass](fragindex_max_fragmentmass.html)
+- [fragindex_min_fragmentmass](fragindex_min_fragmentmass.html)
+- [fragindex_min_ions_report](fragindex_min_ions_report.html)
+- [fragindex_min_ions_score](fragindex_min_ions_score.html)
+- [fragindex_num_spectrumpeaks](fragindex_num_spectrumpeaks.html)
+- [fragindex_skipreadprecursors](fragindex_skipreadprecursors.html)
+
+
 #### Output
 
 - [output_mzidentmlfile](output_mzidentmlfile.html)
