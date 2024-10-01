@@ -10,8 +10,10 @@
   - Each line contains a modification number and a string.
   - The modification number corresponds to the variable_modXX entry, e.g. "2" will apply "variable_mod02" to the matched protein(s).
   - The input string (no spaces) will be matched to the first "word" or accession in the protein description line.
-  - If the input string is a substring of the full accession word, it will be considered a match.
+  - If the input string is a substring of the full accession word, it will be considered a match.  For example, if
+    the input string is "HUMAN" then any accession containing "HUMAN" anywhere will be a match.
   - No wildcards or regular expressions are currently supported.
+  - The string matches are case sensitive.
 
 Example:
 ```
