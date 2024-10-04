@@ -68,7 +68,7 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int iMaxElapsedTime = 20;
+               int iMaxElapsedTime = 50;
                int[] piTimeSearch = new int[iMaxElapsedTime];  // histogram of search times
 
                for (int i = 0; i < iMaxElapsedTime; ++i)
@@ -205,8 +205,8 @@
                SearchMgr.FinalizeSingleSpectrumSearch();
 
                // write out histogram of spectrum search times
-               for (int i = 0; i < iMaxElapsedTime; ++i)
-                  Console.WriteLine("{0}\t{1}", i, piTimeSearch[i]);
+//               for (int i = 0; i < iMaxElapsedTime; ++i)
+//                  Console.WriteLine("{0}\t{1}", i, piTimeSearch[i]);
 
                rawFile.Dispose();
             }
@@ -250,21 +250,36 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("decoy_search", sTmp, iTmp);
 */
-            dTmp = 3.0;  // peptide mass tolerance plus
+            dTmp = 20.0;  // peptide mass tolerance plus
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("peptide_mass_tolerance_upper", sTmp, dTmp);
 
-            dTmp = -3.0;  // peptide mass tolerance minus ; if this is not set, will use -1*peptide_mass_tolerance_plus
+            dTmp = -20.0;  // peptide mass tolerance minus ; if this is not set, will use -1*peptide_mass_tolerance_plus
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("peptide_mass_tolerance_lower", sTmp, dTmp);
 
-            iTmp = 0; // 0=Da, 2=ppm
+            iTmp = 2; // 0=Da, 2=ppm
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("peptide_mass_units", sTmp, iTmp);
 
-            iTmp = 0;
+            iTmp = 1; // 0 = Da, 1 = m/z tolerance
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
+
+            iTmp = 2; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
+
+            dTmp = 0.02; // fragment bin width
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
+
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
+
+            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
             iTmp = 3;
             sTmp = iTmp.ToString();
@@ -290,25 +305,9 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 
-            iTmp = 0; // 1 = m/z tolerance
+            iTmp = 10;
             sTmp = iTmp.ToString();
-            SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
-
-            iTmp = 0; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-8/-4/0/4/8 (for +4/+8 labeling)
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("isotope_error", sTmp, iTmp);
-
-            dTmp = 1.0005; // fragment bin width
-            sTmp = dTmp.ToString();
-            SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
-
-            dTmp = 0.4; // fragment bin offset
-            sTmp = dTmp.ToString();
-            SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
-
-            iTmp = 1; // 0=use flanking peaks, 1=M peak only
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
+            SearchMgr.SetParam("minimum_peaks", sTmp, iTmp);
 
             iTmp = 3; // maximum fragment charge
             sTmp = iTmp.ToString();

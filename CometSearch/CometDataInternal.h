@@ -1023,7 +1023,7 @@ struct Query
 
    Query()
    {
-      memset(iXcorrHistogram, 0, sizeof(int)*HISTO_SIZE);
+      memset(iXcorrHistogram, 0, sizeof(iXcorrHistogram));
 
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
