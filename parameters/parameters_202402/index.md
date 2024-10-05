@@ -57,12 +57,12 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Fragment-ion index
 
-- [fragindex_max_fragmentmass](fragindex_max_fragmentmass.html)
-- [fragindex_min_fragmentmass](fragindex_min_fragmentmass.html)
-- [fragindex_min_ions_report](fragindex_min_ions_report.html)
-- [fragindex_min_ions_score](fragindex_min_ions_score.html)
-- [fragindex_num_spectrumpeaks](fragindex_num_spectrumpeaks.html)
-- [fragindex_skipreadprecursors](fragindex_skipreadprecursors.html)
+- [fragindex_max_fragmentmass](fragindex_max_fragmentmass.html) <font color="red">*</font>
+- [fragindex_min_fragmentmass](fragindex_min_fragmentmass.html) <font color="red">*</font>
+- [fragindex_min_ions_report](fragindex_min_ions_report.html) <font color="red">*</font>
+- [fragindex_min_ions_score](fragindex_min_ions_score.html) <font color="red">*</font>
+- [fragindex_num_spectrumpeaks](fragindex_num_spectrumpeaks.html) <font color="red">*</font>
+- [fragindex_skipreadprecursors](fragindex_skipreadprecursors.html) <font color="red">*</font>
 
 
 #### Output
