@@ -90,7 +90,7 @@ Here's a description of each column in the regular Comet (non-Crux) output:
 
 - scan:  The scan number of the spectrum that was searched.
 - num:  For each scan, the top N best scoring peptides are returned, controlled by the [num_output_lines](num_output_lines.html) parameter.  This column displays the peptide order for each scan, starting at "1" to indicate the top scoring peptide, "2" to indicate the second best scoring peptide, etc.
-- charge:  The precursor charge state
+- charge:  The precursor charge state.
 - exp_neutral_mass:  The experimental neutral mass of the measured precursor ion.
 - calc_neutral_mass:  The calculated neutral mass of the matched peptide.
 - e_value:  The expectation value or E-value score for the peptide.  See this paper for some info on [how Comet calculates E-values](https://pubs.acs.org/doi/10.1021/pr800420s) (although there is a correction where the log transform of the cumulative xcorr distribution is used instead of the log transform of the xcorr histogram).
