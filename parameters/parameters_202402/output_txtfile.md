@@ -85,3 +85,27 @@ scan  charge   spectrum precursor m/z  spectrum neutral mass   peptide mass   de
 5165  3  432.885100  1295.633471 1294.628231 0.5551   70.6711  42 1.0112   5  11 40 917   QALEEKASALR R.QALEEKAS[79.9663]ALR.T   8_V_79.966331  sp|A0A096LP49|CC187_HUMAN  RT 2.11E+01
 
 ```
+
+Here's a description of each column in the regular Comet (non-Crux) output:
+
+- scan:  The scan number of the spectrum that was searched.
+- num:  For each scan, the top N best scoring peptides are returned, controlled by the [num_output_lines](num_output_lines.html) parameter.  This column displays the peptide order for each scan, starting at "1" to indicate the top scoring peptide, "2" to indicate the second best scoring peptide, etc.
+- charge:  The precursor charge state
+- exp_neutral_mass:  The experimental neutral mass of the measured precursor ion.
+- calc_neutral_mass:  The calculated neutral mass of the matched peptide.
+- e_value:  The expectation value or E-value score for the peptide.  See this paper for some info on [how Comet calculates E-values](https://pubs.acs.org/doi/10.1021/pr800420s) (although there is a correction where the log transform of the cumulative xcorr distribution is used instead of the log transform of the xcorr histogram).
+- xcorr:  The cross correlation score for the peptide.  [Here's a very nice illustration](https://willfondrie.com/2019/02/an-intuitive-look-at-the-xcorr-score-function-in-proteomics/) of how this score is calculated by Will Fondrie.
+- delta_cn:  The deltaCn which is the difference in the normalized cross correlation score, historically between top hit and next best hit.  In Comet, each deltaCn score for each row is the  difference in the normalized cross correlation score between that hit and next lower peptide hit.
+- sp_score:  The preliminary score which is the sum of peak intensities that match the peptide and accounts for continuity of an ion series and the length of the peptide.  I think of this as a quick/simple peptide match score that now exists only for backwards compatibility for post-search processing tools.
+- ions_matched:  Out of the total number of theoretical fragment ions being considered in the search, this is the number of those ions that were found in the experimental spectrum.
+- ions_total:   The total number of theoretical fragment ions for the peptide.
+- plain_peptide:  The raw peptide sequence.
+- modified_peptide:  The peptide sequence including previous and next amino acids as well as any variable modifications.
+- prev_aa:  In the first protein that contains this peptide, the amino acid just before or n-terminal to the peptide.
+- next_aa:   In the first protein that contains this peptide, the amino acid just after or c-terminal to the peptide.
+- protein:  A comma separated list of proteins that contain the identified peptide. The maximum number of proteins printed out is controlled by the [max_duplicate_proteins](max_duplicate_proteins.html) parameter.
+- protein_count:  The total number of proteins in the database that contains the peptide.
+- modifications:  An encoding of static and variable modifications in the peptide as described above.
+- retention_time_sec:  If available from the query file, this reports the retention time in seconds of the spectrum being searched.
+- sp_rank:  The rank of the preliminary score (Sp).  If the peptide results were ordered by the sp_score column, this column reports the rank order of this peptide when sorted by sp_score.  So if this peptide had the fourth highest sp_score, this column would contain a "4".
+
