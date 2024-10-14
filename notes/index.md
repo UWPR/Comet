@@ -17,7 +17,7 @@ ms2/cms2 formats and a comet.params file.  Then issue a command such as:
 
 ### Miscellaneous Notes
 
-- 2024/10/01:  [Comet fragmention index](20241001_FI.html)
+- 2024/10/01:  [Comet fragment ion index](20241001_FI.html)
 - 2023/06/13:  [Linux compile issues](20230613_linuxcompile.html)
 - 2022/02/28:  [Searching Thermo RAW files supported only under Windows](20220228_rawfile.html)
 - 2020/12/01:  [Terminal modification masses](20201201_terminalmods.html)
