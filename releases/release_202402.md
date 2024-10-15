@@ -25,7 +25,7 @@ The following are new search parameters specific to this feature.
   - [fragindex_num_spectrumpeaks](https://uwpr.github.io/Comet/parameters/parameters_202402/fragindex_num_spectrumpeaks.html)
   - [fragindex_skipreadprecursors](https://uwpr.github.io/Comet/parameters/parameters_202402/fragindex_skipreadprecursors.html)
 
-- Allow variable modifications to apply to a subet of proteins.
+- Allow variable modifications to apply to a subset of proteins.
 For example, one can now limit mono-, di-, and tri-methylation
 as variable modifications to only histone proteins and not have
 to apply those modifications on all proteins in the human database.
