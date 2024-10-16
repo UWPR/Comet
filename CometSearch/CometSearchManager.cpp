@@ -474,6 +474,55 @@ static bool ValidateSequenceDatabaseFile()
    FILE *fpcheck;
    char szErrorMsg[SIZE_ERROR];
 
+   // if .idx database specified but does not exist, first see if corresponding
+   // fasta exists and if it does, create the .idx file
+   if (strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   {
+      if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
+      {
+         string strFasta = g_staticParams.databaseInfo.szDatabase;
+         strFasta.erase(strFasta.length() - 4);  // remove .idx extension
+
+         if ((fpcheck=fopen(strFasta.c_str(), "r")) == NULL)
+         {
+            sprintf(szErrorMsg, " Error - peptide index file \"%s\" and corresponding FASTA file\n         are both missing.\n",
+                  g_staticParams.databaseInfo.szDatabase);
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            return false;
+         }
+         else
+         {
+            fclose(fpcheck);
+            g_staticParams.options.bCreateIndex = true;  // set to true to make the index
+            return true;
+         }
+      }
+      else
+      {
+         string strFasta = g_staticParams.databaseInfo.szDatabase;
+         strFasta.erase(strFasta.length() - 4);  // remove .idx extension
+
+         if ((fpcheck=fopen(strFasta.c_str(), "r")) == NULL)
+         {
+            sprintf(szErrorMsg, " Error - peptide index file \"%s\" specified is present\n         but corresponding FASTA file \"%s\" file is missing.\n",
+                  g_staticParams.databaseInfo.szDatabase,
+                  strFasta.c_str());
+            string strErrorMsg(szErrorMsg);
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(szErrorMsg);
+            return false;
+         }
+         else
+         {
+            fclose(fpcheck);
+            g_staticParams.options.bCreateIndex = false;
+            return true;
+         }
+      }
+   }
+
 #ifndef WIN32
    // do a quick test if specified file is a directory
    struct stat st;
@@ -1938,7 +1987,7 @@ void CometSearchManager::ResetSearchStatus()
 bool CometSearchManager::CreateIndex()
 {
     // Override the Create Index flag to force it to create
-    g_staticParams.options.bCreateIndex = 1;
+    g_staticParams.options.bCreateIndex = true;
 
     // The DoSearch will create the index and exit
     return DoSearch();
@@ -2033,7 +2082,8 @@ bool CometSearchManager::DoSearch()
 
        CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
-       return bSucceeded;
+       if (g_pvInputFiles.size() == 0)
+          return bSucceeded;
    }
 
    if (g_staticParams.options.bOutputOutFiles)

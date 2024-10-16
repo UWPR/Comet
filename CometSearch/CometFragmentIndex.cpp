@@ -512,7 +512,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
    if (dCalcPepMass > g_massRange.dMaxMass || dCalcPepMass < g_staticParams.options.dPeptideMassLow)
       return;
 
-   if (!g_bIndexPrecursors[BIN(dCalcPepMass)])
+   if (!g_staticParams.options.iFragIndexSkipReadPrecursors && !g_bIndexPrecursors[BIN(dCalcPepMass)])
       return;
 
    unsigned int uiCurrentFragmentPeptide = -1;
@@ -632,11 +632,19 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 {
    FILE *fp;
    bool bSucceeded;
+   bool bSwapIdxExtension = false;
    string strOut;
 
    string strIndexFile;
 
-   strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");
+   if (strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   {
+      strIndexFile = g_staticParams.databaseInfo.szDatabase;  // .idx specified but not present to create it
+      g_staticParams.databaseInfo.szDatabase[strlen(g_staticParams.databaseInfo.szDatabase) - 4] = '\0';
+      bSwapIdxExtension = true;  // need to make database regular fasta, then RunSearch to get plain peptides, then swap back
+   }
+   else
+      strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");  // fasta specified so add .idx extension
 
    if ((fp = fopen(strIndexFile.c_str(), "wb")) == NULL)
    {
@@ -656,7 +664,6 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    if (!bSucceeded)
        return bSucceeded;
 
- //  tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;
    else
@@ -664,10 +671,19 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    if (bSucceeded)
    {
+      g_staticParams.options.bCreateIndex = true;
+      g_staticParams.bIndexDb = false;
+
       // this step calls RunSearch just to pull out all peptides
       // to write into the .idx pepties/proteins file
       bSucceeded = CometSearch::RunSearch(0, 0, tp);
+
+      g_staticParams.options.bCreateIndex = false;
+      g_staticParams.bIndexDb = true;
    }
+
+   if (bSwapIdxExtension)
+      strcat(g_staticParams.databaseInfo.szDatabase, ".idx");
 
    if (!bSucceeded)
    {
@@ -877,7 +893,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    if (g_bPlainPeptideIndexRead)
       return 1;
 
-   if (g_staticParams.options.bCreateIndex)
+   if (g_staticParams.options.bCreateIndex && !strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
       strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");
    else // database already is .idx
       strIndexFile = g_staticParams.databaseInfo.szDatabase;
@@ -1069,6 +1085,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    int iLen;
    char szPeptide[MAX_PEPTIDE_LEN];
 
+   g_vRawPeptides.clear();
    for (size_t it = 0; it < tNumPeptides; ++it)
    {
       tTmp = fread(&iLen, sizeof(int), 1, fp);
@@ -1091,7 +1108,6 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    g_pvProteinsList.clear();
    g_pvProteinsList.reserve(tSize);
-
    for (size_t it = 0; it < tSize; ++it)
    {
       size_t tNumProteinOffsets;
@@ -1126,6 +1142,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    int iTmp;
    char szTmp[MAX_PEPTIDE_LEN];
+   MOD_SEQS.clear();
    for (unsigned long i = 0; i < ulSizeModSeqs; ++i)
    {
       tTmp = fread(&iTmp, sizeof(int), 1, fp); // read length
@@ -1133,6 +1150,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       szTmp[iTmp]='\0';
       MOD_SEQS.push_back(szTmp);
    }
+   MOD_NUMBERS.clear();
    for (unsigned long i = 0; i < ulModNumSize; ++i)
    {
       ModificationNumber sTmp;

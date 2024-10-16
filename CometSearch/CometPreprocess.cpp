@@ -321,9 +321,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                   iEnd = iMaxBin;
 
                for (int x = iStart ; x <= iEnd; ++x)
-               {
                   g_bIndexPrecursors[x] = true;
-               }
 
                // now go through each isotope offset
                if (g_staticParams.tolerances.iIsotopeError > 0)
@@ -375,11 +373,11 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                      iStart = BIN(dMassLow + C13_DIFF * PROTON_MASS);      // do -1 offset
                      iEnd   = BIN(dMassHigh + C13_DIFF * PROTON_MASS);
                      if (iStart < 0)
-                                 iStart = 0;
+                        iStart = 0;
                      if (iEnd > iMaxBin)
-                                 iEnd = iMaxBin;
+                        iEnd = iMaxBin;
                      for (int x = iStart ; x <= iEnd; ++x)
-                                 g_bIndexPrecursors[x] = true;
+                        g_bIndexPrecursors[x] = true;
 
                      if (g_staticParams.tolerances.iIsotopeError == 6)     // do -2 and -3 offsets
                      {
