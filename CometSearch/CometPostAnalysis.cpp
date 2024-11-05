@@ -455,10 +455,13 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
                   int iMod = pOutput[i].piVarModSites[ii];
 
-                  if (g_staticParams.options.bScaleFragmentNL)
-                     iCountNLB[iMod-1][ii] += 1;
-                  else
-                     iCountNLB[iMod-1][ii] = 1;
+                  if (iMod > 0)
+                  {
+                     if (g_staticParams.options.bScaleFragmentNL)
+                        iCountNLB[iMod-1][ii] += 1;
+                     else
+                        iCountNLB[iMod-1][ii] = 1;
+                  }
                }
 
                if (pOutput[i].piVarModSites[iPos] != 0)
@@ -467,10 +470,13 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
                   int iMod = pOutput[i].piVarModSites[iPos];
 
-                  if (g_staticParams.options.bScaleFragmentNL)
-                     iCountNLY[iMod-1][ii] += 1;
-                  else
-                     iCountNLY[iMod-1][ii] = 1;
+                  if (iMod > 0)
+                  {
+                     if (g_staticParams.options.bScaleFragmentNL)
+                        iCountNLY[iMod-1][ii] += 1;
+                     else
+                        iCountNLY[iMod-1][ii] = 1;
+                  }
                }
             }
 
@@ -523,7 +529,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
                      if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
                      {
-                        for (int iMod=0; iMod < VMODS; iMod++)
+                        for (int iMod = 0; iMod < VMODS; iMod++)
                         {
                            if (iWhichIonSeries <= 2)  // abc ions
                            {
