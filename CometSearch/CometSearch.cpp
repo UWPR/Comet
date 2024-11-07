@@ -2741,6 +2741,13 @@ int CometSearch::BinarySearchMass(int start,
       {
          return end;
       }
+      else if ((int)middle == start
+            && start < (int)g_pvQuery.size()
+            && g_pvQuery.at(start)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
+            && dCalcPepMass <= g_pvQuery.at(start)->_pepMassInfo.dPeptideMassTolerancePlus)
+      {
+         return start;
+      }
       else
          return -1;
    }
