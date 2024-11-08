@@ -209,12 +209,14 @@ private:
                           int piVarModCounts[],
                           int iStartPos,
                           int iEndPos,
+                          int iClipNtermMetOffset,
                           bool *pbDuplFragment,
                           struct sDBEntry *dbe);
    double TotalVarModMass(int *pVarModCounts);
    bool PermuteMods(char *szProteinSeq,
                     int iWhichQuery,
                     int iWhichMod,
+                    int iClipNtermMetOffset,
                     bool *pbDuplFragments,
                     bool *bDoPeffAnalysis,
                     vector <PeffPositionStruct>* vPeffArray,
@@ -223,6 +225,7 @@ private:
    void inittwiddle(int m, int n, int *p);
    bool MergeVarMods(char *szProteinSeq,
                      int iWhichQuery,
+                     int iClipNtermMetOffset,
                      bool *pbDuplFragments,
                      bool *bDoPeffAnalysis,
                      vector <PeffPositionStruct>* vPeffArray,

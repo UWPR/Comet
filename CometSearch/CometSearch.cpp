@@ -2217,7 +2217,10 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                }
 
                // VariableModSearch also includes looking at PEFF mods
-               VariableModSearch(szProteinSeq, piVarModCounts, iStartPos, iEndPos, pbDuplFragment, &dbe);
+               int iClipNtermMetOffset = 0;
+               if (iNtermPeptideOnly == 1)
+                  iClipNtermMetOffset = 1;
+               VariableModSearch(szProteinSeq, piVarModCounts, iStartPos, iEndPos, iClipNtermMetOffset, pbDuplFragment, &dbe);
             }
 
             if (!g_staticParams.options.bCreateIndex && g_massRange.bNarrowMassRange)
@@ -4487,6 +4490,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                     int piVarModCounts[],
                                     int iStartPos,
                                     int iEndPos,
+                                    int iClipNtermMetOffset, // normal =0, n-term met clipped = 1; used to address PEFF mod position
                                     bool *pbDuplFragment,
                                     struct sDBEntry *dbe)
 {
@@ -5259,8 +5263,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                 _varModInfo.dCalcPepMass = dCalcPepMass;
 
                                                 // iTmpEnd-iStartPos+3 = length of peptide +2 (for n/c-term)
-                                                PermuteMods(szProteinSeq, iWhichQuery, 1, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe);
-
+                                                PermuteMods(szProteinSeq, iWhichQuery, 1, iClipNtermMetOffset, pbDuplFragment, &bDoPeffAnalysis, &vPeffArray, dbe);
                                              }
                                           }
 
@@ -5313,6 +5316,7 @@ double CometSearch::TotalVarModMass(int *pVarModCounts)
 bool CometSearch::PermuteMods(char *szProteinSeq,
                               int iWhichQuery,
                               int iWhichMod,
+                              int iClipNtermMetOffset,
                               bool *pbDuplFragment,
                               bool *bDoPeffAnalysis,
                               vector <PeffPositionStruct>* vPeffArray,
@@ -5402,12 +5406,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
       if (iWhichMod == VMODS)
       {
-         if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+         if (!MergeVarMods(szProteinSeq, iWhichQuery, iClipNtermMetOffset, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, iClipNtermMetOffset, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
 
@@ -5421,12 +5425,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
 
          if (iWhichMod == VMODS)
          {
-            if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+            if (!MergeVarMods(szProteinSeq, iWhichQuery, iClipNtermMetOffset, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
                return false;
          }
          else
          {
-            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+            if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, iClipNtermMetOffset, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
                return false;
          }
       }
@@ -5435,12 +5439,12 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
    {
       if (iWhichMod == VMODS)
       {
-         if (!MergeVarMods(szProteinSeq, iWhichQuery, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+         if (!MergeVarMods(szProteinSeq, iWhichQuery, iClipNtermMetOffset, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
       else
       {
-         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
+         if (!PermuteMods(szProteinSeq, iWhichQuery, iWhichMod+1, iClipNtermMetOffset, pbDuplFragment, bDoPeffAnalysis, vPeffArray, dbe))
             return false;
       }
    }
@@ -5580,6 +5584,7 @@ void CometSearch::inittwiddle(int m, int n, int *p)
 // except when lMaxIterations is hit
 bool CometSearch::MergeVarMods(char *szProteinSeq,
                                int iWhichQuery,
+                               int iClipNtermMetOffset,
                                bool *pbDuplFragment,
                                bool *bDoPeffAnalysis,
                                vector <PeffPositionStruct>* vPeffArray,
@@ -5829,8 +5834,13 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
       for (i = 0; i < n; ++i)
       {
+         // iClipNtermMetOffset is 0 unless the N-term methionine is clipped off
+         // then it's set to 1. This shifts the PEFF mod positions down by 1 to
+         // place them on the correct residue after methionine removal.
+         int iPeffPosition = (*vPeffArray).at(i).iPosition - iClipNtermMetOffset;
+
          // only consider those PEFF mods that are within the peptide
-         if ((*vPeffArray).at(i).iPosition >= _varModInfo.iStartPos && (*vPeffArray).at(i).iPosition <= _varModInfo.iEndPos)
+         if (iPeffPosition >= _varModInfo.iStartPos && iPeffPosition <= _varModInfo.iEndPos)
          {
             int iSize = (int)(*vPeffArray).at(i).vectorWhichPeff.size();
             for (int ii = 0; ii < iSize; ++ii)
@@ -5851,7 +5861,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                if (iWhichQuery != -1)
                {
                   bool bValidPeffPosition = true;
-                  int iTmpModPosition  = (*vPeffArray).at(i).iPosition - _varModInfo.iStartPos;
+                  int iTmpModPosition  = iPeffPosition - _varModInfo.iStartPos;
 
                   // make sure PEFF mod location doesn't conflict with existing variable mod
                   if (piVarModSites[iTmpModPosition] == 0)
