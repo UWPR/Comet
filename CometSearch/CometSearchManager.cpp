@@ -495,7 +495,7 @@ static bool ValidateSequenceDatabaseFile()
          else
          {
             fclose(fpcheck);
-            g_staticParams.options.bCreateIndex = true;  // set to true to make the index
+            g_staticParams.options.bCreateFragmentIndex = true;  // set to true to make the index
             return true;
          }
       }
@@ -517,7 +517,7 @@ static bool ValidateSequenceDatabaseFile()
          else
          {
             fclose(fpcheck);
-            g_staticParams.options.bCreateIndex = false;
+            g_staticParams.options.bCreateFragmentIndex = false;
             return true;
          }
       }
@@ -860,7 +860,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("scale_fragmentNL", g_staticParams.options.bScaleFragmentNL);
 
-   GetParamValue("create_index", g_staticParams.options.bCreateIndex);
+   GetParamValue("create_fragment_index", g_staticParams.options.bCreateFragmentIndex);
+   GetParamValue("create_peptide_index", g_staticParams.options.bCreatePeptideIndex);
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
 
@@ -1441,7 +1442,7 @@ bool CometSearchManager::InitializeStaticParams()
          if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
             g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = g_staticParams.variableModParameters.iMaxVarModPerPeptide;
 
-         if (g_staticParams.options.bCreateIndex)
+         if (g_staticParams.options.bCreateFragmentIndex)
          {  // limit any user specified modification limits to the max supported by fragment ion indexing
             if (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod > FRAGINDEX_MAX_MODS_PER_MOD)
                g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod = FRAGINDEX_MAX_MODS_PER_MOD;
@@ -1649,9 +1650,13 @@ bool CometSearchManager::InitializeStaticParams()
    g_staticParams.options.iFragIndexNumThreads = (g_staticParams.options.iNumThreads > FRAGINDEX_MAX_THREADS ? FRAGINDEX_MAX_THREADS : g_staticParams.options.iNumThreads);
 
    // At this point, check extension to set whether index database or not
-   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 7, ".pepidx"))
    {
-      g_staticParams.bIndexDb = 1;
+      g_staticParams.iIndexDb = 2;  // peptide index
+   }
+   else if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   {
+      g_staticParams.iIndexDb = 1;  // fragment ion index
 
       // if searching fragment index database, limit load of query spectra as no
       // need to load all spectra into memory since querying spectra sequentially
@@ -1659,7 +1664,7 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
    }
 
-   if (g_staticParams.options.bCreateIndex && g_staticParams.bIndexDb)
+   if (g_staticParams.options.bCreateFragmentIndex && g_staticParams.iIndexDb)
    {
       char szErrorMsg[SIZE_ERROR];
       sprintf(szErrorMsg, " Error - input database already indexed: \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
@@ -1669,7 +1674,7 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
-   if (g_staticParams.bIndexDb)
+   if (g_staticParams.iIndexDb)
    {
       g_bIndexPrecursors = (bool*) malloc(BIN(g_staticParams.options.dPeptideMassHigh));
       if (g_bIndexPrecursors == NULL)
@@ -1984,16 +1989,6 @@ void CometSearchManager::ResetSearchStatus()
 }
 
 
-bool CometSearchManager::CreateIndex()
-{
-    // Override the Create Index flag to force it to create
-    g_staticParams.options.bCreateIndex = true;
-
-    // The DoSearch will create the index and exit
-    return DoSearch();
-}
-
-
 bool CometSearchManager::DoSearch()
 {
    string strOut;
@@ -2029,7 +2024,7 @@ bool CometSearchManager::DoSearch()
    else
       g_sCometVersion = std::string(comet_version);
 
-   if (!g_staticParams.options.bOutputSqtStream) // && !g_staticParams.bIndexDb)
+   if (!g_staticParams.options.bOutputSqtStream) // && !g_staticParams.iIndexDb)
    {
       strOut = "\n Comet version \"" + g_sCometVersion + "\"\n\n";
 
@@ -2037,7 +2032,7 @@ bool CometSearchManager::DoSearch()
       fflush(stdout);
    }
 
-   if (g_staticParams.options.bCreateIndex || !g_staticParams.bIndexDb)
+   if (g_staticParams.options.bCreateFragmentIndex || !g_staticParams.iIndexDb)
    {
       // If specified, read in the protein variable mod filter file content.
       // Do this here only for classic search or if creating the plain peptide index.
@@ -2072,7 +2067,7 @@ bool CometSearchManager::DoSearch()
 
    tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);
 
-   if (g_staticParams.options.bCreateIndex) //index
+   if (g_staticParams.options.bCreateFragmentIndex) //index
    {
        // write out .idx file containing unmodified peptides and protein refs;
        // this calls RunSearch just to query fasta and generate uniq peptide list
@@ -2091,7 +2086,7 @@ bool CometSearchManager::DoSearch()
 
    bool bBlankSearchFile = false;
 
-   if (g_staticParams.bIndexDb)
+   if (g_staticParams.iIndexDb)
    {
       if (!g_staticParams.options.iFragIndexSkipReadPrecursors)
       {
@@ -2140,7 +2135,7 @@ bool CometSearchManager::DoSearch()
       time(&tStartTime);
       strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
 
-      if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+      if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
       {
          strOut = " Search start:  " + string(g_staticParams.szDate) + "\n";
          strOut += " - Input file: " + string(g_staticParams.inputFile.szFileName) + "\n";
@@ -2539,7 +2534,7 @@ bool CometSearchManager::DoSearch()
 
          FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
          string sTmpDB = g_staticParams.databaseInfo.szDatabase;
-         if (g_staticParams.bIndexDb)
+         if (g_staticParams.iIndexDb)
             sTmpDB = sTmpDB.erase(sTmpDB.size()-4); // need plain fasta if indexdb input
          if ((fpdb=fopen(sTmpDB.c_str(), "r")) == NULL)
          {
@@ -2551,7 +2546,7 @@ bool CometSearchManager::DoSearch()
             return false;
          }
 
-         if (g_staticParams.options.iSpectrumBatchSize == 0 && !g_staticParams.bIndexDb)
+         if (g_staticParams.options.iSpectrumBatchSize == 0 && !g_staticParams.iIndexDb)
          {
             logout("   - Reading all spectra into memory; set \"spectrum_batch_size\" if search terminates here.\n");
             fflush(stdout);
@@ -2559,12 +2554,12 @@ bool CometSearchManager::DoSearch()
 
          CometFragmentIndex sqSearch;
 
-         if (g_staticParams.bIndexDb)
+         if (g_staticParams.iIndexDb)
          {
             if (!g_bPlainPeptideIndexRead)
             {
                auto tStartTime = chrono::steady_clock::now();
-               if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+               if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iIndexDb)
                {
                   cout <<  " - read .idx ... ";
                   fflush(stdout);
@@ -2572,7 +2567,7 @@ bool CometSearchManager::DoSearch()
 
                sqSearch.ReadPlainPeptideIndex();
 
-               if (!g_staticParams.options.bOutputSqtStream && g_staticParams.bIndexDb)
+               if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iIndexDb)
                {
                   cout << CometFragmentIndex::ElapsedTime(tStartTime) << endl;
                }
@@ -2582,7 +2577,7 @@ bool CometSearchManager::DoSearch()
          }
 
          auto tBeginTime = chrono::steady_clock::now();
-         if (g_staticParams.bIndexDb)
+         if (g_staticParams.iIndexDb)
          {
             printf(" - searching \"%s\" ... ", g_staticParams.inputFile.szBaseName);
             fflush(stdout);
@@ -2607,7 +2602,7 @@ bool CometSearchManager::DoSearch()
 #endif
 
             // Load and preprocess all the spectra.
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
             {
                logout("   - Load spectra:");
 
@@ -2661,7 +2656,7 @@ bool CometSearchManager::DoSearch()
 
             { // need strStatusMsg in it's own scope due to goto statement above
                string strStatusMsg = " " + to_string(g_pvQuery.size()) + string("\n");
-               if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+               if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
                {
                   logout(strStatusMsg.c_str());
                }
@@ -2750,7 +2745,7 @@ bool CometSearchManager::DoSearch()
             if (!bSucceeded)
                goto cleanup_results;
 
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
             {
                logout("     - Post analysis:");
                fflush(stdout);
@@ -2783,7 +2778,7 @@ bool CometSearchManager::DoSearch()
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
             // Get flanking amino acid residues
-            if (g_staticParams.bIndexDb)
+            if (g_staticParams.iIndexDb)
             {
                for (int iWhichQuery = 0; iWhichQuery < (int)g_pvQuery.size(); ++iWhichQuery)
                {
@@ -2829,7 +2824,7 @@ bool CometSearchManager::DoSearch()
                }
             }
 
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
             {
                logout("  done\n");
                fflush(stdout);
@@ -2879,7 +2874,7 @@ cleanup_results:
                break;
          }
 
-         if (g_staticParams.bIndexDb)
+         if (g_staticParams.iIndexDb)
             cout << CometFragmentIndex::ElapsedTime(tBeginTime) << endl;
 
          if (bSucceeded)
@@ -2935,7 +2930,7 @@ cleanup_results:
                remove(szOutputDecoyMzIdentMLtmp);
             }
 
-            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.bIndexDb)
+            if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
             {
                time_t tEndTime;
 
@@ -3060,7 +3055,7 @@ cleanup_results:
          break;
    }
 
-   if (g_staticParams.bIndexDb)
+   if (g_staticParams.iIndexDb)
    {
       int iNumIndexingThreads = g_staticParams.options.iNumThreads;
       if (iNumIndexingThreads > FRAGINDEX_MAX_THREADS)

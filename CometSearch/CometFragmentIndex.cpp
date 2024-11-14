@@ -671,15 +671,15 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    if (bSucceeded)
    {
-      g_staticParams.options.bCreateIndex = true;
-      g_staticParams.bIndexDb = false;
+      g_staticParams.options.bCreateFragmentIndex = true;
+      g_staticParams.iIndexDb = 0;
 
       // this step calls RunSearch just to pull out all peptides
       // to write into the .idx pepties/proteins file
       bSucceeded = CometSearch::RunSearch(0, 0, tp);
 
-      g_staticParams.options.bCreateIndex = false;
-      g_staticParams.bIndexDb = true;
+      g_staticParams.options.bCreateFragmentIndex = false;
+      g_staticParams.iIndexDb = 1;
    }
 
    if (bSwapIdxExtension)
@@ -767,7 +767,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    cout << " - write peptides/proteins to file" << endl;
 
    // write out index header
-   fprintf(fp, "Comet peptide index.  Comet version %s\n", g_sCometVersion.c_str());
+   fprintf(fp, "Comet fragment ion index plain peptides.  Comet version %s\n", g_sCometVersion.c_str());
    fprintf(fp, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
    fprintf(fp, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
    fprintf(fp, "LengthRange: %d %d\n", g_staticParams.options.peptideLengthRange.iStart, g_staticParams.options.peptideLengthRange.iEnd);
@@ -893,7 +893,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    if (g_bPlainPeptideIndexRead)
       return 1;
 
-   if (g_staticParams.options.bCreateIndex && !strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   if (g_staticParams.options.bCreateFragmentIndex && !strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
       strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");
    else // database already is .idx
       strIndexFile = g_staticParams.databaseInfo.szDatabase;

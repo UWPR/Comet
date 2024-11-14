@@ -296,7 +296,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    bool bPrintSequences = false;
    if (g_staticParams.options.bOutputMzIdentMLFile == 2) // print sequences in DBSequence
    {
-      if (g_staticParams.bIndexDb)
+      if (g_staticParams.iIndexDb)
          bPrintSequences = false;
       else
          bPrintSequences = true;

@@ -134,7 +134,8 @@ struct Options
    int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
    int bMango;                   // 0=normal; 1=Mango x-link ms2 input
    int bScaleFragmentNL;         // 0=no; 1=scale fragment NL for each modified residue contained in fragment
-   int bCreateIndex;             // 0=normal search; 1=create peptide index file
+   int bCreateFragmentIndex;     // 0=normal search; 1=create fragment ion index file
+   int bCreatePeptideIndex;      // 0=normal search; 1=create peptide index file; only one of bCreateFragmentIndex and bCreatePeptideIndex can be 1
    int bVerboseOutput;
    int bShowFragmentIons;
    int bExplicitDeltaCn;         // if set to 1, do not use sequence similarity logic
@@ -194,7 +195,8 @@ struct Options
       bSkipAlreadyDone = a.bSkipAlreadyDone;
       bMango = a.bMango;
       bScaleFragmentNL = a.bScaleFragmentNL;
-      bCreateIndex = a.bCreateIndex;
+      bCreatePeptideIndex = a.bCreatePeptideIndex;
+      bCreateFragmentIndex = a.bCreateFragmentIndex;
       bVerboseOutput = a.bVerboseOutput;
       bShowFragmentIons = a.bShowFragmentIons;
       bExplicitDeltaCn = a.bExplicitDeltaCn;
@@ -712,7 +714,7 @@ struct StaticParams
    double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
-   int             bIndexDb;            // 0 = normal fasta; 1 = indexed database
+   int             iIndexDb;            // 0 = normal fasta; 1 = fragment ion indexed; 2 = peptide index
    vector<double>  vectorMassOffsets;
    vector<double>  precursorNLIons;
    int             iPrecursorNLSize;
@@ -767,7 +769,7 @@ struct StaticParams
       szMod[0] = '\0';
 
       iXcorrProcessingOffset = 75;
-      bIndexDb = 0;
+      iIndexDb = 0;
 
       databaseInfo.szDatabase[0] = '\0';
 
@@ -882,7 +884,8 @@ struct StaticParams
       options.bSkipAlreadyDone = 1;
       options.bMango = 0;
       options.bScaleFragmentNL = 0;
-      options.bCreateIndex = 0;
+      options.bCreatePeptideIndex = 0;
+      options.bCreateFragmentIndex = 0;
       options.bVerboseOutput = 0;
       options.iDecoySearch = 0;
       options.iNumThreads = 4;
@@ -949,7 +952,7 @@ extern StaticParams    g_staticParams;
 
 extern string g_psGITHUB_SHA;             // grab the GITHUB_SHA environment variable and trim to 7 chars; null if environment variable not present
 
-extern vector<DBIndex> g_pvDBIndex;
+extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
 
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 

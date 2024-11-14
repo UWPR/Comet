@@ -137,7 +137,7 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
 
    comet_fseek(fpdb, lFilePosition, SEEK_SET);
 
-   if (g_staticParams.bIndexDb)  //index database
+   if (g_staticParams.iIndexDb)  //fragment ion or peptide index
    {
       long lSize;
 
@@ -173,7 +173,7 @@ void CometMassSpecUtils::GetProteinSequence(FILE *fpdb,
 {
    strSeq.clear();
 
-   if (!g_staticParams.bIndexDb)  // works only for regular FASTA
+   if (!g_staticParams.iIndexDb)  // works only for regular FASTA
    {
       int iTmpCh;
 
@@ -220,7 +220,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
    int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
-   if (g_staticParams.bIndexDb)  //index database
+   if (g_staticParams.iIndexDb)  //fragment ion or peptide index
    {
       Results *pOutput;
 
@@ -334,7 +334,7 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpdb,
                                        int iPrintTargetDecoy,    // 0 = target+decoys, 1=target only, 2=decoy only
                                        int iWhichTerm)   // 0=no term constraint, 1=protein N-term, 2=protein C-term
 {
-   if (g_staticParams.bIndexDb)
+   if (g_staticParams.iIndexDb)  // fragment ion or peptide index
    {
       Results *pOutput;
       int iTmpCh = 0;

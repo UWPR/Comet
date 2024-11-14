@@ -330,7 +330,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    for (i = 0; i < iSize; ++i)
    {
-      if (!g_staticParams.bIndexDb)
+      if (!g_staticParams.iIndexDb)
       {
          // hijack here to make protein vector unique
          if (pOutput[i].pWhichProtein.size() > 1)
