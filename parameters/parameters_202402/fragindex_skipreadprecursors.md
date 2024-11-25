@@ -14,8 +14,8 @@
   a lot of time and may not provide a meaningful reduction in the fragment
   ion index.
 - Valid values are 0 or 1.
-- 0 = skip reading precursors from the input file
-- 1 = read precursors from the input file
+- 0 = read precursors from the input file (aka do not skip)
+- 1 = skip reading precursors from the input file
 
 Example:
 ```
