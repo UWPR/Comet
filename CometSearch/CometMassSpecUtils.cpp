@@ -129,45 +129,45 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
 
 
 // return a single protein name as a C char string
-void CometMassSpecUtils::GetProteinName(FILE *fpdb,
+void CometMassSpecUtils::GetProteinName(FILE *fpfasta,
                                         comet_fileoffset_t lFilePosition,
                                         char *szProteinName)
 {
    size_t tTmp;
 
-   comet_fseek(fpdb, lFilePosition, SEEK_SET);
+   comet_fseek(fpfasta, lFilePosition, SEEK_SET);
 
    if (g_staticParams.iIndexDb)  //fragment ion or peptide index
    {
       long lSize;
 
-      tTmp = fread(&lSize, sizeof(long), 1, fpdb);
+      tTmp = fread(&lSize, sizeof(long), 1, fpfasta);
       vector<comet_fileoffset_t> vOffsets;
       for (long x = 0; x < lSize; ++x) // read file offsets
       {
          comet_fileoffset_t tmpoffset;
-         tTmp = fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpdb);
+         tTmp = fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpfasta);
          vOffsets.push_back(tmpoffset);
       }
       for (long x = 0; x < lSize; ++x) // read name from fasta
       {
          char szTmp[WIDTH_REFERENCE];
-         comet_fseek(fpdb, vOffsets.at(x), SEEK_SET);
-         tTmp = fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpdb);
+         comet_fseek(fpfasta, vOffsets.at(x), SEEK_SET);
+         tTmp = fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpfasta);
          sscanf(szTmp, "%511s", szProteinName);  // WIDTH_REFERENCE-1
          break;  //break here to only get first protein reference (out of lSize)
       }
    }
    else  //regular fasta database
    {
-      fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+      fscanf(fpfasta, "%511s", szProteinName);  // WIDTH_REFERENCE-1
       szProteinName[511] = '\0';
    }
 }
 
 
 // return a single protein sequence as C++ string
-void CometMassSpecUtils::GetProteinSequence(FILE *fpdb,
+void CometMassSpecUtils::GetProteinSequence(FILE *fpfasta,
                                             comet_fileoffset_t lFilePosition,
                                             string &strSeq)
 {
@@ -177,13 +177,13 @@ void CometMassSpecUtils::GetProteinSequence(FILE *fpdb,
    {
       int iTmpCh;
 
-      comet_fseek(fpdb, lFilePosition, SEEK_SET);
+      comet_fseek(fpfasta, lFilePosition, SEEK_SET);
 
       // skip to end of description line
-      while (((iTmpCh = getc(fpdb)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF));
+      while (((iTmpCh = getc(fpfasta)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF));
 
       // load sequence
-      while (((iTmpCh=getc(fpdb)) != '>') && (iTmpCh != EOF))
+      while (((iTmpCh=getc(fpfasta)) != '>') && (iTmpCh != EOF))
       {
          if ('a'<=iTmpCh && iTmpCh<='z')
          {
@@ -205,7 +205,7 @@ void CometMassSpecUtils::GetProteinSequence(FILE *fpdb,
 
 
 // return all matched protein names in a vector of strings
-void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
+void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
                                               int iWhichQuery,  // which search
                                               int iWhichResult, // which peptide within the search
                                               int iPrintTargetDecoy,    // 0 = target+decoys, 1=target only, 2=decoy only
@@ -241,8 +241,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
          comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
          for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
          {
-            comet_fseek(fpdb, *it, SEEK_SET);
-            fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+            comet_fseek(fpfasta, *it, SEEK_SET);
+            fscanf(fpfasta, "%511s", szProteinName);  // WIDTH_REFERENCE-1
             szProteinName[511] = '\0';
 
             if (!strncmp(szProteinName, g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
@@ -286,8 +286,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
          {
             for (it=pOutput[iWhichResult].pWhichProtein.begin(); it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
             {
-               comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
-               fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+               comet_fseek(fpfasta, (*it).lWhichProtein, SEEK_SET);
+               fscanf(fpfasta, "%511s", szProteinName);  // WIDTH_REFERENCE-1
                szProteinName[511] = '\0';
 
                vProteinTargets.push_back(szProteinName);
@@ -309,8 +309,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
                   break;
    
-               comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
-               fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+               comet_fseek(fpfasta, (*it).lWhichProtein, SEEK_SET);
+               fscanf(fpfasta, "%511s", szProteinName);  // WIDTH_REFERENCE-1
                szProteinName[511] = '\0';
    
                if (strlen(szProteinName) + iLenDecoyPrefix >= WIDTH_REFERENCE)
@@ -328,7 +328,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
 // find prev, next AA from first matched protein
 // this is only valid if searching indexed db with peptide/protein .idx file
-void CometMassSpecUtils::GetPrevNextAA(FILE *fpdb,
+void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
                                        int iWhichQuery,  // which search
                                        int iWhichResult, // which peptide within the search
                                        int iPrintTargetDecoy,    // 0 = target+decoys, 1=target only, 2=decoy only
@@ -356,13 +356,13 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpdb,
       {
          string strSeq;
 
-         comet_fseek(fpdb, *it, SEEK_SET);
+         comet_fseek(fpfasta, *it, SEEK_SET);
 
          // skip through protein name string to first carriage return
-         while (((iTmpCh = getc(fpdb)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF));
+         while (((iTmpCh = getc(fpfasta)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF));
 
          // Load sequence
-         while (((iTmpCh=getc(fpdb)) != '>') && (iTmpCh != EOF))
+         while (((iTmpCh=getc(fpfasta)) != '>') && (iTmpCh != EOF))
          {
             if ('a' <= iTmpCh && iTmpCh <= 'z')
             {

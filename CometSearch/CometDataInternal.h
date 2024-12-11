@@ -720,6 +720,7 @@ struct StaticParams
    int             iPrecursorNLSize;
    int             iOldModsEncoding;
    bool            bSkipToStartScan;
+   std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
 
    StaticParams()
    {
@@ -975,6 +976,7 @@ extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;
 extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
+extern bool g_bPeptideIndexRead;        // set to true if peptide index file is read
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

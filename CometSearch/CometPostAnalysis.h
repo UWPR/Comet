@@ -16,6 +16,7 @@
 #ifndef _COMETPOSTANALYSIS_H_
 #define _COMETPOSTANALYSIS_H_
 
+#include "CometDataInternal.h"
 
 struct PostAnalysisThreadData
 {

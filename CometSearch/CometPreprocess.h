@@ -16,7 +16,6 @@
 #ifndef _COMETPREPROCESS_H_
 #define _COMETPREPROCESS_H_
 
-#include "Common.h"
 #include "ThreadPool.h"
 
 struct PreprocessThreadData

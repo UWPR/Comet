@@ -13,12 +13,10 @@
 // limitations under the License.
 
 
-#include "Common.h"
 #include "CometFragmentIndex.h"
 #include "CometSearch.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
-//#include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
 #include "ModificationsPermuter.h"
 
@@ -37,7 +35,7 @@ int MOD_NUM = 0;
 
 Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
 
-//comet_fileoffset_t clSizeCometFileOffset;
+
 #ifdef _WIN32
 #ifdef _WIN64
 comet_fileoffset_t clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //win64
@@ -47,6 +45,7 @@ comet_fileoffset_t clSizeCometFileOffset = (long long)sizeof(comet_fileoffset_t)
 #else
 comet_fileoffset_t clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //linux
 #endif
+
 
 CometFragmentIndex::CometFragmentIndex()
 {
@@ -652,7 +651,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       exit(1);
    }
 
-   strOut = " Creating plain peptide/protein index file:\n";
+   strOut = " Creating plain peptide/protein index file for fragment ion indexing:\n";
    logout(strOut.c_str());
    fflush(stdout);
    strOut = " - parse peptides from database ... ";

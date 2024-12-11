@@ -14,12 +14,10 @@
 
 
 #include "Common.h"
-#include "CometDataInternal.h"
 #include "ThreadPool.h"
 #include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
 #include "CometStatus.h"
-
 
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 

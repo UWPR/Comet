@@ -16,9 +16,6 @@
 #ifndef _MODIFICATIONSPERMUTER_H_
 #define _MODIFICATIONSPERMUTER_H_
 
-#include "Common.h"
-#include "CometDataInternal.h"
-
 class ModificationsPermuter
 {
 public:
