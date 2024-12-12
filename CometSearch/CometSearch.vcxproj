@@ -177,6 +177,7 @@
     <ClInclude Include="CometFragmentIndex.h" />
     <ClInclude Include="CometInterfaces.h" />
     <ClInclude Include="CometMassSpecUtils.h" />
+    <ClInclude Include="CometPeptideIndex.h" />
     <ClInclude Include="CometPostAnalysis.h" />
     <ClInclude Include="CometPreprocess.h" />
     <ClInclude Include="CometSearch.h" />
@@ -199,6 +200,7 @@
     <ClCompile Include="CometFragmentIndex.cpp" />
     <ClCompile Include="CometInterfaces.cpp" />
     <ClCompile Include="CometMassSpecUtils.cpp" />
+    <ClCompile Include="CometPeptideIndex.cpp" />
     <ClCompile Include="CometPostAnalysis.cpp" />
     <ClCompile Include="CometPreprocess.cpp" />
     <ClCompile Include="CometSearch.cpp" />
