@@ -19,6 +19,7 @@
 #include "CometInterfaces.h"
 
 #include <algorithm>
+#include <functional>
 
 using namespace CometInterfaces;
 
