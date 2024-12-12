@@ -60,7 +60,6 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
    if (bSucceeded)
    {
-      printf("OK before RunSearch\n");
       bSucceeded = CometSearch::RunSearch(0, 0, tp);
    }
 

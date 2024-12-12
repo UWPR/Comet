@@ -1785,6 +1785,10 @@ bool CometSearch::SearchPeptideIndex(void)
    comet_fseek(fp, lReadIndex[iStart10], SEEK_SET);
    CometPeptideIndex::ReadPeptideIndexEntry(&sDBI, fp);
 
+   // only use of dbe here is to store the protein position; used for backwards
+   // compatibility with standard search in StorePeptide
+   dbe.lProteinFilePosition = sDBI.lIndexProteinFilePosition;
+
    while ((int)(sDBI.dPepMass * 10) <= iEnd10)
    {
 /*
@@ -1818,6 +1822,7 @@ bool CometSearch::SearchPeptideIndex(void)
          break;
 
       CometPeptideIndex::ReadPeptideIndexEntry(&sDBI, fp);
+      dbe.lProteinFilePosition = sDBI.lIndexProteinFilePosition;
 
       // read past last entry in indexed db, need to break out of loop
       if (feof(fp))
@@ -6732,7 +6737,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       {
          if (g_staticParams.options.bCreatePeptideIndex)
          {
-            Threading::LockMutex(g_pvQueryMutex);
+            Threading::LockMutex(g_pvDBIndexMutex);
 
             // add to DBIndex vector
             DBIndex sDBTmp;
@@ -6749,7 +6754,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
             g_pvDBIndex.push_back(sDBTmp);
 
-            Threading::UnlockMutex(g_pvQueryMutex);
+            Threading::UnlockMutex(g_pvDBIndexMutex);
          }
          else
          {
