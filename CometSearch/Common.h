@@ -64,6 +64,7 @@ using namespace std;
 #include <set>
 #include <cfloat>
 #include <iostream>
+#include <functional>
 
 #ifndef GITHUBSHA          // value passed thru at compile time
    #define GITHUBSHA ""
