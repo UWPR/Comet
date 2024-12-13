@@ -4,9 +4,9 @@ COMETSEARCH =  CometSearch
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-   override CXXFLAGS += -O3         -fpermissive -Wall -Wextra -Wno-char-subscripts -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/src/expat-2.2.9/lib -I$(MSTOOLKIT)/src/zlib-1.2.11 -I$(COMETSEARCH)
+   override CXXFLAGS += -O3         -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/src/expat-2.2.9/lib -I$(MSTOOLKIT)/src/zlib-1.2.11 -I$(COMETSEARCH)
 else
-   override CXXFLAGS += -O3 -static -fpermissive -Wall -Wextra -Wno-char-subscripts -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/src/expat-2.2.9/lib -I$(MSTOOLKIT)/src/zlib-1.2.11 -I$(COMETSEARCH)
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/src/expat-2.2.9/lib -I$(MSTOOLKIT)/src/zlib-1.2.11 -I$(COMETSEARCH)
 endif
 
 EXECNAME = comet.exe
