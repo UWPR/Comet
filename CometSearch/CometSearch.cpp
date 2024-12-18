@@ -1808,15 +1808,14 @@ bool CometSearch::SearchPeptideIndex(void)
       if (sDBI.dPepMass > g_massRange.dMaxMass)
          break;
 
-      CometSearch cs;
-      int iWhichQuery = cs.BinarySearchMass(0, (int)g_pvQuery.size(), sDBI.dPepMass);
+      int iWhichQuery = BinarySearchMass(0, (int)g_pvQuery.size(), sDBI.dPepMass);
 
       while (iWhichQuery > 0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sDBI.dPepMass)
          iWhichQuery--;
 
       // Do the search
       if (iWhichQuery != -1)
-         cs.AnalyzePeptideIndex(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
+         AnalyzePeptideIndex(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
 
       if (comet_ftell(fp)>=lEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
          break;
@@ -1918,8 +1917,6 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
    double _pdAAforwardDecoy[MAX_PEPTIDE_LEN]; // Stores fragment ion fragment ladder calc.; sum AA masses including mods
    double _pdAAreverseDecoy[MAX_PEPTIDE_LEN]; // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
 
-   CometSearch cs;
-
    if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
    {
       int i;
@@ -1965,7 +1962,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
       }
 
       // Mass tolerance check for particular query against this candidate peptide mass.
-      if (cs.CheckMassMatch(iWhichQuery, sDBI.dPepMass))
+      if (CheckMassMatch(iWhichQuery, sDBI.dPepMass))
       {
          char szDecoyPeptide[MAX_PEPTIDE_LEN];
          int piVarModSites[MAX_PEPTIDE_LEN_P2];  // forward mods, generated from sDBI.sVarModSites

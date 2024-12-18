@@ -52,13 +52,22 @@ CometSearchManagerWrapper::~CometSearchManagerWrapper()
     }
 }
 
-bool CometSearchManagerWrapper::CreateIndex()
+bool CometSearchManagerWrapper::CreatePeptideIndex()
 {
    if (!_pSearchMgr)
    {
       return false;
    }
-   return _pSearchMgr->CreateIndex();
+   return _pSearchMgr->CreatePeptideIndex();
+}
+
+bool CometSearchManagerWrapper::CreateFragmentIndex()
+{
+   if (!_pSearchMgr)
+   {
+      return false;
+   }
+   return _pSearchMgr->CreateFragmentIndex();
 }
 
 bool CometSearchManagerWrapper::InitializeSingleSpectrumSearch()

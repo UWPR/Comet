@@ -41,15 +41,18 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
 
    for (int i=0; i<(int)g_pvQuery.size(); ++i)
    {
-      PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
-
-      pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool));
-
-      pThreadData = NULL;
-      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-      if (!bSucceeded)
+      if (g_pvQuery.at(i)->iMatchPeptideCount > 0 || g_pvQuery.at(i)->iDecoyMatchPeptideCount > 0)
       {
-         break;
+         PostAnalysisThreadData* pThreadData = new PostAnalysisThreadData(i);
+
+         pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool));
+
+         pThreadData = NULL;
+         bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+         if (!bSucceeded)
+         {
+            break;
+         }
       }
    }
 

@@ -2037,6 +2037,23 @@ void CometSearchManager::ResetSearchStatus()
     g_cometStatus.ResetStatus();
 }
 
+bool CometSearchManager::CreateFragmentIndex()
+{
+   // Override the Create Index flag to force it to create
+   g_staticParams.options.bCreateFragmentIndex = 1;
+
+   // The DoSearch will create the index and exit
+   return DoSearch();
+}
+
+bool CometSearchManager::CreatePeptideIndex()
+{
+   // Override the Create Index flag to force it to create
+   g_staticParams.options.bCreatePeptideIndex = 1;
+
+   // The DoSearch will create the index and exit
+   return DoSearch();
+}
 
 bool CometSearchManager::DoSearch()
 {
@@ -3181,23 +3198,6 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       sqSearch.ReadPlainPeptideIndex();
       sqSearch.CreateFragmentIndex(tp);
    }
-
-/* now done in ValidateSequenceDatabaseFile() */
-/*
-   // open FASTA for retrieving protein names
-   string sTmpDB = g_staticParams.databaseInfo.szDatabase;
-   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
-      sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
-   if ((fpfasta = fopen(sTmpDB.c_str(), "r")) == NULL)
-   {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error (3) - cannot read database file \"%s\".\n", sTmpDB.c_str());
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return false;
-   }
-*/
 
    singleSearchInitializationComplete = true;
 

@@ -239,7 +239,7 @@ private:
                        struct sDBEntry *dbe);
    static void SearchFragmentIndex(size_t iWhichQuery,
                                    ThreadPool *tp);
-   static bool SearchPeptideIndex(void);
+   bool SearchPeptideIndex(void);
    void AnalyzePeptideIndex(int iWhichQuery,
                             DBIndex sDBI,
                             bool *pbDuplFragment,
