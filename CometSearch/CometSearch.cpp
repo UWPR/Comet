@@ -1602,8 +1602,7 @@ bool CometSearch::SearchPeptideIndex(void)
       {
          sscanf(szBuf, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
       }
-
-      if (!strncmp(szBuf, "StaticMod:", 10))
+      else if (!strncmp(szBuf, "StaticMod:", 10))
       {
          char *tok;
          char delims[] = " ";
@@ -1644,8 +1643,21 @@ bool CometSearch::SearchPeptideIndex(void)
             + g_staticParams.staticModifications.dAddCterminusPeptide
             + g_staticParams.staticModifications.dAddNterminusPeptide;
       }
-
-      if (!strncmp(szBuf, "VariableMod:", 12))
+      else if (!strncmp(szBuf, "Enzyme:", 7))
+      {
+         sscanf(szBuf, "Enzyme: %s [%d %s %s]", g_staticParams.enzymeInformation.szSearchEnzymeName,
+            &(g_staticParams.enzymeInformation.iSearchEnzymeOffSet),
+            g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
+            g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+      }
+      else if (!strncmp(szBuf, "Enzyme2:", 8))
+      {
+         sscanf(szBuf, "Enzyme2: %s [%d %s %s]", g_staticParams.enzymeInformation.szSearchEnzyme2Name,
+            &(g_staticParams.enzymeInformation.iSearchEnzyme2OffSet),
+            g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
+            g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+      }
+      else if (!strncmp(szBuf, "VariableMod:", 12))
       {
          char *tok;
          char delims[] = " ";
@@ -1817,7 +1829,7 @@ bool CometSearch::SearchPeptideIndex(void)
       if (iWhichQuery != -1)
          AnalyzePeptideIndex(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
 
-      if (comet_ftell(fp)>=lEndOfStruct || sDBI.dPepMass>g_massRange.dMaxMass)
+      if (comet_ftell(fp) >= lEndOfStruct || sDBI.dPepMass > g_massRange.dMaxMass)
          break;
 
       CometPeptideIndex::ReadPeptideIndexEntry(&sDBI, fp);
@@ -1837,8 +1849,7 @@ bool CometSearch::SearchPeptideIndex(void)
       }
    }
 
-// vector<Query*>::iterator it = g_pvQuery.begin();
-   for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it) // g_pvQuery is always size 1 here; for loop is useless
+   for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
    {
       int iNumMatchedPeptides;
 
@@ -4135,7 +4146,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
             dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
       }
       else if (!CheckDuplicate(iWhichQuery, iStartResidue, iEndResidue, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass,
-         szProteinSeq, bDecoyPep, piVarModSites, dbe))
+            szProteinSeq, bDecoyPep, piVarModSites, dbe))
       {
          StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
             dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
@@ -4550,7 +4561,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
          {
             siLowestXcorrScoreIndex = siA;
          }
-         else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr ==  pQuery->_pResults[siA].fXcorr)
+         else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr ==  pQuery->_pResults[siA].fXcorr
+               && pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr > XCORR_CUTOFF)
          {
             // if current lowest score is the same as current siA peptide,
             // determine if need to point to siA peptide as the one to replace
@@ -4613,7 +4625,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
       memcpy(pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
       pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pResults[siLowestXcorrScoreIndex].dPepMass = dCalcPepMass;
-                  
+
       if (pQuery->_spectrumInfoInternal.iChargeState > 2)
       {
          pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)

@@ -172,14 +172,15 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    fprintf(fptr, "Comet peptide index database.  Comet version %s\n", g_sCometVersion.c_str());
    fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
    fprintf(fptr, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
+   fprintf(fptr, "LengthRange: %d %d\n", g_staticParams.options.peptideLengthRange.iStart, g_staticParams.options.peptideLengthRange.iEnd);
    fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
    fprintf(fptr, "Enzyme: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzymeName,
-      g_staticParams.enzymeInformation.iSearchEnzymeOffSet, 
-      g_staticParams.enzymeInformation.szSearchEnzymeBreakAA, 
+      g_staticParams.enzymeInformation.iSearchEnzymeOffSet,
+      g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
       g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
    fprintf(fptr, "Enzyme2: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzyme2Name,
-      g_staticParams.enzymeInformation.iSearchEnzyme2OffSet, 
-      g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA, 
+      g_staticParams.enzymeInformation.iSearchEnzyme2OffSet,
+      g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
       g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
    fprintf(fptr, "NumPeptides: %ld\n", (long)g_pvDBIndex.size());
 

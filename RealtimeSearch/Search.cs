@@ -126,6 +126,7 @@
                            {
                               double dTmp = double.Parse(trailerData.Values[i]);
                               double dMassDiff = Math.Abs(dTmp - dPrecursorMZ);
+
                               if (dTmp != 0.0 && dMassDiff < 10.0)
                                  dPrecursorMZ = dTmp;
                            }
@@ -274,6 +275,7 @@
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
 
+            dTmp = 0.0;  // fragment bin offst
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 

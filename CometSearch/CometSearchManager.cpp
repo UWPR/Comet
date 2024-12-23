@@ -2078,6 +2078,18 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
+   #ifdef PERF_DEBUG
+   // print set search parameters
+   std::map<std::string, CometParam*> mapParams = GetParamsMap();
+   for (std::map<std::string, CometParam*>::iterator it = mapParams.begin(); it != mapParams.end(); ++it)
+   {
+      if (it->first != "[COMET_ENZYME_INFO]")
+      {
+         printf("OK parameter name=\"%s\" value=\"%s\"\n", it->first.c_str(), it->second->GetStringValue().c_str());
+      }
+   }
+#endif
+
    // add git hash to version string if present
    // repeated here from Comet main() as main() is skipped when search invoked via DLL
    if (strlen(GITHUBSHA) > 0)
@@ -3152,6 +3164,10 @@ cleanup_results:
 
       printf(" - done.\n\n");
    }
+   else if (g_staticParams.iIndexDb == 2)
+   {
+      printf(" - done.\n\n");
+   }
 
    if (bBlankSearchFile)
       return false;
@@ -3193,11 +3209,18 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
    // Load databases
    CometFragmentIndex sqSearch;
-   if (!g_bPlainPeptideIndexRead)
+   if (g_staticParams.iIndexDb == 1 && !g_bPlainPeptideIndexRead)
    {
       sqSearch.ReadPlainPeptideIndex();
       sqSearch.CreateFragmentIndex(tp);
    }
+
+/* FIX: need to add this functionality; how to specify PeptideIndex though?
+   else if (g_staticParams.iIndexDb == 2 && !g_PeptideIndexRead)
+   {
+      sqSearch.CreatePeptideIndex(tp);
+   }
+*/
 
    singleSearchInitializationComplete = true;
 
@@ -3587,8 +3610,23 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (!InitializeSingleSpectrumSearch())
       return false;
 
+   // tRealTimeStart used to track elapsed search time and to exit if g_staticParams.options.iMaxIndexRunTime is surpased
+   g_staticParams.tRealTimeStart = std::chrono::high_resolution_clock::now();
+
    // We need to reset some of the static variables in-between input files
    CometPreprocess::Reset();
+
+#ifdef PERF_DEBUG
+   // print set search parameters
+   std::map<std::string, CometParam*> mapParams = GetParamsMap();
+   for (std::map<std::string, CometParam*>::iterator it = mapParams.begin(); it != mapParams.end(); ++it)
+   {
+      if (it->first != "[COMET_ENZYME_INFO]")
+      {
+         printf("OK parameter name=\"%s\" value=\"%s\"\n", it->first.c_str(), it->second->GetStringValue().c_str());
+      }
+   }
+#endif
 
    // IMPORTANT: From this point onwards, because we've loaded some
    // spectra, we MUST "goto cleanup_results" before exiting the loop,
