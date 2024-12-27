@@ -4562,7 +4562,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
             siLowestXcorrScoreIndex = siA;
          }
          else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr ==  pQuery->_pResults[siA].fXcorr
-               && pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr > XCORR_CUTOFF)
+               && pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr > g_staticParams.options.dMinimumXcorr)
          {
             // if current lowest score is the same as current siA peptide,
             // determine if need to point to siA peptide as the one to replace
@@ -4717,8 +4717,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
                if (iVal > 0)
                {
-                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i]
-                     = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
+                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
                }
                else if (iVal < 0)
                {

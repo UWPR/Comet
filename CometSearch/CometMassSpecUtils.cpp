@@ -414,8 +414,9 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
                   else
                      pOutput[iWhichResult].cNextAA = szSequence[iEndPos + 1];
 
-                  bFound = true;
-                  break;
+                  free(szSequence);
+                  strSeq.clear();
+                  return;
                }
                else if (g_staticParams.options.bClipNtermMet && iStartPos == 1 && szSequence[0] == 'M' && cs.CheckEnzymeEndTermini(szSequence, iEndPos))
                {
@@ -426,15 +427,13 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
                   else
                      pOutput[iWhichResult].cNextAA = szSequence[iEndPos + 1];
 
-                  bFound = true;
-                  break;
+                  free(szSequence);
+                  strSeq.clear();
+                  return;
                }
 
                ++iStartPos;
             }
-
-            if (bFound)
-               break;
          }
          else if (iWhichTerm == 1)
          {
@@ -450,8 +449,9 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
                else
                   pOutput[iWhichResult].cNextAA = '-';
 
-               bFound = true;
-               break;
+               free(szSequence);
+               strSeq.clear();
+               return;
             } 
             else if (g_staticParams.options.bClipNtermMet
                   && szSequence[0] == 'M'
@@ -461,7 +461,10 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
                pOutput[iWhichResult].cPrevAA = 'M';
                pOutput[iWhichResult].cNextAA = szSequence[iEndPos + 1];
                bFound = true;
-               break;
+
+               free(szSequence);
+               strSeq.clear();
+               return;
             }
          }
          else if (iWhichTerm == 2)
@@ -479,20 +482,25 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
 
                   pOutput[iWhichResult].cNextAA = '-';
 
-                  bFound = true;
-                  break;
+                  free(szSequence);
+                  strSeq.clear();
+                  return;
                }
                else if (g_staticParams.options.bClipNtermMet && iStartPos == 1 && szSequence[0] == 'M')
                {
                   pOutput[iWhichResult].cPrevAA = 'M';
                   pOutput[iWhichResult].cNextAA = '-';
                   bFound = true;
-                  break;
+
+                  free(szSequence);
+                  strSeq.clear();
+                  return;
                }
             }
          }
 
          free(szSequence);
+         strSeq.clear();
       }
 
       if (!bFound)

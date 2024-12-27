@@ -2873,7 +2873,7 @@ bool CometSearchManager::DoSearch()
 
                   for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
                   {
-                     if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide > 0 && g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].fXcorr > XCORR_CUTOFF)
+                     if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide > 0 && g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
                      {
                         int iNtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[0];
                         int iCtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide - 1];
@@ -2948,8 +2948,8 @@ cleanup_results:
 
             // Deleting each Query object in the vector calls its destructor, which
             // frees the spectral memory (see definition for Query in CometData.h).
-            for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
-               delete *it;
+            for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+               delete (*it);
 
             g_pvQuery.clear();
 
@@ -3604,7 +3604,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (iNumPeaks == 0)
       return false;
 
-   if (dMZ * iPrecursorCharge - (iPrecursorCharge - 1) * PROTON_MASS > g_staticParams.options.dPeptideMassHigh)
+   if (dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS > g_staticParams.options.dPeptideMassHigh)
       return false;    // this assumes dPeptideMassHigh is set correctly in the calling program
 
    if (!InitializeSingleSpectrumSearch())
@@ -3677,6 +3677,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    }
 
    takeSearchResultsN = topN; // return up to the top N results, or iSize
+
    if (takeSearchResultsN > iSize)
       takeSearchResultsN = iSize;
 
@@ -3695,20 +3696,20 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       goto cleanup_results;
 
    Query* pQuery;
-   pQuery = g_pvQuery.at(0);  // return info for top hit only
+   pQuery = g_pvQuery.at(0);  // there's only a single query spectrum
 
    for (int idx = 0; idx < takeSearchResultsN; ++idx)
    {
       Scores score;
       score.dCn = 0;
-      score.xCorr = 0;
+      score.xCorr = g_staticParams.options.dMinimumXcorr;
       score.matchedIons = 0;
       score.totalIons = 0;
       std::string eachStrReturnPeptide;
       std::string eachStrReturnProtein;
       vector<Fragment> eachMatchedFragments;
 
-      if (iSize > 0 && pQuery->_pResults[idx].fXcorr > XCORR_CUTOFF && pQuery->_pResults[idx].iLenPeptide > 0)
+      if (iSize > 0 && pQuery->_pResults[idx].fXcorr > g_staticParams.options.dMinimumXcorr && pQuery->_pResults[idx].iLenPeptide > 0)
       {
          Results* pOutput = pQuery->_pResults;
 
@@ -3721,29 +3722,29 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          // n-term variable mod
          if (pOutput[idx].piVarModSites[pOutput[idx].iLenPeptide] != 0)
          {
-               std::stringstream ss;
-               ss << "n[" << std::fixed << std::setprecision(4) << pOutput[idx].pdVarModSites[pOutput[idx].iLenPeptide] << "]";
-               eachStrReturnPeptide += ss.str();
+            std::stringstream ss;
+            ss << "n[" << std::fixed << std::setprecision(4) << pOutput[idx].pdVarModSites[pOutput[idx].iLenPeptide] << "]";
+            eachStrReturnPeptide += ss.str();
          }
 
          for (int i = 0; i < pOutput[idx].iLenPeptide; ++i)
          {
-               eachStrReturnPeptide += pOutput[idx].szPeptide[i];
+            eachStrReturnPeptide += pOutput[idx].szPeptide[i];
 
-               if (pOutput[idx].piVarModSites[i] != 0)
-               {
-                  std::stringstream ss;
-                  ss << "[" << std::fixed << std::setprecision(4) << pOutput[idx].pdVarModSites[i] << "]";
-                  eachStrReturnPeptide += ss.str();
-               }
+            if (pOutput[idx].piVarModSites[i] != 0)
+            {
+               std::stringstream ss;
+               ss << "[" << std::fixed << std::setprecision(4) << pOutput[idx].pdVarModSites[i] << "]";
+               eachStrReturnPeptide += ss.str();
+            }
          }
 
          // c-term variable mod
          if (pOutput[idx].piVarModSites[pOutput[idx].iLenPeptide + 1] != 0)
          {
-               std::stringstream ss;
-               ss << "c[" << std::fixed << std::setprecision(4) << pOutput[idx].pdVarModSites[pOutput[idx].iLenPeptide + 1] << "]";
-               eachStrReturnPeptide += ss.str();
+            std::stringstream ss;
+            ss << "c[" << std::fixed << std::setprecision(4) << pOutput[idx].pdVarModSites[pOutput[idx].iLenPeptide + 1] << "]";
+            eachStrReturnPeptide += ss.str();
          }
          eachStrReturnPeptide += "." + std::string(1, pOutput[idx].cNextAA);
 
@@ -3754,13 +3755,13 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          szProtein[511] = '\0';
          eachStrReturnProtein = szProtein;            //protein
 
-         score.xCorr = pOutput[idx].fXcorr;                        // xcorr
+         score.xCorr = pOutput[idx].fXcorr;                      // xcorr
          score.dCn = pOutput[idx].fDeltaCn;                      // deltaCn
          score.dSp = pOutput[idx].fScoreSp;                      // prelim score
-         score.dExpect = pOutput[idx].dExpect;                       // E-value
-         score.mass = pOutput[idx].dPepMass - PROTON_MASS;        // calc neutral pep mass
-         score.matchedIons = pOutput[idx].iMatchedIons;                  // ions matched
-         score.totalIons = pOutput[idx].iTotalIons;                    // ions tot
+         score.dExpect = pOutput[idx].dExpect;                   // E-value
+         score.mass = pOutput[idx].dPepMass - PROTON_MASS;       // calc neutral pep mass
+         score.matchedIons = pOutput[idx].iMatchedIons;          // ions matched
+         score.totalIons = pOutput[idx].iTotalIons;              // ions tot
 
          int iMinLength = g_staticParams.options.peptideLengthRange.iEnd;
          for (int x = 0; x < iSize; ++x)
@@ -3826,114 +3827,114 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          // Generate pdAAforward for pQuery->_pResults[idx].szPeptide.
          for (int i = 0; i < pQuery->_pResults[idx].iLenPeptide - 1; ++i)
          {
-               int iPos = pQuery->_pResults[idx].iLenPeptide - i - 1;
+            int iPos = pQuery->_pResults[idx].iLenPeptide - i - 1;
 
-               dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[idx].szPeptide[i]];
-               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[idx].szPeptide[iPos]];
+            dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[idx].szPeptide[i]];
+            dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[idx].szPeptide[iPos]];
 
-               if (g_staticParams.variableModParameters.bVarModSearch)
+            if (g_staticParams.variableModParameters.bVarModSearch)
+            {
+               if (pQuery->_pResults[idx].piVarModSites[i] != 0)
+                  dBion += pQuery->_pResults[idx].pdVarModSites[i];
+
+               if (pQuery->_pResults[idx].piVarModSites[iPos] != 0)
+                  dYion += pQuery->_pResults[idx].pdVarModSites[iPos];
+            }
+
+            map<int, double>::iterator it;
+            for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
+            {
+               // calculate every ion series the user specified
+               for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ++ionSeries)
                {
-                  if (pQuery->_pResults[idx].piVarModSites[i] != 0)
-                     dBion += pQuery->_pResults[idx].pdVarModSites[i];
-
-                  if (pQuery->_pResults[idx].piVarModSites[iPos] != 0)
-                     dYion += pQuery->_pResults[idx].pdVarModSites[iPos];
-               }
-
-               map<int, double>::iterator it;
-               for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
-               {
-                  // calculate every ion series the user specified
-                  for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ++ionSeries)
+                  // skip ion series that are not enabled.
+                  if (!g_staticParams.ionInformation.iIonVal[ionSeries])
                   {
-                     // skip ion series that are not enabled.
-                     if (!g_staticParams.ionInformation.iIonVal[ionSeries])
+                        continue;
+                  }
+
+                  bool isNTerm = (ionSeries <= ION_SERIES_C);
+
+                  // get the fragment mass if it is n- or c-terimnus
+                  double mass = (isNTerm) ? dBion : dYion;
+                  int fragNumber = i + 1;
+
+                  // Add any conversion factor from different ion series (e.g. b -> a, or y -> z)
+                  mass += ionMassesRelative[ionSeries];
+
+                  double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
+                  iTmp = BIN(mz);
+                  if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
+                  {
+                     Fragment frag;
+                     frag.intensity = pdTmpSpectrum[iTmp];
+                     frag.mass = mass;
+                     frag.type = ionSeries;
+                     frag.number = fragNumber;
+                     frag.charge = ctCharge;
+                     frag.neutralLoss = false;
+                     frag.neutralLossMass = 0.0;
+                     eachMatchedFragments.push_back(frag);
+                  }
+
+                  if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
+                  {
+                     for (int iMod = 0; iMod < VMODS; ++iMod)
                      {
-                           continue;
-                     }
+                        double dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss;
 
-                     bool isNTerm = (ionSeries <= ION_SERIES_C);
+                        if (dNLmass == 0.0 || g_staticParams.variableModParameters.varModList[iMod].dVarModMass == 0.0)
+                        {
+                           continue;  // continue if this iMod entry has no mod mass or no NL mass specified
+                        }
 
-                     // get the fragment mass if it is n- or c-terimnus
-                     double mass = (isNTerm) ? dBion : dYion;
-                     int fragNumber = i + 1;
+                        if (isNTerm)
+                        {
+                           // if have not already come across n-term mod residue for variable mod iMod, see if position i contains the variable mod
+                           if (!bAddNtermFragmentNeutralLoss[iMod] && pOutput[idx].piVarModSites[i] == iMod + 1)
+                           {
+                              bAddNtermFragmentNeutralLoss[iMod] = true;
+                           }
+                        }
+                        else
+                        {
+                           if (!bAddCtermFragmentNeutralLoss[iMod] && pOutput[idx].piVarModSites[iPos] == iMod + 1)
+                           {
+                              bAddCtermFragmentNeutralLoss[iMod] = true;
+                           }
+                        }
 
-                     // Add any conversion factor from different ion series (e.g. b -> a, or y -> z)
-                     mass += ionMassesRelative[ionSeries];
+                        if ((isNTerm && !bAddNtermFragmentNeutralLoss[iMod])
+                           || (!isNTerm && !bAddCtermFragmentNeutralLoss[iMod]))
+                        {
+                           continue;  // no fragment NL yet in peptide so continue
+                        }
 
-                     double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
-                     iTmp = BIN(mz);
-                     if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
-                     {
+                        double dNLfragMz = mz - (dNLmass / ctCharge);
+                        iTmp = BIN(dNLfragMz);
+                        if (iTmp < g_staticParams.iArraySizeGlobal && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
+                        {
                            Fragment frag;
                            frag.intensity = pdTmpSpectrum[iTmp];
-                           frag.mass = mass;
+                           frag.mass = mass - dNLmass;
                            frag.type = ionSeries;
                            frag.number = fragNumber;
                            frag.charge = ctCharge;
-                           frag.neutralLoss = false;
-                           frag.neutralLossMass = 0.0;
+                           frag.neutralLoss = true;
+                           frag.neutralLossMass = dNLmass;
                            eachMatchedFragments.push_back(frag);
-                     }
-
-                     if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
-                     {
-                           for (int iMod = 0; iMod < VMODS; ++iMod)
-                           {
-                              double dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss;
-
-                              if (dNLmass == 0.0 || g_staticParams.variableModParameters.varModList[iMod].dVarModMass == 0.0)
-                              {
-                                 continue;  // continue if this iMod entry has no mod mass or no NL mass specified
-                              }
-
-                              if (isNTerm)
-                              {
-                                 // if have not already come across n-term mod residue for variable mod iMod, see if position i contains the variable mod
-                                 if (!bAddNtermFragmentNeutralLoss[iMod] && pOutput[idx].piVarModSites[i] == iMod + 1)
-                                 {
-                                       bAddNtermFragmentNeutralLoss[iMod] = true;
-                                 }
-                              }
-                              else
-                              {
-                                 if (!bAddCtermFragmentNeutralLoss[iMod] && pOutput[idx].piVarModSites[iPos] == iMod + 1)
-                                 {
-                                       bAddCtermFragmentNeutralLoss[iMod] = true;
-                                 }
-                              }
-
-                              if ((isNTerm && !bAddNtermFragmentNeutralLoss[iMod])
-                                 || (!isNTerm && !bAddCtermFragmentNeutralLoss[iMod]))
-                              {
-                                 continue;  // no fragment NL yet in peptide so continue
-                              }
-
-                              double dNLfragMz = mz - (dNLmass / ctCharge);
-                              iTmp = BIN(dNLfragMz);
-                              if (iTmp < g_staticParams.iArraySizeGlobal && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
-                              {
-                                 Fragment frag;
-                                 frag.intensity = pdTmpSpectrum[iTmp];
-                                 frag.mass = mass - dNLmass;
-                                 frag.type = ionSeries;
-                                 frag.number = fragNumber;
-                                 frag.charge = ctCharge;
-                                 frag.neutralLoss = true;
-                                 frag.neutralLossMass = dNLmass;
-                                 eachMatchedFragments.push_back(frag);
-                              }
-                           }
+                        }
                      }
                   }
                }
+            }
          }
       }
       else
       {
          eachStrReturnPeptide = "";  // peptide
          eachStrReturnProtein = "";  // protein
-         score.xCorr = -1;       // xcorr
+         score.xCorr = -999  ;       // xcorr
          score.dSp = 0;        // prelim score
          score.dExpect = 999;      // E-value
          score.mass = 0;        // calc neutral pep mass
@@ -3951,8 +3952,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometDataInternal.h).
-   if (g_pvQuery.size() > 0)
-      delete g_pvQuery.at(0);
+   for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+      delete (*it);
 
    g_pvQuery.clear();
 

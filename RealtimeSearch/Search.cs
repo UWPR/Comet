@@ -144,41 +144,45 @@
                         // these next variables store return value from search
                         List<string> vPeptide = new List<string>();
                         List<string> vProtein = new List<string>();
-                        List<List<FragmentWrapper>> vMatchingFragments;
-                        List<ScoreWrapper> vScores;
 
                         int topN = 5; // report up to topN hits per query
 
                         watch.Start();
                         SearchMgr.DoSingleSpectrumSearchMultiResults(topN, iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
-                           out vPeptide, out vProtein, out vMatchingFragments, out vScores);
+                           out vPeptide, out vProtein, out List<List<FragmentWrapper>> vMatchingFragments, out List<ScoreWrapper> vScores);
                         watch.Stop();
 
                         int iProteinLengthCutoff = 30;
 
                         if (vPeptide.Count > 0 && (iScanNumber % 1) == 0)
                         {
-                           for (int x = 0; x < vPeptide.Count; ++x)
+                           if (vPeptide[0].Length > 0)
                            {
-                              string protein = vProtein[x];
-                              if (protein.Length > iProteinLengthCutoff)
-                                 protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
-
-                              Console.WriteLine("{0}\t{12}\t{1}\t{2}\t{3:0.0000}\t{11:0.0000}\t{10:0.0}\t{4:E4}\t{5:0.0000}\t{6:0.0000}\t{7}\t{8}\t{9}",
-                                 iScanNumber, vPeptide[x], protein, vScores[x].xCorr, vScores[x].dExpect, dExpPepMass - 1.00727646688, vScores[x].mass,
-                                 vScores[x].MatchedIons, vScores[x].TotalIons, iPass, vScores[x].dSp, vScores[x].dCn, x + 1);
-/*
-                              foreach (var myFragment in vMatchingFragments[x]) // print matched fragment ions
+                              for (int x = 0; x < vPeptide.Count; ++x)
                               {
-                                 Console.WriteLine("\t{0:0.0000}\t{1:0.0}\t{2}+\t{3}-ion",
-                                    myFragment.Mass,
-                                    myFragment.Intensity,
-                                    myFragment.Charge,
-                                    myFragment.Type);
-                              }
+                                 if (vPeptide[x].Length > 0)
+                                 {
+                                    string protein = vProtein[x];
+                                    if (protein.Length > iProteinLengthCutoff)
+                                       protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
+
+                                    Console.WriteLine("{0}\t{12}\t{1}\t{2}\t{3:0.0000}\t{11:0.0000}\t{10:0.0}\t{4:E4}\t{5:0.0000}\t{6:0.0000}\t{7}\t{8}\t{9}",
+                                       iScanNumber, vPeptide[x], protein, vScores[x].xCorr, vScores[x].dExpect, dExpPepMass - 1.00727646688, vScores[x].mass,
+                                       vScores[x].MatchedIons, vScores[x].TotalIons, iPass, vScores[x].dSp, vScores[x].dCn, x + 1);
+/*
+                                    foreach (var myFragment in vMatchingFragments[x]) // print matched fragment ions
+                                    {
+                                       Console.WriteLine("\t{0:0.0000}\t{1:0.0}\t{2}+\t{3}-ion",
+                                          myFragment.Mass,
+                                          myFragment.Intensity,
+                                          myFragment.Charge,
+                                          myFragment.Type);
+                                    }
 */
+                                 }
+                              }
+                              Console.WriteLine("");
                            }
-                           Console.WriteLine("");
                         }
 
                         if (vPeptide.Count > 0)
@@ -238,8 +242,8 @@
             String sTmp;
             int iTmp;
             double dTmp;
-            DoubleRangeWrapper doubleRangeParam = new DoubleRangeWrapper();
-            IntRangeWrapper intRangeParam = new IntRangeWrapper();
+//            DoubleRangeWrapper doubleRangeParam = new DoubleRangeWrapper();
+//            IntRangeWrapper intRangeParam = new IntRangeWrapper();
 
             SearchMgr.SetParam("database_name", sDB, sDB);
 

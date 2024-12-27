@@ -370,7 +370,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          }
       }
 
-      if (pOutput[i].iLenPeptide > 0 && pOutput[i].fXcorr > XCORR_CUTOFF) // take care of possible edge case
+      if (pOutput[i].iLenPeptide > 0 && pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr) // take care of possible edge case
       {
          int  ii;
          int  ctCharge;
