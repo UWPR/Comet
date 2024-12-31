@@ -976,6 +976,7 @@ extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;
 extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
+                                        // poor choice of name for the fragment index .idx given peptide index is back
 extern bool g_bPeptideIndexRead;        // set to true if peptide index file is read
 
 // Query stores information for peptide scoring and results

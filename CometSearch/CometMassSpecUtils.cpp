@@ -385,11 +385,18 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
             }
          }
 
-         CometSearch cs;
+         if (strSeq.size() < 1)
+         {
+            printf("Error - parsed sequence in GetPrevNextAA() is empty.  File pointer %ld, query %d, result %d.\n", *it, iWhichQuery, iWhichResult);
+            pOutput[iWhichResult].cPrevAA = pOutput[iWhichResult].cNextAA = '-';
+            return;
+         }
          char* szSequence = (char*)malloc(strSeq.size() + 1);
          strcpy(szSequence, strSeq.c_str());
 
          int iLenSequence = (int)strlen(szSequence);
+
+         CometSearch cs;
          cs._proteinInfo.iTmpProteinSeqLength = iLenSequence; // used in CheckEnzymeTermini
 
          if (iWhichTerm == 0)

@@ -357,7 +357,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                      if (iNumBadChars > 20)
                      {
                         logerr(" Too many non-printing characters in database header lines; wrong file type/format?\n");
-                        fclose(fp);
+                        std::fclose(fp);
                         return false;
                      }
                   }
@@ -385,7 +385,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                            string strErrorMsg = " Error realloc(szPeffLine[" + to_string(iLenSzLine) + "])\n";
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                            logerr(strErrorMsg.c_str());
-                           fclose(fp);
+                           std::fclose(fp);
                            return false;
                         }
                         szPeffLine = pTmp;
@@ -428,7 +428,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                               string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(strErrorMsg.c_str());
-                              fclose(fp);
+                              std::fclose(fp);
                               return false;
                            }
                            szMods = pTmp;
@@ -447,7 +447,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                            string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing mod closing parenthesis\n"; 
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                            logerr(strErrorMsg.c_str());
-                           fclose(fp);
+                           std::fclose(fp);
                            return false;
                         }
 
@@ -566,7 +566,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                               string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                               logerr(strErrorMsg.c_str());
-                              fclose(fp);
+                              std::fclose(fp);
                               return false;
                            }
                            szMods = pTmp;
@@ -585,7 +585,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                            string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing variant closing parenthesis\n";
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                            logerr(strErrorMsg.c_str());
-                           fclose(fp);
+                           std::fclose(fp);
                            return false;
                         }
 
@@ -679,7 +679,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                              string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                              logerr(strErrorMsg.c_str());
-                             fclose(fp);
+                             std::fclose(fp);
                              return false;
                           }
                           szMods = pTmp;
@@ -698,7 +698,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                          string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing variant closing parenthesis\n";
                          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                          logerr(strErrorMsg.c_str());
-                         fclose(fp);
+                         std::fclose(fp);
                          return false;
                        }
 
@@ -856,7 +856,7 @@ bool CometSearch::RunSearch(int iPercentStart,
          bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
       }
 
-      fclose(fp);
+      std::fclose(fp);
 
       if (!g_staticParams.options.bOutputSqtStream)
       {
@@ -946,7 +946,7 @@ void CometSearch::ReadOBO(char *szOBO,
          }
       }
 
-      fclose(fp);
+      std::fclose(fp);
    }
    else
    {
@@ -1588,154 +1588,161 @@ bool CometSearch::SearchPeptideIndex(void)
       return false;
    }
 
-   // ignore any static masses in params file; only valid ones
-   // are those in database index
-   memset(g_staticParams.staticModifications.pdStaticMods, 0, sizeof(g_staticParams.staticModifications.pdStaticMods));
-
-   bool bFoundStatic = false;
-   bool bFoundVariable = false;
-
-   // read in static and variable mods
-   while (fgets(szBuf, sizeof(szBuf), fp))
+   if (!g_bPeptideIndexRead)  // save some repeated parsing when being called from DLL
    {
-      if (!strncmp(szBuf, "MassType:", 9))
-      {
-         sscanf(szBuf, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
-      }
-      else if (!strncmp(szBuf, "StaticMod:", 10))
-      {
-         char *tok;
-         char delims[] = " ";
-         int x=65;
+      // ignore any static masses in params file; only valid ones
+      // are those in database index
+      memset(g_staticParams.staticModifications.pdStaticMods, 0, sizeof(g_staticParams.staticModifications.pdStaticMods));
 
-         // FIX:  hack here for setting static mods; need to reset masses ... fix later
-         CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
-            g_staticParams.massUtility.bMonoMassesFragment,
-            &g_staticParams.massUtility.dOH2fragment);
+      bool bFoundStatic = false;
+      bool bFoundVariable = false;
 
-         bFoundStatic = true;
-         tok=strtok(szBuf+11, delims);
-         while (tok != NULL)
+      // read in static and variable mods
+      while (fgets(szBuf, sizeof(szBuf), fp))
+      {
+         if (!strncmp(szBuf, "MassType:", 9))
          {
-            sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
-            g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
-            tok = strtok(NULL, delims);
-            x++;
-            if (x==95)  // 65-90 stores A-Z then next 4 (ascii 91-94) are n/c term peptide, n/c term protein
-               break;
+            sscanf(szBuf, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
          }
-
-         g_staticParams.staticModifications.dAddNterminusPeptide = g_staticParams.staticModifications.pdStaticMods[91];
-         g_staticParams.staticModifications.dAddCterminusPeptide = g_staticParams.staticModifications.pdStaticMods[92];
-         g_staticParams.staticModifications.dAddNterminusProtein = g_staticParams.staticModifications.pdStaticMods[93];
-         g_staticParams.staticModifications.dAddCterminusProtein = g_staticParams.staticModifications.pdStaticMods[94];
-
-         // have to set these here again once static mods are read
-         g_staticParams.precalcMasses.dNtermProton = g_staticParams.staticModifications.dAddNterminusPeptide
-            + PROTON_MASS;
-
-         g_staticParams.precalcMasses.dCtermOH2Proton = g_staticParams.staticModifications.dAddCterminusPeptide
-            + g_staticParams.massUtility.dOH2fragment
-            + PROTON_MASS;
-
-         g_staticParams.precalcMasses.dOH2ProtonCtermNterm = g_staticParams.massUtility.dOH2parent
-            + PROTON_MASS
-            + g_staticParams.staticModifications.dAddCterminusPeptide
-            + g_staticParams.staticModifications.dAddNterminusPeptide;
-      }
-      else if (!strncmp(szBuf, "Enzyme:", 7))
-      {
-         sscanf(szBuf, "Enzyme: %s [%d %s %s]", g_staticParams.enzymeInformation.szSearchEnzymeName,
-            &(g_staticParams.enzymeInformation.iSearchEnzymeOffSet),
-            g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
-            g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
-      }
-      else if (!strncmp(szBuf, "Enzyme2:", 8))
-      {
-         sscanf(szBuf, "Enzyme2: %s [%d %s %s]", g_staticParams.enzymeInformation.szSearchEnzyme2Name,
-            &(g_staticParams.enzymeInformation.iSearchEnzyme2OffSet),
-            g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
-            g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
-      }
-      else if (!strncmp(szBuf, "VariableMod:", 12))
-      {
-         char *tok;
-         char delims[] = " ";
-         int x=0;
-
-         bFoundVariable = true;
-
-         tok=strtok(szBuf+13, delims);
-         while (tok != NULL)
+         else if (!strncmp(szBuf, "StaticMod:", 10))
          {
-            tok = strtok(NULL, delims); // skip list of var mod residues
+            char* tok;
+            char delims[] = " ";
+            int x = 65;
 
-            // for index search, storing variable mods 0-9 in pdStaticMods array 0-9
-            sscanf(tok, "%lf:%lf", &(g_staticParams.variableModParameters.varModList[x].dVarModMass),
+            // FIX:  hack here for setting static mods; need to reset masses ... fix later
+            CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
+               g_staticParams.massUtility.bMonoMassesFragment,
+               &g_staticParams.massUtility.dOH2fragment);
+
+            bFoundStatic = true;
+            tok = strtok(szBuf + 11, delims);
+            while (tok != NULL)
+            {
+               sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
+               g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
+               tok = strtok(NULL, delims);
+               x++;
+               if (x == 95)  // 65-90 stores A-Z then next 4 (ascii 91-94) are n/c term peptide, n/c term protein
+                  break;
+            }
+
+            g_staticParams.staticModifications.dAddNterminusPeptide = g_staticParams.staticModifications.pdStaticMods[91];
+            g_staticParams.staticModifications.dAddCterminusPeptide = g_staticParams.staticModifications.pdStaticMods[92];
+            g_staticParams.staticModifications.dAddNterminusProtein = g_staticParams.staticModifications.pdStaticMods[93];
+            g_staticParams.staticModifications.dAddCterminusProtein = g_staticParams.staticModifications.pdStaticMods[94];
+
+            // have to set these here again once static mods are read
+            g_staticParams.precalcMasses.dNtermProton = g_staticParams.staticModifications.dAddNterminusPeptide
+               + PROTON_MASS;
+
+            g_staticParams.precalcMasses.dCtermOH2Proton = g_staticParams.staticModifications.dAddCterminusPeptide
+               + g_staticParams.massUtility.dOH2fragment
+               + PROTON_MASS;
+
+            g_staticParams.precalcMasses.dOH2ProtonCtermNterm = g_staticParams.massUtility.dOH2parent
+               + PROTON_MASS
+               + g_staticParams.staticModifications.dAddCterminusPeptide
+               + g_staticParams.staticModifications.dAddNterminusPeptide;
+         }
+         else if (!strncmp(szBuf, "Enzyme:", 7))
+         {
+            sscanf(szBuf, "Enzyme: %s [%d %s %s]", g_staticParams.enzymeInformation.szSearchEnzymeName,
+               &(g_staticParams.enzymeInformation.iSearchEnzymeOffSet),
+               g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
+               g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+         }
+         else if (!strncmp(szBuf, "Enzyme2:", 8))
+         {
+            sscanf(szBuf, "Enzyme2: %s [%d %s %s]", g_staticParams.enzymeInformation.szSearchEnzyme2Name,
+               &(g_staticParams.enzymeInformation.iSearchEnzyme2OffSet),
+               g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
+               g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+         }
+         else if (!strncmp(szBuf, "VariableMod:", 12))
+         {
+            char* tok;
+            char delims[] = " ";
+            int x = 0;
+
+            bFoundVariable = true;
+
+            tok = strtok(szBuf + 13, delims);
+            while (tok != NULL)
+            {
+               tok = strtok(NULL, delims); // skip list of var mod residues
+
+               // for index search, storing variable mods 0-9 in pdStaticMods array 0-9
+               sscanf(tok, "%lf:%lf", &(g_staticParams.variableModParameters.varModList[x].dVarModMass),
                   &(g_staticParams.variableModParameters.varModList[x].dNeutralLoss));
 
-            if (g_staticParams.variableModParameters.varModList[x].dNeutralLoss != 0.0)
-               g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
+               if (g_staticParams.variableModParameters.varModList[x].dNeutralLoss != 0.0)
+                  g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
 
-            tok = strtok(NULL, delims);
+               tok = strtok(NULL, delims);
 
-            x++;
-            if (x == VMODS)
-               break;
+               x++;
+               if (x == VMODS)
+                  break;
+            }
+            break;
          }
-         break;
       }
-   }
 
-   if (!(bFoundStatic && bFoundVariable))
-   {
-      char szErr[256];
-      sprintf(szErr, " Error with index database format. Mods not parsed (%d %d).", bFoundStatic, bFoundVariable);
-      logerr(szErr);
-      fclose(fp);
-      return false;
-   }
+      if (!(bFoundStatic && bFoundVariable))
+      {
+         char szErr[256];
+         sprintf(szErr, " Error with index database format. Mods not parsed (%d %d).", bFoundStatic, bFoundVariable);
+         logerr(szErr);
+         std::fclose(fp);
+         return false;
+      }
 
-   // indexed searches will always set this to true
-   g_staticParams.variableModParameters.bVarModSearch = true;
+      // indexed searches will always set this to true
+      g_staticParams.variableModParameters.bVarModSearch = true;
+   }
 
    // read fp of index
    comet_fileoffset_t clTmp;
    comet_fileoffset_t clProteinsFilePos;
 
-   comet_fseek(fp, -clSizeCometFileOffset*2, SEEK_END);
+   comet_fseek(fp, -clSizeCometFileOffset * 2, SEEK_END);
    tTmp = fread(&lEndOfStruct, clSizeCometFileOffset, 1, fp);
    tTmp = fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
 
-   // now read in: vector<vector<comet_fileoffset_t>> g_pvProteinsList
-   comet_fseek(fp, clProteinsFilePos, SEEK_SET);
-   size_t tSize;
-   tTmp = fread(&tSize, clSizeCometFileOffset, 1, fp);
-   vector<comet_fileoffset_t> vTmp;
-
-   g_pvProteinsList.clear();
-   g_pvProteinsList.reserve(tSize);
-   for (size_t it = 0; it < tSize; ++it)
+   if (!g_bPeptideIndexRead)
    {
-      size_t tNumProteinOffsets;
-      tTmp = fread(&tNumProteinOffsets, clSizeCometFileOffset, 1, fp);
+      // now read in: vector<vector<comet_fileoffset_t>> g_pvProteinsList
+      comet_fseek(fp, clProteinsFilePos, SEEK_SET);
+      size_t tSize;
+      tTmp = fread(&tSize, clSizeCometFileOffset, 1, fp);
+      vector<comet_fileoffset_t> vTmp;
 
-      vTmp.clear();
-      for (size_t it2 = 0; it2 < tNumProteinOffsets; ++it2)
+      g_pvProteinsList.clear();
+      g_pvProteinsList.reserve(tSize);
+      for (size_t it = 0; it < tSize; ++it)
       {
-         tTmp = fread(&clTmp, clSizeCometFileOffset, 1, fp);
-         vTmp.push_back(clTmp);
+         size_t tNumProteinOffsets;
+         tTmp = fread(&tNumProteinOffsets, clSizeCometFileOffset, 1, fp);
+
+         vTmp.clear();
+         for (size_t it2 = 0; it2 < tNumProteinOffsets; ++it2)
+         {
+            tTmp = fread(&clTmp, clSizeCometFileOffset, 1, fp);
+            vTmp.push_back(clTmp);
+         }
+         g_pvProteinsList.push_back(vTmp);
       }
-      g_pvProteinsList.push_back(vTmp);
+      g_bPeptideIndexRead = true;
    }
+
+   // read index
+   int iMinMass = 0;
+   int iMaxMass = 0;
+   uint64_t tNumPeptides = 0;
 
    // seek to index
    comet_fseek(fp, lEndOfStruct, SEEK_SET);
-
-   // read index
-   int iMinMass=0;
-   int iMaxMass=0;
-   uint64_t tNumPeptides=0;
 
    tTmp = fread(&iMinMass, sizeof(int), 1, fp);
    tTmp = fread(&iMaxMass, sizeof(int), 1, fp);
@@ -1747,13 +1754,13 @@ bool CometSearch::SearchPeptideIndex(void)
       char szErr[256];
       sprintf(szErr, " Error reading .idx database:  min mass %d, max mass %d, num peptides %zu\n", iMinMass, iMaxMass, tNumPeptides);
       logerr(szErr);
-      fclose(fp);
+      std::fclose(fp);
       return false;
    }
 
    int iMaxPeptideMass10 = iMaxMass * 10;
-   comet_fileoffset_t *lReadIndex = new comet_fileoffset_t[iMaxPeptideMass10];
-   for (int i=0; i< iMaxPeptideMass10; i++)
+   comet_fileoffset_t* lReadIndex = new comet_fileoffset_t[iMaxPeptideMass10];
+   for (int i = 0; i < iMaxPeptideMass10; ++i)
       lReadIndex[i] = -1;
 
    tTmp = fread(lReadIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fp);
@@ -1764,7 +1771,7 @@ bool CometSearch::SearchPeptideIndex(void)
    if (iStart > iMaxMass)  // smallest input mass is greater than what's stored in index
    {
       delete[] lReadIndex;
-      fclose(fp);
+      std::fclose(fp);
       return true;
    }
 
@@ -1790,7 +1797,7 @@ bool CometSearch::SearchPeptideIndex(void)
    if (lReadIndex[iStart10] == -1)  // no match found within tolerance
    {
       delete[] lReadIndex;
-      fclose(fp);
+      std::fclose(fp);
       return true;
    }
 
@@ -1897,7 +1904,7 @@ bool CometSearch::SearchPeptideIndex(void)
    }
 
    delete [] lReadIndex;
-   fclose(fp);
+   std::fclose(fp);
    return true;
 }
 

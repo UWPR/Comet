@@ -3215,13 +3215,6 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       sqSearch.CreateFragmentIndex(tp);
    }
 
-/* FIX: need to add this functionality; how to specify PeptideIndex though?
-   else if (g_staticParams.iIndexDb == 2 && !g_PeptideIndexRead)
-   {
-      sqSearch.CreatePeptideIndex(tp);
-   }
-*/
-
    singleSearchInitializationComplete = true;
 
    return true;
