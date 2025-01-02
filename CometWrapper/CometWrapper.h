@@ -35,7 +35,8 @@ namespace CometWrapper {
         CometSearchManagerWrapper();
         virtual ~CometSearchManagerWrapper();
 
-        bool CreateIndex();
+        bool CreateFragmentIndex();
+        bool CreatePeptideIndex();
         bool DoSearch();
         bool InitializeSingleSpectrumSearch();
         void FinalizeSingleSpectrumSearch();

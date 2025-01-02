@@ -1611,7 +1611,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
    int iNumFragmentPeaks = 0;
 
-   if (g_staticParams.bIndexDb && mstSpectrum.size() > FRAGINDEX_MAX_NUMPEAKS)
+   if (g_staticParams.iIndexDb && mstSpectrum.size() > FRAGINDEX_MAX_NUMPEAKS)
    {
       // sorts spectrum in ascending order by intensity
       mstSpectrum.sortIntensity();
@@ -1628,7 +1628,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.bIndexDb && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
+         if (g_staticParams.iIndexDb && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
          {
             // Store list of fragment masses for fragment index search
             // Intensities don't matter here
@@ -1960,10 +1960,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
 
-   g_massRange.dMinMass = pScoring->_pepMassInfo.dExpPepMass;
-   g_massRange.dMaxMass = pScoring->_pepMassInfo.dExpPepMass;
-   g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
-
    if (iPrecursorCharge == 1)
       pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;
    else
@@ -1973,6 +1969,10 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
          pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
    }
+
+   g_massRange.dMinMass = pScoring->_pepMassInfo.dExpPepMass;
+   g_massRange.dMaxMass = pScoring->_pepMassInfo.dExpPepMass;
+   g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
 
    //preprocess here
    int i;
@@ -2011,7 +2011,6 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    }
 
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
-
 
    // initialize these temporary arrays before re-using
    size_t iTmp= (size_t)(pScoring->_spectrumInfoInternal.iArraySize)*sizeof(double);
@@ -2060,7 +2059,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
       if (bPass)
       {
-         if (g_staticParams.bIndexDb)
+         if (g_staticParams.iIndexDb)
             pScoring->vdRawFragmentPeakMass.push_back(dIon);
 
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))

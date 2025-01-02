@@ -14,15 +14,15 @@ endif
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-   override CXXFLAGS += -O3 -static -std=c++14            -fpermissive -Wall -Wextra -Wno-write-strings -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
 else
-   override CXXFLAGS += -O3 -static -std=c++14 -fconcepts -fpermissive -Wall -Wextra -Wno-write-strings -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
 
 endif
 
 COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o\
 				  CometWriteSqt.o CometWritePepXML.o CometWriteMzIdentML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o\
-				  CombinatoricsUtils.o ModificationsPermuter.o CometFragmentIndex.o
+				  CombinatoricsUtils.o ModificationsPermuter.o CometFragmentIndex.o CometPeptideIndex.o
 
 
 all:  $(COMETSEARCH)
@@ -33,7 +33,7 @@ clean:
 
 Threading.o:          Threading.cpp Threading.h
 	${CXX} ${CXXFLAGS} Threading.cpp -c
-CometSearch.o:        CometSearch.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h CometFragmentIndex.h
+CometSearch.o:        CometSearch.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h CometFragmentIndex.h CometPeptideIndex.h
 	${CXX} ${CXXFLAGS} CometSearch.cpp -c
 CometPreprocess.o:    CometPreprocess.cpp Common.h CometData.h CometDataInternal.h CometPreprocess.h CometInterfaces.h $(MSTPATH)
 	${CXX} ${CXXFLAGS} CometPreprocess.cpp -c
@@ -65,3 +65,5 @@ ModificationsPermuter.o:   ModificationsPermuter.cpp ModificationsPermuter.h Com
 	${CXX} ${CXXFLAGS} ModificationsPermuter.cpp -c
 CometFragmentIndex.o: CometFragmentIndex.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
 	${CXX} ${CXXFLAGS} CometFragmentIndex.cpp -c
+CometPeptideIndex.o: CometPeptideIndex.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
+	${CXX} ${CXXFLAGS} CometPeptideIndex.cpp -c

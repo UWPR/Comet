@@ -14,12 +14,10 @@
 
 
 #include "Common.h"
-#include "CometDataInternal.h"
 #include "ThreadPool.h"
 #include "CometPostAnalysis.h"
 #include "CometMassSpecUtils.h"
 #include "CometStatus.h"
-
 
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 
@@ -43,15 +41,18 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
 
    for (int i=0; i<(int)g_pvQuery.size(); ++i)
    {
-      PostAnalysisThreadData *pThreadData = new PostAnalysisThreadData(i);
-
-      pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool));
-
-      pThreadData = NULL;
-      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-      if (!bSucceeded)
+      if (g_pvQuery.at(i)->iMatchPeptideCount > 0 || g_pvQuery.at(i)->iDecoyMatchPeptideCount > 0)
       {
-         break;
+         PostAnalysisThreadData* pThreadData = new PostAnalysisThreadData(i);
+
+         pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool));
+
+         pThreadData = NULL;
+         bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+         if (!bSucceeded)
+         {
+            break;
+         }
       }
    }
 
@@ -330,7 +331,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
    for (i = 0; i < iSize; ++i)
    {
-      if (!g_staticParams.bIndexDb)
+      if (!g_staticParams.iIndexDb)
       {
          // hijack here to make protein vector unique
          if (pOutput[i].pWhichProtein.size() > 1)
@@ -369,7 +370,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          }
       }
 
-      if (pOutput[i].iLenPeptide > 0 && pOutput[i].fXcorr > XCORR_CUTOFF) // take care of possible edge case
+      if (pOutput[i].iLenPeptide > 0 && pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr) // take care of possible edge case
       {
          int  ii;
          int  ctCharge;

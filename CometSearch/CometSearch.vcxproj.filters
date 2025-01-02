@@ -84,6 +84,9 @@
     <ClInclude Include="CometFragmentIndex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CometPeptideIndex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CometMassSpecUtils.cpp">
@@ -132,6 +135,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CometFragmentIndex.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CometPeptideIndex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -24,7 +24,6 @@
 #include <vector>
 #include <functional>
 #include <chrono>
-
 #include <thread>
 
 #ifdef TPP_WIN32THREADS

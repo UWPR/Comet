@@ -22,10 +22,11 @@
 #include <bitset>
 #include <chrono>
 #include <unordered_set>
-#include "CombinatoricsUtils.h"
-#include "ModificationsPermuter.h"
-#include "CometFragmentIndex.h"
 #include "Common.h"
+#include "CometDataInternal.h"
+#include "ModificationsPermuter.h"
+#include "CombinatoricsUtils.h"
+#include "CometFragmentIndex.h"
 
 //using namespace std;
 

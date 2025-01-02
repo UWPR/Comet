@@ -251,7 +251,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          }
       }
 
-      if (g_staticParams.bIndexDb)  //index database
+      if (g_staticParams.iIndexDb)  //index database
       {
          uiNumTotProteins =  (unsigned int)g_pvProteinsList.at(pOutput[i].lProteinFilePosition).size();
       }

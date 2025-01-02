@@ -50,7 +50,8 @@ public:
    std::map<std::string, CometParam*>& GetParamsMap();
 
    // Methods inherited from ICometSearchManager
-   virtual bool CreateIndex();
+   virtual bool CreateFragmentIndex();
+   virtual bool CreatePeptideIndex();
    virtual bool DoSearch();
    virtual bool InitializeSingleSpectrumSearch();
    virtual void FinalizeSingleSpectrumSearch();

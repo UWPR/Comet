@@ -17,7 +17,6 @@
 #define _COMETFRAGMENTINDEX_H_
 
 #include "Common.h"
-#include "CometDataInternal.h"
 #include "CometSearch.h"
 #include <functional>
 
@@ -32,6 +31,10 @@ public:
    static bool CreateFragmentIndex(ThreadPool *tp);
    static string ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime);
    static int WhichPrecursorBin(double dMass);
+   static bool CompareByPeptide(const DBIndex &lhs,
+                                const DBIndex &rhs);
+   static bool CompareByMass(const DBIndex &lhs,
+                             const DBIndex &rhs);
 
 private:
 
@@ -52,16 +55,12 @@ private:
                                       unsigned int y);
    static void SortFragmentThreadProc(int iWhichThread,
                                       ThreadPool* tp);
-   static bool CompareByPeptide(const DBIndex &lhs,
-                                const DBIndex &rhs);
-   static bool CompareByMass(const DBIndex &lhs,
-                             const DBIndex &rhs);
-
+/*
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 1];
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 1];
    unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
    unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
-
+*/
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
 

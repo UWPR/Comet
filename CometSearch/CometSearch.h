@@ -16,9 +16,7 @@
 #ifndef _COMETSEARCH_H_
 #define _COMETSEARCH_H_
 
-#include "Common.h"
 #include "CometDataInternal.h"
-#include <functional>
 
 struct SearchThreadData
 {
@@ -83,6 +81,11 @@ public:
                                 int iStartPos);
    bool CheckEnzymeEndTermini(char *szProteinSeq,
                               int iEndPos);
+   int BinarySearchMass(int start,
+                        int end,
+                        double dCalcPepMass);
+   bool CheckMassMatch(int iWhichQuery,
+                       double dCalcPepMass);
 
    struct ProteinInfo
    {
@@ -114,9 +117,6 @@ private:
                               int end,
                               string strMod,
                               vector<OBOStruct>& vectorPeffOBO);
-   int BinarySearchMass(int start,
-                        int end,
-                        double dCalcPepMass);
    static int BinarySearchIndexMass(int iWhichThread,
                                     int iPrecursorBin,
                                     int start,
@@ -166,13 +166,13 @@ private:
                    unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][FRAGINDEX_VMODS+1],
                    unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
                    int iNumMatchedFragmentIons);
-   bool CheckMassMatch(int iWhichQuery,
-                       double dCalcPepMass);
+/*
    static double GetFragmentIonMass(int iWhichIonSeries,
                              int i,
                              int ctCharge,
                              double *pdAAforward,
                              double *pdAAreverse);
+*/
    int CheckDuplicate(int iWhichQuery,
                       int iStartResidue,
                       int iEndResidue,
@@ -239,6 +239,11 @@ private:
                        struct sDBEntry *dbe);
    static void SearchFragmentIndex(size_t iWhichQuery,
                                    ThreadPool *tp);
+   bool SearchPeptideIndex(void);
+   void AnalyzePeptideIndex(int iWhichQuery,
+                            DBIndex sDBI,
+                            bool *pbDuplFragment,
+                            struct sDBEntry *dbe);
    bool SearchForPeptides(struct sDBEntry dbe,
                           char *szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence

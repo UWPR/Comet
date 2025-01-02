@@ -64,12 +64,13 @@ using namespace std;
 #include <set>
 #include <cfloat>
 #include <iostream>
+#include <functional>
 
 #ifndef GITHUBSHA          // value passed thru at compile time
    #define GITHUBSHA ""
 #endif
 
-#define comet_version   "2024.02 rev. 0"
+#define comet_version   "2024.02 rev. 1"
 #define copyright "(c) University of Washington"
 extern string g_sCometVersion;   // version string including git hash
 

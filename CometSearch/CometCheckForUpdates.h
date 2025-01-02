@@ -17,7 +17,7 @@
 #define _COMETCHECKFORUPDATES_H_
 
 #include "Common.h"
-#include "CometDataInternal.h"
+//#include "CometDataInternal.h"
 
 #include <errno.h>
 #include <string.h>
