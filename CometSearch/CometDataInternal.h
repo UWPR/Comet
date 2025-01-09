@@ -97,11 +97,6 @@ class CometSearchManager;
 #define XCORR_CUTOFF                1E-8   // some near-zero cutoff
 #endif
 
-struct msdata                    // used in the preprocessing
-{
-   int    iIon;
-   double dIntensity;
-};
 
 struct Options
 {
@@ -303,7 +298,6 @@ struct PreprocessStruct
 {
    int    iHighestIon;
    double dHighestIntensity;
-   struct msdata pTmpSpData[NUM_SP_IONS];
 };
 
 struct OBOStruct           // stores info read from OBO file

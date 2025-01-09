@@ -1856,52 +1856,25 @@ bool CometSearch::SearchPeptideIndex(void)
       }
    }
 
+/*
    for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
    {
-      int iNumMatchedPeptides;
-
-      iNumMatchedPeptides = (*it)->iMatchPeptideCount;
+      int iNumMatchedPeptides = (*it)->iMatchPeptideCount;
       if (iNumMatchedPeptides > g_staticParams.options.iNumStored)
          iNumMatchedPeptides = g_staticParams.options.iNumStored;
 
-      if (iNumMatchedPeptides > 0)  // will retrieve protein names here if there is one or more matched peptides
+      for (int x = 0; x < iNumMatchedPeptides; x++)
       {
-         // sort and report results by xcorr
-         std::sort((*it)->_pResults, (*it)->_pResults + iNumMatchedPeptides, cpa.SortFnXcorr);
-
-         for (int ii = 0; ii < iNumMatchedPeptides; ii++)  // loop through all hits to this one spectrum query
-         {
-            if (ii > 0 && (*it)->_pResults[ii].fXcorr < (*it)->_pResults[0].fXcorr)  // do this only for peptides that have same top xcorr, could be more than 1
-               break;
-
-            std::vector<ProteinEntryStruct>::iterator itProt;
-            bool bPrintDecoyPrefix = false;
-
-            // Note peptides can be from target or internal decoy. If peptide is from a target protein,
-            // Comet will only report target protein matches and not internal decoy protein matches.
-            // Decoy proteins only reported for peptides that are exclusively decoy matches.
-            if ((*it)->_pResults[ii].pWhichProtein.size() > 0)
-               itProt = (*it)->_pResults[ii].pWhichProtein.begin();   // list of target proteins
-            else
-            {
-               itProt = (*it)->_pResults[ii].pWhichDecoyProtein.begin();  // list of decoy proteins
-               bPrintDecoyPrefix = true;
-            }
-         }
-/*
-         for (int x = 0; x < iNumMatchedPeptides; x++)
-         {
-            printf("OK %d scan %d, pep %s, xcorr %f, mass %f, matchcount %d, prot %s\n", x,
-               (*it)->_spectrumInfoInternal.iScanNumber,
-               (*it)->_pResults[x].szPeptide,
-               (*it)->_pResults[x].fXcorr,
-               (*it)->_pResults[x].dPepMass,
-               (*it)->iMatchPeptideCount,
-               (*it)->_pResults[x].strSingleSearchProtein.c_str()); fflush(stdout);
-         }
-*/
+         printf("OK %d scan %d, pep %s, xcorr %f, mass %f, matchcount %d, prot %s\n", x,
+            (*it)->_spectrumInfoInternal.iScanNumber,
+            (*it)->_pResults[x].szPeptide,
+            (*it)->_pResults[x].fXcorr,
+            (*it)->_pResults[x].dPepMass,
+            (*it)->iMatchPeptideCount,
+            (*it)->_pResults[x].strSingleSearchProtein.c_str()); fflush(stdout);
       }
    }
+*/
 
    delete [] lReadIndex;
    std::fclose(fp);

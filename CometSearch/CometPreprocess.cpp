@@ -1800,16 +1800,6 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
 }
 
 
-bool CometPreprocess::SortByIon(const struct msdata &a,
-                                const struct msdata &b)
-{
-   if (a.iIon < b.iIon)
-      return true;
-   else
-      return false;
-}
-
-
 //MH: This function allocates memory to be shared by threads for spectral processing
 bool CometPreprocess::AllocateMemory(int maxNumThreads)
 {

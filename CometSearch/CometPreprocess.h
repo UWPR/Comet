@@ -117,10 +117,7 @@ private:
                             double *pdTmpCorrelationData,
                             struct Query *pScoring,
                             struct PreprocessStruct *pPre);
-   static bool SortByIon(const struct msdata &a,
-                         const struct msdata &b);
    static bool IsValidInputType(int inputType);
-
 
    // Private member variables
    static Mutex _maxChargeMutex;

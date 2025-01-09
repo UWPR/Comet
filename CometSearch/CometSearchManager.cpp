@@ -3660,7 +3660,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    bSucceeded = CometSearch::RunSearch(tp);
 
    iSize = g_pvQuery.at(0)->iMatchPeptideCount;
-
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
