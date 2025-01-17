@@ -595,9 +595,9 @@ void LoadParameters(char *pszParamsFile,
 
                // the 8th entry can have to fragment NL values, comma separated
                if (pStr = strchr(szTmp1, ','))
-                  sscanf(szTmp, "%lf,%lf", &varModsParam.dNeutralLoss, &varModsParam.dNeutralLoss2);
+                  sscanf(szTmp1, "%lf,%lf", &varModsParam.dNeutralLoss, &varModsParam.dNeutralLoss2);
                else
-                  sscanf(szTmp, "%lf,%lf", &varModsParam.dNeutralLoss);
+                  sscanf(szTmp1, "%lf", &varModsParam.dNeutralLoss);
 
                // the 4th entry can either be just the max_num_var_mod or a comma separated
                // value composed of min_num,max_num
