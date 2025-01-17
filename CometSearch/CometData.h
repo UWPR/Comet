@@ -223,6 +223,7 @@ struct VarMods
 {
    double dVarModMass;
    double dNeutralLoss;
+   double dNeutralLoss2;    // 2nd neutral fragment NL
    int    iBinaryMod;
    int    iMaxNumVarModAAPerMod;
    int    iMinNumVarModAAPerMod;
@@ -244,6 +245,7 @@ struct VarMods
       iWhichTerm = 0;
       dVarModMass = 0.0;
       dNeutralLoss = 0.0;
+      dNeutralLoss2 = 0.0;
       szVarModChar[0] = '\0';
       bNtermMod = false;
       bCtermMod = false;
@@ -260,6 +262,7 @@ struct VarMods
       iWhichTerm = a.iWhichTerm;
       dVarModMass = a.dVarModMass;
       dNeutralLoss = a.dNeutralLoss;
+      dNeutralLoss2 = a.dNeutralLoss2;
       strcpy(szVarModChar, a.szVarModChar);
       bNtermMod  = a.bNtermMod;
       bCtermMod  = a.bCtermMod;
@@ -277,6 +280,7 @@ struct VarMods
       dVarModMass = a.dVarModMass;
       strcpy(szVarModChar, a.szVarModChar);
       dNeutralLoss = a.dNeutralLoss;
+      dNeutralLoss2 = a.dNeutralLoss2;
       bNtermMod  = a.bNtermMod;
       bCtermMod  = a.bCtermMod;
       bUseMod  = a.bUseMod;
