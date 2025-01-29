@@ -2013,9 +2013,10 @@ void CometSearchManager::GetStatusMessage(string &strStatusMsg)
 
 bool CometSearchManager::IsValidCometVersion(const string &version)
 {
+printf("OK comet_version %s, version.str %s\n", comet_version, version.c_str() );
     // Major version number must match to current binary
     if (strstr(comet_version, version.c_str())
-          || strstr(comet_version, "2024.0"))
+          || strstr(version.c_str(), "2024.0"))
     {
        return true;
     }

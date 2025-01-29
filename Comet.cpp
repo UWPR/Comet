@@ -594,7 +594,7 @@ void LoadParameters(char *pszParamsFile,
                char *pStr;
 
                // the 8th entry can have to fragment NL values, comma separated
-               if (pStr = strchr(szTmp1, ','))
+               if ( (pStr = strchr(szTmp1, ',')) )
                   sscanf(szTmp1, "%lf,%lf", &varModsParam.dNeutralLoss, &varModsParam.dNeutralLoss2);
                else
                   sscanf(szTmp1, "%lf", &varModsParam.dNeutralLoss);
@@ -1418,7 +1418,11 @@ void LoadParameters(char *pszParamsFile,
       }
    } // while
 
-   fgets(szParamBuf, SIZE_BUF, fp);
+   if ( (fgets(szParamBuf, SIZE_BUF, fp) == NULL))
+   {
+      sprintf(szErrorMsg, " Error - cannot fgets a line after expected [COMET_ENZYME_INFO]\n");
+      logout(szErrorMsg);
+   }
 
    // Get enzyme specificity.
    char szSearchEnzymeName[ENZYME_NAME_LEN];
