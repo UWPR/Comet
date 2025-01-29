@@ -578,9 +578,10 @@ void LoadParameters(char *pszParamsFile,
             else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
             {
                char szTmp[512];
+               char szTmp1[512];
 
                varModsParam.szVarModChar[0] = '\0';
-               sscanf(szParamVal, "%lf %31s %d %511s %d %d %d %lf",
+               sscanf(szParamVal, "%lf %31s %d %511s %d %d %d %s",
                      &varModsParam.dVarModMass,
                      varModsParam.szVarModChar,
                      &varModsParam.iBinaryMod,
@@ -588,11 +589,18 @@ void LoadParameters(char *pszParamsFile,
                      &varModsParam.iVarModTermDistance,
                      &varModsParam.iWhichTerm,
                      &varModsParam.iRequireThisMod,
-                     &varModsParam.dNeutralLoss);
+                     szTmp1);
+
+               char *pStr;
+
+               // the 8th entry can have to fragment NL values, comma separated
+               if ( (pStr = strchr(szTmp1, ',')) )
+                  sscanf(szTmp1, "%lf,%lf", &varModsParam.dNeutralLoss, &varModsParam.dNeutralLoss2);
+               else
+                  sscanf(szTmp1, "%lf", &varModsParam.dNeutralLoss);
 
                // the 4th entry can either be just the max_num_var_mod or a comma separated
                // value composed of min_num,max_num
-               char *pStr;
                if ( (pStr=strchr(szTmp, ',')) == NULL)
                {
                   sscanf(szTmp, "%d", &varModsParam.iMaxNumVarModAAPerMod);
@@ -1410,7 +1418,11 @@ void LoadParameters(char *pszParamsFile,
       }
    } // while
 
-   fgets(szParamBuf, SIZE_BUF, fp);
+   if ( (fgets(szParamBuf, SIZE_BUF, fp) == NULL))
+   {
+      sprintf(szErrorMsg, " Error - cannot fgets a line after expected [COMET_ENZYME_INFO]\n");
+      logout(szErrorMsg);
+   }
 
    // Get enzyme specificity.
    char szSearchEnzymeName[ENZYME_NAME_LEN];

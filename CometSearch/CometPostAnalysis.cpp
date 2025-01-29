@@ -532,68 +532,97 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                      {
                         for (int iMod = 0; iMod < VMODS; iMod++)
                         {
-                           if (iWhichIonSeries <= 2)  // abc ions
+                           for (int iWhichNL = 0; iWhichNL < 2; ++iWhichNL)
                            {
-                              if (iCountNLB[iMod][iii] > 0)
+                              if (iWhichIonSeries <= 2)  // abc ions
                               {
-                                 int iScaleFactor = iCountNLB[iMod][iii];
-                                 double dNewMass = dFragmentIonMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss / ctCharge);
-
-                                 if (dNewMass >= 0)
+                                 if (iCountNLB[iMod][iii] > 0)
                                  {
-                                    int iFragmentIonMass = BIN(dNewMass);
-
-                                    fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iMax);
-
-                                    if (fSpScore > FLOAT_ZERO)
+                                    int iScaleFactor = iCountNLB[iMod][iii];
+                                    double dNewMass;
+ 
+                                    if (iWhichNL == 0)
                                     {
-                                       iAddMatchedFragment = 1;
-
-                                       // Simple sum intensity.
-                                       dTmpIntenMatch += fSpScore;
-
-                                       // Increase score for consecutive fragment ion series matches.
-                                       if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
-                                          dAddConsecutive = 0.075;
-
-                                       ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                                       if (g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss == 0.0)
+                                          continue;
+                                       dNewMass = dFragmentIonMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss / ctCharge);
                                     }
                                     else
                                     {
-                                       ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                                       if (g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss2 == 0.0)
+                                          continue;
+                                       dNewMass = dFragmentIonMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss2 / ctCharge);
+                                    }
+
+                                    if (dNewMass >= 0)
+                                    {
+                                       int iFragmentIonMass = BIN(dNewMass);
+
+                                       fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iMax);
+
+                                       if (fSpScore > FLOAT_ZERO)
+                                       {
+                                          iAddMatchedFragment = 1;
+
+                                          // Simple sum intensity.
+                                          dTmpIntenMatch += fSpScore;
+
+                                          // Increase score for consecutive fragment ion series matches.
+                                          if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
+                                             dAddConsecutive = 0.075;
+
+                                          ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                                       }
+                                       else
+                                       {
+                                          ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                                       }
                                     }
                                  }
                               }
-                           }
-                           else // xyz ions
-                           {
-                              if (iCountNLY[iMod][iii] > 0)
+                              else // xyz ions
                               {
-                                 int iScaleFactor = iCountNLY[iMod][iii];
-                                 double dNewMass = dFragmentIonMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss / ctCharge);
-                              
-                                 if (dNewMass >= 0)
+                                 if (iCountNLY[iMod][iii] > 0)
                                  {
-                                    int iFragmentIonMass = BIN(dNewMass);
+                                    int iScaleFactor = iCountNLY[iMod][iii];
+                                    double dNewMass;
 
-                                    fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iMax);
-
-                                    if (fSpScore > FLOAT_ZERO)
+                                    if (iWhichNL == 0)
                                     {
-                                       iAddMatchedFragment = 1;
-
-                                       // Simple sum intensity.
-                                       dTmpIntenMatch += fSpScore;
-
-                                       // Increase score for consecutive fragment ion series matches.
-                                       if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
-                                          dAddConsecutive = 0.075;
-
-                                       ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                                       if (g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss == 0.0)
+                                          continue;
+                                       dNewMass = dFragmentIonMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss / ctCharge);
                                     }
                                     else
                                     {
-                                       ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                                       if (g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss2 == 0.0)
+                                          continue;
+                                       dNewMass = dFragmentIonMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss2 / ctCharge);
+                                    }
+
+                                    if (dNewMass >= 0)
+                                    {
+                                       int iFragmentIonMass = BIN(dNewMass);
+
+                                       fSpScore = FindSpScore(g_pvQuery.at(iWhichQuery), iFragmentIonMass, iMax);
+
+                                       if (fSpScore > FLOAT_ZERO)
+                                       {
+                                          iAddMatchedFragment = 1;
+
+                                          // Simple sum intensity.
+                                          dTmpIntenMatch += fSpScore;
+
+                                          // Increase score for consecutive fragment ion series matches.
+                                          if (ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge])
+                                             dAddConsecutive = 0.075;
+
+                                          ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 1;
+                                       }
+                                       else
+                                       {
+                                          ionSeries[iWhichIonSeries].bPreviousMatch[ctCharge] = 0;
+                                       }
                                     }
                                  }
                               }

@@ -793,8 +793,9 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // write VariableMod:
    fprintf(fp, "VariableMod:");
    for (int x = 0; x < FRAGINDEX_VMODS; ++x)
-      fprintf(fp, " %lf:%lf:%s", g_staticParams.variableModParameters.varModList[x].dVarModMass,
+      fprintf(fp, " %lf:%lf:%lf:%s", g_staticParams.variableModParameters.varModList[x].dVarModMass,
          g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
+         g_staticParams.variableModParameters.varModList[x].dNeutralLoss2,
          g_staticParams.variableModParameters.varModList[x].szVarModChar);
    fprintf(fp, "\n");
 
@@ -1021,8 +1022,9 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
             iss >> subStr;  // parse each word which is a colon delimited triplet pair for modmass:neutralloss:modchars
 
-            int iRet = sscanf(subStr.c_str(), "%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
+            int iRet = sscanf(subStr.c_str(), "%lf:%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
                &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
+               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2),
                g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar);
 
             iNumMods++;
