@@ -805,6 +805,7 @@ struct StaticParams
          variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
          variableModParameters.varModList[i].dVarModMass = 0.0;
          variableModParameters.varModList[i].dNeutralLoss = 0.0;
+         variableModParameters.varModList[i].dNeutralLoss2 = 0.0;
          strcpy(variableModParameters.varModList[i].szVarModChar, "X");
 
 #ifdef CRUX
