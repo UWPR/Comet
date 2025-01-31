@@ -1747,15 +1747,27 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
-   double dMassTolAdd = 0.0;
+   double dCushion = 0.0;
    if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
-      dMassTolAdd = g_staticParams.tolerances.dInputTolerancePlus;
-   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
-      dMassTolAdd = g_staticParams.tolerances.dInputTolerancePlus  * 0.001;
-   else if (g_staticParams.tolerances.iMassToleranceUnits == 2) // mmu
-      dMassTolAdd = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
 
-   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dMassTolAdd + 5.0) * g_staticParams.dInverseBinWidth);
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+   }
+   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+   }
+   else // ppm
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
+   }
+
+   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dCushion + 5.0) * g_staticParams.dInverseBinWidth);
 
    return true;
 }
