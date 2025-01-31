@@ -1747,7 +1747,15 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
-   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + g_staticParams.tolerances.dInputTolerancePlus + 2.0) * g_staticParams.dInverseBinWidth);
+   double dMassTolAdd = 0.0;
+   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
+      dMassTolAdd = g_staticParams.tolerances.dInputTolerancePlus;
+   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
+      dMassTolAdd = g_staticParams.tolerances.dInputTolerancePlus  * 0.001;
+   else if (g_staticParams.tolerances.iMassToleranceUnits == 2) // mmu
+      dMassTolAdd = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
+
+   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dMassTolAdd + 5.0) * g_staticParams.dInverseBinWidth);
 
    return true;
 }

@@ -302,10 +302,19 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                }
 
                // tolerances are fixed above except if ppm is specified
-               if (g_staticParams.tolerances.iMassToleranceUnits == 2) // ppm
+               else if (g_staticParams.tolerances.iMassToleranceUnits == 2) // ppm
                {
                   dToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus * dProtonatedMass / 1E6;
                   dToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus * dProtonatedMass / 1E6;
+               }
+               else
+               {
+                  char szErrorMsg[256];
+                  sprintf(szErrorMsg,  " Error - peptide_mass_units must be 0, 1 or 2. Value set is %d.\n", g_staticParams.tolerances.iMassToleranceUnits);
+                  string strErrorMsg(szErrorMsg);
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(szErrorMsg);
+                  return false;
                }
 
                // these are the range of neutral mass bins if any theoretical peptide falls into,
@@ -740,9 +749,10 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
 
    // initialize these temporary arrays before re-using
-   memset(pdTmpRawData, 0, g_staticParams.iArraySizeGlobal * sizeof(double));
-   memset(pdTmpFastXcorrData, 0, g_staticParams.iArraySizeGlobal * sizeof(double));
-   memset(pdTmpCorrelationData, 0, g_staticParams.iArraySizeGlobal * sizeof(double));
+   size_t iTmp = (size_t)(g_staticParams.iArraySizeGlobal * sizeof(double));
+   memset(pdTmpRawData, 0, iTmp);
+   memset(pdTmpFastXcorrData, 0, iTmp);
+   memset(pdTmpCorrelationData, 0, iTmp);
 
    // pdTmpRawData is a binned array holding raw data
    if (!LoadIons(pScoring, pdTmpRawData, mstSpectrum, &pPre))
@@ -2003,21 +2013,19 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
    // initialize these temporary arrays before re-using
-   size_t iTmp= (size_t)(pScoring->_spectrumInfoInternal.iArraySize)*sizeof(double);
-
    double *pdTmpRawData = ppdTmpRawDataArr[0];
    double *pdTmpFastXcorrData = ppdTmpFastXcorrDataArr[0];
    double *pdTmpCorrelationData = ppdTmpCorrelationDataArr[0];
 
+   size_t iTmp = (size_t)(g_staticParams.iArraySizeGlobal * sizeof(double));
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
    memset(pdTmpCorrelationData, 0, iTmp);
+   memset(pdTmpSpectrum, 0, iTmp);
 
    // Loop through single spectrum and store in pdTmpRawData array
    double dIon=0,
           dIntensity=0;
-
-   memset(pdTmpSpectrum, 0, g_staticParams.iArraySizeGlobal * sizeof(double));
 
    // set dIntensityCutoff based on either minimum intensity or % of base peak
    double dIntensityCutoff = g_staticParams.options.dMinIntensity;

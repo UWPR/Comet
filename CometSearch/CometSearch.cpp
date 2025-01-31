@@ -2829,7 +2829,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                                  {
                                     pbDuplFragment[iVal] = false;
                                     _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
-                                 // note no need to initialize fragment NL positions as no mods here
+                                    // note no need to initialize fragment NL positions as no mods here
                                  }
                               }
 
