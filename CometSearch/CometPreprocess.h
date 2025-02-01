@@ -82,6 +82,7 @@ public:
                                         double *pdInten,
                                         int iNumPeaks,
                                         double *pdTmpSpectrum);
+   static double GetMassCushion(double dMass);
 
 private:
 
