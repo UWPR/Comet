@@ -722,32 +722,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
 
-   //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
-   // very wide mass tolerance searches (i.e. 500 Da).
-   double dCushion = 0.0;
-   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {
-        dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-      }
-   }
-   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {
-         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-      }
-   }
-   else // ppm
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
-   }
-
    // initialize these temporary arrays before re-using
    size_t iTmp = (size_t)(g_staticParams.iArraySizeGlobal * sizeof(double));
    memset(pdTmpRawData, 0, iTmp);
@@ -1380,26 +1354,8 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
             //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
             // very wide mass tolerance searches (i.e. 500 Da).
-            double dCushion = 0.0;
-            if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
-            {
-               dCushion = g_staticParams.tolerances.dInputTolerancePlus;
-
-               if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-                  dCushion *= pScoring->_spectrumInfoInternal.iChargeState;
-            }
-            else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
-            {
-               dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
-
-               if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-                  dCushion *= pScoring->_spectrumInfoInternal.iChargeState;
-            }
-            else // ppm
-            {
-               dCushion = g_staticParams.tolerances.dInputTolerancePlus * dMass / 1E6;
-            }
-            pScoring->_spectrumInfoInternal.iArraySize = (int)((dMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
+            double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
+            pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
 
             Threading::LockMutex(_maxChargeMutex);
             // g_massRange.iMaxFragmentCharge is global maximum fragment ion charge across all spectra.
@@ -1589,6 +1545,36 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    return true;
 }
 
+
+double CometPreprocess::GetMassCushion(double dMass)
+{
+   // MH: Find appropriately sized array cushion based on user parameters.
+   // Fixes error found by Patrick Pedrioli for very wide mass tolerance
+   //  searches (i.e. 500 Da).
+
+   double dCushion = 0.0;
+
+   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+   }
+   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
+
+      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
+         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
+   }
+   else // ppm
+   {
+      dCushion = g_staticParams.tolerances.dInputTolerancePlus * dMass / 1E6;
+   }
+
+   return dCushion;
+}
 
 //  Reads MSMS data file as ASCII mass/intensity pairs.
 bool CometPreprocess::LoadIons(struct Query *pScoring,
@@ -1815,32 +1801,6 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
 {
    int i;
 
-   //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
-   // very wide mass tolerance searches (i.e. 500 Da).
-   double dCushion = 0.0;
-   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {
-        dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-      }
-   }
-   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-      {
-         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-      }
-   }
-   else // ppm
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
-   }
-
    //MH: Initally mark all arrays as available (i.e. false=not inuse).
    pbMemoryPool = new bool[maxNumThreads];
    for (i=0; i<maxNumThreads; ++i)
@@ -1983,34 +1943,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
 
-   //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
-   // very wide mass tolerance searches (i.e. 500 Da).
-   double dCushion = 0.0;
-   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-        dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-   }
-   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-   }
-   else // ppm
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
-   }
-
-   if (!AdjustMassTol(pScoring))
-   {
-      return false;
-   }
-
-   pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
+   pScoring->_spectrumInfoInternal.iArraySize = g_staticParams.iArraySizeGlobal;
 
    // initialize these temporary arrays before re-using
    double *pdTmpRawData = ppdTmpRawDataArr[0];

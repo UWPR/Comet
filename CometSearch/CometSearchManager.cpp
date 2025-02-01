@@ -1747,26 +1747,7 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
-   double dCushion = 0.0;
-   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-   }
-   else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * 0.001;
-
-      if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
-         dCushion *= 8; //MH: hope +8 is large enough charge because g_staticParams.options.iEndCharge can be overridden.
-   }
-   else // ppm
-   {
-      dCushion = g_staticParams.tolerances.dInputTolerancePlus * g_staticParams.options.dPeptideMassHigh / 1E6;
-   }
-
+   double dCushion = CometPreprocess::GetMassCushion(g_staticParams.options.dPeptideMassHigh);
    g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dCushion + 5.0) * g_staticParams.dInverseBinWidth);
 
    return true;
