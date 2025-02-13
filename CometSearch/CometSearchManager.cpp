@@ -1748,7 +1748,7 @@ bool CometSearchManager::InitializeStaticParams()
    }
 
    double dCushion = CometPreprocess::GetMassCushion(g_staticParams.options.dPeptideMassHigh);
-   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dCushion + 5.0) * g_staticParams.dInverseBinWidth);
+   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dCushion) * g_staticParams.dInverseBinWidth);
 
    return true;
 }

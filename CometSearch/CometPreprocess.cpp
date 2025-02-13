@@ -53,7 +53,6 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
 
    int iMaxBin = BIN(g_staticParams.options.dPeptideMassHigh);
 
-
    if (g_staticParams.options.scanRange.iStart != 0)
       iFirstScan = g_staticParams.options.scanRange.iStart;
 
@@ -1355,7 +1354,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
             // very wide mass tolerance searches (i.e. 500 Da).
             double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
-            pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion + 2.0) * g_staticParams.dInverseBinWidth);
+            pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
 
             Threading::LockMutex(_maxChargeMutex);
             // g_massRange.iMaxFragmentCharge is global maximum fragment ion charge across all spectra.
@@ -1572,6 +1571,8 @@ double CometPreprocess::GetMassCushion(double dMass)
    {
       dCushion = g_staticParams.tolerances.dInputTolerancePlus * dMass / 1E6;
    }
+
+   dCushion += 5.0;
 
    return dCushion;
 }
@@ -1943,14 +1944,20 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
 
-   pScoring->_spectrumInfoInternal.iArraySize = g_staticParams.iArraySizeGlobal;
+   if (!AdjustMassTol(pScoring))
+   {
+      return false;
+   }
+
+   double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
+   pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
 
    // initialize these temporary arrays before re-using
    double *pdTmpRawData = ppdTmpRawDataArr[0];
    double *pdTmpFastXcorrData = ppdTmpFastXcorrDataArr[0];
    double *pdTmpCorrelationData = ppdTmpCorrelationDataArr[0];
 
-   size_t iTmp = (size_t)(g_staticParams.iArraySizeGlobal * sizeof(double));
+   size_t iTmp = (size_t)(pScoring->_spectrumInfoInternal.iArraySize * sizeof(double));
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
    memset(pdTmpCorrelationData, 0, iTmp);

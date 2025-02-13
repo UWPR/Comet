@@ -38,7 +38,7 @@
          double  dPeptideMassLow = 0;
          double  dPeptideMassHigh = 0;
 
-         // Configure search parameters here
+         // ConfigureInputSettings is an example of how to set search parameters.
          // Will also read the index database and return dPeptideMassLow/dPeptideMassHigh mass range
          searchParams.ConfigureInputSettings(SearchMgr, ref dPeptideMassLow, ref dPeptideMassHigh, ref sDB);
 
