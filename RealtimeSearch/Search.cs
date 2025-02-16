@@ -136,6 +136,7 @@
 
                         // skip analysis of spectrum if ion is outside of indexed db mass range
                         double dExpPepMass = (iPrecursorCharge * dPrecursorMZ) - (iPrecursorCharge - 1) * 1.00727646688;
+
                         if (dExpPepMass < dPeptideMassLow || dExpPepMass > dPeptideMassHigh)
                            continue;
 
@@ -148,6 +149,7 @@
                         int topN = 5; // report up to topN hits per query
 
                         watch.Start();
+
                         SearchMgr.DoSingleSpectrumSearchMultiResults(topN, iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
                            out vPeptide, out vProtein, out List<List<FragmentWrapper>> vMatchingFragments, out List<ScoreWrapper> vScores);
                         watch.Stop();
@@ -330,6 +332,14 @@
             dTmp = 0.05; // base peak percentage cutoff
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("percentage_base_peak", sTmp, dTmp);
+
+            iTmp = 1;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("use_B_ions", sTmp, iTmp);
+
+            iTmp = 1;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("use_Y_ions", sTmp, iTmp);
 
 /* unused for the search as these are applied during the plain peptide .idx index creation
             VarModsWrapper varMods = new VarModsWrapper();

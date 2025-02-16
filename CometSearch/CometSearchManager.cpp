@@ -310,9 +310,9 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].szPeptide[0] = '\0';
          pQuery->_pResults[j].strSingleSearchProtein = "";
          pQuery->_pResults[j].pWhichProtein.clear();
-         //pQuery->_pResults[j].cPeffOrigResidue = '\0';
          pQuery->_pResults[j].sPeffOrigResidues.clear();
          pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
+         memset(pQuery->iXcorrHistogram, 0, sizeof(pQuery->iXcorrHistogram));
 
          if (g_staticParams.options.iDecoySearch)
             pQuery->_pResults[j].pWhichDecoyProtein.clear();
@@ -2041,6 +2041,8 @@ void CometSearchManager::ResetSearchStatus()
 
 bool CometSearchManager::CreateFragmentIndex()
 {
+   g_cometStatus.ResetStatus();
+
    // Override the Create Index flag to force it to create
    g_staticParams.options.bCreateFragmentIndex = 1;
 
@@ -2050,6 +2052,8 @@ bool CometSearchManager::CreateFragmentIndex()
 
 bool CometSearchManager::CreatePeptideIndex()
 {
+   g_cometStatus.ResetStatus();
+
    // Override the Create Index flag to force it to create
    g_staticParams.options.bCreatePeptideIndex = 1;
 

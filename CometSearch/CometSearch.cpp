@@ -1677,30 +1677,36 @@ bool CometSearch::SearchPeptideIndex(void)
          }
          else if (!strncmp(szBuf, "VariableMod:", 12))
          {
-            char* tok;
-            char delims[] = " ";
-            int x = 0;
+            string strMods = szBuf + 13;
+
+            istringstream iss(strMods);
+
+            int iNumMods = 0;
 
             bFoundVariable = true;
 
-            tok = strtok(szBuf + 13, delims);
-            while (tok != NULL)
+            do
             {
-               tok = strtok(NULL, delims); // skip list of var mod residues
+               string subStr;
 
-               // for index search, storing variable mods 0-9 in pdStaticMods array 0-9
-               sscanf(tok, "%lf:%lf", &(g_staticParams.variableModParameters.varModList[x].dVarModMass),
-                  &(g_staticParams.variableModParameters.varModList[x].dNeutralLoss));
+               iss >> subStr;  // parse each word which is a colon delimited triplet pair for modmass:neutralloss:modchars
+               std::replace(subStr.begin(), subStr.end(), ':', ' ');
+               int iRet = sscanf(subStr.c_str(), "%s %lf %lf %lf",
+                     g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar,
+                     &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
+                     &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
+                     &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2));
 
-               if (g_staticParams.variableModParameters.varModList[x].dNeutralLoss != 0.0)
+               if (g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss != 0.0)
                   g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
 
-               tok = strtok(NULL, delims);
+               iNumMods++;
 
-               x++;
-               if (x == VMODS)
+               if (iNumMods == VMODS)
                   break;
-            }
+
+            } while (iss);
+
             break;
          }
       }
@@ -1714,7 +1720,7 @@ bool CometSearch::SearchPeptideIndex(void)
          return false;
       }
 
-      // indexed searches will always set this to true
+      // peptide index searches will always set this to true
       g_staticParams.variableModParameters.bVarModSearch = true;
    }
 
@@ -1827,7 +1833,7 @@ bool CometSearch::SearchPeptideIndex(void)
    while ((int)(sDBI.dPepMass * 10) <= iEnd10)
    {
 /*
-      printf("OK  index pep ");
+      printf("OK index pep ");
       for (unsigned int x=0; x<strlen(sDBI.szPeptide); x++)
       {
          printf("%c", sDBI.szPeptide[x]);
@@ -4191,10 +4197,11 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
       if (iTmp < 0) // possible for CRUX compiled option to have a negative xcorr
          iTmp = 0;  // lump these all in the mininum score bin of the histogram
-                    //
-      if (!(iStartPos%2) && iTmp < pQuery->iMinXcorrHisto) // lump some zero decoy entries into iMinXcorrHisto bin
+
+      // lump some zero decoy entries into iMinXcorrHisto bin
+      if (szProteinSeq[iStartPos] >= 'A' && szProteinSeq[iStartPos] <= 'H' && iTmp < pQuery->iMinXcorrHisto)
          iTmp = pQuery->iMinXcorrHisto;
-  
+
       if (iTmp >= HISTO_SIZE)
          iTmp = HISTO_SIZE - 1;
 

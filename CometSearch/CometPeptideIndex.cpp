@@ -197,9 +197,12 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    fprintf(fptr, "VariableMod:");
    for (int x = 0; x < VMODS; x++)
    {
-      fprintf(fptr, " %s %lf:%lf", g_staticParams.variableModParameters.varModList[x].szVarModChar,
+      fprintf(fptr, " %s:%lf:%lf:%lf",
+            g_staticParams.variableModParameters.varModList[x].szVarModChar,
             g_staticParams.variableModParameters.varModList[x].dVarModMass,
-            g_staticParams.variableModParameters.varModList[x].dNeutralLoss);
+            g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
+            g_staticParams.variableModParameters.varModList[x].dNeutralLoss2);
+
    }
    fprintf(fptr, "\n\n");
 

@@ -783,24 +783,24 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
 
    // Make fast xcorr spectrum.
-   double dSum=0.0;
-   int iTmpRange = 2*g_staticParams.iXcorrProcessingOffset + 1;
+   double dSum = 0.0;
+   int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
    double dTmp = 1.0 / (iTmpRange - 1.0);
    double dMinXcorrInten = 0.0;
 
-   dSum=0.0;
-   for (i=0; i<g_staticParams.iXcorrProcessingOffset; ++i)
+   dSum = 0.0;
+   for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
       dSum += pdTmpCorrelationData[i];
-   for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
+   for (i = g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
    {
       if (dMinXcorrInten < pdTmpCorrelationData[i])
          dMinXcorrInten = pdTmpCorrelationData[i];
 
-      if (i<pScoring->_spectrumInfoInternal.iArraySize)
+      if (i < pScoring->_spectrumInfoInternal.iArraySize)
          dSum += pdTmpCorrelationData[i];
-      if (i>=iTmpRange)
-         dSum -= pdTmpCorrelationData[i-iTmpRange];
-      pdTmpFastXcorrData[i-g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i-g_staticParams.iXcorrProcessingOffset])* dTmp;
+      if (i >= iTmpRange)
+         dSum -= pdTmpCorrelationData[i - iTmpRange];
+      pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
    }
 
    pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
@@ -2054,21 +2054,27 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
 
    // Make fast xcorr spectrum.
-   double dSum=0.0;
-   int iTmpRange = 2*g_staticParams.iXcorrProcessingOffset + 1;
+   double dSum = 0.0;
+   int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
    double dTmp = 1.0 / (iTmpRange - 1.0);
+   double dMinXcorrInten = 0.0;
 
-   dSum=0.0;
-   for (i=0; i<g_staticParams.iXcorrProcessingOffset; ++i)
+   dSum = 0.0;
+   for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
       dSum += pdTmpCorrelationData[i];
-   for (i=g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
+   for (i = g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
    {
-      if (i<pScoring->_spectrumInfoInternal.iArraySize)
+      if (dMinXcorrInten < pdTmpCorrelationData[i])
+         dMinXcorrInten = pdTmpCorrelationData[i];
+
+      if (i < pScoring->_spectrumInfoInternal.iArraySize)
          dSum += pdTmpCorrelationData[i];
-      if (i>=iTmpRange)
-         dSum -= pdTmpCorrelationData[i-iTmpRange];
-      pdTmpFastXcorrData[i-g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i-g_staticParams.iXcorrProcessingOffset])* dTmp;
+      if (i >= iTmpRange)
+         dSum -= pdTmpCorrelationData[i - iTmpRange];
+      pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
    }
+
+   pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
 
    pScoring->pfFastXcorrData[0] = 0.0;
    for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)

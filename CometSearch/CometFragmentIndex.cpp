@@ -597,11 +597,18 @@ if (!(iWhichPeptide%5000))
       {
          if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass)
          {
+            int iBinBion = BIN(dBion);
+
+            if (iBinBion >= g_massRange.g_uiMaxFragmentArrayIndex)
+            {
+               printf(" Error, FI dBion %lf too large\n");
+               exit(1);
+            }
+
             if (bCountOnly)
-               g_iCountFragmentIndex[iWhichThread][iPrecursorBin][BIN(dBion)] += 1;
+               g_iCountFragmentIndex[iWhichThread][iPrecursorBin][iBinBion] += 1;
             else
             {
-               int iBinBion = BIN(dBion);
                int iEntry = g_iCountFragmentIndex[iWhichThread][iPrecursorBin][iBinBion];
 
                g_iFragmentIndex[iWhichThread][iPrecursorBin][iBinBion][iEntry] = uiCurrentFragmentPeptide;
@@ -611,11 +618,18 @@ if (!(iWhichPeptide%5000))
 
          if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass)
          {
+            int iBinYion = BIN(dYion);
+
+            if (iBinYion >= g_massRange.g_uiMaxFragmentArrayIndex)
+            {
+               printf(" Error, FI dYion %lf too large\n");
+               exit(1);
+            }
+
             if (bCountOnly)
-               g_iCountFragmentIndex[iWhichThread][iPrecursorBin][BIN(dYion)] += 1;
+               g_iCountFragmentIndex[iWhichThread][iPrecursorBin][iBinYion] += 1;
             else
             {
-               int iBinYion = BIN(dYion);
                int iEntry = g_iCountFragmentIndex[iWhichThread][iPrecursorBin][iBinYion];
 
                g_iFragmentIndex[iWhichThread][iPrecursorBin][iBinYion][iEntry] = uiCurrentFragmentPeptide;
@@ -793,10 +807,13 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // write VariableMod:
    fprintf(fp, "VariableMod:");
    for (int x = 0; x < FRAGINDEX_VMODS; ++x)
-      fprintf(fp, " %lf:%lf:%lf:%s", g_staticParams.variableModParameters.varModList[x].dVarModMass,
+   {
+      fprintf(fp, " %s:%lf:%lf:%lf",
+         g_staticParams.variableModParameters.varModList[x].szVarModChar,
+         g_staticParams.variableModParameters.varModList[x].dVarModMass,
          g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
-         g_staticParams.variableModParameters.varModList[x].dNeutralLoss2,
-         g_staticParams.variableModParameters.varModList[x].szVarModChar);
+         g_staticParams.variableModParameters.varModList[x].dNeutralLoss2);
+   }
    fprintf(fp, "\n");
 
    // Variable mod protein filter:
@@ -1010,7 +1027,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
       else if (!strncmp(szBuf, "VariableMod:", 12)) // read in variable mods
       {
-         string strMods = szBuf + 12;
+         string strMods = szBuf + 13;
 
          istringstream iss(strMods);
 
@@ -1021,11 +1038,18 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
             string subStr;
 
             iss >> subStr;  // parse each word which is a colon delimited triplet pair for modmass:neutralloss:modchars
-
-            int iRet = sscanf(subStr.c_str(), "%lf:%lf:%lf:%s", &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
+            std::replace(subStr.begin(), subStr.end(), ':', ' ');
+            int iRet = sscanf(subStr.c_str(), "%s %lf %lf %lf",
+               g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar,
+               &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
                &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
-               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2),
-               g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar);
+               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2));
+
+            if (g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass != 0.0)
+               g_staticParams.variableModParameters.bVarModSearch = true;
+
+            if (g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss != 0.0)
+               g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
 
             iNumMods++;
 
@@ -1033,15 +1057,6 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
                break;
 
          } while (iss);
-
-         for (int x = 0; x < FRAGINDEX_VMODS; ++x)
-         {
-            if (g_staticParams.variableModParameters.varModList[x].dVarModMass != 0.0)
-               g_staticParams.variableModParameters.bVarModSearch = true;
-
-            if (g_staticParams.variableModParameters.varModList[x].dNeutralLoss != 0.0)
-               g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
-         }
 
          bFoundVariable = true;
       }
