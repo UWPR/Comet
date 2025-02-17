@@ -84,8 +84,8 @@ public:
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
-   bool CheckMassMatch(int iWhichQuery,
-                       double dCalcPepMass);
+   static bool CheckMassMatch(int iWhichQuery,
+                              double dCalcPepMass);
 
    struct ProteinInfo
    {

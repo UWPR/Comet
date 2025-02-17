@@ -1202,8 +1202,6 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
 
-   CometSearch sqSearch;
-
    std::map<comet_fileoffset_t, int> mPeptides;   // which peptide (fileoffset, and # matched fragments)
    size_t lNumPeps = 0;
    unsigned int uiFragmentMass;
@@ -1285,7 +1283,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
                         if (dCalcPepMass >= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus
                            && dCalcPepMass <= g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
                         {
-                           if (sqSearch.CheckMassMatch(iWhichQuery, dCalcPepMass))
+                           if (CheckMassMatch(iWhichQuery, dCalcPepMass))
                               mPeptides[g_iFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass][ix]] += 1;
                         }
                         else if (dCalcPepMass > g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus)
@@ -4256,21 +4254,17 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
    int  ctLen,
         ctIonSeries,
         ctCharge;
-   double dXcorr;
+   double dXcorr = 0.0;
    int iLenPeptideMinus1 = iLenPeptide - 1;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
-
-   float **ppSparseFastXcorrData;              // use this if bSparseMatrix
-
-   dXcorr = 0.0;
 
    // iMax is largest x-value allowed as iMax+1 is allocated and we're 0-index
    int iMax = pQuery->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE;
 
    int bin,x,y;
 
-   ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
+   float **ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
 
    for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
    {
@@ -4338,7 +4332,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
 
    dXcorr *= 0.005;  // Scale intensities to 50 and divide score by 1E4.
 
-   dXcorr= std::round(dXcorr* 1000.0) / 1000.0;  // round to 3 decimal points
+   dXcorr= std::round(dXcorr * 1000.0) / 1000.0;  // round to 3 decimal points
 
    Threading::LockMutex(pQuery->accessMutex);
 
@@ -4358,7 +4352,11 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
       iTmp = (int)(dXcorr * 10.0 + 0.5);
 
       if (iTmp < 0) // possible for CRUX compiled option to have a negative xcorr
-         iTmp = 0;  // lump these all in the zero bin of the histogram
+         iTmp = 0;  // lump these all in the mininum score bin of the histogram
+
+      // lump some zero decoy entries into iMinXcorrHisto bin
+      if (szProteinSeq[iStartPos] >= 'A' && szProteinSeq[iStartPos] <= 'H' && iTmp < pQuery->iMinXcorrHisto)
+         iTmp = pQuery->iMinXcorrHisto;
 
       if (iTmp >= HISTO_SIZE)
          iTmp = HISTO_SIZE - 1;
@@ -4375,45 +4373,6 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
 
    Threading::UnlockMutex(pQuery->accessMutex);
 }
-
-
-/*
-double CometSearch::GetFragmentIonMass(int iWhichIonSeries,
-                                       int i,
-                                       int ctCharge,
-                                       double *_pdAAforward,
-                                       double *_pdAAreverse)
-{
-   double dFragmentIonMass = 0.0;
-
-   switch (iWhichIonSeries)
-   {
-      case ION_SERIES_B:
-         dFragmentIonMass = _pdAAforward[i];
-         break;
-      case ION_SERIES_Y:
-         dFragmentIonMass = _pdAAreverse[i];
-         break;
-      case ION_SERIES_A:
-         dFragmentIonMass = _pdAAforward[i] - g_staticParams.massUtility.dCO;
-         break;
-      case ION_SERIES_C:
-         dFragmentIonMass = _pdAAforward[i] + g_staticParams.massUtility.dNH3;
-         break;
-      case ION_SERIES_Z:
-         dFragmentIonMass = _pdAAreverse[i] - g_staticParams.massUtility.dNH2;
-         break;
-      case ION_SERIES_Z1:
-         dFragmentIonMass = _pdAAreverse[i] - g_staticParams.massUtility.dNH2 + Hydrogen_Mono;
-         break;
-      case ION_SERIES_X:
-         dFragmentIonMass = _pdAAreverse[i] + g_staticParams.massUtility.dCOminusH2;
-         break;
-   }
-
-   return (dFragmentIonMass + (ctCharge - 1.0) * PROTON_MASS) / ctCharge;
-}
-*/
 
 
 void CometSearch::StorePeptide(int iWhichQuery,

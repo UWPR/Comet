@@ -3509,7 +3509,7 @@ bool CometSearchManager::DoSingleSpectrumSearch(int iPrecursorCharge,
                {
                   for (int iMod = 0; iMod < VMODS; ++iMod)
                   {
-                     for (int iWhichNL = 0; iWhichNL < 2 ; ++iWhichNL)
+                     for (int iWhichNL = 0; iWhichNL < 2; ++iWhichNL)
                      {
                         double dNLmass;
 
@@ -3887,7 +3887,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                   {
                      for (int iMod = 0; iMod < VMODS; ++iMod)
                      {
-                        for (int iWhichNL = 0; iWhichNL < 2 ; ++iWhichNL)
+                        for (int iWhichNL = 0; iWhichNL < 2; ++iWhichNL)
                         {
                            double dNLmass;
 
