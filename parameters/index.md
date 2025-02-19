@@ -1,5 +1,6 @@
 ### Comet Parameters
 
+- [Comet version 2025.01](/Comet/parameters/parameters_202501)
 - [Comet version 2024.02](/Comet/parameters/parameters_202402)
 - [Comet version 2024.01](/Comet/parameters/parameters_202401)
 - [Comet version 2023.01](/Comet/parameters/parameters_202301)
