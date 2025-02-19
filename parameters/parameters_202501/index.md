@@ -126,7 +126,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Variable modifications
 
-- [variable_mod01 thru variable_mod15](variable_modXX.html) <font color="red">*</font>
+- [variable_mod01 thru variable_mod15](variable_modXX.html) <font color="red">**</font>
 - [max_variable_mods_in_peptide](max_variable_mods_in_peptide.html)
 - [require_variable_mod](require_variable_mod.html)
 - [scale_fragmentNL](scale_fragmentNL.html)
