@@ -37,7 +37,7 @@ Comet is currently supported within the following software projects:
 - [Philosopher](https://philosopher.nesvilab.org)
 - [PAW pipeline](https://github.com/pwilmart/PAW_pipeline/)
 - [SearchGUI](https://compomics.github.io/projects/searchgui.html) and [PeptideShaker](https://compomics.github.io/projects/peptide-shaker.html)
-- [Bruker Daltonics Integrated Proteomics Pipeline (IP2)](https://www.manula.com/manuals/ip2/ip2/1/en/topic/7-2-comet-search-engine)
+- [Bruker Daltonics Integrated Proteomics Pipeline (IP2)](https://web.archive.org/web/20240916033043/https://www.manula.com/manuals/ip2/ip2/1/en/topic/7-2-comet-search-engine)
 - [Thermo Fischer Scientific Real-Time Search](https://brjac.com.br/artigos/omics-edition/brjac-29-ThermoSci-Report-Eclipse.pdf) and as a Proteome Discoverer node as of PD 3.0.
 
 Comet is a free, open source tool distributed under the
