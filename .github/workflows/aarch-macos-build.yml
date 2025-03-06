@@ -1,4 +1,4 @@
-name: Build on Linux for ubuntu-22.04
+name: Build on MacOS
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04-arm
+    runs-on: macos-14
     steps:
     - uses: actions/checkout@v4
 
@@ -23,13 +23,13 @@ jobs:
     - name: Prepare Comet release
       run: |
         mkdir release && \
-        cp comet.exe release/comet.aarch64.linux.exe && \
+        cp comet.exe release/comet.aarch64.macos.exe && \
         cp README.md release/README.md
 
     - name: Upload build artifiacts
       uses: actions/upload-artifact@v4
       with:
-        name: comet-aarch64-linux
+        name: comet-aarch64-macos
         path: release/*
 
     - name: Upload binaries to the release
