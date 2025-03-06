@@ -1,4 +1,4 @@
-name: Build on Linux for ubuntu-22.04
+name: Build on Linux for ubuntu-22.04-arm
 
 on:
   push:
