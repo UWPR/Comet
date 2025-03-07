@@ -340,12 +340,10 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
       int iTmpCh = 0;
       bool bFound = false;      // sanity check to confirm find peptide match in protein else throw error
 
-/*    // this will only be useful if Comet internal decoys are ever applied
-      if (iPrintTargetDecoy != 2)
-         pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
-      else
-         pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
-*/
+      // if target size is zero, peptide must only be matched to a decoy so don't bother with prev/next AA
+      if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].pWhichProtein.size() == 0)
+         return;
+
       pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
 
       comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
@@ -518,8 +516,8 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
 
       if (!bFound)
       {
-         printf(" Error: did not match peptide in GetPrevNextAA(); pep %s, iWhichQuery %d, iWhichResult %d\n",
-               pOutput[iWhichResult].szPeptide, iWhichQuery, iWhichResult);
+         printf(" Error: did not match peptide in GetPrevNextAA(); pep %s, iWhichQuery %d, iWhichResult %d, iPrintTargetDecoy %d\n",
+               pOutput[iWhichResult].szPeptide, iWhichQuery, iWhichResult, iPrintTargetDecoy);
          exit(1);
       }
    }
