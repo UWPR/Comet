@@ -601,7 +601,7 @@ if (!(iWhichPeptide%5000))
 
             if (iBinBion >= g_massRange.g_uiMaxFragmentArrayIndex)
             {
-               printf(" Error, FI dBion %lf too large\n");
+               printf(" Error: FI dBion %lf too large, pep %s\n", dBion, sPeptide.c_str());
                exit(1);
             }
 
@@ -622,7 +622,7 @@ if (!(iWhichPeptide%5000))
 
             if (iBinYion >= g_massRange.g_uiMaxFragmentArrayIndex)
             {
-               printf(" Error, FI dYion %lf too large\n");
+               printf(" Error: FI dYion %lf too large, pep %s\n", dYion, sPeptide.c_str());
                exit(1);
             }
 

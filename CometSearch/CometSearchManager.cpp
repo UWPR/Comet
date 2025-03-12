@@ -3305,10 +3305,12 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    }
    bSucceeded = AllocateResultsMem();
 
+   int iWhichQuery;
+
    if (!bSucceeded)
       goto cleanup_results;
 
-   int iWhichQuery = 0;  // dealing with one
+   iWhichQuery = 0; // dealing with one query
 
    Query* pQuery;
    pQuery = g_pvQuery.at(iWhichQuery);  // there's only a single query spectrum
