@@ -326,7 +326,8 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    std::vector<string>::iterator it;
 
    unsigned int uiNumTotProteins = 0;  // unused in sqt
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+   bool bReturnFulProteinString = false;
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
@@ -345,10 +346,10 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); ++it)
       {
          if (g_staticParams.options.bOutputSqtStream)
-            fprintf(stdout, "L\t%s\n", (*it).c_str());
+            fprintf(stdout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, (*it).c_str());
 
          if (g_staticParams.options.bOutputSqtFile)
-            fprintf(fpout, "L\t%s\n", (*it).c_str());
+            fprintf(fpout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, (*it).c_str());
       }
    }
 }

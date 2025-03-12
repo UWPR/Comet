@@ -40,15 +40,6 @@ namespace CometWrapper {
         bool DoSearch();
         bool InitializeSingleSpectrumSearch();
         void FinalizeSingleSpectrumSearch();
-        bool DoSingleSpectrumSearch(int intValue,
-                                    double value,
-                                    cli::array<double>^ dVal1,
-                                    cli::array<double>^ dVal2,
-                                    const int iVal1,
-                                    [Out] String^% szPeptide,
-                                    [Out] String^% szProtein,
-                                    [Out] List<FragmentWrapper^>^% matchingFragments,
-                                    [Out] ScoreWrapper^% score);
         bool DoSingleSpectrumSearchMultiResults(int intValue1,
             int intValue2,
             double value,

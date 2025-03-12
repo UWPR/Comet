@@ -50,6 +50,7 @@ public:
                                     int iWhichQuery,  // which search
                                     int iWhichResult, // which peptide within the search
                                     int iPrintTargetDecoy,
+                                    bool bReturnFullProteinString,   // 0 = return accession only, 1 = return full description line
                                     unsigned int *iNumTotProteins,   // matched protein count
                                     vector<string>& vProteinTargets,  // the target protein names
                                     vector<string>& vProteinDecoys);  // the decoy protein names if applicable
@@ -59,6 +60,13 @@ public:
                              int iWhichResult, // which peptide within the search
                              int iPrintTargetDecoy,
                              int iWhichTerm);  // 0=no term constraint, 1=protein N-term, 2=protein C-term
+
+   static bool SeekPrevNextAA(struct Results *pOutput,
+                              FILE *fpfasta,
+                              comet_fileoffset_t tFilePos,
+                              int iWhichQuery,
+                              int iWhichResult,
+                              int iWhichTerm);
 
    static string GetField(std::string *s,
                           unsigned int n,

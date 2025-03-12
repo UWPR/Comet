@@ -395,30 +395,33 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
    std::vector<string>::iterator it;
 
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, uiNumTotProteins, vProteinTargets, vProteinDecoys);
+   bool bReturnFulProteinString = false;
+
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
    bool bPrintComma = false;
+
+   *uiNumTotProteins = vProteinTargets.size() + vProteinDecoys.size();
+
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
       for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)
       {
          if (bPrintComma)
             fprintf(fpout, ",");
-
-         fprintf(fpout, "%s", (*it).c_str());
          bPrintComma = true;
+         fprintf(fpout, "%s", (*it).c_str());
       }
    }
-      
+
    if (iPrintTargetDecoy != 1)  // if not target only, print decoy proteins
    {
       for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); ++it)
       {
          if (bPrintComma)
             fprintf(fpout, ",");
-
-         fprintf(fpout, "%s", (*it).c_str());
          bPrintComma = true;
+         fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, (*it).c_str());
       }
    }
 }

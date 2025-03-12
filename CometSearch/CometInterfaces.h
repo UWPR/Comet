@@ -34,15 +34,6 @@ public:
       virtual bool DoSearch() = 0;
       virtual bool InitializeSingleSpectrumSearch() = 0;
       virtual void FinalizeSingleSpectrumSearch() = 0;
-      virtual bool DoSingleSpectrumSearch(const int iPrecursorCharge,
-                                          const double dMZ,
-                                          double* dMass,
-                                          double* dInten,
-                                          const int iNumPeaks,
-                                          string& strReturnPeptide,
-                                          string& strReturnProtein,
-                                          vector<Fragment> & matchedFragments,
-                                          Scores & scores) = 0;
       virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
                                                       const int iPrecursorCharge,
                                                       const double dMZ,

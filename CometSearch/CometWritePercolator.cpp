@@ -130,7 +130,8 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       std::vector<string> vProteinDecoys;   // store vector of decoy protein names
 
       unsigned int uiNumTotProteins = 0;  // unused in pin
-      CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+      bool bReturnFulProteinString = false;
+      CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
       if (g_staticParams.options.iDecoySearch) // using Comet's internal decoys
       {
@@ -294,7 +295,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
          if (bPrintTab)
             fprintf(fpout, "%s", g_staticParams.options.sPinProteinDelimiter.c_str());
 
-         fprintf(fpout, "%s", (*it).c_str());
+         fprintf(fpout, "%s%s", g_staticParams.szDecoyPrefix, (*it).c_str());
          bPrintTab = true;
       }
    }

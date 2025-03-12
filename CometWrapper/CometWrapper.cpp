@@ -98,47 +98,6 @@ bool CometSearchManagerWrapper::DoSearch()
 }
 
 
-bool CometSearchManagerWrapper::DoSingleSpectrumSearch(int iPrecursorCharge,
-                                                       double dMZ,
-                                                       cli::array<double>^ pdMass,
-                                                       cli::array<double>^ pdInten,
-                                                       int iNumPeaks,
-                                                       [Out] System::String^% szPeptide,
-                                                       [Out] System::String^% szProtein,
-                                                       [Out] List<FragmentWrapper^>^% matchingFragments,
-                                                       [Out] ScoreWrapper^% score)
-{
-    if (!_pSearchMgr)
-    {
-        return false;
-    }
-    pin_ptr<double> ptrMasses = &pdMass[0];
-    pin_ptr<double> ptrInten = &pdInten[0];
-    std::string stdStringszPeptide;
-    std::string stdStringszProtein;
-
-    Scores scores;
-    vector<Fragment> matchedFragments;
-
-    // perform the search
-    bool isSuccess = _pSearchMgr->DoSingleSpectrumSearch(iPrecursorCharge, dMZ, ptrMasses, ptrInten, iNumPeaks,
-        stdStringszPeptide, stdStringszProtein, matchedFragments, scores);
-
-    // Convert data back to the managed world
-    szPeptide = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStringszPeptide.c_str()))));
-    szProtein = gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(stdStringszProtein.c_str()))));
-
-    score = gcnew ScoreWrapper(scores);
-
-    matchingFragments = gcnew List<FragmentWrapper^>();
-    for (auto frag : matchedFragments)
-    {
-        matchingFragments->Add(gcnew FragmentWrapper(frag));
-    }
-
-    return isSuccess;
-}
-
 bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(int topN,
     int iPrecursorCharge,
     double dMZ,

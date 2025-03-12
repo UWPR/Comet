@@ -528,7 +528,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
    std::vector<string>::iterator it;
 
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+   bool bReturnFulProteinString = false;
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", pOutput[iWhichResult].iRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
@@ -550,7 +551,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       else if (vProteinDecoys.size() > 0)
       {
          it = vProteinDecoys.begin();
-         sTmp = *it;
+         sTmp = g_staticParams.szDecoyPrefix;
+         sTmp += *it;
          CometMassSpecUtils::EscapeString(sTmp);
          fprintf(fpout, " protein=\"%s\"", sTmp.c_str());
          ++it;
@@ -567,7 +569,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    else //if (iPrintTargetDecoy == 2)
    {
       it = vProteinDecoys.begin();
-      sTmp = *it;
+      sTmp = g_staticParams.szDecoyPrefix;
+      sTmp += *it;
       CometMassSpecUtils::EscapeString(sTmp);
       fprintf(fpout, " protein=\"%s\"", sTmp.c_str());
       ++it;

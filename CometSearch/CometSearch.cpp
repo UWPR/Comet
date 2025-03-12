@@ -104,7 +104,7 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 }
 
 
-// called by DoSingleSpectrumSearch
+// called by DoSingleSpectrumSearchMultiResults
 bool CometSearch::RunSearch(ThreadPool *tp)
 {
    CometFragmentIndex sqFI;
@@ -1841,7 +1841,7 @@ bool CometSearch::SearchPeptideIndex(void)
       printf(", mass %f, ", sDBI.dPepMass); fflush(stdout);
       for (unsigned int x=0; x<strlen(sDBI.szPeptide); x++)
          printf("%d", sDBI.pcVarModSites[x]);
-      printf("\n");
+      printf(", prot %ld\n", sDBI.lIndexProteinFilePosition);
 */
 
       if (sDBI.dPepMass > g_massRange.dMaxMass)
@@ -2212,6 +2212,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                   szDecoyPeptide[iStartPos] = sDBI.szPeptide[iStartPos];  // first residue stays same
                   piVarModSitesDecoy[iStartPos] = piVarModSites[iStartPos];
                }
+               szDecoyPeptide[iEndPos - iStartPos + 1] = '\0';
 
                piVarModSitesDecoy[iLenPeptide] = piVarModSites[iLenPeptide];      // N-term
                piVarModSitesDecoy[iLenPeptide + 1] = piVarModSites[iLenPeptide + 1];  // C-term
@@ -4218,8 +4219,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    // rounding errors that where random duplicate, same score peptides doesn't make it past here
    if (dXcorr + 0.00005 >= dLowestXcorrScore && iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
    {
-      // no need to check duplicates if indexed database search and !g_staticParams.options.bTreatSameIL and no internal decoys
-      if (g_staticParams.iIndexDb && !g_staticParams.options.bTreatSameIL)
+      // no need to check duplicates if fragment ion indexed database search (internal decoys not supported yet)
+      // and !g_staticParams.options.bTreatSameIL and no internal decoys
+      if (g_staticParams.iIndexDb == 1 && !g_staticParams.options.bTreatSameIL)
       {
          StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
             dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
@@ -4484,12 +4486,7 @@ void CometSearch::StorePeptide(int iWhichQuery,
 
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr = (float)dXcorr;
 
-      if (g_staticParams.iIndexDb)  //FIX
-      {
-//       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = _proteinInfo.cPrevAA;
-//       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = _proteinInfo.cNextAA;
-      }
-      else
+      if (!g_staticParams.iIndexDb)
       {
          pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = false;
 
@@ -4735,8 +4732,10 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pTmp.cPrevAA = pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA;
       pTmp.cNextAA = pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA;
 
-      pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
-      pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
+      if (bDecoyPep)   //OK JKE check if this change is correct
+         pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
+      else
+         pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
       if (bDecoyPep)
@@ -5134,6 +5133,13 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                      pTmp.cNextAA = szProteinSeq[iEndResidue + 1];
                }
 
+               // Internal decoy peptide(s) found first and this is the first target
+               // peptide found.  If so, set this as the reference entry for both
+               // protein file position and prev/next AA.
+               bool bFirstTargetPep = false;
+               if (pQuery->_pResults[i].pWhichProtein.size() == 0 && !bDecoyPep)
+                  bFirstTargetPep = true;
+
                if (bDecoyPep)
                   pQuery->_pResults[i].pWhichDecoyProtein.push_back(pTmp);
                else
@@ -5141,16 +5147,19 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
 
                // if duplicate, check to see if need to replace stored protein info
                // with protein that's earlier in database
-               if (pQuery->_pResults[i].lProteinFilePosition > dbe->lProteinFilePosition)
+               if (bFirstTargetPep || (bDecoyPep && pQuery->_pResults[i].pWhichProtein.size() == 0) || !bDecoyPep)
                {
-                  pQuery->_pResults[i].lProteinFilePosition = dbe->lProteinFilePosition;
+                  if (bFirstTargetPep || pQuery->_pResults[i].lProteinFilePosition > dbe->lProteinFilePosition)
+                  {
+                     pQuery->_pResults[i].lProteinFilePosition = dbe->lProteinFilePosition;
 
-                  // also if IL equivalence set, go ahead and copy peptide from first sequence
-                  memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pResults[i].iLenPeptide*sizeof(char));
-                  pQuery->_pResults[i].szPeptide[pQuery->_pResults[i].iLenPeptide]='\0';
+                     // also if IL equivalence set, go ahead and copy peptide from first sequence
+                     memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, pQuery->_pResults[i].iLenPeptide * sizeof(char));
+                     pQuery->_pResults[i].szPeptide[pQuery->_pResults[i].iLenPeptide] = '\0';
 
-                  pQuery->_pResults[i].cPrevAA = pTmp.cPrevAA;
-                  pQuery->_pResults[i].cNextAA = pTmp.cNextAA;
+                     pQuery->_pResults[i].cPrevAA = pTmp.cPrevAA;
+                     pQuery->_pResults[i].cNextAA = pTmp.cNextAA;
+                  }
                }
 
                break;

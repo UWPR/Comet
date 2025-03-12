@@ -55,25 +55,16 @@ public:
    virtual bool DoSearch();
    virtual bool InitializeSingleSpectrumSearch();
    virtual void FinalizeSingleSpectrumSearch();
-   virtual bool DoSingleSpectrumSearch(const int iPrecursorCharge,
-                                       const double dMZ,
-                                       double* dMass,
-                                       double* dInten,
-                                       const int iNumPeaks,
-                                       string& strReturnPeptide,
-                                       string& strReturnProtein,
-                                       vector<Fragment> & matchedFragments,
-                                       Scores & pScores);
    virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
-       int iPrecursorCharge,
-       double dMZ,
-       double* pdMass,
-       double* pdInten,
-       int iNumPeaks,
-       vector<string>& strReturnPeptide,
-       vector<string>& strReturnProtein,
-       vector<vector<Fragment>>& matchedFragments,
-       vector<Scores>& scores);
+                                                   int iPrecursorCharge,
+                                                   double dMZ,
+                                                   double* pdMass,
+                                                   double* pdInten,
+                                                   int iNumPeaks,
+                                                   vector<string>& strReturnPeptide,
+                                                   vector<string>& strReturnProtein,
+                                                   vector<vector<Fragment>>& matchedFragments,
+                                                   vector<Scores>& scores);
 
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);

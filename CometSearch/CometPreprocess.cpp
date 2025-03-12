@@ -2006,7 +2006,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
             dIntensity = sqrt(dIntensity);
 
-            if (iBinIon < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iBinIon] < dIntensity)  // used in DoSingleSpectrumSearch to return matched ions
+            if (iBinIon < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iBinIon] < dIntensity)  // used in DoSingleSpectrumSearchMultiResults to return matched ions
                 pdTmpSpectrum[iBinIon] = dIntensity;
 
             if (iBinIon > pPre.iHighestIon)
