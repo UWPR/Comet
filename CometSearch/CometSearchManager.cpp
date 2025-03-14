@@ -3664,9 +3664,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       scores.push_back(score);
    }
 
-   fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
+cleanup_results:
 
-   cleanup_results:
+   fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
 
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometDataInternal.h).
