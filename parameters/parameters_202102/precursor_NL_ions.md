@@ -19,5 +19,5 @@ precursor in all fragment charge states) as ions to analyze in the ms/ms scan.
 Example:
 ```
 precursor_NL_ions =
-precursor_NL_ions = 79.96633 97.97689</tt>
+precursor_NL_ions = 79.96633 97.97689
 ```
