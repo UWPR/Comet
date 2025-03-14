@@ -4732,10 +4732,8 @@ void CometSearch::StorePeptide(int iWhichQuery,
       pTmp.cPrevAA = pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA;
       pTmp.cNextAA = pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA;
 
-      if (bDecoyPep)   //OK JKE check if this change is correct
-         pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
-      else
-         pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
+      pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
+      pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
       if (bDecoyPep)
