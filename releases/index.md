@@ -1,6 +1,6 @@
 ### Comet Releases
 
-- [Release 2025.01, 2025/02/19](/Comet/releases/release_202501.html)
+- [Release 2025.01, 2025/02/19, last revised 2025/03/15](/Comet/releases/release_202501.html)
 - [Release 2024.02, 2024/10/14](/Comet/releases/release_202402.html)
 - [Release 2024.01, 2023/05/06, last revised 2024/07/17](/Comet/releases/release_202401.html)
 - [Release 2023.01, 2023/01/31, last revised 2023/03/30](/Comet/releases/release_202301.html)
