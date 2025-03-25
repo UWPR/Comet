@@ -84,7 +84,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 }
 
 
-void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vRawPeptides)
+void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& g_vRawPeptides)
 {
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
    vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
@@ -440,7 +440,7 @@ bool CometFragmentIndex::SortFragmentsByPepMass(unsigned int x, unsigned int y)
 }
 
 
-void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
+void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPeptides,
                                       int iWhichThread,
                                       int iWhichPeptide,
                                       int modNumIdx,
@@ -826,7 +826,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
    {
       int iLen = (int)strlen((*it).szPeptide);
-      struct PlainPeptideIndex sTmp;
+      struct PlainPeptideIndexStruct sTmp;
 
       fwrite(&iLen, sizeof(int), 1, fp);
       fwrite((*it).szPeptide, sizeof(char), iLen, fp);
@@ -1097,7 +1097,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    size_t tNumPeptides;
    tTmp = fread(&tNumPeptides, sizeof(size_t), 1, fp);  // read # of peptides
 
-   struct PlainPeptideIndex sTmp;
+   struct PlainPeptideIndexStruct sTmp;
    int iLen;
    char szPeptide[MAX_PEPTIDE_LEN];
 

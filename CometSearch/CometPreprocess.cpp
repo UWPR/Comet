@@ -1577,6 +1577,7 @@ double CometPreprocess::GetMassCushion(double dMass)
    return dCushion;
 }
 
+
 //  Reads MSMS data file as ASCII mass/intensity pairs.
 bool CometPreprocess::LoadIons(struct Query *pScoring,
                                double *pdTmpRawData,

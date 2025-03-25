@@ -333,6 +333,30 @@ void LoadParameters(char *pszParamsFile,
                strcpy(szFile, szParamVal);
                pSearchMgr->SetParam("database_name", szFile, szFile);
             }
+            else if (!strcmp(szParamName, "spectral_library_name"))
+            {
+               char szFile[SIZE_FILE];
+
+               // Support parsing a database string from params file that
+               // includes spaces in the path.
+
+               // Remove white spaces at beginning/end of szParamVal
+               int iLen = (int)strlen(szParamVal);
+               char *szTrimmed = szParamVal;
+
+               while (iLen > 0 && isspace(szTrimmed[iLen -1]))  // trim end
+                  szTrimmed[--iLen] = 0;
+               while (*szTrimmed && isspace(*szTrimmed))  // trim beginning
+               {
+                  ++szTrimmed;
+                  --iLen;
+               }
+
+               memmove(szParamVal, szTrimmed, iLen+1);
+
+               strcpy(szFile, szParamVal);
+               pSearchMgr->SetParam("spectral_library_name", szFile, szFile);
+            }
             else if (!strcmp(szParamName, "peff_obo"))
             {
                char szFile[SIZE_FILE];
@@ -1308,6 +1332,14 @@ void LoadParameters(char *pszParamsFile,
                   sprintf(szParamStringVal, "%d", iIntParam);
                   pSearchMgr->SetParam("ms_level", szParamStringVal, iIntParam);
                }
+               else if (!strcmp(szParamName, "speclib_ms_level"))
+               {
+                  iIntParam = 0;
+                  sscanf(szParamVal, "%d", &iIntParam);
+                  szParamStringVal[0] = '\0';
+                  sprintf(szParamStringVal, "%d", iIntParam);
+                  pSearchMgr->SetParam("speclib_ms_level", szParamStringVal, iIntParam);
+               }
                else if (!strcmp(szParamName, "activation_method"))
                {
                   char szActivationMethod[24];
@@ -1715,6 +1747,13 @@ database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=internal decoy concatenated, 2=internal decoy separate\n\
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\n", MAX_THREADS);
+
+   if (iPrintParams == 2)
+   {
+      fprintf(fp,
+"\nspeclib_name = /some/path/speclib.file\n\
+speclib_ms_level = 1\n\n");
+   }
 
    if (iPrintParams == 2)
    {

@@ -14,6 +14,7 @@
 
 #include "Common.h"
 #include "CometSearch.h"
+#include "CometSpecLib.h"
 #include "CometDataInternal.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
@@ -877,6 +878,53 @@ bool CometSearch::RunSearch(int iPercentStart,
    }
 
    return bSucceeded;
+}
+
+bool CometSearch::RunSpecLibSearch(ThreadPool *tp)
+{
+   printf("OK in RunSpecLib\n");
+
+   return true;
+}
+
+
+bool CometSearch::RunSpecLibSearch(int iPercentStart,
+                                   int iPercentEnd,
+                                   ThreadPool *tp)
+{
+   printf("\nOKa in RunSpecLib, g_staticParams.tolerances.dBinSizePrecursor %lf\n", g_staticParams.tolerances.dBinSizePrecursor);
+
+   // to fill g_vulSpecLibPrecursorIndex, set
+   // binmin = BINPREC(expmass - tol)
+   // binmax = BINPREC(expmass + tol)
+   // then for (i=binmin; i<=binmax; ++i) {g_vulSpecLibPrecursorIndex[i].push_back(entry)}
+
+   for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+   {
+      int iBinExpMass = BINPREC((*it)->_pepMassInfo.dExpPepMass);
+printf("OKb in RunSpecLib, iBinExpMass %d, mass %lf, g_vulSpecLibPrecursorIndex[iBinExpMass].size() %ld\n", iBinExpMass, (*it)->_pepMassInfo.dExpPepMass, g_vulSpecLibPrecursorIndex[iBinExpMass].size() );
+
+      // FIX: need to address isotope offsets as well
+
+      if (g_vulSpecLibPrecursorIndex[iBinExpMass].size() > 0)
+      {
+         // compare query spectrum (*it) against list of precursor
+
+         for (auto x = 0; x < g_vulSpecLibPrecursorIndex[iBinExpMass].size(); ++x)
+         {
+printf("OK, at binmass, # of speclib entries %ld\n", g_vulSpecLibPrecursorIndex[iBinExpMass].size());
+
+            double dSpecLibScore = CometSpecLib::ScoreSpecLib(*it, g_vulSpecLibPrecursorIndex[iBinExpMass].at(x));
+
+            printf("OK query %d, dSpecLibScore %lf\n", (*it)->_spectrumInfoInternal.iScanNumber, dSpecLibScore);
+
+            if (dSpecLibScore > (*it)->fLowestSpecLibScore)
+               CometSpecLib::StoreSpecLib(*it, g_vulSpecLibPrecursorIndex[iBinExpMass].at(x), dSpecLibScore);
+
+         }
+      }
+   }
+   return true;
 }
 
 
@@ -2635,7 +2683,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                   memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2));
 
-                  g_pvDBIndex.push_back(sEntry);  // can save a few transient bytes by going with <PlainPeptideIndex> g_vRawPeptides here
+                  g_pvDBIndex.push_back(sEntry);  // can save a few transient bytes by going with <PlainPeptideIndexStruct> g_vRawPeptides here
                }
 
                Threading::UnlockMutex(g_pvDBIndexMutex);

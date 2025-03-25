@@ -97,6 +97,8 @@ class CometSearchManager;
 #define XCORR_CUTOFF                1E-8   // some near-zero cutoff
 #endif
 
+#define SPECLIB_CUTOFF              -999.9
+
 
 struct Options
 {
@@ -110,7 +112,8 @@ struct Options
    int iEndCharge;
    int iMaxFragmentCharge;
    int iMaxPrecursorCharge;
-   int iMSLevel;                 // mzXML only
+   int iMSLevel;                 // filter query scans in raw/mzML/mzXML input by ms level (aka MS2, MS3)
+   int iSpecLibMSLevel;          // filter speclib scans in raw/mzML/mzXML input by ms level (aka MS2, MS3)
    int iMinPeaks;
    int iRemovePrecursor;         // 0=no, 1=yes, 2=ETD precursors, 3=phosphate neutral loss
    int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search
@@ -256,9 +259,14 @@ struct Results
    vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
 };
 
+struct SpecLibResults
+{
+   unsigned int iWhichSpecLib;                // the matched spectral library entry
+   float fSpecLibScore;                       // speclib score
+};
+
 struct PepMassInfo
 {
-   double dCalcPepMass;
    double dExpPepMass;                        // protonated MH+ experimental mass
    double dPeptideMassToleranceLow;           // mass tolerance low in amu from experimental mass
    double dPeptideMassToleranceHigh;          // mass tolerance high in amu from experimental mass
@@ -415,7 +423,7 @@ struct DBInfo
    }
 };
 
-// this duplicates PlainPeptideIndex but with modsites and fixed peptide char string for simplified binary write/read
+// this duplicates PlainPeptideIndexStruct but with modsites and fixed peptide char string for simplified binary write/read
 struct DBIndex
 {
    char   szPeptide[MAX_PEPTIDE_LEN];
@@ -456,14 +464,14 @@ struct DBIndex
 
 // This is used for fragment indexing; plain peptides are stored in index
 // file and read in to this data struct.  Same as DBIndex w/o pcVarModSites[]
-struct PlainPeptideIndex
+struct PlainPeptideIndexStruct
 {
    string sPeptide;
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
    unsigned short siVarModProteinFilter;            // bitwise representation of mmapProtein
 
-   bool operator==(const PlainPeptideIndex &rhs) const
+   bool operator==(const PlainPeptideIndexStruct &rhs) const
    {
       if (!sPeptide.compare(rhs.sPeptide))
          return true;
@@ -474,7 +482,7 @@ struct PlainPeptideIndex
 
 struct FragmentPeptidesStruct
 {
-   int iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndex
+   int iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndexStruct
    int modNumIdx;
    double dPepMass;     // peptide mass (modified or unmodified) after permuting mods
    short siNtermMod;
@@ -486,12 +494,29 @@ struct FragmentPeptidesStruct
    }
 };
 
-extern unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];           // 4D array [thread][precursor_mass][BIN[fragment mass)][which entries in g_vFragmentPeptides]
-extern unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];       // array of ints: [thread][precursor_mass][BIN(fragment mass)][which entries in g_vFragmentPeptides]
-extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
-extern vector<PlainPeptideIndex> g_vRawPeptides;
-extern bool *g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
+struct SpecLibInfo      // why a struct for just a string???
+{
+   string strSpecLibFile;
+};
 
+struct SpecLibStruct
+{
+   string strName;
+   unsigned int iLibEntry;
+   unsigned int iNumPeaks;
+   int iSpecLibCharge;
+   double dSpecLibMW;                // if a peptide, store neutral mass
+   double dRT;
+   vector<std::pair<double, double>> vSpecLibPeaks;
+};
+
+extern unsigned int **g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];           // 4D array [thread][precursor_mass][BIN[fragment mass)][which entries in g_vFragmentPeptides]
+extern unsigned int *g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];       // array of ints: [thread][precursor_mass][BIN(fragment mass)][which entries in g_vFragmentPeptides]
+extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
+extern vector<PlainPeptideIndexStruct> g_vRawPeptides;
+extern bool *g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
+extern vector<SpecLibStruct> g_vSpecLib;
+extern vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;  // this will be an vector of vectors<unsigned int>
 
 struct IndexProteinStruct  // for indexed database
 {
@@ -639,6 +664,7 @@ struct ToleranceParams
    double dInputTolerancePlus;    // raw tolerance value from param file, upper bound; gets converted to dPeptideMassTolerancePlus
    double dFragmentBinSize;
    double dFragmentBinStartOffset;
+   double dBinSizePrecursor;
 
    ToleranceParams& operator=(ToleranceParams& a)
    {
@@ -649,6 +675,7 @@ struct ToleranceParams
       dInputTolerancePlus = a.dInputTolerancePlus;
       dFragmentBinSize = a.dFragmentBinSize;
       dFragmentBinStartOffset = a.dFragmentBinStartOffset;
+      dBinSizePrecursor = a.dBinSizePrecursor;
 
       return *this;
    }
@@ -694,6 +721,7 @@ struct StaticParams
    char            szDate[32];
    Options         options;
    DBInfo          databaseInfo;
+   SpecLibInfo     speclibInfo;
    PEFFInfo        peffInfo;
    InputFileInfo   inputFile;
    int             bPrintDuplReferences;
@@ -739,6 +767,7 @@ struct StaticParams
        strcpy(szDate, a.szDate);
        options = a.options;
        databaseInfo = a.databaseInfo;
+       speclibInfo = a.speclibInfo;
        inputFile = a.inputFile;
        bPrintDuplReferences = a.bPrintDuplReferences;
        variableModParameters = a.variableModParameters;
@@ -767,6 +796,7 @@ struct StaticParams
       iIndexDb = 0;
 
       databaseInfo.szDatabase[0] = '\0';
+      speclibInfo.strSpecLibFile.clear();
 
       strcpy(szDecoyPrefix, "DECOY_");
       strcpy(szTxtFileExt, "txt");
@@ -939,6 +969,7 @@ struct StaticParams
       tolerances.dInputTolerancePlus = 3.0;                 // peptide_mass_tolerance plus
       tolerances.dFragmentBinSize = 1.0005;
       tolerances.dFragmentBinStartOffset = 0.4;
+      tolerances.dBinSizePrecursor = 0.1;                   // FIX
 
       bSkipToStartScan = true;
    }
@@ -973,6 +1004,10 @@ extern int MOD_NUM;
 extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
                                         // poor choice of name for the fragment index .idx given peptide index is back
 extern bool g_bPeptideIndexRead;        // set to true if peptide index file is read
+extern bool g_bSpecLibRead;             // set to true if spectral library file is read
+
+extern bool g_bPerformSpecLibSearch;    // set to true if doing spectral library search
+extern bool g_bPerformDatabaseSearch;   // set to true if doing database search
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
@@ -992,6 +1027,8 @@ struct Query
 
    double dLowestXcorrScore;
    double dLowestDecoyXcorrScore;
+
+   float fLowestSpecLibScore;
 
    int iMinXcorrHisto;    // min xcorr score for xcorr histogram to address good E-values for poor/sparse spectra
 
@@ -1019,6 +1056,7 @@ struct Query
    SpectrumInfoInternal _spectrumInfoInternal;
    Results              *_pResults;
    Results              *_pDecoys;
+   SpecLibResults       *_pSpecLibResults;
 
    Mutex accessMutex;
 
@@ -1042,6 +1080,8 @@ struct Query
       dLowestXcorrScore = XCORR_CUTOFF;
       dLowestDecoyXcorrScore = XCORR_CUTOFF;
 
+      fLowestSpecLibScore = SPECLIB_CUTOFF;
+
       dMangoIndex = 0.0;
 
       _uliNumMatchedPeptides = 0;
@@ -1057,7 +1097,6 @@ struct Query
 
       vdRawFragmentPeakMass.clear();
 
-      _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;
       _pepMassInfo.dPeptideMassToleranceLow = 0.0;
       _pepMassInfo.dPeptideMassToleranceHigh = 0.0;
@@ -1072,6 +1111,7 @@ struct Query
 
       _pResults = NULL;
       _pDecoys = NULL;
+      _pSpecLibResults = NULL;
 
       Threading::CreateMutex(&accessMutex);
    }
@@ -1137,6 +1177,7 @@ extern Mutex                   g_pvDBIndexMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
 extern Mutex                   g_searchMemoryPoolMutex;
 extern Mutex                   g_dbIndexMutex;
+extern Mutex                   g_vSpecLibMutex;
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {
