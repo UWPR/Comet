@@ -123,7 +123,7 @@ bool CometSpecLib::ReadSpecLibSqlite(string strSpecLibFile)
 
    printf(" Error - sqlite/.db files as spectral libraries are not supported yet.\n");
    exit(1);
-
+/*
    sqlite3* db;
    sqlite3_stmt* stmt;
    const char* sql = "SELECT * FROM SpectrumTable";
@@ -200,6 +200,7 @@ bool CometSpecLib::ReadSpecLibSqlite(string strSpecLibFile)
    sqlite3_close(db);
 
    return 0;
+*/
 }
 
 

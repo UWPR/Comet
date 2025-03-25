@@ -94,9 +94,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE;_NOSQLITE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalIncludeDirectories>..\pthreads-w32\include;..\MSToolkit\include;..\CometSearch</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\src\expat-2.2.9\lib;..\MSToolkit\src\zlib-1.2.11;..\CometSearch</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

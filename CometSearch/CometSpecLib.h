@@ -19,7 +19,7 @@
 #include "Common.h"
 #include "CometDataInternal.h"
 #include "CometSearch.h"
-#include <sqlite3.h>
+//#include <sqlite3.h>
 #include <functional>
 
 class CometSpecLib

@@ -84,7 +84,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\pthreads-w32\include;..\MSToolkit\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\src\expat-2.2.9\lib;..\MSToolkit\src\zlib-1.2.11;</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -100,6 +100,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE;_NOSQLITE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -125,7 +126,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\pthreads-w32\include;..\MSToolkit\include;..\MSToolkit\src\expat-2.2.9\lib;..\MSToolkit\src\zlib-1.2.11;..\MSToolkit\src\sqlite-3.32.1</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\src\expat-2.2.9\lib;..\MSToolkit\src\zlib-1.2.11;</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
@@ -182,6 +183,7 @@
     <ClInclude Include="CometPreprocess.h" />
     <ClInclude Include="CometSearch.h" />
     <ClInclude Include="CometSearchManager.h" />
+    <ClInclude Include="CometSpecLib.h" />
     <ClInclude Include="CometStatus.h" />
     <ClInclude Include="CometWriteMzIdentML.h" />
     <ClInclude Include="CometWriteOut.h" />
@@ -205,6 +207,7 @@
     <ClCompile Include="CometPreprocess.cpp" />
     <ClCompile Include="CometSearch.cpp" />
     <ClCompile Include="CometSearchManager.cpp" />
+    <ClCompile Include="CometSpecLib.cpp" />
     <ClCompile Include="CometWriteMzIdentML.cpp" />
     <ClCompile Include="CometWriteOut.cpp" />
     <ClCompile Include="CometWritePepXML.cpp" />
